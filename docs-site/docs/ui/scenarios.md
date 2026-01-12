@@ -1,46 +1,46 @@
 # Scenarios
 
-Вкладка **Scenarios** — библиотека сценариев и визуальный редактор шагов.
+The **Scenarios** tab is the scenario library and visual step editor.
 
 ## Scenario library
 
-Слева список сценариев.
+List of scenarios on the left.
 
-- **New** — создать новый сценарий.
-- **Load** — загрузить выбранный.
-- **Save** — сохранить текущий.
-- **Delete** — удалить.
+- **New** - create a new scenario.
+- **Load** - load the selected one.
+- **Save** - save the current scenario.
+- **Delete** - delete.
 
-Сценарии хранятся в `scenaries/*.json`.
+Scenarios are stored in `scenaries/*.json`.
 
 ## Details
 
-Вверху справа:
+Top right:
 
-- **Name** — имя сценария (ключ в библиотеке).
-- **Description** — описание.
-- **Variables in scenario** — список найденных переменных (по шагам, где есть `name/to_var/save_as`).
+- **Name** - scenario name (library key).
+- **Description** - description.
+- **Variables in scenario** - detected variables (from steps that use `name/to_var/save_as`).
 
 ## Action map
 
-Основной редактор — **Action map**:
+The main editor is **Action map**:
 
-- Каждый блок — шаг сценария.
-- Блоки соединяются стрелками (успех/ошибка) и определяют переходы между шагами.
-- Двойной клик/кнопка редактирования открывают модальное окно настройки шага.
+- Each block is a scenario step.
+- Blocks are connected by arrows (success/error) to define transitions.
+- Double-click or the edit button opens the step settings modal.
 
-Подробно про формат сценария и переходы: `scenarios/format.md`, `scenarios/flow.md`.
+More about format and transitions: `scenarios/format.md`, `scenarios/flow.md`.
 
-## Модальное окно шага
+## Step modal
 
-При добавлении/редактировании шага открывается окно с настройками. Набор полей зависит от выбранного action:
+When adding/editing a step, a settings modal opens. Fields depend on the action:
 
-- Для шагов с селектором (`click`, `type`, `wait_element`, `extract_text`) будут поля селектора, типа, индекса и iframe.
-- Для `http_request` показываются поля метода/заголовков/параметров/тела/сохранения результата.
-- Для `parse_var` показываются поля переменной-источника, шаблона (pattern) и опция сохранения в профиль (**Update account**).
-- Для `compare` показываются поля оператора сравнения и второго значения (переменная или текст), а ветвление задаётся через `next_success_step` (True) и `next_error_step` (False).
-- Для `write_file` — имя файла.
-- Для `sleep` — длительность.
-- Для `switch_tab`/`close_tab` — индекс вкладки.
+- For selector-based steps (`click`, `type`, `wait_element`, `extract_text`), selector/type/index/iframe fields are shown.
+- For `http_request`, method/headers/params/body/result fields are shown.
+- For `parse_var`, source variable, pattern, and **Update account** option are shown.
+- For `compare`, operator and right value (variable or text) are shown; branching uses `next_success_step` (True) and `next_error_step` (False).
+- For `write_file`, file name.
+- For `sleep`, duration.
+- For `switch_tab`/`close_tab`, tab index.
 
-Если окно не помещается на экран — используется прокрутка.
+If the modal does not fit the screen, it becomes scrollable.

@@ -1,44 +1,44 @@
-# compare
+﻿# compare
 
-Сравнивает значение (обычно из переменной) с другим значением (переменная или текст) и делает ветвление.
+Compares a value (usually a variable) with another value (variable or text) and branches.
 
-В UI этот шаг называется **Compare / if**.
+In the UI this step is named **Compare / if**.
 
-## Ветвление
+## Branching
 
-- “True” ветка: `next_success_step` (можно воспринимать как *YES*).
-- “False” ветка: `next_error_step` (используется как *NO* ветка, хотя это не ошибка: просто переиспользуется поле перехода “на ошибке”).
+- "True" branch: `next_success_step` (can be read as *YES*).
+- "False" branch: `next_error_step` (used as the *NO* branch; it is not an error, the field is reused).
 
-Если “False” ветка не задана, а “True” задана — шаг остановит сценарий при ложном условии, чтобы не уйти по ошибке в true-ветку.
+If the False branch is not set but True is set, the step stops the scenario when the condition is false to avoid falling into the True branch.
 
-## Параметры
+## Parameters
 
-- `left_var` *(string)* — имя переменной слева (то, что сравниваем).
-  - Алиасы: `var`, `name`, `from_var`.
-- `value` *(string, optional)* — правое значение (текст), поддерживает `{{var}}`.
-- `right_var` *(string, optional)* — имя переменной справа (если задано, используется вместо `value`).
-- `op` *(string, optional)* — оператор (по умолчанию `equals`):
+- `left_var` *(string)* - left variable name (the value to compare).
+  - Aliases: `var`, `name`, `from_var`.
+- `value` *(string, optional)* - right value (text), supports `{{var}}`.
+- `right_var` *(string, optional)* - right variable name (if set, used instead of `value`).
+- `op` *(string, optional)* - operator (default `equals`):
   - `equals`, `not_equals`
   - `contains`, `not_contains`
   - `startswith`, `endswith`
   - `regex`
   - `is_empty`, `not_empty`
-  - `gt`, `gte`, `lt`, `lte` *(числовое сравнение; оба значения должны парситься как float)*
-- `case_sensitive` *(bool, optional)* — чувствительность к регистру (по умолчанию `false`).
-- `result_var` *(string, optional)* — куда записать результат (`true`/`false`).
+  - `gt`, `gte`, `lt`, `lte` *(numeric comparison; both values must parse as float)*
+- `case_sensitive` *(bool, optional)* - case sensitivity (default `false`).
+- `result_var` *(string, optional)* - store result (`true`/`false`) in this variable.
 
-## UI (как заполнять)
+## UI mapping
 
-- **Variable** → `left_var`
-- **Value** → `value` (если не используете `right_var`)
-- **Right variable** → `right_var`
-- **Compare operator** → `op`
-- **Result variable** → `result_var`
-- **Case sensitive** → `case_sensitive`
+- **Variable**  -> `left_var`
+- **Value**  -> `value` (if not using `right_var`)
+- **Right variable**  -> `right_var`
+- **Compare operator**  -> `op`
+- **Result variable**  -> `result_var`
+- **Case sensitive**  -> `case_sensitive`
 
-## Примеры
+## Examples
 
-### Сравнить переменную с текстом
+### Compare a variable to text
 
 ```json
 {
@@ -52,7 +52,7 @@
 }
 ```
 
-### Сравнить две переменные
+### Compare two variables
 
 ```json
 {
@@ -66,7 +66,7 @@
 }
 ```
 
-### Проверить, что строка содержит подстроку
+### Check that a string is not empty
 
 ```json
 {

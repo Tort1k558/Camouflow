@@ -1,18 +1,18 @@
 # wait_element
 
-Ждёт появления/исчезновения элемента.
+Waits for an element to appear or disappear.
 
-## Параметры
+## Parameters
 
-- `selector` *(string)* — селектор.
-- `selector_type` *(string, optional)* — `css`, `text`, `xpath`, `id`, `name`, `test_id`.
-- `selector_index` *(int, optional)* — выбрать `nth()` совпадение.
-- `frame_selector` *(string, optional)* — iframe selector.
-- `frame_timeout_ms` *(int, optional)* — таймаут поиска iframe (мс).
-- `state` *(string, optional)* — `attached`, `detached`, `visible`, `hidden` (по умолчанию `visible`).
-- `timeout_ms` *(int, optional)* — таймаут ожидания (мс).
+- `selector` *(string)* - selector.
+- `selector_type` *(string, optional)* - `css`, `text`, `xpath`, `id`, `name`, `test_id`.
+- `selector_index` *(int, optional)* - select a specific `nth()` match.
+- `frame_selector` *(string, optional)* - iframe selector.
+- `frame_timeout_ms` *(int, optional)* - iframe lookup timeout (ms).
+- `state` *(string, optional)* - `attached`, `detached`, `visible`, `hidden` (default `visible`).
+- `timeout_ms` *(int, optional)* - wait timeout (ms).
 
-## Пример
+## Example
 
 ```json
 {
@@ -24,4 +24,3 @@
   "timeout_ms": 15000
 }
 ```
-

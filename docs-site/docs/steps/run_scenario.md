@@ -1,19 +1,18 @@
 # run_scenario
 
-Запускает другой сценарий “внутри” текущего.
+Runs another scenario inside the current one.
 
-## Параметры
+## Parameters
 
-- `scenario` / `scenario_name` / `name` / `value` *(string)* — имя сценария (поддерживает `{{var}}`).
+- `scenario` / `scenario_name` / `name` / `value` *(string)* - scenario name (supports `{{var}}`).
 
-## Примечания
+## Notes
 
-- Вложенный сценарий наследует переменные и может их изменять.
-- Есть защита от рекурсии (нельзя вызвать сценарий, который уже есть в стеке вызовов).
+- The nested scenario inherits variables and can modify them.
+- Recursion protection is enabled (you cannot call a scenario already in the call stack).
 
-## Пример
+## Example
 
 ```json
 { "action": "run_scenario", "tag": "DoSubflow", "value": "SubScenarioName" }
 ```
-

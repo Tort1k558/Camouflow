@@ -1,14 +1,13 @@
 # log
 
-Пишет сообщение в лог выполнения.
+Writes a message to the execution log.
 
-## Параметры
+## Parameters
 
-- `value` / `message` / `text` *(string)* — сообщение (поддерживает `{{var}}`).
+- `value` / `message` / `text` *(string)* - message (supports `{{var}}`).
 
-## Пример
+## Example
 
 ```json
 { "action": "log", "tag": "Info", "value": "Profile={{email}} token={{token}}" }
 ```
-

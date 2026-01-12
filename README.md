@@ -2,7 +2,7 @@
 
 CamouFlow is a desktop app for managing browser automation scenarios and profiles based on Camoufox/Playwright. It is built with PyQt6 and stores its working data locally.
 
-![Main window](docs/images/main-window.png)
+![Main window](images/preview.jpg)
 
 ## Features
 

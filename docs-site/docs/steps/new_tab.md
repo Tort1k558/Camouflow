@@ -1,16 +1,15 @@
 # new_tab
 
-Открывает новую вкладку (страницу) и делает её активной.
+Opens a new tab (page) and activates it.
 
-## Параметры
+## Parameters
 
-- `value` / `url` *(string, optional)* — URL для открытия.
-- `wait_until` *(string, optional)* — `load`, `domcontentloaded`, `networkidle`, `commit`.
-- `timeout_ms` *(int, optional)* — таймаут навигации (мс).
+- `value` / `url` *(string, optional)* - URL to open.
+- `wait_until` *(string, optional)* - `load`, `domcontentloaded`, `networkidle`, `commit`.
+- `timeout_ms` *(int, optional)* - navigation timeout (ms).
 
-## Пример
+## Example
 
 ```json
 { "action": "new_tab", "tag": "OpenTab", "value": "https://example.com" }
 ```
-

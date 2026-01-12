@@ -3,21 +3,21 @@ order: 100
 ---
 # CamouFlow
 
-CamouFlow — приложение для запуска сценариев автоматизации в браузере (Camoufox/Playwright) по списку профилей.
+CamouFlow is a desktop app for running browser automation scenarios (Camoufox/Playwright) across a list of profiles.
 
-## Что умеет
+## Features
 
-- Хранит профили (аккаунты) и привязанные к ним прокси.
-- Управляет “тегами” (группами профилей) и запускает сценарии для выбранного тега.
-- Редактирует сценарии как последовательность шагов (переходы, вложенные сценарии, переменные).
-- Поддерживает общие переменные (shared variables) для обмена данными между профилями/запусками.
-- Ведёт лог выполнения.
+- Stores profiles (accounts) and their assigned proxies.
+- Uses tags to group profiles and run scenarios for the selected tag.
+- Edits scenarios as a chain of steps (transitions, nested scenarios, variables).
+- Supports shared variables to exchange data across profiles/runs.
+- Keeps execution logs.
 
-## Где хранятся данные
+## Data locations
 
-- Профили: `settings/accounts.json`
-- Сценарии: `scenaries/*.json`
-- Настройки: `settings/settings.json`
-- Папки профилей браузера: `profiles/`
-- Выводы сценариев (write_file): `outputs/`
-- Логи: `logs/`
+- Profiles: `settings/accounts.json`
+- Scenarios: `scenaries/*.json`
+- Settings: `settings/settings.json`
+- Browser profile folders: `profiles/`
+- Scenario outputs (write_file): `outputs/`
+- Logs: `logs/`

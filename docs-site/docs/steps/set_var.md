@@ -1,16 +1,15 @@
 # set_var
 
-Устанавливает переменную сценария (и опционально shared).
+Sets a scenario variable (and optionally shared).
 
-## Параметры
+## Parameters
 
-- `name` / `variable` / `var` *(string)* — имя переменной.
-- `value` *(string)* — значение (поддерживает `{{var}}`).
-- `scope` *(string, optional)* — область: `profile` *(по умолчанию)*, `shared`, `both`.
+- `name` / `variable` / `var` *(string)* - variable name.
+- `value` *(string)* - value (supports `{{var}}`).
+- `scope` *(string, optional)* - scope: `profile` *(default)*, `shared`, `both`.
 
-## Пример
+## Example
 
 ```json
 { "action": "set_var", "tag": "SetToken", "name": "token", "value": "{{login_token}}", "scope": "profile" }
 ```
-

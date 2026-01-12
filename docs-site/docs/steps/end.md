@@ -1,14 +1,13 @@
 # end
 
-Завершает сценарий и закрывает браузер для текущего профиля.
+Ends the scenario and closes the browser for the current profile.
 
-## Параметры
+## Parameters
 
-Нет обязательных параметров.
+No required parameters.
 
-## Пример
+## Example
 
 ```json
 { "action": "end", "tag": "End" }
 ```
-

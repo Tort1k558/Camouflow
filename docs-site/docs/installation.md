@@ -1,20 +1,20 @@
 ---
 order: 90
 ---
-# Установка и запуск
+# Installation and run
 
-## Требования
+## Requirements
 
 - Windows
-- Python (рекомендуется использовать `.venv`)
+- Python (recommended: use `.venv`)
 
-## Запуск приложения
+## Run the app
 
-1. Создайте виртуальное окружение и активируйте его.
-2. Установите зависимости проекта.
-3. Запустите `main.py`.
+1. Create and activate a virtual environment.
+2. Install project dependencies.
+3. Run `main.py`.
 
-Пример (PowerShell):
+Example (PowerShell):
 
 ```powershell
 python -m venv .venv
@@ -23,29 +23,29 @@ pip install -r requiremensts
 python main.py
 ```
 
-## Документация (Retype)
+## Documentation (Retype)
 
-Требуется Node.js (LTS) и npm.
+Node.js (LTS) and npm are required.
 
-Установка Retype:
+Install Retype:
 
 ```powershell
 cd docs-site
 npm install retypeapp --save-dev
 ```
 
-Локальный просмотр:
+Local preview:
 
 ```powershell
 cd docs-site
 npx retype watch
 ```
 
-Сборка статического сайта:
+Build a static site:
 
 ```powershell
 cd docs-site
 npx retype build
 ```
 
-Конфигурация Retype лежит в `docs-site/retype.yml`. По умолчанию входные файлы в `docs-site/docs/`, сборка идёт в `docs-site/site/`.
+Retype config is in `docs-site/retype.yml`. By default, sources are in `docs-site/docs/` and output is `docs-site/site/`.

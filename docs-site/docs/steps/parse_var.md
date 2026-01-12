@@ -1,35 +1,35 @@
-# parse_var
+﻿# parse_var
 
-Берёт строку из переменной и “разбирает” её по шаблону, записывая части в другие переменные.
+Takes a string from a variable and parses it using a template, saving parts into other variables.
 
-## Параметры
+## Parameters
 
-- `from_var` *(string)* — имя переменной-источника.
-  - Алиасы: `var`, `name`.
-- `pattern` / `targets_string` *(string)* — шаблон с плейсхолдерами, например `{{email}};{{password}}`.
-- `update_account` *(bool, optional)* — если `true`, сохранит извлечённые поля в данные профиля. По умолчанию: `true`.
+- `from_var` *(string)* - source variable name.
+  - Aliases: `var`, `name`.
+- `pattern` / `targets_string` *(string)* - template with placeholders, e.g. `{{email}};{{password}}`.
+- `update_account` *(bool, optional)* - if `true`, save extracted fields into profile data. Default: `true`.
 
-## UI (как заполнять)
+## UI mapping
 
-- **Variable** → `from_var`
-- **Targets / pattern** → `pattern`
-- **Update account (save to profile)** → `update_account`
+- **Variable**  -> `from_var`
+- **Targets / pattern**  -> `pattern`
+- **Update account (save to profile)**  -> `update_account`
 
-## Как работает шаблон
+## How the template works
 
-- Шаблон должен содержать плейсхолдеры `{{name}}`.
-- Сопоставление строгое: строка должна “целиком” соответствовать шаблону.
-- Пробелы в шаблоне считаются гибкими (могут быть любыми/отсутствовать).
+- The template must contain `{{name}}` placeholders.
+- Matching is strict: the entire string must match the template.
+- Whitespace in the template is flexible (can be present or omitted).
 
-## Пример
+## Example
 
-Допустим, в переменной `raw` лежит:
+Suppose `raw` contains:
 
 ```
 user@example.com;pass123
 ```
 
-Шаг:
+Step:
 
 ```json
 {
@@ -40,4 +40,4 @@ user@example.com;pass123
 }
 ```
 
-После шага появятся переменные `{{email}}` и `{{password}}`.
+After the step, variables `{{email}}` and `{{password}}` will be available.

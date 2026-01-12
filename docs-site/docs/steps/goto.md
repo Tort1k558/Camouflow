@@ -1,14 +1,14 @@
 # goto
 
-Открывает URL в текущей вкладке.
+Opens a URL in the current tab.
 
-## Параметры
+## Parameters
 
-- `value` / `url` *(string)* — URL (поддерживает `{{var}}`).
-- `wait_until` *(string, optional)* — событие ожидания навигации: `load`, `domcontentloaded`, `networkidle`, `commit`.
-- `timeout_ms` *(int, optional)* — таймаут навигации (мс).
+- `value` / `url` *(string)* - URL (supports `{{var}}`).
+- `wait_until` *(string, optional)* - navigation wait event: `load`, `domcontentloaded`, `networkidle`, `commit`.
+- `timeout_ms` *(int, optional)* - navigation timeout (ms).
 
-## Пример
+## Example
 
 ```json
 {
@@ -19,4 +19,3 @@
   "timeout_ms": 60000
 }
 ```
-

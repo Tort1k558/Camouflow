@@ -1,18 +1,18 @@
 # write_file
 
-Пишет строку в файл внутри `outputs/` (абсолютные пути запрещены).
+Writes a line to a file inside `outputs/` (absolute paths are not allowed).
 
-## Параметры
+## Parameters
 
-- `filename` / `file` *(string)* — относительный путь файла (например `result.txt` или `folder/result.txt`).
-- `value` *(string)* — текст для записи (поддерживает `{{var}}`).
+- `filename` / `file` *(string)* - relative file path (e.g. `result.txt` or `folder/result.txt`).
+- `value` *(string)* - text to write (supports `{{var}}`).
 
-## Примечания
+## Notes
 
-- Если файл существует — добавляет строку в конец (append).
-- Если в конце файла нет переноса строки — добавит перенос перед записью.
+- If the file exists, the line is appended.
+- If the file does not end with a newline, one is added before writing.
 
-## Пример
+## Example
 
 ```json
 {
@@ -22,4 +22,3 @@
   "value": "{{email}} | {{title}}"
 }
 ```
-

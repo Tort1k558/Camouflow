@@ -1,17 +1,17 @@
 # set_tag
 
-Устанавливает тег (stage) для текущего профиля.
+Sets the tag (stage) for the current profile.
 
-## Параметры
+## Parameters
 
-- `value` / `tag` / `stage` *(string)* — новое значение тега (поддерживает `{{var}}`).
+- `value` / `tag` / `stage` *(string)* - new tag value (supports `{{var}}`).
 
-## Пример
+## Example
 
 ```json
 { "action": "set_tag", "tag": "MarkDone", "value": "done" }
 ```
 
-## Примечание
+## Note
 
-Исторический алиас: `set_stage` (в редакторе нормализуется к `set_tag`).
+Historical alias: `set_stage` (normalized to `set_tag` in the editor).

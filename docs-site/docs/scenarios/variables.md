@@ -1,43 +1,43 @@
-# Переменные и шаблоны
+# Variables and templates
 
-Сценарий поддерживает подстановки вида `{{var}}` в строковых полях шагов.
+Scenarios support `{{var}}` placeholders in string fields.
 
-## Откуда берутся переменные
+## Variable sources
 
-Переменные собираются из:
+Variables are collected from:
 
-- полей профиля (импортированные значения: `email`, `password`, и любые другие по шаблону импорта)
-- `extra_fields` профиля (если есть)
-- shared variables (общие переменные)
-- переменных, выставленных шагами (например `set_var`, `extract_text`, `http_request`)
-  - также: `parse_var` (извлечённые значения)
+- profile fields (imported values such as `email`, `password`, and any others from the import template)
+- `extra_fields` (if present)
+- shared variables
+- values set by steps (e.g. `set_var`, `extract_text`, `http_request`)
+  - also `parse_var` (extracted values)
 
-## Подстановка `{{var}}`
+## `{{var}}` substitution
 
-Любая строка может включать плейсхолдер:
+Any string can include placeholders:
 
 - `"Authorization: Bearer {{token}}"`
 - `"https://example.com/u/{{user_id}}/settings"`
 
-Если переменной нет — подставится пустая строка.
+If a variable is missing, an empty string is inserted.
 
-## Встроенные переменные
+## Built-in variables
 
-Некоторые переменные поддерживаются “из коробки”:
+Some variables are provided automatically:
 
-- `{{cookies}}` — JSON-строка с cookies, актуализируется перед шагом, если он содержит шаблон cookies.
-- `{{timestamp}}` — локальный таймштамп `YYYY-MM-DD-HH-MM-SS`, обновляется перед шагом, если он содержит шаблон timestamp.
+- `{{cookies}}` - JSON string with cookies, refreshed before a step if it uses the cookies template.
+- `{{timestamp}}` - local timestamp `YYYY-MM-DD-HH-MM-SS`, refreshed before a step if it uses the timestamp template.
 
 ## Shared variables
 
-Shared variables — общий словарь значений, доступный всем профилям при запуске.
+Shared variables are a common store available to all profiles during a run.
 
-Типы:
+Types:
 
-- `string` — строка
-- `list` — список строк (в UI редактируется “по одному значению на строку”)
+- `string` - a single string
+- `list` - list of strings (edited as one value per line in the UI)
 
-Использование:
+Usage:
 
-- Подстановка `{{key}}` в шагах (как обычная переменная).
-- Шаг `pop_shared` для “взятия” значения из общего списка и раскладывания по переменным.
+- Use `{{key}}` in steps like a normal variable.
+- Use `pop_shared` to take values from the shared list and map them to variables.

@@ -1,34 +1,34 @@
 # Proxies
 
-Вкладка **Proxies** предназначена для управления пулами прокси и их назначением профилям.
+The **Proxies** tab manages proxy pools and assigns proxies to profiles.
 
-## Пулы (Pools)
+## Pools
 
-Слева список пулов.
+Pools are listed on the left.
 
-- **New pool** — создать новый пул.
-- **Rename** — переименовать пул.
-- **Delete** — удалить пул.
+- **New pool** - create a new pool.
+- **Rename** - rename the pool.
+- **Delete** - delete the pool.
 
 ## Pool details
 
-Справа содержимое выбранного пула:
+On the right, for the selected pool:
 
-- Список прокси (можно выделять несколько).
-- **Check internet** — проверка доступности интернета через прокси (по умолчанию запрос к `https://ipwho.is/`).
-- **Release selected** — “отвязать” выбранные прокси от профилей (сделать свободными).
-- **Remove selected** — удалить выбранные прокси из пула.
+- Proxy list (multi-select supported).
+- **Check internet** - check connectivity through proxies (default request to `https://ipwho.is/`).
+- **Release selected** - unassign selected proxies from profiles.
+- **Remove selected** - remove selected proxies from the pool.
 
-Прокси назначаются профилям при импорте профилей (через выбор *Proxy pool*) и/или через настройки профиля.
+Proxies are assigned during profile import (via *Proxy pool*) and/or in profile settings.
 
 ## Bulk import
 
-Вставьте прокси по одному на строку и нажмите **Append proxies**.
+Paste proxies one per line and click **Append proxies**.
 
-Поддерживаемые форматы строк:
+Supported formats:
 
 - `ip:port:login:password`
-- `scheme://ip:port:login:password` (scheme может быть `socks5`, `socks4`, `http`, `https`)
-- Также поддерживается формат с `user:pass@host:port` при проверке, если он встречается в данных.
+- `scheme://ip:port:login:password` (scheme: `socks5`, `socks4`, `http`, `https`)
+- `user:pass@host:port` is also accepted during checks if present in data.
 
-Дубликаты при импорте игнорируются.
+Duplicates are ignored on import.

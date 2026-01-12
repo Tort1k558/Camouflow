@@ -1,19 +1,19 @@
-# Формат сценария
+# Scenario format
 
-Сценарий — это JSON-файл с полями:
+A scenario is a JSON file with the following fields:
 
-- `name`: имя сценария
-- `description`: описание (опционально)
-- `steps`: список шагов (объектов)
+- `name`: scenario name
+- `description`: description (optional)
+- `steps`: list of step objects
 
-Файлы лежат в `scenaries/*.json`.
+Files are stored in `scenaries/*.json`.
 
-## Пример минимального сценария
+## Minimal example
 
 ```json
 {
   "name": "Demo",
-  "description": "Пример",
+  "description": "Example",
   "steps": [
     { "action": "start", "tag": "Start" },
     { "action": "goto", "tag": "Open", "value": "https://example.com" },
@@ -22,23 +22,22 @@
 }
 ```
 
-## Базовые поля шага
+## Common step fields
 
-Практически у любого шага могут встречаться:
+Most steps can include:
 
-- `action` *(string)* — тип шага (см. справочник шагов).
-- `tag` *(string)* — уникальная метка шага для переходов.
-- `description` *(string)* — текст для логов (если задан).
-- `timeout_ms` *(int)* — таймаут (мс) для действий, которые его поддерживают.
+- `action` *(string)* - step type (see the step reference).
+- `tag` *(string)* - unique step label used for transitions.
+- `description` *(string)* - log text (optional).
+- `timeout_ms` *(int)* - timeout (ms) for actions that support it.
 
-### Переходы
+### Transitions
 
-Переходы задаются через:
+Transitions are defined with:
 
-- `next_success_step` — `tag` шага, куда перейти при успехе.
-- `next_error_step` — `tag` шага, куда перейти при ошибке.
+- `next_success_step` - target `tag` for success.
+- `next_error_step` - target `tag` for error.
 
-Если переходы не заданы, сценарий идёт к следующему шагу по списку.
+If no transitions are set, the scenario goes to the next step in the list.
 
-Подробно: `scenarios/flow.md`.
-
+Details: `scenarios/flow.md`.

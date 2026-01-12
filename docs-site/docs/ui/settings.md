@@ -1,72 +1,72 @@
 # Settings
 
-Вкладка **Settings** задаёт глобальные настройки Camoufox, которые применяются ко всем профилям (если не переопределены на уровне профиля).
+The **Settings** tab defines global Camoufox defaults applied to all profiles (unless overridden per profile).
 
 ## Appearance
 
-Выбор темы оформления приложения.
+Choose the app theme.
 
-Добавлены темы **CamouFlow Orange** (Light/Dark) с оранжевыми акцентами под бренд/лого.
+Added **CamouFlow Orange** (Light/Dark) themes with orange accents to match the brand/logo.
 
-По умолчанию используется **CamouFlow Orange (Light)**, а прежние Light/Dark остаются как “Classic” варианты.
+Default is **CamouFlow Orange (Light)**, and the old Light/Dark themes remain as "Classic" options.
 
 ## Camoufox defaults
 
-Настройки разбиты по вкладкам внутри Settings. Общая идея:
+Settings are split into tabs. The idea:
 
-- **Auto** — использовать автоматические/рекомендуемые значения.
-- **Set** — вручную задать значение.
+- **Auto** - use automatic/recommended values.
+- **Set** - set a value manually.
 
-Типовые параметры (может меняться в зависимости от версии):
+Typical options (may vary by version):
 
-- **Headless** — запуск с окном / headless.
-- **Humanize** — “человеческие” задержки ввода/движения.
-- **Locale / Timezone** — локаль и часовой пояс.
-- **OS / Fonts** — имитация ОС и список шрифтов.
-- **Window** — метрики окна/экрана (включая `screen.*`, `innerWidth/innerHeight` и др.).
-- **Navigator** — переопределение `navigator.*` (например `userAgent`, `platform`, `languages` и т.п.).
-- **Privacy / Network** — блокировки WebRTC / images / WebGL, cache, COOP и т.п.
+- **Headless** - run with window / headless.
+- **Humanize** - human-like delays for typing/motion.
+- **Locale / Timezone** - locale and timezone.
+- **OS / Fonts** - OS emulation and font list.
+- **Window** - window/screen metrics (including `screen.*`, `innerWidth/innerHeight`, etc.).
+- **Navigator** - overrides for `navigator.*` (e.g., `userAgent`, `platform`, `languages`).
+- **Privacy / Network** - WebRTC / images / WebGL blocking, cache, COOP, etc.
 
-Ниже — смысл ключевых параметров (ориентируйтесь по названиям в UI; часть полей может быть доступна только в Settings/профильных overrides).
+Below are the meanings of key parameters (follow the UI labels; some fields may be available only in Settings/profile overrides).
 
-### Общие
+### General
 
-- **headless** — режим запуска браузера (с окном или без).
-- **persistent_context** — использовать persistent context (профиль сохраняется на диск в `profiles/`).
-- **enable_cache** — включить/выключить кэш.
+- **headless** - browser mode (with window or headless).
+- **persistent_context** - use persistent context (profile is stored on disk in `profiles/`).
+- **enable_cache** - enable/disable cache.
 
-### Локаль и среда
+### Locale and environment
 
-- **locale** — локаль интерфейса/языков (например `en-US`, `ru-RU`).
-- **timezone** — часовой пояс (например `Europe/Moscow`).
-- **os** — имитация ОС (Auto или выбор Windows/MacOS/Linux).
-- **fonts** — список шрифтов (по одному на строку).
+- **locale** - UI/locale language (e.g. `en-US`, `ru-RU`).
+- **timezone** - timezone (e.g. `Europe/Moscow`).
+- **os** - OS emulation (Auto or Windows/MacOS/Linux).
+- **fonts** - font list (one per line).
 
 ### Window / Screen overrides
 
-Вкладка **Window** позволяет вручную задавать значения метрик окна/экрана, которые используются в JS-окружении страницы.
-Примеры параметров:
+The **Window** tab allows manual window/screen metrics used in page JS.
+Example parameters:
 
 - `screen.width`, `screen.height`, `screen.availWidth`, `screen.availHeight`
 - `browser.innerWidth`, `browser.innerHeight`, `browser.outerWidth`, `browser.outerHeight`
 - `browser.devicePixelRatio`
 
-Если оставить Auto — используются значения по умолчанию.
+If left as Auto, default values are used.
 
 ### Navigator overrides
 
-Вкладка **Navigator** позволяет переопределять свойства `navigator.*`.
-Обычно это строки/списки/числа/булевы значения (в UI есть переключатель Auto/Set или выпадающий Auto/True/False).
+The **Navigator** tab overrides `navigator.*` properties.
+Values are usually strings/lists/numbers/bools (UI provides Auto/Set or Auto/True/False).
 
 ### Privacy / Network
 
-- **block_webrtc** — блокировать WebRTC.
-- **block_images** — блокировать загрузку изображений.
-- **block_webgl** — блокировать WebGL.
-- **disable_coop** — настройка COOP (Cross-Origin-Opener-Policy) для совместимости/изоляции.
-- **webgl_vendor / webgl_renderer** — ручная подмена Vendor/Renderer (если доступно в UI).
+- **block_webrtc** - block WebRTC.
+- **block_images** - block image loading.
+- **block_webgl** - block WebGL.
+- **disable_coop** - COOP (Cross-Origin-Opener-Policy) tuning for compatibility/isolation.
+- **webgl_vendor / webgl_renderer** - manual Vendor/Renderer override (if available in UI).
 
-## Кнопки
+## Buttons
 
-- **Save** — сохранить настройки.
-- **Reset to recommended** — сбросить на рекомендуемые значения.
+- **Save** - save settings.
+- **Reset to recommended** - reset to recommended values.

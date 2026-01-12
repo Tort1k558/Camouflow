@@ -1,34 +1,39 @@
-# http_request
+﻿# http_request
 
-Выполняет HTTP(S) запрос через `context.request.fetch` (Playwright). Cookies контекста учитываются и обновляются автоматически.
+Performs an HTTP(S) request via `context.request.fetch` (Playwright). Context cookies are automatically included and updated.
 
-Алиас: `http`.
+Alias: `http`.
 
-## Параметры (основные)
+## Parameters (main)
 
-- `value` / `url` *(string)* — URL (поддерживает `{{var}}`).
-- `method` *(string, optional)* — HTTP метод (по умолчанию `GET`).
-- `headers` *(object, optional)* — заголовки `{ "Header": "value" }`.
-- `params` *(object|string, optional)* — query параметры (объект или строка `a=1&b=2`).
-- `data` *(any|string|bytes, optional)* — тело запроса.
-  - Синонимы: `json`, `body`.
-- `form` *(object, optional)* — `application/x-www-form-urlencoded`.
-- `multipart` *(object, optional)* — `multipart/form-data` (простые поля).
-- `timeout_ms` *(int, optional)* — таймаут (мс).
+- `value` / `url` *(string)* - URL (supports `{{var}}`).
+- `method` *(string, optional)* - HTTP method (default `GET`).
+  - Alias: `http_method`.
+- `headers` *(object, optional)* - headers `{ "Header": "value" }`.
+- `params` *(object|string, optional)* - query params (object or string `a=1&b=2`).
+  - Aliases: `query`, `query_params`.
+- `data` *(any|string|bytes, optional)* - request body.
+  - Aliases: `json`, `body`.
+- `form` *(object, optional)* - `application/x-www-form-urlencoded`.
+- `multipart` *(object, optional)* - `multipart/form-data` (simple fields).
+- `timeout_ms` *(int, optional)* - timeout (ms).
 - `max_redirects` *(int, optional)*, `max_retries` *(int, optional)*.
-- `fail_on_status_code` *(bool, optional)* — ошибка при non-2xx на уровне Playwright.
+- `fail_on_status_code` *(bool, optional)* - error on non-2xx at the Playwright level.
 - `ignore_https_errors` *(bool, optional)*.
 
-## Параметры (результаты)
+## Parameters (results)
 
-- `save_as` *(string, optional)* — префикс переменных результата (по умолчанию `http`):
+- `save_as` *(string, optional)* - result variable prefix (default `http`):
   - `{save_as}_status`, `{save_as}_ok`, `{save_as}_headers`, `{save_as}_body`, `{save_as}_json`, `{save_as}_url`
-- `response_var` *(string, optional)* — записать весь ответ в одну переменную (JSON-строка).
-- `extract_json` *(object, optional)* — маппинг `{ "var": "path" }` для извлечения значений из JSON-ответа.
-  - `path` поддерживает `$.a.b[0].c` (упрощённый JSONPath, `$` — корень).
-- `require_success` *(bool, optional)* — если `true`, шаг остановит сценарий при статусе не 2xx.
+  - Aliases: `result_prefix`, `prefix`, `var_prefix`.
+- `response_var` *(string, optional)* - store the whole response in one variable (JSON string).
+  - Alias: `to_var`.
+- `extract_json` *(object, optional)* - mapping `{ "var": "path" }` to extract values from JSON response.
+  - `path` supports `$.a.b[0].c` (simplified JSONPath, `$` is the root).
+  - Alias: `json_extract`.
+- `require_success` *(bool, optional)* - if `true`, stop the scenario when status is non-2xx.
 
-## Пример: POST JSON + извлечение токена
+## Example: POST JSON + extract token
 
 ```json
 {
@@ -44,15 +49,15 @@
 }
 ```
 
-## Редактор в UI (без JSON)
+## UI editor (no JSON)
 
-В интерфейсе параметры задаются полями:
+In the UI, fields map to:
 
-- **HTTP method** → `method`
-- **HTTP headers** (строки `Header: value`) → `headers`
-- **Query params** (строки `key=value`) → `params`
-- **Body** + **Parse body as JSON** → `data` (строка или JSON)
-- **Save as** → `save_as`
-- **Response var** → `response_var`
-- **Extract JSON** (строки `var=$.path`) → `extract_json`
-- чекбоксы/числа → `require_success`, `fail_on_status_code`, `ignore_https_errors`, `max_redirects`, `max_retries`
+- **HTTP method**  -> `method`
+- **HTTP headers** (lines `Header: value`)  -> `headers`
+- **Query params** (lines `key=value`)  -> `params`
+- **Body** + **Parse body as JSON**  -> `data` (string or JSON)
+- **Save as**  -> `save_as`
+- **Response var**  -> `response_var`
+- **Extract JSON** (lines `var=$.path`)  -> `extract_json`
+- checkboxes/numbers  -> `require_success`, `fail_on_status_code`, `ignore_https_errors`, `max_redirects`, `max_retries`

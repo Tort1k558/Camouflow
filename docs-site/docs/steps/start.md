@@ -1,15 +1,14 @@
 # start
 
-Стартовый шаг сценария. Ничего не делает, обычно используется как точка входа и узел для ветвлений.
+The scenario start step. Does nothing; usually used as an entry point and a branching node.
 
-## Параметры
+## Parameters
 
-- `tag` *(string)* — метка шага.
-- `description` *(string, optional)* — описание для лога.
+- `tag` *(string)* - step label.
+- `description` *(string, optional)* - log description.
 
-## Пример
+## Example
 
 ```json
 { "action": "start", "tag": "Start" }
 ```
-

@@ -1,14 +1,14 @@
 # click
 
-Кликает по элементу.
+Clicks an element.
 
-## Параметры
+## Parameters
 
-- `selector`, `selector_type`, `selector_index`, `frame_selector`, `timeout_ms` — см. `steps/index.md`.
-- `button` *(string, optional)* — кнопка мыши: `left`, `right`, `middle`.
-- `click_delay_ms` *(int, optional)* — задержка клика (мс).
+- `selector`, `selector_type`, `selector_index`, `frame_selector`, `timeout_ms` - see `steps/index.md`.
+- `button` *(string, optional)* - mouse button: `left`, `right`, `middle`.
+- `click_delay_ms` *(int, optional)* - click delay (ms).
 
-## Пример
+## Example
 
 ```json
 {
@@ -19,4 +19,3 @@
   "timeout_ms": 10000
 }
 ```
-

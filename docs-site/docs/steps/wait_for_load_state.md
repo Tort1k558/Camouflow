@@ -1,15 +1,14 @@
 # wait_for_load_state
 
-Ждёт, пока страница достигнет нужного состояния загрузки.
+Waits for the page to reach a given load state.
 
-## Параметры
+## Parameters
 
-- `state` *(string, optional)* — `load`, `domcontentloaded`, `networkidle`, `commit` (по умолчанию `load`).
-- `timeout_ms` *(int, optional)* — таймаут ожидания (мс).
+- `state` *(string, optional)* - `load`, `domcontentloaded`, `networkidle`, `commit` (default `load`).
+- `timeout_ms` *(int, optional)* - wait timeout (ms).
 
-## Пример
+## Example
 
 ```json
 { "action": "wait_for_load_state", "tag": "Loaded", "state": "networkidle", "timeout_ms": 60000 }
 ```
-

@@ -1,9 +1,8 @@
 # Logs
 
-Вкладка **Logs** показывает журнал активности приложения:
+The **Logs** tab shows the application activity log:
 
-- сообщения UI (импорт/запуск/ошибки)
-- ход выполнения сценариев по профилям
+- UI messages (import/run/errors)
+- scenario execution progress by profile
 
-Логи также пишутся в папку `logs/` (в том числе `logs/proxy.log` для диагностики прокси).
-
+Logs are also written to `logs/` (including `logs/proxy.log` for proxy diagnostics).

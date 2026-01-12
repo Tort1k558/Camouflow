@@ -1,39 +1,32 @@
-# Переходы и ошибки
+# Transitions and errors
 
-## Переход по умолчанию
+## Default flow
 
-Если у шага нет явных переходов, сценарий выполняет шаги последовательно по списку.
+If a step has no explicit transitions, the scenario executes steps in order.
 
-## Переходы по тегам
+## Tag-based transitions
 
-Для ветвлений используются теги шагов:
+Branching is defined by step tags:
 
-- `tag` — уникальная метка шага (в редакторе генерируется автоматически, например `Step1`, `Step2`).
-- `next_success_step` — переход при успехе.
-- `next_error_step` — переход при ошибке.
+- `tag` - unique step label (auto-generated in the editor, e.g. `Step1`, `Step2`).
+- `next_success_step` - jump on success.
+- `next_error_step` - jump on error.
 
-## Поведение при ошибках (`on_error`)
+## Error behavior
 
-Если шаг выбрасывает исключение, обработчик ошибки может:
+If a step fails:
 
-- `stop` *(по умолчанию)* — остановить сценарий с ошибкой.
-- `continue` — записать ошибку в лог и идти дальше.
-- `skip` — аналогично continue (шаг считается пропущенным).
-- `jump` — прыгнуть на `on_error_target` (должен быть `tag`).
-- `set_var` — сохранить текст ошибки в переменную `on_error_target` (если не задано — `last_error`) и продолжить.
+- when `next_error_step` is set, the scenario jumps to that tag.
+- otherwise the scenario stops with an error.
 
-Также есть быстрый путь:
+## Scenario end
 
-- если задан `next_error_step`, то при ошибке будет переход на него (в приоритете для некоторых действий).
+- The `end` step closes the browser and ends the scenario.
+- Nested scenarios (`run_scenario`) have recursion protection.
 
-## Завершение сценария
+## Conditions (compare)
 
-- Шаг `end` закрывает браузер и завершает сценарий.
-- Вложенные сценарии (`run_scenario`) имеют защиту от рекурсии.
+The `compare` step is used for conditional branching:
 
-## Условия (compare)
-
-Шаг `compare` используется как условный переход:
-
-- `next_success_step` — ветка **True** (*YES*)
-- `next_error_step` — ветка **False** (*NO*)
+- `next_success_step` - **True** branch (*YES*)
+- `next_error_step` - **False** branch (*NO*)

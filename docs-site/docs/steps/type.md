@@ -1,14 +1,14 @@
 # type
 
-Печатает текст в поле (символ за символом).
+Types text into a field (character by character).
 
-## Параметры
+## Parameters
 
-- `selector`, `selector_type`, `selector_index`, `frame_selector`, `timeout_ms` — см. `steps/index.md`.
-- `value` / `text` *(string)* — вводимый текст (поддерживает `{{var}}`).
-- `clear` *(bool, optional)* — очистить поле перед вводом (по умолчанию `true`).
+- `selector`, `selector_type`, `selector_index`, `frame_selector`, `timeout_ms` - see `steps/index.md`.
+- `value` / `text` *(string)* - input text (supports `{{var}}`).
+- `clear` *(bool, optional)* - clear the field before typing (default `true`).
 
-## Пример
+## Example
 
 ```json
 {
@@ -19,4 +19,3 @@
   "clear": true
 }
 ```
-

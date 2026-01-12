@@ -1,14 +1,13 @@
 # close_tab
 
-Закрывает вкладку.
+Closes a tab.
 
-## Параметры
+## Parameters
 
-- `tab_index` / `index` *(int, optional)* — индекс вкладки для закрытия (если не задано — закрывается текущая).
+- `tab_index` / `index` *(int, optional)* - tab index to close (if not set, closes the current tab).
 
-## Пример
+## Example
 
 ```json
 { "action": "close_tab", "tag": "CloseCurrent" }
 ```
-

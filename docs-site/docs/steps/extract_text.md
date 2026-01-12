@@ -1,15 +1,15 @@
 # extract_text
 
-Считывает текст (или атрибут) из элемента и сохраняет в переменную.
+Reads text (or an attribute) from an element and saves it into a variable.
 
-## Параметры
+## Parameters
 
-- `selector`, `selector_type`, `selector_index`, `frame_selector`, `timeout_ms` — см. `steps/index.md`.
-- `attribute` *(string, optional)* — имя атрибута (если не задано — берётся `textContent`).
-- `strip` *(bool, optional)* — обрезать пробелы (по умолчанию `true`).
-- `to_var` / `var` / `name` *(string, optional)* — имя переменной (по умолчанию `last_value`).
+- `selector`, `selector_type`, `selector_index`, `frame_selector`, `timeout_ms` - see `steps/index.md`.
+- `attribute` *(string, optional)* - attribute name (if not set, uses `textContent`).
+- `strip` *(bool, optional)* - trim whitespace (default `true`).
+- `to_var` / `var` / `name` *(string, optional)* - target variable name (default `last_value`).
 
-## Пример
+## Example
 
 ```json
 {
@@ -19,4 +19,3 @@
   "to_var": "title"
 }
 ```
-

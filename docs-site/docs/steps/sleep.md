@@ -1,15 +1,14 @@
 # sleep
 
-Пауза.
+Pause.
 
-## Параметры
+## Parameters
 
-- `seconds` *(float, optional)* — длительность паузы.
-- `timeout_ms` *(int, optional)* — если `seconds` не задан, используется `timeout_ms/1000`.
+- `seconds` *(float, optional)* - pause duration.
+- `timeout_ms` *(int, optional)* - if `seconds` is not set, uses `timeout_ms/1000`.
 
-## Пример
+## Example
 
 ```json
 { "action": "sleep", "tag": "Delay", "seconds": 1.5 }
 ```
-

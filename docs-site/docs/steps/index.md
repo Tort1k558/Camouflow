@@ -1,62 +1,61 @@
-# Справочник шагов
+# Step reference
 
-Ниже перечислены шаги, которые поддерживает движок сценариев.
+Below are the steps supported by the scenario engine.
 
-## Группы шагов (как в UI)
+## Step groups (as in the UI)
 
 ### Navigation & interaction
 
-- `goto` — открыть URL
-- `wait_for_load_state` — ждать состояние загрузки
-- `wait_element` — ждать элемент
-- `sleep` — пауза
-- `click` — клик
-- `type` — ввод текста
+- `goto` - open a URL
+- `wait_for_load_state` - wait for page load state
+- `wait_element` - wait for an element
+- `sleep` - pause
+- `click` - click
+- `type` - type text
 
 ### Variables
 
-- `set_var` — установить переменную
-- `parse_var` — распарсить переменную по шаблону
-- `pop_shared` — взять значение из shared списка/строки
-- `extract_text` — извлечь текст/атрибут в переменную
-- `write_file` — записать строку в `outputs/`
+- `set_var` - set a variable
+- `parse_var` - parse a variable using a template
+- `pop_shared` - pop a value from a shared list/string
+- `extract_text` - extract text/attribute into a variable
+- `write_file` - write a string to `outputs/`
 
 ### Network
 
-- `http_request` — HTTP(S) запрос (алиас `http`)
+- `http_request` - HTTP(S) request (alias `http`)
 
 ### Browser tabs
 
-- `new_tab` — новая вкладка
-- `switch_tab` — переключить вкладку
-- `close_tab` — закрыть вкладку
+- `new_tab` - new tab
+- `switch_tab` - switch tab
+- `close_tab` - close tab
 
 ### Flow & logging
 
-- `start` — старт сценария
-- `compare` — сравнение и ветвление
-- `set_tag` — установить тег профиля
-- `log` — сообщение в лог
-- `run_scenario` — запустить вложенный сценарий
-- `end` — завершить сценарий
+- `start` - scenario start
+- `compare` - compare and branch
+- `set_tag` - set profile tag
+- `log` - log message
+- `run_scenario` - run a nested scenario
+- `end` - end scenario
 
-## Общие поля (для большинства шагов)
+## Common fields (most steps)
 
-- `tag` — уникальная метка шага (нужна для переходов).
-- `description` — текст для лога (если указан, используется вместо action/tag).
-- `timeout_ms` — таймаут (мс) для действий, которые его поддерживают.
-- `next_success_step` / `next_error_step` — переходы по тегам.
-- `on_error` / `on_error_target` — поведение при ошибках (см. `scenarios/flow.md`).
+- `tag` - unique step label (used for transitions).
+- `description` - log text (if set, used instead of action/tag).
+- `timeout_ms` - timeout (ms) for actions that support it.
+- `next_success_step` / `next_error_step` - tag-based transitions.
 
-## Поля для шагов с селектором
+## Selector-based step fields
 
-Для шагов `click`, `type`, `wait_element`, `extract_text`:
+For `click`, `type`, `wait_element`, `extract_text`:
 
-- `selector` — селектор.
-- `selector_type` — тип селектора: `css`, `text`, `xpath`, `id`, `name`, `test_id`.
-- `selector_index` — индекс `nth()` если нужно выбрать элемент из списка совпадений.
-- `frame_selector` — CSS-селектор iframe (если элемент внутри iframe).
-- `frame_timeout_ms` — таймаут на поиск iframe (если нужен).
-- `state` — состояние ожидания для `wait_element` (по умолчанию `visible`): `attached`, `detached`, `visible`, `hidden`.
+- `selector` - selector.
+- `selector_type` - selector type: `css`, `text`, `xpath`, `id`, `name`, `test_id`.
+- `selector_index` - `nth()` index when you need a specific match.
+- `frame_selector` - iframe CSS selector (if element is inside an iframe).
+- `frame_timeout_ms` - iframe lookup timeout (optional).
+- `state` - wait state for `wait_element` (default `visible`): `attached`, `detached`, `visible`, `hidden`.
 
-Полное описание каждого шага — на его странице.
+Full details for each step are on its own page.

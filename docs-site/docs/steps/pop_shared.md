@@ -1,22 +1,22 @@
 # pop_shared
 
-Берёт “первый” элемент из shared variable (список или многострочная строка), сохраняет остаток обратно и раскладывает значения по переменным по шаблону.
+Takes the first item from a shared variable (list or multi-line string), saves the remainder back, and maps values to variables using a template.
 
-## Параметры
+## Parameters
 
-- `value` *(string)* — ключ shared variable (поддерживает `{{var}}`).
-- `pattern` / `targets_string` *(string)* — шаблон с плейсхолдерами, например `{{email}}|{{password}}`.
-  - Шаблон сопоставляется со строкой целиком.
-  - Разделители/пробелы в шаблоне допускают вариации пробелов.
+- `value` *(string)* - shared variable key (supports `{{var}}`).
+- `pattern` / `targets_string` *(string)* - template with placeholders, e.g. `{{email}}|{{password}}`.
+  - The template must match the string entirely.
+  - Separators/whitespace in the template allow flexible spacing.
 
-## Что делает
+## What it does
 
-- Удаляет первый элемент из списка/строки.
-- Обновляет shared variable и сохраняет его в настройках.
-- Записывает извлечённые значения в переменные сценария.
-- Пытается обновить профиль в базе (чтобы поля сохранились на будущее).
+- Removes the first element from the list/string.
+- Updates the shared variable and saves it in settings.
+- Writes extracted values into scenario variables.
+- Attempts to update the profile in the database (so fields persist).
 
-## Пример
+## Example
 
 ```json
 {
@@ -26,4 +26,3 @@
   "pattern": "{{email}};{{password}}"
 }
 ```
-
