@@ -1,0 +1,278 @@
+{
+  "name": "Fill card, youtube",
+  "description": "Login to Gmail with TOTP, open YouTube Premium and attach card from shared pool.",
+  "steps": [
+    {
+      "action": "start",
+      "tag": "Start",
+      "next_success_step": "GotoYouTubePremium",
+      "_pos": {
+        "x": 6176.720860641741,
+        "y": 57.297653698189436
+      }
+    },
+    {
+      "action": "goto",
+      "tag": "GotoYouTubePremium",
+      "url": "https://www.youtube.com/premium",
+      "wait_until": "domcontentloaded",
+      "timeout_ms": 60000,
+      "next_success_step": "WaitYTIdle",
+      "value": "https://www.youtube.com/premium",
+      "_pos": {
+        "x": 6460.0,
+        "y": 36.0
+      }
+    },
+    {
+      "action": "wait_for_load_state",
+      "tag": "WaitYTIdle",
+      "state": "networkidle",
+      "timeout_ms": 60000,
+      "next_success_step": "ClickPrimaryButton",
+      "_pos": {
+        "x": 6750.0,
+        "y": 36.0
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ClickPrimaryButton",
+      "selector": "xpath=/html/body/ytd-app/div[1]/ytd-page-manager/ytd-browse/ytd-two-column-browse-results-renderer/div[1]/ytd-section-list-renderer/div[2]/ytd-item-section-renderer[1]/div[3]/yt-section-group-view-model/div/div[2]/lp-header-section-view-model/div/div[4]/div/button-view-model/button",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "_pos": {
+        "x": 7096.226542431332,
+        "y": 36.02331281917236
+      },
+      "next_success_step": "ClickIntermediateButton"
+    },
+    {
+      "action": "wait_element",
+      "tag": "WaitPaymentIframe",
+      "selector": "iframe#buyFlowDivIdIframe",
+      "selector_type": "css",
+      "timeout_ms": 15000,
+      "next_success_step": "Step2",
+      "next_error_step": "ClickPrimaryButton",
+      "_pos": {
+        "x": 7391.095079057516,
+        "y": -178.4979003664779
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ClickIntermediateButton",
+      "selector": "xpath=/html/body/ytd-app/ytd-popup-container/tp-yt-paper-dialog/ytd-engagement-panel-section-list-renderer/div[2]/ytd-flow-root-renderer/div[2]/div[1]/ytd-flow-step-renderer/div[3]/yt-flow-bottom-bar-renderer/ytm-premium-purchase-button-renderer/button-view-model",
+      "selector_type": "xpath",
+      "timeout_ms": 30000,
+      "next_success_step": "WaitPaymentIframe",
+      "_pos": {
+        "x": 7351.979577496253,
+        "y": 29.94208074970436
+      }
+    },
+    {
+      "action": "pop_shared",
+      "tag": "TakeCard",
+      "pattern": "{{card_number}}|{{card_expiry}}|{{card_cvc}}",
+      "targets_string": "{{card_number}}|{{card_expiry}}|{{card_cvc}}",
+      "value": "cards",
+      "next_success_step": "WaitAddCardButton",
+      "_pos": {
+        "x": 8145.6062184171915,
+        "y": -26.75209813031796
+      }
+    },
+    {
+      "action": "wait_element",
+      "tag": "WaitAddCardButton",
+      "frame_selector": "iframe#buyFlowDivIdIframe",
+      "selector": "xpath=/html/body/div[1]/c-wiz/div/div/c-wiz/div/div/c-wiz/div[1]/div/div/div/div/div[2]/div/div[1]/div[4]/div/div/div/div[1]/div/img",
+      "selector_type": "xpath",
+      "timeout_ms": 20000,
+      "next_success_step": "ClickAddCard",
+      "_pos": {
+        "x": 8401.9030492714,
+        "y": -25.047483181651785
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ClickAddCard",
+      "frame_selector": "iframe#buyFlowDivIdIframe",
+      "selector": "xpath=/html/body/div[1]/c-wiz/div/div/c-wiz/div/div/c-wiz/div[1]/div/div/div/div/div[2]/div/div[1]/div[4]/div/div/div/div[1]/div/img",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "next_success_step": "TypeCardNumber",
+      "_pos": {
+        "x": 8688.174816895946,
+        "y": -15.518685285339302
+      }
+    },
+    {
+      "action": "type",
+      "tag": "TypeCardNumber",
+      "selector": "xpath=/html/body/div[1]/c-wiz/div/div/c-wiz/div/div/c-wiz/div[1]/div/div/div/div/div[2]/div/div/div[5]/div/div/div/div/div[1]/div[3]/div[2]/div/div[1]/div/div[1]/input",
+      "selector_type": "xpath",
+      "frame_selector": "iframe#buyFlowDivIdIframe",
+      "timeout_ms": 30000,
+      "value": "{{card_number}}",
+      "clear": true,
+      "next_success_step": "TypeCardExpiry",
+      "_pos": {
+        "x": 9039.157420028196,
+        "y": -15.684326334650564
+      }
+    },
+    {
+      "action": "type",
+      "tag": "TypeCardExpiry",
+      "frame_selector": "iframe#buyFlowDivIdIframe",
+      "selector": "xpath=/html/body/div[1]/c-wiz/div/div/c-wiz/div/div/c-wiz/div[1]/div/div/div/div/div[2]/div/div/div[5]/div/div/div/div/div[2]/div/div/div/div[1]/div/div/div[1]/div/div[1]/input",
+      "selector_type": "xpath",
+      "text": "{{card_expiry}}",
+      "value": "{{card_expiry}}",
+      "clear": true,
+      "timeout_ms": 20000,
+      "next_success_step": "TypeCardCvc",
+      "_pos": {
+        "x": 9346.203850649455,
+        "y": 4.371581237964108
+      }
+    },
+    {
+      "action": "type",
+      "tag": "TypeCardCvc",
+      "frame_selector": "iframe#buyFlowDivIdIframe",
+      "selector": "xpath=/html/body/div[1]/c-wiz/div/div/c-wiz/div/div/c-wiz/div[1]/div/div/div/div/div[2]/div/div/div[5]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div[1]/div/div[1]/input",
+      "selector_type": "xpath",
+      "text": "{{card_cvc}}",
+      "value": "{{card_cvc}}",
+      "clear": true,
+      "timeout_ms": 20000,
+      "next_success_step": "ClickSubmitCard",
+      "_pos": {
+        "x": 9651.626209681719,
+        "y": -3.730130489314604
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ClickSubmitCard",
+      "frame_selector": "iframe#buyFlowDivIdIframe",
+      "selector": "xpath=/html/body/div[1]/c-wiz/div/div/c-wiz/div/div/c-wiz/div[1]/div/div/div/div/div[2]/div/div/div[10]/div[1]/div/div/div/button",
+      "selector_type": "xpath",
+      "timeout_ms": 20000,
+      "next_success_step": "WaitDoneButton",
+      "_pos": {
+        "x": 9969.718769607196,
+        "y": -10.484645067856832
+      }
+    },
+    {
+      "action": "wait_element",
+      "tag": "WaitDoneButton",
+      "selector": "xpath=/html/body/ytd-app/ytd-popup-container/tp-yt-paper-dialog[2]/yt-confirm-dialog-renderer/div[2]/div[2]/yt-button-renderer[3]/yt-button-shape/a/yt-touch-feedback-shape/div[1]",
+      "selector_type": "xpath",
+      "timeout_ms": 30000,
+      "next_success_step": "ClickDoneButton",
+      "_pos": {
+        "x": 10266.244808258074,
+        "y": -24.388162249373806
+      },
+      "next_error_step": "Step4"
+    },
+    {
+      "action": "click",
+      "tag": "ClickDoneButton",
+      "selector": "xpath=/html/body/ytd-app/ytd-popup-container/tp-yt-paper-dialog[2]/yt-confirm-dialog-renderer/div[2]/div[2]/yt-button-renderer[3]/yt-button-shape/a/yt-touch-feedback-shape/div[1]",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "next_success_step": "SuccessLog",
+      "_pos": {
+        "x": 10534.9559962321,
+        "y": 6.736280819939395
+      }
+    },
+    {
+      "action": "log",
+      "tag": "SuccessLog",
+      "message": "Gmail and YouTube Premium card flow completed",
+      "value": "Gmail and YouTube Premium card flow completed",
+      "next_success_step": "VALID",
+      "_pos": {
+        "x": 10839.799425380266,
+        "y": 10.148292302068455
+      },
+      "_no_default_links": true
+    },
+    {
+      "action": "sleep",
+      "tag": "Step2",
+      "timeout_ms": 60000,
+      "seconds": 15.0,
+      "next_success_step": "TakeCard",
+      "_pos": {
+        "x": 7796.830586883339,
+        "y": 1.5953724372867555
+      }
+    },
+    {
+      "action": "pop_shared",
+      "tag": "GetCardAgain",
+      "timeout_ms": 60000,
+      "pattern": "{{card_number}}|{{card_expiry}}|{{card_cvc}}",
+      "targets_string": "{{card_number}}|{{card_expiry}}|{{card_cvc}}",
+      "value": "cards",
+      "_pos": {
+        "x": 10221.334213498423,
+        "y": 289.65653614316193
+      },
+      "next_success_step": "TypeCardNumber",
+      "_no_default_links": true
+    },
+    {
+      "action": "wait_element",
+      "tag": "Step4",
+      "selector": "Verify on Payment methods page",
+      "selector_type": "text",
+      "frame_selector": "iframe#buyFlowDivIdIframe",
+      "timeout_ms": 10000,
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 9960.12095362876,
+        "y": 200.95884444964582
+      },
+      "next_error_step": "GetCardAgain",
+      "next_success_step": "Step5"
+    },
+    {
+      "action": "set_tag",
+      "tag": "VALID",
+      "timeout_ms": 60000,
+      "value": "VALID",
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 11148.367166470944,
+        "y": 9.443260147438707
+      },
+      "next_success_step": "Step6"
+    },
+    {
+      "action": "set_tag",
+      "tag": "Step5",
+      "timeout_ms": 60000,
+      "value": "INVALID",
+      "next_success_step": "Step6",
+      "_pos": {
+        "x": 11151.318959012562,
+        "y": 135.36203775969017
+      }
+    }
+  ]
+}

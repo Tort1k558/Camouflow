@@ -1,0 +1,6 @@
+input: docs
+output: site
+branding:
+  title: CamouFlow
+  label: CamouFlow
+  logo: assets/logo.ico

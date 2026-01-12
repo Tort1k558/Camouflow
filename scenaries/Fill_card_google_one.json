@@ -1,0 +1,331 @@
+{
+  "name": "Fill card,google one",
+  "description": "Login to Gmail with TOTP, open YouTube Premium and attach card from shared pool.",
+  "steps": [
+    {
+      "action": "start",
+      "tag": "Start",
+      "next_success_step": "GotoGoogleOne",
+      "_pos": {
+        "x": 4877.115113253169,
+        "y": -8.502884366914031
+      }
+    },
+    {
+      "action": "goto",
+      "tag": "GotoGoogleOne",
+      "timeout_ms": 60000,
+      "value": "https://one.google.com/",
+      "next_success_step": "Step6",
+      "_pos": {
+        "x": 5150.910227116857,
+        "y": -11.789406188995088
+      }
+    },
+    {
+      "action": "pop_shared",
+      "tag": "TakeCard",
+      "pattern": "{{card_number}}|{{card_expiry_mm}}/{{card_expiry_yy}}|{{card_cvc}}",
+      "targets_string": "{{card_number}}|{{card_expiry_mm}}/{{card_expiry_yy}}|{{card_cvc}}",
+      "value": "cards",
+      "next_success_step": "TypeCardNumber",
+      "_pos": {
+        "x": 7629.862572587285,
+        "y": -35.35671059094213
+      }
+    },
+    {
+      "action": "type",
+      "tag": "TypeCardNumber",
+      "selector": "/html/body/div[3]/div[3]/div[2]/div/div/div[1]/div/div[2]/div/div[1]/div[1]/div/div/div[1]/input",
+      "selector_type": "xpath",
+      "frame_selector": [
+        "xpath=//iframe[starts-with(@src,\"https://tokenized.play.google.com/eacquire/multiline\")]",
+        "xpath=//iframe[starts-with(@src,\"https://payments.google.com/payments/u/0/embedded/instrument_manager\")]"
+      ],
+      "timeout_ms": 30000,
+      "value": "{{card_number}}",
+      "clear": true,
+      "next_success_step": "TypeCardMM",
+      "_pos": {
+        "x": 7971.340662769833,
+        "y": -39.83670308583862
+      }
+    },
+    {
+      "action": "type",
+      "tag": "TypeCardMM",
+      "selector": "/html/body/div[3]/div[3]/div[2]/div/div/div[1]/div/div[2]/div/div[1]/div[2]/div[1]/div[1]/div/div[1]/input",
+      "selector_type": "xpath",
+      "frame_selector": [
+        "xpath=//iframe[starts-with(@src,\"https://tokenized.play.google.com/eacquire/multiline\")]",
+        "xpath=//iframe[starts-with(@src,\"https://payments.google.com/payments/u/0/embedded/instrument_manager\")]"
+      ],
+      "timeout_ms": 20000,
+      "value": "{{card_expiry_mm}}",
+      "clear": true,
+      "next_success_step": "TypeCardYY",
+      "_pos": {
+        "x": 8293.648901858942,
+        "y": -42.27420797577139
+      }
+    },
+    {
+      "action": "type",
+      "tag": "TypeCardCvc",
+      "selector": "/html/body/div[3]/div[3]/div[2]/div/div/div[1]/div/div[2]/div/div[1]/div[2]/div[2]/div/div/div[1]/input",
+      "selector_type": "xpath",
+      "frame_selector": [
+        "xpath=//iframe[starts-with(@src,\"https://tokenized.play.google.com/eacquire/multiline\")]",
+        "xpath=//iframe[starts-with(@src,\"https://payments.google.com/payments/u/0/embedded/instrument_manager\")]"
+      ],
+      "timeout_ms": 20000,
+      "value": "{{card_cvc}}",
+      "clear": true,
+      "next_success_step": "ClickSubmitCard",
+      "_pos": {
+        "x": 8834.783142659826,
+        "y": -48.24001125781717
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ClickSubmitCard",
+      "selector": "/html/body/div[3]/div[3]/div[2]/div/div/div[1]/div/div[2]/div/div[3]/div[2]",
+      "selector_type": "xpath",
+      "frame_selector": [
+        "xpath=//iframe[starts-with(@src,\"https://tokenized.play.google.com/eacquire/multiline\")]",
+        "xpath=//iframe[starts-with(@src,\"https://payments.google.com/payments/u/0/embedded/instrument_manager\")]"
+      ],
+      "timeout_ms": 20000,
+      "next_success_step": "WaitDoneButton",
+      "_pos": {
+        "x": 9189.742598627,
+        "y": -30.252376936866412
+      }
+    },
+    {
+      "action": "wait_element",
+      "tag": "WaitDoneButton",
+      "selector": "xpath=/html/body/ytd-app/ytd-popup-container/tp-yt-paper-dialog[2]/yt-confirm-dialog-renderer/div[2]/div[2]/yt-button-renderer[3]/yt-button-shape/a/yt-touch-feedback-shape/div[1]",
+      "selector_type": "xpath",
+      "timeout_ms": 30000,
+      "next_success_step": "ClickDoneButton",
+      "_pos": {
+        "x": 9439.494893295523,
+        "y": -36.18485533367931
+      },
+      "next_error_step": "Step4"
+    },
+    {
+      "action": "click",
+      "tag": "ClickDoneButton",
+      "selector": "xpath=/html/body/ytd-app/ytd-popup-container/tp-yt-paper-dialog[2]/yt-confirm-dialog-renderer/div[2]/div[2]/yt-button-renderer[3]/yt-button-shape/a/yt-touch-feedback-shape/div[1]",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "next_success_step": "SuccessLog",
+      "_pos": {
+        "x": 9680.579405805025,
+        "y": -29.501551726722823
+      }
+    },
+    {
+      "action": "log",
+      "tag": "SuccessLog",
+      "message": "Gmail and YouTube Premium card flow completed",
+      "value": "Gmail and YouTube Premium card flow completed",
+      "next_success_step": "VALID",
+      "_pos": {
+        "x": 9989.60412332396,
+        "y": -35.84587977638745
+      },
+      "_no_default_links": true
+    },
+    {
+      "action": "sleep",
+      "tag": "Step2",
+      "timeout_ms": 60000,
+      "seconds": 15.0,
+      "_pos": {
+        "x": 7338.831058482708,
+        "y": -36.41143323798832
+      },
+      "next_success_step": "TakeCard"
+    },
+    {
+      "action": "wait_element",
+      "tag": "Step4",
+      "selector": "Verify on Payment methods page",
+      "selector_type": "text",
+      "frame_selector": "iframe#buyFlowDivIdIframe",
+      "timeout_ms": 10000,
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 9355.1529565603,
+        "y": 192.62015677660798
+      },
+      "next_error_step": "TakeCard",
+      "next_success_step": "Step5"
+    },
+    {
+      "action": "set_tag",
+      "tag": "VALID",
+      "timeout_ms": 60000,
+      "value": "VALID",
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 10295.384338834125,
+        "y": -28.188335189479773
+      }
+    },
+    {
+      "action": "set_tag",
+      "tag": "Step5",
+      "timeout_ms": 60000,
+      "value": "INVALID",
+      "_pos": {
+        "x": 10214.710363960368,
+        "y": 74.03647498841556
+      },
+      "_no_default_links": true
+    },
+    {
+      "action": "click",
+      "tag": "Step6",
+      "selector": "/html/body/div[7]/div[4]/div[2]/div/div/div/div/div/button[2]",
+      "selector_type": "xpath",
+      "timeout_ms": 20000,
+      "_pos": {
+        "x": 5425.067327313959,
+        "y": -14.23456109958471
+      },
+      "_no_default_links": true,
+      "next_success_step": "Step7",
+      "next_error_step": "Step7"
+    },
+    {
+      "action": "click",
+      "tag": "Step7",
+      "selector": "/html/body/div[6]/c-wiz/div[2]/div/span/div/div/div/nav/span/button",
+      "selector_type": "xpath",
+      "timeout_ms": 20000,
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 5717.307322527209,
+        "y": -19.459892985841634
+      },
+      "next_success_step": "Step8"
+    },
+    {
+      "action": "click",
+      "tag": "Step8",
+      "selector": "/html/body/div[6]/c-wiz/div[2]/div/span/div/main/c-wiz/c-wiz/div[6]/c-wiz/section/ul/li[3]/div/div[2]/div/a",
+      "selector_type": "xpath",
+      "timeout_ms": 20000,
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 6014.252666690751,
+        "y": -22.428845616108163
+      },
+      "next_success_step": "Step9",
+      "next_error_step": "Step9"
+    },
+    {
+      "action": "click",
+      "tag": "Step9",
+      "selector": "/html/body/div[6]/c-wiz[2]/div[2]/div/span/div/main/c-wiz/div[1]/c-wiz/c-wiz/div[4]/div/div[1]/div/div[1]/button",
+      "selector_type": "xpath",
+      "timeout_ms": 20000,
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 6305.0021746217435,
+        "y": -24.336581695207087
+      },
+      "next_success_step": "Step10"
+    },
+    {
+      "action": "click",
+      "tag": "Step10",
+      "selector": "/html/body/div[7]/div[4]/div[2]/div/div[2]/div[2]/button",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "next_success_step": "Step13",
+      "next_error_step": "Step12",
+      "_pos": {
+        "x": 6585.705249692,
+        "y": -26.262324106102938
+      }
+    },
+    {
+      "action": "click",
+      "tag": "Step11",
+      "selector": "//img[@src=\"https://play-lh.googleusercontent.com/Sy-qD8BSR4BY5bwfx_ptzE1utvlH9jXr1S8V7LBM4VKlDwyOLQp-tyYConlAm44T0bgsOw\"]",
+      "selector_type": "xpath",
+      "frame_selector": "iframe[src^=\"https://tokenized.play.google.com/eacquire/multiline\"]",
+      "timeout_ms": 20000,
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 7097.018185098045,
+        "y": -31.402846941886764
+      },
+      "next_success_step": "Step2"
+    },
+    {
+      "action": "click",
+      "tag": "Step12",
+      "selector": "/html/body/div[7]/div[5]/div[2]/div/div[2]/div[2]/button",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "next_success_step": "Step13",
+      "_pos": {
+        "x": 6597.7712322181815,
+        "y": 70.30949832394694
+      },
+      "_no_default_links": true
+    },
+    {
+      "action": "sleep",
+      "tag": "Step13",
+      "timeout_ms": 60000,
+      "seconds": 15.0,
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 6849.733320075488,
+        "y": -73.16397489820066
+      },
+      "next_success_step": "Step11"
+    },
+    {
+      "action": "type",
+      "tag": "TypeCardYY",
+      "selector": "/html/body/div[3]/div[3]/div[2]/div/div/div[1]/div/div[2]/div/div[1]/div[2]/div[1]/div[2]/div/div[1]/input",
+      "selector_type": "xpath",
+      "frame_selector": [
+        "xpath=//iframe[starts-with(@src,\"https://tokenized.play.google.com/eacquire/multiline\")]",
+        "xpath=//iframe[starts-with(@src,\"https://payments.google.com/payments/u/0/embedded/instrument_manager\")]"
+      ],
+      "timeout_ms": 20000,
+      "value": "{{card_expiry_yy}}",
+      "clear": true,
+      "next_success_step": "TypeCardCvc",
+      "_pos": {
+        "x": 8561.723879043002,
+        "y": -47.97863790275974
+      }
+    }
+  ]
+}

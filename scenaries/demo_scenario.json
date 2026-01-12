@@ -1,0 +1,28 @@
+{
+  "name": "Demo scenario",
+  "description": "Sample scenario",
+  "steps": [
+    {
+      "action": "start",
+      "tag": "Start",
+      "next_success_step": "Step5",
+      "_pos": {
+        "x": 80.0,
+        "y": 35.999999999999986
+      }
+    },
+    {
+      "action": "goto",
+      "tag": "Step5",
+      "timeout_ms": 60000,
+      "value": "https://diamondvpn.online",
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 537.8759111314829,
+        "y": 26.09998131591294
+      }
+    }
+  ]
+}

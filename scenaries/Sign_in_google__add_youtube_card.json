@@ -1,0 +1,58 @@
+{
+  "name": "Sign in google, add youtube card",
+  "description": null,
+  "steps": [
+    {
+      "action": "start",
+      "tag": "Start",
+      "_pos": {
+        "x": 87.89953662166175,
+        "y": 25.06107907165665
+      },
+      "_no_default_links": true,
+      "next_success_step": "Step1"
+    },
+    {
+      "action": "run_scenario",
+      "tag": "Step1",
+      "timeout_ms": 60000,
+      "scenario": "Sign in Google",
+      "value": "Sign in Google",
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 458.0953261326593,
+        "y": 21.858053721674622
+      },
+      "next_success_step": "Step5"
+    },
+    {
+      "action": "end",
+      "tag": "Step4",
+      "timeout_ms": 60000,
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 1110.9256453082178,
+        "y": 12.666683837646076
+      }
+    },
+    {
+      "action": "run_scenario",
+      "tag": "Step5",
+      "timeout_ms": 60000,
+      "scenario": "Fill card, youtube",
+      "value": "Fill card, youtube",
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 792.6214358817749,
+        "y": 14.794040934395923
+      },
+      "next_success_step": "Step4"
+    }
+  ]
+}

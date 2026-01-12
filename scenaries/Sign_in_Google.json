@@ -1,0 +1,290 @@
+{
+  "name": "Sign in Google",
+  "description": "Login to Gmail with TOTP, open YouTube Premium and attach card from shared pool.",
+  "steps": [
+    {
+      "action": "start",
+      "tag": "Start",
+      "next_success_step": "GotoGmail",
+      "_pos": {
+        "x": 80.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "goto",
+      "tag": "GotoGmail",
+      "url": "https://mail.google.com",
+      "wait_until": "domcontentloaded",
+      "timeout_ms": 60000,
+      "next_success_step": "WaitEmail",
+      "value": "https://mail.google.com",
+      "_pos": {
+        "x": 370.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "wait_element",
+      "tag": "WaitEmail",
+      "selector": "xpath=//*[@id=\"identifierId\"]",
+      "selector_type": "xpath",
+      "timeout_ms": 20000,
+      "next_success_step": "ClickEmail",
+      "next_error_step": "Step1",
+      "_pos": {
+        "x": 662.0,
+        "y": 35.000000000000014
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ClickEmail",
+      "selector": "xpath=//*[@id=\"identifierId\"]",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "next_success_step": "TypeEmail",
+      "_pos": {
+        "x": 950.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "type",
+      "tag": "TypeEmail",
+      "selector": "xpath=//*[@id=\"identifierId\"]",
+      "selector_type": "xpath",
+      "text": "{{email}}",
+      "value": "{{email}}",
+      "clear": true,
+      "timeout_ms": 15000,
+      "next_success_step": "ClickEmailNext",
+      "_pos": {
+        "x": 1240.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ClickEmailNext",
+      "selector": "xpath=/html/body/div[2]/div[1]/div[1]/div[2]/c-wiz/main/div[3]/div/div[1]/div/div/button",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "next_success_step": "WaitPassword",
+      "_pos": {
+        "x": 1530.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "wait_element",
+      "tag": "WaitPassword",
+      "selector": "xpath=/html/body/div[2]/div[1]/div[1]/div[2]/c-wiz/main/div[2]/div/div/div/form/span/section[2]/div/div/div[1]/div[1]/div/div/div/div/div[1]/div/div[1]/input",
+      "selector_type": "xpath",
+      "timeout_ms": 30000,
+      "next_success_step": "ClickPassword",
+      "next_error_step": "RecaptchaWait",
+      "_pos": {
+        "x": 2015.0,
+        "y": 32.000000000000014
+      }
+    },
+    {
+      "action": "wait_element",
+      "tag": "RecaptchaWait",
+      "selector": "css=iframe[title*=\"recaptcha\" i]",
+      "selector_type": "css",
+      "timeout_ms": 20000,
+      "next_success_step": "WaitPassword",
+      "_pos": {
+        "x": 1910.0,
+        "y": 203.0
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ClickPassword",
+      "selector": "xpath=/html/body/div[2]/div[1]/div[1]/div[2]/c-wiz/main/div[2]/div/div/div/form/span/section[2]/div/div/div[1]/div[1]/div/div/div/div/div[1]/div/div[1]/input",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "next_success_step": "TypePassword",
+      "_pos": {
+        "x": 2400.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "type",
+      "tag": "TypePassword",
+      "selector": "xpath=/html/body/div[2]/div[1]/div[1]/div[2]/c-wiz/main/div[2]/div/div/div/form/span/section[2]/div/div/div[1]/div[1]/div/div/div/div/div[1]/div/div[1]/input",
+      "selector_type": "xpath",
+      "text": "{{password}}",
+      "value": "{{password}}",
+      "clear": true,
+      "timeout_ms": 20000,
+      "next_success_step": "ClickPasswordNext",
+      "_pos": {
+        "x": 2690.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ClickPasswordNext",
+      "selector": "xpath=/html/body/div[2]/div[1]/div[1]/div[2]/c-wiz/main/div[3]/div/div[1]/div/div/button",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "next_success_step": "WaitGAOption",
+      "_pos": {
+        "x": 2980.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "wait_element",
+      "tag": "WaitGAOption",
+      "selector": "Google Authenticator",
+      "selector_type": "text",
+      "timeout_ms": 8000,
+      "next_success_step": "ClickGAOption",
+      "next_error_step": "WaitTOTPField",
+      "_pos": {
+        "x": 3270.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ClickGAOption",
+      "selector": "Google Authenticator",
+      "selector_type": "text",
+      "timeout_ms": 8000,
+      "next_success_step": "WaitTOTPField",
+      "_pos": {
+        "x": 3560.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "wait_element",
+      "tag": "WaitTOTPField",
+      "selector": "xpath=//*[@id=\"totpPin\"]",
+      "selector_type": "xpath",
+      "timeout_ms": 20000,
+      "next_success_step": "OpenTOTP",
+      "next_error_step": "PauseAfterLogin",
+      "_pos": {
+        "x": 3850.0,
+        "y": 116.00000000000001
+      }
+    },
+    {
+      "action": "new_tab",
+      "tag": "OpenTOTP",
+      "timeout_ms": 60000,
+      "value": "{{twofa_url}}",
+      "next_success_step": "WaitCode",
+      "_pos": {
+        "x": 4140.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "wait_element",
+      "tag": "WaitCode",
+      "selector": "xpath=//*[@id=\"verifyCode\"]",
+      "selector_type": "xpath",
+      "timeout_ms": 20000,
+      "next_success_step": "ExtractCode",
+      "_pos": {
+        "x": 4430.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "extract_text",
+      "tag": "ExtractCode",
+      "selector": "xpath=//*[@id=\"verifyCode\"]",
+      "selector_type": "xpath",
+      "to_var": "totp_code",
+      "next_success_step": "close tab",
+      "_pos": {
+        "x": 4720.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "switch_tab",
+      "tag": "SwitchBackToGmail",
+      "index": 0,
+      "next_success_step": "TypeTOTP",
+      "_pos": {
+        "x": 5113.6394098648525,
+        "y": -62.035320695155775
+      }
+    },
+    {
+      "action": "type",
+      "tag": "TypeTOTP",
+      "selector": "xpath=//*[@id=\"totpPin\"]",
+      "selector_type": "xpath",
+      "text": "{{totp_code}}",
+      "value": "{{totp_code}}",
+      "clear": true,
+      "timeout_ms": 15000,
+      "next_success_step": "ConfirmTOTP",
+      "_pos": {
+        "x": 5300.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "click",
+      "tag": "ConfirmTOTP",
+      "selector": "xpath=/html/body/div[2]/div[1]/div[1]/div[2]/c-wiz/main/div[3]/div/div[1]/div/div/button",
+      "selector_type": "xpath",
+      "timeout_ms": 15000,
+      "next_success_step": "PauseAfterLogin",
+      "_pos": {
+        "x": 5590.0,
+        "y": 36.000000000000014
+      }
+    },
+    {
+      "action": "sleep",
+      "tag": "PauseAfterLogin",
+      "seconds": 15.0,
+      "next_success_step": "PostLoginReady",
+      "_pos": {
+        "x": 5877.624912492271,
+        "y": 97.9210951826325
+      }
+    },
+    {
+      "action": "click",
+      "tag": "Step1",
+      "selector": "/html/body/div[1]/div[1]/header/div/div[5]/a[2]",
+      "selector_type": "xpath",
+      "timeout_ms": 5000,
+      "next_success_step": "WaitEmail",
+      "_pos": {
+        "x": 591.3294966026006,
+        "y": 189.06116856434505
+      }
+    },
+    {
+      "action": "close_tab",
+      "tag": "close tab",
+      "timeout_ms": 60000,
+      "tab_index": 1,
+      "_no_default_links": true,
+      "_ok_links": [],
+      "_err_links": [],
+      "_pos": {
+        "x": 4807.925786721371,
+        "y": -58.64652003784663
+      },
+      "next_success_step": "SwitchBackToGmail"
+    }
+  ]
+}
