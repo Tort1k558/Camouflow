@@ -26,6 +26,10 @@ docs-site/site/
 /outputs/
 /profiles/
 
+# App settings (contain secrets)
+/settings/accounts.json
+/settings/settings.json
+
 # Local env + archives
 .env
 .env.*
