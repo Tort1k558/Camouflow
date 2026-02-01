@@ -34,3 +34,7 @@ python main.py
 - profiles: `profiles/`
 - run outputs: `outputs/`
 - logs: `logs/`
+
+## License
+
+MIT
