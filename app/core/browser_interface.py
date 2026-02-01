@@ -29,6 +29,53 @@ from .proxy_utils import LocalSocksProxyServer, ProxyDetails, parse_proxy
 class BrowserInterface:
     """Browser/proxy interface that starts Camoufox and exposes a Playwright page."""
 
+    @staticmethod
+    def _normalize_locale_token(value: str) -> str:
+        """
+        Normalize a locale into a BCP47-ish tag that Camoufox accepts.
+
+        Examples:
+        - "ru_RU" -> "ru-RU"
+        - "en_US.UTF-8" -> "en-US"
+        - "zh_Hant_HK" -> "zh-Hant-HK"
+        """
+        raw = str(value or "").strip()
+        if not raw:
+            return ""
+
+        # Strip encoding/modifiers from typical OS locale strings: "en_US.UTF-8", "de_DE@euro"
+        for sep in (".", "@"):
+            if sep in raw:
+                raw = raw.split(sep, 1)[0]
+        raw = raw.replace("_", "-").strip()
+        if not raw:
+            return ""
+
+        if raw.upper() in {"C", "POSIX"}:
+            return ""
+
+        parts = [p for p in raw.split("-") if p]
+        if not parts:
+            return ""
+
+        normalized: List[str] = []
+        for idx, part in enumerate(parts):
+            token = part.strip()
+            if not token:
+                continue
+            if idx == 0:
+                normalized.append(token.lower())
+                continue
+            if len(token) == 4 and token.isalpha():
+                normalized.append(token.title())
+                continue
+            if (len(token) == 2 and token.isalpha()) or (len(token) == 3 and token.isdigit()):
+                normalized.append(token.upper())
+                continue
+            normalized.append(token)
+
+        return "-".join(normalized)
+
     def __init__(
         self,
         profile_name,
@@ -164,7 +211,8 @@ class BrowserInterface:
             else:
                 headless_value = False
 
-        locale_value = str(merged.get("locale") or "").strip() or self._detect_browser_locale()
+        locale_raw = str(merged.get("locale") or "").strip() or self._detect_browser_locale()
+        locale_value = self._normalize_locale_token(locale_raw) or "en-US"
         timezone_value = str(merged.get("timezone") or "").strip()
         os_value = merged.get("os")
         os_list = _split_list(os_value)
@@ -231,18 +279,28 @@ class BrowserInterface:
                 parts = [p.strip() for p in raw.split(",") if p.strip()]
             else:
                 parts = [raw]
-            primary = parts[0]
+            normalized_parts: List[str] = []
+            seen = set()
+            for p in parts:
+                tok = self._normalize_locale_token(p)
+                if not tok or tok in seen:
+                    continue
+                seen.add(tok)
+                normalized_parts.append(tok)
+            if not normalized_parts:
+                return []
+            primary = normalized_parts[0]
             # Add common fallbacks (e.g. "en-GB" -> "en", "zh-Hant-HK" -> "zh-Hant", "zh").
             if "-" in primary:
                 chunks = primary.split("-")
                 if len(chunks) >= 3:
                     script_tag = "-".join(chunks[:2])
-                    if script_tag not in parts:
-                        parts.append(script_tag)
+                    if script_tag not in normalized_parts:
+                        normalized_parts.append(script_tag)
                 lang_tag = chunks[0]
-                if lang_tag and lang_tag not in parts:
-                    parts.append(lang_tag)
-            return parts
+                if lang_tag and lang_tag not in normalized_parts:
+                    normalized_parts.append(lang_tag)
+            return normalized_parts
 
         def _build_accept_language(locales: Sequence[str]) -> str:
             seen = set()

@@ -15,6 +15,7 @@ htmlcov/
 
 # Build artifacts
 dist/
+build/
 *.egg-info/
 
 # Documentation output

@@ -38,7 +38,12 @@ def main() -> None:
 
     app = QApplication(sys.argv)
 
-    icon_path = Path(__file__).resolve().parents[1] / "logo.ico"
+    def _resource_path(relative: str) -> Path:
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            return Path(getattr(sys, "_MEIPASS")).resolve() / relative
+        return Path(__file__).resolve().parents[1] / relative
+
+    icon_path = _resource_path("logo.ico")
     if icon_path.exists():
         icon = QIcon(str(icon_path))
         app.setWindowIcon(icon)

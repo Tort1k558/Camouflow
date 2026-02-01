@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import tempfile
 import time
 from dataclasses import dataclass
@@ -11,17 +12,70 @@ from typing import Any, Dict, List, Optional, Tuple
 
 LOGGER = logging.getLogger(__name__)
 
-# Keep data paths at project root
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-OUTPUTS_DIR = PROJECT_ROOT / "outputs"
-SETTINGS_DIR = PROJECT_ROOT / "settings"
-SETTINGS_DIR.mkdir(exist_ok=True)
+APP_NAME = "CamouFlow"
+CODE_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resource_root() -> Path:
+    """
+    Return the directory where bundled resources live.
+
+    - Source run: repo root.
+    - PyInstaller: sys._MEIPASS (temp unpack dir).
+    """
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(getattr(sys, "_MEIPASS")).resolve()
+    return CODE_ROOT
+
+
+def _portable_root() -> Path:
+    """
+    Portable root is the directory next to the executable (frozen) or repo root (source).
+    """
+    if getattr(sys, "frozen", False):
+        try:
+            return Path(sys.executable).resolve().parent
+        except Exception:
+            return Path.cwd().resolve()
+    return CODE_ROOT
+
+
+def _is_portable_mode() -> bool:
+    env = str(os.getenv("CAMOUFLOW_PORTABLE") or "").strip().lower()
+    if env in {"1", "true", "yes", "y", "on"}:
+        return True
+
+    # "portable.flag" is a common pattern for zip/usb-style distributions.
+    try:
+        return (_portable_root() / "portable.flag").exists()
+    except Exception:
+        return False
+
+
+def _data_root() -> Path:
+    """
+    Store data next to the executable / project directory by default.
+
+    Override with CAMOUFLOW_DATA_DIR.
+    """
+    override = str(os.getenv("CAMOUFLOW_DATA_DIR") or "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+
+    # Default to "portable" behavior for both source runs and frozen builds.
+    return _portable_root()
+
+
+DATA_ROOT = _data_root()
+OUTPUTS_DIR = DATA_ROOT / "outputs"
+SETTINGS_DIR = DATA_ROOT / "settings"
 ACCOUNTS_FILE = SETTINGS_DIR / "accounts.json"
 SETTINGS_FILE = SETTINGS_DIR / "settings.json"
-PROFILES_DIR = PROJECT_ROOT / "profiles"
-PROFILES_DIR.mkdir(exist_ok=True)
-SCENARIOS_DIR = PROJECT_ROOT / "scenaries"
-SCENARIOS_DIR.mkdir(exist_ok=True)
+PROFILES_DIR = DATA_ROOT / "profiles"
+SCENARIOS_DIR = DATA_ROOT / "scenaries"
+
+# Backward-compatible export (older code imports PROJECT_ROOT)
+PROJECT_ROOT = DATA_ROOT
 
 CAMOUFOX_DEFAULTS: Dict[str, Any] = {
     "headless": False,
@@ -115,12 +169,25 @@ def _scenario_file_for_name(name: str) -> Path:
 
 
 def _ensure_storage() -> None:
+    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
     PROFILES_DIR.mkdir(exist_ok=True)
     SCENARIOS_DIR.mkdir(exist_ok=True)
+    OUTPUTS_DIR.mkdir(exist_ok=True)
     if not ACCOUNTS_FILE.exists():
         _atomic_write_text(ACCOUNTS_FILE, "[]", encoding="utf-8")
     if not SETTINGS_FILE.exists():
         _atomic_write_text(SETTINGS_FILE, "{}", encoding="utf-8")
+
+    # Seed bundled scenarios to user storage (best-effort).
+    try:
+        bundled_dir = _resource_root() / "scenaries"
+        if bundled_dir.exists():
+            for src in bundled_dir.glob("*.json"):
+                dst = SCENARIOS_DIR / src.name
+                if not dst.exists():
+                    shutil.copy2(str(src), str(dst))
+    except Exception:
+        LOGGER.exception("Failed to seed bundled scenarios")
 
 
 def _next_profile_name(existing: List[Dict[str, Any]]) -> str:

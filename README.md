@@ -18,7 +18,7 @@ Requirements: Python 3.11+.
 ```bash
 py -m venv .venv
 .venv\Scripts\activate
-pip install -r requiremensts
+pip install -r requirements.txt
 ```
 
 ## Run
@@ -26,14 +26,6 @@ pip install -r requiremensts
 ```bash
 python main.py
 ```
-
-## Data locations
-
-- settings and accounts: `settings/`
-- scenarios: `scenaries/`
-- profiles: `profiles/`
-- run outputs: `outputs/`
-- logs: `logs/`
 
 ## License
 
