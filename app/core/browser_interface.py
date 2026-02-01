@@ -22,6 +22,7 @@ from camoufox.webgl.sample import sample_webgl
 from camoufox.utils import launch_options
 from app.storage.db import db_get_camoufox_defaults, profile_dir_for_email
 from .camoufox_profile_fingerprint import load_or_create_profile_fingerprint_bundle
+from .locale_mapping import country_to_locale
 from .proxy_utils import LocalSocksProxyServer, ProxyDetails, parse_proxy
 
 
@@ -576,24 +577,7 @@ class BrowserInterface:
     @staticmethod
     def _country_to_locale(country: str) -> str:
         """Map a two-letter country code to a browser locale string."""
-        country = (country or "").upper()
-        mapping = {
-            "RU": "ru-RU",
-            "UA": "uk-UA",
-            "BY": "be-BY",
-            "KZ": "ru-KZ",
-            "US": "en-US",
-            "GB": "en-GB",
-            "UK": "en-GB",
-            "DE": "de-DE",
-            "FR": "fr-FR",
-            "IL": "ar-IL",
-        }
-        if country in mapping:
-            return mapping[country]
-        if len(country) == 2:
-            return f"en-{country}"
-        return "en-US"
+        return country_to_locale(country)
 
     def _detect_browser_locale(self) -> str:
         """
