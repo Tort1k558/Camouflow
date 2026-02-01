@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from pathlib import Path
 import urllib.request
 import urllib.parse
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Callable, Dict, List, Optional, Sequence, cast
 
 import socks
 
@@ -174,7 +174,8 @@ class BrowserInterface:
         elif isinstance(os_value, str) and os_value.strip():
             os_payload = os_value.strip()
         else:
-            os_payload = None
+            # UI "Auto" means no OS is selected. Treat it as "all OS allowed" to match Camoufox defaults.
+            os_payload = ["windows", "macos", "linux"]
 
         fonts_list = _split_list(merged.get("fonts"))
         addons_list = _split_list(merged.get("addons"))
@@ -221,6 +222,60 @@ class BrowserInterface:
             "i_know_what_im_doing": False,
             "fingerprint": fp,
         }
+
+        def _normalize_locale_list(locale_str: str) -> List[str]:
+            raw = (locale_str or "").strip()
+            if not raw:
+                return []
+            if "," in raw:
+                parts = [p.strip() for p in raw.split(",") if p.strip()]
+            else:
+                parts = [raw]
+            primary = parts[0]
+            # Add common fallbacks (e.g. "en-GB" -> "en", "zh-Hant-HK" -> "zh-Hant", "zh").
+            if "-" in primary:
+                chunks = primary.split("-")
+                if len(chunks) >= 3:
+                    script_tag = "-".join(chunks[:2])
+                    if script_tag not in parts:
+                        parts.append(script_tag)
+                lang_tag = chunks[0]
+                if lang_tag and lang_tag not in parts:
+                    parts.append(lang_tag)
+            return parts
+
+        def _build_accept_language(locales: Sequence[str]) -> str:
+            seen = set()
+            items: List[str] = []
+            for loc in locales:
+                token = str(loc or "").strip()
+                if not token or token in seen:
+                    continue
+                seen.add(token)
+                items.append(token)
+            if not items:
+                return ""
+            out: List[str] = []
+            for idx, token in enumerate(items):
+                if idx == 0:
+                    out.append(token)
+                    continue
+                q = max(0.1, 1.0 - (0.1 * idx))
+                out.append(f"{token};q={q:.1f}")
+            return ",".join(out)
+
+        locale_list = _normalize_locale_list(locale_value)
+        if locale_list:
+            kwargs["locale"] = locale_list if len(locale_list) > 1 else locale_list[0]
+
+        def _infer_camoufox_os(user_agent: str) -> str:
+            ua = (user_agent or "").lower()
+            if "windows" in ua:
+                return "windows"
+            if "macintosh" in ua or "mac os" in ua or "macos" in ua:
+                return "macos"
+            return "linux"
+
         def _target_os_key(user_agent: str) -> str:
             ua = (user_agent or "").lower()
             if "windows" in ua:
@@ -269,6 +324,8 @@ class BrowserInterface:
         validated_pair = _valid_webgl_pair(desired_pair)
         if validated_pair:
             kwargs["webgl_config"] = validated_pair
+            if not os_payload:
+                kwargs["os"] = _infer_camoufox_os(fp.navigator.userAgent)
         if os_payload:
             kwargs["os"] = os_payload
         if fonts_list:
@@ -298,18 +355,21 @@ class BrowserInterface:
             if timezone_id:
                 config_overrides["timezone"] = timezone_id
         navigator_payload = self._normalize_navigator_overrides(merged.get("navigator_overrides"))
-        if not navigator_payload and locale_value:
-            primary = locale_value
-            secondary = ""
-            if "-" in locale_value:
-                secondary = locale_value.split("-", 1)[0]
-            languages = [primary]
-            if secondary and secondary.lower() != primary.lower():
-                languages.append(secondary)
-            navigator_payload = {"language": primary, "languages": languages}
+        if not navigator_payload and locale_list:
+            navigator_payload = {"language": locale_list[0], "languages": list(locale_list)}
         if navigator_payload:
             for key, value in navigator_payload.items():
                 config_overrides[f"navigator.{key}"] = value
+
+        # Keep HTTP Accept-Language aligned with JS-exposed languages.
+        accept_language_source: Sequence[str] = []
+        if isinstance(navigator_payload, dict) and isinstance(navigator_payload.get("languages"), list):
+            accept_language_source = cast(List[str], navigator_payload.get("languages") or [])
+        elif locale_list:
+            accept_language_source = locale_list
+        accept_language = _build_accept_language(accept_language_source)
+        if accept_language:
+            config_overrides["headers.Accept-Language"] = accept_language
 
         window_payload = self._normalize_window_overrides(merged.get("window_overrides"))
         if window_payload:
