@@ -21,10 +21,10 @@ dist/
 site/
 docs-site/site/
 
-# App runtime data
-logs/
-outputs/
-profiles/
+# App runtime data (repo root only)
+/logs/
+/outputs/
+/profiles/
 
 # Local env + archives
 .env
