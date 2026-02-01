@@ -6,7 +6,7 @@ cd /d "%~dp0"
 echo [1/3] Installing dependencies...
 py -m pip install --upgrade pip || exit /b 1
 py -m pip install -r requirements.txt || exit /b 1
-py -m pip install -r requirements-dev.txt || exit /b 1
+py -m pip install pyinstaller || exit /b 1
 
 echo [2/3] Closing running CamouFlow (if any)...
 taskkill /F /IM CamouFlow.exe >nul 2>&1
