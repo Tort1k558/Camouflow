@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -17,6 +18,13 @@ from app.ui.style import DEFAULT_THEME, apply_modern_theme, normalize_theme
 
 
 def main() -> None:
+    # In GUI builds (PyInstaller console=False), stdout/stderr can be None.
+    # Python's logging StreamHandler expects a stream with .write().
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
     logging.basicConfig(
         level=logging.INFO,
         format=LOG_FORMAT,
