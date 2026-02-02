@@ -6,11 +6,11 @@ CamouFlow is a desktop app for managing browser automation scenarios and profile
   <summary>Screenshots</summary>
 
   <p align="center">
-    <img src="images/main.jpg" width="420" alt="Main window">
-    <img src="images/proxies.png" width="420" alt="Proxies window">
-    <img src="images/scenarios.png" width="420" alt="Scenarios window">
-    <img src="images/logs.png" width="420" alt="Logs window">
-    <img src="images/settings.png" width="420" alt="Settings window">
+    <img src="images/main.jpg"  alt="Main window">
+    <img src="images/proxies.png"  alt="Proxies window">
+    <img src="images/scenarios.png" alt="Scenarios window">
+    <img src="images/logs.png" alt="Logs window">
+    <img src="images/settings.png" alt="Settings window">
   </p>
 </details>
 
