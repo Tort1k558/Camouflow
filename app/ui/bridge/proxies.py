@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
@@ -34,6 +35,40 @@ class ProxiesBridge(QObject):
             app_state.refreshRequested.connect(self.refresh)
             app_state.cloudChanged.connect(self.refresh)
         self.refresh()
+
+    @staticmethod
+    def _record_check(entry: Dict[str, Any], result: Dict[str, Any]) -> None:
+        now = datetime.now(timezone.utc)
+        history = entry.get("check_history") if isinstance(entry.get("check_history"), list) else []
+        record = {
+            "checked_at": now.isoformat(),
+            "status": str(result.get("status") or "fail"),
+            "ms": result.get("ms"),
+            "ip": str(result.get("ip") or ""),
+            "country": str(result.get("country") or ""),
+            "error": str(result.get("error") or ""),
+        }
+        history.append(record)
+        history = history[-20:]
+        failures = 0
+        for item in reversed(history):
+            if str(item.get("status") or "") == "ok":
+                break
+            failures += 1
+        entry["check_history"] = history
+        entry["health_score"] = round(sum(1 for item in history if str(item.get("status") or "") == "ok") / len(history) * 100) if history else 0
+        if failures >= 3:
+            entry["quarantine_until"] = (now + timedelta(minutes=min(60, 5 * (2 ** (failures - 3))))).isoformat()
+        elif str(result.get("status") or "") == "ok":
+            entry.pop("quarantine_until", None)
+        entry["last_check"] = result
+
+    @staticmethod
+    def _is_quarantined(entry: Dict[str, Any]) -> bool:
+        try:
+            return datetime.fromisoformat(str(entry.get("quarantine_until") or "").replace("Z", "+00:00")) > datetime.now(timezone.utc)
+        except ValueError:
+            return False
 
     @pyqtProperty(QObject, constant=True)
     def model(self) -> QObject:
@@ -616,7 +651,7 @@ class ProxiesBridge(QObject):
                 result["ms"] = ms
                 if err:
                     result["error"] = err
-                entry["last_check"] = result
+                self._record_check(entry, result)
                 self._save(data)
                 self._emit_message("Proxy check finished")
             except Exception as exc:
@@ -657,13 +692,17 @@ class ProxiesBridge(QObject):
             threading.Thread(target=worker, daemon=True).start()
             return
         pools = self._load()
+        skipped = 0
         for pool in pools.values():
             for entry in pool.get("proxies", []) if isinstance(pool, dict) else []:
                 if isinstance(entry, dict):
+                    if self._is_quarantined(entry):
+                        skipped += 1
+                        continue
                     entry["last_check"] = {"status": "checking"}
         self._save(pools)
         self.refresh()
-        self._emit_message("Proxy check started")
+        self._emit_message(f"Proxy check started{f'; {skipped} quarantined' if skipped else ''}")
 
         def worker() -> None:
             try:
@@ -673,13 +712,15 @@ class ProxiesBridge(QObject):
                     for entry in pool.get("proxies", []) if isinstance(pool, dict) else []:
                         if not isinstance(entry, dict):
                             continue
+                        if self._is_quarantined(entry):
+                            continue
                         ok, ms, err, meta = ProxyPoolMixin._probe_proxy_endpoint_value(str(entry.get("value") or ""), timeout_s=5.0)
                         result = dict(meta or {})
                         result["status"] = "ok" if ok else "fail"
                         result["ms"] = ms
                         if err:
                             result["error"] = err
-                        entry["last_check"] = result
+                        self._record_check(entry, result)
                 self._save(data)
                 self._emit_message("Proxy check finished")
             finally:
