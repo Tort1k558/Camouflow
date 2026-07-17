@@ -11,6 +11,7 @@ Flickable {
     clip: true
     property string editingProfile: ""
     property string contextProfile: ""
+    property string profileSettingsTab: "profile"
 
     function openProfileModal(profileName) {
         var data = profilesBridge.getProfile(profileName, browserSettingsBridge.engine)
@@ -26,27 +27,47 @@ Flickable {
         editUserAgent.text = data.user_agent || ""
         editWebgl.text = data.webgl_vendor || ""
         editCpu.text = data.hardware_concurrency || ""
+        profileSettingsTab = "profile"
         profileDialog.open()
     }
+    function openProfileTab(profileName, tab) {
+        if (profileName && profileName !== editingProfile) {
+            openProfileModal(profileName)
+        } else if (!profileDialog.visible) {
+            profileDialog.open()
+        }
+        profileSettingsTab = tab
+        if (tab === "variables") profileVarsJson.text = profilesBridge.getProfileVariables(editingProfile)
+        if (tab === "cookies") profileCookiesJson.text = profilesBridge.getProfileCookiesJson(editingProfile)
+        if (tab === "browser") profileBrowserSettingsJson.text = profilesBridge.getProfileBrowserSettingsJson(editingProfile, browserSettingsBridge.engine)
+    }
     function openVariablesModal(profileName) {
-        editingProfile = profileName || editingProfile
-        profileVarsJson.text = profilesBridge.getProfileVariables(editingProfile)
-        profileVarsDialog.open()
+        openProfileTab(profileName, "variables")
     }
     function openCookiesModal(profileName) {
-        editingProfile = profileName || editingProfile
-        profileCookiesJson.text = profilesBridge.getProfileCookiesJson(editingProfile)
-        profileCookiesDialog.open()
+        openProfileTab(profileName, "cookies")
     }
     function openBrowserOverridesModal(profileName) {
-        editingProfile = profileName || editingProfile
-        profileBrowserSettingsJson.text = profilesBridge.getProfileBrowserSettingsJson(editingProfile, browserSettingsBridge.engine)
-        profileBrowserSettingsDialog.open()
+        openProfileTab(profileName, "browser")
     }
     function openTagsModal() {
         settingsBridge.refresh()
         tagName.text = ""
         tagsDialog.open()
+    }
+
+    component ProfileTab: Rectangle {
+        id: profileTab
+        property string title: "Tab"
+        property string tabId: "profile"
+        readonly property bool active: root.profileSettingsTab === tabId
+        width: Math.max(92, tabText.implicitWidth + 28)
+        height: 34
+        radius: 10
+        color: active ? Theme.primary : Theme.subtle
+        border.color: active ? Theme.primaryLight : Theme.border
+        Text { id: tabText; anchors.centerIn: parent; text: profileTab.title; color: active ? "white" : Theme.muted; font.pixelSize: 12; font.bold: true }
+        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.openProfileTab("", profileTab.tabId) }
     }
 
     Column {
@@ -335,138 +356,98 @@ Flickable {
                 spacing: 18
                 Text { text: "Profile Settings"; color: Theme.text; font.pixelSize: 24; font.bold: true }
                 Text { text: "Profile data + per-profile browser overrides for " + browserSettingsBridge.engine; color: Theme.muted; font.pixelSize: 13 }
-                GridLayout {
-                    width: parent.width
-                    columns: 2
-                    columnSpacing: 16
-                    rowSpacing: 14
-                    FormField { id: editName; Layout.fillWidth: true; label: "Name" }
-                    FormField { id: editStage; Layout.fillWidth: true; label: "Tag / Scenario" }
-                    FormField { id: editProxyHost; Layout.fillWidth: true; label: "Proxy host" }
-                    FormField { id: editProxyPort; Layout.fillWidth: true; label: "Proxy port" }
-                    FormField { id: editProxyUser; Layout.fillWidth: true; label: "Proxy user" }
-                    FormField { id: editProxyPassword; Layout.fillWidth: true; label: "Proxy password" }
+                Row {
+                    spacing: 8
+                    ProfileTab { title: "Profile"; tabId: "profile" }
+                    ProfileTab { title: "Variables"; tabId: "variables" }
+                    ProfileTab { title: "Cookies"; tabId: "cookies" }
+                    ProfileTab { title: "Browser JSON"; tabId: "browser" }
                 }
-                Rectangle { width: parent.width; height: 1; color: Theme.border }
-                Text { text: "Browser Overrides"; color: Theme.text; font.pixelSize: 18; font.bold: true }
-                GridLayout {
+                Column {
                     width: parent.width
-                    columns: 2
-                    columnSpacing: 16
-                    rowSpacing: 14
-                    FormField { id: editLocale; Layout.fillWidth: true; label: "Locale"; placeholder: "en-US" }
-                    FormField { id: editTimezone; Layout.fillWidth: true; label: "Timezone"; placeholder: "America/New_York" }
-                    FormField { id: editUserAgent; Layout.fillWidth: true; label: "User Agent" }
-                    FormField { id: editWebgl; Layout.fillWidth: true; label: "WebGL / GPU vendor" }
-                    FormField { id: editCpu; Layout.fillWidth: true; label: "CPU cores" }
+                    spacing: 18
+                    visible: root.profileSettingsTab === "profile"
+                    GridLayout {
+                        width: parent.width
+                        columns: 2
+                        columnSpacing: 16
+                        rowSpacing: 14
+                        FormField { id: editName; Layout.fillWidth: true; label: "Name" }
+                        FormField { id: editStage; Layout.fillWidth: true; label: "Tag / Scenario" }
+                        FormField { id: editProxyHost; Layout.fillWidth: true; label: "Proxy host" }
+                        FormField { id: editProxyPort; Layout.fillWidth: true; label: "Proxy port" }
+                        FormField { id: editProxyUser; Layout.fillWidth: true; label: "Proxy user" }
+                        FormField { id: editProxyPassword; Layout.fillWidth: true; label: "Proxy password" }
+                    }
+                    Rectangle { width: parent.width; height: 1; color: Theme.border }
+                    Text { text: "Browser Overrides"; color: Theme.text; font.pixelSize: 18; font.bold: true }
+                    GridLayout {
+                        width: parent.width
+                        columns: 2
+                        columnSpacing: 16
+                        rowSpacing: 14
+                        FormField { id: editLocale; Layout.fillWidth: true; label: "Locale"; placeholder: "en-US" }
+                        FormField { id: editTimezone; Layout.fillWidth: true; label: "Timezone"; placeholder: "America/New_York" }
+                        FormField { id: editUserAgent; Layout.fillWidth: true; label: "User Agent" }
+                        FormField { id: editWebgl; Layout.fillWidth: true; label: "WebGL / GPU vendor" }
+                        FormField { id: editCpu; Layout.fillWidth: true; label: "CPU cores" }
+                    }
+                }
+                Column {
+                    width: parent.width
+                    spacing: 12
+                    visible: root.profileSettingsTab === "variables"
+                    Text { text: "Profile variables"; color: Theme.text; font.pixelSize: 18; font.bold: true }
+                    Text { text: "JSON object available to this profile's scenarios."; color: Theme.muted; font.pixelSize: 12 }
+                    Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
+                        TextArea { id: profileVarsJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
+                    }
+                }
+                Column {
+                    width: parent.width
+                    spacing: 12
+                    visible: root.profileSettingsTab === "cookies"
+                    Text { text: "Cookies"; color: Theme.text; font.pixelSize: 18; font.bold: true }
+                    Text { text: "Edit JSON array and save. Encrypted Chromium values may be read-only."; color: Theme.muted; font.pixelSize: 12 }
+                    Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
+                        TextArea { id: profileCookiesJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
+                    }
+                }
+                Column {
+                    width: parent.width
+                    spacing: 12
+                    visible: root.profileSettingsTab === "browser"
+                    Text { text: "Browser JSON"; color: Theme.text; font.pixelSize: 18; font.bold: true }
+                    Text { text: "Overrides for current engine: " + browserSettingsBridge.engine; color: Theme.muted; font.pixelSize: 12 }
+                    Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
+                        TextArea { id: profileBrowserSettingsJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} wrapMode: TextArea.Wrap }
+                    }
                 }
                 Row {
                     spacing: 12
-                    PrimaryButton {
-                        width: 120
-                        text: "Save"
-                        icon: "save"
-                        enabled: profilesBridge.canManage
-                        onClicked: {
-                            profilesBridge.saveProfile(root.editingProfile, editName.text, editStage.text, editProxyHost.text, editProxyPort.text, editProxyUser.text, editProxyPassword.text, browserSettingsBridge.engine, editLocale.text, editTimezone.text, editUserAgent.text, editWebgl.text, editCpu.text)
-                            profileDialog.close()
-                        }
-                    }
-                    PrimaryButton { width: 110; text: "Vars"; secondary: true; enabled: profilesBridge.canManage; onClicked: root.openVariablesModal(root.editingProfile) }
-                    PrimaryButton { width: 120; text: "Cookies"; secondary: true; enabled: profilesBridge.canManage; onClicked: root.openCookiesModal(root.editingProfile) }
-                    PrimaryButton { width: 150; text: "Browser JSON"; secondary: true; enabled: profilesBridge.canManage; onClicked: root.openBrowserOverridesModal(root.editingProfile) }
+                    visible: root.profileSettingsTab === "profile"
+                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: { profilesBridge.saveProfile(root.editingProfile, editName.text, editStage.text, editProxyHost.text, editProxyPort.text, editProxyUser.text, editProxyPassword.text, browserSettingsBridge.engine, editLocale.text, editTimezone.text, editUserAgent.text, editWebgl.text, editCpu.text); profileDialog.close() } }
                     PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
                 }
-            }
-        }
-    }
-
-    Dialog {
-        id: profileBrowserSettingsDialog
-        modal: true
-        width: Math.min(860, root.width - 80)
-        height: Math.min(660, root.height - 80)
-        anchors.centerIn: Overlay.overlay
-        padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
-        contentItem: Column {
-            anchors.fill: parent
-            anchors.margins: 22
-            spacing: 14
-            Text { text: "Browser Overrides: " + root.editingProfile; color: Theme.text; font.pixelSize: 22; font.bold: true }
-            Text { text: "JSON overrides only for current engine: " + browserSettingsBridge.engine; color: Theme.muted; font.pixelSize: 12 }
-            Rectangle {
-                width: parent.width
-                height: parent.height - 122
-                radius: 14
-                color: Theme.subtle
-                border.color: Theme.border
-                TextArea { id: profileBrowserSettingsJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} wrapMode: TextArea.Wrap }
-            }
-            Row {
-                spacing: 10
-                PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: { profilesBridge.saveProfileBrowserSettingsJson(root.editingProfile, browserSettingsBridge.engine, profileBrowserSettingsJson.text); profileBrowserSettingsDialog.close() } }
-                PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileBrowserSettingsDialog.close() }
-            }
-        }
-    }
-
-    Dialog {
-        id: profileVarsDialog
-        modal: true
-        width: Math.min(760, root.width - 80)
-        height: Math.min(620, root.height - 80)
-        anchors.centerIn: Overlay.overlay
-        padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
-        contentItem: Column {
-            anchors.fill: parent
-            anchors.margins: 22
-            spacing: 14
-            Text { text: "Profile Variables: " + root.editingProfile; color: Theme.text; font.pixelSize: 22; font.bold: true }
-            Rectangle {
-                width: parent.width
-                height: parent.height - 92
-                radius: 14
-                color: Theme.subtle
-                border.color: Theme.border
-                TextArea { id: profileVarsJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
-            }
-            Row {
-                spacing: 10
-                PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: { profilesBridge.saveProfileVariables(root.editingProfile, profileVarsJson.text); profileVarsDialog.close() } }
-                PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileVarsDialog.close() }
-            }
-        }
-    }
-
-    Dialog {
-        id: profileCookiesDialog
-        modal: true
-        width: Math.min(840, root.width - 80)
-        height: Math.min(660, root.height - 80)
-        anchors.centerIn: Overlay.overlay
-        padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
-        contentItem: Column {
-            anchors.fill: parent
-            anchors.margins: 22
-            spacing: 14
-            Text { text: "Cookies JSON: " + root.editingProfile; color: Theme.text; font.pixelSize: 22; font.bold: true }
-            Text { text: "Edit JSON array and save. Encrypted Chromium values may be read-only."; color: Theme.muted; font.pixelSize: 12 }
-            Rectangle {
-                width: parent.width
-                height: parent.height - 122
-                radius: 14
-                color: Theme.subtle
-                border.color: Theme.border
-                TextArea { id: profileCookiesJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
-            }
-            Row {
-                spacing: 10
-                PrimaryButton { width: 120; text: "Refresh"; secondary: true; onClicked: profileCookiesJson.text = profilesBridge.getProfileCookiesJson(root.editingProfile) }
-                PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: { profilesBridge.saveProfileCookiesJson(root.editingProfile, profileCookiesJson.text); profileCookiesDialog.close() } }
-                PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileCookiesDialog.close() }
+                Row {
+                    spacing: 12
+                    visible: root.profileSettingsTab === "variables"
+                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: profilesBridge.saveProfileVariables(root.editingProfile, profileVarsJson.text) }
+                    PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
+                }
+                Row {
+                    spacing: 12
+                    visible: root.profileSettingsTab === "cookies"
+                    PrimaryButton { width: 120; text: "Refresh"; secondary: true; onClicked: profileCookiesJson.text = profilesBridge.getProfileCookiesJson(root.editingProfile) }
+                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: profilesBridge.saveProfileCookiesJson(root.editingProfile, profileCookiesJson.text) }
+                    PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
+                }
+                Row {
+                    spacing: 12
+                    visible: root.profileSettingsTab === "browser"
+                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: profilesBridge.saveProfileBrowserSettingsJson(root.editingProfile, browserSettingsBridge.engine, profileBrowserSettingsJson.text) }
+                    PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
+                }
             }
         }
     }
