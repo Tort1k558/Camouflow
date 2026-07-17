@@ -16,6 +16,7 @@ from app.core.shared_vars import SharedVarsManager
 from app.storage.db import (
     Scenario,
     PROJECT_ROOT,
+    OUTPUTS_DIR,
     db_get_scenario_path,
     db_get_setting,
     db_set_setting,
@@ -497,7 +498,7 @@ class ScenarioExecutor(
                 step = steps[idx] or {}
             outcome = await self._run_step(step, tags, scenario_name=label, step_index=idx)
             if outcome.status == "stop":
-                outcome = self._handle_step_error(
+                outcome = await self._handle_step_error(
                     step,
                     tags,
                     scenario_name=label,
@@ -630,7 +631,7 @@ class ScenarioExecutor(
                 return await self._action_end(step)
             return StepResult.stop(f"Unknown action {action}")
         except Exception as exc:
-            return self._handle_step_error(
+            return await self._handle_step_error(
                 step,
                 tags,
                 scenario_name=scenario_name,
@@ -710,7 +711,36 @@ class ScenarioExecutor(
         except Exception as exc:
             self.logger.warning("Failed to persist shared var %s: %s", key, exc)
 
-    def _handle_step_error(
+    async def _capture_failure_artifacts(
+        self,
+        *,
+        scenario_name: Optional[str],
+        step_index: Optional[int],
+        action: str,
+        reason: str,
+    ) -> str:
+        safe_scenario = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(scenario_name or "scenario"))[:80]
+        safe_profile = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(getattr(self, "profile_name", "profile") or "profile"))[:80]
+        artifact_dir = OUTPUTS_DIR / "runs" / safe_scenario / safe_profile / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        metadata = {"scenario": scenario_name or "", "profile": getattr(self, "profile_name", ""), "step": (step_index + 1) if step_index is not None else None, "action": action, "reason": reason}
+        try:
+            (artifact_dir / "error.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+        page = getattr(self, "page", None)
+        if page is not None:
+            try:
+                await page.screenshot(path=str(artifact_dir / "page.png"), full_page=True)
+            except Exception:
+                pass
+            try:
+                (artifact_dir / "page.html").write_text(await page.content(), encoding="utf-8")
+            except Exception:
+                pass
+        return str(artifact_dir)
+
+    async def _handle_step_error(
         self,
         step: Dict,
         tags: Dict[str, int],
@@ -732,6 +762,13 @@ class ScenarioExecutor(
             return f"{exc}"
 
         formatted = _format_reason()
+        artifacts = await self._capture_failure_artifacts(
+            scenario_name=scenario_name,
+            step_index=step_index,
+            action=str(step.get("action") or ""),
+            reason=formatted,
+        )
+        formatted = f"{formatted} (artifacts: {artifacts})"
         err_target = step.get("next_error_step")
         if err_target:
             target = str(err_target)
