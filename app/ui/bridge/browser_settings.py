@@ -6,6 +6,8 @@ import importlib.metadata
 import importlib.util
 import json
 import re
+import subprocess
+import sys
 import threading
 import urllib.request
 from pathlib import Path
@@ -65,6 +67,7 @@ class BrowserSettingsBridge(QObject):
     changed = pyqtSignal()
     message = pyqtSignal(str)
     engineUpdateChecked = pyqtSignal(str)
+    engineUpdated = pyqtSignal(bool, str)
 
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
@@ -73,7 +76,9 @@ class BrowserSettingsBridge(QObject):
         self._camoufox = db_get_camoufox_defaults()
         self._cloak = db_get_cloakbrowser_defaults()
         self._compatibility_report = "Not checked"
+        self._latest_engine_version = ""
         self.engineUpdateChecked.connect(self._apply_engine_update_check)
+        self.engineUpdated.connect(self._apply_engine_update)
         if app_state is not None:
             app_state.refreshRequested.connect(self.reload)
 
@@ -83,6 +88,11 @@ class BrowserSettingsBridge(QObject):
     @pyqtProperty(str, notify=changed)
     def compatibilityReport(self) -> str:  # noqa: N802
         return self._compatibility_report
+
+    @pyqtProperty(bool, notify=changed)
+    def canUpdateEngine(self) -> bool:  # noqa: N802
+        pinned = self._pinned_engine_version("camoufox")
+        return self._engine == "camoufox" and bool(self._latest_engine_version and self._latest_engine_version != pinned)
 
     @pyqtSlot()
     def checkCompatibility(self) -> None:  # noqa: N802
@@ -135,9 +145,72 @@ class BrowserSettingsBridge(QObject):
         if latest.startswith("Update check failed") or latest.startswith("Update check returned"):
             self._compatibility_report = latest
         elif latest == pinned:
+            self._latest_engine_version = ""
             self._compatibility_report = f"Camoufox is up to date ({pinned})"
         else:
+            self._latest_engine_version = latest
             self._compatibility_report = f"Camoufox update available: {latest} (pinned: {pinned or 'not pinned'})"
+        self.changed.emit()
+        self._emit_message(self._compatibility_report)
+
+    @pyqtSlot()
+    def updateEngine(self) -> None:  # noqa: N802
+        version = self._latest_engine_version
+        if self._engine != "camoufox" or not version:
+            self._emit_message("Run Check updates first")
+            return
+        if not re.fullmatch(r"v[0-9A-Za-z._-]+", version):
+            self._emit_message("Update version is invalid")
+            return
+        self._compatibility_report = f"Installing Camoufox {version}…"
+        self.changed.emit()
+
+        def worker() -> None:
+            package = f"camoufox @ git+https://github.com/daijro/camoufox.git@{version}#subdirectory=pythonlib"
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "--upgrade", "--force-reinstall", package],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=300,
+                    check=False,
+                )
+                if result.returncode:
+                    message = (result.stderr or result.stdout or "pip install failed").strip().splitlines()[-1]
+                    self.engineUpdated.emit(False, message)
+                    return
+                self._update_requirement_pin(version)
+                self.engineUpdated.emit(True, version)
+            except Exception as exc:
+                self.engineUpdated.emit(False, str(exc))
+
+        threading.Thread(target=worker, daemon=True, name="camouflow-engine-install").start()
+
+    @staticmethod
+    def _update_requirement_pin(version: str) -> None:
+        path = Path(__file__).resolve().parents[3] / "requirements.txt"
+        try:
+            contents = path.read_text(encoding="utf-8-sig")
+            updated = re.sub(
+                r"^camoufox\s+@\s+git\+https://github\.com/daijro/camoufox\.git@[^#\s]+#subdirectory=pythonlib$",
+                f"camoufox @ git+https://github.com/daijro/camoufox.git@{version}#subdirectory=pythonlib",
+                contents,
+                flags=re.MULTILINE,
+            )
+            if updated != contents:
+                path.write_text(updated, encoding="utf-8")
+        except OSError:
+            pass
+
+    @pyqtSlot(bool, str)
+    def _apply_engine_update(self, ok: bool, detail: str) -> None:
+        if ok:
+            self._latest_engine_version = ""
+            self._compatibility_report = f"Camoufox {detail} installed. Restart CamouFlow to use it."
+        else:
+            self._compatibility_report = f"Camoufox update failed: {detail}"
         self.changed.emit()
         self._emit_message(self._compatibility_report)
 

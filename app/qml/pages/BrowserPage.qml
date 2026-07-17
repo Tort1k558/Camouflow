@@ -145,6 +145,7 @@ Flickable {
             PrimaryButton { width: 110; text: "Reset"; secondary: true; onClicked: browserSettingsBridge.reset() }
             PrimaryButton { width: 130; text: "Compatibility"; secondary: true; onClicked: browserSettingsBridge.checkCompatibility() }
             PrimaryButton { width: 130; text: "Check updates"; secondary: true; onClicked: browserSettingsBridge.checkEngineUpdate() }
+            PrimaryButton { width: 110; text: "Update"; icon: "save"; enabled: browserSettingsBridge.canUpdateEngine; onClicked: browserSettingsBridge.updateEngine() }
         }
         Text { width: parent.width; text: browserSettingsBridge.compatibilityReport; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap }
 
