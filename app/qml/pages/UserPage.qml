@@ -442,7 +442,7 @@ Flickable {
         id: loginDialog
         modal: true
         width: Math.min(460, root.width - 80)
-        height: 300
+        height: 350
         anchors.centerIn: Overlay.overlay
         padding: 0
         background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
