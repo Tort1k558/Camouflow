@@ -137,6 +137,7 @@ Flickable {
 
                     PrimaryButton { width: 34; text: ""; icon: "refresh"; iconOnly: true; secondary: true; enabled: root.bridge && root.bridge.canRun; onClicked: if (root.bridge) root.bridge.checkAll() }
                     PrimaryButton { width: 34; text: ""; icon: "stop"; iconOnly: true; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: if (root.bridge) root.bridge.releaseSelected() }
+                    PrimaryButton { width: 34; text: ""; icon: "refresh"; iconOnly: true; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: if (root.bridge) root.bridge.releaseQuarantineSelected() }
                     PrimaryButton { width: 34; text: ""; icon: "trash"; iconOnly: true; danger: true; enabled: root.bridge && root.bridge.canAdmin; onClicked: if (root.bridge) root.bridge.removeSelected() }
                     PrimaryButton { width: 34; text: ""; icon: "close"; iconOnly: true; secondary: true; onClicked: if (root.bridge) root.bridge.clearSelection() }
                 }

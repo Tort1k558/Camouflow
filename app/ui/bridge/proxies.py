@@ -737,3 +737,21 @@ class ProxiesBridge(QObject):
                 self.refresh()
 
         threading.Thread(target=worker, daemon=True).start()
+
+    @pyqtSlot()
+    def releaseQuarantineSelected(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
+        pools = self._load()
+        released = 0
+        for pool_name, index in list(self._selected):
+            entries = (pools.get(pool_name) or {}).get("proxies", [])
+            if 0 <= index < len(entries) and isinstance(entries[index], dict):
+                if entries[index].pop("quarantine_until", None) is not None:
+                    released += 1
+        if not released:
+            self._emit_message("No quarantined proxies selected")
+            return
+        self._save(pools)
+        self._emit_message(f"Released {released} proxy(s) from quarantine")
+        self.refresh()

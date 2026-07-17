@@ -1020,8 +1020,15 @@ class ProfilesBridge(QObject):
                             pc.close();
                             return candidates;
                         }""")
+                        browser_ip = await browser.page.evaluate("""async () => {
+                            try {
+                                const response = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+                                const data = await response.json();
+                                return String(data.ip || '');
+                            } catch (_) { return ''; }
+                        }""")
                         geo = browser._proxy_service.fetch_country() if browser.proxy else {}
-                        return {"signals": signals, "geo": geo, "webrtc_candidates": webrtc_candidates}
+                        return {"signals": signals, "geo": geo, "webrtc_candidates": webrtc_candidates, "browser_ip": browser_ip}
                     finally:
                         await browser.close(force=True)
 
@@ -1029,6 +1036,7 @@ class ProfilesBridge(QObject):
                 signals = data.get("signals") if isinstance(data.get("signals"), dict) else {}
                 geo = data.get("geo") if isinstance(data.get("geo"), dict) else {}
                 webrtc_candidates = data.get("webrtc_candidates") if isinstance(data.get("webrtc_candidates"), list) else []
+                browser_ip = str(data.get("browser_ip") or "")
                 previous = account.get("health_check")
                 if not isinstance(previous, dict):
                     previous = (account.get("camoufox_settings") or account.get("cloakbrowser_settings") or {}).get("health_check", {})
@@ -1045,6 +1053,8 @@ class ProfilesBridge(QObject):
                     warnings.append("Configured timezone does not match browser timezone")
                 if browser.proxy and not geo.get("country_code"):
                     warnings.append("Proxy geo lookup failed")
+                if browser.proxy and browser_ip and geo.get("ip") and browser_ip != str(geo.get("ip")):
+                    warnings.append("Browser IP does not match the proxy geo IP")
                 if browser.proxy and any(" typ host " in str(candidate) for candidate in webrtc_candidates):
                     warnings.append("WebRTC exposes a local host candidate")
                 if isinstance(previous, dict) and previous.get("fingerprint") and previous.get("fingerprint") != fingerprint:
@@ -1053,7 +1063,8 @@ class ProfilesBridge(QObject):
                     "ip": str(geo.get("ip") or ""), "country": str(geo.get("country_code") or geo.get("country") or ""),
                     "city": str(geo.get("city") or ""), "asn": str((geo.get("connection") or {}).get("asn") if isinstance(geo.get("connection"), dict) else geo.get("asn") or ""),
                 }
-                report = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "warning" if warnings else "ready", "warnings": warnings, "geo": geo_summary, "signals": signals, "webrtc_candidates": webrtc_candidates, "fingerprint": fingerprint}
+                status = "blocked" if browser.proxy and not geo.get("country_code") else "warning" if warnings else "ready"
+                report = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": status, "warnings": warnings, "geo": geo_summary, "browser_ip": browser_ip, "signals": signals, "webrtc_candidates": webrtc_candidates, "fingerprint": fingerprint}
                 if server_enabled() and self._server_client():
                     remote = self._server_account(name)
                     if remote:
