@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import json
 import logging
 import threading
@@ -972,6 +973,74 @@ class ProfilesBridge(QObject):
                     LOGGER.exception("Profile heartbeat failed for %s", name)
                     failed.append(name)
             QTimer.singleShot(0, lambda: self._on_heartbeat_finished(failed))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    @pyqtSlot(str)
+    def runHealthCheck(self, name: str) -> None:  # noqa: N802
+        name = str(name or "").strip()
+        if not name or name in self._live_browsers:
+            self._emit_message("Stop the browser before running a health check")
+            return
+        account = self._server_account(name) if server_enabled() and self._server_client() else next((item for item in db_get_accounts() if str(item.get("name") or "") == name), None)
+        if not account:
+            self._emit_message(f"Profile {name} not found")
+            return
+        self._emit_message(f"Running health check for {name}")
+
+        def worker() -> None:
+            browser = None
+            try:
+                engine = str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox")
+                settings = self._settings_dict(account.get("cloakbrowser_settings") if engine == "cloakbrowser" else account.get("camoufox_settings"))
+                browser = BrowserInterface(profile_name=name, proxy=self._proxy_for(account), keep_browser_open=False, browser_engine=engine, browser_settings=settings)
+
+                async def inspect() -> dict:
+                    await browser.start()
+                    try:
+                        signals = await browser.page.evaluate("""() => ({
+                            userAgent: navigator.userAgent,
+                            language: navigator.language,
+                            languages: navigator.languages,
+                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                            hardwareConcurrency: navigator.hardwareConcurrency,
+                            platform: navigator.platform,
+                            screen: { width: screen.width, height: screen.height, colorDepth: screen.colorDepth },
+                            webgl: (() => { const c = document.createElement('canvas'); const gl = c.getContext('webgl'); return gl ? { vendor: gl.getParameter(gl.VENDOR), renderer: gl.getParameter(gl.RENDERER) } : null; })()
+                        })""")
+                        geo = browser._proxy_service.fetch_country() if browser.proxy else {}
+                        return {"signals": signals, "geo": geo}
+                    finally:
+                        await browser.close(force=True)
+
+                data = asyncio.run(inspect())
+                signals = data.get("signals") if isinstance(data.get("signals"), dict) else {}
+                geo = data.get("geo") if isinstance(data.get("geo"), dict) else {}
+                warnings = []
+                configured_locale = str(settings.get("locale") or "").lower()
+                if configured_locale and not str(signals.get("language") or "").lower().startswith(configured_locale.split("-")[0]):
+                    warnings.append("Configured locale does not match browser language")
+                configured_timezone = str(settings.get("timezone") or "")
+                if configured_timezone and configured_timezone != str(signals.get("timezone") or ""):
+                    warnings.append("Configured timezone does not match browser timezone")
+                if browser.proxy and not geo.get("country_code"):
+                    warnings.append("Proxy geo lookup failed")
+                report = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "warning" if warnings else "ready", "warnings": warnings, "geo": geo, "signals": signals}
+                if server_enabled() and self._server_client():
+                    remote = self._server_account(name)
+                    if remote:
+                        remote_settings = dict(remote.get("camoufox_settings") or remote.get("cloakbrowser_settings") or {})
+                        remote_settings["health_check"] = report
+                        self._server_client().update_profile(str(remote.get("id") or ""), {"settings": remote_settings})
+                else:
+                    db_update_account(name, {"health_check": report})
+                status = "ready" if not warnings else f"warning: {'; '.join(warnings)}"
+                self._emit_message(f"Health check {name}: {status}")
+            except Exception as exc:
+                LOGGER.exception("Health check failed for %s", name)
+                self._emit_message(f"Health check failed for {name}: {exc}")
+            finally:
+                QTimer.singleShot(0, self.refresh)
 
         threading.Thread(target=worker, daemon=True).start()
 

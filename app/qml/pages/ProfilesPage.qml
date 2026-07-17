@@ -539,6 +539,7 @@ Flickable {
         id: profileMenu
         MenuItem { text: "Profile settings"; enabled: profilesBridge.canManage; onTriggered: root.openProfileModal(root.contextProfile) }
         MenuItem { text: "Open browser"; enabled: profilesBridge.canRun; onTriggered: profilesBridge.startProfile(root.contextProfile) }
+        MenuItem { text: "Profile health check"; enabled: profilesBridge.canRun; onTriggered: profilesBridge.runHealthCheck(root.contextProfile) }
         MenuItem { text: "Force unlock"; enabled: appState && appState.cloudEnabled && profilesBridge.canManage; onTriggered: profilesBridge.forceUnlockProfile(root.contextProfile) }
         MenuItem { text: "Variables"; enabled: profilesBridge.canManage; onTriggered: root.openVariablesModal(root.contextProfile) }
         MenuItem { text: "Cookies"; enabled: profilesBridge.canManage; onTriggered: root.openCookiesModal(root.contextProfile) }
