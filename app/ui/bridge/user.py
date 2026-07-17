@@ -545,10 +545,10 @@ class UserBridge(QObject):
         auth = f"{user}:{password}@" if user and password else ""
         return f"{scheme}://{auth}{host}:{port}"
 
-    @pyqtSlot(str, str, str)
-    def login(self, url: str, email: str, password: str) -> None:
+    @pyqtSlot(str, str)
+    def login(self, email: str, password: str) -> None:
         try:
-            result = ServerClient().login(str(url or "").strip(), str(email or "").strip(), str(password or ""))
+            result = ServerClient().login(get_server_session().url, str(email or "").strip(), str(password or ""))
         except ServerClientError as exc:
             self._notify(f"Login failed: {exc}")
             return

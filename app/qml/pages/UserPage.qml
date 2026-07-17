@@ -113,7 +113,6 @@ Flickable {
                         icon: "link"
                         onClicked: {
                             loginEmail.text = root.bridge ? root.bridge.serverEmail : ""
-                            loginServerUrl.text = root.bridge ? root.bridge.serverUrl : "http://localhost"
                             loginPassword.text = ""
                             loginDialog.open()
                         }
@@ -443,7 +442,7 @@ Flickable {
         id: loginDialog
         modal: true
         width: Math.min(460, root.width - 80)
-        height: 370
+        height: 300
         anchors.centerIn: Overlay.overlay
         padding: 0
         background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
@@ -454,7 +453,6 @@ Flickable {
 
             Text { text: "Login"; color: Theme.text; font.pixelSize: 24; font.bold: true }
             Text { text: "Connect your account to enable teams, roles, invites and cloud sync."; color: Theme.muted; font.pixelSize: 13; wrapMode: Text.WordWrap; width: parent.width }
-            FormField { id: loginServerUrl; width: parent.width; label: "Server URL"; placeholder: "https://api.example.com" }
             FormField { id: loginEmail; width: parent.width; label: "Email"; placeholder: "you@company.com" }
             FormField { id: loginPassword; width: parent.width; label: "Password"; placeholder: "Password"; echoMode: TextInput.Password }
             Row {
@@ -466,7 +464,7 @@ Flickable {
                     text: "Login"
                     icon: "link"
                     onClicked: {
-                        if (root.bridge) root.bridge.login(loginServerUrl.text, loginEmail.text, loginPassword.text)
+                        if (root.bridge) root.bridge.login(loginEmail.text, loginPassword.text)
                         loginDialog.close()
                     }
                 }

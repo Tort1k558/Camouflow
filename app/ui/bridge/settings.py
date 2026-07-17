@@ -6,7 +6,7 @@ import json
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
-from app.services.server_client import get_server_session, save_server_session
+from app.services.server_client import get_server_session, normalize_server_url, save_server_session
 from app.storage.db import DATA_ROOT, db_get_setting, db_set_setting
 from app.ui.bridge.models import DictListModel
 
@@ -43,6 +43,10 @@ class SettingsBridge(QObject):
         session = get_server_session()
         return bool(session.enabled and session.url and session.token)
 
+    @pyqtProperty(str, notify=changed)
+    def serverUrl(self) -> str:  # noqa: N802
+        return get_server_session().url
+
     @pyqtProperty(bool, notify=changed)
     def onboardingRequired(self) -> bool:  # noqa: N802
         if (db_get_setting(ONBOARDING_COMPLETED_KEY) or "").strip().lower() in {"1", "true", "yes", "on"}:
@@ -73,6 +77,31 @@ class SettingsBridge(QObject):
         self.message.emit(text)
         if self._app_state is not None:
             self._app_state.notify(text)
+
+    @pyqtSlot(str)
+    def saveServerUrl(self, value: str) -> None:  # noqa: N802
+        try:
+            url = normalize_server_url(str(value or ""))
+        except Exception as exc:
+            self._emit_message(f"Server URL is invalid: {exc}")
+            return
+        session = get_server_session()
+        if session.enabled and url != session.url:
+            save_server_session(enabled=False, url=url, token="", refresh_token="", team_id="", email=session.email)
+            self._emit_message("Server URL saved. Sign in again to connect the new server.")
+        else:
+            save_server_session(
+                enabled=session.enabled,
+                url=url,
+                token=session.token,
+                refresh_token=session.refresh_token,
+                team_id=session.team_id,
+                email=session.email,
+            )
+            self._emit_message("Server URL saved")
+        self.refresh()
+        if self._app_state is not None:
+            self._app_state.refreshAll()
 
     def _load_vars(self) -> dict:
         try:

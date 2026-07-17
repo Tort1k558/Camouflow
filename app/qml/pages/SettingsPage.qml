@@ -21,7 +21,7 @@ Flickable {
 
         SettingsSection {
             width: parent.width
-            height: 170
+            height: 248
             title: "App Settings"
             subtitle: "Runtime configuration"
             icon: "settings"
@@ -37,6 +37,14 @@ Flickable {
                     color: Theme.subtle
                     border.color: Theme.border
                     Text { anchors.fill: parent; anchors.margins: 12; text: settingsBridge ? settingsBridge.dataRoot : ""; color: Theme.muted; elide: Text.ElideMiddle; font.pixelSize: 12 }
+                }
+                FormField {
+                    id: serverUrl
+                    width: parent.width
+                    label: "Server URL"
+                    placeholder: "https://api.example.com"
+                    text: settingsBridge ? settingsBridge.serverUrl : ""
+                    onEditingFinished: settingsBridge.saveServerUrl(text)
                 }
             }
         }
