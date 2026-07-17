@@ -76,6 +76,9 @@ class ScenarioExecutor(
         self.debug_session = debug_session
         self._scenario_path = scenario_path
         self._cancel_event = cancel_event
+        self._run_artifact_dir: Optional[Path] = None
+        self._trace_started = False
+        self._browser_events: List[Dict[str, str]] = []
         self._debug_mtimes: Dict[str, float] = {}
         base_name = getattr(self.scenario, "name", None)
         self._scenario_stack: List[str] = [str(base_name)] if base_name else []
@@ -740,6 +743,37 @@ class ScenarioExecutor(
                 pass
         return str(artifact_dir)
 
+    async def start_run_capture(self) -> None:
+        safe_scenario = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(self.scenario.name or "scenario"))[:80]
+        safe_profile = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(self.profile_name or "profile"))[:80]
+        self._run_artifact_dir = OUTPUTS_DIR / "runs" / safe_scenario / safe_profile / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        self._run_artifact_dir.mkdir(parents=True, exist_ok=True)
+        if self.page is not None:
+            self.page.on("console", lambda message: self._browser_events.append({"type": "console", "level": str(message.type), "text": str(message.text)}))
+            self.page.on("pageerror", lambda error: self._browser_events.append({"type": "pageerror", "text": str(error)}))
+            self.page.on("requestfailed", lambda request: self._browser_events.append({"type": "requestfailed", "url": str(request.url), "error": str(request.failure or "")}))
+        tracing = getattr(self.context, "tracing", None)
+        if tracing is not None:
+            try:
+                await tracing.start(screenshots=True, snapshots=True, sources=True)
+                self._trace_started = True
+            except Exception as exc:
+                self.logger.warning("Could not start Playwright trace: %s", exc)
+
+    async def stop_run_capture(self) -> None:
+        if not self._run_artifact_dir:
+            return
+        try:
+            (self._run_artifact_dir / "browser-events.json").write_text(json.dumps(self._browser_events, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+        if self._trace_started:
+            try:
+                await self.context.tracing.stop(path=str(self._run_artifact_dir / "trace.zip"))
+            except Exception as exc:
+                self.logger.warning("Could not save Playwright trace: %s", exc)
+            self._trace_started = False
+
     async def _handle_step_error(
         self,
         step: Dict,
@@ -829,11 +863,13 @@ async def _run_for_account(
             pass
     try:
         await runner.start()
-        ok = await runner.run()
-        return ok
+        await runner.start_run_capture()
+        return await runner.run()
     except Exception:
         account_logger.exception("Scenario failed for %s", acc["name"])
         return False
+    finally:
+        await runner.stop_run_capture()
 
 
 def run_scenario(
