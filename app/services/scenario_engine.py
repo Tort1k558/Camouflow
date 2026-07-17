@@ -3,6 +3,7 @@ import datetime
 import logging
 import re
 import time
+from threading import Event
 from typing import Dict, List, Optional, Tuple
 
 from playwright.async_api import Error as PlaywrightError, TimeoutError as PlaywrightTimeoutError
@@ -54,6 +55,7 @@ class ScenarioExecutor(
         shared_variables: Optional[Dict[str, str]] = None,
         debug_session: Optional[ScenarioDebugSession] = None,
         scenario_path: Optional[Path] = None,
+        cancel_event: Optional[Event] = None,
     ) -> None:
         profile_name = str(account_payload.get("name"))
         browser_engine = str(account_payload.get("_browser_engine") or "camoufox")
@@ -72,6 +74,7 @@ class ScenarioExecutor(
         self.scenario = scenario
         self.debug_session = debug_session
         self._scenario_path = scenario_path
+        self._cancel_event = cancel_event
         self._debug_mtimes: Dict[str, float] = {}
         base_name = getattr(self.scenario, "name", None)
         self._scenario_stack: List[str] = [str(base_name)] if base_name else []
@@ -460,6 +463,8 @@ class ScenarioExecutor(
             if initial is not None and 0 <= int(initial) < len(steps):
                 idx = int(initial)
         while idx < len(steps):
+            if self._cancel_event and self._cancel_event.is_set():
+                return False, "Canceled by user"
             step = steps[idx] or {}
             if self.debug_session and self.debug_session.enabled:
                 decision = self.debug_session.before_step(
@@ -755,6 +760,7 @@ async def _run_for_account(
     *,
     debug_session: Optional[ScenarioDebugSession] = None,
     scenario_path: Optional[Path] = None,
+    cancel_event: Optional[Event] = None,
 ) -> bool:
     logger = logging.getLogger(__name__)
     account_logger = logging.LoggerAdapter(logger, {"profile": str(acc.get("name") or acc.get("email") or "-")})
@@ -777,6 +783,7 @@ async def _run_for_account(
         shared_variables=shared_vars,
         debug_session=debug_session,
         scenario_path=scenario_path,
+        cancel_event=cancel_event,
     )
     if debug_session:
         try:
@@ -800,6 +807,7 @@ def run_scenario(
     *,
     debug_session: Optional[ScenarioDebugSession] = None,
     scenario_path: Optional[Path] = None,
+    cancel_event: Optional[Event] = None,
 ) -> List[Dict]:
     """
     Run provided scenario for up to max_accounts accounts (sequentially).
@@ -811,6 +819,8 @@ def run_scenario(
     async def runner() -> List[Dict]:
         processed: List[Dict] = []
         for acc in to_run:
+            if cancel_event and cancel_event.is_set():
+                break
             if debug_session and debug_session.stop_requested():
                 break
             ok = await _run_for_account(
@@ -819,6 +829,7 @@ def run_scenario(
                 shared_vars,
                 debug_session=debug_session,
                 scenario_path=scenario_path or db_get_scenario_path(scenario.name),
+                cancel_event=cancel_event,
             )
             if ok:
                 processed.append(acc)

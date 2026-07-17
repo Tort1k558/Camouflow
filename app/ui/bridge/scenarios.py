@@ -112,6 +112,7 @@ class ScenariosBridge(QObject):
         self._market_rows: List[Dict[str, Any]] = []
         self._server_scenario_ids: Dict[str, str] = {}
         self._current_steps: List[Dict[str, Any]] = []
+        self._run_cancel_event: Optional[threading.Event] = None
         if app_state is not None:
             app_state.refreshRequested.connect(self.refresh)
             app_state.cloudChanged.connect(self.refresh)
@@ -993,6 +994,13 @@ class ScenariosBridge(QObject):
         if not scenario:
             self._emit_message("Select scenario first")
             return
+        error = self._validate_scenario(scenario)
+        if error:
+            self._emit_message(error)
+            return
+        if self._run_cancel_event is not None:
+            self._emit_message("A scenario run is already in progress")
+            return
         if server_enabled() and self._profiles_bridge is not None and hasattr(self._profiles_bridge, "_server_accounts"):
             all_accounts = self._profiles_bridge._server_accounts()
         else:
@@ -1005,19 +1013,23 @@ class ScenariosBridge(QObject):
             self._emit_message("Select profile to run")
             return
 
+        cancel_event = threading.Event()
+        self._run_cancel_event = cancel_event
+
         def worker() -> None:
             started = time.monotonic()
             run_ids = self._create_cloud_runs(scenario, accounts)
             try:
                 scenario_path = None if server_enabled() else db_get_scenario_path(scenario.name)
-                processed = run_scenario(accounts, scenario, max_accounts=1, scenario_path=scenario_path)
-                self._finish_cloud_runs(run_ids, accounts, processed, started)
-                self._emit_message(f"Scenario finished: {len(processed)} profile(s)")
+                processed = run_scenario(accounts, scenario, max_accounts=1, scenario_path=scenario_path, cancel_event=cancel_event)
+                self._finish_cloud_runs(run_ids, accounts, processed, started, canceled=cancel_event.is_set())
+                self._emit_message("Scenario canceled" if cancel_event.is_set() else f"Scenario finished: {len(processed)} profile(s)")
             except Exception as exc:
                 LOGGER.exception("Scenario run failed")
                 self._fail_cloud_runs(run_ids, started, exc)
                 self._emit_message(f"Scenario failed: {exc}")
             finally:
+                self._run_cancel_event = None
                 self._refresh_runs()
 
         self._emit_message(f"Running {scenario.name}")
@@ -1038,6 +1050,13 @@ class ScenariosBridge(QObject):
         if not scenario:
             self._emit_message("Scenario not found")
             return
+        error = self._validate_scenario(scenario)
+        if error:
+            self._emit_message(error)
+            return
+        if self._run_cancel_event is not None:
+            self._emit_message("A scenario run is already in progress")
+            return
         try:
             limit = max(1, int(max_accounts or 1))
         except Exception:
@@ -1054,6 +1073,9 @@ class ScenariosBridge(QObject):
             self._emit_message("No profiles for selected tag")
             return
 
+        cancel_event = threading.Event()
+        self._run_cancel_event = cancel_event
+
         def worker() -> None:
             started = time.monotonic()
             run_ids = self._create_cloud_runs(scenario, accounts[:limit])
@@ -1064,18 +1086,44 @@ class ScenariosBridge(QObject):
                     scenario,
                     max_accounts=limit,
                     scenario_path=scenario_path,
+                    cancel_event=cancel_event,
                 )
-                self._finish_cloud_runs(run_ids, accounts[:limit], processed, started)
-                self._emit_message(f"Scenario finished: {len(processed)} profile(s)")
+                self._finish_cloud_runs(run_ids, accounts[:limit], processed, started, canceled=cancel_event.is_set())
+                self._emit_message("Scenario canceled" if cancel_event.is_set() else f"Scenario finished: {len(processed)} profile(s)")
             except Exception as exc:
                 LOGGER.exception("Scenario batch run failed")
                 self._fail_cloud_runs(run_ids, started, exc)
                 self._emit_message(f"Scenario failed: {exc}")
             finally:
+                self._run_cancel_event = None
                 self._refresh_runs()
 
         self._emit_message(f"Running {scenario.name} for {tag or 'all tags'}")
         threading.Thread(target=worker, daemon=True).start()
+
+    @pyqtSlot()
+    def cancelRun(self) -> None:  # noqa: N802
+        if self._run_cancel_event is None:
+            return
+        self._run_cancel_event.set()
+        self._emit_message("Cancel requested. The current step will finish first.")
+
+    @staticmethod
+    def _validate_scenario(scenario: Scenario) -> str:
+        steps = scenario.steps or []
+        if not steps:
+            return "Scenario has no steps"
+        for index, step in enumerate(steps, start=1):
+            if not isinstance(step, dict):
+                return f"Step {index} must be an object"
+            action = str(step.get("action") or "").strip()
+            if action not in ACTION_LABELS:
+                return f"Step {index}: unsupported action '{action or 'empty'}'"
+            if action in {"goto", "new_tab", "http_request"} and not str(step.get("url") or step.get("value") or "").strip():
+                return f"Step {index}: URL is required"
+            if action in {"click", "type", "wait_element", "extract_text"} and not str(step.get("selector") or "").strip():
+                return f"Step {index}: selector is required"
+        return ""
 
     def _create_cloud_runs(self, scenario: Scenario, accounts: List[Dict[str, Any]]) -> Dict[str, str]:
         client = self._server_client()
@@ -1105,6 +1153,8 @@ class ScenariosBridge(QObject):
         accounts: List[Dict[str, Any]],
         processed: List[Dict[str, Any]],
         started: float,
+        *,
+        canceled: bool = False,
     ) -> None:
         if not run_ids:
             return
@@ -1118,8 +1168,8 @@ class ScenariosBridge(QObject):
             run_id = run_ids.get(name)
             if not run_id:
                 continue
-            status = "success" if name in processed_names else "failed"
-            error = "" if status == "success" else "Scenario returned unsuccessful result"
+            status = "success" if name in processed_names else ("canceled" if canceled else "failed")
+            error = "" if status == "success" else ("Canceled by user" if canceled else "Scenario returned unsuccessful result")
             try:
                 client.update_scenario_run(run_id, {
                     "status": status,

@@ -229,6 +229,7 @@ Item {
                             }
                         }
                         PrimaryButton { width: 44; text: ""; icon: "play"; enabled: scenariosBridge.canRun; onClicked: scenariosBridge.runSelected() }
+                        PrimaryButton { width: 44; text: ""; icon: "stop"; danger: true; onClicked: scenariosBridge.cancelRun() }
                     }
                 }
                 ScenarioCanvas {
