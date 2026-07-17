@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
+from app.services.server_client import get_server_session, save_server_session
 from app.storage.db import DATA_ROOT, db_get_setting, db_set_setting
 from app.ui.bridge.models import DictListModel
+
+ONBOARDING_COMPLETED_KEY = "onboarding_completed"
 
 
 class SettingsBridge(QObject):
@@ -37,8 +39,35 @@ class SettingsBridge(QObject):
         return self._stages_model
 
     @pyqtProperty(bool, notify=changed)
-    def debugMode(self) -> bool:  # noqa: N802
-        return (db_get_setting("general_debug_mode") or "").lower() in {"1", "true", "yes", "on"}
+    def serverEnabled(self) -> bool:  # noqa: N802
+        session = get_server_session()
+        return bool(session.enabled and session.url and session.token)
+
+    @pyqtProperty(bool, notify=changed)
+    def onboardingRequired(self) -> bool:  # noqa: N802
+        if (db_get_setting(ONBOARDING_COMPLETED_KEY) or "").strip().lower() in {"1", "true", "yes", "on"}:
+            return False
+        session = get_server_session()
+        return not (session.enabled and session.url and session.token)
+
+    @pyqtProperty(str, notify=changed)
+    def modeSummary(self) -> str:  # noqa: N802
+        session = get_server_session()
+        if session.enabled and session.url and session.token:
+            if not session.team_id:
+                return "Cloud mode: accept an invite in User to join a team."
+            return "Cloud mode: shared team data, locks, roles, audit and backups are available."
+        return "Local mode: profiles, proxies and scenarios are stored only on this computer."
+
+    @pyqtProperty(str, constant=True)
+    def localModeLimitations(self) -> str:  # noqa: N802
+        return (
+            "No shared profiles/proxies/scenarios\n"
+            "No roles or access control\n"
+            "No profile locks between teammates\n"
+            "No audit log or cloud backup\n"
+            "No license/team policy enforcement"
+        )
 
     def _emit_message(self, text: str) -> None:
         self.message.emit(text)
@@ -61,9 +90,8 @@ class SettingsBridge(QObject):
 
     @pyqtSlot()
     def refresh(self) -> None:
-        vars_data = self._load_vars()
         rows = []
-        for key, payload in sorted(vars_data.items()):
+        for key, payload in sorted(self._load_vars().items()):
             if isinstance(payload, dict):
                 typ = str(payload.get("type") or "string")
                 val = payload.get("value")
@@ -127,7 +155,31 @@ class SettingsBridge(QObject):
         db_set_setting("stages_json", json.dumps(stages, ensure_ascii=False))
         self.refresh()
 
-    @pyqtSlot(bool)
-    def setDebugMode(self, enabled: bool) -> None:  # noqa: N802
-        db_set_setting("general_debug_mode", "true" if enabled else "false")
-        self.changed.emit()
+    @pyqtSlot()
+    def startLocalMode(self) -> None:  # noqa: N802
+        session = get_server_session()
+        save_server_session(
+            enabled=False,
+            url=session.url,
+            token=session.token,
+            refresh_token=session.refresh_token,
+            team_id=session.team_id,
+            email=session.email,
+        )
+        db_set_setting(ONBOARDING_COMPLETED_KEY, "true")
+        self._emit_message("Local mode enabled. You can connect Cloud later in User.")
+        self.refresh()
+        if self._app_state is not None:
+            self._app_state.refreshAll()
+
+    @pyqtSlot()
+    def openUserLogin(self) -> None:  # noqa: N802
+        db_set_setting(ONBOARDING_COMPLETED_KEY, "true")
+        self.refresh()
+        if self._app_state is not None:
+            self._app_state.setPage("User")
+
+    @pyqtSlot()
+    def resetOnboarding(self) -> None:  # noqa: N802
+        db_set_setting(ONBOARDING_COMPLETED_KEY, "false")
+        self.refresh()

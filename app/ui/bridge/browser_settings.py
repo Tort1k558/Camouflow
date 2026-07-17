@@ -18,9 +18,39 @@ from app.storage.db import (
 )
 
 
-_INT_KEYS = {"hardware_concurrency", "window_width", "window_height", "screen_width", "screen_height", "fingerprint_seed"}
-_BOOL_KEYS = {"persistent_context", "enable_cache", "block_webrtc", "block_images", "block_webgl", "disable_coop", "geoip", "stealth_args"}
-_LIST_KEYS = {"fonts", "addons", "exclude_addons", "extension_paths", "launch_args"}
+_INT_KEYS = {
+    "hardware_concurrency",
+    "device_memory",
+    "window_width",
+    "window_height",
+    "screen_width",
+    "screen_height",
+    "fingerprint_seed",
+    "storage_quota",
+    "human_typing_delay_min",
+    "human_typing_delay_max",
+    "human_scroll_intensity",
+}
+_FLOAT_KEYS = {"human_mouse_speed"}
+_BOOL_KEYS = {
+    "persistent_context",
+    "enable_cache",
+    "block_webrtc",
+    "block_images",
+    "block_webgl",
+    "disable_coop",
+    "geoip",
+    "stealth_args",
+    "fingerprint_noise",
+    "disable_http2",
+    "ignore_https_errors",
+    "java_script_enabled",
+    "bypass_csp",
+    "accept_downloads",
+    "human_actionability_wait",
+}
+_LIST_KEYS = {"fonts", "addons", "exclude_addons", "extension_paths", "launch_args", "permissions"}
+_DICT_KEYS = {"extra_http_headers"}
 
 
 class BrowserSettingsBridge(QObject):
@@ -63,8 +93,20 @@ class BrowserSettingsBridge(QObject):
         except Exception:
             return default
 
+    def _float_value(self, key: str, default: float = 0.0) -> float:
+        try:
+            return float(self._active().get(key) or default)
+        except Exception:
+            return default
+
     def _bool_value(self, key: str, default: bool = False) -> bool:
         return bool(self._active().get(key, default))
+
+    def _dict_text(self, key: str) -> str:
+        import json
+
+        payload = self._active().get(key)
+        return json.dumps(payload if isinstance(payload, dict) else {}, ensure_ascii=False, indent=2)
 
     def _set_active_value(self, key: str, value: Any) -> None:
         data = self._active()
@@ -73,10 +115,24 @@ class BrowserSettingsBridge(QObject):
                 value = int(value)
             except Exception:
                 value = 0
+        elif key in _FLOAT_KEYS:
+            try:
+                value = round(float(value), 3)
+            except Exception:
+                value = 0
         elif key in _BOOL_KEYS:
             value = bool(value)
         elif key in _LIST_KEYS:
             value = self._text_list(value)
+        elif key in _DICT_KEYS and isinstance(value, str):
+            import json
+
+            try:
+                parsed = json.loads(value or "{}")
+                value = parsed if isinstance(parsed, dict) else {}
+            except Exception:
+                self._emit_message(f"{key} must be valid JSON object")
+                return
         elif key == "headless":
             if value in (True, "true", "headless"):
                 value = True
@@ -203,6 +259,27 @@ class BrowserSettingsBridge(QObject):
     def humanPreset(self) -> str:  # noqa: N802
         return str(self._active().get("human_preset") or "default")
 
+    @pyqtProperty(str, notify=changed)
+    def humanMouseSpeed(self) -> str:  # noqa: N802
+        value = self._float_value("human_mouse_speed")
+        return "" if value <= 0 else str(value)
+
+    @pyqtProperty(int, notify=changed)
+    def humanTypingDelayMin(self) -> int:  # noqa: N802
+        return self._int_value("human_typing_delay_min")
+
+    @pyqtProperty(int, notify=changed)
+    def humanTypingDelayMax(self) -> int:  # noqa: N802
+        return self._int_value("human_typing_delay_max")
+
+    @pyqtProperty(int, notify=changed)
+    def humanScrollIntensity(self) -> int:  # noqa: N802
+        return self._int_value("human_scroll_intensity")
+
+    @pyqtProperty(bool, notify=changed)
+    def humanActionabilityWait(self) -> bool:  # noqa: N802
+        return self._bool_value("human_actionability_wait", True)
+
     @pyqtProperty(bool, notify=changed)
     def osAuto(self) -> bool:  # noqa: N802
         return not bool(self._active().get("os") or [])
@@ -238,6 +315,10 @@ class BrowserSettingsBridge(QObject):
     def screenHeight(self) -> int:  # noqa: N802
         return self._int_value("screen_height", self.windowHeight)
 
+    @pyqtProperty(int, notify=changed)
+    def deviceMemory(self) -> int:  # noqa: N802
+        return self._int_value("device_memory")
+
     @pyqtProperty(bool, notify=changed)
     def persistentContext(self) -> bool:  # noqa: N802
         return self._bool_value("persistent_context", True)
@@ -267,8 +348,68 @@ class BrowserSettingsBridge(QObject):
         return self._bool_value("geoip")
 
     @pyqtProperty(str, notify=changed)
+    def platformVersion(self) -> str:  # noqa: N802
+        return str(self._active().get("platform_version") or "")
+
+    @pyqtProperty(str, notify=changed)
+    def brand(self) -> str:
+        return str(self._active().get("brand") or "")
+
+    @pyqtProperty(str, notify=changed)
+    def brandVersion(self) -> str:  # noqa: N802
+        return str(self._active().get("brand_version") or "")
+
+    @pyqtProperty(int, notify=changed)
+    def storageQuota(self) -> int:  # noqa: N802
+        return self._int_value("storage_quota")
+
+    @pyqtProperty(bool, notify=changed)
+    def fingerprintNoise(self) -> bool:  # noqa: N802
+        return self._bool_value("fingerprint_noise", True)
+
+    @pyqtProperty(str, notify=changed)
+    def webrtcIp(self) -> str:  # noqa: N802
+        return str(self._active().get("webrtc_ip") or "")
+
+    @pyqtProperty(str, notify=changed)
+    def proxyBypass(self) -> str:  # noqa: N802
+        return str(self._active().get("proxy_bypass") or "")
+
+    @pyqtProperty(bool, notify=changed)
+    def disableHttp2(self) -> bool:  # noqa: N802
+        return self._bool_value("disable_http2")
+
+    @pyqtProperty(str, notify=changed)
     def colorScheme(self) -> str:  # noqa: N802
         return str(self._active().get("color_scheme") or "")
+
+    @pyqtProperty(str, notify=changed)
+    def permissionsText(self) -> str:  # noqa: N802
+        return self._list_text("permissions")
+
+    @pyqtProperty(str, notify=changed)
+    def extraHttpHeadersText(self) -> str:  # noqa: N802
+        return self._dict_text("extra_http_headers")
+
+    @pyqtProperty(str, notify=changed)
+    def storageStatePath(self) -> str:  # noqa: N802
+        return str(self._active().get("storage_state_path") or "")
+
+    @pyqtProperty(bool, notify=changed)
+    def ignoreHttpsErrors(self) -> bool:  # noqa: N802
+        return self._bool_value("ignore_https_errors")
+
+    @pyqtProperty(bool, notify=changed)
+    def javaScriptEnabled(self) -> bool:  # noqa: N802
+        return self._bool_value("java_script_enabled", True)
+
+    @pyqtProperty(bool, notify=changed)
+    def bypassCsp(self) -> bool:  # noqa: N802
+        return self._bool_value("bypass_csp")
+
+    @pyqtProperty(bool, notify=changed)
+    def acceptDownloads(self) -> bool:  # noqa: N802
+        return self._bool_value("accept_downloads", True)
 
     @pyqtProperty(str, notify=changed)
     def fontsText(self) -> str:  # noqa: N802
@@ -317,6 +458,7 @@ class BrowserSettingsBridge(QObject):
         if normalized not in {"camoufox", "cloakbrowser"}:
             normalized = "camoufox"
         self._engine = normalized
+        db_set_browser_engine(self._engine)
         self.changed.emit()
 
     @pyqtSlot(str, "QVariant")
@@ -353,6 +495,73 @@ class BrowserSettingsBridge(QObject):
             else:
                 current.discard(name)
         self._active()["os"] = sorted(current)
+        self.changed.emit()
+
+    @pyqtSlot(str)
+    def applyPreset(self, name: str) -> None:  # noqa: N802
+        preset = str(name or "").strip().lower()
+        data = self._active()
+        if preset == "balanced":
+            data.update({
+                "headless": False,
+                "humanize": True,
+                "human_preset": "default",
+                "geoip": self._engine == "cloakbrowser",
+                "persistent_context": True,
+            })
+        elif preset == "maximum_stealth":
+            data.update({
+                "headless": False,
+                "humanize": True,
+                "human_preset": "careful",
+                "geoip": self._engine == "cloakbrowser",
+                "persistent_context": True,
+                "stealth_args": True,
+                "fingerprint_noise": True,
+                "webrtc_ip": "auto",
+            })
+            if self._engine == "camoufox":
+                data.update({"block_webrtc": True, "enable_cache": True})
+        elif preset == "fingerprintjs":
+            data.update({
+                "headless": False,
+                "geoip": self._engine == "cloakbrowser",
+                "fingerprint_noise": False,
+                "storage_quota": 500,
+                "webrtc_ip": "auto",
+            })
+        elif preset == "cloudflare":
+            data.update({
+                "headless": False,
+                "humanize": True,
+                "human_preset": "careful",
+                "geoip": self._engine == "cloakbrowser",
+                "persistent_context": True,
+                "webrtc_ip": "auto",
+            })
+        elif preset == "low_resource":
+            data.update({
+                "headless": True,
+                "humanize": False,
+                "block_images": True,
+                "enable_cache": False,
+                "window_width": 1280,
+                "window_height": 720,
+                "screen_width": 1280,
+                "screen_height": 720,
+            })
+        elif preset == "persistent_warm":
+            data.update({
+                "headless": False,
+                "persistent_context": True,
+                "enable_cache": True,
+                "disable_http2": True,
+                "storage_quota": 5000,
+            })
+        else:
+            self._emit_message("Unknown browser preset")
+            return
+        self._emit_message(f"Preset applied: {name}")
         self.changed.emit()
 
     @pyqtSlot()

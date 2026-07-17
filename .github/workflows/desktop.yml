@@ -1,0 +1,29 @@
+name: desktop
+
+on:
+  push:
+    paths:
+      - "app/**"
+      - ".github/workflows/desktop.yml"
+  pull_request:
+    paths:
+      - "app/**"
+
+jobs:
+  static-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Syntax check (compileall)
+        run: python -m compileall -q app
+
+      - name: Lint (ruff, non-blocking on legacy)
+        run: ruff check app || true

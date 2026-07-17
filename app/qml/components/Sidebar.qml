@@ -9,7 +9,7 @@ Rectangle {
     color: Theme.sidebar
     border.color: Theme.borderSubtle
     property var pages: [
-        ["Dashboard", "dashboard"], ["Profiles", "user"], ["Browser", "globe"], ["Proxies", "network"],
+        ["Dashboard", "dashboard"], ["User", "user"], ["Billing", "credit-card"], ["Profiles", "user"], ["Browser", "globe"], ["Proxies", "network"],
         ["Scenarios", "workflow"], ["Logs", "logs"], ["Settings", "settings"]
     ]
     Column {
@@ -38,7 +38,15 @@ Rectangle {
                 model: root.pages
                 delegate: Rectangle {
                     width: root.width - 24; height: 36; radius: 10
-                    color: appState && appState.currentPage === modelData[0] ? "#25213f" : mouse.containsMouse ? "#171724" : "transparent"
+                    color: mouse.containsMouse ? "#10101b" : "transparent"
+                    Rectangle {
+                        width: 3
+                        height: 18
+                        radius: 2
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: appState && appState.currentPage === modelData[0] ? Theme.primary : "transparent"
+                    }
                     Row { anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12; spacing: 12
                         LineIcon { name: modelData[1]; color: appState && appState.currentPage === modelData[0] ? Theme.primary : Theme.muted; size: 19 }
                         Text { text: modelData[0]; color: appState && appState.currentPage === modelData[0] ? Theme.primaryLight : Theme.muted; font.pixelSize: 13; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
@@ -49,9 +57,45 @@ Rectangle {
         }
         Item { height: 1; width: 1 }
     }
-    Rectangle {
+    Column {
         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 12
-        height: 36; radius: 10; color: Theme.subtle
-        Text { anchors.centerIn: parent; text: "v1.0.0"; color: Theme.muted; font.pixelSize: 12; font.weight: Font.DemiBold }
+        spacing: 8
+        Rectangle {
+            width: parent.width
+            height: 74
+            color: "transparent"
+            border.color: "transparent"
+            Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; height: 1; color: Theme.borderSubtle }
+            Column {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 5
+                Text {
+                    width: parent.width
+                    text: appState && appState.cloudEnabled
+                        ? "Cloud / " + (appState.cloudRole || "no role")
+                        : "Local mode"
+                    color: appState && appState.cloudEnabled ? "#8ef0bd" : "#d7d1ff"
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+                Text {
+                    width: parent.width
+                    text: appState && appState.cloudEnabled
+                        ? ((appState.cloudTeamName || "No team selected") + " · " + appState.cloudStatus)
+                        : (settingsBridge ? settingsBridge.modeSummary : "")
+                    color: Theme.muted
+                    font.pixelSize: 11
+                    lineHeight: 1.1
+                    wrapMode: Text.WordWrap
+                    elide: Text.ElideRight
+                    maximumLineCount: 3
+                }
+            }
+        }
+        Rectangle {
+            width: parent.width; height: 28; radius: 0; color: "transparent"
+            Text { anchors.centerIn: parent; text: "v1.0.0"; color: Theme.muted; font.pixelSize: 12; font.weight: Font.DemiBold }
+        }
     }
 }

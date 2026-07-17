@@ -31,7 +31,7 @@ GlassCard {
             Layout.preferredHeight: 22
             Layout.alignment: Qt.AlignVCenter
             radius: 6
-            color: root.selected ? Theme.primary : Theme.subtle
+            color: root.selected ? Theme.primary : "transparent"
             border.color: root.selected ? Theme.primaryLight : Theme.border
             Text { anchors.centerIn: parent; text: root.selected ? "✓" : ""; color: "white"; font.bold: true; font.pixelSize: 13 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.selectionToggled(root.pool, root.proxyIndex, !root.selected) }
@@ -42,7 +42,8 @@ GlassCard {
             Layout.preferredHeight: 42
             Layout.alignment: Qt.AlignVCenter
             radius: 14
-            color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.16)
+            color: "transparent"
+            border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.35)
             LineIcon { anchors.centerIn: parent; name: "globe"; color: root.accent; size: 22 }
         }
 

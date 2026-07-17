@@ -113,6 +113,15 @@ Supported step types:
 
 - application data root display
 
+### Billing & Plan
+
+- current plan and subscription status (from Cloud)
+- usage vs limits (users, profiles, proxies, scenarios)
+- plan catalog with an Upgrade action that opens the server checkout link
+- self-service billing portal link (when the provider supports it)
+- license status banner when the team license is not active
+
+
 ## Project structure
 
 ```text

@@ -6,8 +6,8 @@
       "action": "start",
       "tag": "Start",
       "_pos": {
-        "x": 48.63,
-        "y": 250.76
+        "x": 147.47,
+        "y": 219.87
       },
       "next_success_step": "Step5",
       "next_error_step": "Step5"

@@ -7,22 +7,20 @@ Rectangle {
     property string icon: ""
     property bool danger: false
     property bool secondary: false
+    property bool iconOnly: false
     signal clicked()
-    height: 36
-    radius: 11
+    height: root.iconOnly || root.text === "" ? 34 : 36
+    radius: root.iconOnly || root.text === "" ? height / 2 : 9
     opacity: enabled ? 1 : 0.45
-    color: secondary ? "#1a1a2e" : danger ? "#3a1720" : Theme.primary
-    border.color: secondary ? Theme.border : danger ? "#7f2430" : Theme.primaryLight
-    border.width: 1
-    gradient: Gradient {
-        GradientStop { position: 0; color: secondary ? "#1a1a2e" : danger ? "#4a1c28" : Theme.primaryLight }
-        GradientStop { position: 1; color: secondary ? "#151526" : danger ? "#32151d" : Theme.primary }
-    }
+    color: secondary || danger ? (mouse.containsMouse ? (danger ? "#231016" : "#151520") : "transparent") : (mouse.containsMouse ? Theme.primaryDark : Theme.primary)
+    border.color: danger ? "#6f2530" : secondary || root.iconOnly || root.text === "" ? Theme.border : Theme.primary
+    border.width: secondary || danger || root.iconOnly || root.text === "" ? 1 : 0
+
     Row {
         anchors.centerIn: parent
-        spacing: 8
-        LineIcon { visible: root.icon !== ""; name: root.icon; color: root.danger ? "#ff6b6b" : root.secondary ? Theme.muted : "white"; size: 16 }
-        Text { text: root.text; color: root.danger ? "#ff8a8a" : root.secondary ? Theme.text : "white"; font.pixelSize: 13; font.weight: Font.DemiBold }
+        spacing: root.iconOnly || root.text === "" ? 0 : 8
+        LineIcon { visible: root.icon !== ""; name: root.icon; color: root.danger ? "#ff8585" : root.secondary || root.iconOnly || root.text === "" ? Theme.muted : "white"; size: 16 }
+        Text { visible: !root.iconOnly && root.text !== ""; text: root.text; color: root.danger ? "#ff8585" : root.secondary ? Theme.text : "white"; font.pixelSize: 13; font.weight: Font.DemiBold }
     }
-    MouseArea { anchors.fill: parent; enabled: root.enabled; cursorShape: Qt.PointingHandCursor; onClicked: root.clicked() }
+    MouseArea { id: mouse; anchors.fill: parent; enabled: root.enabled; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.clicked() }
 }

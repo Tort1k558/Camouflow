@@ -38,6 +38,11 @@ Flickable {
         profileCookiesJson.text = profilesBridge.getProfileCookiesJson(editingProfile)
         profileCookiesDialog.open()
     }
+    function openBrowserOverridesModal(profileName) {
+        editingProfile = profileName || editingProfile
+        profileBrowserSettingsJson.text = profilesBridge.getProfileBrowserSettingsJson(editingProfile, browserSettingsBridge.engine)
+        profileBrowserSettingsDialog.open()
+    }
     function openTagsModal() {
         settingsBridge.refresh()
         tagName.text = ""
@@ -52,10 +57,16 @@ Flickable {
         spacing: 22
         RowLayout {
             width: parent.width
-            PageHeader { Layout.fillWidth: true; title: "Profiles"; subtitle: "Manage your browser profiles and sessions" }
-            PrimaryButton { Layout.preferredWidth: 116; height: 42; text: "Import"; icon: "save"; secondary: true; onClicked: importDialog.open() }
-            PrimaryButton { Layout.preferredWidth: 116; height: 42; text: "Tags"; icon: "settings"; secondary: true; onClicked: root.openTagsModal() }
-            PrimaryButton { Layout.preferredWidth: 116; height: 42; text: "New Profile"; icon: "plus"; onClicked: profilesBridge.createProfile() }
+            PageHeader {
+                Layout.fillWidth: true
+                title: "Profiles"
+                subtitle: appState && appState.cloudEnabled
+                    ? "Team: " + (appState.cloudTeamName || "No team") + " / Role: " + (appState.cloudRole || "none")
+                    : "Manage your local browser profiles and sessions"
+            }
+            PrimaryButton { Layout.preferredWidth: 116; height: 42; text: "Import"; icon: "save"; secondary: true; enabled: profilesBridge.canManage; onClicked: importDialog.open() }
+            PrimaryButton { Layout.preferredWidth: 116; height: 42; text: "Tags"; icon: "settings"; secondary: true; enabled: profilesBridge.canManage; onClicked: root.openTagsModal() }
+            PrimaryButton { Layout.preferredWidth: 116; height: 42; text: "New Profile"; icon: "plus"; enabled: profilesBridge.canManage; onClicked: profilesBridge.createProfile() }
         }
         SearchBox { id: search; width: parent.width; placeholder: "Search profiles or tags..." }
         ListView {
@@ -98,6 +109,11 @@ Flickable {
                 status: model.status
                 tags: model.tags
                 running: model.running
+                lockedBy: model.lockedBy
+                lockExpires: model.lockExpires
+                canRun: profilesBridge.canRun
+                canManage: profilesBridge.canManage
+                canAdmin: profilesBridge.canAdmin
                 visible: search.text.length === 0 || (model.name + model.tags + model.proxy).toLowerCase().indexOf(search.text.toLowerCase()) >= 0
                 height: visible ? 78 : 0
                 onStartClicked: profilesBridge.startProfile(model.name)
@@ -160,6 +176,7 @@ Flickable {
                     Layout.preferredWidth: 130
                     text: "Run for tag"
                     icon: "play"
+                    enabled: scenariosBridge.canRun
                     onClicked: scenariosBridge.runForTag(runTagSelect.currentText, runScenarioSelect.currentText, parseInt(runMax.text || "1"))
                 }
                 PrimaryButton { Layout.preferredWidth: 120; text: "Variables"; icon: "settings"; secondary: true; onClicked: variablesDialog.open() }
@@ -229,6 +246,7 @@ Flickable {
                     width: 120
                     text: "Import"
                     icon: "save"
+                    enabled: profilesBridge.canManage
                     onClicked: {
                         profilesBridge.importProfiles(importLines.text, importTemplate.text, importTag.text, importProxyPool.currentText === "All pools" ? "" : importProxyPool.currentText)
                         importDialog.close()
@@ -253,7 +271,7 @@ Flickable {
             RowLayout {
                 width: parent.width - 44
                 Text { text: "Profile Tags"; color: Theme.text; font.pixelSize: 22; font.bold: true; Layout.fillWidth: true }
-                PrimaryButton { Layout.preferredWidth: 40; text: ""; icon: "plus"; onClicked: tagCreateDialog.open() }
+                PrimaryButton { Layout.preferredWidth: 40; text: ""; icon: "plus"; enabled: profilesBridge.canManage; onClicked: tagCreateDialog.open() }
             }
             Text { width: parent.width - 44; text: "Create tags here, then assign them in profile settings."; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap }
             ListView {
@@ -269,7 +287,7 @@ Flickable {
                     color: Theme.subtle
                     border.color: Theme.border
                     Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.name; color: Theme.text; font.pixelSize: 13; font.bold: true }
-                    PrimaryButton { anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter; width: 34; height: 28; text: ""; icon: "trash"; danger: true; onClicked: { settingsBridge.deleteStage(model.name); profilesBridge.refresh() } }
+                    PrimaryButton { anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter; width: 34; height: 28; text: ""; icon: "trash"; danger: true; enabled: profilesBridge.canManage; onClicked: { settingsBridge.deleteStage(model.name); profilesBridge.refresh() } }
                 }
             }
         }
@@ -290,7 +308,7 @@ Flickable {
             FormField { id: tagName; width: parent.width - 44; label: "Tag name" }
             Row {
                 spacing: 10
-                PrimaryButton { width: 110; text: "Create"; icon: "plus"; onClicked: { settingsBridge.addStage(tagName.text); profilesBridge.refresh(); tagCreateDialog.close() } }
+                PrimaryButton { width: 110; text: "Create"; icon: "plus"; enabled: profilesBridge.canManage; onClicked: { settingsBridge.addStage(tagName.text); profilesBridge.refresh(); tagCreateDialog.close() } }
                 PrimaryButton { width: 100; text: "Cancel"; secondary: true; onClicked: tagCreateDialog.close() }
             }
         }
@@ -347,15 +365,47 @@ Flickable {
                         width: 120
                         text: "Save"
                         icon: "save"
+                        enabled: profilesBridge.canManage
                         onClicked: {
                             profilesBridge.saveProfile(root.editingProfile, editName.text, editStage.text, editProxyHost.text, editProxyPort.text, editProxyUser.text, editProxyPassword.text, browserSettingsBridge.engine, editLocale.text, editTimezone.text, editUserAgent.text, editWebgl.text, editCpu.text)
                             profileDialog.close()
                         }
                     }
-                    PrimaryButton { width: 110; text: "Vars"; secondary: true; onClicked: root.openVariablesModal(root.editingProfile) }
-                    PrimaryButton { width: 120; text: "Cookies"; secondary: true; onClicked: root.openCookiesModal(root.editingProfile) }
+                    PrimaryButton { width: 110; text: "Vars"; secondary: true; enabled: profilesBridge.canManage; onClicked: root.openVariablesModal(root.editingProfile) }
+                    PrimaryButton { width: 120; text: "Cookies"; secondary: true; enabled: profilesBridge.canManage; onClicked: root.openCookiesModal(root.editingProfile) }
+                    PrimaryButton { width: 150; text: "Browser JSON"; secondary: true; enabled: profilesBridge.canManage; onClicked: root.openBrowserOverridesModal(root.editingProfile) }
                     PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
                 }
+            }
+        }
+    }
+
+    Dialog {
+        id: profileBrowserSettingsDialog
+        modal: true
+        width: Math.min(860, root.width - 80)
+        height: Math.min(660, root.height - 80)
+        anchors.centerIn: Overlay.overlay
+        padding: 0
+        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
+        contentItem: Column {
+            anchors.fill: parent
+            anchors.margins: 22
+            spacing: 14
+            Text { text: "Browser Overrides: " + root.editingProfile; color: Theme.text; font.pixelSize: 22; font.bold: true }
+            Text { text: "JSON overrides only for current engine: " + browserSettingsBridge.engine; color: Theme.muted; font.pixelSize: 12 }
+            Rectangle {
+                width: parent.width
+                height: parent.height - 122
+                radius: 14
+                color: Theme.subtle
+                border.color: Theme.border
+                TextArea { id: profileBrowserSettingsJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} wrapMode: TextArea.Wrap }
+            }
+            Row {
+                spacing: 10
+                PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: { profilesBridge.saveProfileBrowserSettingsJson(root.editingProfile, browserSettingsBridge.engine, profileBrowserSettingsJson.text); profileBrowserSettingsDialog.close() } }
+                PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileBrowserSettingsDialog.close() }
             }
         }
     }
@@ -383,7 +433,7 @@ Flickable {
             }
             Row {
                 spacing: 10
-                PrimaryButton { width: 120; text: "Save"; icon: "save"; onClicked: { profilesBridge.saveProfileVariables(root.editingProfile, profileVarsJson.text); profileVarsDialog.close() } }
+                PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: { profilesBridge.saveProfileVariables(root.editingProfile, profileVarsJson.text); profileVarsDialog.close() } }
                 PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileVarsDialog.close() }
             }
         }
@@ -414,7 +464,7 @@ Flickable {
             Row {
                 spacing: 10
                 PrimaryButton { width: 120; text: "Refresh"; secondary: true; onClicked: profileCookiesJson.text = profilesBridge.getProfileCookiesJson(root.editingProfile) }
-                PrimaryButton { width: 120; text: "Save"; icon: "save"; onClicked: { profilesBridge.saveProfileCookiesJson(root.editingProfile, profileCookiesJson.text); profileCookiesDialog.close() } }
+                PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: { profilesBridge.saveProfileCookiesJson(root.editingProfile, profileCookiesJson.text); profileCookiesDialog.close() } }
                 PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileCookiesDialog.close() }
             }
         }
@@ -477,8 +527,8 @@ Flickable {
                     }
                     Row {
                         spacing: 10
-                        PrimaryButton { width: 130; text: "Save"; icon: "save"; onClicked: settingsBridge.saveVariable(sharedKey.text, sharedType.text, sharedValue.text) }
-                        PrimaryButton { width: 110; text: "Delete"; danger: true; onClicked: settingsBridge.deleteVariable(sharedKey.text) }
+                        PrimaryButton { width: 130; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: settingsBridge.saveVariable(sharedKey.text, sharedType.text, sharedValue.text) }
+                        PrimaryButton { width: 110; text: "Delete"; danger: true; enabled: profilesBridge.canManage; onClicked: settingsBridge.deleteVariable(sharedKey.text) }
                     }
                 }
             }
@@ -487,12 +537,14 @@ Flickable {
 
     Menu {
         id: profileMenu
-        MenuItem { text: "Profile settings"; onTriggered: root.openProfileModal(root.contextProfile) }
-        MenuItem { text: "Open browser"; onTriggered: profilesBridge.startProfile(root.contextProfile) }
-        MenuItem { text: "Variables"; onTriggered: root.openVariablesModal(root.contextProfile) }
-        MenuItem { text: "Cookies"; onTriggered: root.openCookiesModal(root.contextProfile) }
-        MenuItem { text: "Run selected scenario"; onTriggered: { scenariosBridge.setRunProfile(root.contextProfile); scenariosBridge.runSelected() } }
+        MenuItem { text: "Profile settings"; enabled: profilesBridge.canManage; onTriggered: root.openProfileModal(root.contextProfile) }
+        MenuItem { text: "Open browser"; enabled: profilesBridge.canRun; onTriggered: profilesBridge.startProfile(root.contextProfile) }
+        MenuItem { text: "Force unlock"; enabled: appState && appState.cloudEnabled && profilesBridge.canManage; onTriggered: profilesBridge.forceUnlockProfile(root.contextProfile) }
+        MenuItem { text: "Variables"; enabled: profilesBridge.canManage; onTriggered: root.openVariablesModal(root.contextProfile) }
+        MenuItem { text: "Cookies"; enabled: profilesBridge.canManage; onTriggered: root.openCookiesModal(root.contextProfile) }
+        MenuItem { text: "Browser overrides"; enabled: profilesBridge.canManage; onTriggered: root.openBrowserOverridesModal(root.contextProfile) }
+        MenuItem { text: "Run selected scenario"; enabled: scenariosBridge.canRun; onTriggered: { scenariosBridge.setRunProfile(root.contextProfile); scenariosBridge.runSelected() } }
         MenuSeparator {}
-        MenuItem { text: "Delete profile"; onTriggered: profilesBridge.deleteProfile(root.contextProfile) }
+        MenuItem { text: "Delete profile"; enabled: profilesBridge.canAdmin; onTriggered: profilesBridge.deleteProfile(root.contextProfile) }
     }
 }

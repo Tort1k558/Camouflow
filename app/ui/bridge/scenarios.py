@@ -6,11 +6,13 @@ import copy
 import json
 import logging
 import threading
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.services.scenario_engine import run_scenario
+from app.services.server_client import ServerClient, ServerClientError, server_enabled
 from app.storage.db import (
     Scenario,
     db_delete_scenario,
@@ -19,7 +21,9 @@ from app.storage.db import (
     db_get_scenario_path,
     db_get_scenarios,
     db_save_scenario,
+    init_db,
 )
+from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
 
 LOGGER = logging.getLogger(__name__)
@@ -56,6 +60,7 @@ ACTION_CATEGORY_PRESETS: List[Tuple[str, List[str]]] = [
     ("Flow & logging", ["start", "end", "run_scenario", "log", "set_tag", "compare"]),
 ]
 ACTION_TO_CATEGORY = {action: category for category, actions in ACTION_CATEGORY_PRESETS for action in actions}
+MARKET_CATEGORIES = ["All", "Social", "Ads", "E-commerce", "Scraping", "Warm-up", "QA", "Utility"]
 
 
 def _deepcopy_steps(steps: object) -> List[Dict[str, Any]]:
@@ -73,6 +78,8 @@ class ScenariosBridge(QObject):
     categoryChanged = pyqtSignal()
     selectedStepChanged = pyqtSignal()
     runProfileChanged = pyqtSignal()
+    runsChanged = pyqtSignal()
+    marketChanged = pyqtSignal()
     message = pyqtSignal(str)
 
     def __init__(self, profiles_bridge=None, app_state=None, parent=None) -> None:
@@ -86,14 +93,28 @@ class ScenariosBridge(QObject):
         self._categories_model = DictListModel(["name", "count", "selected"], parent=self)
         self._templates_model = DictListModel(["title", "subtitle", "action", "category"], parent=self)
         self._actions_model = DictListModel(["label", "value", "category"], parent=self)
+        self._runs_model = DictListModel([
+            "id", "scenario", "profile", "status", "duration", "started", "error", "accent"
+        ], parent=self)
+        self._market_model = DictListModel([
+            "id", "title", "description", "category", "tags", "downloads", "author", "steps", "selected"
+        ], parent=self)
+        self._market_categories_model = DictListModel(["name", "selected"], parent=self)
         self._selected_name = ""
         self._selected_description = ""
         self._selected_category = ACTION_CATEGORY_PRESETS[0][0]
         self._selected_step_index = -1
         self._run_profile = ""
+        self._market_query = ""
+        self._market_category = "All"
+        self._market_sort = "popular"
+        self._selected_market: Dict[str, Any] = {}
+        self._market_rows: List[Dict[str, Any]] = []
+        self._server_scenario_ids: Dict[str, str] = {}
         self._current_steps: List[Dict[str, Any]] = []
         if app_state is not None:
             app_state.refreshRequested.connect(self.refresh)
+            app_state.cloudChanged.connect(self.refresh)
         self._refresh_static_models()
         self.refresh()
 
@@ -116,6 +137,18 @@ class ScenariosBridge(QObject):
     @pyqtProperty(QObject, constant=True)
     def actionsModel(self) -> QObject:  # noqa: N802
         return self._actions_model
+
+    @pyqtProperty(QObject, constant=True)
+    def runsModel(self) -> QObject:  # noqa: N802
+        return self._runs_model
+
+    @pyqtProperty(QObject, constant=True)
+    def marketModel(self) -> QObject:  # noqa: N802
+        return self._market_model
+
+    @pyqtProperty(QObject, constant=True)
+    def marketCategoriesModel(self) -> QObject:  # noqa: N802
+        return self._market_categories_model
 
     @pyqtProperty(QObject, constant=True)
     def profilesModel(self) -> QObject:  # noqa: N802
@@ -146,14 +179,123 @@ class ScenariosBridge(QObject):
     def runProfile(self) -> str:  # noqa: N802
         return self._run_profile
 
+    @pyqtProperty(str, notify=marketChanged)
+    def marketQuery(self) -> str:  # noqa: N802
+        return self._market_query
+
+    @pyqtProperty(str, notify=marketChanged)
+    def marketCategory(self) -> str:  # noqa: N802
+        return self._market_category
+
+    @pyqtProperty(str, notify=marketChanged)
+    def marketSort(self) -> str:  # noqa: N802
+        return self._market_sort
+
+    @pyqtProperty(str, notify=marketChanged)
+    def selectedMarketTitle(self) -> str:  # noqa: N802
+        return str(self._selected_market.get("title") or "")
+
+    @pyqtProperty(str, notify=marketChanged)
+    def selectedMarketDescription(self) -> str:  # noqa: N802
+        return str(self._selected_market.get("description") or "")
+
+    @pyqtProperty(str, notify=marketChanged)
+    def selectedMarketCategory(self) -> str:  # noqa: N802
+        return str(self._selected_market.get("category") or "")
+
+    @pyqtProperty(str, notify=marketChanged)
+    def selectedMarketMeta(self) -> str:  # noqa: N802
+        if not self._selected_market:
+            return "Select scenario"
+        downloads = int(self._selected_market.get("downloads") or 0)
+        steps = len(self._market_steps(self._selected_market))
+        tags = ", ".join(self._selected_market.get("tags") or [])
+        base = f"{self.selectedMarketCategory} · {steps} steps · {downloads} downloads"
+        return f"{base} · {tags}" if tags else base
+
+    @pyqtProperty(str, notify=marketChanged)
+    def selectedMarketStepsJson(self) -> str:  # noqa: N802
+        steps = self._market_steps(self._selected_market)
+        return json.dumps(steps, ensure_ascii=False, indent=2)
+
     @pyqtProperty(int, notify=modelChanged)
     def total(self) -> int:
         return self._model.rowCount()
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def canRun(self) -> bool:  # noqa: N802
+        return allows(self._app_state, "operator")
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def canManage(self) -> bool:  # noqa: N802
+        return allows(self._app_state, "manager")
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def canAdmin(self) -> bool:  # noqa: N802
+        return allows(self._app_state, "admin")
+
+    def _ensure_allowed(self, min_role: str) -> bool:
+        if allows(self._app_state, min_role):
+            return True
+        self._emit_message(deny_message(min_role))
+        return False
 
     def _emit_message(self, text: str) -> None:
         self.message.emit(text)
         if self._app_state is not None:
             self._app_state.notify(text)
+
+    def _server_client(self):
+        client = ServerClient()
+        return client if client.configured else None
+
+    def _public_client(self):
+        return ServerClient()
+
+    def _list_scenarios(self) -> List[Scenario]:
+        client = self._server_client()
+        if server_enabled() and client:
+            try:
+                rows = client.scenarios()
+            except ServerClientError as exc:
+                self._emit_message(f"Server scenarios error: {exc}")
+                return []
+            self._server_scenario_ids = {str(row.get("name") or ""): str(row.get("id") or "") for row in rows}
+            return [
+                Scenario(
+                    name=str(row.get("name") or ""),
+                    description=str(row.get("description") or ""),
+                    steps=(row.get("definition") if isinstance(row.get("definition"), dict) else {}).get("steps") or [],
+                )
+                for row in rows
+            ]
+        return db_get_scenarios()
+
+    def _get_scenario(self, name: str) -> Optional[Scenario]:
+        if server_enabled() and self._server_client():
+            return next((item for item in self._list_scenarios() if item.name == str(name or "")), None)
+        return db_get_scenario(name)
+
+    def _save_scenario(self, name: str, steps: List[Dict], description: str) -> None:
+        client = self._server_client()
+        if server_enabled() and client:
+            scenario_id = self._server_scenario_ids.get(name)
+            payload = {"name": name, "description": description or "", "definition": {"steps": steps or []}}
+            if scenario_id:
+                client.update_scenario(scenario_id, payload)
+            else:
+                client.create_scenario(payload)
+            return
+        db_save_scenario(name, steps, description)
+
+    def _delete_scenario(self, name: str) -> None:
+        client = self._server_client()
+        if server_enabled() and client:
+            scenario_id = self._server_scenario_ids.get(name)
+            if scenario_id:
+                client.delete_scenario(scenario_id)
+            return
+        db_delete_scenario(name)
 
     def _refresh_static_models(self) -> None:
         self._categories_model.set_rows([
@@ -175,10 +317,17 @@ class ScenariosBridge(QObject):
             {"label": label, "value": value, "category": ACTION_TO_CATEGORY.get(value, "Other")}
             for label, value in ACTION_OPTIONS
         ])
+        self._refresh_market_categories_model()
+
+    def _refresh_market_categories_model(self) -> None:
+        self._market_categories_model.set_rows([
+            {"name": name, "selected": name == self._market_category}
+            for name in MARKET_CATEGORIES
+        ])
 
     @pyqtSlot()
     def refresh(self) -> None:
-        scenarios = db_get_scenarios()
+        scenarios = self._list_scenarios()
         self._model.set_rows([
             {"name": s.name, "description": s.description or "", "steps": len(s.steps or [])}
             for s in scenarios
@@ -186,12 +335,108 @@ class ScenariosBridge(QObject):
         if not self._selected_name and scenarios:
             self._set_selected(scenarios[0])
         elif self._selected_name:
-            loaded = db_get_scenario(self._selected_name)
+            loaded = self._get_scenario(self._selected_name)
             if loaded:
                 self._set_selected(loaded)
             elif scenarios:
                 self._set_selected(scenarios[0])
+        self._refresh_runs()
         self.modelChanged.emit()
+
+    def _refresh_runs(self) -> None:
+        client = self._server_client()
+        if not (server_enabled() and client):
+            self._runs_model.set_rows([])
+            self.runsChanged.emit()
+            return
+        try:
+            rows = client.scenario_runs(limit=80)
+        except ServerClientError as exc:
+            self._emit_message(f"Scenario runs error: {exc}")
+            rows = []
+        self._runs_model.set_rows([self._run_row(row) for row in rows])
+        self.runsChanged.emit()
+
+    @staticmethod
+    def _run_row(row: Dict[str, Any]) -> Dict[str, Any]:
+        status = str(row.get("status") or "running").lower()
+        duration_ms = int(row.get("duration_ms") or 0)
+        if duration_ms >= 1000:
+            duration = f"{duration_ms / 1000:.1f}s"
+        elif duration_ms > 0:
+            duration = f"{duration_ms}ms"
+        else:
+            duration = "running"
+        return {
+            "id": str(row.get("id") or ""),
+            "scenario": str(row.get("scenario_name") or "Scenario"),
+            "profile": str(row.get("profile_name") or "Profile"),
+            "status": status.title(),
+            "duration": duration,
+            "started": str(row.get("started_at") or "")[:19].replace("T", " "),
+            "error": str(row.get("error") or ""),
+            "accent": "#22c55e" if status == "success" else "#ef4444" if status == "failed" else "#f59e0b",
+        }
+
+    @staticmethod
+    def _market_steps(row: Dict[str, Any]) -> List[Dict[str, Any]]:
+        definition = row.get("definition") if isinstance(row, dict) else {}
+        if not isinstance(definition, dict):
+            return []
+        steps = definition.get("steps")
+        return steps if isinstance(steps, list) else []
+
+    @staticmethod
+    def _market_row(row: Dict[str, Any], selected_id: str = "") -> Dict[str, Any]:
+        tags = row.get("tags") if isinstance(row.get("tags"), list) else []
+        steps = ScenariosBridge._market_steps(row)
+        item_id = str(row.get("id") or "")
+        return {
+            "id": item_id,
+            "title": str(row.get("title") or "Scenario"),
+            "description": str(row.get("description") or ""),
+            "category": str(row.get("category") or "Utility"),
+            "tags": ", ".join(str(tag) for tag in tags if str(tag).strip()),
+            "downloads": int(row.get("downloads") or 0),
+            "author": "Team" if row.get("team_id") else "Community",
+            "steps": len(steps),
+            "selected": bool(selected_id and item_id == selected_id),
+        }
+
+    def _rebuild_market_model(self) -> None:
+        selected_id = str(self._selected_market.get("id") or "")
+        self._market_model.set_rows([self._market_row(row, selected_id) for row in self._market_rows])
+        self._refresh_market_categories_model()
+        self.marketChanged.emit()
+
+    def _valid_market_definition(self, row: Dict[str, Any]) -> bool:
+        definition = row.get("definition") if isinstance(row, dict) else {}
+        return isinstance(definition, dict) and isinstance(definition.get("steps"), list)
+
+    def _unique_scenario_name(self, base_name: str) -> str:
+        base = str(base_name or "Scenario").strip() or "Scenario"
+        existing = {str(s.name or "").lower() for s in self._list_scenarios()}
+        name = base
+        index = 2
+        while name.lower() in existing:
+            name = f"{base} {index}"
+            index += 1
+        return name
+
+    @staticmethod
+    def _tags_from_text(text: str) -> List[str]:
+        tags: List[str] = []
+        seen: set[str] = set()
+        for chunk in str(text or "").replace("\n", ",").split(","):
+            tag = chunk.strip()
+            key = tag.lower()
+            if not tag or key in seen:
+                continue
+            tags.append(tag)
+            seen.add(key)
+            if len(tags) >= 10:
+                break
+        return tags
 
     def _set_selected(self, scenario: Scenario) -> None:
         self._selected_name = scenario.name
@@ -291,7 +536,7 @@ class ScenariosBridge(QObject):
             return
         self._ensure_start_step()
         self._ensure_step_tags()
-        db_save_scenario(self._selected_name, self._current_steps, self._selected_description)
+        self._save_scenario(self._selected_name, self._current_steps, self._selected_description)
         self._rebuild_steps_model()
         self.refresh()
 
@@ -306,21 +551,23 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot(str)
     def selectScenario(self, name: str) -> None:  # noqa: N802
-        scenario = db_get_scenario(str(name or ""))
+        scenario = self._get_scenario(str(name or ""))
         if scenario:
             self._selected_step_index = 0
             self._set_selected(scenario)
 
     @pyqtSlot()
     def createScenario(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         base = "New scenario"
-        existing = {s.name.lower() for s in db_get_scenarios()}
+        existing = {s.name.lower() for s in self._list_scenarios()}
         name = base
         index = 2
         while name.lower() in existing:
             name = f"{base} {index}"
             index += 1
-        db_save_scenario(name, [{"action": "start", "tag": "Start"}], "")
+        self._save_scenario(name, [{"action": "start", "tag": "Start"}], "")
         self._selected_name = name
         self._selected_description = ""
         self._selected_step_index = 0
@@ -329,14 +576,16 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot(str, str)
     def saveSelected(self, name: str, description: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         target = str(name or self._selected_name or "Scenario").strip() or "Scenario"
         old = self._selected_name
         self._selected_description = str(description or "")
         self._ensure_start_step()
         self._ensure_step_tags()
-        db_save_scenario(target, self._current_steps, self._selected_description)
+        self._save_scenario(target, self._current_steps, self._selected_description)
         if old and old != target:
-            db_delete_scenario(old)
+            self._delete_scenario(old)
         self._selected_name = target
         self.refresh()
         self.selectScenario(target)
@@ -344,16 +593,18 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot()
     def duplicateSelected(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         if not self._selected_name:
             return
         base = f"{self._selected_name} copy"
-        existing = {s.name.lower() for s in db_get_scenarios()}
+        existing = {s.name.lower() for s in self._list_scenarios()}
         name = base
         index = 2
         while name.lower() in existing:
             name = f"{base} {index}"
             index += 1
-        db_save_scenario(name, _deepcopy_steps(self._current_steps), self._selected_description)
+        self._save_scenario(name, _deepcopy_steps(self._current_steps), self._selected_description)
         self._selected_name = name
         self.refresh()
         self.selectScenario(name)
@@ -361,10 +612,12 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot()
     def deleteSelected(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("admin"):
+            return
         if not self._selected_name:
             return
         old = self._selected_name
-        db_delete_scenario(old)
+        self._delete_scenario(old)
         self._selected_name = ""
         self._selected_description = ""
         self._selected_step_index = -1
@@ -382,6 +635,8 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot(str)
     def addAction(self, action: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         if not self._selected_name:
             self.createScenario()
         action = str(action or "sleep")
@@ -393,6 +648,8 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot()
     def duplicateStep(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         step = self._selected_step()
         if not step:
             return
@@ -405,6 +662,8 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot()
     def deleteStep(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         idx = self._selected_step_index
         if idx <= 0 or idx >= len(self._current_steps):
             self._emit_message("Start step cannot be deleted")
@@ -421,6 +680,8 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot(int)
     def moveStep(self, delta: int) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         idx = self._selected_step_index
         target = idx + int(delta)
         if idx <= 0 or target <= 0 or idx >= len(self._current_steps) or target >= len(self._current_steps):
@@ -431,6 +692,8 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot(int, float, float)
     def setStepPosition(self, row: int, x: float, y: float) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         row = int(row)
         if 0 <= row < len(self._current_steps):
             self._current_steps[row]["_pos"] = {"x": round(float(x), 2), "y": round(float(y), 2)}
@@ -438,6 +701,8 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot(int, int, str)
     def linkSteps(self, source_row: int, target_row: int, kind: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         source_row = int(source_row)
         target_row = int(target_row)
         if not (0 <= source_row < len(self._current_steps) and 0 <= target_row < len(self._current_steps)):
@@ -454,6 +719,8 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot(int, int, str)
     def deleteLink(self, source_row: int, target_row: int, kind: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         source_row = int(source_row)
         target_row = int(target_row)
         if not (0 <= source_row < len(self._current_steps) and 0 <= target_row < len(self._current_steps)):
@@ -471,6 +738,121 @@ class ScenariosBridge(QObject):
     def setRunProfile(self, name: str) -> None:  # noqa: N802
         self._run_profile = str(name or "").strip()
         self.runProfileChanged.emit()
+
+    @pyqtSlot()
+    def refreshMarket(self) -> None:  # noqa: N802
+        client = self._public_client()
+        category = "" if self._market_category == "All" else self._market_category
+        try:
+            rows = client.market_scenarios(self._market_query, category, self._market_sort)
+        except ServerClientError as exc:
+            self._market_rows = []
+            self._selected_market = {}
+            self._rebuild_market_model()
+            self._emit_message(f"Marketplace error: {exc}")
+            return
+        self._market_rows = [row for row in rows if isinstance(row, dict)]
+        selected_id = str(self._selected_market.get("id") or "")
+        self._selected_market = next((row for row in self._market_rows if str(row.get("id") or "") == selected_id), {})
+        if not self._selected_market and self._market_rows:
+            self._selected_market = self._market_rows[0]
+        self._rebuild_market_model()
+
+    @pyqtSlot(str)
+    def searchMarket(self, query: str) -> None:  # noqa: N802
+        self._market_query = str(query or "").strip()
+        self.refreshMarket()
+
+    @pyqtSlot(str)
+    def setMarketCategory(self, category: str) -> None:  # noqa: N802
+        value = str(category or "All").strip() or "All"
+        if value not in MARKET_CATEGORIES:
+            value = "All"
+        self._market_category = value
+        self.refreshMarket()
+
+    @pyqtSlot(str)
+    def setMarketSort(self, sort: str) -> None:  # noqa: N802
+        value = str(sort or "popular").strip().lower()
+        self._market_sort = "new" if value == "new" else "popular"
+        self.refreshMarket()
+
+    @pyqtSlot(str)
+    def selectMarketScenario(self, scenario_id: str) -> None:  # noqa: N802
+        scenario_id = str(scenario_id or "")
+        selected = next((row for row in self._market_rows if str(row.get("id") or "") == scenario_id), None)
+        if selected is None:
+            try:
+                selected = self._public_client().market_scenario(scenario_id)
+            except ServerClientError as exc:
+                self._emit_message(f"Marketplace error: {exc}")
+                return
+        if isinstance(selected, dict):
+            self._selected_market = selected
+            self._rebuild_market_model()
+
+    @pyqtSlot(str)
+    def installMarketScenario(self, scenario_id: str) -> None:  # noqa: N802
+        scenario_id = str(scenario_id or self._selected_market.get("id") or "")
+        if not scenario_id:
+            self._emit_message("Select marketplace scenario first")
+            return
+        try:
+            scenario = self._public_client().download_market_scenario(scenario_id)
+        except ServerClientError as exc:
+            self._emit_message(f"Install failed: {exc}")
+            return
+        if not self._valid_market_definition(scenario):
+            self._emit_message("Invalid marketplace scenario")
+            return
+        name = self._unique_scenario_name(str(scenario.get("title") or "Scenario"))
+        description = str(scenario.get("description") or "")
+        steps = _deepcopy_steps(self._market_steps(scenario))
+        client = self._server_client()
+        try:
+            if server_enabled() and client:
+                client.create_scenario({"name": name, "description": description, "definition": {"steps": steps}})
+            else:
+                init_db()
+                db_save_scenario(name, steps, description)
+        except ServerClientError as exc:
+            self._emit_message(f"Install failed: {exc}")
+            return
+        self._selected_name = name
+        self.refresh()
+        self.selectScenario(name)
+        self.refreshMarket()
+        self._emit_message(f"Installed scenario: {name}")
+
+    @pyqtSlot(str, str, str, str)
+    def publishSelectedToMarket(self, title: str, description: str, category: str, tags: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
+        client = self._server_client()
+        if not (server_enabled() and client):
+            self._emit_message("Login to Cloud to publish")
+            return
+        if not self._selected_name:
+            self._emit_message("Select scenario first")
+            return
+        self._ensure_start_step()
+        self._ensure_step_tags()
+        payload = {
+            "title": str(title or self._selected_name).strip() or self._selected_name,
+            "description": str(description or self._selected_description or "").strip(),
+            "category": str(category or "Utility").strip() or "Utility",
+            "tags": self._tags_from_text(tags),
+            "version": 1,
+            "source_scenario_id": self._server_scenario_ids.get(self._selected_name) or None,
+            "definition": {"steps": _deepcopy_steps(self._current_steps)},
+        }
+        try:
+            client.publish_market_scenario(payload)
+        except ServerClientError as exc:
+            self._emit_message(f"Publish failed: {exc}")
+            return
+        self.refreshMarket()
+        self._emit_message(f"Published to marketplace: {payload['title']}")
 
     @pyqtSlot(str, result="QVariant")
     def selectedValue(self, key: str) -> Any:  # noqa: N802
@@ -497,6 +879,8 @@ class ScenariosBridge(QObject):
         next_error: str,
         extra_json: str,
     ) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         if self._selected_step_index < 0:
             return
         old = dict(self._current_steps[self._selected_step_index])
@@ -599,15 +983,20 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot()
     def runSelected(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("operator"):
+            return
         if not self._selected_name:
             self._emit_message("Select scenario first")
             return
         self._save_current()
-        scenario = db_get_scenario(self._selected_name)
+        scenario = self._get_scenario(self._selected_name)
         if not scenario:
             self._emit_message("Select scenario first")
             return
-        all_accounts = db_get_accounts()
+        if server_enabled() and self._profiles_bridge is not None and hasattr(self._profiles_bridge, "_server_accounts"):
+            all_accounts = self._profiles_bridge._server_accounts()
+        else:
+            all_accounts = db_get_accounts()
         if self._run_profile:
             accounts = [acc for acc in all_accounts if str(acc.get("name") or "") == self._run_profile]
         else:
@@ -617,18 +1006,27 @@ class ScenariosBridge(QObject):
             return
 
         def worker() -> None:
+            started = time.monotonic()
+            run_ids = self._create_cloud_runs(scenario, accounts)
             try:
-                processed = run_scenario(accounts, scenario, max_accounts=1, scenario_path=db_get_scenario_path(scenario.name))
+                scenario_path = None if server_enabled() else db_get_scenario_path(scenario.name)
+                processed = run_scenario(accounts, scenario, max_accounts=1, scenario_path=scenario_path)
+                self._finish_cloud_runs(run_ids, accounts, processed, started)
                 self._emit_message(f"Scenario finished: {len(processed)} profile(s)")
             except Exception as exc:
                 LOGGER.exception("Scenario run failed")
+                self._fail_cloud_runs(run_ids, started, exc)
                 self._emit_message(f"Scenario failed: {exc}")
+            finally:
+                self._refresh_runs()
 
         self._emit_message(f"Running {scenario.name}")
         threading.Thread(target=worker, daemon=True).start()
 
     @pyqtSlot(str, str, int)
     def runForTag(self, tag: str, scenario_name: str, max_accounts: int) -> None:  # noqa: N802
+        if not self._ensure_allowed("operator"):
+            return
         tag = str(tag or "").strip()
         scenario_name = str(scenario_name or self._selected_name or "").strip()
         if tag == "All tags":
@@ -636,7 +1034,7 @@ class ScenariosBridge(QObject):
         if not scenario_name:
             self._emit_message("Select scenario first")
             return
-        scenario = db_get_scenario(scenario_name)
+        scenario = self._get_scenario(scenario_name)
         if not scenario:
             self._emit_message("Scenario not found")
             return
@@ -644,7 +1042,10 @@ class ScenariosBridge(QObject):
             limit = max(1, int(max_accounts or 1))
         except Exception:
             limit = 1
-        all_accounts = db_get_accounts()
+        if server_enabled() and self._profiles_bridge is not None and hasattr(self._profiles_bridge, "_server_accounts"):
+            all_accounts = self._profiles_bridge._server_accounts()
+        else:
+            all_accounts = db_get_accounts()
         accounts = [
             acc for acc in all_accounts
             if not tag or str(acc.get("stage") or "No tag") == tag
@@ -654,17 +1055,97 @@ class ScenariosBridge(QObject):
             return
 
         def worker() -> None:
+            started = time.monotonic()
+            run_ids = self._create_cloud_runs(scenario, accounts[:limit])
             try:
+                scenario_path = None if server_enabled() else db_get_scenario_path(scenario.name)
                 processed = run_scenario(
                     accounts,
                     scenario,
                     max_accounts=limit,
-                    scenario_path=db_get_scenario_path(scenario.name),
+                    scenario_path=scenario_path,
                 )
+                self._finish_cloud_runs(run_ids, accounts[:limit], processed, started)
                 self._emit_message(f"Scenario finished: {len(processed)} profile(s)")
             except Exception as exc:
                 LOGGER.exception("Scenario batch run failed")
+                self._fail_cloud_runs(run_ids, started, exc)
                 self._emit_message(f"Scenario failed: {exc}")
+            finally:
+                self._refresh_runs()
 
         self._emit_message(f"Running {scenario.name} for {tag or 'all tags'}")
         threading.Thread(target=worker, daemon=True).start()
+
+    def _create_cloud_runs(self, scenario: Scenario, accounts: List[Dict[str, Any]]) -> Dict[str, str]:
+        client = self._server_client()
+        if not (server_enabled() and client):
+            return {}
+        scenario_id = self._server_scenario_ids.get(scenario.name, "")
+        run_ids: Dict[str, str] = {}
+        for acc in accounts:
+            profile_name = str(acc.get("name") or "")
+            try:
+                run = client.create_scenario_run({
+                    "scenario_id": scenario_id or None,
+                    "profile_id": str(acc.get("id") or "") or None,
+                    "scenario_name": scenario.name,
+                    "profile_name": profile_name,
+                    "logs": {"source": "desktop"},
+                })
+                run_ids[profile_name] = str(run.get("id") or "")
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot create scenario run: {exc}")
+        self._refresh_runs()
+        return run_ids
+
+    def _finish_cloud_runs(
+        self,
+        run_ids: Dict[str, str],
+        accounts: List[Dict[str, Any]],
+        processed: List[Dict[str, Any]],
+        started: float,
+    ) -> None:
+        if not run_ids:
+            return
+        processed_names = {str(acc.get("name") or "") for acc in processed}
+        duration_ms = int((time.monotonic() - started) * 1000)
+        client = self._server_client()
+        if not client:
+            return
+        for acc in accounts:
+            name = str(acc.get("name") or "")
+            run_id = run_ids.get(name)
+            if not run_id:
+                continue
+            status = "success" if name in processed_names else "failed"
+            error = "" if status == "success" else "Scenario returned unsuccessful result"
+            try:
+                client.update_scenario_run(run_id, {
+                    "status": status,
+                    "error": error,
+                    "duration_ms": duration_ms,
+                    "logs": {"processed": status == "success"},
+                })
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot update scenario run: {exc}")
+
+    def _fail_cloud_runs(self, run_ids: Dict[str, str], started: float, exc: Exception) -> None:
+        if not run_ids:
+            return
+        duration_ms = int((time.monotonic() - started) * 1000)
+        client = self._server_client()
+        if not client:
+            return
+        for run_id in run_ids.values():
+            if not run_id:
+                continue
+            try:
+                client.update_scenario_run(run_id, {
+                    "status": "failed",
+                    "error": str(exc),
+                    "duration_ms": duration_ms,
+                    "logs": {"exception": type(exc).__name__},
+                })
+            except ServerClientError:
+                continue

@@ -12,7 +12,12 @@ GlassCard {
     property string lastActive: "idle"
     property string status: "Stopped"
     property string tags: "#profile"
+    property string lockedBy: ""
+    property string lockExpires: ""
     property bool running: false
+    property bool canRun: true
+    property bool canManage: true
+    property bool canAdmin: true
     signal startClicked()
     signal stopClicked()
     signal settingsClicked()
@@ -38,7 +43,8 @@ GlassCard {
         Rectangle {
             Layout.preferredWidth: 42; Layout.preferredHeight: 42; radius: 14
             Layout.alignment: Qt.AlignVCenter
-            color: running ? "#0c3345" : "#25233a"
+            color: "transparent"
+            border.color: running ? Theme.success : Theme.borderSubtle
             LineIcon { anchors.centerIn: parent; name: "globe"; color: running ? Theme.success : Theme.dim; size: 22 }
         }
 
@@ -61,17 +67,26 @@ GlassCard {
             Layout.preferredWidth: 96
             Layout.alignment: Qt.AlignVCenter
             spacing: 8
-            Rectangle { width: 7; height: 7; radius: 4; color: running ? Theme.success : Theme.dim; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: root.status; color: Theme.muted; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; width: parent.width - 15 }
+            Rectangle { width: 7; height: 7; radius: 4; color: running ? Theme.success : root.lockedBy ? Theme.warning : Theme.dim; anchors.verticalCenter: parent.verticalCenter }
+            Text {
+                text: root.lockedBy && !root.running
+                    ? "Locked: " + root.lockedBy + (root.lockExpires ? " until " + root.lockExpires.slice(11, 16) : "")
+                    : root.status
+                color: Theme.muted
+                font.pixelSize: 13
+                anchors.verticalCenter: parent.verticalCenter
+                elide: Text.ElideRight
+                width: parent.width - 15
+            }
         }
 
         Row {
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             Layout.minimumWidth: 124
             spacing: 8
-            PrimaryButton { width: 36; icon: running ? "stop" : "play"; text: ""; secondary: true; onClicked: running ? root.stopClicked() : root.startClicked() }
-            PrimaryButton { width: 36; icon: "settings"; text: ""; secondary: true; onClicked: root.settingsClicked() }
-            PrimaryButton { width: 36; icon: "trash"; text: ""; danger: true; onClicked: root.deleteClicked() }
+            PrimaryButton { width: 36; icon: running ? "stop" : "play"; text: ""; secondary: true; enabled: root.canRun && (!root.lockedBy || root.running); onClicked: running ? root.stopClicked() : root.startClicked() }
+            PrimaryButton { width: 36; icon: "settings"; text: ""; secondary: true; enabled: root.canManage; onClicked: root.settingsClicked() }
+            PrimaryButton { width: 36; icon: "trash"; text: ""; danger: true; enabled: root.canAdmin; onClicked: root.deleteClicked() }
         }
     }
 }

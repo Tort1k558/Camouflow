@@ -26,10 +26,14 @@ docs-site/site/
 /logs/
 /outputs/
 /profiles/
+/settings/
 
-# App settings (contain secrets)
-/settings/accounts.json
-/settings/settings.json
+# Local databases / browser profile artifacts
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal
+parent.lock
 
 # Local env + archives
 .env

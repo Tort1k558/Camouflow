@@ -1,22 +1,22 @@
 import QtQuick
 import theme 1.0
 
-Rectangle {
+Item {
     id: root
-    color: "#b316162a"
-    border.color: Theme.border
-    border.width: 1
-    radius: Theme.radiusLg
     property alias content: content.data
     default property alias contentData: content.data
-    property int padding: 24
-    clip: true
-    layer.enabled: true
-    layer.smooth: true
-    gradient: Gradient {
-        GradientStop { position: 0; color: "#cc18172b" }
-        GradientStop { position: 1; color: "#8013131f" }
+    property int padding: 20
+    clip: false
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: 1
+        color: Theme.borderSubtle
+        opacity: 0.9
     }
+
     Item {
         id: content
         anchors.fill: parent

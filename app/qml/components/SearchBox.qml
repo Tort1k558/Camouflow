@@ -2,20 +2,18 @@ import QtQuick
 import QtQuick.Controls
 import theme 1.0
 
-Rectangle {
+Item {
     id: root
     property alias text: input.text
     property string placeholder: "Search..."
-    height: 52
-    radius: 14
-    color: "#1a1a2e"
-    border.color: Theme.border
-    LineIcon { name: "search"; color: Theme.dim; size: 18; anchors.left: parent.left; anchors.leftMargin: 18; anchors.verticalCenter: parent.verticalCenter }
+    height: 44
+
+    LineIcon { name: "search"; color: Theme.dim; size: 18; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
     TextField {
         id: input
         anchors.fill: parent
-        anchors.leftMargin: 48
-        anchors.rightMargin: 16
+        anchors.leftMargin: 30
+        anchors.rightMargin: 0
         placeholderText: root.placeholder
         color: Theme.text
         placeholderTextColor: Theme.dim
@@ -23,4 +21,5 @@ Rectangle {
         background: Item {}
         selectionColor: Theme.primary
     }
+    Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: input.activeFocus ? Theme.primary : Theme.border }
 }

@@ -22,10 +22,14 @@ from app.storage.db import (
     db_update_account,
     profile_dir_for_email,
 )
+from app.services.server_client import ServerClient, ServerClientError, server_enabled
+from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
 from app.utils.parsing import DEFAULT_ACCOUNT_TEMPLATE, parse_account_line
 
 LOGGER = logging.getLogger(__name__)
+LOCK_TTL_MINUTES = 3
+LOCK_HEARTBEAT_MS = 45_000
 
 
 class ProfilesBridge(QObject):
@@ -36,14 +40,20 @@ class ProfilesBridge(QObject):
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
         self._model = DictListModel([
-            "name", "id", "browser", "proxy", "lastActive", "status", "stage", "tags", "running"
+            "name", "id", "browser", "proxy", "lastActive", "status", "stage", "tags", "running", "lockedBy", "lockExpires"
         ], parent=self)
         self._stages_model = DictListModel(["name", "count", "selected"], parent=self)
         self._selected_stage = ""
         self._live_browsers: Dict[str, BrowserInterface] = {}
+        self._live_server_profile_ids: Dict[str, str] = {}
+        self._heartbeat_in_flight = False
         self._app_state = app_state
+        self._heartbeat_timer = QTimer(self)
+        self._heartbeat_timer.setInterval(LOCK_HEARTBEAT_MS)
+        self._heartbeat_timer.timeout.connect(self._heartbeat_server_profiles)
         if app_state is not None:
             app_state.refreshRequested.connect(self.refresh)
+            app_state.cloudChanged.connect(self.refresh)
         self.refresh()
 
     @pyqtProperty(QObject, constant=True)
@@ -66,6 +76,24 @@ class ProfilesBridge(QObject):
     def running(self) -> int:
         return len(self._live_browsers)
 
+    @pyqtProperty(bool, notify=modelChanged)
+    def canRun(self) -> bool:  # noqa: N802
+        return allows(self._app_state, "operator")
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def canManage(self) -> bool:  # noqa: N802
+        return allows(self._app_state, "manager")
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def canAdmin(self) -> bool:  # noqa: N802
+        return allows(self._app_state, "admin")
+
+    def _ensure_allowed(self, min_role: str) -> bool:
+        if allows(self._app_state, min_role):
+            return True
+        self._emit_message(deny_message(min_role))
+        return False
+
     def live_browsers(self) -> Dict[str, BrowserInterface]:
         return self._live_browsers
 
@@ -73,6 +101,69 @@ class ProfilesBridge(QObject):
         self.message.emit(text)
         if self._app_state is not None:
             self._app_state.notify(text)
+
+    def _server_client(self) -> Optional[ServerClient]:
+        client = ServerClient()
+        return client if client.configured else None
+
+    def _server_accounts(self) -> List[Dict[str, Any]]:
+        client = self._server_client()
+        if not client:
+            return []
+        proxies = {str(item.get("id") or ""): item for item in client.proxies()}
+        accounts: List[Dict[str, Any]] = []
+        for profile in client.profiles():
+            settings = profile.get("settings") if isinstance(profile.get("settings"), dict) else {}
+            acc: Dict[str, Any] = {
+                "id": str(profile.get("id") or ""),
+                "name": str(profile.get("name") or ""),
+                "stage": str(profile.get("group_name") or ""),
+                "_browser_engine": str(profile.get("browser_engine") or "camoufox"),
+                "status": str(profile.get("status") or "idle"),
+                "lock_user_id": str(profile.get("lock_user_id") or ""),
+                "lock_user_email": str(profile.get("lock_user_email") or ""),
+                "lock_expires_at": str(profile.get("lock_expires_at") or ""),
+                "camoufox_settings": settings,
+                "cloakbrowser_settings": settings,
+                "extra_fields": settings.get("variables") if isinstance(settings.get("variables"), dict) else {},
+                "_server_profile": profile,
+            }
+            proxy = proxies.get(str(profile.get("proxy_id") or ""))
+            if proxy:
+                acc.update(self._parse_proxy_value(str(proxy.get("value") or "")))
+                acc["proxy_pool"] = str(proxy.get("group_name") or "")
+                acc["_server_proxy"] = proxy
+            accounts.append(acc)
+        return accounts
+
+    def _server_account(self, name: str) -> Optional[Dict[str, Any]]:
+        target = str(name or "").strip()
+        return next((acc for acc in self._server_accounts() if str(acc.get("name") or "") == target), None)
+
+    def _server_proxy_id_from_fields(
+        self,
+        client: ServerClient,
+        *,
+        stage: str,
+        proxy_host: str,
+        proxy_port: str,
+        proxy_user: str,
+        proxy_password: str,
+    ) -> Optional[str]:
+        host = str(proxy_host or "").strip()
+        port = str(proxy_port or "").strip()
+        if not host or not port:
+            return None
+        user = str(proxy_user or "").strip()
+        password = str(proxy_password or "").strip()
+        auth = f"{user}:{password}@" if user and password else ""
+        value = f"socks5://{auth}{host}:{port}"
+        group_name = str(stage or "").strip() or "Default"
+        for proxy in client.proxies():
+            if str(proxy.get("value") or "") == value:
+                return str(proxy.get("id") or "")
+        created = client.create_proxy({"value": value, "group_name": group_name})
+        return str(created.get("id") or "") or None
 
     def _proxy_label(self, acc: Dict[str, Any]) -> str:
         host = str(acc.get("proxy_host") or "")
@@ -171,7 +262,11 @@ class ProfilesBridge(QObject):
     @pyqtSlot()
     def refresh(self) -> None:
         rows: List[Dict[str, Any]] = []
-        accounts = db_get_accounts()
+        try:
+            accounts = self._server_accounts() if server_enabled() and self._server_client() else db_get_accounts()
+        except ServerClientError as exc:
+            self._emit_message(f"Server profiles error: {exc}")
+            accounts = []
         stage_counts: Dict[str, int] = {}
         for acc in accounts:
             stage_counts[str(acc.get("stage") or "No tag")] = stage_counts.get(str(acc.get("stage") or "No tag"), 0) + 1
@@ -216,10 +311,12 @@ class ProfilesBridge(QObject):
                 "browser": browser_label,
                 "proxy": self._proxy_label(acc),
                 "lastActive": str(acc.get("last_active") or "now" if running else acc.get("last_active") or "idle"),
-                "status": "Running" if running else "Stopped",
+                "status": "Running" if running else ("Locked" if acc.get("lock_user_email") else "Stopped"),
                 "stage": stage or "No tag",
                 "tags": "  ".join(f"#{tag}" for tag in tags) if tags else "#profile",
                 "running": running,
+                "lockedBy": str(acc.get("lock_user_email") or ""),
+                "lockExpires": str(acc.get("lock_expires_at") or ""),
             })
         self._model.set_rows(rows)
         self.modelChanged.emit()
@@ -235,6 +332,23 @@ class ProfilesBridge(QObject):
 
     @pyqtSlot()
     def createProfile(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            try:
+                existing = self._server_accounts()
+                names = {str(acc.get("name") or "").lower() for acc in existing}
+                index = len(existing) + 1
+                while f"profile{index}".lower() in names:
+                    index += 1
+                name = f"profile{index}"
+                client.create_profile({"name": name, "group_name": "Default", "browser_engine": "camoufox"})
+                self._emit_message(f"Server profile {name} created")
+                self.refresh()
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot create server profile: {exc}")
+            return
         existing = db_get_accounts()
         next_index = len(existing) + 1
         names = {str(acc.get("name") or "").lower() for acc in existing}
@@ -252,6 +366,8 @@ class ProfilesBridge(QObject):
     @pyqtSlot(str, str, str, str)
     def importProfiles(self, lines: str, template: str, default_stage: str, proxy_pool: str) -> None:  # noqa: N802
         raw_lines = [line.strip() for line in str(lines or "").replace("\r", "\n").split("\n") if line.strip()]
+        if not self._ensure_allowed("manager"):
+            return
         if not raw_lines:
             self._emit_message("Profile import list is empty")
             return
@@ -260,12 +376,13 @@ class ProfilesBridge(QObject):
         proxy_pool = str(proxy_pool or "").strip()
         added = 0
         errors = 0
+        client = self._server_client() if server_enabled() else None
         for line in raw_lines:
             try:
                 parsed = parse_account_line(line, template)
                 name = str(parsed.get("name") or parsed.get("email") or "").strip()
                 if not name:
-                    name = f"profile{len(db_get_accounts()) + 1}"
+                    name = f"profile{len(self._server_accounts() if client else db_get_accounts()) + 1}"
                 account: Dict[str, Any] = {
                     "name": name,
                     "stage": default_stage,
@@ -273,8 +390,16 @@ class ProfilesBridge(QObject):
                 }
                 for key, value in parsed.items():
                     account[str(key)] = str(value)
-                account.update(self._take_proxy_from_pool(proxy_pool, name))
-                db_add_account(account)
+                if client:
+                    client.create_profile({
+                        "name": name,
+                        "group_name": default_stage or "Default",
+                        "browser_engine": "camoufox",
+                        "settings": {"variables": dict(parsed)},
+                    })
+                else:
+                    account.update(self._take_proxy_from_pool(proxy_pool, name))
+                    db_add_account(account)
                 added += 1
             except Exception:
                 LOGGER.exception("Profile import failed for line: %s", line)
@@ -285,7 +410,9 @@ class ProfilesBridge(QObject):
     @pyqtSlot(str, str, result="QVariant")
     def getProfile(self, name: str, engine: str = "camoufox") -> Dict[str, Any]:  # noqa: N802
         target = str(name or "").strip()
-        acc = next((item for item in db_get_accounts() if str(item.get("name") or "") == target), None)
+        if server_enabled() and not self._ensure_allowed("manager"):
+            return
+        acc = self._server_account(target) if server_enabled() and self._server_client() else next((item for item in db_get_accounts() if str(item.get("name") or "") == target), None)
         if not acc:
             return {}
         engine = str(engine or "camoufox").lower()
@@ -318,7 +445,9 @@ class ProfilesBridge(QObject):
     @pyqtSlot(str, result=str)
     def getProfileVariables(self, name: str) -> str:  # noqa: N802
         target = str(name or "").strip()
-        acc = next((item for item in db_get_accounts() if str(item.get("name") or "") == target), None)
+        if server_enabled() and not self._ensure_allowed("manager"):
+            return
+        acc = self._server_account(target) if server_enabled() and self._server_client() else next((item for item in db_get_accounts() if str(item.get("name") or "") == target), None)
         if not acc:
             return "{}"
         hidden = {
@@ -345,6 +474,55 @@ class ProfilesBridge(QObject):
                 variables[str(key)] = value
         return json.dumps(variables, ensure_ascii=False, indent=2)
 
+    @pyqtSlot(str, str, result=str)
+    def getProfileBrowserSettingsJson(self, name: str, engine: str) -> str:  # noqa: N802
+        target = str(name or "").strip()
+        acc = self._server_account(target) if server_enabled() and self._server_client() else next((item for item in db_get_accounts() if str(item.get("name") or "") == target), None)
+        if not acc:
+            return "{}"
+        engine = str(engine or acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox").lower()
+        key = "cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings"
+        settings = self._settings_dict(acc.get(key)) or {}
+        return json.dumps(settings, ensure_ascii=False, indent=2)
+
+    @pyqtSlot(str, str, str)
+    def saveProfileBrowserSettingsJson(self, name: str, engine: str, settings_json: str) -> None:  # noqa: N802
+        target = str(name or "").strip()
+        if not target:
+            return
+        try:
+            payload = json.loads(str(settings_json or "{}"))
+        except Exception as exc:
+            self._emit_message(f"Browser settings JSON error: {exc}")
+            return
+        if not isinstance(payload, dict):
+            self._emit_message("Browser settings must be a JSON object")
+            return
+        engine = str(engine or "camoufox").lower()
+        settings_key = "cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings"
+        client = self._server_client()
+        if server_enabled() and client:
+            acc = self._server_account(target)
+            if not acc:
+                self._emit_message("Profile not found")
+                return
+            try:
+                client.update_profile(str(acc.get("id") or ""), {"settings": payload})
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot save server browser settings: {exc}")
+                return
+            self._emit_message(f"Browser overrides saved for {target}")
+            self.refresh()
+            return
+        try:
+            updates = {settings_key: payload} if payload else {"__delete_keys__": [settings_key]}
+            db_update_account(target, updates)
+        except Exception as exc:
+            self._emit_message(f"Cannot save browser overrides: {exc}")
+            return
+        self._emit_message(f"Browser overrides saved for {target}")
+        self.refresh()
+
     @pyqtSlot(str, str)
     def saveProfileVariables(self, name: str, variables_json: str) -> None:  # noqa: N802
         target = str(name or "").strip()
@@ -357,6 +535,24 @@ class ProfilesBridge(QObject):
             return
         if not isinstance(payload, dict):
             self._emit_message("Variables must be a JSON object")
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            acc = self._server_account(target)
+            if not acc:
+                self._emit_message("Profile not found")
+                return
+            profile = acc.get("_server_profile") if isinstance(acc.get("_server_profile"), dict) else {}
+            settings = profile.get("settings") if isinstance(profile.get("settings"), dict) else {}
+            settings = dict(settings)
+            settings["variables"] = payload
+            try:
+                client.update_profile(str(acc.get("id") or ""), {"settings": settings})
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot save server variables: {exc}")
+                return
+            self._emit_message(f"Variables saved for {target}")
+            self.refresh()
             return
         updates = {"extra_fields": payload}
         for key, value in payload.items():
@@ -546,6 +742,8 @@ class ProfilesBridge(QObject):
         hardware_concurrency: str,
     ) -> None:  # noqa: N802
         original_name = str(original_name or "").strip()
+        if server_enabled() and not self._ensure_allowed("manager"):
+            return
         clean_name = str(name or "").strip()
         if not original_name or not clean_name:
             self._emit_message("Profile name is required")
@@ -591,6 +789,38 @@ class ProfilesBridge(QObject):
             updates[settings_key] = browser_settings
         else:
             updates["__delete_keys__"] = [settings_key]
+        client = self._server_client()
+        if server_enabled() and client:
+            acc = self._server_account(original_name)
+            if not acc:
+                self._emit_message("Profile not found")
+                return
+            profile = acc.get("_server_profile") if isinstance(acc.get("_server_profile"), dict) else {}
+            existing_settings = profile.get("settings") if isinstance(profile.get("settings"), dict) else {}
+            merged_settings = dict(existing_settings)
+            merged_settings.update(browser_settings)
+            try:
+                proxy_id = self._server_proxy_id_from_fields(
+                    client,
+                    stage=stage,
+                    proxy_host=proxy_host,
+                    proxy_port=proxy_port,
+                    proxy_user=proxy_user,
+                    proxy_password=proxy_password,
+                )
+                client.update_profile(str(acc.get("id") or ""), {
+                    "name": clean_name,
+                    "group_name": str(stage or "").strip() or "Default",
+                    "browser_engine": str(engine or "camoufox").lower(),
+                    "proxy_id": proxy_id,
+                    "settings": merged_settings,
+                })
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot save server profile: {exc}")
+                return
+            self._emit_message(f"Server profile {clean_name} saved")
+            self.refresh()
+            return
         try:
             db_update_account(original_name, updates)
         except Exception as exc:
@@ -602,9 +832,24 @@ class ProfilesBridge(QObject):
     @pyqtSlot(str)
     def deleteProfile(self, name: str) -> None:  # noqa: N802
         name = str(name or "").strip()
+        if server_enabled() and not self._ensure_allowed("admin"):
+            return
         if not name:
             return
         self.stopProfile(name)
+        client = self._server_client()
+        if server_enabled() and client:
+            acc = self._server_account(name)
+            if not acc:
+                return
+            try:
+                client.delete_profile(str(acc.get("id") or ""))
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot delete server profile: {exc}")
+                return
+            self._emit_message(f"Server profile {name} deleted")
+            self.refresh()
+            return
         db_delete_account(name)
         self._emit_message(f"Profile {name} deleted")
         self.refresh()
@@ -614,10 +859,23 @@ class ProfilesBridge(QObject):
         name = str(name or "").strip()
         if not name or name in self._live_browsers:
             return
-        acc = next((item for item in db_get_accounts() if str(item.get("name") or "") == name), None)
+        if server_enabled() and not self._ensure_allowed("operator"):
+            return
+        client = self._server_client() if server_enabled() else None
+        acc = self._server_account(name) if client else next((item for item in db_get_accounts() if str(item.get("name") or "") == name), None)
         if not acc:
             self._emit_message(f"Profile {name} not found")
             return
+        if client:
+            profile_id = str(acc.get("id") or "")
+            try:
+                client.lock_profile(profile_id, ttl_minutes=LOCK_TTL_MINUTES)
+                client.start_profile(profile_id)
+                self._live_server_profile_ids[name] = profile_id
+                self._ensure_heartbeat_timer()
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot lock/start server profile: {exc}")
+                return
         proxy = self._proxy_for(acc)
         engine = str(acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox")
         settings = self._settings_dict(acc.get("cloakbrowser_settings") if engine == "cloakbrowser" else acc.get("camoufox_settings"))
@@ -664,13 +922,64 @@ class ProfilesBridge(QObject):
     def _on_browser_failed(self, name: str, browser: BrowserInterface, exc: Exception) -> None:
         if self._live_browsers.get(name) is browser:
             self._live_browsers.pop(name, None)
+        self._server_release_profile(name)
         self._emit_message(f"Cannot start {name}: {exc}")
         self.refresh()
 
     def _on_browser_closed(self, name: str, browser: BrowserInterface) -> None:
         if self._live_browsers.get(name) is browser:
             self._live_browsers.pop(name, None)
+        self._server_release_profile(name)
         self._emit_message(f"Browser closed for {name}")
+        self.refresh()
+
+    def _server_release_profile(self, name: str) -> None:
+        profile_id = self._live_server_profile_ids.pop(str(name or ""), "")
+        self._ensure_heartbeat_timer()
+        client = self._server_client()
+        if not profile_id or not client:
+            return
+        try:
+            client.stop_profile(profile_id)
+            client.unlock_profile(profile_id)
+        except Exception:
+            LOGGER.exception("Cannot release server profile %s", profile_id)
+
+    def _ensure_heartbeat_timer(self) -> None:
+        if self._live_server_profile_ids:
+            if not self._heartbeat_timer.isActive():
+                self._heartbeat_timer.start()
+        elif self._heartbeat_timer.isActive():
+            self._heartbeat_timer.stop()
+
+    def _heartbeat_server_profiles(self) -> None:
+        if self._heartbeat_in_flight or not self._live_server_profile_ids:
+            self._ensure_heartbeat_timer()
+            return
+        client = self._server_client()
+        if not client:
+            self._ensure_heartbeat_timer()
+            return
+        items = dict(self._live_server_profile_ids)
+        self._heartbeat_in_flight = True
+
+        def worker() -> None:
+            failed: List[str] = []
+            for name, profile_id in items.items():
+                try:
+                    client.heartbeat_profile_lock(profile_id, ttl_minutes=LOCK_TTL_MINUTES)
+                except Exception:
+                    LOGGER.exception("Profile heartbeat failed for %s", name)
+                    failed.append(name)
+            QTimer.singleShot(0, lambda: self._on_heartbeat_finished(failed))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_heartbeat_finished(self, failed: List[str]) -> None:
+        self._heartbeat_in_flight = False
+        if failed:
+            self._emit_message("Profile lock heartbeat failed: " + ", ".join(failed))
+        self._ensure_heartbeat_timer()
         self.refresh()
 
     @pyqtSlot(str)
@@ -678,6 +987,7 @@ class ProfilesBridge(QObject):
         name = str(name or "").strip()
         browser = self._live_browsers.pop(name, None)
         if browser is None:
+            self._server_release_profile(name)
             self.refresh()
             return
 
@@ -696,8 +1006,42 @@ class ProfilesBridge(QObject):
         self._emit_message(f"Stopping browser for {name}")
         self.refresh()
 
+    @pyqtSlot(str)
+    def forceUnlockProfile(self, name: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
+        acc = self._server_account(str(name or "")) if server_enabled() and self._server_client() else None
+        if not acc:
+            self._emit_message("Server profile not found")
+            return
+        profile_id = str(acc.get("id") or "")
+        if not profile_id:
+            return
+        try:
+            ServerClient().unlock_profile(profile_id)
+        except ServerClientError as exc:
+            self._emit_message(f"Cannot unlock profile: {exc}")
+            return
+        self._live_server_profile_ids.pop(str(name or ""), None)
+        self._ensure_heartbeat_timer()
+        self._emit_message(f"Profile {name} unlocked")
+        self.refresh()
+
     @pyqtSlot(str, str)
     def setStage(self, name: str, stage: str) -> None:  # noqa: N802
+        if server_enabled() and not self._ensure_allowed("manager"):
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            acc = self._server_account(str(name))
+            if not acc:
+                return
+            try:
+                client.update_profile(str(acc.get("id") or ""), {"group_name": str(stage or "").strip() or "Default"})
+                self.refresh()
+            except Exception as exc:
+                self._emit_message(f"Cannot update server profile: {exc}")
+            return
         try:
             db_update_account(str(name), {"stage": str(stage or "")})
             self.refresh()

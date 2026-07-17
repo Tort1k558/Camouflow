@@ -9,6 +9,8 @@ from typing import Any, Dict, List
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.storage.db import db_get_setting, db_set_setting
+from app.services.server_client import ServerClient, ServerClientError, server_enabled
+from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
 
 
@@ -30,6 +32,7 @@ class ProxiesBridge(QObject):
         self._locations = 0
         if app_state is not None:
             app_state.refreshRequested.connect(self.refresh)
+            app_state.cloudChanged.connect(self.refresh)
         self.refresh()
 
     @pyqtProperty(QObject, constant=True)
@@ -60,7 +63,46 @@ class ProxiesBridge(QObject):
     def locations(self) -> int:
         return self._locations
 
+    @pyqtProperty(bool, notify=modelChanged)
+    def canRun(self) -> bool:  # noqa: N802
+        return allows(self._app_state, "operator")
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def canManage(self) -> bool:  # noqa: N802
+        return allows(self._app_state, "manager")
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def canAdmin(self) -> bool:  # noqa: N802
+        return allows(self._app_state, "admin")
+
+    def _ensure_allowed(self, min_role: str) -> bool:
+        if allows(self._app_state, min_role):
+            return True
+        self._emit_message(deny_message(min_role))
+        return False
+
     def _load(self) -> Dict[str, Dict[str, Any]]:
+        client = self._server_client()
+        if server_enabled() and client:
+            pools: Dict[str, Dict[str, Any]] = {}
+            try:
+                proxies = client.proxies()
+            except ServerClientError as exc:
+                self._emit_message(f"Server proxies error: {exc}")
+                return {}
+            for proxy in proxies:
+                group = str(proxy.get("group_name") or "Default")
+                check = proxy.get("last_check") if isinstance(proxy.get("last_check"), dict) else {}
+                if not check:
+                    check = {"status": proxy.get("status") or "active", "country": proxy.get("country") or ""}
+                pools.setdefault(group, {"proxies": []})["proxies"].append({
+                    "id": str(proxy.get("id") or ""),
+                    "name": str(proxy.get("name") or ""),
+                    "value": str(proxy.get("value") or ""),
+                    "assigned_to": str(proxy.get("assigned_profile_id") or ""),
+                    "last_check": check,
+                })
+            return pools
         try:
             data = json.loads(db_get_setting("proxy_pools") or "{}")
             return data if isinstance(data, dict) else {}
@@ -68,7 +110,24 @@ class ProxiesBridge(QObject):
             return {}
 
     def _save(self, pools: Dict[str, Dict[str, Any]]) -> None:
+        if server_enabled() and self._server_client():
+            return
         db_set_setting("proxy_pools", json.dumps(pools, ensure_ascii=False))
+
+    def _server_client(self):
+        client = ServerClient()
+        return client if client.configured else None
+
+    def _server_proxy_entry(self, pool_name: str, index: int) -> Dict[str, Any]:
+        try:
+            index = int(index)
+        except Exception:
+            return {}
+        pool = self._load().get(str(pool_name or "").strip())
+        proxies = pool.get("proxies", []) if isinstance(pool, dict) else []
+        if 0 <= index < len(proxies) and isinstance(proxies[index], dict):
+            return proxies[index]
+        return {}
 
     def _emit_message(self, text: str) -> None:
         self.message.emit(text)
@@ -145,9 +204,16 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot(str)
     def createPool(self, name: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         name = str(name or "").strip()
         if not name:
             self._emit_message("Pool name is empty")
+            return
+        if server_enabled() and self._server_client():
+            self._selected_pool = name
+            self._emit_message(f"Server proxy group {name} selected")
+            self.refresh()
             return
         pools = self._load()
         if name in pools:
@@ -161,12 +227,27 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot(str)
     def renameSelectedPool(self, name: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         old_name = self._selected_pool
         new_name = str(name or "").strip()
         if not old_name:
             self._emit_message("Select proxy pool first")
             return
         if not new_name or new_name == old_name:
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            try:
+                for entry in self._load().get(old_name, {}).get("proxies", []):
+                    if isinstance(entry, dict) and entry.get("id"):
+                        client.update_proxy(str(entry["id"]), {"group_name": new_name})
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot rename server group: {exc}")
+                return
+            self._selected_pool = new_name
+            self._emit_message(f"Server proxy group renamed to {new_name}")
+            self.refresh()
             return
         pools = self._load()
         if old_name not in pools:
@@ -183,9 +264,24 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot()
     def deleteSelectedPool(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("admin"):
+            return
         name = self._selected_pool
         if not name:
             self._emit_message("Select proxy pool first")
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            try:
+                for entry in list(self._load().get(name, {}).get("proxies", [])):
+                    if isinstance(entry, dict) and entry.get("id"):
+                        client.delete_proxy(str(entry["id"]))
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot delete server group: {exc}")
+                return
+            self._selected_pool = ""
+            self._emit_message(f"Server proxy group {name} deleted")
+            self.refresh()
             return
         pools = self._load()
         if name not in pools:
@@ -198,9 +294,26 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot(str)
     def addProxies(self, values: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         lines = [line.strip() for line in str(values or "").replace("\r", "\n").split("\n") if line.strip()]
         if not lines:
             self._emit_message("Proxy list is empty")
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            pool_name = self._selected_pool or "Default"
+            added = 0
+            for value in lines:
+                try:
+                    client.create_proxy({"value": value, "group_name": pool_name})
+                    added += 1
+                except ServerClientError as exc:
+                    self._emit_message(f"Cannot add server proxy: {exc}")
+                    break
+            self._selected_pool = pool_name
+            self._emit_message(f"Added {added} server proxies to {pool_name}")
+            self.refresh()
             return
         pools = self._load()
         pool_name = self._selected_pool or "Default"
@@ -221,9 +334,21 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot(str)
     def addProxy(self, value: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         value = str(value or "").strip()
         if not value:
             self._emit_message("Proxy value is empty")
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            try:
+                client.create_proxy({"value": value, "group_name": self._selected_pool or "Default"})
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot add server proxy: {exc}")
+                return
+            self._emit_message("Server proxy added")
+            self.refresh()
             return
         pools = self._load()
         pool_name = self._selected_pool or "Default"
@@ -258,6 +383,8 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot(str, int, str, str)
     def saveProxy(self, pool_name: str, index: int, name: str, value: str) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         pool_name = str(pool_name or "").strip()
         value = str(value or "").strip()
         if not value:
@@ -267,6 +394,20 @@ class ProxiesBridge(QObject):
             index = int(index)
         except Exception:
             self._emit_message("Proxy not found")
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            entry = self._server_proxy_entry(pool_name, index)
+            if not entry or not entry.get("id"):
+                self._emit_message("Proxy not found")
+                return
+            try:
+                client.update_proxy(str(entry["id"]), {"name": str(name or "").strip(), "value": value, "group_name": pool_name})
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot save server proxy: {exc}")
+                return
+            self._emit_message("Server proxy saved")
+            self.refresh()
             return
         pools = self._load()
         pool = pools.get(pool_name)
@@ -285,10 +426,25 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot(str, int)
     def deleteProxy(self, pool_name: str, index: int) -> None:  # noqa: N802
+        if not self._ensure_allowed("admin"):
+            return
         pool_name = str(pool_name or "").strip()
         try:
             index = int(index)
         except Exception:
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            entry = self._server_proxy_entry(pool_name, index)
+            if not entry or not entry.get("id"):
+                return
+            try:
+                client.delete_proxy(str(entry["id"]))
+            except ServerClientError as exc:
+                self._emit_message(f"Cannot delete server proxy: {exc}")
+                return
+            self._emit_message("Server proxy deleted")
+            self.refresh()
             return
         pools = self._load()
         pool = pools.get(pool_name)
@@ -321,8 +477,25 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot()
     def releaseSelected(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return
         if not self._selected:
             self._emit_message("No selected proxies")
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            released = 0
+            for pool_name, index in list(self._selected):
+                entry = self._server_proxy_entry(pool_name, index)
+                if entry and entry.get("id"):
+                    try:
+                        client.update_proxy(str(entry["id"]), {"assigned_profile_id": ""})
+                        released += 1
+                    except ServerClientError:
+                        pass
+            self._selected.clear()
+            self._emit_message(f"Released {released} server proxy(s)")
+            self.refresh()
             return
         pools = self._load()
         released = 0
@@ -358,8 +531,25 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot()
     def removeSelected(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("admin"):
+            return
         if not self._selected:
             self._emit_message("No selected proxies")
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            removed = 0
+            for pool_name, index in list(self._selected):
+                entry = self._server_proxy_entry(pool_name, index)
+                if entry and entry.get("id"):
+                    try:
+                        client.delete_proxy(str(entry["id"]))
+                        removed += 1
+                    except ServerClientError:
+                        pass
+            self._selected.clear()
+            self._emit_message(f"Removed {removed} server proxy(s)")
+            self.refresh()
             return
         pools = self._load()
         removed = 0
@@ -379,8 +569,29 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot(str, int)
     def checkProxy(self, pool_name: str, index: int) -> None:  # noqa: N802
+        if not self._ensure_allowed("operator"):
+            return
         pool_name = str(pool_name or "").strip()
         index = int(index)
+        client = self._server_client()
+        if server_enabled() and client:
+            entry = self._server_proxy_entry(pool_name, index)
+            if not entry or not entry.get("id"):
+                self._emit_message("Proxy not found")
+                return
+            self._emit_message("Server proxy check started")
+
+            def worker() -> None:
+                try:
+                    client.check_proxy(str(entry["id"]))
+                    self._emit_message("Server proxy check finished")
+                except Exception as exc:
+                    self._emit_message(f"Server proxy check failed: {exc}")
+                finally:
+                    self.refresh()
+
+            threading.Thread(target=worker, daemon=True).start()
+            return
         pools = self._load()
         pool = pools.get(pool_name)
         if not isinstance(pool, dict):
@@ -417,6 +628,34 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot()
     def checkAll(self) -> None:  # noqa: N802
+        if not self._ensure_allowed("operator"):
+            return
+        client = self._server_client()
+        if server_enabled() and client:
+            entries = [
+                entry
+                for pool in self._load().values()
+                for entry in (pool.get("proxies", []) if isinstance(pool, dict) else [])
+                if isinstance(entry, dict) and entry.get("id")
+            ]
+            if not entries:
+                self._emit_message("No server proxies to check")
+                return
+            self._emit_message("Server proxy checks started")
+
+            def worker() -> None:
+                checked = 0
+                for entry in entries:
+                    try:
+                        client.check_proxy(str(entry["id"]))
+                        checked += 1
+                    except Exception:
+                        continue
+                self._emit_message(f"Server proxy checks finished: {checked}")
+                self.refresh()
+
+            threading.Thread(target=worker, daemon=True).start()
+            return
         pools = self._load()
         for pool in pools.values():
             for entry in pool.get("proxies", []) if isinstance(pool, dict) else []:

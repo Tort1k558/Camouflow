@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls
 import theme 1.0
 import "../components"
 
@@ -18,7 +17,7 @@ Flickable {
         y: 24
         spacing: 22
 
-        PageHeader { width: parent.width; title: "Settings"; subtitle: "Application preferences" }
+        PageHeader { width: parent.width; title: "Settings"; subtitle: "Local application preferences" }
 
         SettingsSection {
             width: parent.width
@@ -41,6 +40,5 @@ Flickable {
                 }
             }
         }
-
     }
 }
