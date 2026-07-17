@@ -39,6 +39,16 @@ class ProxiesBridge(QObject):
     @staticmethod
     def _record_check(entry: Dict[str, Any], result: Dict[str, Any]) -> None:
         now = datetime.now(timezone.utc)
+        error_text = str(result.get("error") or "").lower()
+        if str(result.get("status") or "") != "ok":
+            if "auth" in error_text or "407" in error_text:
+                result["failure_type"] = "auth_failed"
+            elif "timeout" in error_text or "timed out" in error_text:
+                result["failure_type"] = "connect_timeout"
+            elif "block" in error_text or "forbidden" in error_text or "403" in error_text:
+                result["failure_type"] = "blocked"
+            else:
+                result["failure_type"] = "connection_failed"
         history = entry.get("check_history") if isinstance(entry.get("check_history"), list) else []
         record = {
             "checked_at": now.isoformat(),
