@@ -48,7 +48,10 @@ def _fingerprint_from_dict(payload: Dict) -> Fingerprint:
         pluginsData=dict(payload.get("pluginsData") or {}),
         battery=payload.get("battery"),
         videoCard=payload.get("videoCard"),
-        multimediaDevices=list(payload.get("multimediaDevices") or []),
+        # Camoufox/browserforge currently serializes this field as a mapping
+        # (speakers/micros/webcams). Converting it to a list on every reload
+        # changes the profile fingerprint between launches.
+        multimediaDevices=payload.get("multimediaDevices") or [],
         fonts=list(payload.get("fonts") or []),
         mockWebRTC=payload.get("mockWebRTC"),
         slim=payload.get("slim"),
