@@ -79,11 +79,11 @@ Flickable {
                     visible: root.bridge && root.bridge.serverEnabled
                     PrimaryButton {
                         width: 170
-                        text: "Upload local"
+                        text: "Sync Cloud"
                         icon: "save"
                         secondary: true
                         enabled: root.bridge ? root.bridge.canManageCloud : false
-                        onClicked: root.bridge.uploadLocalWorkspace()
+                        onClicked: root.bridge.syncCloudWorkspace()
                     }
                     PrimaryButton {
                         width: 34

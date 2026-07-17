@@ -6,6 +6,7 @@ import json
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
+from app.services.cloud_sync import CloudWorkspaceSync
 from app.services.server_client import (
     ServerClient,
     ServerClientError,
@@ -377,6 +378,10 @@ class UserBridge(QObject):
 
     @pyqtSlot()
     def uploadLocalWorkspace(self) -> None:  # noqa: N802
+        self.syncCloudWorkspace()
+
+    @pyqtSlot()
+    def syncCloudWorkspace(self) -> None:  # noqa: N802
         client = ServerClient()
         if not client.configured:
             self._notify("Select a cloud team first")
@@ -385,13 +390,16 @@ class UserBridge(QObject):
             self._notify("Cloud role 'manager' or higher required")
             return
         try:
-            proxies = self._upload_local_proxies(client)
-            profiles = self._upload_local_profiles(client)
-            scenarios = self._upload_local_scenarios(client)
+            result = CloudWorkspaceSync(client).sync()
         except ServerClientError as exc:
-            self._notify(f"Cloud upload failed: {exc}")
+            self._notify(f"Cloud sync failed: {exc}")
             return
-        self._notify(f"Cloud upload finished: {profiles} profile(s), {proxies} proxy(s), {scenarios} scenario(s)")
+        message = f"Cloud sync finished: {result.uploaded} uploaded, {result.downloaded} downloaded"
+        if result.conflicts:
+            message += f". Conflicts skipped: {', '.join(result.conflicts[:3])}"
+            if len(result.conflicts) > 3:
+                message += f" (+{len(result.conflicts) - 3})"
+        self._notify(message)
         if self._app_state is not None:
             self._app_state.refreshAll()
 
