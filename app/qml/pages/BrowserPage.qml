@@ -56,20 +56,6 @@ Flickable {
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: mb.clicked() }
     }
 
-    component PresetButton: Rectangle {
-        id: pb
-        property string label: "Preset"
-        property string preset: "balanced"
-        signal clicked(string preset)
-        height: 34
-        width: Math.max(118, labelText.implicitWidth + 30)
-        radius: 17
-        color: mouse.containsMouse ? "#151520" : "transparent"
-        border.color: Theme.border
-        Text { id: labelText; anchors.centerIn: parent; text: pb.label; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
-        MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: pb.clicked(pb.preset) }
-    }
-
     component EngineOption: Rectangle {
         id: eo
         property string engineId: "camoufox"
@@ -180,17 +166,6 @@ Flickable {
                 chipA: "Chromium"
                 chipB: "Launch args"
                 onClicked: browserSettingsBridge.setEngine("cloakbrowser")
-            }
-        }
-
-        GlassCard { width: parent.width; height: 62; padding: 14
-            Row { anchors.verticalCenter: parent.verticalCenter; spacing: 8
-                PresetButton { label: "Balanced"; preset: "balanced"; onClicked: function(presetName) { browserSettingsBridge.applyPreset(presetName) } }
-                PresetButton { label: "Max stealth"; preset: "maximum_stealth"; onClicked: function(presetName) { browserSettingsBridge.applyPreset(presetName) } }
-                PresetButton { label: "FingerprintJS"; preset: "fingerprintjs"; onClicked: function(presetName) { browserSettingsBridge.applyPreset(presetName) } }
-                PresetButton { label: "Cloudflare"; preset: "cloudflare"; onClicked: function(presetName) { browserSettingsBridge.applyPreset(presetName) } }
-                PresetButton { label: "Low resource"; preset: "low_resource"; onClicked: function(presetName) { browserSettingsBridge.applyPreset(presetName) } }
-                PresetButton { label: "Warm profile"; preset: "persistent_warm"; onClicked: function(presetName) { browserSettingsBridge.applyPreset(presetName) } }
             }
         }
 
