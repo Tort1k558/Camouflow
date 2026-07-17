@@ -38,21 +38,24 @@ class ProfilesBridge(QObject):
     modelChanged = pyqtSignal()
     countsChanged = pyqtSignal()
     message = pyqtSignal(str)
+    browserResourceUpdated = pyqtSignal(str, object)
 
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
         self._model = DictListModel([
-            "name", "id", "browser", "proxy", "lastActive", "status", "stage", "tags", "running", "lockedBy", "lockExpires"
+            "name", "id", "browser", "proxy", "health", "lastActive", "status", "stage", "tags", "running", "lockedBy", "lockExpires"
         ], parent=self)
         self._stages_model = DictListModel(["name", "count", "selected"], parent=self)
         self._selected_stage = ""
         self._live_browsers: Dict[str, BrowserInterface] = {}
+        self._browser_resources: Dict[str, Dict[str, Any]] = {}
         self._live_server_profile_ids: Dict[str, str] = {}
         self._heartbeat_in_flight = False
         self._app_state = app_state
         self._heartbeat_timer = QTimer(self)
         self._heartbeat_timer.setInterval(LOCK_HEARTBEAT_MS)
         self._heartbeat_timer.timeout.connect(self._heartbeat_server_profiles)
+        self.browserResourceUpdated.connect(self._on_browser_resource_updated)
         if app_state is not None:
             app_state.refreshRequested.connect(self.refresh)
             app_state.cloudChanged.connect(self.refresh)
@@ -252,6 +255,13 @@ class ProfilesBridge(QObject):
                 continue
             if str(entry.get("assigned_to") or "").strip():
                 continue
+            quarantine_until = str(entry.get("quarantine_until") or "")
+            if quarantine_until:
+                try:
+                    if datetime.datetime.fromisoformat(quarantine_until.replace("Z", "+00:00")) > datetime.datetime.now(datetime.timezone.utc):
+                        continue
+                except ValueError:
+                    entry.pop("quarantine_until", None)
             details = self._parse_proxy_value(str(entry.get("value") or ""))
             if not details:
                 continue
@@ -303,6 +313,12 @@ class ProfilesBridge(QObject):
                 if val and val not in tags:
                     tags.append(val)
             engine = str(acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox")
+            settings = self._settings_dict(acc.get("cloakbrowser_settings") if engine == "cloakbrowser" else acc.get("camoufox_settings")) or {}
+            health = acc.get("health_check") if isinstance(acc.get("health_check"), dict) else settings.get("health_check")
+            health_status = str(health.get("status") or "not checked").replace("_", " ").title() if isinstance(health, dict) else "Not checked"
+            resource = self._browser_resources.get(name) if running else None
+            if isinstance(resource, dict) and resource.get("memory_mb") is not None:
+                health_status += f" · {resource['memory_mb']} MB"
             if engine == "cloakbrowser":
                 browser_label = "CloakBrowser"
             else:
@@ -312,6 +328,7 @@ class ProfilesBridge(QObject):
                 "id": str(acc.get("id") or f"#{index:04d}"),
                 "browser": browser_label,
                 "proxy": self._proxy_label(acc),
+                "health": health_status,
                 "lastActive": str(acc.get("last_active") or "now" if running else acc.get("last_active") or "idle"),
                 "status": "Running" if running else ("Locked" if acc.get("lock_user_email") else "Stopped"),
                 "stage": stage or "No tag",
@@ -868,6 +885,10 @@ class ProfilesBridge(QObject):
         if not acc:
             self._emit_message(f"Profile {name} not found")
             return
+        storage_issue = self._profile_storage_issue(name, engine=str(acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox"))
+        if storage_issue:
+            self._emit_message(f"Cannot start {name}: profile storage is damaged ({storage_issue})")
+            return
         if client:
             profile_id = str(acc.get("id") or "")
             try:
@@ -889,6 +910,8 @@ class ProfilesBridge(QObject):
             browser_settings=settings,
         )
         browser.add_close_callback(lambda: QTimer.singleShot(0, lambda: self._on_browser_closed(name, browser)))
+        browser.add_process_exit_callback(lambda: QTimer.singleShot(0, lambda: self._on_browser_closed(name, browser)))
+        browser.add_resource_callback(lambda resource: self.browserResourceUpdated.emit(name, resource))
         self._live_browsers[name] = browser
         self._emit_message(f"Starting browser for {name}")
         self.refresh()
@@ -925,6 +948,7 @@ class ProfilesBridge(QObject):
         if self._live_browsers.get(name) is browser:
             self._live_browsers.pop(name, None)
         self._server_release_profile(name)
+        self._browser_resources.pop(name, None)
         self._emit_message(f"Cannot start {name}: {exc}")
         self.refresh()
 
@@ -932,8 +956,33 @@ class ProfilesBridge(QObject):
         if self._live_browsers.get(name) is browser:
             self._live_browsers.pop(name, None)
         self._server_release_profile(name)
+        self._browser_resources.pop(name, None)
         self._emit_message(f"Browser closed for {name}")
         self.refresh()
+
+    @pyqtSlot(str, object)
+    def _on_browser_resource_updated(self, name: str, resource: object) -> None:
+        if not isinstance(resource, dict) or self._live_browsers.get(name) is None:
+            return
+        previous = self._browser_resources.get(name, {})
+        self._browser_resources[name] = dict(resource)
+        if resource.get("over_limit") and not previous.get("over_limit"):
+            self._emit_message(f"{name} exceeds browser RAM limit: {resource.get('memory_mb')} MB / {resource.get('memory_limit_mb')} MB")
+        self.refresh()
+
+    @staticmethod
+    def _profile_storage_issue(name: str, *, engine: str) -> str:
+        profile_dir = profile_dir_for_email(name)
+        if engine == "cloakbrowser":
+            profile_dir = profile_dir / "cloakbrowser"
+        preferences = profile_dir / "Default" / "Preferences"
+        if not preferences.exists() or not preferences.is_file():
+            return ""
+        try:
+            json.loads(preferences.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            return "invalid Preferences file"
+        return ""
 
     def _server_release_profile(self, name: str) -> None:
         profile_id = self._live_server_profile_ids.pop(str(name or ""), "")
@@ -993,7 +1042,7 @@ class ProfilesBridge(QObject):
             browser = None
             try:
                 engine = str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox")
-                settings = self._settings_dict(account.get("cloakbrowser_settings") if engine == "cloakbrowser" else account.get("camoufox_settings"))
+                settings = self._settings_dict(account.get("cloakbrowser_settings") if engine == "cloakbrowser" else account.get("camoufox_settings")) or {}
                 browser = BrowserInterface(profile_name=name, proxy=self._proxy_for(account), keep_browser_open=False, browser_engine=engine, browser_settings=settings)
 
                 async def inspect() -> dict:
@@ -1027,8 +1076,17 @@ class ProfilesBridge(QObject):
                                 return String(data.ip || '');
                             } catch (_) { return ''; }
                         }""")
+                        dns_ok = await browser.page.evaluate("""async () => {
+                            try {
+                                const response = await fetch('https://cloudflare-dns.com/dns-query?name=example.com&type=A', {
+                                    headers: { Accept: 'application/dns-json' }, cache: 'no-store'
+                                });
+                                const data = await response.json();
+                                return response.ok && Array.isArray(data.Answer) && data.Answer.length > 0;
+                            } catch (_) { return false; }
+                        }""")
                         geo = browser._proxy_service.fetch_country() if browser.proxy else {}
-                        return {"signals": signals, "geo": geo, "webrtc_candidates": webrtc_candidates, "browser_ip": browser_ip}
+                        return {"signals": signals, "geo": geo, "webrtc_candidates": webrtc_candidates, "browser_ip": browser_ip, "dns_ok": bool(dns_ok)}
                     finally:
                         await browser.close(force=True)
 
@@ -1037,6 +1095,7 @@ class ProfilesBridge(QObject):
                 geo = data.get("geo") if isinstance(data.get("geo"), dict) else {}
                 webrtc_candidates = data.get("webrtc_candidates") if isinstance(data.get("webrtc_candidates"), list) else []
                 browser_ip = str(data.get("browser_ip") or "")
+                dns_ok = bool(data.get("dns_ok"))
                 previous = account.get("health_check")
                 if not isinstance(previous, dict):
                     previous = (account.get("camoufox_settings") or account.get("cloakbrowser_settings") or {}).get("health_check", {})
@@ -1057,6 +1116,26 @@ class ProfilesBridge(QObject):
                     warnings.append("Browser IP does not match the proxy geo IP")
                 if browser.proxy and any(" typ host " in str(candidate) for candidate in webrtc_candidates):
                     warnings.append("WebRTC exposes a local host candidate")
+                if not dns_ok:
+                    warnings.append("DNS resolution check failed in browser")
+                country = str(geo.get("country_code") or "").upper()
+                timezone = str(signals.get("timezone") or "")
+                locale = str(signals.get("language") or "").lower()
+                timezone_regions = {"US": "America/", "CA": "America/", "GB": "Europe/London", "DE": "Europe/", "FR": "Europe/", "RU": "Europe/", "JP": "Asia/Tokyo", "AU": "Australia/"}
+                expected_timezone = timezone_regions.get(country)
+                if expected_timezone and not timezone.startswith(expected_timezone):
+                    warnings.append("Proxy country does not match browser timezone")
+                country_locales = {"RU": "ru", "DE": "de", "FR": "fr", "JP": "ja"}
+                expected_locale = country_locales.get(country)
+                if expected_locale and not locale.startswith(expected_locale):
+                    warnings.append("Proxy country does not match browser locale")
+                expected_width = int(settings.get("window_width") or settings.get("screen_width") or 0)
+                expected_height = int(settings.get("window_height") or settings.get("screen_height") or 0)
+                screen = signals.get("screen") if isinstance(signals.get("screen"), dict) else {}
+                if expected_width and int(screen.get("width") or 0) != expected_width:
+                    warnings.append("Configured viewport width does not match browser screen")
+                if expected_height and int(screen.get("height") or 0) != expected_height:
+                    warnings.append("Configured viewport height does not match browser screen")
                 if isinstance(previous, dict) and previous.get("fingerprint") and previous.get("fingerprint") != fingerprint:
                     warnings.append("Browser fingerprint changed since the last health check")
                 geo_summary = {
@@ -1064,24 +1143,44 @@ class ProfilesBridge(QObject):
                     "city": str(geo.get("city") or ""), "asn": str((geo.get("connection") or {}).get("asn") if isinstance(geo.get("connection"), dict) else geo.get("asn") or ""),
                 }
                 status = "blocked" if browser.proxy and not geo.get("country_code") else "warning" if warnings else "ready"
-                report = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": status, "warnings": warnings, "geo": geo_summary, "browser_ip": browser_ip, "signals": signals, "webrtc_candidates": webrtc_candidates, "fingerprint": fingerprint}
-                if server_enabled() and self._server_client():
-                    remote = self._server_account(name)
-                    if remote:
-                        remote_settings = dict(remote.get("camoufox_settings") or remote.get("cloakbrowser_settings") or {})
-                        remote_settings["health_check"] = report
-                        self._server_client().update_profile(str(remote.get("id") or ""), {"settings": remote_settings})
-                else:
-                    db_update_account(name, {"health_check": report})
+                history = previous.get("history") if isinstance(previous, dict) and isinstance(previous.get("history"), list) else []
+                snapshot = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "fingerprint": fingerprint, "status": status}
+                report = {"checked_at": snapshot["checked_at"], "status": status, "warnings": warnings, "geo": geo_summary, "browser_ip": browser_ip, "dns_ok": dns_ok, "signals": signals, "webrtc_candidates": webrtc_candidates, "fingerprint": fingerprint, "history": (history + [snapshot])[-10:]}
+                self._persist_health_report(name, account, engine, report)
                 status = "ready" if not warnings else f"warning: {'; '.join(warnings)}"
                 self._emit_message(f"Health check {name}: {status}")
             except Exception as exc:
                 LOGGER.exception("Health check failed for %s", name)
+                failure = {
+                    "checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "status": "blocked",
+                    "warnings": [f"Health check could not start: {exc}"],
+                    "geo": {},
+                    "browser_ip": "",
+                    "signals": {},
+                    "webrtc_candidates": [],
+                    "fingerprint": "",
+                }
+                try:
+                    self._persist_health_report(name, account, str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox"), failure)
+                except Exception:
+                    LOGGER.exception("Cannot persist failed health check for %s", name)
                 self._emit_message(f"Health check failed for {name}: {exc}")
             finally:
                 QTimer.singleShot(0, self.refresh)
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _persist_health_report(self, name: str, account: Dict[str, Any], engine: str, report: Dict[str, Any]) -> None:
+        if server_enabled() and self._server_client():
+            remote = self._server_account(name)
+            if remote:
+                key = "cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings"
+                remote_settings = dict(remote.get(key) or {})
+                remote_settings["health_check"] = report
+                self._server_client().update_profile(str(remote.get("id") or ""), {"settings": remote_settings})
+            return
+        db_update_account(name, {"health_check": report})
 
     def _on_heartbeat_finished(self, failed: List[str]) -> None:
         self._heartbeat_in_flight = False

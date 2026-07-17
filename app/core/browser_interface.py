@@ -403,6 +403,9 @@ class BrowserInterface:
     def add_close_callback(self, callback: Callable[[], None]) -> None:
         self._lifecycle.add_close_callback(callback)
 
+    def add_resource_callback(self, callback: Callable[[Dict[str, Any]], None]) -> None:
+        self._lifecycle.add_resource_callback(callback)
+
     def add_ready_callback(self, callback: Callable[[], None]) -> None:
         self._lifecycle.add_ready_callback(callback)
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
@@ -24,6 +25,8 @@ ONBOARDING_COMPLETED_KEY = "onboarding_completed"
 class UserBridge(QObject):
     changed = pyqtSignal()
     message = pyqtSignal(str)
+    cloudRefreshFinished = pyqtSignal(object, str)
+    cloudSyncFinished = pyqtSignal(object, str)
 
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
@@ -42,6 +45,8 @@ class UserBridge(QObject):
         self._is_superadmin = False
         self._server_role = ""
         self._status = "Local mode"
+        self.cloudRefreshFinished.connect(self._apply_cloud_refresh)
+        self.cloudSyncFinished.connect(self._apply_cloud_sync)
         if app_state is not None:
             app_state.refreshRequested.connect(self.refresh)
         self.refresh()
@@ -149,10 +154,26 @@ class UserBridge(QObject):
             self._sync_app_state(False)
             self.changed.emit()
             return
-        try:
-            context = ServerClient(session).context()
-        except ServerClientError as exc:
-            self._status = f"Server unavailable: {exc}"
+        self._status = f"Connecting to {session.url}…"
+        self.changed.emit()
+
+        def worker() -> None:
+            try:
+                client = ServerClient(session)
+                context = client.request_async("GET", "/api/v1/auth/context").result()
+                members = client.request_async("GET", f"/api/v1/teams/{client.session.team_id}/members").result() if client.configured else []
+                audit_rows = client.request_async("GET", f"/api/v1/teams/{client.session.team_id}/audit-log?limit=80").result() if client.configured else []
+                self.cloudRefreshFinished.emit({"context": context, "members": members, "audit": audit_rows}, "")
+            except ServerClientError as exc:
+                self.cloudRefreshFinished.emit({}, str(exc))
+
+        threading.Thread(target=worker, daemon=True, name="camouflow-cloud-refresh").start()
+
+    @pyqtSlot(object, str)
+    def _apply_cloud_refresh(self, payload: object, error: str) -> None:
+        session = get_server_session()
+        if error:
+            self._status = f"Server unavailable: {error}"
             self._server_role = ""
             self._teams_model.set_rows([])
             self._invites_model.set_rows([])
@@ -161,6 +182,8 @@ class UserBridge(QObject):
             self._sync_app_state(False)
             self.changed.emit()
             return
+        data = payload if isinstance(payload, dict) else {}
+        context = data.get("context") if isinstance(data.get("context"), dict) else {}
         user = context.get("user") or {}
         self._email = str(user.get("email") or session.email)
         self._name = str(user.get("full_name") or "")
@@ -218,8 +241,26 @@ class UserBridge(QObject):
             }
             for invite in list(context.get("pending_invites") or [])
         ])
-        self._refresh_members()
-        self._refresh_audit()
+        members = data.get("members") if isinstance(data.get("members"), list) else []
+        self._members_model.set_rows([
+            {
+                "id": str(member.get("id") or ""),
+                "email": str(member.get("email") or ""),
+                "full_name": str(member.get("full_name") or ""),
+                "role": str(member.get("role") or ""),
+            }
+            for member in members if isinstance(member, dict)
+        ])
+        audit_rows = data.get("audit") if isinstance(data.get("audit"), list) else []
+        self._audit_model.set_rows([
+            {
+                "time": str(row.get("created_at") or "")[:19].replace("T", " "),
+                "action": str(row.get("action") or ""),
+                "entity": " ".join(part for part in [str(row.get("entity_type") or ""), str(row.get("entity_id") or "")[:8]] if part),
+                "details": json.dumps(row.get("payload") or {}, ensure_ascii=False),
+            }
+            for row in audit_rows if isinstance(row, dict)
+        ])
         self._sync_app_state(bool(selected and self._server_role))
         self.changed.emit()
 
@@ -389,16 +430,31 @@ class UserBridge(QObject):
         if not self.canManageCloud:
             self._notify("Cloud role 'manager' or higher required")
             return
-        try:
-            result = CloudWorkspaceSync(client).sync()
-        except ServerClientError as exc:
-            self._notify(f"Cloud sync failed: {exc}")
+        self._notify("Cloud sync started")
+
+        def worker() -> None:
+            try:
+                result = CloudWorkspaceSync(client).sync()
+                self.cloudSyncFinished.emit({"uploaded": result.uploaded, "downloaded": result.downloaded, "conflicts": result.conflicts}, "")
+            except ServerClientError as exc:
+                self.cloudSyncFinished.emit({}, str(exc))
+
+        threading.Thread(target=worker, daemon=True, name="camouflow-cloud-sync").start()
+
+    @pyqtSlot(object, str)
+    def _apply_cloud_sync(self, payload: object, error: str) -> None:
+        if error:
+            self._notify(f"Cloud sync failed: {error}")
             return
-        message = f"Cloud sync finished: {result.uploaded} uploaded, {result.downloaded} downloaded"
-        if result.conflicts:
-            message += f". Conflicts skipped: {', '.join(result.conflicts[:3])}"
-            if len(result.conflicts) > 3:
-                message += f" (+{len(result.conflicts) - 3})"
+        result = payload if isinstance(payload, dict) else {}
+        uploaded = int(result.get("uploaded") or 0)
+        downloaded = int(result.get("downloaded") or 0)
+        conflicts = result.get("conflicts") if isinstance(result.get("conflicts"), list) else []
+        message = f"Cloud sync finished: {uploaded} uploaded, {downloaded} downloaded"
+        if conflicts:
+            message += f". Conflicts skipped: {', '.join(str(item) for item in conflicts[:3])}"
+            if len(conflicts) > 3:
+                message += f" (+{len(conflicts) - 3})"
         self._notify(message)
         if self._app_state is not None:
             self._app_state.refreshAll()

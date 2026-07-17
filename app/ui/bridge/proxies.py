@@ -47,6 +47,8 @@ class ProxiesBridge(QObject):
                 result["failure_type"] = "connect_timeout"
             elif "block" in error_text or "forbidden" in error_text or "403" in error_text:
                 result["failure_type"] = "blocked"
+            elif "geo" in error_text or "country mismatch" in error_text or "location mismatch" in error_text:
+                result["failure_type"] = "geo_mismatch"
             else:
                 result["failure_type"] = "connection_failed"
         history = entry.get("check_history") if isinstance(entry.get("check_history"), list) else []
@@ -57,6 +59,7 @@ class ProxiesBridge(QObject):
             "ip": str(result.get("ip") or ""),
             "country": str(result.get("country") or ""),
             "error": str(result.get("error") or ""),
+            "failure_type": str(result.get("failure_type") or ""),
         }
         history.append(record)
         history = history[-20:]
@@ -209,7 +212,8 @@ class ProxiesBridge(QObject):
                     continue
                 check = entry.get("last_check") if isinstance(entry, dict) else {}
                 status_raw = str(check.get("status") or "active").lower() if isinstance(check, dict) else "active"
-                status = "Active" if status_raw in {"ok", "active"} else "Checking" if status_raw == "checking" else "Failed"
+                quarantined = isinstance(entry, dict) and self._is_quarantined(entry)
+                status = "Quarantined" if quarantined else ("Active" if status_raw in {"ok", "active"} else "Checking" if status_raw == "checking" else "Failed")
                 if status == "Active":
                     active += 1
                 elif status == "Checking":
@@ -230,7 +234,7 @@ class ProxiesBridge(QObject):
                     "type": type_label,
                     "latency": f"{latency}ms" if isinstance(latency, int) else "?",
                     "status": status,
-                    "accent": "#06b6d4" if status == "Active" else "#f59e0b" if status == "Checking" else "#ef4444",
+                    "accent": "#06b6d4" if status == "Active" else "#f59e0b" if status in {"Checking", "Quarantined"} else "#ef4444",
                     "index": pool_index,
                     "selected": (pool_name, pool_index) in self._selected,
                 })

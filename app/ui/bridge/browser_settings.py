@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import importlib.metadata
 import importlib.util
+import json
+import re
+import threading
+import urllib.request
+from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
@@ -11,6 +16,7 @@ from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 from app.storage.db import (
     CAMOUFOX_DEFAULTS,
     CLOAKBROWSER_DEFAULTS,
+    PROFILES_DIR,
     db_get_browser_engine,
     db_get_camoufox_defaults,
     db_get_cloakbrowser_defaults,
@@ -58,6 +64,7 @@ _DICT_KEYS = {"extra_http_headers"}
 class BrowserSettingsBridge(QObject):
     changed = pyqtSignal()
     message = pyqtSignal(str)
+    engineUpdateChecked = pyqtSignal(str)
 
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
@@ -66,6 +73,7 @@ class BrowserSettingsBridge(QObject):
         self._camoufox = db_get_camoufox_defaults()
         self._cloak = db_get_cloakbrowser_defaults()
         self._compatibility_report = "Not checked"
+        self.engineUpdateChecked.connect(self._apply_engine_update_check)
         if app_state is not None:
             app_state.refreshRequested.connect(self.reload)
 
@@ -86,10 +94,75 @@ class BrowserSettingsBridge(QObject):
                 version = importlib.metadata.version(package)
             except importlib.metadata.PackageNotFoundError:
                 version = "local build"
+            expected = self._pinned_engine_version(package)
+            version_state = "pinned" if expected and expected in version else (f"expected {expected}" if expected else "version not pinned")
             mode = "persistent profile enabled" if self.persistentContext else "ephemeral profile"
-            self._compatibility_report = f"Ready: {package} {version}; {mode}"
+            damaged = self._damaged_profile_storages()
+            storage_state = "storage OK" if not damaged else f"{damaged} damaged profile storage(s)"
+            prerelease = "beta" in expected.lower() or "alpha" in expected.lower() or "rc" in expected.lower()
+            status = "Ready" if not damaged and not prerelease and (not expected or expected in version) else "Warning"
+            stability = "pre-release pinned" if prerelease else "stable pin"
+            self._compatibility_report = f"{status}: {package} {version} ({version_state}; {stability}); {mode}; {storage_state}"
         self.changed.emit()
         self._emit_message(self._compatibility_report)
+
+    @pyqtSlot()
+    def checkEngineUpdate(self) -> None:  # noqa: N802
+        if self._engine != "camoufox":
+            self._emit_message("Engine update check is available for Camoufox only")
+            return
+        self._compatibility_report = "Checking Camoufox updates…"
+        self.changed.emit()
+
+        def worker() -> None:
+            try:
+                request = urllib.request.Request(
+                    "https://api.github.com/repos/daijro/camoufox/releases/latest",
+                    headers={"Accept": "application/vnd.github+json", "User-Agent": "CamouFlow"},
+                )
+                with urllib.request.urlopen(request, timeout=10) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                latest = str(payload.get("tag_name") or "")
+                self.engineUpdateChecked.emit(latest or "Update check returned no release tag")
+            except Exception as exc:
+                self.engineUpdateChecked.emit(f"Update check failed: {exc}")
+
+        threading.Thread(target=worker, daemon=True, name="camouflow-engine-update").start()
+
+    @pyqtSlot(str)
+    def _apply_engine_update_check(self, latest: str) -> None:
+        pinned = self._pinned_engine_version("camoufox")
+        if latest.startswith("Update check failed") or latest.startswith("Update check returned"):
+            self._compatibility_report = latest
+        elif latest == pinned:
+            self._compatibility_report = f"Camoufox is up to date ({pinned})"
+        else:
+            self._compatibility_report = f"Camoufox update available: {latest} (pinned: {pinned or 'not pinned'})"
+        self.changed.emit()
+        self._emit_message(self._compatibility_report)
+
+    @staticmethod
+    def _pinned_engine_version(package: str) -> str:
+        try:
+            requirements = (Path(__file__).resolve().parents[3] / "requirements.txt").read_text(encoding="utf-8")
+        except OSError:
+            return ""
+        match = re.search(rf"^{re.escape(package)}\s*@.*?@([^#\s]+)", requirements, flags=re.MULTILINE | re.IGNORECASE)
+        return str(match.group(1) if match else "")
+
+    @staticmethod
+    def _damaged_profile_storages() -> int:
+        damaged = 0
+        try:
+            candidates = PROFILES_DIR.glob("**/Preferences")
+        except OSError:
+            return 0
+        for preferences in candidates:
+            try:
+                json.loads(preferences.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                damaged += 1
+        return damaged
 
     def _emit_message(self, text: str) -> None:
         self.message.emit(text)

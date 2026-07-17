@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -18,7 +20,7 @@ SERVER_REFRESH_TOKEN_KEY = "server_refresh_token"
 SERVER_TEAM_ID_KEY = "server_team_id"
 SERVER_EMAIL_KEY = "server_email"
 DEFAULT_SERVER_URL = "http://localhost"
-_REQUEST_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="camouflow-cloud")
+_REQUEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="camouflow-cloud")
 
 
 class ServerClientError(RuntimeError):
@@ -112,26 +114,33 @@ class ServerClient:
             headers["Content-Type"] = "application/json"
         if auth and self.session.token:
             headers["Authorization"] = f"Bearer {self.session.token}"
-        req = urllib.request.Request(self._url(path), data=data, headers=headers, method=method.upper())
-        try:
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                raw = resp.read()
-                if not raw:
-                    return None
-                return json.loads(raw.decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="ignore")
-            if exc.code == 401 and auth and retry_refresh and self.session.refresh_token:
-                self.refresh_token()
-                return self.request(method, path, payload, auth=auth, retry_refresh=False)
+        method = method.upper()
+        attempts = 2 if method == "GET" else 1
+        for attempt in range(attempts):
+            req = urllib.request.Request(self._url(path), data=data, headers=headers, method=method)
             try:
-                parsed = json.loads(detail)
-                detail = str(parsed.get("detail") or detail)
-            except Exception:
-                pass
-            raise ServerClientError(f"{exc.code}: {detail}") from exc
-        except Exception as exc:
-            raise ServerClientError(str(exc)) from exc
+                with urllib.request.urlopen(req, timeout=20) as resp:
+                    raw = resp.read()
+                    if not raw:
+                        return None
+                    return json.loads(raw.decode("utf-8"))
+            except urllib.error.HTTPError as exc:
+                if exc.code == 401 and auth and retry_refresh and self.session.refresh_token:
+                    self.refresh_token()
+                    return self.request(method, path, payload, auth=auth, retry_refresh=False)
+                detail = exc.read().decode("utf-8", errors="ignore")
+                try:
+                    parsed = json.loads(detail)
+                    detail = str(parsed.get("detail") or detail)
+                except Exception:
+                    pass
+                raise ServerClientError(f"{exc.code}: {detail}") from exc
+            except Exception as exc:
+                if attempt + 1 < attempts:
+                    time.sleep(0.5 * (attempt + 1))
+                    continue
+                raise ServerClientError(str(exc)) from exc
+        raise ServerClientError("Cloud request failed")
 
     def request_async(
         self,
@@ -141,8 +150,19 @@ class ServerClient:
         *,
         auth: bool = True,
     ) -> Future:
-        """Run a Cloud request off the QML thread; callers consume the Future in their bridge."""
-        return _REQUEST_EXECUTOR.submit(self.request, method, path, payload, auth=auth)
+        """Run a Cloud request off the QML thread with retries only for idempotent GET requests."""
+        return _REQUEST_EXECUTOR.submit(self._request_async_safe, method, path, payload, auth)
+
+    def _request_async_safe(self, method: str, path: str, payload: Optional[Dict[str, Any]], auth: bool) -> Any:
+        attempts = 2 if str(method).upper() == "GET" else 0
+        for attempt in range(attempts + 1):
+            try:
+                return self.request(method, path, payload, auth=auth)
+            except ServerClientError:
+                if attempt >= attempts:
+                    raise
+                time.sleep(0.5 * (2 ** attempt))
+        return None
 
     def login(self, url: str, email: str, password: str) -> Dict[str, Any]:
         self.session = ServerSession(enabled=True, url=normalize_server_url(url), token="", refresh_token="", team_id="", email=email)
@@ -311,18 +331,6 @@ class ServerClient:
 
     def license(self) -> Dict[str, Any]:
         return dict(self.request("GET", f"/api/v1/teams/{self.session.team_id}/license") or {})
-
-    def billing(self) -> Dict[str, Any]:
-        return dict(self.request("GET", f"/api/v1/teams/{self.session.team_id}/billing") or {})
-
-    def billing_plans(self) -> List[Dict[str, Any]]:
-        return list(self.request("GET", f"/api/v1/teams/{self.session.team_id}/billing/plans") or [])
-
-    def create_checkout(self, plan: str) -> Dict[str, Any]:
-        return dict(self.request("POST", f"/api/v1/teams/{self.session.team_id}/billing/checkout", {"plan": str(plan or "")}) or {})
-
-    def billing_portal(self) -> Dict[str, Any]:
-        return dict(self.request("GET", f"/api/v1/teams/{self.session.team_id}/billing/portal") or {})
 
     def export_backup(self) -> Dict[str, Any]:
         return dict(self.request("GET", "/api/v1/backups/export") or {})

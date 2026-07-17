@@ -9,7 +9,7 @@ Rectangle {
     color: Theme.sidebar
     border.color: Theme.borderSubtle
     property var pages: [
-        ["Dashboard", "dashboard"], ["User", "user"], ["Billing", "credit-card"], ["Profiles", "user"], ["Browser", "globe"], ["Proxies", "network"],
+        ["Dashboard", "dashboard"], ["User", "user"], ["Profiles", "user"], ["Browser", "globe"], ["Proxies", "network"],
         ["Scenarios", "workflow"], ["Logs", "logs"], ["Settings", "settings"]
     ]
     Column {

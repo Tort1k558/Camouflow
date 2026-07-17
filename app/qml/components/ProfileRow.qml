@@ -9,6 +9,7 @@ GlassCard {
     property string ident: "#0000"
     property string browser: "Camoufox"
     property string proxy: "None"
+    property string health: "Not checked"
     property string lastActive: "idle"
     property string status: "Stopped"
     property string tags: "#profile"
@@ -60,6 +61,7 @@ GlassCard {
 
         InfoColumn { title: "Browser"; value: root.browser; Layout.minimumWidth: 72; Layout.preferredWidth: 100 }
         InfoColumn { title: "Proxy"; value: root.proxy; Layout.fillWidth: true; Layout.minimumWidth: 90; Layout.preferredWidth: 180 }
+        InfoColumn { title: "Health"; value: root.health; Layout.minimumWidth: 72; Layout.preferredWidth: 86 }
         InfoColumn { title: "Last Active"; value: root.lastActive; Layout.minimumWidth: 68; Layout.preferredWidth: 90 }
 
         Row {

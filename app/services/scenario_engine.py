@@ -737,9 +737,9 @@ class ScenarioExecutor(
     ) -> str:
         safe_scenario = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(scenario_name or "scenario"))[:80]
         safe_profile = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(getattr(self, "profile_name", "profile") or "profile"))[:80]
-        artifact_dir = OUTPUTS_DIR / "runs" / safe_scenario / safe_profile / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        artifact_dir = self._run_artifact_dir or (OUTPUTS_DIR / "runs" / safe_scenario / safe_profile / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
         artifact_dir.mkdir(parents=True, exist_ok=True)
-        metadata = {"scenario": scenario_name or "", "profile": getattr(self, "profile_name", ""), "step": (step_index + 1) if step_index is not None else None, "action": action, "reason": reason}
+        metadata = {"scenario": scenario_name or "", "profile": getattr(self, "profile_name", ""), "step": (step_index + 1) if step_index is not None else None, "action": action, "reason": reason, "failure_type": self._classify_failure(reason, action)}
         try:
             (artifact_dir / "error.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception:
@@ -759,6 +759,21 @@ class ScenarioExecutor(
             except Exception:
                 pass
         return str(artifact_dir)
+
+    @staticmethod
+    def _classify_failure(reason: str, action: str) -> str:
+        value = str(reason or "").lower()
+        if "timeout" in value or "timed out" in value:
+            return "timeout"
+        if "selector" in value or "locator" in value or "not found" in value:
+            return "selector_changed"
+        if any(token in value for token in ("proxy", "socks", "tunnel", "connection refused", "net::err_proxy")):
+            return "proxy_failure"
+        if any(token in value for token in ("captcha", "bot check", "access denied", "challenge")):
+            return "bot_check"
+        if any(token in value for token in ("browser has been closed", "target closed", "crash", "disconnected")):
+            return "browser_crash"
+        return "action_failed"
 
     async def start_run_capture(self) -> None:
         safe_scenario = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(self.scenario.name or "scenario"))[:80]
@@ -806,11 +821,21 @@ class ScenarioExecutor(
                 return str(reason)
             if exc is None:
                 return "unknown reason"
+            details = str(exc)
             if isinstance(exc, PlaywrightTimeoutError):
-                return f"Timeout in action {step.get('action')}: {exc}"
+                return f"timeout: {details}"
+            lowered = details.lower()
+            if any(token in lowered for token in ("selector", "strict mode violation", "not found", "detached")):
+                return f"selector_changed: {details}"
+            if any(token in lowered for token in ("proxy", "err_proxy", "tunnel connection", "socks")):
+                return f"proxy_failure: {details}"
+            if any(token in lowered for token in ("captcha", "challenge", "access denied", "cf-chl", "bot check")):
+                return f"bot_check: {details}"
+            if any(token in lowered for token in ("browser has been closed", "target page, context or browser has been closed", "crash")):
+                return f"browser_crash: {details}"
             if isinstance(exc, PlaywrightError):
-                return f"Playwright error in {step.get('action')}: {exc}"
-            return f"{exc}"
+                return f"playwright_error: {details}"
+            return f"action_error: {details}"
 
         formatted = _format_reason()
         artifacts = await self._capture_failure_artifacts(

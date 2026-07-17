@@ -36,7 +36,6 @@ ApplicationWindow {
                     sourceComponent: {
                         if (!appState) return dashboardPage
                         if (appState.currentPage === "User") return userPage
-                        if (appState.currentPage === "Billing") return billingPage
                         if (appState.currentPage === "Profiles") return profilesPage
                         if (appState.currentPage === "Browser") return browserPage
                         if (appState.currentPage === "Proxies") return proxiesPage
@@ -181,7 +180,6 @@ ApplicationWindow {
 
     Component { id: dashboardPage; DashboardPage {} }
     Component { id: userPage; UserPage {} }
-    Component { id: billingPage; BillingPage {} }
     Component { id: profilesPage; ProfilesPage {} }
     Component { id: browserPage; BrowserPage {} }
     Component { id: proxiesPage; ProxiesPage {} }

@@ -105,6 +105,7 @@ Flickable {
                 ident: model.id
                 browser: model.browser
                 proxy: model.proxy
+                health: model.health
                 lastActive: model.lastActive
                 status: model.status
                 tags: model.tags

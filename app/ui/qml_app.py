@@ -13,7 +13,6 @@ from PyQt6.QtGui import QGuiApplication, QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 
 from app.ui.bridge.app_state import AppState
-from app.ui.bridge.billing import BillingBridge
 from app.ui.bridge.browser_settings import BrowserSettingsBridge
 from app.ui.bridge.dashboard import DashboardBridge
 from app.ui.bridge.logs import LogsBridge
@@ -51,7 +50,6 @@ class QmlApplication:
         self.settings = SettingsBridge(self.state)
         self.user = UserBridge(self.state)
         self.dashboard = DashboardBridge(self.profiles, self.state)
-        self.billing = BillingBridge(self.state)
         self._connect_messages()
         self._install_context()
         self._install_icon()
@@ -74,7 +72,6 @@ class QmlApplication:
             self.browser_settings,
             self.settings,
             self.user,
-            self.billing,
         ):
             bridge.message.connect(self.logs.append)
 
@@ -98,8 +95,6 @@ class QmlApplication:
         context.setContextProperty("settingsBridge", self.settings)
         context.setContextProperty("UserBridge", self.user)
         context.setContextProperty("userBridge", self.user)
-        context.setContextProperty("BillingBridge", self.billing)
-        context.setContextProperty("billingBridge", self.billing)
         context.setContextProperty("AppRoot", str(self._resource_path(".")))
         self.engine.addImportPath(str(self.root_dir))
 
