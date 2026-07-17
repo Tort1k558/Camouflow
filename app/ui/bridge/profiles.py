@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import hashlib
 import json
 import logging
 import threading
@@ -1016,6 +1017,13 @@ class ProfilesBridge(QObject):
                 data = asyncio.run(inspect())
                 signals = data.get("signals") if isinstance(data.get("signals"), dict) else {}
                 geo = data.get("geo") if isinstance(data.get("geo"), dict) else {}
+                previous = account.get("health_check")
+                if not isinstance(previous, dict):
+                    previous = (account.get("camoufox_settings") or account.get("cloakbrowser_settings") or {}).get("health_check", {})
+                fingerprint = hashlib.sha256(json.dumps({
+                    "userAgent": signals.get("userAgent"), "language": signals.get("language"), "timezone": signals.get("timezone"),
+                    "hardwareConcurrency": signals.get("hardwareConcurrency"), "platform": signals.get("platform"), "screen": signals.get("screen"), "webgl": signals.get("webgl"),
+                }, sort_keys=True).encode("utf-8")).hexdigest()
                 warnings = []
                 configured_locale = str(settings.get("locale") or "").lower()
                 if configured_locale and not str(signals.get("language") or "").lower().startswith(configured_locale.split("-")[0]):
@@ -1025,7 +1033,13 @@ class ProfilesBridge(QObject):
                     warnings.append("Configured timezone does not match browser timezone")
                 if browser.proxy and not geo.get("country_code"):
                     warnings.append("Proxy geo lookup failed")
-                report = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "warning" if warnings else "ready", "warnings": warnings, "geo": geo, "signals": signals}
+                if isinstance(previous, dict) and previous.get("fingerprint") and previous.get("fingerprint") != fingerprint:
+                    warnings.append("Browser fingerprint changed since the last health check")
+                geo_summary = {
+                    "ip": str(geo.get("ip") or ""), "country": str(geo.get("country_code") or geo.get("country") or ""),
+                    "city": str(geo.get("city") or ""), "asn": str((geo.get("connection") or {}).get("asn") if isinstance(geo.get("connection"), dict) else geo.get("asn") or ""),
+                }
+                report = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "warning" if warnings else "ready", "warnings": warnings, "geo": geo_summary, "signals": signals, "fingerprint": fingerprint}
                 if server_enabled() and self._server_client():
                     remote = self._server_account(name)
                     if remote:
