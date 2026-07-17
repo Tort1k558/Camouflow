@@ -1,4 +1,5 @@
 import asyncio
+import json
 import locale
 import logging
 import os
@@ -89,6 +90,7 @@ class BrowserInterface:
         self.page = None
         self._camoufox_ctx: Optional[AsyncCamoufox] = None
         self._cloakbrowser_context = None
+        self._storage_state_path = ""
         self._proxy_config, self._proxy_details = parse_proxy(proxy, profile_name=self.profile_name)
         self._local_proxy: Optional[LocalSocksProxyServer] = None
         self._proxy_service = BrowserProxyService(
@@ -192,6 +194,36 @@ class BrowserInterface:
             except Exception:
                 self.logger.warning("Cannot grant browser permissions for %s", self.profile_name, exc_info=True)
 
+    async def _restore_storage_state(self) -> None:
+        """Restore explicit storage state for persistent CloakBrowser contexts.
+
+        Playwright does not accept ``storage_state`` in launch_persistent_context.
+        Cookies can be restored directly; localStorage is restored through an init script
+        before the first page is created.
+        """
+        if not self.context or not self._storage_state_path:
+            return
+        try:
+            payload = json.loads(Path(self._storage_state_path).read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError("storage state must be an object")
+            cookies = payload.get("cookies")
+            if isinstance(cookies, list) and cookies:
+                await self.context.add_cookies(cookies)
+            origins = payload.get("origins")
+            if isinstance(origins, list) and origins:
+                await self.context.add_init_script(
+                    """(origins) => {
+                        for (const origin of origins || []) {
+                            if (origin.origin !== location.origin || !Array.isArray(origin.localStorage)) continue;
+                            for (const item of origin.localStorage) localStorage.setItem(item.name, item.value);
+                        }
+                    }""",
+                    origins,
+                )
+        except Exception as exc:
+            raise RuntimeError(f"Cannot restore storage state for {self.profile_name}: {exc}") from exc
+
     def _probe_proxy_endpoint(self) -> bool:
         return self._proxy_service.probe_endpoint()
 
@@ -281,6 +313,7 @@ class BrowserInterface:
             await self._start_cloakbrowser()
         else:
             await self._start_camoufox()
+        await self._restore_storage_state()
         if getattr(self.context, "pages", None) and self.context.pages:
             self.page = self.context.pages[0]
         else:
@@ -328,6 +361,7 @@ class BrowserInterface:
             context_kwargs = launch_kwargs.pop("context_kwargs", {})
             if not isinstance(context_kwargs, dict):
                 context_kwargs = {}
+            self._storage_state_path = str(context_kwargs.pop("storage_state", "") or "").strip()
             if use_persistent:
                 persistent_kwargs = dict(launch_kwargs)
                 persistent_kwargs.update(context_kwargs)
