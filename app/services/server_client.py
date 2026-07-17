@@ -4,6 +4,7 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -17,6 +18,7 @@ SERVER_REFRESH_TOKEN_KEY = "server_refresh_token"
 SERVER_TEAM_ID_KEY = "server_team_id"
 SERVER_EMAIL_KEY = "server_email"
 DEFAULT_SERVER_URL = "http://localhost"
+_REQUEST_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="camouflow-cloud")
 
 
 class ServerClientError(RuntimeError):
@@ -130,6 +132,17 @@ class ServerClient:
             raise ServerClientError(f"{exc.code}: {detail}") from exc
         except Exception as exc:
             raise ServerClientError(str(exc)) from exc
+
+    def request_async(
+        self,
+        method: str,
+        path: str,
+        payload: Optional[Dict[str, Any]] = None,
+        *,
+        auth: bool = True,
+    ) -> Future:
+        """Run a Cloud request off the QML thread; callers consume the Future in their bridge."""
+        return _REQUEST_EXECUTOR.submit(self.request, method, path, payload, auth=auth)
 
     def login(self, url: str, email: str, password: str) -> Dict[str, Any]:
         self.session = ServerSession(enabled=True, url=normalize_server_url(url), token="", refresh_token="", team_id="", email=email)
