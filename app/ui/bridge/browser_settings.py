@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib.metadata
+import importlib.util
 from typing import Any, Dict, Iterable, List
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
@@ -63,11 +65,31 @@ class BrowserSettingsBridge(QObject):
         self._engine = db_get_browser_engine()
         self._camoufox = db_get_camoufox_defaults()
         self._cloak = db_get_cloakbrowser_defaults()
+        self._compatibility_report = "Not checked"
         if app_state is not None:
             app_state.refreshRequested.connect(self.reload)
 
     def _active(self) -> Dict[str, Any]:
         return self._cloak if self._engine == "cloakbrowser" else self._camoufox
+
+    @pyqtProperty(str, notify=changed)
+    def compatibilityReport(self) -> str:  # noqa: N802
+        return self._compatibility_report
+
+    @pyqtSlot()
+    def checkCompatibility(self) -> None:  # noqa: N802
+        package = "cloakbrowser" if self._engine == "cloakbrowser" else "camoufox"
+        if importlib.util.find_spec(package) is None:
+            self._compatibility_report = f"Blocked: {package} is not installed"
+        else:
+            try:
+                version = importlib.metadata.version(package)
+            except importlib.metadata.PackageNotFoundError:
+                version = "local build"
+            mode = "persistent profile enabled" if self.persistentContext else "ephemeral profile"
+            self._compatibility_report = f"Ready: {package} {version}; {mode}"
+        self.changed.emit()
+        self._emit_message(self._compatibility_report)
 
     def _emit_message(self, text: str) -> None:
         self.message.emit(text)

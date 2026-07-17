@@ -157,6 +157,7 @@ Flickable {
             PageHeader { Layout.fillWidth: true; title: "Browser Engine"; subtitle: "New design, old full browser defaults" }
             PrimaryButton { width: 110; text: "Save"; icon: "save"; onClicked: browserSettingsBridge.save() }
             PrimaryButton { width: 110; text: "Reset"; secondary: true; onClicked: browserSettingsBridge.reset() }
+            PrimaryButton { width: 130; text: "Compatibility"; secondary: true; onClicked: browserSettingsBridge.checkCompatibility() }
         }
 
         RowLayout { width: parent.width; spacing: 14
