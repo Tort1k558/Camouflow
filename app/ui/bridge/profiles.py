@@ -1009,14 +1009,26 @@ class ProfilesBridge(QObject):
                             screen: { width: screen.width, height: screen.height, colorDepth: screen.colorDepth },
                             webgl: (() => { const c = document.createElement('canvas'); const gl = c.getContext('webgl'); return gl ? { vendor: gl.getParameter(gl.VENDOR), renderer: gl.getParameter(gl.RENDERER) } : null; })()
                         })""")
+                        webrtc_candidates = await browser.page.evaluate("""async () => {
+                            if (!window.RTCPeerConnection) return [];
+                            const pc = new RTCPeerConnection({ iceServers: [] });
+                            const candidates = [];
+                            pc.createDataChannel('health');
+                            pc.onicecandidate = event => { if (event.candidate) candidates.push(event.candidate.candidate); };
+                            await pc.setLocalDescription(await pc.createOffer());
+                            await new Promise(resolve => setTimeout(resolve, 1200));
+                            pc.close();
+                            return candidates;
+                        }""")
                         geo = browser._proxy_service.fetch_country() if browser.proxy else {}
-                        return {"signals": signals, "geo": geo}
+                        return {"signals": signals, "geo": geo, "webrtc_candidates": webrtc_candidates}
                     finally:
                         await browser.close(force=True)
 
                 data = asyncio.run(inspect())
                 signals = data.get("signals") if isinstance(data.get("signals"), dict) else {}
                 geo = data.get("geo") if isinstance(data.get("geo"), dict) else {}
+                webrtc_candidates = data.get("webrtc_candidates") if isinstance(data.get("webrtc_candidates"), list) else []
                 previous = account.get("health_check")
                 if not isinstance(previous, dict):
                     previous = (account.get("camoufox_settings") or account.get("cloakbrowser_settings") or {}).get("health_check", {})
@@ -1033,13 +1045,15 @@ class ProfilesBridge(QObject):
                     warnings.append("Configured timezone does not match browser timezone")
                 if browser.proxy and not geo.get("country_code"):
                     warnings.append("Proxy geo lookup failed")
+                if browser.proxy and any(" typ host " in str(candidate) for candidate in webrtc_candidates):
+                    warnings.append("WebRTC exposes a local host candidate")
                 if isinstance(previous, dict) and previous.get("fingerprint") and previous.get("fingerprint") != fingerprint:
                     warnings.append("Browser fingerprint changed since the last health check")
                 geo_summary = {
                     "ip": str(geo.get("ip") or ""), "country": str(geo.get("country_code") or geo.get("country") or ""),
                     "city": str(geo.get("city") or ""), "asn": str((geo.get("connection") or {}).get("asn") if isinstance(geo.get("connection"), dict) else geo.get("asn") or ""),
                 }
-                report = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "warning" if warnings else "ready", "warnings": warnings, "geo": geo_summary, "signals": signals, "fingerprint": fingerprint}
+                report = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "warning" if warnings else "ready", "warnings": warnings, "geo": geo_summary, "signals": signals, "webrtc_candidates": webrtc_candidates, "fingerprint": fingerprint}
                 if server_enabled() and self._server_client():
                     remote = self._server_account(name)
                     if remote:
