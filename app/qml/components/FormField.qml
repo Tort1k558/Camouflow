@@ -1,9 +1,14 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import theme 1.0
 
 Column {
     id: root
+    implicitWidth: 260
+    implicitHeight: 58
+    Layout.minimumWidth: 180
+    Layout.preferredWidth: 260
     property string label: "Label"
     property alias text: input.text
     property string placeholder: ""
