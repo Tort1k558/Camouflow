@@ -582,6 +582,7 @@ class ScenarioExecutor(
     ) -> StepResult:
         step = self._normalize_step_payload(step or {})
         action = (step.get("action") or "").lower()
+        retry_attempt = int(step.pop("_retry_attempt", 0) or 0)
         description = step.get("description") or step.get("tag") or action
         self.logger.info("Running step: %s", description)
 
@@ -634,6 +635,18 @@ class ScenarioExecutor(
                 return await self._action_end(step)
             return StepResult.stop(f"Unknown action {action}")
         except Exception as exc:
+            if action in {"goto", "wait_element", "wait_for_load_state"}:
+                try:
+                    retry_limit = max(0, min(2, int(step.get("retry_count", 1))))
+                except (TypeError, ValueError):
+                    retry_limit = 1
+                if retry_attempt < retry_limit and not (self._cancel_event and self._cancel_event.is_set()):
+                    delay = min(4.0, float(2 ** retry_attempt))
+                    self.logger.warning("Retrying %s for %s after %.1fs (%s/%s): %s", action, self.profile_name, delay, retry_attempt + 1, retry_limit, exc)
+                    await asyncio.sleep(delay)
+                    retry_step = dict(step)
+                    retry_step["_retry_attempt"] = retry_attempt + 1
+                    return await self._run_step(retry_step, tags, scenario_name=scenario_name, step_index=step_index)
             return await self._handle_step_error(
                 step,
                 tags,
@@ -735,8 +748,12 @@ class ScenarioExecutor(
         if page is not None:
             try:
                 await page.screenshot(path=str(artifact_dir / "page.png"), full_page=True)
-            except Exception:
-                pass
+            except Exception as exc:
+                self.logger.warning("Full-page screenshot failed: %s", exc)
+                try:
+                    await page.screenshot(path=str(artifact_dir / "viewport.png"), full_page=False)
+                except Exception:
+                    pass
             try:
                 (artifact_dir / "page.html").write_text(await page.content(), encoding="utf-8")
             except Exception:
