@@ -6,6 +6,7 @@ import os
 import random
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
+from urllib.parse import urlsplit
 
 from app.storage.db import (
     db_get_browser_engine,
@@ -90,7 +91,8 @@ class BrowserInterface:
         self.page = None
         self._camoufox_ctx: Optional[AsyncCamoufox] = None
         self._cloakbrowser_context = None
-        self._storage_state_path = ""
+        self._storage_state_payload: Optional[Dict[str, object]] = None
+        self._storage_state_native = False
         self._proxy_config, self._proxy_details = parse_proxy(proxy, profile_name=self.profile_name)
         self._local_proxy: Optional[LocalSocksProxyServer] = None
         self._proxy_service = BrowserProxyService(
@@ -194,35 +196,85 @@ class BrowserInterface:
             except Exception:
                 self.logger.warning("Cannot grant browser permissions for %s", self.profile_name, exc_info=True)
 
-    async def _restore_storage_state(self) -> None:
-        """Restore explicit storage state for persistent CloakBrowser contexts.
+    def _load_storage_state_payload(self) -> Optional[Dict[str, object]]:
+        """Read and validate the storage state file before the browser launches.
 
-        Playwright does not accept ``storage_state`` in launch_persistent_context.
-        Cookies can be restored directly; localStorage is restored through an init script
-        before the first page is created.
+        Failing here (no browser started yet) is better than failing after launch.
         """
-        if not self.context or not self._storage_state_path:
-            return
+        defaults = self._cloakbrowser_defaults if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER else self._camoufox_defaults
+        settings = dict(defaults or {})
+        settings.update({key: value for key, value in self._browser_settings.items() if value is not None})
+        path = str(settings.get("storage_state_path") or "").strip()
+        if not path:
+            return None
         try:
-            payload = json.loads(Path(self._storage_state_path).read_text(encoding="utf-8"))
-            if not isinstance(payload, dict):
-                raise ValueError("storage state must be an object")
-            cookies = payload.get("cookies")
-            if isinstance(cookies, list) and cookies:
-                await self.context.add_cookies(cookies)
-            origins = payload.get("origins")
-            if isinstance(origins, list) and origins:
-                await self.context.add_init_script(
-                    """(origins) => {
-                        for (const origin of origins || []) {
-                            if (origin.origin !== location.origin || !Array.isArray(origin.localStorage)) continue;
-                            for (const item of origin.localStorage) localStorage.setItem(item.name, item.value);
-                        }
-                    }""",
-                    origins,
-                )
+            payload = json.loads(Path(path).read_text(encoding="utf-8-sig"))
         except Exception as exc:
-            raise RuntimeError(f"Cannot restore storage state for {self.profile_name}: {exc}") from exc
+            raise RuntimeError(f"Cannot read storage state for {self.profile_name}: {exc}") from exc
+        if not isinstance(payload, dict):
+            raise RuntimeError(f"Storage state for {self.profile_name} must be a JSON object")
+        for key in ("cookies", "origins"):
+            entries = payload.get(key, [])
+            if not isinstance(entries, list) or any(not isinstance(item, dict) for item in entries):
+                raise RuntimeError(f"Storage state {key} for {self.profile_name} must be a list of objects")
+        for origin in payload.get("origins", []):
+            entries = origin.get("localStorage", [])
+            if (
+                not isinstance(origin.get("origin"), str)
+                or not isinstance(entries, list)
+                or any(
+                    not isinstance(item, dict)
+                    or not isinstance(item.get("name"), str)
+                    or not isinstance(item.get("value"), str)
+                    for item in entries
+                )
+            ):
+                raise RuntimeError(f"Invalid storage state origin for {self.profile_name}")
+            try:
+                url = urlsplit(origin["origin"])
+                valid_origin = (
+                    url.scheme in {"http", "https"} and url.hostname
+                    and url.path in {"", "/"} and not url.query and not url.fragment
+                    and url.username is None and url.password is None
+                )
+            except ValueError:
+                valid_origin = False
+            if not valid_origin:
+                raise RuntimeError(f"Invalid storage state origin URL for {self.profile_name}")
+        return payload
+
+    async def _restore_storage_state(self) -> None:
+        """Restore cookies/localStorage once, before the browser is ready."""
+        if not self.context or not self._storage_state_payload or self._storage_state_native:
+            return
+        payload = self._storage_state_payload
+        cookies = payload.get("cookies")
+        if isinstance(cookies, list) and cookies:
+            try:
+                await self.context.add_cookies(cookies)
+            except Exception as exc:
+                raise RuntimeError(f"Cannot restore storage state cookies for {self.profile_name}") from exc
+        origins = payload.get("origins")
+        if isinstance(origins, list) and origins:
+            restore_page = None
+            try:
+                restore_page = await self.context.new_page()
+                await restore_page.route(
+                    "**/*", lambda route: route.fulfill(status=200, content_type="text/html", body="")
+                )
+                for origin in origins:
+                    if not origin.get("localStorage"):
+                        continue
+                    await restore_page.goto(origin["origin"], wait_until="domcontentloaded", timeout=30000)
+                    await restore_page.evaluate(
+                        "items => { for (const item of items) localStorage.setItem(item.name, item.value); }",
+                        origin["localStorage"],
+                    )
+            except Exception as exc:
+                raise RuntimeError(f"Cannot restore storage state localStorage for {self.profile_name}") from exc
+            finally:
+                if restore_page is not None:
+                    await restore_page.close()
 
     def _probe_proxy_endpoint(self) -> bool:
         return self._proxy_service.probe_endpoint()
@@ -294,6 +346,8 @@ class BrowserInterface:
 
     async def start(self):
         self._lifecycle.reset_for_start()
+        self._storage_state_payload = self._load_storage_state_payload()
+        self._storage_state_native = False
         if self.proxy and not self._proxy_config:
             msg = f"Proxy configured for {self.profile_name} but failed to parse; browser launch aborted."
             self.logger.error(msg)
@@ -309,11 +363,15 @@ class BrowserInterface:
                 self._proxy_logger.error(msg)
                 raise RuntimeError("Proxy locale detection failed; see logs/proxy.log for details.")
 
-        if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER:
-            await self._start_cloakbrowser()
-        else:
-            await self._start_camoufox()
-        await self._restore_storage_state()
+        try:
+            if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER:
+                await self._start_cloakbrowser()
+            else:
+                await self._start_camoufox()
+            await self._restore_storage_state()
+        except BaseException:
+            await self.close(force=True)
+            raise
         if getattr(self.context, "pages", None) and self.context.pages:
             self.page = self.context.pages[0]
         else:
@@ -340,7 +398,12 @@ class BrowserInterface:
             self.browser = getattr(self.context, "browser", None)
         else:
             self.browser = camoufox_result
-            self.context = await self.browser.new_context(**self._context_kwargs_from_settings(self._browser_settings))
+            context_kwargs = self._context_kwargs_from_settings(self._browser_settings)
+            if self._storage_state_payload is not None:
+                context_kwargs["storage_state"] = self._storage_state_payload
+            self.context = await self.browser.new_context(**context_kwargs)
+            # new_context applies storage_state natively; skip the manual restore.
+            self._storage_state_native = True
 
     async def _start_cloakbrowser(self) -> None:
         try:
@@ -361,7 +424,8 @@ class BrowserInterface:
             context_kwargs = launch_kwargs.pop("context_kwargs", {})
             if not isinstance(context_kwargs, dict):
                 context_kwargs = {}
-            self._storage_state_path = str(context_kwargs.pop("storage_state", "") or "").strip()
+            # Persistent contexts require manual restoration after launch.
+            context_kwargs.pop("storage_state", None)
             if use_persistent:
                 persistent_kwargs = dict(launch_kwargs)
                 persistent_kwargs.update(context_kwargs)
@@ -388,13 +452,24 @@ class BrowserInterface:
                     context_kwargs["user_agent"] = user_agent_value
                 if color_scheme_value:
                     context_kwargs["color_scheme"] = color_scheme_value
+                if self._storage_state_payload is not None:
+                    context_kwargs["storage_state"] = self._storage_state_payload
                 self.context = await self.browser.new_context(**context_kwargs)
+                self._storage_state_native = True
         except Exception as exc:
             self.logger.exception("CloakBrowser start failed for %s", self.profile_name)
             raise RuntimeError(f"CloakBrowser start failed: {exc}") from exc
 
     def _start_process_watchdog(self) -> None:
         self._lifecycle.start_process_watchdog()
+
+    TEARDOWN_TIMEOUT_SECONDS = 8.0
+
+    async def _teardown_browser(self) -> None:
+        if self.context:
+            await self.context.close()
+        elif self.page:
+            await self.page.close()
 
     async def close(self, force: bool = False):
         if self.keep_browser_open and (self.browser or self.context) and not force:
@@ -407,19 +482,39 @@ class BrowserInterface:
 
         self.logger.info("Closing %s resources for %s", self.browser_engine, self.profile_name)
         try:
-            if self.page:
-                await self.page.close()
-            if self.context:
-                await self.context.close()
+            await asyncio.wait_for(self._teardown_browser(), timeout=self.TEARDOWN_TIMEOUT_SECONDS)
+        except asyncio.TimeoutError:
+            # Firefox persistent contexts occasionally hang in teardown until
+            # Playwright's internal ~30s timeout; kill the process tree instead.
+            self.logger.warning(
+                "Browser teardown timed out for %s after %ss; killing browser processes",
+                self.profile_name,
+                self.TEARDOWN_TIMEOUT_SECONDS,
+            )
+            await asyncio.to_thread(self._lifecycle.kill_profile_processes)
+        except Exception:
+            self.logger.warning(
+                "Browser teardown failed for %s", self.profile_name, exc_info=True
+            )
         finally:
             if self._camoufox_ctx:
-                await self._camoufox_ctx.__aexit__(None, None, None)
+                try:
+                    await asyncio.wait_for(
+                        self._camoufox_ctx.__aexit__(None, None, None),
+                        timeout=self.TEARDOWN_TIMEOUT_SECONDS,
+                    )
+                except Exception:
+                    self.logger.warning(
+                        "Camoufox context exit failed for %s", self.profile_name, exc_info=True
+                    )
+                    await asyncio.to_thread(self._lifecycle.kill_profile_processes)
                 self._camoufox_ctx = None
             if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER and self.browser:
                 try:
-                    await self.browser.close()
+                    await asyncio.wait_for(self.browser.close(), timeout=self.TEARDOWN_TIMEOUT_SECONDS)
                 except Exception:
-                    pass
+                    self.logger.warning("Browser close failed for %s", self.profile_name, exc_info=True)
+                    await asyncio.to_thread(self._lifecycle.kill_profile_processes)
             if self._local_proxy:
                 self._local_proxy.stop()
                 self._local_proxy = None

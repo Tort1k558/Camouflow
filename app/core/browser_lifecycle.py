@@ -156,6 +156,74 @@ class BrowserLifecycleManager:
                 pass
         self._close_listener_attached = True
 
+    def _lookup_profile_processes(self) -> List[Dict[str, int]]:
+        """Find browser processes whose command line references the profile dir.
+
+        Windows-only best effort; returns a list of {'pid': int, 'memory': int} dicts.
+        """
+        if not sys.platform.startswith("win"):
+            return []
+        env = dict(os.environ)
+        env["_CAMOUFLOW_PROFILE_DIR"] = str(self._user_data_dir_provider().resolve())
+        query = (
+            "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; "
+            "$ErrorActionPreference='Stop'; "
+            "$target=$env:_CAMOUFLOW_PROFILE_DIR; "
+            "$rx=[regex]::Escape($target); "
+            "$rx='(?:^|\\s)(?:--user-data-dir=|-{1,2}profile\\s+)(?:\"' + $rx + '\"|' + $rx + ')(?=\\s|$)'; "
+            "@(Get-CimInstance Win32_Process | Where-Object { "
+            "  $_.CommandLine -and $_.CommandLine -match $rx -and "
+            "  $_.Name -in @('firefox.exe','camoufox.exe','chrome.exe','chromium.exe') "
+            "}) | ForEach-Object { \"$($_.ProcessId)|$($_.WorkingSetSize)\" }"
+        )
+        try:
+            out = subprocess.check_output(
+                ["powershell", "-NoProfile", "-Command", query],
+                env=env,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                timeout=10,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+        except Exception:
+            self.logger.warning("Cannot inspect browser processes for %s", self.profile_name, exc_info=True)
+            raise
+        found: List[Dict[str, int]] = []
+        for line in (out or "").split():
+            pid_text, _, memory_text = line.partition("|")
+            try:
+                found.append({"pid": int(pid_text or 0), "memory": int(memory_text or 0)})
+            except ValueError:
+                continue
+        return found
+
+    def kill_profile_processes(self) -> None:
+        """Kill browser processes tied to this profile (teardown timeout fallback)."""
+        try:
+            processes = self._lookup_profile_processes()
+        except Exception:
+            return
+        for entry in processes:
+            pid = int(entry.get("pid") or 0)
+            if pid <= 0:
+                continue
+            try:
+                self.logger.warning(
+                    "Killing browser PID %s for %s (teardown fallback)", pid, self.profile_name
+                )
+                subprocess.run(
+                    ["taskkill", "/PID", str(pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                    timeout=10,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
+            except Exception:
+                continue
+
     def start_process_watchdog(self) -> None:
         """
         Best-effort watchdog that fires process-exit callbacks when the browser window/process exits.
@@ -170,57 +238,31 @@ class BrowserLifecycleManager:
             if not sys.platform.startswith("win"):
                 return
 
-            env = dict(os.environ)
-            env["_CAMOUFLOW_PROFILE_DIR"] = str(self._user_data_dir_provider())
-            ps_exists = (
-                "$target=$env:_CAMOUFLOW_PROFILE_DIR; "
-                "$rx=[regex]::Escape($target); "
-                "$ps=@(Get-CimInstance Win32_Process | Where-Object { "
-                "  $_.CommandLine -and $_.CommandLine -match $rx -and "
-                "  $_.Name -notin @('node.exe','python.exe','pythonw.exe','powershell.exe') "
-                "}); $p=$ps | Select-Object -First 1; "
-                "if($p){\"$($p.ProcessId)|$($p.WorkingSetSize)|$($ps.Count)\"} else {'0'}"
-            )
-
             seen = False
             while not self._process_exited_notified:
                 try:
-                    out = subprocess.check_output(
-                        ["powershell", "-NoProfile", "-Command", ps_exists],
-                        env=env,
-                        stderr=subprocess.DEVNULL,
-                        text=True,
-                        encoding="utf-8",
-                        errors="ignore",
-                    )
-                    value = (out or "").strip()
-                    exists = value != "0" and "|" in value
-                    if exists:
-                        pid_text, memory_text, count_text = value.split("|", 2)
-                        memory_bytes = int(memory_text or 0)
-                        memory_mb = round(memory_bytes / (1024 * 1024), 1)
-                        resource = {
-                            "pid": int(pid_text or 0),
-                            "memory_mb": memory_mb,
-                            "memory_limit_mb": self._memory_limit_mb,
-                            "over_limit": bool(self._memory_limit_mb and memory_mb > self._memory_limit_mb),
-                            "profile_processes": int(count_text or 1),
-                            "zombie_suspected": int(count_text or 1) > 1,
-                        }
-                        self.notify_resource(resource)
-                        if resource["over_limit"]:
-                            self.logger.warning(
-                                "Stopping browser for %s: %.1f MB exceeds %s MB",
-                                self.profile_name, memory_mb, self._memory_limit_mb,
-                            )
-                            subprocess.run(
-                                ["taskkill", "/PID", str(resource["pid"]), "/T", "/F"],
-                                stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL,
-                                check=False,
-                            )
+                    processes = self._lookup_profile_processes()
                 except Exception:
-                    exists = False
+                    time.sleep(1.0)
+                    continue
+                exists = bool(processes)
+                if exists:
+                    memory_mb = round(processes[0]["memory"] / (1024 * 1024), 1)
+                    resource = {
+                        "pid": int(processes[0]["pid"] or 0),
+                        "memory_mb": memory_mb,
+                        "memory_limit_mb": self._memory_limit_mb,
+                        "over_limit": bool(self._memory_limit_mb and memory_mb > self._memory_limit_mb),
+                        "profile_processes": len(processes),
+                        "zombie_suspected": len(processes) > 1,
+                    }
+                    self.notify_resource(resource)
+                    if resource["over_limit"]:
+                        self.logger.warning(
+                            "Stopping browser for %s: %.1f MB exceeds %s MB",
+                            self.profile_name, memory_mb, self._memory_limit_mb,
+                        )
+                        self.kill_profile_processes()
 
                 if exists:
                     seen = True

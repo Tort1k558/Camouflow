@@ -1,5 +1,12 @@
-camoufox @ git+https://github.com/daijro/camoufox.git@v150.0.2-beta.25#subdirectory=pythonlib
-cloakbrowser
-PyQt6
-PySocks
-PyInstaller
+# Camoufox wrapper; after install run `python -m camoufox fetch` to download
+# the matching browser binary (the wrapper does not bundle it).
+camoufox @ git+https://github.com/daijro/camoufox.git@v152.0.4-beta.30#subdirectory=pythonlib
+# Keep the tested CloakBrowser wrapper version.
+cloakbrowser==0.3.28
+# Keep browserforge in sync with the camoufox pin (fingerprint generator).
+browserforge==1.2.4
+PyQt6==6.11.0
+PySocks==1.7.1
+PyInstaller==6.20.0
+# Reproduce the tested Playwright build on clean installs and engine updates.
+playwright @ git+https://github.com/microsoft/playwright-python.git@0c818614414cc0b5de348db8e295e8cf64bad2d6

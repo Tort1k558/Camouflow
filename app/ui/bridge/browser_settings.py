@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 import urllib.request
 from pathlib import Path
@@ -77,6 +78,7 @@ class BrowserSettingsBridge(QObject):
         self._cloak = db_get_cloakbrowser_defaults()
         self._compatibility_report = "Not checked"
         self._latest_engine_version = ""
+        self._engine_update_running = False
         self.engineUpdateChecked.connect(self._apply_engine_update_check)
         self.engineUpdated.connect(self._apply_engine_update)
         if app_state is not None:
@@ -92,7 +94,12 @@ class BrowserSettingsBridge(QObject):
     @pyqtProperty(bool, notify=changed)
     def canUpdateEngine(self) -> bool:  # noqa: N802
         pinned = self._pinned_engine_version("camoufox")
-        return self._engine == "camoufox" and bool(self._latest_engine_version and self._latest_engine_version != pinned)
+        return (
+            not getattr(sys, "frozen", False)
+            and not self._engine_update_running
+            and self._engine == "camoufox"
+            and bool(self._latest_engine_version and self._latest_engine_version != pinned)
+        )
 
     @pyqtSlot()
     def checkCompatibility(self) -> None:  # noqa: N802
@@ -155,6 +162,11 @@ class BrowserSettingsBridge(QObject):
 
     @pyqtSlot()
     def updateEngine(self) -> None:  # noqa: N802
+        if getattr(sys, "frozen", False):
+            self._emit_message("Install a new CamouFlow release to update the bundled engine")
+            return
+        if self._engine_update_running:
+            return
         version = self._latest_engine_version
         if self._engine != "camoufox" or not version:
             self._emit_message("Run Check updates first")
@@ -162,29 +174,61 @@ class BrowserSettingsBridge(QObject):
         if not re.fullmatch(r"v[0-9A-Za-z._-]+", version):
             self._emit_message("Update version is invalid")
             return
+        self._engine_update_running = True
         self._compatibility_report = f"Installing Camoufox {version}…"
         self.changed.emit()
 
         def worker() -> None:
             package = f"camoufox @ git+https://github.com/daijro/camoufox.git@{version}#subdirectory=pythonlib"
+            constraints_path = None
             try:
+                requirements = Path(__file__).resolve().parents[3] / "requirements.txt"
+                pins = [
+                    line.strip() for line in requirements.read_text(encoding="utf-8-sig").splitlines()
+                    if line.strip() and not line.lstrip().startswith(("#", "camoufox"))
+                ]
+                if not any(line.startswith("playwright @ ") for line in pins):
+                    raise RuntimeError("Missing tested Playwright pin in requirements.txt")
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", encoding="utf-8", delete=False) as constraints:
+                    constraints_path = Path(constraints.name)
+                    constraints.write("\n".join(pins) + "\n")
                 result = subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "--upgrade", "--force-reinstall", package],
+                    [sys.executable, "-m", "pip", "install", "--upgrade", "--constraint", str(constraints_path), package],
                     capture_output=True,
                     text=True,
                     encoding="utf-8",
                     errors="replace",
-                    timeout=300,
+                    timeout=600,
                     check=False,
                 )
                 if result.returncode:
-                    message = (result.stderr or result.stdout or "pip install failed").strip().splitlines()[-1]
+                    message = (result.stderr.strip() or result.stdout.strip() or "pip install failed").splitlines()[-1]
                     self.engineUpdated.emit(False, message)
+                    return
+                # The pip package is only the launcher wrapper; download the matching
+                # browser binary, otherwise the old binary keeps running.
+                fetch = subprocess.run(
+                    [sys.executable, "-m", "camoufox", "fetch"],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=1800,
+                    check=False,
+                )
+                if fetch.returncode:
+                    self.engineUpdated.emit(
+                        False,
+                        f"{version} wrapper installed, but browser download failed. Retry the update before launching profiles.",
+                    )
                     return
                 self._update_requirement_pin(version)
                 self.engineUpdated.emit(True, version)
             except Exception as exc:
                 self.engineUpdated.emit(False, str(exc))
+            finally:
+                if constraints_path is not None:
+                    constraints_path.unlink(missing_ok=True)
 
         threading.Thread(target=worker, daemon=True, name="camouflow-engine-install").start()
 
@@ -206,6 +250,7 @@ class BrowserSettingsBridge(QObject):
 
     @pyqtSlot(bool, str)
     def _apply_engine_update(self, ok: bool, detail: str) -> None:
+        self._engine_update_running = False
         if ok:
             self._latest_engine_version = ""
             self._compatibility_report = f"Camoufox {detail} installed. Restart CamouFlow to use it."
