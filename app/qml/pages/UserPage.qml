@@ -5,6 +5,7 @@ import theme 1.0
 import "../components"
 
 Flickable {
+    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
     id: root
     property var bridge: typeof userBridge !== "undefined" ? userBridge : null
     contentWidth: width
@@ -20,7 +21,7 @@ Flickable {
 
         PageHeader {
             width: parent.width
-            title: "User"
+            title: "Account & teams"
             subtitle: "Account, teams, roles and invitations"
             badge: root.bridge && root.bridge.serverEnabled ? "Cloud" : "Local mode"
         }
@@ -31,7 +32,7 @@ Flickable {
 
             GlassCard {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 150
+                Layout.preferredHeight: 210
                 padding: 26
 
                 Rectangle {
@@ -39,8 +40,8 @@ Flickable {
                     height: 58
                     radius: 20
                     color: "transparent"
-                    border.color: root.bridge && root.bridge.serverEnabled ? Theme.success : Theme.primary
-                    LineIcon { anchors.centerIn: parent; name: "user"; color: root.bridge && root.bridge.serverEnabled ? Theme.success : Theme.primary; size: 28 }
+                    border.color: root.bridge && root.bridge.serverEnabled ? Theme.success : Theme.primaryInk
+                    LineIcon { anchors.centerIn: parent; name: "user"; color: root.bridge && root.bridge.serverEnabled ? Theme.success : Theme.primaryInk; size: 28 }
                 }
                 Column {
                     anchors.left: parent.left
@@ -51,7 +52,7 @@ Flickable {
                         text: root.bridge && root.bridge.serverEnabled ? (root.bridge.fullName || root.bridge.email) : "Local workspace"
                         color: Theme.text
                         font.pixelSize: 24
-                        font.bold: true
+                        font.weight: Font.DemiBold
                         elide: Text.ElideRight
                         width: parent.width
                     }
@@ -122,9 +123,9 @@ Flickable {
 
             GlassCard {
                 Layout.preferredWidth: 390
-                Layout.preferredHeight: 230
+                Layout.preferredHeight: 210
                 padding: 24
-                Text { id: localTitle; text: root.bridge && root.bridge.serverEnabled ? "Cloud features" : "Local mode loses"; color: Theme.text; font.pixelSize: 18; font.bold: true }
+                Text { id: localTitle; width: parent.width; wrapMode: Text.WordWrap; text: root.bridge && root.bridge.serverEnabled ? "Cloud features" : "Connect when you need a team"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
                 Text {
                     anchors.left: parent.left
                     anchors.right: parent.right
@@ -149,10 +150,10 @@ Flickable {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 spacing: 14
-                Rectangle { width: 42; height: 42; radius: 14; color: "transparent"; border.color: Theme.primary; LineIcon { anchors.centerIn: parent; name: "mail"; color: Theme.primary; size: 21 } }
+                Rectangle { width: 42; height: 42; radius: 14; color: "transparent"; border.color: Theme.primaryInk; LineIcon { anchors.centerIn: parent; name: "mail"; color: Theme.primaryInk; size: 21 } }
                 Column {
                     width: parent.width - 180
-                    Text { text: "Pending invites"; color: Theme.text; font.pixelSize: 19; font.bold: true }
+                    Text { text: "Pending invites"; color: Theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
                     Text { text: "Invites sent to your account. Accept them here to join a team."; color: Theme.muted; font.pixelSize: 13 }
                 }
                 PrimaryButton {
@@ -195,7 +196,7 @@ Flickable {
                         anchors.leftMargin: 14
                         anchors.rightMargin: 10
                         spacing: 12
-                        Text { Layout.fillWidth: true; text: model.team_name + " / " + model.team_slug; color: Theme.text; font.pixelSize: 14; font.bold: true; elide: Text.ElideRight }
+                        Text { Layout.fillWidth: true; text: model.team_name + " / " + model.team_slug; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold; elide: Text.ElideRight }
                         Text { Layout.preferredWidth: 110; text: model.role; color: Theme.primaryLight; font.pixelSize: 12; elide: Text.ElideRight }
                         Text { Layout.preferredWidth: 190; text: "From: " + (model.invited_by_email || "owner/admin"); color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight }
                         PrimaryButton { Layout.preferredWidth: 92; text: "Accept"; icon: "check"; onClicked: root.bridge.acceptInvite(model.id) }
@@ -214,10 +215,10 @@ Flickable {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 spacing: 14
-                Rectangle { width: 42; height: 42; radius: 14; color: "transparent"; border.color: Theme.primary; LineIcon { anchors.centerIn: parent; name: "network"; color: Theme.primary; size: 21 } }
+                Rectangle { width: 42; height: 42; radius: 14; color: "transparent"; border.color: Theme.primaryInk; LineIcon { anchors.centerIn: parent; name: "network"; color: Theme.primaryInk; size: 21 } }
                 Column {
                     width: parent.width - 220
-                    Text { text: "My teams"; color: Theme.text; font.pixelSize: 19; font.bold: true }
+                    Text { text: "My teams"; color: Theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
                     Text { text: "Teams you joined. Click a team to make it active in the app."; color: Theme.muted; font.pixelSize: 13 }
                 }
                 PrimaryButton {
@@ -284,7 +285,7 @@ Flickable {
                             radius: 16
                             color: "transparent"
                             border.color: model.selected ? Theme.primary : Theme.borderSubtle
-                            LineIcon { anchors.centerIn: parent; name: "network"; color: model.selected ? "white" : Theme.primaryLight; size: 23 }
+                            LineIcon { anchors.centerIn: parent; name: "network"; color: model.selected ? Theme.primaryText : Theme.primaryLight; size: 23 }
                         }
 
                         ColumnLayout {
@@ -293,8 +294,8 @@ Flickable {
                             RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 10
-                                Text { text: model.name; color: Theme.text; font.pixelSize: 16; font.bold: true; elide: Text.ElideRight; Layout.fillWidth: true }
-                                Text { text: model.selected ? "ACTIVE" : ""; visible: model.selected; color: Theme.successLight; font.pixelSize: 11; font.bold: true }
+                                Text { text: model.name; color: Theme.text; font.pixelSize: 16; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
+                                Text { text: model.selected ? "ACTIVE" : ""; visible: model.selected; color: Theme.successLight; font.pixelSize: 11; font.weight: Font.DemiBold }
                             }
                             Text { text: model.slug + " / " + model.plan + " / " + model.license_status; color: Theme.muted; font.pixelSize: 12 }
                             Text {
@@ -334,10 +335,10 @@ Flickable {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 spacing: 12
-                Rectangle { Layout.preferredWidth: 42; Layout.preferredHeight: 42; radius: 14; color: "transparent"; border.color: Theme.primary; LineIcon { anchors.centerIn: parent; name: "users"; color: Theme.primary; size: 21 } }
+                Rectangle { Layout.preferredWidth: 42; Layout.preferredHeight: 42; radius: 14; color: "transparent"; border.color: Theme.primaryInk; LineIcon { anchors.centerIn: parent; name: "users"; color: Theme.primaryInk; size: 21 } }
                 Column {
                     Layout.fillWidth: true
-                    Text { text: "Team access"; color: Theme.text; font.pixelSize: 19; font.bold: true }
+                    Text { text: "Team access"; color: Theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
                     Text { text: root.bridge && root.bridge.canManageTeam ? "Invite users and manage roles for the active team." : "Only team admin/owner can manage members."; color: Theme.muted; font.pixelSize: 13 }
                 }
             }
@@ -405,7 +406,7 @@ Flickable {
             padding: 26
             visible: root.bridge && root.bridge.serverEnabled
 
-            Text { id: auditTitle; text: "Audit log"; color: Theme.text; font.pixelSize: 19; font.bold: true }
+            Text { id: auditTitle; text: "Audit log"; color: Theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
             Text { anchors.left: parent.left; anchors.right: parent.right; anchors.top: auditTitle.bottom; anchors.topMargin: 6; text: "Recent activity for the active team."; color: Theme.muted; font.pixelSize: 13 }
 
             ListView {
@@ -429,7 +430,7 @@ Flickable {
                         anchors.leftMargin: 12
                         anchors.rightMargin: 12
                         Text { Layout.preferredWidth: 132; text: model.time; color: Theme.dim; font.pixelSize: 11 }
-                        Text { Layout.preferredWidth: 150; text: model.action; color: Theme.text; font.pixelSize: 12; font.bold: true; elide: Text.ElideRight }
+                        Text { Layout.preferredWidth: 150; text: model.action; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight }
                         Text { Layout.preferredWidth: 130; text: model.entity; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight }
                         Text { Layout.fillWidth: true; text: model.details; color: Theme.dim; font.pixelSize: 11; elide: Text.ElideRight }
                     }
@@ -438,20 +439,21 @@ Flickable {
         }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: loginDialog
+        objectName: "loginDialog"
         modal: true
         width: Math.min(460, root.width - 80)
         height: 350
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Column {
             anchors.fill: parent
             anchors.margins: 24
             spacing: 16
 
-            Text { text: "Login"; color: Theme.text; font.pixelSize: 24; font.bold: true }
+            Text { text: "Login"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
             Text { text: "Connect your account to enable teams, roles, invites and cloud sync."; color: Theme.muted; font.pixelSize: 13; wrapMode: Text.WordWrap; width: parent.width }
             FormField { id: loginEmail; width: parent.width; label: "Email"; placeholder: "you@company.com" }
             FormField { id: loginPassword; width: parent.width; label: "Password"; placeholder: "Password"; echoMode: TextInput.Password }

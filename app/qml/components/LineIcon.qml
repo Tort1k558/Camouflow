@@ -1,4 +1,5 @@
 import QtQuick
+import theme 1.0
 
 // Icon paths are from Lucide Icons (ISC): https://lucide.dev/
 Image {
@@ -12,7 +13,7 @@ Image {
     antialiasing: true
 
     property string name: "dashboard"
-    property color color: "#aab0c5"
+    property color color: Theme.muted
     property int size: 20
     property real lineWidth: 2
 
@@ -25,6 +26,8 @@ Image {
 
     function iconBody(iconName) {
         switch (String(iconName || "").toLowerCase()) {
+        case "folder": return '<path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />'
+        case "cloud": return '<path d="M7 18a5 5 0 1 1 1-10 7 7 0 0 1 13 3 4 4 0 0 1-1 7Z" />'
         case "dashboard": return "<rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\" />\n  <rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\" />\n  <rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\" />\n  <rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\" />"
         case "user": return "<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" />\n  <circle cx=\"12\" cy=\"7\" r=\"4\" />"
         case "users": return "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" />\n  <path d=\"M16 3.128a4 4 0 0 1 0 7.744\" />\n  <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" />\n  <circle cx=\"9\" cy=\"7\" r=\"4\" />"

@@ -47,6 +47,8 @@ class ProfilesBridge(QObject):
         ], parent=self)
         self._stages_model = DictListModel(["name", "count", "selected"], parent=self)
         self._selected_stage = ""
+        self._search_query = ""
+        self._profile_rows: List[Dict[str, Any]] = []
         self._live_browsers: Dict[str, BrowserInterface] = {}
         self._browser_resources: Dict[str, Dict[str, Any]] = {}
         self._live_server_profile_ids: Dict[str, str] = {}
@@ -337,9 +339,22 @@ class ProfilesBridge(QObject):
                 "lockedBy": str(acc.get("lock_user_email") or ""),
                 "lockExpires": str(acc.get("lock_expires_at") or ""),
             })
-        self._model.set_rows(rows)
+        self._profile_rows = rows
+        self._apply_search()
         self.modelChanged.emit()
         self.countsChanged.emit()
+
+    def _apply_search(self) -> None:
+        query = self._search_query
+        self._model.set_rows(
+            row for row in self._profile_rows
+            if not query or query in " ".join(str(row.get(key) or "") for key in ("name", "tags", "proxy")).casefold()
+        )
+
+    @pyqtSlot(str)
+    def setSearch(self, query: str) -> None:  # noqa: N802
+        self._search_query = str(query or "").strip().casefold()
+        self._apply_search()
 
     @pyqtSlot(str)
     def setStageFilter(self, stage: str) -> None:  # noqa: N802

@@ -22,6 +22,13 @@ Item {
         sharedVarValue.text = payload.value || ""
     }
 
+    ConfirmDialog { id: confirmDialog }
+
+    function confirmDeleteStep() {
+        var step = scenariosBridge.selectedStep()
+        confirmDialog.ask('Delete step "' + (step.tag || step.action || "untagged") + '" from the scenario?', function() { scenariosBridge.deleteStep() })
+    }
+
     Timer {
         id: savedTimer
         interval: 3000
@@ -66,7 +73,7 @@ Item {
         spacing: 0
 
         Rectangle {
-            Layout.preferredWidth: 292
+            Layout.preferredWidth: root.width < 1100 ? 218 : 250
             Layout.fillHeight: true
             color: Theme.elevated
             border.color: Theme.borderSubtle
@@ -74,12 +81,12 @@ Item {
                 anchors.fill: parent
                 anchors.margins: 14
                 spacing: 14
-                Text { text: "Current scenario"; color: Theme.text; font.pixelSize: 14; font.bold: true }
+                Text { text: "Current scenario"; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold }
                 Rectangle {
                     width: parent.width
                     height: 76
                     radius: 14
-                    color: "#35285a"
+                    color: Theme.selection
                     border.color: Theme.primary
                     Column {
                         anchors.left: parent.left
@@ -87,21 +94,23 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.margins: 14
                         spacing: 4
-                        Text { text: scenariosBridge.selectedName || "Select scenario"; color: Theme.text; font.pixelSize: 14; font.bold: true; elide: Text.ElideRight; width: parent.width }
+                        Text { text: scenariosBridge.selectedName || "Select scenario"; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
                         Text { text: scenariosBridge.selectedDescription || "Click to choose/create"; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
                     }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: scenarioDialog.open() }
                 }
 
                 Text {
-                    text: appState && appState.cloudEnabled ? "Latest runs" : "Latest runs (Cloud)"
+                    visible: appState && appState.cloudEnabled
+                    text: "Latest runs"
                     color: Theme.text
                     font.pixelSize: 14
-                    font.bold: true
+                    font.weight: Font.DemiBold
                 }
                 ListView {
                     width: parent.width
-                    height: 132
+                    visible: appState && appState.cloudEnabled
+                    height: visible ? 132 : 0
                     model: scenariosBridge.runsModel
                     spacing: 7
                     clip: true
@@ -122,20 +131,20 @@ Item {
                             Row {
                                 width: parent.width
                                 spacing: 8
-                                Text { text: model.status; color: model.accent; font.pixelSize: 11; font.bold: true }
+                                Text { text: model.status; color: model.accent; font.pixelSize: 11; font.weight: Font.DemiBold }
                                 Text { text: model.duration; color: Theme.dim; font.pixelSize: 11 }
                                 Text { text: model.started; color: Theme.dim; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width - 120 }
                             }
-                            Text { text: model.scenario + " / " + model.profile; color: Theme.text; font.pixelSize: 12; font.bold: true; elide: Text.ElideRight; width: parent.width }
+                            Text { text: model.scenario + " / " + model.profile; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
                             Text { visible: model.error !== ""; text: model.error; color: Theme.danger; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
                         }
                     }
                 }
 
-                Text { text: "Action Groups"; color: Theme.text; font.pixelSize: 14; font.bold: true }
+                Text { text: "Action Groups"; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold }
                 ListView {
                     width: parent.width
-                    height: 178
+                    height: 198
                     model: scenariosBridge.categoriesModel
                     spacing: 7
                     clip: true
@@ -143,15 +152,15 @@ Item {
                         width: ListView.view.width
                         height: 34
                         radius: 10
-                        color: model.selected ? "#25213f" : Theme.subtle
+                        color: model.selected ? Theme.selection : Theme.input
                         border.color: model.selected ? Theme.primary : Theme.border
-                        Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.name; color: model.selected ? Theme.primaryLight : Theme.muted; font.pixelSize: 12; font.bold: true }
+                        Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.name; color: model.selected ? Theme.primaryLight : Theme.muted; font.pixelSize: 12; font.weight: Font.DemiBold }
                         Text { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.count; color: Theme.dim; font.pixelSize: 11 }
                         MouseArea { anchors.fill: parent; onClicked: scenariosBridge.setCategory(model.name) }
                     }
                 }
 
-                Text { text: "Action Templates"; color: Theme.text; font.pixelSize: 14; font.bold: true }
+                Text { text: "Action Templates"; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold }
                 ListView {
                     width: parent.width
                     height: parent.height - y - 4
@@ -165,8 +174,8 @@ Item {
                         color: Theme.subtle
                         border.color: Theme.border
                         Row { anchors.fill: parent; anchors.margins: 12; spacing: 12
-                            Rectangle { width: 30; height: 30; radius: 12; color: Theme.primary; Text { anchors.centerIn: parent; text: "+"; color: "white"; font.bold: true } }
-                            Column { spacing: 2; Text { text: model.title; color: Theme.text; font.bold: true; font.pixelSize: 13 } Text { text: model.subtitle; color: Theme.dim; font.pixelSize: 12 } }
+                            Rectangle { width: 30; height: 30; radius: 12; color: Theme.primary; Text { anchors.centerIn: parent; text: "+"; color: Theme.primaryText; font.weight: Font.DemiBold } }
+                            Column { width: parent.width - 42; spacing: 2; Text { width: parent.width; elide: Text.ElideRight; text: model.title; color: Theme.text; font.weight: Font.DemiBold; font.pixelSize: 13 } Text { width: parent.width; elide: Text.ElideRight; text: model.subtitle; color: Theme.dim; font.pixelSize: 12 } }
                         }
                         MouseArea { anchors.fill: parent; enabled: scenariosBridge.canManage; onClicked: scenariosBridge.addAction(model.action) }
                     }
@@ -177,19 +186,18 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "#101020"
+            color: Theme.background
             Column {
                 anchors.fill: parent
                 Rectangle {
                     width: parent.width
-                    height: 62
+                    height: 96
                     color: Theme.background
                     border.color: Theme.borderSubtle
-                    Text { anchors.left: parent.left; anchors.leftMargin: 22; anchors.verticalCenter: parent.verticalCenter; text: "Action Map"; color: Theme.primaryLight; font.pixelSize: 18; font.bold: true }
-                    Row { anchors.right: parent.right; anchors.rightMargin: 22; anchors.verticalCenter: parent.verticalCenter; spacing: 10
-                        PrimaryButton { width: 126; text: "Variables"; icon: "settings"; secondary: true; enabled: scenariosBridge.canManage; onClicked: { root.openVariableEditor(""); variablesDialog.open() } }
+                    Text { anchors.left: parent.left; anchors.leftMargin: 22; anchors.top: parent.top; anchors.topMargin: 12; text: "Action map"; color: Theme.primaryLight; font.pixelSize: 18; font.weight: Font.DemiBold }
+                    RowLayout { anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 12; y: 43; spacing: 8
+                        PrimaryButton { text: "Variables"; icon: "settings"; secondary: true; enabled: scenariosBridge.canManage; onClicked: { root.openVariableEditor(""); variablesDialog.open() } }
                         PrimaryButton {
-                            width: 86
                             text: root.scenarioSaved ? "Saved" : "Save"
                             icon: "save"
                             secondary: true
@@ -200,8 +208,9 @@ Item {
                             }
                         }
                         Rectangle {
-                            width: 210
-                            height: 36
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 88
+                            height: 38
                             radius: 11
                             color: Theme.subtle
                             border.color: Theme.border
@@ -220,7 +229,7 @@ Item {
                                     verticalAlignment: Text.AlignVCenter
                                     elide: Text.ElideRight
                                     font.pixelSize: 13
-                                    font.bold: true
+                                    font.weight: Font.DemiBold
                                 }
                                 delegate: ItemDelegate { width: runProfileSelect.width; text: model.name; highlighted: runProfileSelect.highlightedIndex === index }
                                 popup.background: Rectangle { color: Theme.elevated; border.color: Theme.border; radius: 10 }
@@ -228,20 +237,20 @@ Item {
                                 Component.onCompleted: if (count > 0) scenariosBridge.setRunProfile(currentText)
                             }
                         }
-                        PrimaryButton { width: 44; text: ""; icon: "play"; enabled: scenariosBridge.canRun; onClicked: scenariosBridge.runSelected() }
-                        PrimaryButton { width: 44; text: ""; icon: "stop"; danger: true; onClicked: scenariosBridge.cancelRun() }
+                        PrimaryButton { text: "Run"; icon: "play"; enabled: scenariosBridge.canRun; onClicked: scenariosBridge.runSelected() }
+                        PrimaryButton { icon: "stop"; iconOnly: true; width: 40; tooltip: "Stop run"; danger: true; onClicked: scenariosBridge.cancelRun() }
                     }
                 }
                 ScenarioCanvas {
                     id: actionCanvas
                     width: parent.width
-                    height: parent.height - 62
+                    height: parent.height - 96
                     model: scenariosBridge.stepsModel
                     onNodeSelected: function(row) { scenariosBridge.selectStep(row) }
                     onNodeMoved: function(row, x, y) { scenariosBridge.setStepPosition(row, x, y) }
                     onNodeContextRequested: function(row, x, y) {
                         scenariosBridge.selectStep(row)
-                        stepMenu.popup(x, y + 62)
+                        stepMenu.popup(x, y + 96)
                     }
                     onLinkRequested: function(sourceRow, targetRow, kind) {
                         scenariosBridge.linkSteps(sourceRow, targetRow, kind)
@@ -250,22 +259,23 @@ Item {
                         linkMenu.sourceRow = sourceRow
                         linkMenu.targetRow = targetRow
                         linkMenu.kind = kind
-                        linkMenu.popup(x, y + 62)
+                        linkMenu.popup(x, y + 96)
                     }
                     onDeleteRequested: function(row) {
                         scenariosBridge.selectStep(row)
-                        scenariosBridge.deleteStep()
+                        root.confirmDeleteStep()
                     }
                 }
             }
         }
 
         Rectangle {
-            Layout.preferredWidth: 380
+            Layout.preferredWidth: root.width < 1100 ? 280 : 320
             Layout.fillHeight: true
             color: Theme.elevated
             border.color: Theme.borderSubtle
             Flickable {
+    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                 anchors.fill: parent
                 contentWidth: width
                 contentHeight: details.height + 44
@@ -276,10 +286,10 @@ Item {
                     x: 18
                     y: 20
                     spacing: 14
-                    Text { text: "Node Properties"; color: Theme.text; font.pixelSize: 15; font.bold: true }
+                    Text { text: "Node Properties"; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold }
                     Row { width: parent.width; spacing: 8
                         PrimaryButton { width: (parent.width - 8) / 2; text: "Copy"; secondary: true; enabled: scenariosBridge.canManage; onClicked: scenariosBridge.duplicateStep() }
-                        PrimaryButton { width: (parent.width - 8) / 2; text: "Delete"; danger: true; enabled: scenariosBridge.canManage; onClicked: scenariosBridge.deleteStep() }
+                        PrimaryButton { width: (parent.width - 8) / 2; text: "Delete"; danger: true; enabled: scenariosBridge.canManage; onClicked: root.confirmDeleteStep() }
                     }
                     FormField { id: stepTag; width: parent.width; label: "Tag" }
                     Row { width: parent.width; spacing: 8
@@ -298,8 +308,8 @@ Item {
                         FormField { id: stepNextOk; width: (parent.width - 8) / 2; label: "Next success tag" }
                         FormField { id: stepNextErr; width: (parent.width - 8) / 2; label: "Next error tag" }
                     }
-                    Text { text: "Extra JSON"; color: Theme.text; font.pixelSize: 12; font.bold: true }
-                    Rectangle { width: parent.width; height: 118; radius: 11; color: Theme.subtle; border.color: Theme.border
+                    Text { text: "Extra JSON"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
+                    Rectangle { width: parent.width; height: 118; radius: Theme.radiusSm; color: Theme.subtle; border.color: Theme.border
                         TextArea { id: stepExtra; anchors.fill: parent; anchors.margins: 10; color: Theme.text; placeholderTextColor: Theme.dim; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
                     }
                     PrimaryButton {
@@ -323,7 +333,7 @@ Item {
                         )
                     }
                     Text { text: "Raw step"; color: Theme.dim; font.pixelSize: 12 }
-                    Rectangle { width: parent.width; height: 110; radius: 11; color: Theme.background; border.color: Theme.border
+                    Rectangle { width: parent.width; height: 110; radius: Theme.radiusSm; color: Theme.background; border.color: Theme.border
                         Text { anchors.fill: parent; anchors.margins: 10; text: scenariosBridge.selectedStepJson; color: Theme.muted; font.family: "Consolas"; font.pixelSize: 11; wrapMode: Text.Wrap; elide: Text.ElideRight }
                     }
                 }
@@ -331,14 +341,15 @@ Item {
         }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: variablesDialog
+        objectName: "variablesDialog"
         modal: true
         width: Math.min(860, root.width - 80)
         height: Math.min(560, root.height - 80)
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Column {
             anchors.fill: parent
             anchors.margins: 22
@@ -347,7 +358,7 @@ Item {
             RowLayout {
                 width: parent.width
                 height: 38
-                Text { text: "Shared Variables"; color: Theme.text; font.pixelSize: 22; font.bold: true; Layout.fillWidth: true }
+                Text { text: "Shared Variables"; color: Theme.text; font.pixelSize: 22; font.weight: Font.DemiBold; Layout.fillWidth: true }
                 PrimaryButton { Layout.preferredWidth: 104; text: "New"; icon: "plus"; enabled: scenariosBridge.canManage; onClicked: root.openVariableEditor("") }
                 PrimaryButton { Layout.preferredWidth: 104; text: "Close"; secondary: true; onClicked: variablesDialog.close() }
             }
@@ -421,7 +432,7 @@ Item {
                         PrimaryButton { width: (parent.width - 20) / 3; text: "list"; secondary: sharedVarType.text !== "list"; onClicked: sharedVarType.text = "list" }
                     }
                     FormField { id: sharedVarType; visible: false; text: "string" }
-                    Text { text: "Value"; color: Theme.text; font.pixelSize: 12; font.bold: true }
+                    Text { text: "Value"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
                     Rectangle {
                         width: parent.width
                         height: 190
@@ -450,19 +461,20 @@ Item {
         }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: scenarioDialog
+        objectName: "scenarioDialog"
         modal: true
         width: Math.min(760, root.width - 80)
         height: Math.min(650, root.height - 80)
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Column {
             anchors.fill: parent
             anchors.margins: 22
             spacing: 16
-            Text { text: "Scenario Library"; color: Theme.text; font.pixelSize: 24; font.bold: true }
+            Text { text: "Scenario Library"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
             Row {
                 width: parent.width
                 spacing: 12
@@ -510,9 +522,9 @@ Item {
                         width: ListView.view.width
                         height: 46
                         radius: 12
-                        color: scenariosBridge.selectedName === model.name ? "#35285a" : Theme.subtle
+                        color: scenariosBridge.selectedName === model.name ? Theme.selection : Theme.subtle
                         border.color: scenariosBridge.selectedName === model.name ? Theme.primary : Theme.border
-                        Text { anchors.left: parent.left; anchors.leftMargin: 14; anchors.top: parent.top; anchors.topMargin: 8; text: model.name; color: Theme.text; font.pixelSize: 13; font.bold: true; elide: Text.ElideRight; width: parent.width - 70 }
+                        Text { anchors.left: parent.left; anchors.leftMargin: 14; anchors.top: parent.top; anchors.topMargin: 8; text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width - 70 }
                         Text { anchors.left: parent.left; anchors.leftMargin: 14; anchors.bottom: parent.bottom; anchors.bottomMargin: 8; text: model.steps + " steps"; color: Theme.dim; font.pixelSize: 11 }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: scenariosBridge.selectScenario(model.name) }
                     }
@@ -521,7 +533,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     spacing: 14
-                    Text { text: "Details"; color: Theme.text; font.pixelSize: 16; font.bold: true }
+                    Text { text: "Details"; color: Theme.text; font.pixelSize: 16; font.weight: Font.DemiBold }
                     FormField { id: scenarioNameEdit; width: parent.width; label: "Name"; text: scenariosBridge.selectedName }
                     FormField { id: scenarioDescEdit; width: parent.width; label: "Description"; text: scenariosBridge.selectedDescription }
                     PrimaryButton { width: 140; text: "Apply & Close"; enabled: scenariosBridge.canManage; onClicked: { scenariosBridge.saveSelected(scenarioNameEdit.text, scenarioDescEdit.text); scenarioDialog.close() } }
@@ -530,14 +542,15 @@ Item {
         }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: marketplaceDialog
+        objectName: "marketplaceDialog"
         modal: true
         width: Math.min(1040, root.width - 80)
         height: Math.min(700, root.height - 80)
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Column {
             anchors.fill: parent
             anchors.margins: 22
@@ -546,7 +559,7 @@ Item {
             RowLayout {
                 width: parent.width
                 height: 40
-                Text { text: "Scenario Marketplace"; color: Theme.text; font.pixelSize: 24; font.bold: true; Layout.fillWidth: true }
+                Text { text: "Scenario Marketplace"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold; Layout.fillWidth: true }
                 PrimaryButton { Layout.preferredWidth: 108; text: "Refresh"; icon: "refresh"; secondary: true; onClicked: scenariosBridge.refreshMarket() }
                 PrimaryButton { Layout.preferredWidth: 104; text: "Close"; secondary: true; onClicked: marketplaceDialog.close() }
             }
@@ -591,7 +604,7 @@ Item {
                         width: ListView.view.width
                         height: 112
                         radius: 15
-                        color: model.selected ? "#35285a" : Theme.subtle
+                        color: model.selected ? Theme.selection : Theme.subtle
                         border.color: model.selected ? Theme.primary : Theme.border
 
                         MouseArea {
@@ -607,11 +620,11 @@ Item {
                             anchors.rightMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 6
-                            Text { text: model.title; color: Theme.text; font.pixelSize: 14; font.bold: true; elide: Text.ElideRight; width: parent.width }
+                            Text { text: model.title; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
                             Text { text: model.description || "No description"; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
                             Row {
                                 spacing: 8
-                                Text { text: model.category; color: Theme.primaryLight; font.pixelSize: 11; font.bold: true }
+                                Text { text: model.category; color: Theme.primaryLight; font.pixelSize: 11; font.weight: Font.DemiBold }
                                 Text { text: model.steps + " steps"; color: Theme.dim; font.pixelSize: 11 }
                                 Text { text: model.downloads + " downloads"; color: Theme.dim; font.pixelSize: 11 }
                             }
@@ -642,10 +655,10 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 16
                         spacing: 12
-                        Text { text: scenariosBridge.selectedMarketTitle || "Select scenario"; color: Theme.text; font.pixelSize: 20; font.bold: true; elide: Text.ElideRight; width: parent.width }
-                        Text { text: scenariosBridge.selectedMarketMeta; color: Theme.primaryLight; font.pixelSize: 12; font.bold: true; elide: Text.ElideRight; width: parent.width }
+                        Text { text: scenariosBridge.selectedMarketTitle || "Select scenario"; color: Theme.text; font.pixelSize: 20; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                        Text { text: scenariosBridge.selectedMarketMeta; color: Theme.primaryLight; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
                         Text { text: scenariosBridge.selectedMarketDescription || "Preview description and steps before installing."; color: Theme.muted; font.pixelSize: 13; wrapMode: Text.Wrap; width: parent.width }
-                        Text { text: "Steps preview"; color: Theme.text; font.pixelSize: 13; font.bold: true }
+                        Text { text: "Steps preview"; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
                         Rectangle {
                             width: parent.width
                             height: parent.height - y - 50
@@ -678,24 +691,25 @@ Item {
         }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: publishDialog
+        objectName: "publishDialog"
         modal: true
         width: Math.min(520, root.width - 80)
         height: Math.min(520, root.height - 80)
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Column {
             anchors.fill: parent
             anchors.margins: 22
             spacing: 14
-            Text { text: "Publish Scenario"; color: Theme.text; font.pixelSize: 24; font.bold: true }
+            Text { text: "Publish Scenario"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
             Text { text: "Publish current scenario to the global marketplace."; color: Theme.muted; font.pixelSize: 13; wrapMode: Text.Wrap; width: parent.width }
             FormField { id: publishTitle; width: parent.width; label: "Title" }
             FormField { id: publishDescription; width: parent.width; label: "Description" }
             FormField { id: publishCategory; width: parent.width; label: "Category: Social, Ads, E-commerce, Scraping, Warm-up, QA, Utility" }
-            Text { text: "Tags"; color: Theme.text; font.pixelSize: 12; font.bold: true }
+            Text { text: "Tags"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
             Rectangle {
                 width: parent.width
                 height: 88
@@ -738,7 +752,7 @@ Item {
         MenuItem { text: "Move before"; enabled: scenariosBridge.canManage; onTriggered: scenariosBridge.moveStep(-1) }
         MenuItem { text: "Move after"; enabled: scenariosBridge.canManage; onTriggered: scenariosBridge.moveStep(1) }
         MenuSeparator {}
-        MenuItem { text: "Delete step"; enabled: scenariosBridge.canManage; onTriggered: scenariosBridge.deleteStep() }
+        MenuItem { text: "Delete step"; enabled: scenariosBridge.canManage; onTriggered: root.confirmDeleteStep() }
     }
     Menu {
         id: linkMenu

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict
 
 from PyQt6.QtCore import QUrl
-from PyQt6.QtGui import QGuiApplication, QIcon
+from PyQt6.QtGui import QFont, QGuiApplication, QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 
 from app.ui.bridge.app_state import AppState
@@ -39,6 +39,7 @@ class QmlApplication:
         os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
         _install_qt_logging_rules()
         self.app = QGuiApplication(argv)
+        self.app.setFont(QFont("Segoe UI", 10))
         self.engine = QQmlApplicationEngine()
         self.root_dir = self._resource_path("app/qml")
         self.state = AppState()

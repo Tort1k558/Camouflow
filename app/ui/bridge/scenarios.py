@@ -376,7 +376,7 @@ class ScenariosBridge(QObject):
             "duration": duration,
             "started": str(row.get("started_at") or "")[:19].replace("T", " "),
             "error": str(row.get("error") or ""),
-            "accent": "#22c55e" if status == "success" else "#ef4444" if status == "failed" else "#f59e0b",
+            "accent": "#3f714a" if status == "success" else "#b33d47" if status == "failed" else "#94671c",
         }
 
     @staticmethod
@@ -495,7 +495,7 @@ class ScenariosBridge(QObject):
                 "nextErr": str(step.get("next_error_step") or ""),
                 "x": x,
                 "y": y,
-                "accent": "#06b6d4" if index == 0 else "#ef4444" if self._is_error_target(index) else "#8b5cf6",
+                "accent": "#3f714a" if index == 0 else "#b33d47" if self._is_error_target(index) else "#4c682b",
                 "selected": index == self._selected_step_index,
             })
         self._steps_model.set_rows(rows)

@@ -6,7 +6,7 @@ Rectangle {
     property int step: 1
     property string title: "Start scenario"
     property string subtitle: ""
-    property color accent: Theme.primary
+    property color accent: Theme.primaryInk
     property bool selected: false
     signal moved()
     signal moveFinished()
@@ -24,17 +24,17 @@ Rectangle {
     height: 90
     z: selected ? 20 : (dragArea.drag.active ? 10 : 1)
     radius: 12
-    color: "#e6141424"
-    border.color: accent
-    border.width: selected ? 3 : 2
+    color: selected ? Theme.selection : Theme.card
+    border.color: selected ? Theme.primaryInk : Theme.border
+    border.width: selected ? 2 : 1
     Text { anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 18; text: "Step " + root.step + "."; color: accent; font.pixelSize: 12; font.bold: true }
-    Text { anchors.left: parent.left; anchors.top: parent.top; anchors.topMargin: 42; anchors.leftMargin: 18; text: root.title; color: Theme.text; font.pixelSize: 14; font.bold: true }
+    Text { anchors.left: parent.left; anchors.top: parent.top; anchors.topMargin: 42; anchors.leftMargin: 18; width: parent.width - 36; elide: Text.ElideRight; text: root.title; color: Theme.text; font.pixelSize: 14; font.bold: true }
     Text { anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.topMargin: 62; anchors.leftMargin: 18; anchors.rightMargin: 18; text: root.subtitle; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight }
     Rectangle { width: 9; height: 9; radius: 5; color: Theme.primary; anchors.left: parent.left; anchors.leftMargin: -5; anchors.verticalCenter: parent.verticalCenter }
     Rectangle {
         width: 13; height: 13; radius: 7; color: Theme.success; z: 40
         anchors.right: parent.right; anchors.rightMargin: -7; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -14
-        border.color: "white"; border.width: 1
+        border.color: Theme.card; border.width: 1
         MouseArea {
             anchors.fill: parent
             anchors.margins: -8
@@ -48,7 +48,7 @@ Rectangle {
     Rectangle {
         width: 13; height: 13; radius: 7; color: Theme.danger; z: 40
         anchors.right: parent.right; anchors.rightMargin: -7; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 18
-        border.color: "white"; border.width: 1
+        border.color: Theme.card; border.width: 1
         MouseArea {
             anchors.fill: parent
             anchors.margins: -8

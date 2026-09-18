@@ -24,7 +24,7 @@ Rectangle {
     signal linkContextRequested(int sourceRow, int targetRow, string kind, real x, real y)
     signal deleteRequested(int row)
 
-    color: "#111124"
+    color: Theme.subtle
     radius: 18
     border.color: Theme.border
     clip: true
@@ -321,13 +321,15 @@ Rectangle {
             var ctx = getContext("2d")
             ctx.reset()
 
-            ctx.strokeStyle = "#26263a"
-            ctx.lineWidth = 1
+            ctx.fillStyle = Theme.border
             var grid = Math.max(12, 24 * canvasRoot.zoom)
             var ox = canvasRoot.panX % grid
             var oy = canvasRoot.panY % grid
-            for (var gx = ox; gx < width; gx += grid) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, height); ctx.stroke() }
-            for (var gy = oy; gy < height; gy += grid) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(width, gy); ctx.stroke() }
+            for (var gx = ox; gx < width; gx += grid) {
+                for (var gy = oy; gy < height; gy += grid) {
+                    ctx.fillRect(gx, gy, 1.5, 1.5)
+                }
+            }
 
             ctx.setLineDash([7, 7])
             ctx.lineWidth = 2
@@ -399,7 +401,7 @@ Rectangle {
         width: hintText.width + 28
         height: 34
         radius: 12
-        color: "#dd18172b"
+        color: Theme.card
         border.color: canvasRoot.linkingKind === "err" ? Theme.danger : Theme.success
         Text {
             id: hintText
@@ -418,7 +420,7 @@ Rectangle {
         width: 92
         height: 34
         radius: 11
-        color: "#dd18172b"
+        color: Theme.card
         border.color: Theme.border
         Text { anchors.centerIn: parent; text: Math.round(canvasRoot.zoom * 100) + "%"; color: Theme.muted; font.pixelSize: 12; font.bold: true }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onDoubleClicked: canvasRoot.resetView() }
