@@ -444,31 +444,49 @@ Flickable {
         objectName: "loginDialog"
         modal: true
         width: Math.min(460, root.width - 80)
-        height: 350
+        height: 470
         anchors.centerIn: Overlay.overlay
         padding: 0
         background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Column {
             anchors.fill: parent
             anchors.margins: 24
-            spacing: 16
+            spacing: 14
 
             Text { text: "Login"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
             Text { text: "Connect your account to enable teams, roles, invites and cloud sync."; color: Theme.muted; font.pixelSize: 13; wrapMode: Text.WordWrap; width: parent.width }
             FormField { id: loginEmail; width: parent.width; label: "Email"; placeholder: "you@company.com" }
             FormField { id: loginPassword; width: parent.width; label: "Password"; placeholder: "Password"; echoMode: TextInput.Password }
             Row {
-                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width
                 spacing: 10
-                PrimaryButton { width: 150; text: "Cancel"; secondary: true; onClicked: loginDialog.close() }
+                PrimaryButton { width: (parent.width - 10) / 2; text: "Cancel"; secondary: true; onClicked: loginDialog.close() }
                 PrimaryButton {
-                    width: 150
+                    width: (parent.width - 10) / 2
                     text: "Login"
                     icon: "link"
                     onClicked: {
                         if (root.bridge) root.bridge.login(loginEmail.text, loginPassword.text)
                         loginDialog.close()
                     }
+                }
+            }
+            Rectangle { width: parent.width; height: 1; color: Theme.borderSubtle }
+            Text { text: "OR SIGN IN WITH GOOGLE"; color: Theme.dim; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 1 }
+            PrimaryButton {
+                width: parent.width
+                text: "Continue with Google"
+                icon: "user"
+                onClicked: { if (root.bridge) root.bridge.googleLogin() }
+            }
+            FormField { id: loginPairCode; width: parent.width; label: "Pairing code from browser"; placeholder: "cf_…" }
+            PrimaryButton {
+                width: parent.width
+                text: "Link app"
+                secondary: true
+                onClicked: {
+                    if (root.bridge) root.bridge.loginWithPairCode(loginPairCode.text)
+                    loginDialog.close()
                 }
             }
         }

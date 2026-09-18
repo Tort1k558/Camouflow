@@ -172,6 +172,36 @@ class ServerClient:
             {"email": email, "password": password},
             auth=False,
         )
+        return self._adopt_tokens(auth_payload, email)
+
+    def google_login_url(self, app_pair: bool = True) -> str:
+        url = self.session.url or DEFAULT_SERVER_URL
+        self.session = ServerSession(enabled=True, url=normalize_server_url(url), token="", refresh_token="", team_id="", email="")
+        payload = self.request("GET", "/api/v1/auth/google/url" + ("?app=true" if app_pair else ""), auth=False)
+        auth_url = str(payload.get("url") or "")
+        if "accounts.google.com" not in auth_url:
+            raise ServerClientError("Server did not return a Google sign-in URL")
+        return auth_url
+
+    def login_with_pair_code(self, code: str) -> Dict[str, Any]:
+        url = self.session.url or DEFAULT_SERVER_URL
+        self.session = ServerSession(enabled=True, url=normalize_server_url(url), token="", refresh_token="", team_id="", email="")
+        auth_payload = self.request("POST", "/api/v1/auth/google/pair", {"code": str(code or "").strip()}, auth=False)
+        result = self._adopt_tokens(auth_payload, "")
+        me = self.request("GET", "/api/v1/auth/me")
+        self.session.email = str(me.get("email") or "")
+        save_server_session(
+            enabled=True,
+            url=self.session.url,
+            token=self.session.token,
+            refresh_token=self.session.refresh_token,
+            team_id=self.session.team_id,
+            email=self.session.email,
+        )
+        result["email"] = self.session.email
+        return result
+
+    def _adopt_tokens(self, auth_payload: Dict[str, Any], email: str) -> Dict[str, Any]:
         token = str(auth_payload.get("access_token") or "")
         refresh_token = str(auth_payload.get("refresh_token") or "")
         if not token:
@@ -181,6 +211,7 @@ class ServerClient:
         teams = self.request("GET", "/api/v1/teams")
         team_id = str(teams[0].get("id") or "") if teams else ""
         self.session.team_id = team_id
+        self.session.email = email
         save_server_session(enabled=True, url=self.session.url, token=token, refresh_token=refresh_token, team_id=team_id, email=email)
         return {"token": token, "teams": teams, "team_id": team_id}
 
