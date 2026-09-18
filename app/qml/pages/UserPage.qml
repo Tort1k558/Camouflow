@@ -72,35 +72,64 @@ Flickable {
                     }
                 }
 
-                Row {
+                Column {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    spacing: 12
+                    spacing: 10
                     visible: root.bridge && root.bridge.serverEnabled
-                    PrimaryButton {
-                        width: 170
-                        text: "Sync Cloud"
-                        icon: "save"
-                        secondary: true
-                        enabled: root.bridge ? root.bridge.canManageCloud : false
-                        onClicked: root.bridge.syncCloudWorkspace()
+
+                    Row {
+                        spacing: 12
+                        PrimaryButton {
+                            width: 150
+                            text: "Sync Cloud"
+                            icon: "save"
+                            secondary: true
+                            enabled: root.bridge ? root.bridge.canManageCloud : false
+                            onClicked: root.bridge.syncCloudWorkspace()
+                        }
+                        PrimaryButton {
+                            width: 190
+                            text: "Sync + cookies"
+                            icon: "cookie"
+                            secondary: true
+                            enabled: root.bridge ? root.bridge.canManageCloud : false
+                            onClicked: root.bridge.syncCloudWorkspace(true)
+                        }
+                        PrimaryButton {
+                            width: 34
+                            text: ""
+                            icon: "refresh"
+                            iconOnly: true
+                            secondary: true
+                            onClicked: root.bridge.refresh()
+                        }
+                        PrimaryButton {
+                            width: 150
+                            text: root.bridge && root.bridge.conflictCount > 0 ? "Conflicts (" + root.bridge.conflictCount + ")" : "Conflicts"
+                            icon: "link"
+                            visible: root.bridge && root.bridge.canManageCloud
+                            secondary: true
+                            onClicked: conflictDialog.open()
+                        }
+                        PrimaryButton {
+                            width: 120
+                            text: "Logout"
+                            icon: "stop"
+                            secondary: true
+                            onClicked: root.bridge.logout()
+                        }
                     }
-                    PrimaryButton {
-                        width: 34
-                        text: ""
-                        icon: "refresh"
-                        iconOnly: true
-                        secondary: true
-                        onClicked: root.bridge.refresh()
-                    }
-                    PrimaryButton {
-                        width: 130
-                        text: "Logout"
-                        icon: "stop"
-                        secondary: true
-                        visible: root.bridge && root.bridge.serverEnabled
-                        onClicked: root.bridge.logout()
+
+                    Row {
+                        spacing: 8
+                        CheckBox {
+                            id: autosyncCheck
+                            checked: root.bridge ? root.bridge.autoSyncEnabled : false
+                            onToggled: root.bridge.setAutoSyncEnabled(checked)
+                            text: "Auto-sync on app start"
+                        }
                     }
                 }
 
@@ -326,7 +355,7 @@ Flickable {
 
         GlassCard {
             width: parent.width
-            height: 360
+            height: 430
             padding: 26
             visible: root.bridge && root.bridge.serverEnabled
 
@@ -344,6 +373,7 @@ Flickable {
             }
 
             RowLayout {
+                id: inviteRow
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: accessHeader.bottom
@@ -351,14 +381,64 @@ Flickable {
                 spacing: 10
 
                 FormField { id: inviteEmail; Layout.fillWidth: true; label: "Email"; placeholder: "user@company.com" }
-                FormField { id: inviteRole; Layout.preferredWidth: 130; label: "Role"; text: "operator" }
+                Column {
+                    Layout.preferredWidth: 130
+                    spacing: 4
+                    Text { text: "Role"; color: Theme.dim; font.pixelSize: 11; font.weight: Font.DemiBold }
+                    ComboBox {
+                        id: inviteRole
+                        width: parent.width
+                        model: ["viewer", "operator", "manager", "admin", "owner"]
+                        currentIndex: 1
+                    }
+                }
                 PrimaryButton {
                     Layout.preferredWidth: 120
                     Layout.alignment: Qt.AlignBottom
                     text: "Invite"
                     icon: "plus"
                     enabled: root.bridge ? root.bridge.canManageTeam : false
-                    onClicked: root.bridge.createInvite(inviteEmail.text, inviteRole.text)
+                    onClicked: root.bridge.createInvite(inviteEmail.text, inviteRole.currentText)
+                }
+            }
+
+            Rectangle {
+                id: inviteLinkBox
+                visible: root.bridge && root.bridge.lastInviteLink !== ""
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: inviteRow.bottom
+                anchors.topMargin: 10
+                height: 56
+                radius: 10
+                color: Theme.selection
+                border.color: Theme.primary
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 10
+                    Column {
+                        Layout.fillWidth: true
+                        Text { text: "Invite link"; color: Theme.dim; font.pixelSize: 10; font.weight: Font.DemiBold }
+                        Text { width: parent.width; text: root.bridge ? root.bridge.lastInviteLink : ""; color: Theme.text; font.pixelSize: 12; elide: Text.ElideMiddle }
+                    }
+                    PrimaryButton { Layout.preferredWidth: 84; text: "Copy"; secondary: true; onClicked: root.bridge.copyToClipboard(root.bridge.lastInviteLink) }
+                    PrimaryButton { Layout.preferredWidth: 84; text: "Open"; secondary: true; onClicked: Qt.openUrlExternally(root.bridge.lastInviteLink) }
+                }
+            }
+
+            RowLayout {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: accessHeader.bottom
+                anchors.topMargin: inviteLinkBox.visible ? 148 : 92
+                spacing: 10
+                Text { Layout.fillWidth: true; text: "Members"; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold }
+                PrimaryButton {
+                    Layout.preferredWidth: 110
+                    text: "Leave team"
+                    secondary: true
+                    onClicked: leaveConfirm.ask("Leave this team? You can come back via a new invite.", function() { root.bridge.leaveTeam() }, "Leave")
                 }
             }
 
@@ -366,7 +446,7 @@ Flickable {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: accessHeader.bottom
-                anchors.topMargin: 92
+                anchors.topMargin: inviteLinkBox.visible ? 182 : 126
                 anchors.bottom: parent.bottom
                 clip: true
                 spacing: 8
@@ -384,21 +464,23 @@ Flickable {
                         anchors.rightMargin: 8
                         spacing: 8
                         Text { Layout.fillWidth: true; text: model.email + (model.full_name ? " / " + model.full_name : ""); color: Theme.text; font.pixelSize: 13; elide: Text.ElideRight }
-                        TextField {
+                        ComboBox {
                             id: roleEdit
-                            Layout.preferredWidth: 110
-                            text: model.role
-                            color: Theme.text
+                            Layout.preferredWidth: 112
+                            model: ["viewer", "operator", "manager", "admin", "owner"]
+                            currentIndex: Math.max(0, ["viewer", "operator", "manager", "admin", "owner"].indexOf(model.role))
                             enabled: root.bridge ? root.bridge.canManageTeam : false
-                            background: Rectangle { radius: 0; color: "transparent"; border.color: Theme.border }
                         }
-                        PrimaryButton { Layout.preferredWidth: 76; text: "Save"; secondary: true; enabled: root.bridge ? root.bridge.canManageTeam : false; onClicked: root.bridge.updateMemberRole(model.id, roleEdit.text) }
-                        PrimaryButton { Layout.preferredWidth: 76; text: "Reset"; secondary: true; enabled: root.bridge ? root.bridge.canManageTeam : false; onClicked: root.bridge.createPasswordReset(model.id) }
-                        PrimaryButton { Layout.preferredWidth: 76; text: "Delete"; danger: true; enabled: root.bridge ? root.bridge.canManageTeam : false; onClicked: root.bridge.deleteMember(model.id) }
+                        PrimaryButton { Layout.preferredWidth: 70; text: "Save"; secondary: true; enabled: root.bridge ? root.bridge.canManageTeam : false; onClicked: root.bridge.updateMemberRole(model.id, roleEdit.currentText) }
+                        PrimaryButton { Layout.preferredWidth: 70; text: "Reset"; secondary: true; enabled: root.bridge ? root.bridge.canManageTeam : false; onClicked: root.bridge.createPasswordReset(model.id) }
+                        PrimaryButton { Layout.preferredWidth: 74; text: "Delete"; danger: true; enabled: root.bridge ? root.bridge.canManageTeam : false; onClicked: memberConfirm.ask('Remove "' + model.email + '" from the team?', function() { root.bridge.deleteMember(model.id) }) }
                     }
                 }
             }
         }
+
+        ConfirmDialog { id: memberConfirm }
+        ConfirmDialog { id: leaveConfirm }
 
         GlassCard {
             width: parent.width
@@ -491,4 +573,52 @@ Flickable {
             }
         }
     }
+
+    WorkspaceDialog {
+        id: conflictDialog
+        objectName: "conflictDialog"
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: Math.min(680, root.width - 60)
+        height: Math.min(460, root.height - 60)
+        padding: 0
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
+        contentItem: Column {
+            anchors.fill: parent
+            anchors.margins: 22
+            spacing: 14
+            Text { text: "Conflict center"; color: Theme.text; font.pixelSize: 20; font.weight: Font.DemiBold }
+            Text { text: "Items changed both locally and on the server. Pick which version wins."; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap; width: parent.width }
+            ListView {
+                id: conflictList
+                width: parent.width
+                height: parent.height - 120
+                clip: true
+                spacing: 8
+                model: root.bridge && root.bridge.conflictCount > 0 ? root.bridge.conflictModel : null
+                delegate: Rectangle {
+                    width: conflictList.width
+                    height: 52
+                    radius: 10
+                    color: Theme.subtle
+                    border.color: Theme.border
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 8
+                        Column {
+                            Layout.fillWidth: true
+                            Text { text: model.resource; color: Theme.primaryLight; font.pixelSize: 10; font.weight: Font.DemiBold; font.capitalization: Font.AllUppercase }
+                            Text { width: parent.width; text: model.key; color: Theme.text; font.pixelSize: 12; elide: Text.ElideMiddle }
+                        }
+                        PrimaryButton { Layout.preferredWidth: 96; text: "Keep local"; secondary: true; onClicked: root.bridge.resolveConflict(model.resource + "|" + model.key + "|local") }
+                        PrimaryButton { Layout.preferredWidth: 104; text: "Keep remote"; secondary: true; onClicked: root.bridge.resolveConflict(model.resource + "|" + model.key + "|remote") }
+                    }
+                }
+                EmptyState { anchors.centerIn: parent; width: Math.min(320, parent.width); visible: root.bridge && root.bridge.conflictCount === 0; title: "No conflicts"; description: "Local and cloud versions agree."; icon: "check" }
+            }
+            PrimaryButton { width: parent.width; text: "Close"; secondary: true; onClicked: conflictDialog.close() }
+        }
+    }
+
 }

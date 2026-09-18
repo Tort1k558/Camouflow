@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Dict
 
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QTimer, QUrl
 from PyQt6.QtGui import QFont, QGuiApplication, QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 
@@ -54,6 +54,7 @@ class QmlApplication:
         self._connect_messages()
         self._install_context()
         self._install_icon()
+        QTimer.singleShot(4000, self.user.maybeAutoSync)
 
     def _resource_path(self, relative: str) -> Path:
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
