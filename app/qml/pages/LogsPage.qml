@@ -6,13 +6,14 @@ import "../components"
 
 Item {
     id: root
+    property var bridge: typeof logsBridge !== "undefined" ? logsBridge : null
 
     component FilterChip: Rectangle {
         id: chip
         property string label: "All"
         property string value: "all"
         property int count: 0
-        readonly property bool active: logsBridge.levelFilter === chip.value
+        readonly property bool active: root.bridge && root.bridge.levelFilter === chip.value
         height: 34
         radius: Theme.radiusSm
         implicitWidth: chipRow.implicitWidth + 30
@@ -31,7 +32,7 @@ Item {
                 Text { id: countText; anchors.centerIn: parent; text: chip.count; color: chip.active ? Theme.primaryText : Theme.dim; font.pixelSize: 11; font.weight: Font.DemiBold }
             }
         }
-        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: logsBridge.setLevelFilter(chip.value) }
+        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; enabled: root.bridge; onClicked: root.bridge.setLevelFilter(chip.value) }
     }
 
     ConfirmDialog { id: confirmDialog }
@@ -44,16 +45,16 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             PageHeader { Layout.fillWidth: true; height: 72; title: "Logs"; subtitle: "Application and automation events" }
-            PrimaryButton { text: "Refresh"; icon: "refresh"; secondary: true; onClicked: logsBridge.refresh() }
-            PrimaryButton { text: "Clear log"; icon: "trash"; danger: true; enabled: logsBridge.totalCount > 0; onClicked: confirmDialog.ask("Clear the captured log events? Log files on disk are kept.", function() { logsBridge.clear() }, "Clear") }
+            PrimaryButton { text: "Refresh"; icon: "refresh"; secondary: true; enabled: root.bridge; onClicked: root.bridge.refresh() }
+            PrimaryButton { text: "Clear log"; icon: "trash"; danger: true; enabled: root.bridge && root.bridge.totalCount > 0; onClicked: confirmDialog.ask("Clear the captured log events? Log files on disk are kept.", function() { root.bridge.clear() }, "Clear") }
         }
 
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
-            FilterChip { label: "All events"; value: "all"; count: logsBridge.totalCount }
-            FilterChip { label: "Errors"; value: "errors"; count: logsBridge.errorCount }
-            FilterChip { label: "Warnings + errors"; value: "warnings"; count: logsBridge.warningCount }
+            FilterChip { label: "All events"; value: "all"; count: root.bridge ? root.bridge.totalCount : 0 }
+            FilterChip { label: "Errors"; value: "errors"; count: root.bridge ? root.bridge.errorCount : 0 }
+            FilterChip { label: "Warnings + errors"; value: "warnings"; count: root.bridge ? root.bridge.warningCount : 0 }
             Item { Layout.fillWidth: true }
             Text { text: logList.count + " events shown"; color: Theme.dim; font.pixelSize: 11 }
         }
@@ -78,12 +79,12 @@ Item {
                 id: logList
                 anchors.fill: parent
                 anchors.topMargin: 40
-                model: logsBridge.model
+                model: root.bridge ? root.bridge.model : null
                 spacing: 0
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar {}
-                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: logList.count === 0; title: logsBridge.levelFilter === "all" ? "A clear activity log" : "No events at this level"; description: logsBridge.levelFilter === "all" ? "Application and automation events will appear here." : "Switch the filter or refresh to see more events."; icon: "logs" }
+                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: logList.count === 0; title: !root.bridge || root.bridge.levelFilter === "all" ? "A clear activity log" : "No events at this level"; description: !root.bridge || root.bridge.levelFilter === "all" ? "Application and automation events will appear here." : "Switch the filter or refresh to see more events."; icon: "logs" }
                 delegate: Rectangle {
                     width: ListView.view.width
                     height: Math.max(44, line.implicitHeight + 22)

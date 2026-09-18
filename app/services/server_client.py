@@ -19,7 +19,7 @@ SERVER_TOKEN_KEY = "server_token"
 SERVER_REFRESH_TOKEN_KEY = "server_refresh_token"
 SERVER_TEAM_ID_KEY = "server_team_id"
 SERVER_EMAIL_KEY = "server_email"
-DEFAULT_SERVER_URL = "http://localhost"
+DEFAULT_SERVER_URL = "https://camouflow.site"
 _REQUEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="camouflow-cloud")
 
 
