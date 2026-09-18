@@ -7,6 +7,7 @@ import threading
 
 from PyQt6.QtCore import QUrl, QObject, pyqtProperty, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtWidgets import QApplication
 
 from app.services.cloud_sync import CloudWorkspaceSync
 from app.services.server_client import (
@@ -41,11 +42,13 @@ class UserBridge(QObject):
         ], parent=self)
         self._members_model = DictListModel(["id", "email", "full_name", "role"], parent=self)
         self._audit_model = DictListModel(["time", "action", "entity", "details"], parent=self)
+        self._conflicts_model = DictListModel(["resource", "key", "remote_id"], parent=self)
         self._email = ""
         self._name = ""
         self._is_superadmin = False
         self._server_role = ""
         self._status = "Local mode"
+        self._last_invite_link = ""
         self.cloudRefreshFinished.connect(self._apply_cloud_refresh)
         self.cloudSyncFinished.connect(self._apply_cloud_sync)
         if app_state is not None:
@@ -67,6 +70,10 @@ class UserBridge(QObject):
     @pyqtProperty(QObject, constant=True)
     def auditModel(self) -> QObject:  # noqa: N802
         return self._audit_model
+
+    @pyqtProperty(QObject, constant=True)
+    def conflictModel(self) -> QObject:  # noqa: N802
+        return self._conflicts_model
 
     @pyqtProperty(bool, notify=changed)
     def serverEnabled(self) -> bool:  # noqa: N802
@@ -125,6 +132,18 @@ class UserBridge(QObject):
         return get_server_session().email
 
     @pyqtProperty(str, notify=changed)
+    def lastInviteLink(self) -> str:  # noqa: N802
+        return self._last_invite_link
+
+    @pyqtProperty(bool, notify=changed)
+    def autoSyncEnabled(self) -> bool:  # noqa: N802
+        return (db_get_setting("cloud_autosync") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+    @pyqtProperty(int, notify=changed)
+    def conflictCount(self) -> int:  # noqa: N802
+        return len(self._pending_conflicts())
+
+    @pyqtProperty(str, notify=changed)
     def localLimitations(self) -> str:  # noqa: N802
         return (
             "No team list or invitations\n"
@@ -139,8 +158,57 @@ class UserBridge(QObject):
         if self._app_state is not None:
             self._app_state.notify(text)
 
+    def _pending_conflicts(self) -> list:
+        try:
+            items = json.loads(db_get_setting("cloud_sync_conflicts_v1") or "[]")
+        except Exception:
+            items = []
+        return items if isinstance(items, list) else []
+
+    @pyqtSlot(str)
+    def copyToClipboard(self, text: str) -> None:  # noqa: N802
+        clipboard = QApplication.clipboard()
+        if clipboard is not None and text:
+            clipboard.setText(str(text))
+            self._notify("Copied to clipboard")
+
+    @pyqtSlot(bool)
+    def setAutoSyncEnabled(self, enabled: bool) -> None:  # noqa: N802
+        db_set_setting("cloud_autosync", "true" if enabled else "false")
+        self.changed.emit()
+
+    @pyqtSlot()
+    def maybeAutoSync(self) -> None:  # noqa: N802
+        if self.autoSyncEnabled and get_server_session().enabled:
+            self.syncCloudWorkspace()
+
+    @pyqtSlot(str)
+    def resolveConflict(self, spec: str) -> None:  # noqa: N802
+        """spec = 'resource|key|local' or 'resource|key|remote'."""
+        parts = str(spec or "").split("|")
+        if len(parts) != 3:
+            return
+        resource, key, choice = parts
+        client = ServerClient()
+        if not client.configured:
+            self._notify("Not connected to cloud")
+            return
+
+        def worker() -> None:
+            try:
+                error = CloudWorkspaceSync(client).resolve(resource, key, choice)
+                self.cloudSyncFinished.emit({"resolved": 1, "error_text": error}, "")
+            except ServerClientError as exc:
+                self.cloudSyncFinished.emit({}, str(exc))
+
+        threading.Thread(target=worker, daemon=True, name="camouflow-conflict-resolve").start()
+
+    def _reload_conflicts(self) -> None:
+        self._conflicts_model.set_rows(self._pending_conflicts())
+
     @pyqtSlot()
     def refresh(self) -> None:
+        self._reload_conflicts()
         session = get_server_session()
         self._email = session.email
         self._name = ""
@@ -288,46 +356,6 @@ class UserBridge(QObject):
             status=self._status,
         )
 
-    def _refresh_members(self) -> None:
-        client = ServerClient()
-        if not client.configured:
-            self._members_model.set_rows([])
-            return
-        try:
-            members = client.team_members()
-        except ServerClientError:
-            self._members_model.set_rows([])
-            return
-        self._members_model.set_rows([
-            {
-                "id": str(member.get("id") or ""),
-                "email": str(member.get("email") or ""),
-                "full_name": str(member.get("full_name") or ""),
-                "role": str(member.get("role") or ""),
-            }
-            for member in members
-        ])
-
-    def _refresh_audit(self) -> None:
-        client = ServerClient()
-        if not client.configured:
-            self._audit_model.set_rows([])
-            return
-        try:
-            audit_rows = client.audit_log(limit=80)
-        except ServerClientError:
-            self._audit_model.set_rows([])
-            return
-        self._audit_model.set_rows([
-            {
-                "time": str(row.get("created_at") or "")[:19].replace("T", " "),
-                "action": str(row.get("action") or ""),
-                "entity": " ".join(part for part in [str(row.get("entity_type") or ""), str(row.get("entity_id") or "")[:8]] if part),
-                "details": json.dumps(row.get("payload") or {}, ensure_ascii=False),
-            }
-            for row in audit_rows
-        ])
-
     @pyqtSlot(str)
     def selectTeam(self, team_id: str) -> None:  # noqa: N802
         session = get_server_session()
@@ -366,6 +394,33 @@ class UserBridge(QObject):
         self.refresh()
         if self._app_state is not None:
             self._app_state.refreshAll()
+    @pyqtSlot(str, str, str)
+    def leaveTeam(self) -> None:  # noqa: N802
+        client = ServerClient()
+        if not client.configured:
+            self._notify("Not connected to cloud")
+            return
+        try:
+            client.request("POST", f"/api/v1/teams/{client.session.team_id}/leave", None)
+            self._notify("You left the team")
+            self.refresh()
+            if self._app_state is not None:
+                self._app_state.refreshAll()
+        except ServerClientError as exc:
+            self._notify(f"Leave failed: {exc}")
+
+    @pyqtSlot(str, str)
+    def revokeInvite(self, invite_id: str) -> None:  # noqa: N802
+        client = ServerClient()
+        if not client.configured:
+            return
+        try:
+            client.request("DELETE", f"/api/v1/teams/{client.session.team_id}/invites/{invite_id}", None)
+            self._notify("Invite revoked")
+            self.refresh()
+        except ServerClientError as exc:
+            self._notify(f"Revoke failed: {exc}")
+
     @pyqtSlot(str, str)
     def createInvite(self, email: str, role: str) -> None:  # noqa: N802
         client = ServerClient()
@@ -423,7 +478,8 @@ class UserBridge(QObject):
         self.syncCloudWorkspace()
 
     @pyqtSlot()
-    def syncCloudWorkspace(self) -> None:  # noqa: N802
+    @pyqtSlot(bool)
+    def syncCloudWorkspace(self, upload_cookies: bool = False) -> None:  # noqa: N802
         client = ServerClient()
         if not client.configured:
             self._notify("Select a cloud team first")
@@ -435,8 +491,8 @@ class UserBridge(QObject):
 
         def worker() -> None:
             try:
-                result = CloudWorkspaceSync(client).sync()
-                self.cloudSyncFinished.emit({"uploaded": result.uploaded, "downloaded": result.downloaded, "conflicts": result.conflicts}, "")
+                result = CloudWorkspaceSync(client).sync(upload_cookies=bool(upload_cookies))
+                self.cloudSyncFinished.emit({"uploaded": result.uploaded, "downloaded": result.downloaded, "conflicts": result.conflicts, "conflict_items": result.conflict_items}, "")
             except ServerClientError as exc:
                 self.cloudSyncFinished.emit({}, str(exc))
 
@@ -448,103 +504,26 @@ class UserBridge(QObject):
             self._notify(f"Cloud sync failed: {error}")
             return
         result = payload if isinstance(payload, dict) else {}
+        if result.get("resolved"):
+            if result.get("error_text"):
+                self._notify(str(result["error_text"]))
+            else:
+                self._notify("Conflict resolved")
+            self.changed.emit()
+            if self._app_state is not None:
+                self._app_state.refreshAll()
+            return
         uploaded = int(result.get("uploaded") or 0)
         downloaded = int(result.get("downloaded") or 0)
         conflicts = result.get("conflicts") if isinstance(result.get("conflicts"), list) else []
         message = f"Cloud sync finished: {uploaded} uploaded, {downloaded} downloaded"
         if conflicts:
-            message += f". Conflicts skipped: {', '.join(str(item) for item in conflicts[:3])}"
-            if len(conflicts) > 3:
-                message += f" (+{len(conflicts) - 3})"
+            message += f". Conflicts: {len(conflicts)} (open Conflict center to resolve)"
         self._notify(message)
+        self._reload_conflicts()
+        self.changed.emit()
         if self._app_state is not None:
             self._app_state.refreshAll()
-
-    def _upload_local_proxies(self, client: ServerClient) -> int:
-        existing = {str(item.get("value") or ""): item for item in client.proxies()}
-        uploaded = 0
-        try:
-            pools = json.loads(db_get_setting("proxy_pools") or "{}")
-        except Exception:
-            pools = {}
-        if not isinstance(pools, dict):
-            return 0
-        for pool_name, pool in pools.items():
-            entries = pool.get("proxies", []) if isinstance(pool, dict) else []
-            for entry in entries:
-                value = str((entry if isinstance(entry, dict) else {}).get("value") or "").strip()
-                if not value or value in existing:
-                    continue
-                created = client.create_proxy({"value": value, "group_name": str(pool_name or "Default")})
-                existing[value] = created
-                uploaded += 1
-        return uploaded
-
-    def _upload_local_profiles(self, client: ServerClient) -> int:
-        existing = {str(item.get("name") or ""): item for item in client.profiles()}
-        proxies = {str(item.get("value") or ""): str(item.get("id") or "") for item in client.proxies()}
-        uploaded = 0
-        for account in db_get_accounts():
-            name = str(account.get("name") or "").strip()
-            if not name:
-                continue
-            proxy_value = self._proxy_value(account)
-            proxy_id = proxies.get(proxy_value, "") if proxy_value else ""
-            if proxy_value and not proxy_id:
-                created = client.create_proxy({"value": proxy_value, "group_name": str(account.get("proxy_pool") or account.get("stage") or "Default")})
-                proxy_id = str(created.get("id") or "")
-                proxies[proxy_value] = proxy_id
-            settings = {}
-            engine = str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox").lower()
-            raw_settings = account.get("cloakbrowser_settings") if engine == "cloakbrowser" else account.get("camoufox_settings")
-            if isinstance(raw_settings, dict):
-                settings.update(raw_settings)
-            extra = account.get("extra_fields")
-            if isinstance(extra, dict):
-                settings["variables"] = extra
-            payload = {
-                "name": name,
-                "group_name": str(account.get("stage") or "Default"),
-                "browser_engine": engine,
-                "proxy_id": proxy_id or None,
-                "settings": settings,
-            }
-            current = existing.get(name)
-            if current:
-                client.update_profile(str(current.get("id") or ""), payload)
-            else:
-                client.create_profile(payload)
-            uploaded += 1
-        return uploaded
-
-    def _upload_local_scenarios(self, client: ServerClient) -> int:
-        existing = {str(item.get("name") or ""): item for item in client.scenarios()}
-        uploaded = 0
-        for scenario in db_get_scenarios():
-            payload = {
-                "name": scenario.name,
-                "description": scenario.description or "",
-                "definition": {"steps": scenario.steps or []},
-            }
-            current = existing.get(scenario.name)
-            if current:
-                client.update_scenario(str(current.get("id") or ""), payload)
-            else:
-                client.create_scenario(payload)
-            uploaded += 1
-        return uploaded
-
-    @staticmethod
-    def _proxy_value(account: dict) -> str:
-        host = str(account.get("proxy_host") or "").strip()
-        port = str(account.get("proxy_port") or "").strip()
-        if not host or not port:
-            return ""
-        scheme = str(account.get("proxy_scheme") or "socks5").strip() or "socks5"
-        user = str(account.get("proxy_user") or "").strip()
-        password = str(account.get("proxy_password") or "").strip()
-        auth = f"{user}:{password}@" if user and password else ""
-        return f"{scheme}://{auth}{host}:{port}"
 
     @pyqtSlot(str, str)
     def login(self, email: str, password: str) -> None:

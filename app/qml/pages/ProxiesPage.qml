@@ -57,6 +57,18 @@ Item {
                                     color: model.selected ? Theme.primaryInk : Theme.dim
                                     font.pixelSize: 11
                                 }
+                                Rectangle {
+                                    visible: model.source === "shared"
+                                    width: shareLabel.implicitWidth + 10; height: 16; radius: 8
+                                    color: model.selected ? Theme.primaryText : Theme.selection
+                                    Text { id: shareLabel; anchors.centerIn: parent; text: "SHARED"; color: model.selected ? Theme.primary : Theme.primaryInk; font.pixelSize: 8; font.weight: Font.DemiBold }
+                                }
+                                Rectangle {
+                                    visible: model.source === "global"
+                                    width: globalLabel.implicitWidth + 10; height: 16; radius: 8
+                                    color: model.selected ? Theme.primaryText : Theme.subtle
+                                    Text { id: globalLabel; anchors.centerIn: parent; text: "GLOBAL"; color: model.selected ? Theme.primary : Theme.dim; font.pixelSize: 8; font.weight: Font.DemiBold }
+                                }
                             }
 
                             MouseArea {
@@ -129,6 +141,7 @@ Item {
     }
     Menu {
         id: groupMenu
+        MenuItem { text: "Share pool…"; enabled: root.bridge && root.bridge.canManage; onTriggered: { shareSlug.text = ""; shareDialog.open() } }
         MenuItem { text: "Rename group"; enabled: root.bridge && root.bridge.canManage; onTriggered: { poolNameInput.text = root.bridge.selectedPool; poolDialog.mode = "rename"; poolDialog.open() } }
         MenuSeparator {}
         MenuItem { text: "Delete group"; enabled: root.bridge && root.bridge.canAdmin; onTriggered: confirmDialog.ask('Delete group "' + root.bridge.selectedPool + '" and its proxies?', function() { root.bridge.deleteSelectedPool() }) }
@@ -210,4 +223,40 @@ Item {
             }
         }
     }
+
+    WorkspaceDialog {
+        id: shareDialog
+        objectName: "shareDialog"
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: Math.min(460, root.width - 60)
+        height: 300
+        padding: 0
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
+        contentItem: Column {
+            anchors.fill: parent
+            anchors.margins: 22
+            spacing: 14
+            Text { text: "Share pool"; color: Theme.text; font.pixelSize: 20; font.weight: Font.DemiBold }
+            Text { text: root.bridge && root.bridge.selectedPool ? 'Pool "' + root.bridge.selectedPool + '" — share with another team by its slug.' : "Select a pool first."; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap; width: parent.width }
+            FormField { id: shareSlug; width: parent.width; label: "Target team slug"; placeholder: "team-slug" }
+            Column {
+                width: parent.width
+                spacing: 4
+                Text { text: "Permission"; color: Theme.dim; font.pixelSize: 11; font.weight: Font.DemiBold }
+                ComboBox {
+                    id: sharePermission
+                    width: parent.width
+                    model: ["attach", "read"]
+                    currentIndex: 0
+                }
+            }
+            Row {
+                spacing: 10
+                PrimaryButton { width: 120; text: "Share"; icon: "link"; enabled: root.bridge && root.bridge.selectedPool && shareSlug.text !== ""; onClicked: { root.bridge.sharePool(root.bridge.selectedPool, shareSlug.text, sharePermission.currentText); shareDialog.close() } }
+                PrimaryButton { width: 100; text: "Cancel"; secondary: true; onClicked: shareDialog.close() }
+            }
+        }
+    }
+
 }

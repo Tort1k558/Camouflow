@@ -19,6 +19,7 @@ from app.storage.db import (
 
 
 SYNC_STATE_KEY = "cloud_sync_state_v1"
+SYNC_CONFLICTS_KEY = "cloud_sync_conflicts_v1"
 
 
 @dataclass
@@ -26,6 +27,7 @@ class CloudSyncResult:
     uploaded: int = 0
     downloaded: int = 0
     conflicts: list[str] = field(default_factory=list)
+    conflict_items: list[dict] = field(default_factory=list)
 
 
 class CloudWorkspaceSync:
@@ -36,13 +38,129 @@ class CloudWorkspaceSync:
         self.team_id = client.session.team_id
         self.state = self._load_state()
 
-    def sync(self) -> CloudSyncResult:
+    def sync(self, upload_cookies: bool = False) -> CloudSyncResult:
         result = CloudSyncResult()
+        self._upload_cookies = bool(upload_cookies)
         self._sync_proxies(result)
         self._sync_profiles(result)
         self._sync_scenarios(result)
         self._save_state()
+        db_set_setting(SYNC_CONFLICTS_KEY, json.dumps(result.conflict_items, ensure_ascii=False))
         return result
+
+    # --- conflict resolution -------------------------------------------------
+
+    def pending_conflicts(self) -> list[dict]:
+        try:
+            items = json.loads(db_get_setting(SYNC_CONFLICTS_KEY) or "[]")
+        except Exception:
+            items = []
+        return items if isinstance(items, list) else []
+
+    def resolve(self, resource: str, key: str, choice: str) -> str:
+        """Resolve a sync conflict: 'local' pushes the local version to the
+        server, 'remote' applies the server version locally."""
+        conflicts = self.pending_conflicts()
+        item = next((c for c in conflicts if c.get("resource") == resource and str(c.get("key")) == str(key)), None)
+        if not item:
+            return "Conflict not found"
+        try:
+            if choice == "local":
+                self._resolve_keep_local(resource, key, str(item.get("remote_id") or ""))
+            else:
+                self._resolve_keep_remote(resource, key, str(item.get("remote_id") or ""))
+        except ServerClientError as exc:
+            return f"Resolve failed: {exc}"
+        remaining = [c for c in conflicts if c is not item]
+        db_set_setting(SYNC_CONFLICTS_KEY, json.dumps(remaining, ensure_ascii=False))
+        return ""
+
+    def _local_proxy_group(self, value: str) -> str:
+        try:
+            pools = json.loads(db_get_setting("proxy_pools") or "{}")
+        except Exception:
+            return ""
+        for group, pool in pools.items():
+            for entry in (pool.get("proxies", []) if isinstance(pool, dict) else []):
+                if isinstance(entry, dict) and str(entry.get("value") or "") == value:
+                    return str(group)
+        return ""
+
+    def _resolve_keep_local(self, resource: str, key: str, remote_id: str) -> None:
+        if resource == "proxies":
+            payload = {"value": key, "group_name": self._local_proxy_group(key) or "Default"}
+            update = self.client.update_proxy if remote_id else None
+            create = self.client.create_proxy
+        elif resource == "profiles":
+            account = next((a for a in db_get_accounts() if str(a.get("name") or "") == key), None)
+            if account is None:
+                raise ServerClientError("Local profile not found")
+            payload = self._profile_payload(account, None)
+            update = self.client.update_profile if remote_id else None
+            create = self.client.create_profile
+        elif resource == "scenarios":
+            scenario = db_get_scenario(key)
+            if scenario is None:
+                raise ServerClientError("Local scenario not found")
+            payload = {"name": key, "description": scenario.description or "", "definition": {"steps": scenario.steps or []}}
+            update = self.client.update_scenario if remote_id else None
+            create = self.client.create_scenario
+        else:
+            raise ServerClientError(f"Unknown resource {resource}")
+        if update is not None:
+            updated = update(remote_id, payload)
+        else:
+            updated = create(payload)
+        records = self._resource_state(resource)
+        records[key] = {"remote_id": remote_id or str(updated.get("id") or ""), "local_hash": self._fingerprint(payload), "remote_hash": self._fingerprint(updated)}
+        self._save_state()
+
+    def _resolve_keep_remote(self, resource: str, key: str, remote_id: str) -> None:
+        if resource == "proxies":
+            row = next((r for r in self.client.proxies() if str(r.get("id")) == remote_id), None)
+            if row is None:
+                raise ServerClientError("Remote proxy not found")
+            try:
+                pools = json.loads(db_get_setting("proxy_pools") or "{}")
+            except Exception:
+                pools = {}
+            group = str(row.get("group_name") or "Default")
+            pool = pools.setdefault(group, {"proxies": []})
+            entries = pool.setdefault("proxies", [])
+            if not any(isinstance(e, dict) and str(e.get("value")) == str(row.get("value")) for e in entries):
+                entries.append({"value": str(row.get("value")), "status": "unchecked"})
+            db_set_setting("proxy_pools", json.dumps(pools, ensure_ascii=False))
+            payload = {"value": str(row.get("value")), "group_name": group}
+        elif resource == "profiles":
+            row = next((r for r in self.client.profiles() if str(r.get("id")) == remote_id), None)
+            if row is None:
+                raise ServerClientError("Remote profile not found")
+            values = {str(r.get("id") or ""): str(r.get("value") or "") for r in self.client.proxies()}
+            account = self._profile_from_remote(row, values.get(str(row.get("proxy_id") or ""), ""))
+            db_update_account(key, account)
+            payload = self._profile_payload(account, row.get("proxy_id"))
+        elif resource == "scenarios":
+            row = next((r for r in self.client.scenarios() if str(r.get("id")) == remote_id), None)
+            if row is None:
+                raise ServerClientError("Remote scenario not found")
+            definition = row.get("definition") if isinstance(row.get("definition"), dict) else {}
+            steps = definition.get("steps") if isinstance(definition.get("steps"), list) else []
+            db_save_scenario(key, steps, str(row.get("description") or ""))
+            payload = {"name": key, "description": str(row.get("description") or ""), "definition": {"steps": steps}}
+        else:
+            raise ServerClientError(f"Unknown resource {resource}")
+        records = self._resource_state(resource)
+        records[key] = {"remote_id": remote_id, "local_hash": self._fingerprint(payload), "remote_hash": self._fingerprint(payload)}
+        self._save_state()
+
+    def _cookie_snapshot(self, profile_name: str) -> str:
+        """Read the profile cookie jar as JSON (opt-in upload)."""
+        try:
+            from app.ui.bridge.profiles import ProfilesBridge  # local import avoids a cycle
+            rows = ProfilesBridge._read_cookie_rows(profile_name)
+            return json.dumps(rows, ensure_ascii=False) if rows else ""
+        except Exception:
+            return ""
 
     def _load_state(self) -> dict[str, Any]:
         try:
@@ -158,10 +276,12 @@ class CloudWorkspaceSync:
         previous_remote = str(record.get("remote_hash") or "")
         if not previous_local and local_hash != remote_hash:
             result.conflicts.append(f"{resource}: {local_key}")
+            result.conflict_items.append({"resource": resource, "key": local_key, "remote_id": remote_id})
             records[local_key] = {"remote_id": remote_id, "local_hash": local_hash, "remote_hash": remote_hash}
             return remote
         if previous_local and local_hash != previous_local and remote_hash != previous_remote:
             result.conflicts.append(f"{resource}: {local_key}")
+            result.conflict_items.append({"resource": resource, "key": local_key, "remote_id": remote_id})
             return remote
         if local_hash != remote_hash and local_hash != previous_local:
             remote = update_remote(remote_id, local_payload)
@@ -209,6 +329,10 @@ class CloudWorkspaceSync:
                 continue
             local_names.add(name)
             payload = self._profile_payload(account, proxy_ids.get(self._proxy_value(account)) or None)
+            if getattr(self, "_upload_cookies", False):
+                snapshot = self._cookie_snapshot(name)
+                if snapshot:
+                    payload.setdefault("settings", {})["cookies_snapshot"] = snapshot
             self._merge("profiles", name, payload, remote, self.client.create_profile, self.client.update_profile, result)
         records = self._resource_state("profiles")
         proxy_values = {str(row.get("id") or ""): str(row.get("value") or "") for row in self.client.proxies()}

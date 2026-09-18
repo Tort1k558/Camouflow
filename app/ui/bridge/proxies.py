@@ -24,7 +24,8 @@ class ProxiesBridge(QObject):
         super().__init__(parent)
         self._app_state = app_state
         self._model = DictListModel(["pool", "name", "location", "address", "type", "latency", "status", "accent", "index", "selected"], parent=self)
-        self._pools_model = DictListModel(["name", "total", "used", "selected"], parent=self)
+        self._pools_model = DictListModel(["name", "total", "used", "selected", "source", "permission"], parent=self)
+        self._server_pools: Dict[str, Dict[str, Any]] = {}
         self._selected_pool = ""
         self._selected: set[tuple[str, int]] = set()
         self._active = 0
@@ -188,6 +189,7 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot()
     def refresh(self) -> None:
+        self._load_server_pools()
         pools = self._load()
         pool_rows: List[Dict[str, Any]] = []
         total_all = 0
@@ -198,9 +200,15 @@ class ProxiesBridge(QObject):
             used = sum(1 for item in proxies if isinstance(item, dict) and item.get("assigned_to"))
             total_all += total
             used_all += used
-            pool_rows.append({"name": pool_name, "total": total, "used": used, "selected": self._selected_pool == pool_name})
+            info = self._server_pools.get(pool_name, {})
+            pool_rows.append({"name": pool_name, "total": total, "used": used, "selected": self._selected_pool == pool_name, "source": info.get("source", ""), "permission": info.get("permission", "")})
+        # server ResourcePools with no proxies yet still show up as chips
+        known = {row["name"] for row in pool_rows}
+        for pool_name, info in sorted(self._server_pools.items()):
+            if pool_name not in known:
+                pool_rows.append({"name": pool_name, "total": 0, "used": 0, "selected": self._selected_pool == pool_name, "source": info.get("source", ""), "permission": info.get("permission", "")})
         self._pools_model.set_rows(
-            [{"name": "All pools", "total": total_all, "used": used_all, "selected": not self._selected_pool}]
+            [{"name": "All pools", "total": total_all, "used": used_all, "selected": not self._selected_pool, "source": "", "permission": ""}]
             + pool_rows
         )
         rows: List[Dict[str, Any]] = []
@@ -255,6 +263,44 @@ class ProxiesBridge(QObject):
         self.refresh()
 
 
+    def _load_server_pools(self) -> None:
+        self._server_pools = {}
+        client = self._server_client()
+        if not (server_enabled() and client):
+            return
+        try:
+            rows = client.request("GET", f"/api/v1/teams/{client.session.team_id}/pools?type=proxy") or []
+        except ServerClientError:
+            return
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            name = str(row.get("name") or "")
+            if name:
+                self._server_pools[name] = {
+                    "id": str(row.get("id") or ""),
+                    "source": str(row.get("source") or ""),
+                    "permission": str(row.get("permission") or ""),
+                    "shared_by_team": str(row.get("shared_by_team") or ""),
+                }
+
+    @pyqtSlot(str, str, str)
+    def sharePool(self, pool_name: str, team_slug: str, permission: str) -> None:  # noqa: N802
+        client = self._server_client()
+        if not (server_enabled() and client):
+            self._emit_message("Connect to cloud to share pools")
+            return
+        info = self._server_pools.get(str(pool_name or ""))
+        if not info or not info.get("id"):
+            self._emit_message("Select an owned pool first")
+            return
+        try:
+            client.request("POST", f"/api/v1/teams/{client.session.team_id}/pools/{info['id']}/shares", {"team_slug": str(team_slug or "").strip(), "permission": str(permission or "attach")})
+            self._emit_message(f'Pool "{pool_name}" shared with {team_slug} ({permission})')
+            self.refresh()
+        except ServerClientError as exc:
+            self._emit_message(f"Share failed: {exc}")
+
     @pyqtSlot(str)
     def createPool(self, name: str) -> None:  # noqa: N802
         if not self._ensure_allowed("manager"):
@@ -263,9 +309,14 @@ class ProxiesBridge(QObject):
         if not name:
             self._emit_message("Pool name is empty")
             return
-        if server_enabled() and self._server_client():
-            self._selected_pool = name
-            self._emit_message(f"Server proxy group {name} selected")
+        client = self._server_client()
+        if server_enabled() and client:
+            try:
+                client.request("POST", f"/api/v1/teams/{client.session.team_id}/pools", {"name": name, "type": "proxy"})
+                self._selected_pool = name
+                self._emit_message(f"Server pool {name} created")
+            except ServerClientError as exc:
+                self._emit_message(f"Pool create failed: {exc}")
             self.refresh()
             return
         pools = self._load()
@@ -356,10 +407,15 @@ class ProxiesBridge(QObject):
         client = self._server_client()
         if server_enabled() and client:
             pool_name = self._selected_pool or "Default"
+            pool_info = self._server_pools.get(pool_name, {})
+            pool_id = pool_info.get("id") if pool_info.get("source") in {"owned", "global", "shared"} and pool_info.get("permission", "attach") == "attach" else None
             added = 0
             for value in lines:
                 try:
-                    client.create_proxy({"value": value, "group_name": pool_name})
+                    payload = {"value": value, "group_name": pool_name}
+                    if pool_id:
+                        payload["pool_id"] = pool_id
+                    client.create_proxy(payload)
                     added += 1
                 except ServerClientError as exc:
                     self._emit_message(f"Cannot add server proxy: {exc}")

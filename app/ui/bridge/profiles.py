@@ -397,6 +397,20 @@ class ProfilesBridge(QObject):
         self._emit_message(f"Profile {name} created")
         self.refresh()
 
+    def _take_server_proxy_from_pool(self, client, pool_name: str) -> str:
+        """First unassigned server proxy in the pool (group); '' if none."""
+        try:
+            rows = client.proxies()
+        except ServerClientError:
+            return ""
+        for row in rows:
+            if str(row.get("group_name") or "") != str(pool_name or ""):
+                continue
+            if str(row.get("assigned_profile_id") or ""):
+                continue
+            return str(row.get("id") or "")
+        return ""
+
     @pyqtSlot(str, str, str, str)
     def importProfiles(self, lines: str, template: str, default_stage: str, proxy_pool: str) -> None:  # noqa: N802
         raw_lines = [line.strip() for line in str(lines or "").replace("\r", "\n").split("\n") if line.strip()]
@@ -425,12 +439,21 @@ class ProfilesBridge(QObject):
                 for key, value in parsed.items():
                     account[str(key)] = str(value)
                 if client:
-                    client.create_profile({
+                    payload = {
                         "name": name,
                         "group_name": default_stage or "Default",
                         "browser_engine": "camoufox",
                         "settings": {"variables": dict(parsed)},
-                    })
+                    }
+                    proxy_id = self._take_server_proxy_from_pool(client, proxy_pool) if proxy_pool else ""
+                    if proxy_id:
+                        payload["proxy_id"] = proxy_id
+                    created = client.create_profile(payload)
+                    if proxy_id:
+                        try:
+                            client.update_proxy(proxy_id, {"assigned_profile_id": str(created.get("id") or "")})
+                        except ServerClientError:
+                            LOGGER.exception("Could not assign proxy to imported profile %s", name)
                 else:
                     account.update(self._take_proxy_from_pool(proxy_pool, name))
                     db_add_account(account)
