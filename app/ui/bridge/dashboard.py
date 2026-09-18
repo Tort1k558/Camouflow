@@ -121,7 +121,7 @@ class DashboardBridge(QObject):
         self._activity.set_rows(self._activity_rows(audit_rows, scenario_runs))
         rows = []
         for name, browser in live.items():
-            rows.append({"name": name, "browser": getattr(browser, "browser_engine", "Camoufox"), "proxy": getattr(browser, "proxy", "None") or "None", "uptime": "live", "color": "#06b6d4"})
+            rows.append({"name": name, "browser": getattr(browser, "browser_engine", "Camoufox"), "proxy": getattr(browser, "proxy", "None") or "None", "uptime": "live", "color": "#3f714a"})
         self._running.set_rows(rows)
         self._operator.set_rows(self._operator_rows(accounts, scenario_runs))
         self._issues.set_rows(self._issue_rows(accounts, proxy_pools, scenario_runs))
@@ -151,7 +151,7 @@ class DashboardBridge(QObject):
                     "title": str(acc.get("name") or "Profile"),
                     "desc": "Locked by " + str(acc.get("lock_user_email") or "teammate"),
                     "meta": str(acc.get("lock_expires_at") or "")[:19].replace("T", " "),
-                    "accent": "#f59e0b",
+                    "accent": "#94671c",
                 })
         for run in scenario_runs[:8]:
             status = str(run.get("status") or "").lower()
@@ -160,7 +160,7 @@ class DashboardBridge(QObject):
                 "title": str(run.get("scenario_name") or "Scenario"),
                 "desc": f"{status or 'running'} / {run.get('profile_name') or 'profile'}",
                 "meta": self._duration(run),
-                "accent": "#22c55e" if status == "success" else "#ef4444" if status == "failed" else "#f59e0b",
+                "accent": "#3f714a" if status == "success" else "#b33d47" if status == "failed" else "#94671c",
             })
         return rows[:14]
 
@@ -173,7 +173,7 @@ class DashboardBridge(QObject):
                     "title": str(run.get("scenario_name") or "Failed scenario"),
                     "desc": str(run.get("error") or "Scenario failed"),
                     "meta": str(run.get("profile_name") or ""),
-                    "accent": "#ef4444",
+                    "accent": "#b33d47",
                 })
         for pool_name, pool in proxy_pools.items():
             for proxy in pool.get("proxies", []) if isinstance(pool, dict) else []:
@@ -188,10 +188,10 @@ class DashboardBridge(QObject):
                         "title": str(proxy.get("name") or proxy.get("value") or "Proxy"),
                         "desc": str(check.get("error") or "Proxy check failed"),
                         "meta": str(pool_name),
-                        "accent": "#ef4444",
+                        "accent": "#b33d47",
                     })
         if not rows:
-            rows.append({"type": "ok", "title": "No critical issues", "desc": "Profiles, runs and proxies look stable", "meta": "now", "accent": "#22c55e"})
+            rows.append({"type": "ok", "title": "No critical issues", "desc": "Profiles, runs and proxies look stable", "meta": "now", "accent": "#3f714a"})
         return rows[:12]
 
     def _activity_rows(self, audit_rows, scenario_runs) -> list[dict]:

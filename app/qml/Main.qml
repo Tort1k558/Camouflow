@@ -14,6 +14,22 @@ ApplicationWindow {
     visible: true
     title: "CamouFlow"
     color: Theme.background
+    font.family: Theme.fontFamily
+    palette.window: Theme.background
+    palette.windowText: Theme.text
+    palette.base: Theme.input
+    palette.alternateBase: Theme.subtle
+    palette.text: Theme.text
+    palette.button: Theme.card
+    palette.buttonText: Theme.text
+    palette.highlight: Theme.primary
+    palette.highlightedText: Theme.primaryText
+    palette.mid: Theme.border
+    palette.dark: Theme.muted
+    palette.light: Theme.card
+    palette.toolTipBase: Theme.sidebar
+    palette.toolTipText: Theme.sidebarText
+    palette.placeholderText: Theme.dim
 
     Rectangle {
         anchors.fill: parent
@@ -26,13 +42,31 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 color: Theme.background
-                gradient: Gradient {
-                    GradientStop { position: 0; color: "#0b0b14" }
-                    GradientStop { position: 1; color: "#10101d" }
+                Rectangle {
+                    id: workspaceBar
+                    anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                    height: 62
+                    color: Theme.input
+                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.border }
+                    Row {
+                        anchors.left: parent.left; anchors.leftMargin: 30; anchors.verticalCenter: parent.verticalCenter
+                        spacing: 12
+                        Text { text: "WORKSPACE"; font.family: Theme.monoFamily; font.pixelSize: 10; font.letterSpacing: 1.2; color: Theme.dim }
+                        Text { text: "/"; color: Theme.border }
+                        Text { text: appState ? appState.currentPage : "Dashboard"; color: Theme.text; font.pixelSize: 12 }
+                    }
+                    Row {
+                        anchors.right: parent.right; anchors.rightMargin: 28; anchors.verticalCenter: parent.verticalCenter
+                        spacing: 9
+                        Rectangle { width: 6; height: 6; radius: 3; color: Theme.success; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: appState && appState.cloudEnabled ? "Team workspace" : "Local workspace"; font.pixelSize: 11; color: Theme.muted }
+                    }
                 }
                 Loader {
                     id: pageLoader
                     anchors.fill: parent
+                    anchors.topMargin: workspaceBar.height
+                    objectName: "pageLoader"
                     sourceComponent: {
                         if (!appState) return dashboardPage
                         if (appState.currentPage === "User") return userPage
@@ -49,134 +83,7 @@ ApplicationWindow {
         }
     }
 
-    Rectangle {
-        id: onboardingOverlay
-        anchors.fill: parent
-        z: 20
-        visible: settingsBridge ? settingsBridge.onboardingRequired : false
-        color: "#dd070812"
-
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.AllButtons
-            hoverEnabled: true
-            preventStealing: true
-            propagateComposedEvents: false
-            onWheel: function(wheel) { wheel.accepted = true }
-        }
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: 920
-            height: 620
-            radius: 18
-            color: "#f00f1018"
-            border.color: Theme.borderSubtle
-            border.width: 1
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 28
-                spacing: 24
-
-                Item {
-                    Layout.preferredWidth: 360
-                    Layout.fillHeight: true
-
-                    Column {
-                        anchors.fill: parent
-                        anchors.margins: 24
-                        spacing: 18
-
-                        Rectangle { width: 58; height: 58; radius: 18; color: Theme.primary
-                            Text { anchors.centerIn: parent; text: "C"; color: "white"; font.pixelSize: 28; font.bold: true }
-                        }
-                        Text { text: "Welcome to CamouFlow"; color: Theme.text; font.pixelSize: 30; font.bold: true; wrapMode: Text.WordWrap; width: parent.width }
-                        Text {
-                            width: parent.width
-                            text: "Open User to sign in, accept invites and manage teams. Or continue locally."
-                            color: Theme.muted
-                            font.pixelSize: 14
-                            lineHeight: 1.25
-                            wrapMode: Text.WordWrap
-                        }
-
-                        Rectangle { width: parent.width; height: 1; color: Theme.borderSubtle }
-
-                        Text { text: "Local mode limitations"; color: Theme.text; font.pixelSize: 15; font.bold: true }
-                        Text {
-                            width: parent.width
-                            text: settingsBridge ? settingsBridge.localModeLimitations : ""
-                            color: "#d7d1ff"
-                            font.pixelSize: 13
-                            lineHeight: 1.25
-                            wrapMode: Text.WordWrap
-                        }
-
-                        Item { width: 1; height: 1; Layout.fillHeight: true }
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    spacing: 14
-
-                    Text { text: "Account"; color: Theme.text; font.pixelSize: 24; font.bold: true }
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Account login, invites, team selection and access management are inside the User tab."
-                        color: Theme.muted
-                        font.pixelSize: 14
-                        wrapMode: Text.WordWrap
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 12
-
-                        PrimaryButton {
-                            Layout.fillWidth: true
-                            text: "Open User"
-                            icon: "user"
-                            onClicked: settingsBridge.openUserLogin()
-                        }
-                        PrimaryButton {
-                            Layout.fillWidth: true
-                            text: "Use local mode"
-                            icon: "folder"
-                            secondary: true
-                            onClicked: settingsBridge.startLocalMode()
-                        }
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 86
-                        Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; height: 1; color: Theme.borderSubtle }
-                        Text {
-                            anchors.fill: parent
-                            anchors.topMargin: 16
-                            text: "You can connect later from the User tab. Local data stays on this computer until Cloud is connected."
-                            color: Theme.muted
-                            font.pixelSize: 13
-                            wrapMode: Text.WordWrap
-                        }
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: appState ? appState.message : ""
-                        color: Theme.primaryLight
-                        font.pixelSize: 13
-                        wrapMode: Text.WordWrap
-                    }
-
-                    Item { Layout.fillHeight: true }
-                }
-            }
-        }
-    }
+    WelcomeDialog {}
 
     Component { id: dashboardPage; DashboardPage {} }
     Component { id: userPage; UserPage {} }

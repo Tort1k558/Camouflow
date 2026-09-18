@@ -33,7 +33,7 @@ GlassCard {
             radius: 6
             color: root.selected ? Theme.primary : "transparent"
             border.color: root.selected ? Theme.primaryLight : Theme.border
-            Text { anchors.centerIn: parent; text: root.selected ? "✓" : ""; color: "white"; font.bold: true; font.pixelSize: 13 }
+            Text { anchors.centerIn: parent; text: root.selected ? "✓" : ""; color: Theme.primaryText; font.weight: Font.DemiBold; font.pixelSize: 13 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.selectionToggled(root.pool, root.proxyIndex, !root.selected) }
         }
 
@@ -48,12 +48,13 @@ GlassCard {
         }
 
         Column {
+            Layout.fillWidth: true
             Layout.preferredWidth: 220
             Layout.minimumWidth: 90
             Layout.maximumWidth: 340
             Layout.alignment: Qt.AlignVCenter
             spacing: 4
-            Text { text: root.name; color: Theme.text; font.pixelSize: 15; font.bold: true; elide: Text.ElideRight; width: parent.width }
+            Text { text: root.name; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
             Text { text: root.location; color: Theme.muted; font.pixelSize: 13; elide: Text.ElideRight; width: parent.width }
         }
 

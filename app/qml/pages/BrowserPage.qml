@@ -5,6 +5,7 @@ import theme 1.0
 import "../components"
 
 Flickable {
+    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
     id: root
     contentWidth: width
     contentHeight: Math.max(height + 1, content.implicitHeight + 90)
@@ -19,9 +20,9 @@ Flickable {
         property bool active: false
         signal clicked()
         height: 36; width: 118; radius: 11
-        color: active ? "#171226" : "transparent"
+        color: active ? Theme.selection : "transparent"
         border.color: active ? Theme.primary : Theme.borderSubtle
-        Text { anchors.centerIn: parent; text: tb.label; color: active ? "white" : Theme.muted; font.pixelSize: 13; font.weight: Font.DemiBold }
+        Text { anchors.centerIn: parent; text: tb.label; color: active ? Theme.primaryText : Theme.muted; font.pixelSize: 13; font.weight: Font.DemiBold }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tb.clicked() }
     }
 
@@ -35,11 +36,11 @@ Flickable {
         color: "transparent"
         Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Theme.borderSubtle }
         Column { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: 2
-            Text { text: tr.label; color: Theme.text; font.pixelSize: 13; font.bold: true }
+            Text { text: tr.label; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
             Text { visible: tr.hint !== ""; text: tr.hint; color: Theme.dim; font.pixelSize: 11 }
         }
-        Rectangle { id: sw; width: 40; height: 22; radius: 11; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; color: tr.checked ? Theme.primary : "transparent"; border.color: tr.checked ? Theme.primaryLight : Theme.border
-            Rectangle { width: 18; height: 18; radius: 9; y: 3; x: tr.checked ? 21 : 3; color: "white"; Behavior on x { NumberAnimation { duration: 120 } } }
+        Rectangle { id: sw; width: 40; height: 22; radius: Theme.radiusSm; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; color: tr.checked ? Theme.primary : "transparent"; border.color: tr.checked ? Theme.primaryLight : Theme.border
+            Rectangle { width: 18; height: 18; radius: 9; y: 2; x: tr.checked ? 20 : 2; color: tr.checked ? Theme.primaryText : Theme.muted; Behavior on x { NumberAnimation { duration: 120 } } }
         }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tr.toggled(!tr.checked) }
     }
@@ -52,7 +53,7 @@ Flickable {
         height: 36; radius: 11
         color: active ? Theme.primary : "transparent"
         border.color: active ? Theme.primary : Theme.border
-        Text { anchors.centerIn: parent; text: mb.label; color: active ? "white" : Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
+        Text { anchors.centerIn: parent; text: mb.label; color: active ? Theme.primaryText : Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: mb.clicked() }
     }
 
@@ -67,7 +68,7 @@ Flickable {
         signal clicked()
         height: 126
         radius: 16
-        color: active ? "#141223" : "#0d0d16"
+        color: active ? Theme.selection : Theme.card
         border.color: active ? Theme.primary : Theme.borderSubtle
         border.width: 1
 
@@ -97,12 +98,12 @@ Flickable {
             anchors.top: parent.top
             anchors.topMargin: 17
             spacing: 7
-            Text { text: eo.title; color: active ? Theme.text : Theme.muted; font.pixelSize: 18; font.bold: true }
+            Text { text: eo.title; color: active ? Theme.text : Theme.muted; font.pixelSize: 18; font.weight: Font.DemiBold }
             Text { width: parent.width; text: eo.description; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap; maximumLineCount: 2 }
             Row {
                 spacing: 8
-                Rectangle { width: 128; height: 26; radius: 8; color: "transparent"; border.color: active ? Theme.primary : Theme.border; Text { anchors.centerIn: parent; text: eo.chipA; color: active ? Theme.primaryLight : Theme.dim; font.pixelSize: 11; font.bold: true } }
-                Rectangle { width: 118; height: 26; radius: 8; color: "transparent"; border.color: active ? Theme.primary : Theme.border; Text { anchors.centerIn: parent; text: eo.chipB; color: active ? Theme.primaryLight : Theme.dim; font.pixelSize: 11; font.bold: true } }
+                Rectangle { width: 128; height: 26; radius: 8; color: "transparent"; border.color: active ? Theme.primary : Theme.border; Text { anchors.centerIn: parent; text: eo.chipA; color: active ? Theme.primaryLight : Theme.dim; font.pixelSize: 11; font.weight: Font.DemiBold } }
+                Rectangle { width: 118; height: 26; radius: 8; color: "transparent"; border.color: active ? Theme.primary : Theme.border; Text { anchors.centerIn: parent; text: eo.chipB; color: active ? Theme.primaryLight : Theme.dim; font.pixelSize: 11; font.weight: Font.DemiBold } }
             }
         }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: eo.clicked() }
@@ -116,7 +117,7 @@ Flickable {
         property int fieldHeight: 92
         signal editingFinished()
         spacing: 8
-        Text { text: mf.label; color: Theme.dim; font.pixelSize: 11; font.bold: true }
+        Text { text: mf.label; color: Theme.dim; font.pixelSize: 11; font.weight: Font.DemiBold }
         Item { width: parent.width; height: mf.fieldHeight
             ScrollView { anchors.fill: parent; anchors.bottomMargin: 8; clip: true
                 TextArea {
@@ -140,14 +141,31 @@ Flickable {
         x: 28; y: 24; spacing: 22
 
         RowLayout { width: parent.width
-            PageHeader { Layout.fillWidth: true; title: "Browser Engine"; subtitle: "New design, old full browser defaults" }
-            PrimaryButton { width: 110; text: "Save"; icon: "save"; onClicked: browserSettingsBridge.save() }
-            PrimaryButton { width: 110; text: "Reset"; secondary: true; onClicked: browserSettingsBridge.reset() }
-            PrimaryButton { width: 130; text: "Compatibility"; secondary: true; onClicked: browserSettingsBridge.checkCompatibility() }
-            PrimaryButton { width: 130; text: "Check updates"; secondary: true; onClicked: browserSettingsBridge.checkEngineUpdate() }
-            PrimaryButton { width: 110; text: "Update"; icon: "save"; enabled: browserSettingsBridge.canUpdateEngine; onClicked: browserSettingsBridge.updateEngine() }
+            PageHeader { Layout.fillWidth: true; title: "Browser Engine"; subtitle: "Engine defaults, fingerprint settings and session behavior" }
+            PrimaryButton { text: "Reset"; secondary: true; onClicked: browserSettingsBridge.reset() }
+            PrimaryButton { text: "Save changes"; icon: "save"; onClicked: browserSettingsBridge.save() }
         }
-        Text { width: parent.width; text: browserSettingsBridge.compatibilityReport; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap }
+
+        GlassCard { width: parent.width; height: 62; padding: 12
+            RowLayout { anchors.fill: parent; spacing: 12
+                LineIcon {
+                    name: browserSettingsBridge.compatibilityReport.indexOf("Ready") >= 0 ? "check" : browserSettingsBridge.compatibilityReport.indexOf("Blocked") >= 0 ? "close" : "globe"
+                    color: browserSettingsBridge.compatibilityReport.indexOf("Ready") >= 0 ? Theme.success : browserSettingsBridge.compatibilityReport.indexOf("Blocked") >= 0 ? Theme.danger : Theme.dim
+                    size: 18
+                    Layout.alignment: Qt.AlignVCenter
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: browserSettingsBridge.compatibilityReport === "Not checked" ? "Engine status not checked yet — run a compatibility check to verify the install." : browserSettingsBridge.compatibilityReport
+                    color: browserSettingsBridge.compatibilityReport === "Not checked" ? Theme.dim : browserSettingsBridge.compatibilityReport.indexOf("Blocked") >= 0 ? Theme.danger : Theme.muted
+                    font.pixelSize: 12
+                    elide: Text.ElideMiddle
+                }
+                PrimaryButton { text: "Compatibility"; icon: "check"; secondary: true; onClicked: browserSettingsBridge.checkCompatibility() }
+                PrimaryButton { text: "Check updates"; icon: "refresh"; secondary: true; onClicked: browserSettingsBridge.checkEngineUpdate() }
+                PrimaryButton { text: "Update engine"; icon: "save"; enabled: browserSettingsBridge.canUpdateEngine; onClicked: browserSettingsBridge.updateEngine() }
+            }
+        }
 
         RowLayout { width: parent.width; spacing: 14
             EngineOption {
@@ -170,8 +188,8 @@ Flickable {
             }
         }
 
-        GlassCard { width: parent.width; height: 64; padding: 14
-            Row { anchors.verticalCenter: parent.verticalCenter; spacing: 10
+        GlassCard { width: Math.min(parent.width, tabsRow.implicitWidth + 28); height: 64; padding: 14
+            Row { id: tabsRow; anchors.verticalCenter: parent.verticalCenter; spacing: 10
                 TabButton { label: "Runtime"; active: root.tab === label; onClicked: root.tab = label }
                 TabButton { label: "Fingerprint"; active: root.tab === label; onClicked: root.tab = label }
                 TabButton { label: "Network"; active: root.tab === label; onClicked: root.tab = label }
@@ -186,7 +204,7 @@ Flickable {
             visible: root.tab === "Runtime"
             SettingsSection { Layout.fillWidth: true; Layout.preferredHeight: root.isCamoufox ? 390 : 560; title: "Execution"; subtitle: root.isCamoufox ? "Camoufox window/headless/humanize" : "CloakBrowser headless/humanize"; icon: "play"; accent: Theme.primary
                 Column { anchors.fill: parent; spacing: 14
-                    Text { text: "Execution mode"; color: Theme.text; font.pixelSize: 12; font.bold: true }
+                    Text { text: "Execution mode"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
                     Row { width: parent.width; spacing: 10
                         ModeButton { width: (parent.width - 20) / 3; label: "Standard"; active: browserSettingsBridge.headlessMode === "standard"; onClicked: browserSettingsBridge.setHeadlessMode("standard") }
                         ModeButton { width: (parent.width - 20) / 3; label: "Headless"; active: browserSettingsBridge.headlessMode === "headless"; onClicked: browserSettingsBridge.setHeadlessMode("headless") }
@@ -194,7 +212,7 @@ Flickable {
                     }
                     ToggleRow { label: "Human-like cursor"; hint: "Enable natural mouse movement"; checked: browserSettingsBridge.humanize; onToggled: function(value) { browserSettingsBridge.setHumanizeEnabled(value) } }
                     FormField { width: parent.width; label: "Cursor duration"; placeholder: "Auto"; text: browserSettingsBridge.humanizeDuration; onEditingFinished: browserSettingsBridge.setValue("humanize", text) }
-                    Text { text: "Human preset"; color: Theme.text; font.pixelSize: 12; font.bold: true }
+                    Text { text: "Human preset"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
                     Row { width: parent.width; spacing: 10
                         ModeButton { width: (parent.width - 10) / 2; label: "Default human"; active: browserSettingsBridge.humanPreset === "default"; onClicked: browserSettingsBridge.setValue("human_preset", "default") }
                         ModeButton { width: (parent.width - 10) / 2; label: "Careful human"; active: browserSettingsBridge.humanPreset === "careful"; onClicked: browserSettingsBridge.setValue("human_preset", "careful") }
@@ -220,7 +238,7 @@ Flickable {
             }
             SettingsSection { visible: !root.isCamoufox; Layout.fillWidth: true; Layout.preferredHeight: 560; title: "Cloak Fingerprint"; subtitle: "Chromium fingerprint arguments"; icon: "globe"; accent: Theme.success
                 Column { anchors.fill: parent; spacing: 14
-                    Text { text: "Platform"; color: Theme.text; font.pixelSize: 12; font.bold: true }
+                    Text { text: "Platform"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
                     Row { width: parent.width; spacing: 10
                         ModeButton { width: (parent.width - 20) / 3; label: "Windows"; active: browserSettingsBridge.platform === "windows"; onClicked: browserSettingsBridge.setValue("platform", "windows") }
                         ModeButton { width: (parent.width - 20) / 3; label: "macOS"; active: browserSettingsBridge.platform === "macos"; onClicked: browserSettingsBridge.setValue("platform", "macos") }

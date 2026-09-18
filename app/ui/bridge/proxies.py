@@ -95,6 +95,10 @@ class ProxiesBridge(QObject):
     def selectedPool(self) -> str:  # noqa: N802
         return self._selected_pool
 
+    @pyqtProperty(int, notify=modelChanged)
+    def selectedCount(self) -> int:  # noqa: N802
+        return len(self._selected)
+
     @pyqtProperty(int, notify=statsChanged)
     def active(self) -> int:
         return self._active
@@ -234,7 +238,7 @@ class ProxiesBridge(QObject):
                     "type": type_label,
                     "latency": f"{latency}ms" if isinstance(latency, int) else "?",
                     "status": status,
-                    "accent": "#06b6d4" if status == "Active" else "#f59e0b" if status in {"Checking", "Quarantined"} else "#ef4444",
+                    "accent": "#3f714a" if status == "Active" else "#94671c" if status in {"Checking", "Quarantined"} else "#b33d47",
                     "index": pool_index,
                     "selected": (pool_name, pool_index) in self._selected,
                 })

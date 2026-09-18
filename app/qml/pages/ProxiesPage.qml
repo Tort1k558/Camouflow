@@ -4,89 +4,27 @@ import QtQuick.Controls
 import theme 1.0
 import "../components"
 
-Flickable {
+Item {
     id: root
-    contentWidth: width
-    contentHeight: content.height + 48
-    clip: true
     property var bridge: typeof proxiesBridge !== "undefined" ? proxiesBridge : null
-
-    Column {
-        id: content
-        width: parent.width - 56
-        x: 28; y: 24; spacing: 22
-
+    ConfirmDialog { id: confirmDialog }
+    ColumnLayout {
+        anchors.fill: parent; anchors.margins: 28; spacing: 14
         RowLayout {
-            width: parent.width
-            PageHeader {
-                Layout.fillWidth: true
-                title: "Proxies"
-                subtitle: appState && appState.cloudEnabled
-                    ? "Team: " + (appState.cloudTeamName || "No team") + " / Role: " + (appState.cloudRole || "none")
-                    : "Proxy pools, assignments and health checks"
-            }
-            PrimaryButton { width: 38; text: ""; icon: "save"; iconOnly: true; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: addPanel.visible = true }
-            PrimaryButton { width: 38; text: ""; icon: "plus"; iconOnly: true; enabled: root.bridge && root.bridge.canManage; onClicked: addPanel.visible = !addPanel.visible }
+            Layout.fillWidth: true
+            PageHeader { Layout.fillWidth: true; height: 72; title: "Proxies"; subtitle: "Connections, pool management and health checks" }
+            PrimaryButton { text: "New group"; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: { poolNameInput.text = ""; poolDialog.mode = "new"; poolDialog.open() } }
+            PrimaryButton { text: "Import proxies"; icon: "plus"; enabled: root.bridge && root.bridge.canManage; onClicked: proxyImportDialog.open() }
         }
-
-        GridLayout { width: parent.width; columns: 4; columnSpacing: 0; rowSpacing: 0
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 118; color: "transparent"; StatCard { anchors.fill: parent; anchors.rightMargin: 20; label: "Active"; value: root.bridge ? root.bridge.active : 0; icon: "globe"; accent: Theme.success } Rectangle { anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 1; color: Theme.borderSubtle } }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 118; color: "transparent"; StatCard { anchors.fill: parent; anchors.leftMargin: 20; anchors.rightMargin: 20; label: "Checking"; value: root.bridge ? root.bridge.checking : 0; icon: "zap"; accent: Theme.warning } Rectangle { anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 1; color: Theme.borderSubtle } }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 118; color: "transparent"; StatCard { anchors.fill: parent; anchors.leftMargin: 20; anchors.rightMargin: 20; label: "Failed"; value: root.bridge ? root.bridge.failed : 0; icon: "trash"; accent: Theme.danger } Rectangle { anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 1; color: Theme.borderSubtle } }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 118; color: "transparent"; StatCard { anchors.fill: parent; anchors.leftMargin: 20; label: "Locations"; value: root.bridge ? root.bridge.locations : 0; icon: "network"; accent: Theme.primary } }
+        GridLayout { Layout.fillWidth: true; columns: 4; columnSpacing: 14; rowSpacing: 0
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 106; color: "transparent"; StatCard { anchors.fill: parent; label: "Active"; value: root.bridge ? root.bridge.active : 0; icon: "globe"; accent: Theme.success } }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 106; color: "transparent"; StatCard { anchors.fill: parent; label: "Checking"; value: root.bridge ? root.bridge.checking : 0; icon: "zap"; accent: Theme.warning } }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 106; color: "transparent"; StatCard { anchors.fill: parent; label: "Failed"; value: root.bridge ? root.bridge.failed : 0; icon: "trash"; accent: Theme.danger } }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 106; color: "transparent"; StatCard { anchors.fill: parent; label: "Locations"; value: root.bridge ? root.bridge.locations : 0; icon: "network"; accent: Theme.primaryInk } }
         }
-
-        GlassCard { id: addPanel; width: parent.width; height: visible ? 150 : 0; visible: false; padding: 18
-            Row { anchors.fill: parent; spacing: 12
-                Column { width: parent.width - 150; spacing: 8
-                    Text { text: "Proxy list"; color: Theme.text; font.pixelSize: 12; font.bold: true }
-                    Rectangle { width: parent.width; height: 92; radius: 11; color: Theme.subtle; border.color: Theme.border
-                        TextArea {
-                            id: proxyInput
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            color: Theme.text
-                            placeholderText: "socks5://host:port:user:password\nhttp://user:pass@host:port"
-                            placeholderTextColor: Theme.dim
-                            background: Item {}
-                            font.pixelSize: 13
-                        }
-                    }
-                }
-                PrimaryButton { width: 120; text: "Add"; icon: "plus"; enabled: root.bridge && root.bridge.canManage; anchors.bottom: parent.bottom; onClicked: { if (root.bridge) root.bridge.addProxies(proxyInput.text); proxyInput.text = "" } }
-            }
-        }
-
-        ColumnLayout {
-            width: parent.width
-            height: 640
-            spacing: 14
-
-            GlassCard {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 76
-                padding: 14
-
-                RowLayout {
-                    anchors.fill: parent
-                    spacing: 12
-
-                    Column {
-                        Layout.preferredWidth: 170
-                        Layout.alignment: Qt.AlignVCenter
-                        spacing: 3
-                        Text { text: "Proxy groups"; color: Theme.dim; font.pixelSize: 11; font.weight: Font.DemiBold }
-                        Text {
-                            width: parent.width
-                            text: root.bridge && root.bridge.selectedPool ? root.bridge.selectedPool : "All groups"
-                            color: Theme.text
-                            font.pixelSize: 15
-                            font.bold: true
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    ListView {
+        RowLayout {
+            Layout.fillWidth: true; spacing: 12
+            ListView {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 38
                         orientation: ListView.Horizontal
@@ -107,7 +45,7 @@ Flickable {
                                 Text {
                                     id: groupName
                                     text: model.name === "All pools" ? "All" : model.name
-                                    color: model.selected ? "white" : Theme.text
+                                    color: model.selected ? Theme.primaryText : Theme.text
                                     font.pixelSize: 12
                                     font.weight: Font.DemiBold
                                     elide: Text.ElideRight
@@ -116,7 +54,7 @@ Flickable {
                                 Text {
                                     id: groupMeta
                                     text: model.total
-                                    color: model.selected ? "#e9ddff" : Theme.dim
+                                    color: model.selected ? Theme.primaryInk : Theme.dim
                                     font.pixelSize: 11
                                 }
                             }
@@ -128,27 +66,33 @@ Flickable {
                             }
                         }
                     }
-
-                    PrimaryButton { width: 34; text: ""; icon: "plus"; iconOnly: true; enabled: root.bridge && root.bridge.canManage; onClicked: { poolNameInput.text = ""; poolDialog.mode = "new"; poolDialog.open() } }
-                    PrimaryButton { width: 34; text: ""; icon: "settings"; iconOnly: true; secondary: true; enabled: root.bridge && root.bridge.selectedPool && root.bridge.canManage; onClicked: { poolNameInput.text = root.bridge ? root.bridge.selectedPool : ""; poolDialog.mode = "rename"; poolDialog.open() } }
-                    PrimaryButton { width: 34; text: ""; icon: "trash"; iconOnly: true; danger: true; enabled: root.bridge && root.bridge.selectedPool && root.bridge.canAdmin; onClicked: if (root.bridge) root.bridge.deleteSelectedPool() }
-
-                    Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 28; color: Theme.borderSubtle }
-
-                    PrimaryButton { width: 34; text: ""; icon: "refresh"; iconOnly: true; secondary: true; enabled: root.bridge && root.bridge.canRun; onClicked: if (root.bridge) root.bridge.checkAll() }
-                    PrimaryButton { width: 34; text: ""; icon: "stop"; iconOnly: true; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: if (root.bridge) root.bridge.releaseSelected() }
-                    PrimaryButton { width: 34; text: ""; icon: "refresh"; iconOnly: true; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: if (root.bridge) root.bridge.releaseQuarantineSelected() }
-                    PrimaryButton { width: 34; text: ""; icon: "trash"; iconOnly: true; danger: true; enabled: root.bridge && root.bridge.canAdmin; onClicked: if (root.bridge) root.bridge.removeSelected() }
-                    PrimaryButton { width: 34; text: ""; icon: "close"; iconOnly: true; secondary: true; onClicked: if (root.bridge) root.bridge.clearSelection() }
-                }
+            PrimaryButton { text: "Group actions"; secondary: true; enabled: root.bridge && root.bridge.selectedPool; onClicked: groupMenu.popup() }
+            PrimaryButton { text: "Check all proxies"; icon: "refresh"; secondary: true; enabled: root.bridge && root.bridge.canRun && proxyList.count > 0; onClicked: root.bridge.checkAll() }
+        }
+        Rectangle {
+            visible: root.bridge && root.bridge.selectedCount > 0
+            Layout.fillWidth: true; Layout.preferredHeight: 52
+            radius: Theme.radiusSm; color: Theme.selection
+            RowLayout {
+                anchors.fill: parent; anchors.margins: 8; spacing: 8
+                Text { text: (root.bridge ? root.bridge.selectedCount : 0) + " selected"; color: Theme.primaryInk; font.pixelSize: 12; Layout.leftMargin: 8 }
+                Item { Layout.fillWidth: true }
+                PrimaryButton { text: "Release assignment"; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: root.bridge.releaseSelected() }
+                PrimaryButton { text: "Remove quarantine"; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: root.bridge.releaseQuarantineSelected() }
+                PrimaryButton { text: "Delete selected"; danger: true; enabled: root.bridge && root.bridge.canAdmin; onClicked: confirmDialog.ask("Delete the selected proxies? This action cannot be undone.", function() { root.bridge.removeSelected() }) }
+                PrimaryButton { text: "Clear selection"; secondary: true; onClicked: root.bridge.clearSelection() }
             }
-
-            ListView {
+        }
+        ListView {
+                id: proxyList
+                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: proxyList.count === 0; title: "No proxies in this group"; description: "Import your connections or create a proxy pool to get started."; icon: "network" }
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 model: root.bridge ? root.bridge.model : null
                 spacing: 12
                 clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar {}
                 delegate: ProxyRow {
                     width: ListView.view.width
                     pool: model.pool
@@ -177,15 +121,45 @@ Flickable {
                         if (root.bridge && root.bridge.canRun) root.bridge.checkProxy(pool, index)
                     }
                     onDeleteClicked: function(pool, index) {
-                        if (root.bridge && root.bridge.canAdmin) root.bridge.deleteProxy(pool, index)
+                        if (root.bridge && root.bridge.canAdmin) confirmDialog.ask("Delete this proxy? This action cannot be undone.", function() { root.bridge.deleteProxy(pool, index) })
                     }
                 }
             }
-        }
+        Text { text: proxyList.count + " proxies in this view"; color: Theme.dim; font.pixelSize: 11 }
     }
-
-    Dialog {
+    Menu {
+        id: groupMenu
+        MenuItem { text: "Rename group"; enabled: root.bridge && root.bridge.canManage; onTriggered: { poolNameInput.text = root.bridge.selectedPool; poolDialog.mode = "rename"; poolDialog.open() } }
+        MenuSeparator {}
+        MenuItem { text: "Delete group"; enabled: root.bridge && root.bridge.canAdmin; onTriggered: confirmDialog.ask('Delete group "' + root.bridge.selectedPool + '" and its proxies?', function() { root.bridge.deleteSelectedPool() }) }
+    }
+    WorkspaceDialog {
+        id: proxyImportDialog
+        objectName: "proxyImportDialog"
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(780, root.width - 48); height: 280; padding: 0
+        contentItem: Item { Row { anchors.fill: parent; anchors.margins: 22; spacing: 12
+                Column { width: parent.width - 150; spacing: 8
+                    Text { text: "Proxy list"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
+                    Rectangle { width: parent.width; height: 180; radius: Theme.radiusSm; color: Theme.subtle; border.color: Theme.border
+                        TextArea {
+                            id: proxyInput
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            color: Theme.text
+                            placeholderText: "socks5://host:port:user:password\nhttp://user:pass@host:port"
+                            placeholderTextColor: Theme.dim
+                            background: Item {}
+                            font.pixelSize: 13
+                        }
+                    }
+                }
+                PrimaryButton { width: 120; text: "Import"; icon: "plus"; enabled: root.bridge && root.bridge.canManage; anchors.bottom: parent.bottom; onClicked: { if (root.bridge) root.bridge.addProxies(proxyInput.text); proxyInput.text = ""; proxyImportDialog.close() } }
+            } }
+    }
+    WorkspaceDialog {
         id: poolDialog
+        objectName: "poolDialog"
         property string mode: "new"
         modal: true
         width: 420; height: 210
@@ -193,7 +167,7 @@ Flickable {
         padding: 0
         background: Rectangle { color: Theme.elevated; radius: 18; border.color: Theme.border }
         contentItem: Column { anchors.fill: parent; anchors.margins: 22; spacing: 16
-            Text { text: poolDialog.mode === "rename" ? "Rename proxy group" : "New proxy group"; color: Theme.text; font.pixelSize: 20; font.bold: true }
+            Text { text: poolDialog.mode === "rename" ? "Rename proxy group" : "New proxy group"; color: Theme.text; font.pixelSize: 20; font.weight: Font.DemiBold }
             FormField { id: poolNameInput; width: parent.width; label: "Group name"; placeholder: "US residential" }
             Row { spacing: 10
                 PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: root.bridge && root.bridge.canManage; onClicked: { if (root.bridge) { if (poolDialog.mode === "rename") root.bridge.renameSelectedPool(poolNameInput.text); else root.bridge.createPool(poolNameInput.text) } poolDialog.close() } }
@@ -202,8 +176,9 @@ Flickable {
         }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: proxyEditDialog
+        objectName: "proxyEditDialog"
         modal: true
         width: 560
         height: 330
@@ -214,7 +189,7 @@ Flickable {
             anchors.fill: parent
             anchors.margins: 22
             spacing: 14
-            Text { text: "Proxy Settings"; color: Theme.text; font.pixelSize: 20; font.bold: true }
+            Text { text: "Proxy Settings"; color: Theme.text; font.pixelSize: 20; font.weight: Font.DemiBold }
             FormField { id: proxyEditPool; visible: false; width: parent.width; label: "Pool" }
             FormField { id: proxyEditIndex; visible: false; width: parent.width; label: "Index" }
             FormField { id: proxyEditName; width: parent.width; label: "Name"; placeholder: "Optional display name" }

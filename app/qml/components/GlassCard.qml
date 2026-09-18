@@ -9,12 +9,10 @@ Item {
     clip: false
 
     Rectangle {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        height: 1
-        color: Theme.borderSubtle
-        opacity: 0.9
+        anchors.fill: parent
+        radius: Theme.radius
+        color: Theme.card
+        border.color: Theme.border
     }
 
     Item {

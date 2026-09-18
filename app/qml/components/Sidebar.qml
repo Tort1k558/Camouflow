@@ -1,101 +1,67 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import theme 1.0
-import "."
 
 Rectangle {
     id: root
     width: Theme.sidebarWidth
     color: Theme.sidebar
-    border.color: Theme.borderSubtle
     property var pages: [
-        ["Dashboard", "dashboard"], ["User", "user"], ["Profiles", "user"], ["Browser", "globe"], ["Proxies", "network"],
-        ["Scenarios", "workflow"], ["Logs", "logs"], ["Settings", "settings"]
+        ["Dashboard", "dashboard", "Overview"], ["Profiles", "user", "Profiles"],
+        ["Browser", "globe", "Browser engines"], ["Proxies", "network", "Proxies"],
+        ["Scenarios", "workflow", "Scenarios"], ["Logs", "logs", "Activity log"],
+        ["User", "user", "Account & teams"], ["Settings", "settings", "Settings"]
     ]
-    Column {
-        anchors.fill: parent
-        Rectangle {
-            width: parent.width; height: 64; color: "transparent"; border.color: Theme.borderSubtle
-            Row { anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 16; spacing: 10
-                Rectangle { width: 31; height: 31; radius: 15; color: Theme.primary; clip: true
-                    Image {
-                        id: logoImage
-                        anchors.fill: parent
-                        anchors.margins: 2
-                        source: typeof AppRoot !== "undefined" ? "file:///" + AppRoot.replace(/\\/g, "/") + "/logo.ico" : ""
-                        fillMode: Image.PreserveAspectFit
-                        smooth: true
-                        visible: status === Image.Ready
-                    }
-                    Rectangle { width: 13; height: 13; radius: 5; color: Theme.background; anchors.centerIn: parent; visible: logoImage.status !== Image.Ready }
-                }
-                Text { text: "CamouFlow"; color: Theme.text; font.pixelSize: 18; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
-            }
-        }
-        Column {
-            width: parent.width; spacing: 7; padding: 12
-            Repeater {
-                model: root.pages
-                delegate: Rectangle {
-                    width: root.width - 24; height: 36; radius: 10
-                    color: mouse.containsMouse ? "#10101b" : "transparent"
-                    Rectangle {
-                        width: 3
-                        height: 18
-                        radius: 2
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: appState && appState.currentPage === modelData[0] ? Theme.primary : "transparent"
-                    }
-                    Row { anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12; spacing: 12
-                        LineIcon { name: modelData[1]; color: appState && appState.currentPage === modelData[0] ? Theme.primary : Theme.muted; size: 19 }
-                        Text { text: modelData[0]; color: appState && appState.currentPage === modelData[0] ? Theme.primaryLight : Theme.muted; font.pixelSize: 13; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
-                    }
-                    MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (appState) appState.setPage(modelData[0]) }
-                }
-            }
-        }
-        Item { height: 1; width: 1 }
+    Brand { x: 23; y: 28; ink: Theme.sidebarText }
+    Text {
+        x: 26; y: 96; text: "YOUR WORKSPACE"; color: Theme.sidebarMuted
+        font.family: Theme.monoFamily; font.pixelSize: 10; font.letterSpacing: 1.4
     }
     Column {
-        anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 12
-        spacing: 8
-        Rectangle {
-            width: parent.width
-            height: 74
-            color: "transparent"
-            border.color: "transparent"
-            Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; height: 1; color: Theme.borderSubtle }
-            Column {
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 5
-                Text {
-                    width: parent.width
-                    text: appState && appState.cloudEnabled
-                        ? "Cloud / " + (appState.cloudRole || "no role")
-                        : "Local mode"
-                    color: appState && appState.cloudEnabled ? "#8ef0bd" : "#d7d1ff"
-                    font.pixelSize: 12
-                    font.bold: true
+        x: 14; y: 128; width: parent.width - 28; spacing: 6
+        Repeater {
+            model: root.pages
+            delegate: Button {
+                id: navButton
+                required property var modelData
+                readonly property bool selected: appState && appState.currentPage === modelData[0]
+                width: parent.width; height: 44
+                text: modelData[2]
+                Accessible.name: text
+                background: Rectangle {
+                    radius: Theme.radiusSm
+                    color: navButton.selected ? Theme.primary : navButton.hovered ? Theme.sidebarHover : "transparent"
+                    border.color: navButton.visualFocus ? Theme.primary : "transparent"
                 }
-                Text {
-                    width: parent.width
-                    text: appState && appState.cloudEnabled
-                        ? ((appState.cloudTeamName || "No team selected") + " · " + appState.cloudStatus)
-                        : (settingsBridge ? settingsBridge.modeSummary : "")
-                    color: Theme.muted
-                    font.pixelSize: 11
-                    lineHeight: 1.1
-                    wrapMode: Text.WordWrap
-                    elide: Text.ElideRight
-                    maximumLineCount: 3
+                contentItem: Row {
+                    spacing: 12
+                    leftPadding: 6
+                    LineIcon { name: navButton.modelData[1]; color: navButton.selected ? Theme.primaryText : Theme.sidebarMuted; size: 18; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: navButton.text; color: navButton.selected ? Theme.primaryText : Theme.sidebarMuted; font.pixelSize: 13; font.weight: navButton.selected ? Font.DemiBold : Font.Normal; anchors.verticalCenter: parent.verticalCenter }
                 }
+                onClicked: if (appState) appState.setPage(modelData[0])
             }
         }
-        Rectangle {
-            width: parent.width; height: 28; radius: 0; color: "transparent"
-            Text { anchors.centerIn: parent; text: "v1.0.0"; color: Theme.muted; font.pixelSize: 12; font.weight: Font.DemiBold }
+    }
+    Rectangle {
+        anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+        anchors.margins: 20
+        height: 116; radius: Theme.radius
+        color: Theme.sidebarHover
+        Column {
+            anchors.fill: parent; anchors.margins: 14; spacing: 10
+            Row {
+                spacing: 8
+                Rectangle { width: 6; height: 6; radius: 3; color: Theme.primary; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: appState && appState.cloudEnabled ? "CONNECTED WORKSPACE" : "LOCAL WORKSPACE"; color: Theme.sidebarText; font.family: Theme.monoFamily; font.pixelSize: 9; font.letterSpacing: 0.5 }
+            }
+            Text {
+                width: parent.width
+                text: appState && appState.cloudEnabled ? (appState.cloudTeamName || "No team selected") + " / " + appState.cloudStatus : "Your profiles. Your device.\nYour control."
+                color: Theme.sidebarMuted; font.pixelSize: 11; lineHeight: 1.3
+                wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
+            }
         }
     }
 }

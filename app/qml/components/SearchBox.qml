@@ -8,18 +8,19 @@ Item {
     property string placeholder: "Search..."
     height: 44
 
-    LineIcon { name: "search"; color: Theme.dim; size: 18; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+    Rectangle { anchors.fill: parent; color: Theme.card; radius: Theme.radiusSm; border.color: input.activeFocus ? Theme.primaryInk : Theme.border }
+    LineIcon { name: "search"; color: Theme.dim; size: 18; anchors.left: parent.left; anchors.leftMargin: 14; anchors.verticalCenter: parent.verticalCenter }
     TextField {
         id: input
         anchors.fill: parent
-        anchors.leftMargin: 30
-        anchors.rightMargin: 0
+        anchors.leftMargin: 40
+        anchors.rightMargin: 10
         placeholderText: root.placeholder
         color: Theme.text
         placeholderTextColor: Theme.dim
         font.pixelSize: 14
         background: Item {}
         selectionColor: Theme.primary
+        selectedTextColor: Theme.primaryText
     }
-    Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: input.activeFocus ? Theme.primary : Theme.border }
 }

@@ -50,12 +50,13 @@ GlassCard {
         }
 
         Column {
+            Layout.fillWidth: true
             Layout.preferredWidth: 260
             Layout.minimumWidth: 100
             Layout.maximumWidth: 360
             Layout.alignment: Qt.AlignVCenter
             spacing: 5
-            Row { width: parent.width; spacing: 8; Text { text: root.name; color: Theme.text; font.pixelSize: 15; font.bold: true; elide: Text.ElideRight; width: Math.max(30, parent.width - identText.width - 8) } Text { id: identText; text: root.ident; color: Theme.dim; font.pixelSize: 12 } }
+            Row { width: parent.width; spacing: 8; Text { text: root.name; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold; elide: Text.ElideRight; width: Math.max(30, parent.width - identText.width - 8) } Text { id: identText; text: root.ident; color: Theme.dim; font.pixelSize: 12 } }
             Text { text: root.tags; color: Theme.primaryLight; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
         }
 

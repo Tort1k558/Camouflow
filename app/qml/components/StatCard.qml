@@ -7,26 +7,25 @@ Item {
     property string value: "0"
     property string change: ""
     property string icon: "dashboard"
-    property color accent: Theme.primary
+    property color accent: Theme.primaryInk
     property bool compact: height < 120
     implicitHeight: 132
     height: implicitHeight
     property int padding: 18
 
     Rectangle {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        height: 1
-        color: Theme.borderSubtle
+        anchors.fill: parent
+        radius: Theme.radius
+        color: Theme.card
+        border.color: Theme.border
     }
 
     Rectangle {
         id: iconBadge
         width: 36
         height: width
-        radius: 12
-        color: "transparent"
+        radius: Theme.radiusSm
+        color: Theme.subtle
         border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.5)
         anchors.left: parent.left
         anchors.leftMargin: root.padding
@@ -41,8 +40,8 @@ Item {
         anchors.top: parent.top
         anchors.topMargin: 14
         text: root.change
-        color: Theme.success
-        font.pixelSize: 13
+        color: Theme.muted
+        font.pixelSize: 11
         font.bold: true
     }
 
@@ -55,6 +54,6 @@ Item {
         anchors.topMargin: 10
         spacing: 4
         Text { text: root.label; color: Theme.muted; font.pixelSize: 13; width: parent.width; elide: Text.ElideRight }
-        Text { text: root.value; color: Theme.text; font.pixelSize: 27; font.bold: true; width: parent.width }
+        Text { text: root.value; color: Theme.text; font.pixelSize: 32; font.weight: Font.Medium; width: parent.width }
     }
 }

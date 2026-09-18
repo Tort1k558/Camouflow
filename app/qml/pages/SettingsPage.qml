@@ -1,9 +1,11 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import theme 1.0
 import "../components"
 
 Flickable {
+    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
     id: root
     contentWidth: width
     contentHeight: Math.max(height + 1, content.implicitHeight + 80)
@@ -29,7 +31,7 @@ Flickable {
             Column {
                 anchors.fill: parent
                 spacing: 12
-                Text { text: "Data root"; color: Theme.text; font.bold: true; font.pixelSize: 12 }
+                Text { text: "Data root"; color: Theme.text; font.weight: Font.DemiBold; font.pixelSize: 12 }
                 Rectangle {
                     width: parent.width
                     height: 42

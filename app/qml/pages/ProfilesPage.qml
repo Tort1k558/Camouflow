@@ -4,10 +4,8 @@ import QtQuick.Layouts
 import theme 1.0
 import "../components"
 
-Flickable {
+Item {
     id: root
-    contentWidth: width
-    contentHeight: content.height + 48
     clip: true
     property string editingProfile: ""
     property string contextProfile: ""
@@ -66,33 +64,34 @@ Flickable {
         radius: 10
         color: active ? Theme.primary : Theme.subtle
         border.color: active ? Theme.primaryLight : Theme.border
-        Text { id: tabText; anchors.centerIn: parent; text: profileTab.title; color: active ? "white" : Theme.muted; font.pixelSize: 12; font.bold: true }
+        Text { id: tabText; anchors.centerIn: parent; text: profileTab.title; color: active ? Theme.primaryText : Theme.muted; font.pixelSize: 12; font.weight: Font.DemiBold }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.openProfileTab("", profileTab.tabId) }
     }
 
-    Column {
-        id: content
-        width: parent.width - 56
-        x: 28
-        y: 24
-        spacing: 22
+    Component.onCompleted: profilesBridge.setSearch("")
+    function confirmDelete(name) {
+        confirmDialog.ask('Delete profile "' + name + '"? This action cannot be undone.', function() { profilesBridge.deleteProfile(name) })
+    }
+    ConfirmDialog { id: confirmDialog }
+    ColumnLayout {
+        anchors.fill: parent; anchors.margins: 28; spacing: 14
         RowLayout {
-            width: parent.width
-            PageHeader {
-                Layout.fillWidth: true
-                title: "Profiles"
-                subtitle: appState && appState.cloudEnabled
-                    ? "Team: " + (appState.cloudTeamName || "No team") + " / Role: " + (appState.cloudRole || "none")
-                    : "Manage your local browser profiles and sessions"
-            }
-            PrimaryButton { Layout.preferredWidth: 116; height: 42; text: "Import"; icon: "save"; secondary: true; enabled: profilesBridge.canManage; onClicked: importDialog.open() }
-            PrimaryButton { Layout.preferredWidth: 116; height: 42; text: "Tags"; icon: "settings"; secondary: true; enabled: profilesBridge.canManage; onClicked: root.openTagsModal() }
-            PrimaryButton { Layout.preferredWidth: 116; height: 42; text: "New Profile"; icon: "plus"; enabled: profilesBridge.canManage; onClicked: profilesBridge.createProfile() }
+            Layout.fillWidth: true
+            PageHeader { Layout.fillWidth: true; height: 72; title: "Profiles"; subtitle: "Browser sessions, identities and assigned connections" }
+            PrimaryButton { text: "Import"; icon: "save"; secondary: true; enabled: profilesBridge.canManage; onClicked: importDialog.open() }
+            PrimaryButton { text: "New Profile"; icon: "plus"; enabled: profilesBridge.canManage; onClicked: profilesBridge.createProfile() }
         }
-        SearchBox { id: search; width: parent.width; placeholder: "Search profiles or tags..." }
-        ListView {
-            width: parent.width
-            height: 38
+        RowLayout {
+            Layout.fillWidth: true; spacing: 12
+            SearchBox { id: search; Layout.fillWidth: true; Layout.preferredHeight: 42; placeholder: "Search profiles, tags or proxies"; onTextChanged: profilesBridge.setSearch(text) }
+            PrimaryButton { text: "Batch run"; icon: "play"; secondary: true; enabled: scenariosBridge.canRun && profileList.count > 0; onClicked: batchDialog.open() }
+            PrimaryButton { text: "Shared variables"; secondary: true; onClicked: variablesDialog.open() }
+        }
+        RowLayout {
+            Layout.fillWidth: true; spacing: 12
+            ListView {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 38
             orientation: ListView.Horizontal
             spacing: 8
             model: profilesBridge.stagesModel
@@ -107,20 +106,27 @@ Flickable {
                     id: tagText
                     anchors.centerIn: parent
                     text: model.name + "  " + model.count
-                    color: model.selected ? "white" : Theme.muted
+                    color: model.selected ? Theme.primaryText : Theme.muted
                     font.pixelSize: 12
-                    font.bold: true
+                    font.weight: Font.DemiBold
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: profilesBridge.setStageFilter(model.name) }
             }
         }
+            PrimaryButton { text: "Manage tags"; secondary: true; enabled: profilesBridge.canManage; onClicked: root.openTagsModal() }
+        }
         ListView {
-            width: parent.width
-            height: Math.max(520, count * 92)
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            id: profileList
+            EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: profileList.count === 0; title: search.text ? "No matching profiles" : "Your first profile starts here"; description: search.text ? "Try a different name, tag or proxy." : "Create a browser profile or import existing accounts."; icon: "user" }
             model: profilesBridge.model
             spacing: 14
-            interactive: false
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar {}
             delegate: ProfileRow {
+                id: profileRow
                 width: ListView.view.width
                 name: model.name
                 ident: model.id
@@ -136,31 +142,32 @@ Flickable {
                 canRun: profilesBridge.canRun
                 canManage: profilesBridge.canManage
                 canAdmin: profilesBridge.canAdmin
-                visible: search.text.length === 0 || (model.name + model.tags + model.proxy).toLowerCase().indexOf(search.text.toLowerCase()) >= 0
-                height: visible ? 78 : 0
+                height: 78
                 onStartClicked: profilesBridge.startProfile(model.name)
                 onStopClicked: profilesBridge.stopProfile(model.name)
                 onSettingsClicked: root.openProfileModal(model.name)
-                onDeleteClicked: profilesBridge.deleteProfile(model.name)
+                onDeleteClicked: root.confirmDelete(model.name)
                 onContextRequested: function(x, y) {
                     root.contextProfile = model.name
-                    profileMenu.popup(x + 28, y + 150)
+                    var point = profileRow.mapToItem(root, x, y)
+                    profileMenu.popup(point.x, point.y)
                 }
             }
         }
-        GlassCard {
-            width: parent.width
-            height: 118
-            padding: 18
-            RowLayout {
-                anchors.fill: parent
+        Text { text: profileList.count + " profiles shown"; color: Theme.dim; font.pixelSize: 11 }
+    }
+    WorkspaceDialog {
+        id: batchDialog
+        objectName: "batchDialog"
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(820, root.width - 48); height: 210; padding: 0
+        contentItem: Item { ColumnLayout {
+                anchors.fill: parent; anchors.margins: 22
                 spacing: 12
-                Column {
-                    Layout.preferredWidth: 210
-                    spacing: 6
-                    Text { text: "Run scenario for tag"; color: Theme.text; font.pixelSize: 16; font.bold: true }
-                    Text { text: "Batch run selected scenario by profile tag"; color: Theme.muted; font.pixelSize: 12 }
-                }
+                Text { text: "Run a scenario across a tag"; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
                 Rectangle {
                     Layout.preferredWidth: 180
                     height: 42
@@ -178,6 +185,8 @@ Flickable {
                     }
                 }
                 Rectangle {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 140
                     Layout.preferredWidth: 240
                     height: 42
                     radius: 11
@@ -193,7 +202,7 @@ Flickable {
                         contentItem: Text { text: runScenarioSelect.displayText || "Scenario"; color: Theme.text; verticalAlignment: Text.AlignVCenter; font.pixelSize: 13; elide: Text.ElideRight }
                     }
                 }
-                FormField { id: runMax; Layout.preferredWidth: 90; label: "Max"; text: "10" }
+                FormField { id: runMax; Layout.minimumWidth: 60; Layout.preferredWidth: 70; label: "Max"; text: "10" }
                 PrimaryButton {
                     Layout.preferredWidth: 130
                     text: "Run for tag"
@@ -201,24 +210,25 @@ Flickable {
                     enabled: scenariosBridge.canRun
                     onClicked: scenariosBridge.runForTag(runTagSelect.currentText, runScenarioSelect.currentText, parseInt(runMax.text || "1"))
                 }
-                PrimaryButton { Layout.preferredWidth: 120; text: "Variables"; icon: "settings"; secondary: true; onClicked: variablesDialog.open() }
-            }
-        }
+
+                }
+            } }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: importDialog
+        objectName: "importDialog"
         modal: true
         width: Math.min(900, root.width - 80)
         height: Math.min(680, root.height - 80)
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Column {
             anchors.fill: parent
             anchors.margins: 22
             spacing: 14
-            Text { text: "Import Profiles"; color: Theme.text; font.pixelSize: 24; font.bold: true }
+            Text { text: "Import Profiles"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
             FormField { id: importTemplate; width: parent.width; label: "Account parse template"; text: "{email};{password};{secret_key};{extra};{twofa_url}" }
             Row {
                 width: parent.width
@@ -228,10 +238,10 @@ Flickable {
                     width: (parent.width - 12) / 2
                     height: 62
                     color: "transparent"
-                    Text { text: "Proxy pool"; color: Theme.text; font.pixelSize: 12; font.bold: true }
+                    Text { text: "Proxy pool"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
                     Rectangle {
                         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
-                        height: 40; radius: 11; color: Theme.subtle; border.color: Theme.border
+                        height: 40; radius: Theme.radiusSm; color: Theme.subtle; border.color: Theme.border
                         ComboBox {
                             id: importProxyPool
                             anchors.fill: parent
@@ -244,7 +254,7 @@ Flickable {
                     }
                 }
             }
-            Text { text: "Profiles, one per line"; color: Theme.text; font.pixelSize: 12; font.bold: true }
+            Text { text: "Profiles, one per line"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
             Rectangle {
                 width: parent.width
                 height: parent.height - 230
@@ -279,20 +289,21 @@ Flickable {
         }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: tagsDialog
+        objectName: "tagsDialog"
         modal: true
         width: Math.min(480, root.width - 80)
         height: 520
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Column {
             spacing: 14
             padding: 22
             RowLayout {
                 width: parent.width - 44
-                Text { text: "Profile Tags"; color: Theme.text; font.pixelSize: 22; font.bold: true; Layout.fillWidth: true }
+                Text { text: "Profile Tags"; color: Theme.text; font.pixelSize: 22; font.weight: Font.DemiBold; Layout.fillWidth: true }
                 PrimaryButton { Layout.preferredWidth: 40; text: ""; icon: "plus"; enabled: profilesBridge.canManage; onClicked: tagCreateDialog.open() }
             }
             Text { width: parent.width - 44; text: "Create tags here, then assign them in profile settings."; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap }
@@ -308,25 +319,26 @@ Flickable {
                     radius: 11
                     color: Theme.subtle
                     border.color: Theme.border
-                    Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.name; color: Theme.text; font.pixelSize: 13; font.bold: true }
+                    Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
                     PrimaryButton { anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter; width: 34; height: 28; text: ""; icon: "trash"; danger: true; enabled: profilesBridge.canManage; onClicked: { settingsBridge.deleteStage(model.name); profilesBridge.refresh() } }
                 }
             }
         }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: tagCreateDialog
+        objectName: "tagCreateDialog"
         modal: true
         width: Math.min(420, root.width - 100)
         height: 210
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 20; border.color: Theme.border }
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Column {
             spacing: 14
             padding: 22
-            Text { text: "New Tag"; color: Theme.text; font.pixelSize: 20; font.bold: true }
+            Text { text: "New Tag"; color: Theme.text; font.pixelSize: 20; font.weight: Font.DemiBold }
             FormField { id: tagName; width: parent.width - 44; label: "Tag name" }
             Row {
                 spacing: 10
@@ -336,15 +348,17 @@ Flickable {
         }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: profileDialog
+        objectName: "profileDialog"
         modal: true
         width: Math.min(820, root.width - 80)
         height: Math.min(720, root.height - 80)
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Flickable {
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
             contentWidth: width
             contentHeight: modalContent.height + 44
             clip: true
@@ -354,7 +368,7 @@ Flickable {
                 x: 22
                 y: 22
                 spacing: 18
-                Text { text: "Profile Settings"; color: Theme.text; font.pixelSize: 24; font.bold: true }
+                Text { text: "Profile Settings"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
                 Text { text: "Profile data + per-profile browser overrides for " + browserSettingsBridge.engine; color: Theme.muted; font.pixelSize: 13 }
                 Row {
                     spacing: 8
@@ -380,7 +394,7 @@ Flickable {
                         FormField { id: editProxyPassword; Layout.fillWidth: true; label: "Proxy password" }
                     }
                     Rectangle { width: parent.width; height: 1; color: Theme.border }
-                    Text { text: "Browser Overrides"; color: Theme.text; font.pixelSize: 18; font.bold: true }
+                    Text { text: "Browser Overrides"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
                     GridLayout {
                         width: parent.width
                         columns: 2
@@ -397,7 +411,7 @@ Flickable {
                     width: parent.width
                     spacing: 12
                     visible: root.profileSettingsTab === "variables"
-                    Text { text: "Profile variables"; color: Theme.text; font.pixelSize: 18; font.bold: true }
+                    Text { text: "Profile variables"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
                     Text { text: "JSON object available to this profile's scenarios."; color: Theme.muted; font.pixelSize: 12 }
                     Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
                         TextArea { id: profileVarsJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
@@ -407,7 +421,7 @@ Flickable {
                     width: parent.width
                     spacing: 12
                     visible: root.profileSettingsTab === "cookies"
-                    Text { text: "Cookies"; color: Theme.text; font.pixelSize: 18; font.bold: true }
+                    Text { text: "Cookies"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
                     Text { text: "Edit JSON array and save. Encrypted Chromium values may be read-only."; color: Theme.muted; font.pixelSize: 12 }
                     Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
                         TextArea { id: profileCookiesJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
@@ -417,7 +431,7 @@ Flickable {
                     width: parent.width
                     spacing: 12
                     visible: root.profileSettingsTab === "browser"
-                    Text { text: "Browser JSON"; color: Theme.text; font.pixelSize: 18; font.bold: true }
+                    Text { text: "Browser JSON"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
                     Text { text: "Overrides for current engine: " + browserSettingsBridge.engine; color: Theme.muted; font.pixelSize: 12 }
                     Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
                         TextArea { id: profileBrowserSettingsJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} wrapMode: TextArea.Wrap }
@@ -452,14 +466,15 @@ Flickable {
         }
     }
 
-    Dialog {
+    WorkspaceDialog {
         id: variablesDialog
+        objectName: "variablesDialog"
         modal: true
         width: Math.min(860, root.width - 80)
         height: Math.min(560, root.height - 80)
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle { color: Theme.elevated; radius: 22; border.color: Theme.border }
+        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
         contentItem: Column {
             anchors.fill: parent
             anchors.margins: 22
@@ -467,7 +482,7 @@ Flickable {
             RowLayout {
                 width: parent.width
                 height: 38
-                Text { text: "Shared Variables"; color: Theme.text; font.pixelSize: 22; font.bold: true; Layout.fillWidth: true }
+                Text { text: "Shared Variables"; color: Theme.text; font.pixelSize: 22; font.weight: Font.DemiBold; Layout.fillWidth: true }
                 PrimaryButton { Layout.preferredWidth: 104; text: "Close"; secondary: true; onClicked: variablesDialog.close() }
             }
             RowLayout {
@@ -503,8 +518,8 @@ Flickable {
                         PrimaryButton { width: (parent.width - 20) / 3; text: "list"; secondary: sharedType.text !== "list"; onClicked: sharedType.text = "list" }
                     }
                     FormField { id: sharedType; visible: false; text: "string" }
-                    Text { text: "Value"; color: Theme.text; font.pixelSize: 12; font.bold: true }
-                    Rectangle { width: parent.width; height: 190; radius: 11; color: Theme.subtle; border.color: Theme.border
+                    Text { text: "Value"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
+                    Rectangle { width: parent.width; height: 190; radius: Theme.radiusSm; color: Theme.subtle; border.color: Theme.border
                         TextArea { id: sharedValue; anchors.fill: parent; anchors.margins: 10; color: Theme.text; placeholderText: "Value or one list item per line"; placeholderTextColor: Theme.dim; background: Item {} wrapMode: TextArea.Wrap; font.pixelSize: 13 }
                     }
                     Row {
@@ -528,6 +543,6 @@ Flickable {
         MenuItem { text: "Browser overrides"; enabled: profilesBridge.canManage; onTriggered: root.openBrowserOverridesModal(root.contextProfile) }
         MenuItem { text: "Run selected scenario"; enabled: scenariosBridge.canRun; onTriggered: { scenariosBridge.setRunProfile(root.contextProfile); scenariosBridge.runSelected() } }
         MenuSeparator {}
-        MenuItem { text: "Delete profile"; enabled: profilesBridge.canAdmin; onTriggered: profilesBridge.deleteProfile(root.contextProfile) }
+        MenuItem { text: "Delete profile"; enabled: profilesBridge.canAdmin; onTriggered: root.confirmDelete(root.contextProfile) }
     }
 }
