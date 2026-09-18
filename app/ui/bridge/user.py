@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import threading
 
-from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QUrl, QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QDesktopServices
 
 from app.services.cloud_sync import CloudWorkspaceSync
 from app.services.server_client import (
@@ -552,6 +553,32 @@ class UserBridge(QObject):
         except ServerClientError as exc:
             self._notify(f"Login failed: {exc}")
             return
+        self._after_login(result)
+
+    @pyqtSlot()
+    def googleLogin(self) -> None:  # noqa: N802
+        try:
+            url = ServerClient().google_login_url(app_pair=True)
+        except ServerClientError as exc:
+            self._notify(f"Google sign-in unavailable: {exc}")
+            return
+        QDesktopServices.openUrl(QUrl(url))
+        self._notify("Browser opened — finish Google sign-in and paste the pairing code here")
+
+    @pyqtSlot(str)
+    def loginWithPairCode(self, code: str) -> None:  # noqa: N802
+        code = str(code or "").strip()
+        if not code:
+            self._notify("Paste the pairing code from the browser first")
+            return
+        try:
+            result = ServerClient().login_with_pair_code(code)
+        except ServerClientError as exc:
+            self._notify(f"Pairing failed: {exc}")
+            return
+        self._after_login(result)
+
+    def _after_login(self, result: dict) -> None:
         db_set_setting(ONBOARDING_COMPLETED_KEY, "true")
         team_id = str(result.get("team_id") or "")
         self._notify(f"Cloud connected, team {team_id[:8]}" if team_id else "Cloud connected. Accept an invite below.")
