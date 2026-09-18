@@ -4,9 +4,11 @@
 
 <h1 align="center">CamouFlow</h1>
 
+<p align="center"><b>English</b> · <a href="README.ru.md">Русский</a></p>
+
 <p align="center">
-  <b>Local-first рабочее пространство для браузерных профилей, прокси и визуальной автоматизации.</b><br/>
-  Разные профили. Один поток работы. На вашем компьютере — под вашим контролем.
+  <b>A local-first desktop workspace for browser profiles, proxies and visual automation.</b><br/>
+  Different profiles. One workflow. On your computer — under your control.
 </p>
 
 <p align="center">
@@ -18,102 +20,102 @@
 
 ---
 
-## Что такое CamouFlow
+## What is CamouFlow
 
-CamouFlow — десктопное приложение для работы с изолированными браузерными профилями. У каждого профиля — свой контекст: cookies, отпечаток, прокси и настройки движка. Профили объединяются в единый рабочий процесс: визуальные сценарии автоматизации, пулы прокси с проверкой здоровья, журналирование и командная работа через опциональный сервер.
+CamouFlow is a desktop app for working with isolated browser profiles. Every profile has its own context: cookies, fingerprint, proxy and engine settings. Profiles come together in one workflow: visual automation scenarios, proxy pools with health checks, logging and team collaboration through an optional server.
 
-- 🔒 **Local-first** — профили, сценарии и данные хранятся локально; локальный режим не требует входа на сервер
-- 🧬 **Анти-детект движки** — Camoufox (Firefox-based) и CloakBrowser (Chromium-based) с настройкой отпечатков
-- 🕸 **Визуальная автоматизация** — сценарии собираются на холсте из шагов со связями «успех/ошибка»
-- 🌐 **Команды и центр управления** — опциональный сервер: роли, общие пулы, аудит, биллинг
+- 🔒 **Local-first** — profiles, scenarios and data stay on your machine; local mode needs no server login
+- 🧬 **Anti-detect engines** — Camoufox (Firefox-based) and CloakBrowser (Chromium-based) with configurable fingerprints
+- 🕸 **Visual automation** — scenarios are assembled on a canvas from steps linked by success/error transitions
+- 🌐 **Teams and control center** — optional server: roles, shared pools, audit, billing
 
-## Скриншоты
+## Screenshots
 
-| Обзор | Профили |
+| Overview | Profiles |
 |:---:|:---:|
-| ![Обзор](images/dashboard.png) | ![Профили](images/profiles.png) |
+| ![Overview](images/dashboard.png) | ![Profiles](images/profiles.png) |
 
-| Прокси | Сценарии |
+| Proxies | Scenarios |
 |:---:|:---:|
-| ![Прокси](images/proxies.png) | ![Сценарии](images/scenarios.png) |
+| ![Proxies](images/proxies.png) | ![Scenarios](images/scenarios.png) |
 
-| Движок браузера | Журнал |
+| Browser engine | Logs |
 |:---:|:---:|
-| ![Движок браузера](images/browser.png) | ![Журнал](images/logs.png) |
+| ![Browser engine](images/browser.png) | ![Logs](images/logs.png) |
 
-## Возможности
+## Features
 
-### 🗂 Профили
+### 🗂 Profiles
 
-- создание, редактирование, дублирование и удаление профилей
-- запуск/остановка браузерной сессии профиля
-- массовый импорт по шаблону разбора аккаунтов
-- теги-группы и поиск по имени, тегу и прокси
-- привязка прокси, переменные и cookies профиля
-- переопределения браузера на профиль: locale, timezone, User-Agent, WebGL/GPU, CPU cores
-- пакетный запуск сценария на профилях с выбранным тегом
+- create, edit, duplicate and delete browser profiles
+- start and stop profile browser sessions
+- bulk import with an account parse template
+- tag groups and search by name, tag or proxy
+- assign a proxy, edit profile variables and cookies
+- per-profile browser overrides: locale, timezone, User-Agent, WebGL/GPU, CPU cores
+- batch-run a scenario on profiles with a selected tag
 
-### 🕸 Прокси
+### 🕸 Proxies
 
-- пулы/группы прокси: создание, переименование, удаление
-- массовый импорт списков: `socks5://host:port:user:pass`, `http://user:pass@host:port`
-- проверка здоровья: по одной, по пулу или все сразу — статус, задержка, гео
-- карантин и освобождение прокси, снятие привязок
-- статистика пула: активные, в проверке, упавшие, локации
+- proxy pools/groups: create, rename, delete
+- bulk list import: `socks5://host:port:user:pass`, `http://user:pass@host:port`
+- health checks: single, per pool or all at once — status, latency, geo
+- quarantine and release, unassigning from profiles
+- pool statistics: active, checking, failed, locations
 
-### ⚙️ Сценарии
+### ⚙️ Scenarios
 
-- визуальный редактор: перетаскиваемые шаги на холсте, pan/zoom
-- связи между шагами `успех` / `ошибка`, контекстное меню узлов и связей
-- библиотека сценариев: создание, дублирование, удаление
-- запуск сценария на выбранном профиле, панель последних прогонов
-- общие переменные внутри редактора, шаг-редактор с raw JSON
-- маркетплейс сценариев (при подключённом сервере)
+- visual editor: draggable steps on a canvas, pan/zoom
+- `success` / `error` links between steps, context menus for nodes and links
+- scenario library: create, duplicate, delete
+- run a scenario on a selected profile, recent runs panel
+- shared variables inside the editor, step editor with raw JSON
+- scenario marketplace (with a connected server)
 
-Поддерживаемые шаги: `start`/`end` · переход по URL · HTTP-запрос · ожидание элемента/загрузки · пауза · клик · ввод текста · запись/парсинг переменных · общие переменные · извлечение текста · запись в файл · условие `if` · работа с вкладками · тег · запуск другого сценария · лог/сообщение
+Supported steps: `start`/`end` · open URL · HTTP request · wait for element/load · sleep · click · type text · set/parse variables · shared variables · extract text · write file · `if` condition · tab management · tag · run another scenario · log/message
 
-### 🧬 Движок браузера
+### 🧬 Browser engine
 
-- переключение Camoufox ↔ CloakBrowser и раздельные настройки по движку
-- режимы запуска: окно / headless / виртуальный дисплей
-- гуманизация поведения: курсор, скорость мыши, задержки печати, пресеты
-- пул ОС-отпечатков и seed для Camoufox, аргументы запуска Chromium
-- переопределения navigator/UA/WebGL/CPU, window/screen размеры
-- JSON-оверрайды (navigator, window), addons/шрифты, права и заголовки
-- статус-панель движка: проверка совместимости и обновлений
+- switch Camoufox ↔ CloakBrowser with separate per-engine settings
+- launch modes: windowed / headless / virtual display
+- behavior humanization: cursor, mouse speed, typing delays, presets
+- Camoufox OS fingerprint pool and seed, Chromium launch args
+- navigator/UA/WebGL/CPU overrides, window/screen sizes
+- JSON overrides (navigator, window), addons/fonts, permissions and headers
+- engine status strip: compatibility check and updates
 
-### 📋 Журнал
+### 📋 Logs
 
-- события приложения и автоматизации в таблице `уровень · время · событие`
-- фильтры: все / ошибки / предупреждения с живыми счётчиками
-- обновление и очистка журнала (с подтверждением)
+- application and automation events in a `level · time · event` table
+- filters: all / errors / warnings with live counters
+- refresh and clear the log (with confirmation)
 
-## Архитектура
+## Architecture
 
 ```text
 ┌─────────────────────────────┐        ┌─────────────────────────────┐
-│  Desktop-приложение (репо)  │        │   Сервер (опционально)      │
-│  PyQt6/QML + Python-ядро    │◄──────►│   команды · роли · пулы     │
-│  Camoufox · CloakBrowser    │  API   │   аудит · биллинг · маркет  │
-│  локальные профили и данные │        │   веб-консоль владельца     │
+│   Desktop app (this repo)   │        │   Server (optional)         │
+│   PyQt6/QML + Python core   │◄──────►│   teams · roles · pools     │
+│   Camoufox · CloakBrowser   │  API   │   audit · billing · market  │
+│   local profiles and data   │        │   owner web console         │
 └─────────────────────────────┘        └─────────────────────────────┘
 ```
 
-Локальный режим полностью самодостаточен. Сервер подключается опционально — для командного доступа, общих пулов и маркетплейса сценариев. Сайт проекта: **[camouflow.site](https://camouflow.site)** (RU/EN).
+Local mode is fully self-sufficient. The server is connected optionally — for team access, shared pools and the scenario marketplace. Project site: **[camouflow.site](https://camouflow.site)** (RU/EN).
 
 ```text
 app/
-  core/         интеграция с движками, отпечатки, прокси
-  qml/          интерфейс (QML): страницы и компоненты
-  services/     сценарный движок и исполняемые шаги
-  storage/      локальная БД и хранилища
-  ui/bridge/    Python ↔ QML мосты
-images/         скриншоты для README
+  core/         browser engine integration, fingerprints, proxies
+  qml/          UI (QML): pages and components
+  services/     scenario engine and executable steps
+  storage/      local database and storage helpers
+  ui/bridge/    Python ↔ QML bridges
+images/         screenshots used by the README
 ```
 
-## Быстрый старт
+## Quick start
 
-Требования: **Windows**, Python 3.12, Git.
+Requirements: **Windows**, Python 3.12, Git.
 
 ```bat
 py -3.12 -m venv .venv
@@ -122,24 +124,24 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Первый запуск может занять время — скачиваются браузерные зависимости движков.
+The first launch may take a while — browser engine dependencies are downloaded.
 
 ```bat
 python main.py
 ```
 
-### Сборка Windows-приложения
+### Build the Windows app
 
 ```bat
 build.bat
 ```
 
-Готовый билд: `dist\CamouFlow\CamouFlow.exe`.
+Output: `dist\CamouFlow\CamouFlow.exe`.
 
-## Данные и приватность
+## Data and privacy
 
-Все рабочие данные — профили, сценарии, прокси, настройки, журналы и браузерные профили — хранятся локально. Текущий каталог данных показан в **Settings → App Settings**.
+All working data — profiles, scenarios, proxies, settings, logs and browser profile data — is stored locally. The active data root is shown in **Settings → App Settings**.
 
-## Лицензия
+## License
 
-MIT — см. [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
