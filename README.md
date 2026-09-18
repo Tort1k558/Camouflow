@@ -20,6 +20,8 @@
 
 ---
 
+📚 **Documentation (RU/EN): [camouflow.site/docs](https://camouflow.site/docs)** · API reference: [camouflow.site/api](https://camouflow.site/api)
+
 ## What is CamouFlow
 
 CamouFlow is a desktop app for working with isolated browser profiles. Every profile has its own context: cookies, fingerprint, proxy and engine settings. Profiles come together in one workflow: visual automation scenarios, proxy pools with health checks, logging and team collaboration through an optional server.
