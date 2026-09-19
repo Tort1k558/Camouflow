@@ -11,7 +11,7 @@ Rectangle {
         ["Dashboard", "dashboard", "Overview"], ["Profiles", "user", "Profiles"],
         ["Browser", "globe", "Browser engines"], ["Proxies", "network", "Proxies"],
         ["Scenarios", "workflow", "Scenarios"], ["Logs", "logs", "Activity log"],
-        ["User", "user", "Account & teams"], ["Settings", "settings", "Settings"]
+        ["Settings", "settings", "Settings"]
     ]
     Brand { x: 23; y: 28; ink: Theme.sidebarText }
     Text {
