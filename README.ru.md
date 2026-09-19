@@ -117,7 +117,9 @@ images/         скриншоты для README
 
 ## Быстрый старт
 
-Требования: **Windows**, Python 3.12, Git.
+**Готовая сборка для Windows:** [CamouFlow 0.2.0 (zip)](https://github.com/Tort1k558/Camouflow/releases/download/v0.2.0/CamouFlow-0.2.0-win64.zip) — распакуйте и запустите `CamouFlow.exe` (движки браузера скачаются при первом запуске). Все версии: [Releases](https://github.com/Tort1k558/Camouflow/releases).
+
+Или запуск из исходников. Требования: **Windows**, Python 3.12, Git.
 
 ```bat
 py -3.12 -m venv .venv
