@@ -8,6 +8,31 @@ Flickable {
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
     id: root
     property var bridge: typeof userBridge !== "undefined" ? userBridge : null
+    readonly property bool cloud: bridge && bridge.serverEnabled
+    readonly property string accountName: cloud ? (bridge.fullName !== "" ? bridge.fullName : bridge.email) : ""
+    readonly property var avatarTones: ["#d1f366", "#b9e58a", "#a3d79e", "#cfe08a", "#9ccf96", "#bfe0b0"]
+    readonly property int avatarTone: {
+        var seed = accountName !== "" ? accountName : "local"
+        var h = 0
+        for (var i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 997
+        return h % 6
+    }
+    readonly property string accountInitials: {
+        var n = accountName !== "" ? accountName : "You"
+        var parts = n.trim().split(/\s+/)
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    }
+    function teamTone(name) {
+        var h = 0
+        for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 997
+        return h % 6
+    }
+    function teamInitials(name) {
+        var parts = name.trim().split(/\s+/)
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    }
     contentWidth: width
     contentHeight: content.height + 64
     clip: true
@@ -26,330 +51,253 @@ Flickable {
             badge: root.bridge && root.bridge.serverEnabled ? "Cloud" : "Local mode"
         }
 
+        // ── profile header: no card, avatar + identity + actions ──
         RowLayout {
             width: parent.width
-            spacing: 22
+            spacing: 15
 
-            GlassCard {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 210
-                padding: 26
-
+            Item {
+                Layout.preferredWidth: 54
+                Layout.preferredHeight: 54
                 Rectangle {
-                    width: 58
-                    height: 58
-                    radius: 20
-                    color: "transparent"
-                    border.color: root.bridge && root.bridge.serverEnabled ? Theme.success : Theme.primaryInk
-                    LineIcon { anchors.centerIn: parent; name: "user"; color: root.bridge && root.bridge.serverEnabled ? Theme.success : Theme.primaryInk; size: 28 }
+                    anchors.fill: parent
+                    radius: 27
+                    color: root.avatarTones[root.avatarTone]
+                    Text { anchors.centerIn: parent; text: root.accountInitials; color: Theme.primaryText; font.pixelSize: 17; font.weight: Font.DemiBold }
                 }
-                Column {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 76
-                    anchors.right: parent.right
-                    spacing: 8
-                    Text {
-                        text: root.bridge && root.bridge.serverEnabled ? (root.bridge.fullName || root.bridge.email) : "Local workspace"
-                        color: Theme.text
-                        font.pixelSize: 24
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
-                        width: parent.width
-                    }
-                    Text {
-                        text: root.bridge && root.bridge.serverEnabled ? root.bridge.email : "No account connected"
-                        color: Theme.muted
-                        font.pixelSize: 14
-                        elide: Text.ElideRight
-                        width: parent.width
-                    }
-                    Text {
-                        text: root.bridge ? root.bridge.status : ""
-                        color: Theme.primaryLight
-                        font.pixelSize: 13
-                        wrapMode: Text.WordWrap
-                        width: parent.width
-                    }
-                }
-
-                Column {
-                    anchors.left: parent.left
+                Rectangle {
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    spacing: 10
-                    visible: root.bridge && root.bridge.serverEnabled
-
-                    Row {
-                        spacing: 12
-                        PrimaryButton {
-                            width: 150
-                            text: "Sync Cloud"
-                            icon: "save"
-                            secondary: true
-                            enabled: root.bridge ? root.bridge.canManageCloud : false
-                            onClicked: root.bridge.syncCloudWorkspace()
-                        }
-                        PrimaryButton {
-                            width: 190
-                            text: "Sync + cookies"
-                            icon: "cookie"
-                            secondary: true
-                            enabled: root.bridge ? root.bridge.canManageCloud : false
-                            onClicked: root.bridge.syncCloudWorkspace(true)
-                        }
-                        PrimaryButton {
-                            width: 34
-                            text: ""
-                            icon: "refresh"
-                            iconOnly: true
-                            secondary: true
-                            onClicked: root.bridge.refresh()
-                        }
-                        PrimaryButton {
-                            width: 150
-                            text: root.bridge && root.bridge.conflictCount > 0 ? "Conflicts (" + root.bridge.conflictCount + ")" : "Conflicts"
-                            icon: "link"
-                            visible: root.bridge && root.bridge.canManageCloud
-                            secondary: true
-                            onClicked: conflictDialog.open()
-                        }
-                        PrimaryButton {
-                            width: 120
-                            text: "Logout"
-                            icon: "stop"
-                            secondary: true
-                            onClicked: root.bridge.logout()
-                        }
-                    }
-
-                    Row {
-                        spacing: 8
-                        CheckBox {
-                            id: autosyncCheck
-                            checked: root.bridge ? root.bridge.autoSyncEnabled : false
-                            onToggled: root.bridge.setAutoSyncEnabled(checked)
-                            text: "Auto-sync on app start"
-                        }
-                    }
-                }
-
-                Row {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: !root.bridge || !root.bridge.serverEnabled
-                    PrimaryButton {
-                        width: 110
-                        text: "Login"
-                        icon: "link"
-                        onClicked: {
-                            loginEmail.text = root.bridge ? root.bridge.serverEmail : ""
-                            loginPassword.text = ""
-                            loginDialog.open()
-                        }
-                    }
+                    width: 14; height: 14; radius: 7
+                    color: root.cloud ? Theme.success : "#9aa793"
+                    border.width: 3
+                    border.color: Theme.background
                 }
             }
 
-            GlassCard {
-                Layout.preferredWidth: 390
-                Layout.preferredHeight: 210
-                padding: 24
-                Text { id: localTitle; width: parent.width; wrapMode: Text.WordWrap; text: root.bridge && root.bridge.serverEnabled ? "Cloud features" : "Connect when you need a team"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
                 Text {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: localTitle.bottom
-                    anchors.topMargin: 14
-                    text: root.bridge && root.bridge.serverEnabled ? "Teams, roles, profile locks, audit log and cloud backups are available." : (root.bridge ? root.bridge.localLimitations : "")
-                    color: Theme.muted
-                    font.pixelSize: 13
-                    lineHeight: 1.22
-                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    text: root.cloud ? (root.accountName || "Account") : "Local workspace"
+                    color: Theme.text; font.pixelSize: 21; font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: root.cloud ? root.bridge.email : "Nothing leaves this computer"
+                    color: Theme.muted; font.pixelSize: 13
+                    elide: Text.ElideRight
+                }
+                Text {
+                    Layout.fillWidth: true
+                    visible: root.cloud
+                    text: root.bridge ? root.bridge.status : ""
+                    color: Theme.primaryLight; font.pixelSize: 11
+                    elide: Text.ElideMiddle
+                }
+            }
+
+            PrimaryButton {
+                visible: !root.cloud
+                text: "Login"
+                icon: "link"
+                onClicked: {
+                    loginEmail.text = root.bridge ? root.bridge.serverEmail : ""
+                    loginPassword.text = ""
+                    loginDialog.open()
                 }
             }
         }
 
-        GlassCard {
+        // ── sync toolbar (cloud) ──────────────────────────────────
+        RowLayout {
             width: parent.width
-            height: 220
-            padding: 26
+            visible: root.cloud
+            spacing: 8
+            PrimaryButton {
+                text: "Sync cloud"
+                icon: "save"
+                secondary: true
+                enabled: root.bridge ? root.bridge.canManageCloud : false
+                onClicked: root.bridge.syncCloudWorkspace()
+            }
+            PrimaryButton {
+                text: "Sync + cookies"
+                icon: "cookie"
+                secondary: true
+                enabled: root.bridge ? root.bridge.canManageCloud : false
+                onClicked: root.bridge.syncCloudWorkspace(true)
+            }
+            PrimaryButton {
+                text: root.bridge && root.bridge.conflictCount > 0 ? "Conflicts (" + root.bridge.conflictCount + ")" : "Conflicts"
+                icon: "link"
+                secondary: true
+                visible: root.bridge && root.bridge.canManageCloud
+                onClicked: conflictDialog.open()
+            }
+            Item { Layout.fillWidth: true }
+            CheckBox {
+                checked: root.bridge ? root.bridge.autoSyncEnabled : false
+                onToggled: root.bridge.setAutoSyncEnabled(checked)
+                text: "Auto-sync"
+                font.pixelSize: 12
+            }
+            PrimaryButton {
+                text: "Logout"
+                icon: "stop"
+                danger: true
+                onClicked: root.bridge.logout()
+            }
+        }
 
-            Row {
-                id: invitesHeader
-                anchors.left: parent.left
-                anchors.right: parent.right
-                spacing: 14
-                Rectangle { width: 42; height: 42; radius: 14; color: "transparent"; border.color: Theme.primaryInk; LineIcon { anchors.centerIn: parent; name: "mail"; color: Theme.primaryInk; size: 21 } }
-                Column {
-                    width: parent.width - 180
-                    Text { text: "Pending invites"; color: Theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
-                    Text { text: "Invites sent to your account. Accept them here to join a team."; color: Theme.muted; font.pixelSize: 13 }
-                }
-                PrimaryButton {
-                    width: 34
-                    text: ""
-                    icon: "refresh"
-                    iconOnly: true
-                    secondary: true
-                    onClicked: root.bridge.refresh()
-                }
+        // ── local hint ────────────────────────────────────────────
+        Text {
+            width: parent.width
+            visible: !root.cloud
+            text: "Login to unlock teams, roles, invites, profile locks between teammates and the audit log. Everything also works fully offline."
+            color: Theme.muted
+            font.pixelSize: 12
+            wrapMode: Text.WordWrap
+            lineHeight: 1.25
+        }
+
+        // ── pending invites: compact rows ─────────────────────────
+        ColumnLayout {
+            width: parent.width
+            spacing: 8
+            visible: root.cloud && root.bridge && root.bridge.invitesModel.count > 0
+
+            RowLayout {
+                Layout.fillWidth: true
+                Text { text: "PENDING INVITES · " + (root.bridge ? root.bridge.invitesModel.count : 0); color: Theme.dim; font.family: Theme.monoFamily; font.pixelSize: 10; font.letterSpacing: 1.2 }
+                Item { Layout.fillWidth: true }
             }
 
-            Text {
-                anchors.centerIn: parent
-                visible: !root.bridge || !root.bridge.serverEnabled
-                text: "Login to see pending invites."
-                color: Theme.muted
-                font.pixelSize: 15
-            }
-
-            ListView {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: invitesHeader.bottom
-                anchors.topMargin: 20
-                anchors.bottom: parent.bottom
-                visible: root.bridge && root.bridge.serverEnabled
-                clip: true
-                spacing: 10
+            Repeater {
                 model: root.bridge ? root.bridge.invitesModel : null
-
                 delegate: Rectangle {
-                    width: ListView.view.width
-                    height: 58
-                    radius: 14
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 44
+                    radius: 9
                     color: "transparent"
-                    border.color: Theme.border
+                    border.color: Theme.borderSubtle
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 10
-                        spacing: 12
-                        Text { Layout.fillWidth: true; text: model.team_name + " / " + model.team_slug; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold; elide: Text.ElideRight }
-                        Text { Layout.preferredWidth: 110; text: model.role; color: Theme.primaryLight; font.pixelSize: 12; elide: Text.ElideRight }
-                        Text { Layout.preferredWidth: 190; text: "From: " + (model.invited_by_email || "owner/admin"); color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight }
-                        PrimaryButton { Layout.preferredWidth: 92; text: "Accept"; icon: "check"; onClicked: root.bridge.acceptInvite(model.id) }
+                        anchors.leftMargin: 11
+                        anchors.rightMargin: 7
+                        spacing: 10
+                        Column {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            Text { text: model.team_name; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                            Text { text: "invited as " + model.role + (model.invited_by_email ? " · by " + model.invited_by_email : ""); color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
+                        }
+                        PrimaryButton { Layout.preferredHeight: 27; text: "Accept"; icon: "check"; onClicked: root.bridge.acceptInvite(model.id) }
                     }
                 }
             }
         }
 
-        GlassCard {
+        // ── my teams: compact selectable rows ─────────────────────
+        ColumnLayout {
             width: parent.width
-            height: 500
-            padding: 26
+            spacing: 8
+            visible: root.cloud
 
-            Row {
-                id: teamsHeader
-                anchors.left: parent.left
-                anchors.right: parent.right
-                spacing: 14
-                Rectangle { width: 42; height: 42; radius: 14; color: "transparent"; border.color: Theme.primaryInk; LineIcon { anchors.centerIn: parent; name: "network"; color: Theme.primaryInk; size: 21 } }
-                Column {
-                    width: parent.width - 220
-                    Text { text: "My teams"; color: Theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
-                    Text { text: "Teams you joined. Click a team to make it active in the app."; color: Theme.muted; font.pixelSize: 13 }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Text {
+                    text: "MY TEAMS · " + (root.bridge ? root.bridge.teamsModel.count : 0)
+                    color: Theme.dim
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 10
+                    font.letterSpacing: 1.2
                 }
+                Item { Layout.fillWidth: true }
                 PrimaryButton {
-                    width: 34
                     text: ""
                     icon: "refresh"
                     iconOnly: true
-                    secondary: true
+                    width: 30
                     onClicked: root.bridge.refresh()
                 }
             }
 
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: teamsHeader.bottom
-                anchors.topMargin: 18
-                height: 1
-                color: Theme.border
-            }
-
-            Text {
-                anchors.centerIn: parent
-                visible: !root.bridge || !root.bridge.serverEnabled
-                text: "Login to see your teams, roles and who invited you."
-                color: Theme.muted
-                font.pixelSize: 15
-            }
-
-            ListView {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: teamsHeader.bottom
-                anchors.topMargin: 34
-                anchors.bottom: parent.bottom
-                visible: root.bridge && root.bridge.serverEnabled
-                clip: true
-                spacing: 12
+            Repeater {
                 model: root.bridge ? root.bridge.teamsModel : null
-
                 delegate: Rectangle {
-                    width: ListView.view.width
-                    height: 104
-                    radius: 16
-                    color: "transparent"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 56
+                    radius: 10
+                    color: model.selected ? Theme.selection : "transparent"
                     border.color: model.selected ? Theme.primary : Theme.borderSubtle
-                    border.width: 1
+                    opacity: 1
 
                     MouseArea {
                         anchors.fill: parent
-                        enabled: !model.selected
                         cursorShape: Qt.PointingHandCursor
                         onClicked: root.bridge.selectTeam(model.id)
                     }
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 16
-                        spacing: 16
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 11
 
                         Rectangle {
-                            Layout.preferredWidth: 48
-                            Layout.preferredHeight: 48
-                            radius: 16
-                            color: "transparent"
-                            border.color: model.selected ? Theme.primary : Theme.borderSubtle
-                            LineIcon { anchors.centerIn: parent; name: "network"; color: model.selected ? Theme.primaryText : Theme.primaryLight; size: 23 }
+                            Layout.preferredWidth: 34
+                            Layout.preferredHeight: 34
+                            radius: 17
+                            color: root.avatarTones[root.teamTone(model.name)]
+                            Text { anchors.centerIn: parent; text: root.teamInitials(model.name); color: Theme.primaryText; font.pixelSize: 12; font.weight: Font.DemiBold }
                         }
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 5
+                            spacing: 2
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 10
-                                Text { text: model.name; color: Theme.text; font.pixelSize: 16; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
-                                Text { text: model.selected ? "ACTIVE" : ""; visible: model.selected; color: Theme.successLight; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                spacing: 8
+                                Text { text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
+                                Rectangle {
+                                    visible: model.selected
+                                    Layout.preferredWidth: 58
+                                    Layout.preferredHeight: 18
+                                    radius: 9
+                                    color: Theme.primary
+                                    Text { anchors.centerIn: parent; text: "ACTIVE"; color: Theme.primaryText; font.pixelSize: 9; font.weight: Font.DemiBold; font.letterSpacing: 0.6 }
+                                }
                             }
-                            Text { text: model.slug + " / " + model.plan + " / " + model.license_status; color: Theme.muted; font.pixelSize: 12 }
                             Text {
-                                text: "Role: " + model.role + "    Invited by: " + (model.invited_by_email || "owner/admin")
-                                color: Theme.primaryLight
-                                font.pixelSize: 12
+                                text: model.slug + " · " + model.plan + " · " + model.profiles + "p " + model.proxies + "x " + model.scenarios + "s"
+                                color: Theme.dim
+                                font.family: Theme.monoFamily
+                                font.pixelSize: 10
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
-                            Text {
-                                text: model.profiles + " profiles  /  " + model.proxies + " proxies  /  " + model.scenarios + " scenarios"
-                                color: Theme.dim
-                                font.pixelSize: 11
-                            }
                         }
 
-                        PrimaryButton {
-                            Layout.preferredWidth: 120
-                            text: model.selected ? "Selected" : "Select"
-                            secondary: model.selected
-                            enabled: !model.selected
-                            onClicked: root.bridge.selectTeam(model.id)
+                        Rectangle {
+                            Layout.preferredWidth: 74
+                            Layout.preferredHeight: 21
+                            radius: 7
+                            color: model.role === "owner" ? "#496b2c" : Theme.subtle
+                            Text { anchors.centerIn: parent; text: model.role; color: model.role === "owner" ? "#edf4e6" : Theme.primaryLight; font.pixelSize: 10; font.weight: Font.DemiBold }
                         }
                     }
                 }
+            }
+
+            Text {
+                visible: root.bridge && root.bridge.teamsModel.count === 0
+                text: "No teams yet — create one on camouflow.site/console or accept an invite."
+                color: Theme.muted
+                font.pixelSize: 12
             }
         }
 
