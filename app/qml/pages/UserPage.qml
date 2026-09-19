@@ -355,170 +355,242 @@ Flickable {
 
         GlassCard {
             width: parent.width
-            height: 430
-            padding: 26
+            height: 470
+            padding: 22
             visible: root.bridge && root.bridge.serverEnabled
+
+            component InitialsAvatar: Rectangle {
+                id: avatar
+                property string name: ""
+                readonly property var tones: ["#d1f366", "#b9e58a", "#a3d79e", "#cfe08a", "#9ccf96", "#bfe0b0"]
+                readonly property int tone: {
+                    var h = 0
+                    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 997
+                    return h % 6
+                }
+                readonly property string initialsText: {
+                    var parts = name.trim().split(/\s+/)
+                    if (parts.length === 0 || parts[0] === "") return "?"
+                    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
+                    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                }
+                width: 26; height: 26; radius: 13
+                color: tones[tone]
+                Text {
+                    anchors.centerIn: parent
+                    text: avatar.initialsText
+                    color: "#26331f"
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            component ConsoleTab: Rectangle {
+                id: ctab
+                property string label: ""
+                property bool active: false
+                signal selected()
+                height: 30; radius: 8
+                width: tabLabel.implicitWidth + 26
+                color: active ? Theme.selection : "transparent"
+                border.color: active ? Theme.primary : Theme.borderSubtle
+                Text { id: tabLabel; anchors.centerIn: parent; text: ctab.label; color: ctab.active ? Theme.primaryLight : Theme.muted; font.pixelSize: 12; font.weight: Font.DemiBold }
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: ctab.selected() }
+            }
 
             RowLayout {
                 id: accessHeader
                 anchors.left: parent.left
                 anchors.right: parent.right
-                spacing: 12
-                Rectangle { Layout.preferredWidth: 42; Layout.preferredHeight: 42; radius: 14; color: "transparent"; border.color: Theme.primaryInk; LineIcon { anchors.centerIn: parent; name: "users"; color: Theme.primaryInk; size: 21 } }
+                spacing: 10
+                Rectangle { Layout.preferredWidth: 36; Layout.preferredHeight: 36; radius: 12; color: "transparent"; border.color: Theme.primaryInk; LineIcon { anchors.centerIn: parent; name: "users"; color: Theme.primaryInk; size: 18 } }
                 Column {
                     Layout.fillWidth: true
-                    Text { text: "Team access"; color: Theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
-                    Text { text: root.bridge && root.bridge.canManageTeam ? "Invite users and manage roles for the active team." : "Only team admin/owner can manage members."; color: Theme.muted; font.pixelSize: 13 }
-                }
-            }
-
-            RowLayout {
-                id: inviteRow
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: accessHeader.bottom
-                anchors.topMargin: 18
-                spacing: 10
-
-                FormField { id: inviteEmail; Layout.fillWidth: true; label: "Email"; placeholder: "user@company.com" }
-                Column {
-                    Layout.preferredWidth: 130
-                    spacing: 4
-                    Text { text: "Role"; color: Theme.dim; font.pixelSize: 11; font.weight: Font.DemiBold }
-                    ComboBox {
-                        id: inviteRole
-                        width: parent.width
-                        model: ["viewer", "operator", "manager", "admin", "owner"]
-                        currentIndex: 1
-                    }
+                    Text { text: "Team console"; color: Theme.text; font.pixelSize: 17; font.weight: Font.DemiBold }
+                    Text { text: root.bridge && root.bridge.canManageTeam ? "Members, invites and activity for the active team." : "Members and activity — managing requires admin role."; color: Theme.muted; font.pixelSize: 12 }
                 }
                 PrimaryButton {
-                    Layout.preferredWidth: 120
-                    Layout.alignment: Qt.AlignBottom
-                    text: "Invite"
-                    icon: "plus"
-                    enabled: root.bridge ? root.bridge.canManageTeam : false
-                    onClicked: root.bridge.createInvite(inviteEmail.text, inviteRole.currentText)
-                }
-            }
-
-            Rectangle {
-                id: inviteLinkBox
-                visible: root.bridge && root.bridge.lastInviteLink !== ""
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: inviteRow.bottom
-                anchors.topMargin: 10
-                height: 56
-                radius: 10
-                color: Theme.selection
-                border.color: Theme.primary
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 10
-                    Column {
-                        Layout.fillWidth: true
-                        Text { text: "Invite link"; color: Theme.dim; font.pixelSize: 10; font.weight: Font.DemiBold }
-                        Text { width: parent.width; text: root.bridge ? root.bridge.lastInviteLink : ""; color: Theme.text; font.pixelSize: 12; elide: Text.ElideMiddle }
-                    }
-                    PrimaryButton { Layout.preferredWidth: 84; text: "Copy"; secondary: true; onClicked: root.bridge.copyToClipboard(root.bridge.lastInviteLink) }
-                    PrimaryButton { Layout.preferredWidth: 84; text: "Open"; secondary: true; onClicked: Qt.openUrlExternally(root.bridge.lastInviteLink) }
-                }
-            }
-
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: accessHeader.bottom
-                anchors.topMargin: inviteLinkBox.visible ? 148 : 92
-                spacing: 10
-                Text { Layout.fillWidth: true; text: "Members"; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold }
-                PrimaryButton {
-                    Layout.preferredWidth: 110
+                    Layout.preferredHeight: 30
                     text: "Leave team"
                     secondary: true
+                    visible: root.bridge && root.bridge.canViewCloud
                     onClicked: leaveConfirm.ask("Leave this team? You can come back via a new invite.", function() { root.bridge.leaveTeam() }, "Leave")
                 }
             }
 
-            ListView {
+            Row {
+                id: consoleTabs
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: accessHeader.bottom
-                anchors.topMargin: inviteLinkBox.visible ? 182 : 126
+                anchors.topMargin: 14
+                spacing: 8
+                property string current: "members"
+                ConsoleTab { label: "Members"; active: consoleTabs.current === "members"; onSelected: consoleTabs.current = "members" }
+                ConsoleTab { label: "Invites"; active: consoleTabs.current === "invites"; onSelected: consoleTabs.current = "invites" }
+                ConsoleTab { label: "Audit"; active: consoleTabs.current === "audit"; onSelected: consoleTabs.current = "audit" }
+            }
+
+            // ── Members tab ────────────────────────────────────────
+            ListView {
+                visible: consoleTabs.current === "members"
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: consoleTabs.bottom
+                anchors.topMargin: 10
                 anchors.bottom: parent.bottom
                 clip: true
-                spacing: 8
+                spacing: 4
                 model: root.bridge ? root.bridge.membersModel : null
 
                 delegate: Rectangle {
                     width: ListView.view.width
-                    height: 46
-                    radius: 11
+                    height: 38
+                    radius: 9
                     color: "transparent"
-                    border.color: Theme.border
+                    border.color: Theme.borderSubtle
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 8
-                        spacing: 8
-                        Text { Layout.fillWidth: true; text: model.email + (model.full_name ? " / " + model.full_name : ""); color: Theme.text; font.pixelSize: 13; elide: Text.ElideRight }
+                        anchors.leftMargin: 9
+                        anchors.rightMargin: 6
+                        spacing: 9
+                        InitialsAvatar { name: model.full_name !== "" ? model.full_name : model.email }
+                        Column {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            Text { text: model.full_name !== "" ? model.full_name : model.email; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                            Text { text: model.last_seen !== "" ? model.email + " · seen " + model.last_seen : model.email; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
+                        }
                         ComboBox {
                             id: roleEdit
-                            Layout.preferredWidth: 112
+                            Layout.preferredWidth: 104
+                            Layout.preferredHeight: 26
+                            font.pixelSize: 11
                             model: ["viewer", "operator", "manager", "admin", "owner"]
                             currentIndex: Math.max(0, ["viewer", "operator", "manager", "admin", "owner"].indexOf(model.role))
                             enabled: root.bridge ? root.bridge.canManageTeam : false
                         }
-                        PrimaryButton { Layout.preferredWidth: 70; text: "Save"; secondary: true; enabled: root.bridge ? root.bridge.canManageTeam : false; onClicked: root.bridge.updateMemberRole(model.id, roleEdit.currentText) }
-                        PrimaryButton { Layout.preferredWidth: 70; text: "Reset"; secondary: true; enabled: root.bridge ? root.bridge.canManageTeam : false; onClicked: root.bridge.createPasswordReset(model.id) }
-                        PrimaryButton { Layout.preferredWidth: 74; text: "Delete"; danger: true; enabled: root.bridge ? root.bridge.canManageTeam : false; onClicked: memberConfirm.ask('Remove "' + model.email + '" from the team?', function() { root.bridge.deleteMember(model.id) }) }
+                        PrimaryButton { Layout.preferredWidth: 54; Layout.preferredHeight: 26; text: "Save"; secondary: true; visible: root.bridge && root.bridge.canManageTeam; onClicked: root.bridge.updateMemberRole(model.id, roleEdit.currentText) }
+                        PrimaryButton { Layout.preferredWidth: 62; Layout.preferredHeight: 26; text: "Remove"; danger: true; visible: root.bridge && root.bridge.canManageTeam && model.role !== "owner"; onClicked: memberConfirm.ask('Remove "' + model.email + '" from the team?', function() { root.bridge.deleteMember(model.id) }) }
                     }
                 }
+                EmptyState { anchors.centerIn: parent; width: Math.min(320, parent.width); visible: root.bridge && root.bridge.membersModel.count === 0; title: "No members"; description: "Invite people from the Invites tab."; icon: "users" }
+            }
+
+            // ── Invites tab ────────────────────────────────────────
+            ColumnLayout {
+                visible: consoleTabs.current === "invites"
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: consoleTabs.bottom
+                anchors.topMargin: 10
+                anchors.bottom: parent.bottom
+                spacing: 10
+
+                RowLayout {
+                    visible: root.bridge && root.bridge.canManageTeam
+                    Layout.fillWidth: true
+                    spacing: 8
+                    FormField { id: inviteEmail; Layout.fillWidth: true; label: "Email"; placeholder: "user@company.com" }
+                    Column {
+                        Layout.preferredWidth: 120
+                        spacing: 3
+                        Text { text: "Role"; color: Theme.dim; font.pixelSize: 10; font.weight: Font.DemiBold }
+                        ComboBox {
+                            id: inviteRole
+                            width: parent.width
+                            model: ["viewer", "operator", "manager", "admin"]
+                            currentIndex: 1
+                        }
+                    }
+                    PrimaryButton { Layout.preferredWidth: 90; Layout.alignment: Qt.AlignBottom; text: "Invite"; icon: "plus"; onClicked: root.bridge.createInvite(inviteEmail.text, inviteRole.currentText) }
+                }
+
+                Rectangle {
+                    visible: root.bridge && root.bridge.lastInviteLink !== ""
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 50
+                    radius: 9
+                    color: Theme.selection
+                    border.color: Theme.primary
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 8
+                        Text { Layout.fillWidth: true; text: root.bridge ? root.bridge.lastInviteLink : ""; color: Theme.text; font.pixelSize: 11; elide: Text.ElideMiddle }
+                        PrimaryButton { Layout.preferredWidth: 66; Layout.preferredHeight: 26; text: "Copy"; secondary: true; onClicked: root.bridge.copyToClipboard(root.bridge.lastInviteLink) }
+                        PrimaryButton { Layout.preferredWidth: 66; Layout.preferredHeight: 26; text: "Open"; secondary: true; onClicked: Qt.openUrlExternally(root.bridge.lastInviteLink) }
+                    }
+                }
+
+                ListView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    spacing: 4
+                    model: root.bridge ? root.bridge.sentInvitesModel : null
+                    delegate: Rectangle {
+                        width: ListView.view.width
+                        height: 34
+                        radius: 8
+                        color: "transparent"
+                        border.color: Theme.borderSubtle
+                        opacity: model.status === "active" ? 1 : 0.55
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 9
+                            anchors.rightMargin: 6
+                            spacing: 8
+                            Text { Layout.fillWidth: true; text: model.email; color: Theme.text; font.pixelSize: 12; elide: Text.ElideRight }
+                            Text { Layout.preferredWidth: 70; text: model.role; color: Theme.dim; font.pixelSize: 11 }
+                            Rectangle {
+                                Layout.preferredWidth: 62; Layout.preferredHeight: 19; radius: 9
+                                color: model.status === "active" ? Theme.selection : model.status === "used" ? Theme.subtle : Theme.dangerSurface
+                                Text { anchors.centerIn: parent; text: model.status; color: model.status === "expired" ? Theme.danger : model.status === "active" ? Theme.primaryInk : Theme.dim; font.pixelSize: 9; font.weight: Font.DemiBold }
+                            }
+                            PrimaryButton { Layout.preferredWidth: 62; Layout.preferredHeight: 24; text: "Revoke"; danger: true; visible: root.bridge && root.bridge.canManageTeam && model.status === "active"; onClicked: inviteConfirm.ask('Revoke invite for "' + model.email + '"?', function() { root.bridge.revokeInvite(model.id) }) }
+                        }
+                    }
+                    EmptyState { anchors.centerIn: parent; width: Math.min(320, parent.width); visible: root.bridge && root.bridge.sentInvitesModel.count === 0; title: "No invites yet"; description: "Create one above — the link is copied automatically."; icon: "mail" }
+                }
+            }
+
+            // ── Audit tab ──────────────────────────────────────────
+            ListView {
+                visible: consoleTabs.current === "audit"
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: consoleTabs.bottom
+                anchors.topMargin: 10
+                anchors.bottom: parent.bottom
+                clip: true
+                spacing: 3
+                model: root.bridge ? root.bridge.auditModel : null
+                delegate: Rectangle {
+                    width: ListView.view.width
+                    height: 30
+                    radius: 7
+                    color: "transparent"
+                    border.color: Theme.borderSubtle
+                    opacity: 0.9
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 9
+                        anchors.rightMargin: 9
+                        spacing: 8
+                        Text { Layout.preferredWidth: 118; text: model.time; color: Theme.dim; font.pixelSize: 10; font.family: Theme.monoFamily }
+                        Text { Layout.preferredWidth: 132; text: model.action; color: Theme.primaryInk; font.pixelSize: 10; font.weight: Font.DemiBold; font.family: Theme.monoFamily; elide: Text.ElideRight }
+                        Text { Layout.preferredWidth: 110; text: model.entity; color: Theme.muted; font.pixelSize: 10; elide: Text.ElideRight }
+                        Text { Layout.fillWidth: true; text: model.details; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight }
+                    }
+                }
+                EmptyState { anchors.centerIn: parent; width: Math.min(320, parent.width); visible: root.bridge && root.bridge.auditModel.count === 0; title: "No activity yet"; description: "Team actions will appear here."; icon: "logs" }
             }
         }
 
         ConfirmDialog { id: memberConfirm }
         ConfirmDialog { id: leaveConfirm }
-
-        GlassCard {
-            width: parent.width
-            height: 320
-            padding: 26
-            visible: root.bridge && root.bridge.serverEnabled
-
-            Text { id: auditTitle; text: "Audit log"; color: Theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
-            Text { anchors.left: parent.left; anchors.right: parent.right; anchors.top: auditTitle.bottom; anchors.topMargin: 6; text: "Recent activity for the active team."; color: Theme.muted; font.pixelSize: 13 }
-
-            ListView {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: auditTitle.bottom
-                anchors.topMargin: 34
-                anchors.bottom: parent.bottom
-                clip: true
-                spacing: 8
-                model: root.bridge ? root.bridge.auditModel : null
-
-                delegate: Rectangle {
-                    width: ListView.view.width
-                    height: 46
-                    radius: 11
-                    color: "transparent"
-                    border.color: Theme.border
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        Text { Layout.preferredWidth: 132; text: model.time; color: Theme.dim; font.pixelSize: 11 }
-                        Text { Layout.preferredWidth: 150; text: model.action; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight }
-                        Text { Layout.preferredWidth: 130; text: model.entity; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight }
-                        Text { Layout.fillWidth: true; text: model.details; color: Theme.dim; font.pixelSize: 11; elide: Text.ElideRight }
-                    }
-                }
-            }
-        }
+        ConfirmDialog { id: inviteConfirm }
     }
 
     WorkspaceDialog {
