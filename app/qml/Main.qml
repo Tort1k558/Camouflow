@@ -85,6 +85,50 @@ ApplicationWindow {
 
     WelcomeDialog {}
 
+    // Global toast: appState.notify/message was previously invisible
+    // (only the closed WelcomeDialog read it), so cloud errors and
+    // "Opening Google sign-in…" feedback vanished silently.
+    Rectangle {
+        id: appToast
+        property string text: ""
+        visible: text !== ""
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 18
+        width: Math.min(440, toastRow.implicitWidth + 30)
+        height: 40
+        radius: 10
+        color: "#222e25"
+
+        Row {
+            id: toastRow
+            anchors.centerIn: parent
+            spacing: 9
+            Rectangle { width: 7; height: 7; radius: 4; color: "#d1f366"; anchors.verticalCenter: parent.verticalCenter }
+            Text {
+                text: appToast.text
+                color: "#edf4e6"
+                font.pixelSize: 12
+                elide: Text.ElideRight
+                maximumLineCount: 2
+                wrapMode: Text.WordWrap
+                width: Math.min(380, contentWidth)
+            }
+        }
+
+        Timer { id: toastTimer; interval: 4000; onTriggered: appToast.text = "" }
+
+        Connections {
+            target: appState
+            function onMessageChanged() {
+                if (appState && appState.message !== "") {
+                    appToast.text = appState.message
+                    toastTimer.restart()
+                }
+            }
+        }
+    }
+
     Component { id: dashboardPage; DashboardPage {} }
     Component { id: userPage; UserPage {} }
     Component { id: profilesPage; ProfilesPage {} }
