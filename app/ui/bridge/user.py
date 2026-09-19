@@ -169,15 +169,17 @@ class UserBridge(QObject):
             try:
                 result = work()
             except ServerClientError as exc:
+                # Bind eagerly: `as exc` is unbound when the except block
+                # exits, but the lambda runs later on the UI thread.
                 if fail is not None:
-                    self.uiCall.emit(lambda: fail(exc))
+                    self.uiCall.emit(lambda error=exc: fail(error))
                 return
             except Exception as exc:  # defensive: never hang the worker
                 if fail is not None:
-                    self.uiCall.emit(lambda: fail(exc))
+                    self.uiCall.emit(lambda error=exc: fail(error))
                 return
             if then is not None:
-                self.uiCall.emit(lambda: then(result))
+                self.uiCall.emit(lambda value=result: then(value))
 
         threading.Thread(target=runner, daemon=True, name="camouflow-user-async").start()
 
