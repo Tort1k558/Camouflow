@@ -29,6 +29,7 @@ class UserBridge(QObject):
     message = pyqtSignal(str)
     cloudRefreshFinished = pyqtSignal(object, str)
     cloudSyncFinished = pyqtSignal(object, str)
+    uiCall = pyqtSignal(object)  # run a callable on the UI thread
 
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
@@ -52,6 +53,7 @@ class UserBridge(QObject):
         self._last_invite_link = ""
         self.cloudRefreshFinished.connect(self._apply_cloud_refresh)
         self.cloudSyncFinished.connect(self._apply_cloud_sync)
+        self.uiCall.connect(lambda fn: fn())
         if app_state is not None:
             app_state.refreshRequested.connect(self.refresh)
         self.refresh()
@@ -157,6 +159,27 @@ class UserBridge(QObject):
             "No profile locks between teammates\n"
             "No audit log or cloud backup"
         )
+
+    def _async(self, work, then=None, fail=None):
+        """Run a cloud call off the UI thread; deliver results on the UI thread.
+
+        Without this, any slow request (or a 20s timeout) freezes the whole
+        QML interface while the slot blocks the event loop."""
+        def runner() -> None:
+            try:
+                result = work()
+            except ServerClientError as exc:
+                if fail is not None:
+                    self.uiCall.emit(lambda: fail(exc))
+                return
+            except Exception as exc:  # defensive: never hang the worker
+                if fail is not None:
+                    self.uiCall.emit(lambda: fail(exc))
+                return
+            if then is not None:
+                self.uiCall.emit(lambda: then(result))
+
+        threading.Thread(target=runner, daemon=True, name="camouflow-user-async").start()
 
     def _notify(self, text: str) -> None:
         self.message.emit(text)
@@ -398,52 +421,59 @@ class UserBridge(QObject):
 
     @pyqtSlot(str)
     def acceptInvite(self, invite_id: str) -> None:  # noqa: N802
-        try:
-            result = ServerClient().accept_invite(str(invite_id or ""))
-        except ServerClientError as exc:
-            self._notify(f"Cannot accept invite: {exc}")
-            return
-        team_id = str(result.get("team_id") or "")
-        session = get_server_session()
-        if team_id and not session.team_id:
-            save_server_session(
-                enabled=session.enabled,
-                url=session.url,
-                token=session.token,
-                refresh_token=session.refresh_token,
-                team_id=team_id,
-                email=session.email,
-            )
-        self._notify("Invite accepted")
-        self.refresh()
-        if self._app_state is not None:
-            self._app_state.refreshAll()
-    @pyqtSlot(str, str, str)
+        def work():
+            return ServerClient().accept_invite(str(invite_id or ""))
+
+        def done(result) -> None:
+            team_id = str(result.get("team_id") or "")
+            session = get_server_session()
+            if team_id and not session.team_id:
+                save_server_session(
+                    enabled=session.enabled,
+                    url=session.url,
+                    token=session.token,
+                    refresh_token=session.refresh_token,
+                    team_id=team_id,
+                    email=session.email,
+                )
+            self._notify("Invite accepted")
+            self.refresh()
+            if self._app_state is not None:
+                self._app_state.refreshAll()
+
+        self._async(work, then=done, fail=lambda exc: self._notify(f"Cannot accept invite: {exc}"))
+    @pyqtSlot()
     def leaveTeam(self) -> None:  # noqa: N802
         client = ServerClient()
         if not client.configured:
             self._notify("Not connected to cloud")
             return
-        try:
+
+        def work():
             client.request("POST", f"/api/v1/teams/{client.session.team_id}/leave", None)
+
+        def done(_result) -> None:
             self._notify("You left the team")
             self.refresh()
             if self._app_state is not None:
                 self._app_state.refreshAll()
-        except ServerClientError as exc:
-            self._notify(f"Leave failed: {exc}")
 
-    @pyqtSlot(str, str)
+        self._async(work, then=done, fail=lambda exc: self._notify(f"Leave failed: {exc}"))
+
+    @pyqtSlot(str)
     def revokeInvite(self, invite_id: str) -> None:  # noqa: N802
         client = ServerClient()
         if not client.configured:
             return
-        try:
+
+        def work():
             client.request("DELETE", f"/api/v1/teams/{client.session.team_id}/invites/{invite_id}", None)
+
+        def done(_result) -> None:
             self._notify("Invite revoked")
             self.refresh()
-        except ServerClientError as exc:
-            self._notify(f"Revoke failed: {exc}")
+
+        self._async(work, then=done, fail=lambda exc: self._notify(f"Revoke failed: {exc}"))
 
     @pyqtSlot(str, str)
     def createInvite(self, email: str, role: str) -> None:  # noqa: N802
@@ -451,51 +481,61 @@ class UserBridge(QObject):
         if not client.configured:
             self._notify("Select a team first")
             return
-        try:
-            invite = client.create_invite({"email": str(email or "").strip(), "role": str(role or "operator").strip().lower()})
-        except ServerClientError as exc:
-            self._notify(f"Cannot create invite: {exc}")
-            return
-        self._notify(f"Invite created. Token for external delivery: {invite.get('token')}")
-        self.refresh()
+
+        def work():
+            return client.create_invite({"email": str(email or "").strip(), "role": str(role or "operator").strip().lower()})
+
+        def done(invite) -> None:
+            token = str(invite.get("token") or "")
+            self._last_invite_link = f"{get_server_session().url}/invite?token={token}" if token else ""
+            self._notify("Invite link created (see the link field below)")
+            self.refresh()
+
+        self._async(work, then=done, fail=lambda exc: self._notify(f"Cannot create invite: {exc}"))
 
     @pyqtSlot(str, str)
     def updateMemberRole(self, member_id: str, role: str) -> None:  # noqa: N802
         client = ServerClient()
         if not client.configured:
             return
-        try:
+
+        def work():
             client.update_member(str(member_id or ""), str(role or "viewer").strip().lower())
-        except ServerClientError as exc:
-            self._notify(f"Cannot update member: {exc}")
-            return
-        self._notify("Member role updated")
-        self.refresh()
+
+        def done(_result) -> None:
+            self._notify("Member role updated")
+            self.refresh()
+
+        self._async(work, then=done, fail=lambda exc: self._notify(f"Cannot update member: {exc}"))
 
     @pyqtSlot(str)
     def deleteMember(self, member_id: str) -> None:  # noqa: N802
         client = ServerClient()
         if not client.configured:
             return
-        try:
+
+        def work():
             client.delete_member(str(member_id or ""))
-        except ServerClientError as exc:
-            self._notify(f"Cannot remove member: {exc}")
-            return
-        self._notify("Member removed")
-        self.refresh()
+
+        def done(_result) -> None:
+            self._notify("Member removed")
+            self.refresh()
+
+        self._async(work, then=done, fail=lambda exc: self._notify(f"Cannot remove member: {exc}"))
 
     @pyqtSlot(str)
     def createPasswordReset(self, member_id: str) -> None:  # noqa: N802
         client = ServerClient()
         if not client.configured:
             return
-        try:
-            reset = client.create_password_reset(str(member_id or ""))
-        except ServerClientError as exc:
-            self._notify(f"Cannot create reset token: {exc}")
-            return
-        self._notify(f"Password reset token for {reset.get('email')}: {reset.get('token')}")
+
+        def work():
+            return client.create_password_reset(str(member_id or ""))
+
+        def done(reset) -> None:
+            self._notify(f"Password reset token for {reset.get('email')}: {reset.get('token')}")
+
+        self._async(work, then=done, fail=lambda exc: self._notify(f"Cannot create reset token: {exc}"))
 
     @pyqtSlot()
     def uploadLocalWorkspace(self) -> None:  # noqa: N802
@@ -551,22 +591,25 @@ class UserBridge(QObject):
 
     @pyqtSlot(str, str)
     def login(self, email: str, password: str) -> None:
-        try:
-            result = ServerClient().login(get_server_session().url, str(email or "").strip(), str(password or ""))
-        except ServerClientError as exc:
-            self._notify(f"Login failed: {exc}")
-            return
-        self._after_login(result)
+        self._notify("Signing in…")
+
+        def work():
+            return ServerClient().login(get_server_session().url, str(email or "").strip(), str(password or ""))
+
+        self._async(work, then=self._after_login, fail=lambda exc: self._notify(f"Login failed: {exc}"))
 
     @pyqtSlot()
     def googleLogin(self) -> None:  # noqa: N802
-        try:
-            url = ServerClient().google_login_url(app_pair=True)
-        except ServerClientError as exc:
-            self._notify(f"Google sign-in unavailable: {exc}")
-            return
-        QDesktopServices.openUrl(QUrl(url))
-        self._notify("Browser opened — finish Google sign-in and paste the pairing code here")
+        self._notify("Opening Google sign-in…")
+
+        def work():
+            return ServerClient().google_login_url(app_pair=True)
+
+        def done(url: str) -> None:
+            QDesktopServices.openUrl(QUrl(url))
+            self._notify("Browser opened — finish Google sign-in and paste the pairing code here")
+
+        self._async(work, then=done, fail=lambda exc: self._notify(f"Google sign-in unavailable: {exc}"))
 
     @pyqtSlot(str)
     def loginWithPairCode(self, code: str) -> None:  # noqa: N802
