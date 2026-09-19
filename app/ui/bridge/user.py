@@ -40,7 +40,8 @@ class UserBridge(QObject):
         self._invites_model = DictListModel([
             "id", "team_id", "team_name", "team_slug", "role", "invited_by_email", "expires_at",
         ], parent=self)
-        self._members_model = DictListModel(["id", "email", "full_name", "role"], parent=self)
+        self._members_model = DictListModel(["id", "email", "full_name", "role", "last_seen", "is_superadmin"], parent=self)
+        self._sent_invites_model = DictListModel(["id", "email", "role", "expires_at", "status"], parent=self)
         self._audit_model = DictListModel(["time", "action", "entity", "details"], parent=self)
         self._conflicts_model = DictListModel(["resource", "key", "remote_id"], parent=self)
         self._email = ""
@@ -74,6 +75,10 @@ class UserBridge(QObject):
     @pyqtProperty(QObject, constant=True)
     def conflictModel(self) -> QObject:  # noqa: N802
         return self._conflicts_model
+
+    @pyqtProperty(QObject, constant=True)
+    def sentInvitesModel(self) -> QObject:  # noqa: N802
+        return self._sent_invites_model
 
     @pyqtProperty(bool, notify=changed)
     def serverEnabled(self) -> bool:  # noqa: N802
@@ -220,6 +225,7 @@ class UserBridge(QObject):
             self._invites_model.set_rows([])
             self._members_model.set_rows([])
             self._audit_model.set_rows([])
+            self._sent_invites_model.set_rows([])
             self._sync_app_state(False)
             self.changed.emit()
             return
@@ -232,7 +238,11 @@ class UserBridge(QObject):
                 context = client.request_async("GET", "/api/v1/auth/context").result()
                 members = client.request_async("GET", f"/api/v1/teams/{client.session.team_id}/members").result() if client.configured else []
                 audit_rows = client.request_async("GET", f"/api/v1/teams/{client.session.team_id}/audit-log?limit=80").result() if client.configured else []
-                self.cloudRefreshFinished.emit({"context": context, "members": members, "audit": audit_rows}, "")
+                try:
+                    sent_invites = client.request_async("GET", f"/api/v1/teams/{client.session.team_id}/invites").result() if client.configured else []
+                except ServerClientError:
+                    sent_invites = []
+                self.cloudRefreshFinished.emit({"context": context, "members": members, "audit": audit_rows, "sent_invites": sent_invites}, "")
             except ServerClientError as exc:
                 self.cloudRefreshFinished.emit({}, str(exc))
 
@@ -248,6 +258,7 @@ class UserBridge(QObject):
             self._invites_model.set_rows([])
             self._members_model.set_rows([])
             self._audit_model.set_rows([])
+            self._sent_invites_model.set_rows([])
             self._sync_app_state(False)
             self.changed.emit()
             return
@@ -311,12 +322,25 @@ class UserBridge(QObject):
             for invite in list(context.get("pending_invites") or [])
         ])
         members = data.get("members") if isinstance(data.get("members"), list) else []
+        sent_invites = data.get("sent_invites") if isinstance(data.get("sent_invites"), list) else []
+        self._sent_invites_model.set_rows([
+            {
+                "id": str(row.get("id") or ""),
+                "email": str(row.get("email") or ""),
+                "role": str(row.get("role") or ""),
+                "expires_at": str(row.get("expires_at") or "")[:16].replace("T", " "),
+                "status": str(row.get("status") or "active"),
+            }
+            for row in sent_invites if isinstance(row, dict)
+        ])
         self._members_model.set_rows([
             {
                 "id": str(member.get("id") or ""),
                 "email": str(member.get("email") or ""),
                 "full_name": str(member.get("full_name") or ""),
                 "role": str(member.get("role") or ""),
+                "last_seen": str(member.get("last_seen") or "")[:16].replace("T", " "),
+                "is_superadmin": bool(member.get("is_superadmin")),
             }
             for member in members if isinstance(member, dict)
         ])
