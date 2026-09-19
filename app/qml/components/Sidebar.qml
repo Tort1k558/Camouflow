@@ -45,23 +45,75 @@ Rectangle {
         }
     }
     Rectangle {
+        id: accountPod
         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
-        anchors.margins: 20
-        height: 116; radius: Theme.radius
-        color: Theme.sidebarHover
-        Column {
-            anchors.fill: parent; anchors.margins: 14; spacing: 10
-            Row {
-                spacing: 8
-                Rectangle { width: 6; height: 6; radius: 3; color: Theme.primary; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: appState && appState.cloudEnabled ? "CONNECTED WORKSPACE" : "LOCAL WORKSPACE"; color: Theme.sidebarText; font.family: Theme.monoFamily; font.pixelSize: 9; font.letterSpacing: 0.5 }
+        anchors.margins: 14
+        height: 64; radius: Theme.radius
+        color: accountMouse.containsMouse ? "#3c4d36" : Theme.sidebarHover
+        readonly property string displayName: {
+            if (typeof userBridge === "undefined" || !userBridge || !userBridge.serverEnabled) return ""
+            return userBridge.fullName !== "" ? userBridge.fullName : (userBridge.email !== "" ? userBridge.email : "")
+        }
+        readonly property var tones: ["#d1f366", "#b9e58a", "#a3d79e", "#cfe08a", "#9ccf96", "#bfe0b0"]
+        readonly property int tone: {
+            var seed = displayName !== "" ? displayName : "local"
+            var h = 0
+            for (var i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 997
+            return h % 6
+        }
+        readonly property string initials: {
+            var n = displayName !== "" ? displayName : "You"
+            var parts = n.trim().split(/\s+/)
+            if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        }
+
+        Row {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 11
+
+            Item {
+                width: 38; height: 38
+                anchors.verticalCenter: parent.verticalCenter
+                Rectangle {
+                    anchors.fill: parent; radius: 19
+                    color: accountPod.tones[accountPod.tone]
+                    Text { anchors.centerIn: parent; text: accountPod.initials; color: Theme.primaryText; font.pixelSize: 13; font.weight: Font.DemiBold }
+                }
+                Rectangle {
+                    anchors.right: parent.right; anchors.bottom: parent.bottom
+                    width: 11; height: 11; radius: 6
+                    color: appState && appState.cloudEnabled ? Theme.primary : "#8fa383"
+                    border.width: 2; border.color: accountPod.color
+                }
             }
-            Text {
-                width: parent.width
-                text: appState && appState.cloudEnabled ? (appState.cloudTeamName || "No team selected") + " / " + appState.cloudStatus : "Your profiles. Your device.\nYour control."
-                color: Theme.sidebarMuted; font.pixelSize: 11; lineHeight: 1.3
-                wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
+
+            Column {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 2
+                width: parent.width - 38 - 11 - 20
+                Text {
+                    width: parent.width
+                    text: accountPod.displayName !== "" ? accountPod.displayName.split("@")[0] : "Local workspace"
+                    color: Theme.sidebarText; font.pixelSize: 12; font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+                Text {
+                    width: parent.width
+                    text: appState && appState.cloudEnabled ? "CONNECTED · " + (appState.cloudTeamName || "team") : "LOCAL WORKSPACE"
+                    color: Theme.sidebarMuted; font.family: Theme.monoFamily; font.pixelSize: 9; font.letterSpacing: 0.4
+                    elide: Text.ElideRight
+                }
             }
+        }
+
+        MouseArea {
+            id: accountMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: if (appState) appState.setPage("User")
         }
     }
 }
