@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import theme 1.0
 import "."
 
-GlassCard {
+Rectangle {
     id: root
     property string pool: ""
     property int proxyIndex: -1
@@ -19,81 +19,116 @@ GlassCard {
     signal checkClicked(string pool, int index)
     signal selectionToggled(string pool, int index, bool selected)
     signal deleteClicked(string pool, int index)
-    height: 80
-    padding: 18
+
+    height: 46
+    radius: 9
+    color: root.selected ? Theme.selection : (rowHover.hovered ? Theme.input : "transparent")
+    border.color: root.selected ? Theme.primary : Theme.borderSubtle
+    border.width: 1
+
+    HoverHandler { id: rowHover }
 
     RowLayout {
         anchors.fill: parent
-        spacing: Math.max(10, Math.min(24, root.width / 70))
+        anchors.leftMargin: 10
+        anchors.rightMargin: 6
+        spacing: 10
 
         Rectangle {
-            Layout.preferredWidth: 22
-            Layout.preferredHeight: 22
-            Layout.alignment: Qt.AlignVCenter
-            radius: 6
+            Layout.preferredWidth: 18
+            Layout.preferredHeight: 18
+            radius: 9
             color: root.selected ? Theme.primary : "transparent"
             border.color: root.selected ? Theme.primaryLight : Theme.border
-            Text { anchors.centerIn: parent; text: root.selected ? "✓" : ""; color: Theme.primaryText; font.weight: Font.DemiBold; font.pixelSize: 13 }
+            Text { anchors.centerIn: parent; text: root.selected ? "✓" : ""; color: Theme.primaryText; font.weight: Font.DemiBold; font.pixelSize: 11 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.selectionToggled(root.pool, root.proxyIndex, !root.selected) }
         }
 
         Rectangle {
-            Layout.preferredWidth: 42
-            Layout.preferredHeight: 42
-            Layout.alignment: Qt.AlignVCenter
-            radius: 14
-            color: "transparent"
-            border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.35)
-            LineIcon { anchors.centerIn: parent; name: "globe"; color: root.accent; size: 22 }
+            Layout.preferredWidth: 8
+            Layout.preferredHeight: 8
+            radius: 4
+            color: root.accent
         }
 
         Column {
+            Layout.preferredWidth: 200
+            Layout.minimumWidth: 110
             Layout.fillWidth: true
-            Layout.preferredWidth: 220
-            Layout.minimumWidth: 90
-            Layout.maximumWidth: 340
-            Layout.alignment: Qt.AlignVCenter
-            spacing: 4
-            Text { text: root.name; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-            Text { text: root.location; color: Theme.muted; font.pixelSize: 13; elide: Text.ElideRight; width: parent.width }
+            spacing: 1
+            Text { text: root.name; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+            Text { text: root.location; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
         }
 
-        InfoColumn { title: "IP Address"; value: root.address; Layout.fillWidth: true; Layout.minimumWidth: 150; Layout.preferredWidth: 260 }
-        InfoColumn { title: "Type"; value: root.type; Layout.minimumWidth: 52; Layout.preferredWidth: 70 }
-        InfoColumn { title: "Latency"; value: root.latency; Layout.minimumWidth: 40; Layout.preferredWidth: 65 }
+        Text {
+            Layout.preferredWidth: 210
+            Layout.minimumWidth: 120
+            Layout.fillWidth: true
+            text: root.address
+            color: Theme.muted
+            font.family: Theme.monoFamily
+            font.pixelSize: 11
+            elide: Text.ElideMiddle
+        }
 
-        Row {
-            Layout.minimumWidth: 24
-            Layout.preferredWidth: 96
-            Layout.alignment: Qt.AlignVCenter
-            spacing: 8
-            Rectangle { width: 7; height: 7; radius: 4; color: root.accent; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: root.status; color: Theme.muted; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; width: parent.width - 15 }
+        Rectangle {
+            Layout.preferredWidth: typeLabel.implicitWidth + 16
+            Layout.preferredHeight: 19
+            radius: 6
+            color: Theme.subtle
+            Text { id: typeLabel; anchors.centerIn: parent; text: root.type; color: Theme.primaryLight; font.pixelSize: 9; font.weight: Font.DemiBold; font.letterSpacing: 0.5 }
+        }
+
+        Text {
+            Layout.preferredWidth: 56
+            text: root.latency
+            color: Theme.dim
+            font.family: Theme.monoFamily
+            font.pixelSize: 11
+            horizontalAlignment: Text.AlignRight
+        }
+
+        Rectangle {
+            Layout.preferredWidth: statusLabel.implicitWidth + 16
+            Layout.preferredHeight: 19
+            radius: 10
+            color: root.status === "Active" ? Theme.selection : root.status === "Failed" ? Theme.dangerSurface : Theme.subtle
+            Text {
+                id: statusLabel
+                anchors.centerIn: parent
+                text: root.status.toUpperCase()
+                color: root.status === "Active" ? Theme.primaryInk : root.status === "Failed" ? Theme.danger : Theme.dim
+                font.pixelSize: 8
+                font.weight: Font.DemiBold
+                font.letterSpacing: 0.6
+            }
         }
 
         Row {
-            Layout.preferredWidth: 124
-            Layout.minimumWidth: 124
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-            spacing: 8
+            spacing: 5
+            visible: rowHover.hovered || root.selected
             PrimaryButton {
-                width: 36
+                width: 30; height: 26
                 icon: "zap"
                 text: ""
+                iconOnly: true
                 secondary: true
                 onClicked: root.checkClicked(root.pool, root.proxyIndex)
             }
             PrimaryButton {
-                width: 36
+                width: 30; height: 26
                 icon: "settings"
                 text: ""
+                iconOnly: true
                 secondary: true
                 onClicked: root.settingsClicked(root.pool, root.proxyIndex)
             }
             PrimaryButton {
-                width: 36
+                width: 30; height: 26
                 icon: "trash"
                 text: ""
+                iconOnly: true
                 danger: true
                 onClicked: root.deleteClicked(root.pool, root.proxyIndex)
             }

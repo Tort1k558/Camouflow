@@ -16,11 +16,29 @@ Item {
             PrimaryButton { text: "New group"; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: { poolNameInput.text = ""; poolDialog.mode = "new"; poolDialog.open() } }
             PrimaryButton { text: "Import proxies"; icon: "plus"; enabled: root.bridge && root.bridge.canManage; onClicked: proxyImportDialog.open() }
         }
-        GridLayout { Layout.fillWidth: true; columns: 4; columnSpacing: 14; rowSpacing: 0
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 106; color: "transparent"; StatCard { anchors.fill: parent; label: "Active"; value: root.bridge ? root.bridge.active : 0; icon: "globe"; accent: Theme.success } }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 106; color: "transparent"; StatCard { anchors.fill: parent; label: "Checking"; value: root.bridge ? root.bridge.checking : 0; icon: "zap"; accent: Theme.warning } }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 106; color: "transparent"; StatCard { anchors.fill: parent; label: "Failed"; value: root.bridge ? root.bridge.failed : 0; icon: "trash"; accent: Theme.danger } }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 106; color: "transparent"; StatCard { anchors.fill: parent; label: "Locations"; value: root.bridge ? root.bridge.locations : 0; icon: "network"; accent: Theme.primaryInk } }
+        // compact stat strip instead of blocky cards
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 0
+            Repeater {
+                model: [
+                    { label: "ACTIVE", value: root.bridge ? root.bridge.active : 0, color: Theme.success },
+                    { label: "CHECKING", value: root.bridge ? root.bridge.checking : 0, color: Theme.warning },
+                    { label: "FAILED", value: root.bridge ? root.bridge.failed : 0, color: Theme.danger },
+                    { label: "LOCATIONS", value: root.bridge ? root.bridge.locations : 0, color: Theme.primaryLight },
+                ]
+                delegate: RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Item { Layout.preferredWidth: index === 0 ? 0 : 22; Layout.fillHeight: true }
+                    Rectangle { visible: index > 0; Layout.fillHeight: true; Layout.preferredWidth: 1; color: Theme.borderSubtle }
+                    Column {
+                        spacing: 2
+                        Text { text: modelData.label; color: Theme.dim; font.family: Theme.monoFamily; font.pixelSize: 9; font.letterSpacing: 1.2 }
+                        Text { text: modelData.value; color: modelData.color; font.pixelSize: 22; font.weight: Font.DemiBold }
+                    }
+                }
+            }
         }
         RowLayout {
             Layout.fillWidth: true; spacing: 12
@@ -101,7 +119,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 model: root.bridge ? root.bridge.model : null
-                spacing: 12
+                spacing: 5
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar {}
