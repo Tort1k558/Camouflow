@@ -65,7 +65,7 @@ Flickable {
             columnSpacing: 14
             rowSpacing: 0
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 132; color: "transparent"; StatCard { anchors.fill: parent; label: "Profiles"; value: root.bridge ? root.bridge.profiles : 0; change: (root.bridge ? root.bridge.locked : 0) + " locked"; icon: "user"; accent: Theme.primaryInk } }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 132; color: "transparent"; StatCard { anchors.fill: parent; label: "Running Browsers"; value: root.bridge ? root.bridge.running : 0; change: "+" + (root.bridge ? root.bridge.running : 0); icon: "globe"; accent: Theme.success } }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 132; color: "transparent"; StatCard { anchors.fill: parent; label: "Active profiles"; value: root.bridge ? root.bridge.running : 0; change: "+" + (root.bridge ? root.bridge.running : 0); icon: "globe"; accent: Theme.success } }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 132; color: "transparent"; StatCard { anchors.fill: parent; label: "Failed Runs"; value: root.bridge ? root.bridge.failedRuns : 0; change: "recent"; icon: "play"; accent: root.bridge && root.bridge.failedRuns > 0 ? Theme.danger : Theme.warning } }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 132; color: "transparent"; StatCard { anchors.fill: parent; label: "Proxy Issues"; value: root.bridge ? root.bridge.failedProxies : 0; change: (root.bridge ? root.bridge.proxies : 0) + " total"; icon: "zap"; accent: root.bridge && root.bridge.failedProxies > 0 ? Theme.danger : Theme.pink } }
         }

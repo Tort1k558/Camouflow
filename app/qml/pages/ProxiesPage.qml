@@ -123,7 +123,8 @@ Item {
         }
         ListView {
                 id: proxyList
-                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: proxyList.count === 0; title: "No proxies in this group"; description: "Import your connections or create a proxy pool to get started."; icon: "network" }
+                BusyIndicator { anchors.centerIn: parent; running: root.bridge && root.bridge.loading && proxyList.count === 0; visible: running }
+                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: proxyList.count === 0 && !root.bridge.loading; title: "No proxies in this group"; description: "Import your connections or create a proxy pool to get started."; icon: "network" }
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 model: root.bridge ? root.bridge.model : null

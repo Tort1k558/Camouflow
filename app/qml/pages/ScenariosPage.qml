@@ -8,6 +8,8 @@ Item {
     id: root
     anchors.fill: parent
     property string lastCanvasScenarioName: ""
+    enabled: !scenariosBridge.saving
+    Connections { target: scenariosBridge; function onScenarioSaved() { root.markScenarioSaved() } }
     property bool scenarioSaved: false
 
     function markScenarioSaved() {
@@ -204,41 +206,11 @@ Item {
                             enabled: scenariosBridge.canManage
                             onClicked: {
                                 scenariosBridge.saveSelected(scenarioNameEdit.text, scenarioDescEdit.text)
-                                root.markScenarioSaved()
+
                             }
                         }
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 88
-                            height: 38
-                            radius: 11
-                            color: Theme.subtle
-                            border.color: Theme.border
-                            ComboBox {
-                                id: runProfileSelect
-                                anchors.fill: parent
-                                anchors.leftMargin: 10
-                                anchors.rightMargin: 10
-                                model: scenariosBridge.profilesModel
-                                textRole: "name"
-                                valueRole: "name"
-                                background: Item {}
-                                contentItem: Text {
-                                    text: runProfileSelect.displayText || "Select profile"
-                                    color: Theme.text
-                                    verticalAlignment: Text.AlignVCenter
-                                    elide: Text.ElideRight
-                                    font.pixelSize: 13
-                                    font.weight: Font.DemiBold
-                                }
-                                delegate: ItemDelegate { width: runProfileSelect.width; text: model.name; highlighted: runProfileSelect.highlightedIndex === index }
-                                popup.background: Rectangle { color: Theme.elevated; border.color: Theme.border; radius: 10 }
-                                onActivated: scenariosBridge.setRunProfile(currentText)
-                                Component.onCompleted: if (count > 0) scenariosBridge.setRunProfile(currentText)
-                            }
-                        }
-                        PrimaryButton { text: "Run"; icon: "play"; enabled: scenariosBridge.canRun; onClicked: scenariosBridge.runSelected() }
-                        PrimaryButton { icon: "stop"; iconOnly: true; width: 40; tooltip: "Stop run"; danger: true; onClicked: scenariosBridge.cancelRun() }
+                        PrimaryButton { text: "Configure run"; icon: "play"; enabled: scenariosBridge.canRun && scenariosBridge.selectedName !== ""; onClicked: operationsBridge.prepareRun(operationsBridge.selectedProfiles) }
+
                     }
                 }
                 ScenarioCanvas {
@@ -480,7 +452,7 @@ Item {
                 spacing: 12
                 PrimaryButton { width: 110; text: "New"; icon: "plus"; enabled: scenariosBridge.canManage; onClicked: scenariosBridge.createScenario() }
                 PrimaryButton { width: 110; text: "Duplicate"; secondary: true; enabled: scenariosBridge.canManage; onClicked: scenariosBridge.duplicateSelected() }
-                PrimaryButton { width: 110; text: "Market"; icon: "globe"; secondary: true; onClicked: { scenariosBridge.refreshMarket(); marketplaceDialog.open() } }
+                PrimaryButton { width: 110; text: "Market"; icon: "globe"; secondary: true; onClicked: appState.setPage("Marketplace") }
                 PrimaryButton {
                     width: 110
                     text: "Publish"
@@ -504,7 +476,7 @@ Item {
                     enabled: scenariosBridge.canManage
                     onClicked: {
                         scenariosBridge.saveSelected(scenarioNameEdit.text, scenarioDescEdit.text)
-                        root.markScenarioSaved()
+
                     }
                 }
             }
@@ -537,155 +509,6 @@ Item {
                     FormField { id: scenarioNameEdit; width: parent.width; label: "Name"; text: scenariosBridge.selectedName }
                     FormField { id: scenarioDescEdit; width: parent.width; label: "Description"; text: scenariosBridge.selectedDescription }
                     PrimaryButton { width: 140; text: "Apply & Close"; enabled: scenariosBridge.canManage; onClicked: { scenariosBridge.saveSelected(scenarioNameEdit.text, scenarioDescEdit.text); scenarioDialog.close() } }
-                }
-            }
-        }
-    }
-
-    WorkspaceDialog {
-        id: marketplaceDialog
-        objectName: "marketplaceDialog"
-        modal: true
-        width: Math.min(1040, root.width - 80)
-        height: Math.min(700, root.height - 80)
-        anchors.centerIn: Overlay.overlay
-        padding: 0
-        background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
-        contentItem: Column {
-            anchors.fill: parent
-            anchors.margins: 22
-            spacing: 16
-
-            RowLayout {
-                width: parent.width
-                height: 40
-                Text { text: "Scenario Marketplace"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold; Layout.fillWidth: true }
-                PrimaryButton { Layout.preferredWidth: 108; text: "Refresh"; icon: "refresh"; secondary: true; onClicked: scenariosBridge.refreshMarket() }
-                PrimaryButton { Layout.preferredWidth: 104; text: "Close"; secondary: true; onClicked: marketplaceDialog.close() }
-            }
-
-            RowLayout {
-                width: parent.width
-                height: 44
-                spacing: 12
-                SearchBox { id: marketSearch; Layout.fillWidth: true; placeholder: "Search scenarios, tags, category..." }
-                PrimaryButton { Layout.preferredWidth: 96; text: "Search"; icon: "search"; onClicked: scenariosBridge.searchMarket(marketSearch.text) }
-                PrimaryButton { Layout.preferredWidth: 96; text: "Popular"; secondary: scenariosBridge.marketSort !== "popular"; onClicked: scenariosBridge.setMarketSort("popular") }
-                PrimaryButton { Layout.preferredWidth: 76; text: "New"; secondary: scenariosBridge.marketSort !== "new"; onClicked: scenariosBridge.setMarketSort("new") }
-            }
-
-            ListView {
-                width: parent.width
-                height: 38
-                orientation: ListView.Horizontal
-                spacing: 8
-                clip: true
-                model: scenariosBridge.marketCategoriesModel
-                delegate: PrimaryButton {
-                    width: Math.max(74, model.name.length * 9 + 28)
-                    text: model.name
-                    secondary: !model.selected
-                    onClicked: scenariosBridge.setMarketCategory(model.name)
-                }
-            }
-
-            RowLayout {
-                width: parent.width
-                height: parent.height - 154
-                spacing: 16
-
-                ListView {
-                    Layout.preferredWidth: 430
-                    Layout.fillHeight: true
-                    model: scenariosBridge.marketModel
-                    spacing: 10
-                    clip: true
-                    delegate: Rectangle {
-                        width: ListView.view.width
-                        height: 112
-                        radius: 15
-                        color: model.selected ? Theme.selection : Theme.subtle
-                        border.color: model.selected ? Theme.primary : Theme.border
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: scenariosBridge.selectMarketScenario(model.id)
-                        }
-
-                        Column {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 14
-                            anchors.right: installBtn.left
-                            anchors.rightMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 6
-                            Text { text: model.title; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                            Text { text: model.description || "No description"; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
-                            Row {
-                                spacing: 8
-                                Text { text: model.category; color: Theme.primaryLight; font.pixelSize: 11; font.weight: Font.DemiBold }
-                                Text { text: model.steps + " steps"; color: Theme.dim; font.pixelSize: 11 }
-                                Text { text: model.downloads + " downloads"; color: Theme.dim; font.pixelSize: 11 }
-                            }
-                            Text { text: model.tags; visible: model.tags !== ""; color: Theme.dim; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
-                        }
-
-                        PrimaryButton {
-                            id: installBtn
-                            anchors.right: parent.right
-                            anchors.rightMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 86
-                            text: "Install"
-                            icon: "plus"
-                            onClicked: scenariosBridge.installMarketScenario(model.id)
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    radius: 16
-                    color: Theme.background
-                    border.color: Theme.border
-
-                    Column {
-                        anchors.fill: parent
-                        anchors.margins: 16
-                        spacing: 12
-                        Text { text: scenariosBridge.selectedMarketTitle || "Select scenario"; color: Theme.text; font.pixelSize: 20; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                        Text { text: scenariosBridge.selectedMarketMeta; color: Theme.primaryLight; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                        Text { text: scenariosBridge.selectedMarketDescription || "Preview description and steps before installing."; color: Theme.muted; font.pixelSize: 13; wrapMode: Text.Wrap; width: parent.width }
-                        Text { text: "Steps preview"; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
-                        Rectangle {
-                            width: parent.width
-                            height: parent.height - y - 50
-                            radius: 12
-                            color: Theme.subtle
-                            border.color: Theme.border
-                            ScrollView {
-                                anchors.fill: parent
-                                anchors.margins: 10
-                                TextArea {
-                                    text: scenariosBridge.selectedMarketStepsJson
-                                    readOnly: true
-                                    color: Theme.muted
-                                    font.family: "Consolas"
-                                    font.pixelSize: 11
-                                    wrapMode: TextArea.Wrap
-                                    background: Item {}
-                                }
-                            }
-                        }
-                        PrimaryButton {
-                            width: 150
-                            text: "Install selected"
-                            icon: "plus"
-                            onClicked: scenariosBridge.installMarketScenario("")
-                        }
-                    }
                 }
             }
         }

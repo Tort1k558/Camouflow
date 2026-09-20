@@ -9,9 +9,8 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QThread, QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
-from app.services.scenario_engine import run_scenario
 from app.services.server_client import ServerClient, ServerClientError, server_enabled
 from app.storage.db import (
     Scenario,
@@ -25,6 +24,8 @@ from app.storage.db import (
 )
 from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
+from app.ui.bridge.background import BackgroundRead
+from app.services.server_client import get_server_session
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,6 +38,9 @@ ACTION_OPTIONS: List[Tuple[str, str]] = [
     ("Sleep", "sleep"),
     ("Click element", "click"),
     ("Type text", "type"),
+    ("Select option", "select_option"),
+    ("Set checkbox", "set_checked"),
+    ("Press key", "press"),
     ("Set variable", "set_var"),
     ("Parse variable", "parse_var"),
     ("Pop from shared", "pop_shared"),
@@ -53,7 +57,7 @@ ACTION_OPTIONS: List[Tuple[str, str]] = [
 ]
 ACTION_LABELS = {value: label for label, value in ACTION_OPTIONS}
 ACTION_CATEGORY_PRESETS: List[Tuple[str, List[str]]] = [
-    ("Navigation & interaction", ["goto", "wait_for_load_state", "wait_element", "sleep", "click", "type"]),
+    ("Navigation & interaction", ["goto", "wait_for_load_state", "wait_element", "sleep", "click", "type", "select_option", "set_checked", "press"]),
     ("Variables", ["set_var", "parse_var", "pop_shared", "extract_text", "write_file"]),
     ("Network", ["http_request"]),
     ("Browser tabs", ["new_tab", "switch_tab", "close_tab"]),
@@ -73,6 +77,7 @@ def _deepcopy_steps(steps: object) -> List[Dict[str, Any]]:
 
 
 class ScenariosBridge(QObject):
+    scenarioSaved = pyqtSignal()
     modelChanged = pyqtSignal()
     selectedChanged = pyqtSignal()
     categoryChanged = pyqtSignal()
@@ -80,10 +85,14 @@ class ScenariosBridge(QObject):
     runProfileChanged = pyqtSignal()
     runsChanged = pyqtSignal()
     marketChanged = pyqtSignal()
+    marketLoadingChanged = pyqtSignal()
+    marketLoaded = pyqtSignal(object, object, str)
+    uiCall = pyqtSignal(object)
     message = pyqtSignal(str)
 
     def __init__(self, profiles_bridge=None, app_state=None, parent=None) -> None:
         super().__init__(parent)
+        self.uiCall.connect(self._invoke_ui)
         self._profiles_bridge = profiles_bridge
         self._app_state = app_state
         self._model = DictListModel(["name", "description", "steps"], parent=self)
@@ -100,11 +109,19 @@ class ScenariosBridge(QObject):
             "id", "title", "description", "category", "tags", "downloads", "author", "steps", "selected"
         ], parent=self)
         self._market_categories_model = DictListModel(["name", "selected"], parent=self)
+        self._saving = False
+        self._scenario_cache = []
+        self._scenario_cache_session = None
+        self._read = BackgroundRead(self, self._apply_refresh, self._emit_message)
+        self._read.busyChanged.connect(self.modelChanged.emit)
         self._selected_name = ""
         self._selected_description = ""
         self._selected_category = ACTION_CATEGORY_PRESETS[0][0]
         self._selected_step_index = -1
         self._run_profile = ""
+        self._market_loading = False
+        self._market_loaded_key = None
+        self.marketLoaded.connect(self._finish_market_load)
         self._market_query = ""
         self._market_category = "All"
         self._market_sort = "popular"
@@ -118,6 +135,18 @@ class ScenariosBridge(QObject):
             app_state.cloudChanged.connect(self.refresh)
         self._refresh_static_models()
         self.refresh()
+
+    @pyqtSlot(object)
+    def _invoke_ui(self, callback):
+        callback()
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def saving(self):
+        return self._saving
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def loading(self):
+        return self._read.busy
 
     @pyqtProperty(QObject, constant=True)
     def model(self) -> QObject:
@@ -242,6 +271,9 @@ class ScenariosBridge(QObject):
         return False
 
     def _emit_message(self, text: str) -> None:
+        if QThread.currentThread() != self.thread():
+            self.uiCall.emit(lambda: self._emit_message(text))
+            return
         self.message.emit(text)
         if self._app_state is not None:
             self._app_state.notify(text)
@@ -254,6 +286,8 @@ class ScenariosBridge(QObject):
         return ServerClient()
 
     def _list_scenarios(self) -> List[Scenario]:
+        if server_enabled() and QThread.currentThread() == self.thread():
+            return copy.deepcopy(self._scenario_cache) if self._scenario_cache_session == get_server_session() else []
         client = self._server_client()
         if server_enabled() and client:
             try:
@@ -328,20 +362,41 @@ class ScenariosBridge(QObject):
 
     @pyqtSlot()
     def refresh(self) -> None:
-        scenarios = self._list_scenarios()
+        if QThread.currentThread() != self.thread():
+            self.uiCall.emit(self.refresh)
+            return
+        if self._scenario_cache_session is not None and self._scenario_cache_session != get_server_session():
+            self._scenario_cache = []
+            self._server_scenario_ids = {}
+            self._model.set_rows([])
+            self._runs_model.set_rows([])
+            self._selected_name = ""
+            self._current_steps = []
+            self._steps_model.set_rows([])
+            self.selectedChanged.emit()
+        self._read.submit(self._fetch_refresh)
+
+    def _fetch_refresh(self, session):
+        if not session.enabled:
+            return db_get_scenarios(), {}, []
+        client = ServerClient(session)
+        rows = client.scenarios()
+        scenarios = [Scenario(name=row["name"], description=row.get("description") or "",
+                              steps=(row.get("definition") or {}).get("steps") or []) for row in rows]
+        return scenarios, {row["name"]: row["id"] for row in rows}, client.scenario_runs(limit=80)
+
+    def _apply_refresh(self, result):
+        scenarios, self._server_scenario_ids, runs = result
+        self._scenario_cache = copy.deepcopy(scenarios)
+        self._scenario_cache_session = get_server_session()
         self._model.set_rows([
             {"name": s.name, "description": s.description or "", "steps": len(s.steps or [])}
             for s in scenarios
         ])
         if not self._selected_name and scenarios:
             self._set_selected(scenarios[0])
-        elif self._selected_name:
-            loaded = self._get_scenario(self._selected_name)
-            if loaded:
-                self._set_selected(loaded)
-            elif scenarios:
-                self._set_selected(scenarios[0])
-        self._refresh_runs()
+        self._runs_model.set_rows([self._run_row(row) for row in runs])
+        self.runsChanged.emit()
         self.modelChanged.emit()
 
     def _refresh_runs(self) -> None:
@@ -576,21 +631,59 @@ class ScenariosBridge(QObject):
         self._emit_message(f"Scenario {name} created")
 
     @pyqtSlot(str, str)
-    def saveSelected(self, name: str, description: str) -> None:  # noqa: N802
-        if not self._ensure_allowed("manager"):
+    def saveSelected(self, name: str, description: str) -> None:
+        if self._saving or not self._ensure_allowed("manager"):
             return
         target = str(name or self._selected_name or "Scenario").strip() or "Scenario"
         old = self._selected_name
-        self._selected_description = str(description or "")
         self._ensure_start_step()
         self._ensure_step_tags()
-        self._save_scenario(target, self._current_steps, self._selected_description)
-        if old and old != target:
-            self._delete_scenario(old)
-        self._selected_name = target
-        self.refresh()
-        self.selectScenario(target)
-        self._emit_message(f"Scenario {target} saved")
+        steps = _deepcopy_steps(self._current_steps)
+        session = get_server_session()
+        self._saving = True
+        self.modelChanged.emit()
+        def worker():
+            scenario_id = ""
+            try:
+                if session.enabled:
+                    client = ServerClient(session)
+                    rows = client.scenarios()
+                    existing = next((row for row in rows if row["name"] == old), None)
+                    if any(row["name"].casefold() == target.casefold() and row is not existing for row in rows):
+                        raise ValueError("Another scenario already has this name")
+                    payload = {"name": target, "description": description, "definition": {"steps": steps}}
+                    if existing:
+                        client.update_scenario(existing["id"], payload)
+                        scenario_id = existing["id"]
+                    else:
+                        scenario_id = client.create_scenario(payload)["id"]
+                else:
+                    from app.storage import db
+                    with db._STORAGE_LOCK:
+                        if target != old and db.db_get_scenario(target) is not None:
+                            raise ValueError("Another scenario already has this name")
+                        db_save_scenario(target, steps, description)
+                        if old and old != target:
+                            db_delete_scenario(old)
+                error = ""
+            except Exception as exc:
+                error = str(exc)
+            def finish():
+                self._saving = False
+                self.modelChanged.emit()
+                if error:
+                    self._emit_message("Cannot save scenario: " + error)
+                    return
+                if session == get_server_session():
+                    self._set_selected(Scenario(target, steps, description))
+                    if scenario_id:
+                        self._server_scenario_ids.pop(old, None)
+                        self._server_scenario_ids[target] = scenario_id
+                    self.refresh()
+                    self.scenarioSaved.emit()
+                self._emit_message(f"Scenario {target} saved")
+            self.uiCall.emit(finish)
+        threading.Thread(target=worker, daemon=True, name="scenario-save").start()
 
     @pyqtSlot()
     def duplicateSelected(self) -> None:  # noqa: N802
@@ -740,18 +833,55 @@ class ScenariosBridge(QObject):
         self._run_profile = str(name or "").strip()
         self.runProfileChanged.emit()
 
+    @pyqtProperty(bool, notify=marketLoadingChanged)
+    def marketLoading(self) -> bool:  # noqa: N802
+        return self._market_loading
+
+    def _market_request_key(self, client) -> tuple:
+        return (client.session.url, self._market_query,
+                "" if self._market_category == "All" else self._market_category,
+                self._market_sort)
+
+    @pyqtSlot()
+    def ensureMarketLoaded(self) -> None:  # noqa: N802
+        if self._market_loaded_key != self._market_request_key(self._public_client()):
+            self.refreshMarket()
+
     @pyqtSlot()
     def refreshMarket(self) -> None:  # noqa: N802
+        if self._market_loading:
+            return
         client = self._public_client()
-        category = "" if self._market_category == "All" else self._market_category
-        try:
-            rows = client.market_scenarios(self._market_query, category, self._market_sort)
-        except ServerClientError as exc:
+        key = self._market_request_key(client)
+        self._market_loading = True
+        self.marketLoadingChanged.emit()
+        self.marketChanged.emit()
+
+        def load() -> None:
+            rows, error = [], ""
+            try:
+                rows = client.market_scenarios(*key[1:])
+            except Exception as exc:
+                error = str(exc)
+            self.marketLoaded.emit(key, rows, error)
+
+        threading.Thread(target=load, name="camouflow-market", daemon=True).start()
+
+    @pyqtSlot(object, object, str)
+    def _finish_market_load(self, key, rows, error: str) -> None:
+        self._market_loading = False
+        self.marketLoadingChanged.emit()
+        if key != self._market_request_key(self._public_client()):
+            self.refreshMarket()
+            return
+        if error:
+            self._market_loaded_key = None
             self._market_rows = []
             self._selected_market = {}
             self._rebuild_market_model()
-            self._emit_message(f"Marketplace error: {exc}")
+            self._emit_message(f"Marketplace error: {error}")
             return
+        self._market_loaded_key = key
         self._market_rows = [row for row in rows if isinstance(row, dict)]
         selected_id = str(self._selected_market.get("id") or "")
         self._selected_market = next((row for row in self._market_rows if str(row.get("id") or "") == selected_id), {})
@@ -1013,27 +1143,11 @@ class ScenariosBridge(QObject):
             self._emit_message("Select profile to run")
             return
 
-        cancel_event = threading.Event()
-        self._run_cancel_event = cancel_event
-
-        def worker() -> None:
-            started = time.monotonic()
-            run_ids = self._create_cloud_runs(scenario, accounts)
-            try:
-                scenario_path = None if server_enabled() else db_get_scenario_path(scenario.name)
-                processed = run_scenario(accounts, scenario, max_accounts=1, scenario_path=scenario_path, cancel_event=cancel_event)
-                self._finish_cloud_runs(run_ids, accounts, processed, started, canceled=cancel_event.is_set())
-                self._emit_message("Scenario canceled" if cancel_event.is_set() else f"Scenario finished: {len(processed)} profile(s)")
-            except Exception as exc:
-                LOGGER.exception("Scenario run failed")
-                self._fail_cloud_runs(run_ids, started, exc)
-                self._emit_message(f"Scenario failed: {exc}")
-            finally:
-                self._run_cancel_event = None
-                self._refresh_runs()
-
-        self._emit_message(f"Running {scenario.name}")
-        threading.Thread(target=worker, daemon=True).start()
+        if getattr(self, "operations", None):
+            self.operations.enqueue("\n".join(a["name"] for a in accounts), scenario.name, "", "unchanged", "")
+            self._app_state.setPage("ScenarioRuns")
+        else:
+            self._emit_message("Execution queue is not initialized")
 
     @pyqtSlot(str, str, int)
     def runForTag(self, tag: str, scenario_name: str, max_accounts: int) -> None:  # noqa: N802
@@ -1073,36 +1187,20 @@ class ScenariosBridge(QObject):
             self._emit_message("No profiles for selected tag")
             return
 
-        cancel_event = threading.Event()
-        self._run_cancel_event = cancel_event
-
-        def worker() -> None:
-            started = time.monotonic()
-            run_ids = self._create_cloud_runs(scenario, accounts[:limit])
-            try:
-                scenario_path = None if server_enabled() else db_get_scenario_path(scenario.name)
-                processed = run_scenario(
-                    accounts,
-                    scenario,
-                    max_accounts=limit,
-                    scenario_path=scenario_path,
-                    cancel_event=cancel_event,
-                )
-                self._finish_cloud_runs(run_ids, accounts[:limit], processed, started, canceled=cancel_event.is_set())
-                self._emit_message("Scenario canceled" if cancel_event.is_set() else f"Scenario finished: {len(processed)} profile(s)")
-            except Exception as exc:
-                LOGGER.exception("Scenario batch run failed")
-                self._fail_cloud_runs(run_ids, started, exc)
-                self._emit_message(f"Scenario failed: {exc}")
-            finally:
-                self._run_cancel_event = None
-                self._refresh_runs()
-
-        self._emit_message(f"Running {scenario.name} for {tag or 'all tags'}")
-        threading.Thread(target=worker, daemon=True).start()
+        if getattr(self, "operations", None):
+            self.operations.enqueue("\n".join(a["name"] for a in accounts[:limit]), scenario.name, "", "unchanged", "")
+            self._app_state.setPage("ScenarioRuns")
+        else:
+            self._emit_message("Execution queue is not initialized")
 
     @pyqtSlot()
     def cancelRun(self) -> None:  # noqa: N802
+        if getattr(self, "operations", None):
+            jobs = [j for j in self.operations.queue.snapshot() if j["scenario"] == self._selected_name and j["status"] == "running"]
+            for job in jobs:
+                self.operations.cancel(job["id"])
+            self._emit_message("Cancellation requested for active runs of this scenario" if jobs else "No active runs for this scenario")
+            return
         if self._run_cancel_event is None:
             return
         self._run_cancel_event.set()

@@ -18,6 +18,11 @@ def main() -> None:
         sys.stdout = open(os.devnull, "w", encoding="utf-8")
     if sys.stderr is None:
         sys.stderr = open(os.devnull, "w", encoding="utf-8")
+    if len(sys.argv) == 3 and sys.argv[1] == "--show-trace":
+        from playwright.__main__ import main as trace_main
+        sys.argv = [sys.argv[0], "show-trace", sys.argv[2]]
+        trace_main()
+        return
     os.environ.setdefault("QT_LOGGING_RULES", "qt.text.font.db=false")
 
     logging.basicConfig(

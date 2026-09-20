@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import theme 1.0
 import "."
@@ -15,7 +16,11 @@ GlassCard {
     property string tags: "#profile"
     property string lockedBy: ""
     property string lockExpires: ""
+    property bool chosen: false
+    signal selectionToggled(bool selected)
     property bool running: false
+    property bool startAllowed: false
+    property bool stopAllowed: false
     property bool canRun: true
     property bool canManage: true
     property bool canAdmin: true
@@ -41,6 +46,7 @@ GlassCard {
         anchors.fill: parent
         spacing: Math.max(8, Math.min(18, root.width / 80))
 
+        CheckBox { checked: root.chosen; onClicked: root.selectionToggled(checked) }
         Rectangle {
             Layout.preferredWidth: 42; Layout.preferredHeight: 42; radius: 14
             Layout.alignment: Qt.AlignVCenter
@@ -56,14 +62,15 @@ GlassCard {
             Layout.maximumWidth: 360
             Layout.alignment: Qt.AlignVCenter
             spacing: 5
-            Row { width: parent.width; spacing: 8; Text { text: root.name; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold; elide: Text.ElideRight; width: Math.max(30, parent.width - identText.width - 8) } Text { id: identText; text: root.ident; color: Theme.dim; font.pixelSize: 12 } }
-            Text { text: root.tags; color: Theme.primaryLight; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
+            Text { text: root.name; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+
+            Text { text: root.tags + "  /  " + root.ident.substring(0, 8); color: Theme.primaryLight; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
         }
 
-        InfoColumn { title: "Browser"; value: root.browser; Layout.minimumWidth: 72; Layout.preferredWidth: 100 }
+        InfoColumn { title: "Browser"; value: root.browser; Layout.minimumWidth: 110; Layout.preferredWidth: 110 }
         InfoColumn { title: "Proxy"; value: root.proxy; Layout.fillWidth: true; Layout.minimumWidth: 90; Layout.preferredWidth: 180 }
-        InfoColumn { title: "Health"; value: root.health; Layout.minimumWidth: 72; Layout.preferredWidth: 86 }
-        InfoColumn { title: "Last Active"; value: root.lastActive; Layout.minimumWidth: 68; Layout.preferredWidth: 90 }
+        InfoColumn { visible: root.width >= 1050; title: "Health"; value: root.health; Layout.minimumWidth: 72; Layout.preferredWidth: 86 }
+        InfoColumn { visible: root.width >= 1150; title: "Last Active"; value: root.lastActive; Layout.minimumWidth: 68; Layout.preferredWidth: 90 }
 
         Row {
             Layout.minimumWidth: 24
@@ -73,7 +80,7 @@ GlassCard {
             Rectangle { width: 7; height: 7; radius: 4; color: running ? Theme.success : root.lockedBy ? Theme.warning : Theme.dim; anchors.verticalCenter: parent.verticalCenter }
             Text {
                 text: root.lockedBy && !root.running
-                    ? "Locked: " + root.lockedBy + (root.lockExpires ? " until " + root.lockExpires.slice(11, 16) : "")
+                    ? "Locked: " + root.lockedBy + (root.lockExpires ? " until " + new Date(root.lockExpires).toLocaleTimeString(Qt.locale(), "HH:mm") : "")
                     : root.status
                 color: Theme.muted
                 font.pixelSize: 13
@@ -87,9 +94,9 @@ GlassCard {
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             Layout.minimumWidth: 124
             spacing: 8
-            PrimaryButton { width: 36; icon: running ? "stop" : "play"; text: ""; secondary: true; enabled: root.canRun && (!root.lockedBy || root.running); onClicked: running ? root.stopClicked() : root.startClicked() }
-            PrimaryButton { width: 36; icon: "settings"; text: ""; secondary: true; enabled: root.canManage; onClicked: root.settingsClicked() }
-            PrimaryButton { width: 36; icon: "trash"; text: ""; danger: true; enabled: root.canAdmin; onClicked: root.deleteClicked() }
+            PrimaryButton { width: 36; icon: stopAllowed ? "stop" : "play"; text: ""; secondary: true; tooltip: stopAllowed ? "Stop browser" : "Open browser"; enabled: root.startAllowed || root.stopAllowed; onClicked: stopAllowed ? root.stopClicked() : root.startClicked() }
+            PrimaryButton { width: 36; icon: "settings"; text: ""; secondary: true; tooltip: "Profile settings"; enabled: root.canManage; onClicked: root.settingsClicked() }
+            PrimaryButton { width: 36; text: "..."; tooltip: "Profile actions"; secondary: true; onClicked: root.contextRequested(root.width - 220, root.height) }
         }
     }
 }

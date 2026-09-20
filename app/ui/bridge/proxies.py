@@ -7,25 +7,33 @@ import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
-from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QThread, QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.storage.db import db_get_setting, db_set_setting
 from app.services.server_client import ServerClient, ServerClientError, server_enabled
 from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
+from app.ui.bridge.background import BackgroundRead
+from app.services.server_client import get_server_session
 
 
 class ProxiesBridge(QObject):
     modelChanged = pyqtSignal()
     statsChanged = pyqtSignal()
+    uiCall = pyqtSignal(object)
     message = pyqtSignal(str)
 
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
+        self.uiCall.connect(self._invoke_ui)
         self._app_state = app_state
         self._model = DictListModel(["pool", "name", "location", "address", "type", "latency", "status", "accent", "index", "selected"], parent=self)
         self._pools_model = DictListModel(["name", "total", "used", "selected", "source", "permission"], parent=self)
         self._server_pools: Dict[str, Dict[str, Any]] = {}
+        self._pools_cache = {}
+        self._cache_session = None
+        self._read = BackgroundRead(self, self._apply_refresh, self._emit_message)
+        self._read.busyChanged.connect(self.modelChanged.emit)
         self._selected_pool = ""
         self._selected: set[tuple[str, int]] = set()
         self._active = 0
@@ -36,6 +44,10 @@ class ProxiesBridge(QObject):
             app_state.refreshRequested.connect(self.refresh)
             app_state.cloudChanged.connect(self.refresh)
         self.refresh()
+
+    @pyqtSlot(object)
+    def _invoke_ui(self, callback):
+        callback()
 
     @staticmethod
     def _record_check(entry: Dict[str, Any], result: Dict[str, Any]) -> None:
@@ -83,6 +95,10 @@ class ProxiesBridge(QObject):
             return datetime.fromisoformat(str(entry.get("quarantine_until") or "").replace("Z", "+00:00")) > datetime.now(timezone.utc)
         except ValueError:
             return False
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def loading(self):
+        return self._read.busy
 
     @pyqtProperty(QObject, constant=True)
     def model(self) -> QObject:
@@ -134,15 +150,15 @@ class ProxiesBridge(QObject):
         self._emit_message(deny_message(min_role))
         return False
 
-    def _load(self) -> Dict[str, Dict[str, Any]]:
-        client = self._server_client()
-        if server_enabled() and client:
+    def _load(self, session=None) -> Dict[str, Dict[str, Any]]:
+        session = session or get_server_session()
+        client = ServerClient(session)
+        if session.enabled:
             pools: Dict[str, Dict[str, Any]] = {}
             try:
                 proxies = client.proxies()
             except ServerClientError as exc:
-                self._emit_message(f"Server proxies error: {exc}")
-                return {}
+                raise ServerClientError(f"Server proxies error: {exc}") from exc
             for proxy in proxies:
                 group = str(proxy.get("group_name") or "Default")
                 check = proxy.get("last_check") if isinstance(proxy.get("last_check"), dict) else {}
@@ -183,14 +199,36 @@ class ProxiesBridge(QObject):
         return {}
 
     def _emit_message(self, text: str) -> None:
+        if QThread.currentThread() != self.thread():
+            self.uiCall.emit(lambda: self._emit_message(text))
+            return
         self.message.emit(text)
         if self._app_state is not None:
             self._app_state.notify(text)
 
     @pyqtSlot()
     def refresh(self) -> None:
-        self._load_server_pools()
-        pools = self._load()
+        if QThread.currentThread() != self.thread():
+            self.uiCall.emit(self.refresh)
+            return
+        session = get_server_session()
+        if session != self._cache_session:
+            self._server_pools = {}
+            self._pools_cache = {}
+            self._render_pools()
+        self._read.submit(self._fetch_refresh)
+
+    def _fetch_refresh(self, session):
+        client = ServerClient(session)
+        rows = client.request("GET", f"/api/v1/teams/{session.team_id}/pools?type=proxy") or [] if session.enabled else []
+        return session, self._load(session), {str(row["name"]): row for row in rows if row.get("name")}
+
+    def _apply_refresh(self, result):
+        self._cache_session, self._pools_cache, self._server_pools = result
+        self._render_pools()
+
+    def _render_pools(self):
+        pools = self._pools_cache
         pool_rows: List[Dict[str, Any]] = []
         total_all = 0
         used_all = 0
@@ -260,7 +298,7 @@ class ProxiesBridge(QObject):
         name = str(name or "")
         self._selected_pool = "" if name == "All pools" else name
         self._selected.clear()
-        self.refresh()
+        self._render_pools()
 
 
     def _load_server_pools(self) -> None:
@@ -577,12 +615,12 @@ class ProxiesBridge(QObject):
             self._selected.add(key)
         else:
             self._selected.discard(key)
-        self.refresh()
+        self._render_pools()
 
     @pyqtSlot()
     def clearSelection(self) -> None:  # noqa: N802
         self._selected.clear()
-        self.refresh()
+        self._render_pools()
 
     @pyqtSlot()
     def releaseSelected(self) -> None:  # noqa: N802
@@ -716,10 +754,10 @@ class ProxiesBridge(QObject):
 
         def worker() -> None:
             try:
-                from app.ui.main_window.proxy_mixin import ProxyPoolMixin
+                from app.services.proxy_health import probe_proxy_endpoint
                 data = self._load()
                 entry = data.get(pool_name, {}).get("proxies", [])[index]
-                ok, ms, err, meta = ProxyPoolMixin._probe_proxy_endpoint_value(str(entry.get("value") or ""), timeout_s=5.0)
+                ok, ms, err, meta = probe_proxy_endpoint(str(entry.get("value") or ""), timeout_s=5.0)
                 result = dict(meta or {})
                 result["status"] = "ok" if ok else "fail"
                 result["ms"] = ms
@@ -780,7 +818,7 @@ class ProxiesBridge(QObject):
 
         def worker() -> None:
             try:
-                from app.ui.main_window.proxy_mixin import ProxyPoolMixin
+                from app.services.proxy_health import probe_proxy_endpoint
                 data = self._load()
                 for pool in data.values():
                     for entry in pool.get("proxies", []) if isinstance(pool, dict) else []:
@@ -788,7 +826,7 @@ class ProxiesBridge(QObject):
                             continue
                         if self._is_quarantined(entry):
                             continue
-                        ok, ms, err, meta = ProxyPoolMixin._probe_proxy_endpoint_value(str(entry.get("value") or ""), timeout_s=5.0)
+                        ok, ms, err, meta = probe_proxy_endpoint(str(entry.get("value") or ""), timeout_s=5.0)
                         result = dict(meta or {})
                         result["status"] = "ok" if ok else "fail"
                         result["ms"] = ms

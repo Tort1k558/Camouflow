@@ -7,8 +7,9 @@ import json
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.storage.db import db_get_accounts, db_get_scenarios, db_get_setting
-from app.services.server_client import ServerClient, ServerClientError, server_enabled
+from app.services.server_client import ServerClient, ServerClientError, server_enabled, get_server_session
 from app.ui.bridge.models import DictListModel
+from app.ui.bridge.background import BackgroundRead
 from app.ui.dashboard_data import build_dashboard_metrics
 
 
@@ -24,11 +25,18 @@ class DashboardBridge(QObject):
         self._operator = DictListModel(["type", "title", "desc", "meta", "accent"], parent=self)
         self._issues = DictListModel(["type", "title", "desc", "meta", "accent"], parent=self)
         self._metrics = {}
+        self._last_snapshot = None
+        self._snapshot_session = None
+        self._read = BackgroundRead(self, self._accept_refresh, lambda error: app_state.notify("Dashboard: " + error) if app_state else None)
         if app_state is not None:
             app_state.refreshRequested.connect(self.refresh)
             app_state.cloudChanged.connect(self.refresh)
+            app_state.currentPageChanged.connect(self._refresh_if_visible)
         if profiles_bridge is not None:
-            profiles_bridge.countsChanged.connect(self.refresh)
+            profiles_bridge.countsChanged.connect(self._refresh_if_visible)
+            profiles_bridge.modelChanged.connect(self._render_cached)
+            if getattr(profiles_bridge, "operations", None):
+                profiles_bridge.operations.changed.connect(self._render_cached)
         self.refresh()
 
     @pyqtProperty(QObject, constant=True)
@@ -83,23 +91,29 @@ class DashboardBridge(QObject):
             return f"{team} / {role}"
         return "Local workspace"
 
+    def _refresh_if_visible(self):
+        if self._app_state is None or self._app_state.currentPage == "Dashboard":
+            self.refresh()
+
     @pyqtSlot()
     def refresh(self) -> None:
+        self._read.submit(self._fetch_refresh)
+
+    def _fetch_refresh(self, session):
         proxy_pools = {}
         try:
             proxy_pools = json.loads(db_get_setting("proxy_pools") or "{}")
         except Exception:
             proxy_pools = {}
-        live = self._profiles_bridge.live_browsers() if self._profiles_bridge is not None else {}
         accounts = db_get_accounts()
         scenarios = db_get_scenarios()
         scenario_runs = []
         audit_rows = []
-        if server_enabled():
+        if session.enabled:
             try:
-                client = ServerClient()
+                client = ServerClient(session)
                 if client.configured:
-                    accounts = self._profiles_bridge._server_accounts() if self._profiles_bridge is not None and hasattr(self._profiles_bridge, "_server_accounts") else []
+                    accounts = self._profiles_bridge._server_accounts(client) if self._profiles_bridge is not None and hasattr(self._profiles_bridge, "_server_accounts") else []
                     scenarios = client.scenarios()
                     scenario_runs = client.scenario_runs(limit=30)
                     try:
@@ -116,12 +130,42 @@ class DashboardBridge(QObject):
                 scenario_runs = []
                 audit_rows = []
                 proxy_pools = {}
+        return accounts, scenarios, proxy_pools, scenario_runs, audit_rows
+
+    def _accept_refresh(self, result):
+        self._snapshot_session = get_server_session()
+        self._apply_refresh(result)
+
+    def _render_cached(self):
+        if self._last_snapshot is not None and self._snapshot_session == get_server_session():
+            self._apply_refresh(self._last_snapshot)
+
+    def _apply_refresh(self, result):
+        self._last_snapshot = result
+        accounts, scenarios, proxy_pools, scenario_runs, audit_rows = result
+        operations = getattr(self._profiles_bridge, "operations", None)
+        jobs = [j for j in operations.queue.snapshot() if j.get("workspace") == operations._workspace()] if operations else []
+        if not server_enabled():
+            scenario_runs = [{**job, "scenario_name": job["scenario"], "profile_name": job["profile"],
+                              "duration_ms": int(max(0, (job.get("finished") or job.get("started") or 0) - (job.get("started") or 0)) * 1000)}
+                             for job in reversed(jobs)][:30]
+        live = self._profiles_bridge.live_browsers() if self._profiles_bridge is not None else {}
         self._metrics = build_dashboard_metrics(accounts, scenarios, proxy_pools, live)
         self._metrics.update(self._operator_metrics(accounts, proxy_pools, scenario_runs))
         self._activity.set_rows(self._activity_rows(audit_rows, scenario_runs))
         rows = []
         for name, browser in live.items():
             rows.append({"name": name, "browser": getattr(browser, "browser_engine", "Camoufox"), "proxy": getattr(browser, "proxy", "None") or "None", "uptime": "live", "color": "#3f714a"})
+        active = {row["name"] for row in rows}
+        for job in jobs:
+            if job["status"] == "running" and job["profile"] not in active:
+                active.add(job["profile"])
+                rows.append({"name": job["profile"], "browser": "Scenario", "proxy": "", "uptime": "running", "color": "#3f714a"})
+        recorder = getattr(self._profiles_bridge, "recorder", None)
+        if recorder and recorder.active and recorder.profileName not in active:
+            active.add(recorder.profileName)
+            rows.append({"name": recorder.profileName, "browser": "Recorder", "proxy": "", "uptime": "recording", "color": "#3f714a"})
+        self._metrics["running"] = len(active)
         self._running.set_rows(rows)
         self._operator.set_rows(self._operator_rows(accounts, scenario_runs))
         self._issues.set_rows(self._issue_rows(accounts, proxy_pools, scenario_runs))
@@ -191,7 +235,7 @@ class DashboardBridge(QObject):
                         "accent": "#b33d47",
                     })
         if not rows:
-            rows.append({"type": "ok", "title": "No critical issues", "desc": "Profiles, runs and proxies look stable", "meta": "now", "accent": "#3f714a"})
+            rows.append({"type": "ok", "title": "No reported issues", "desc": "No failures in the available checks and run history", "meta": "now", "accent": "#3f714a"})
         return rows[:12]
 
     def _activity_rows(self, audit_rows, scenario_runs) -> list[dict]:

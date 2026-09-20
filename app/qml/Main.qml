@@ -53,13 +53,13 @@ ApplicationWindow {
                         spacing: 12
                         Text { text: "WORKSPACE"; font.family: Theme.monoFamily; font.pixelSize: 10; font.letterSpacing: 1.2; color: Theme.dim }
                         Text { text: "/"; color: Theme.border }
-                        Text { text: appState ? appState.currentPage : "Dashboard"; color: Theme.text; font.pixelSize: 12 }
+                        Text { text: appState ? (appState.currentPage === "ScenarioRuns" ? "Scenarios / Runs" : appState.currentPage === "ScenarioRecord" ? "Scenarios / Record" : appState.currentPage) : "Dashboard"; color: Theme.text; font.pixelSize: 12 }
                     }
                     Row {
                         anchors.right: parent.right; anchors.rightMargin: 28; anchors.verticalCenter: parent.verticalCenter
                         spacing: 9
                         Rectangle { width: 6; height: 6; radius: 3; color: Theme.success; anchors.verticalCenter: parent.verticalCenter }
-                        Text { text: appState && appState.cloudEnabled ? "Team workspace" : "Local workspace"; font.pixelSize: 11; color: Theme.muted }
+                        Text { text: appState && appState.cloudEnabled ? (appState.cloudTeamName || "Team workspace") : "This computer"; font.pixelSize: 11; color: Theme.muted }
                     }
                 }
                 Loader {
@@ -73,7 +73,8 @@ ApplicationWindow {
                         if (appState.currentPage === "Profiles") return profilesPage
                         if (appState.currentPage === "Browser") return browserPage
                         if (appState.currentPage === "Proxies") return proxiesPage
-                        if (appState.currentPage === "Scenarios") return scenariosPage
+                        if (appState.currentPage === "Marketplace") return marketplacePage
+                        if (appState.currentPage === "Scenarios" || appState.currentPage === "ScenarioRuns" || appState.currentPage === "ScenarioRecord") return scenariosPage
                         if (appState.currentPage === "Logs") return logsPage
                         if (appState.currentPage === "Settings") return settingsPage
                         return dashboardPage
@@ -85,34 +86,34 @@ ApplicationWindow {
 
     WelcomeDialog {}
 
-    // Global toast: appState.notify/message was previously invisible
-    // (only the closed WelcomeDialog read it), so cloud errors and
-    // "Opening Google sign-in…" feedback vanished silently.
     Rectangle {
         id: appToast
+        objectName: "appToast"
+        parent: Overlay.overlay
+        z: 100
         property string text: ""
         visible: text !== ""
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: 18
-        width: Math.min(440, toastRow.implicitWidth + 30)
-        height: 40
+        width: Math.min(440, parent.width - 36)
+        height: Math.max(40, toastText.implicitHeight + 24)
         radius: 10
         color: "#222e25"
 
         Row {
             id: toastRow
+            width: parent.width - 30
             anchors.centerIn: parent
             spacing: 9
             Rectangle { width: 7; height: 7; radius: 4; color: "#d1f366"; anchors.verticalCenter: parent.verticalCenter }
             Text {
+                id: toastText
                 text: appToast.text
                 color: "#edf4e6"
                 font.pixelSize: 12
-                elide: Text.ElideRight
-                maximumLineCount: 2
                 wrapMode: Text.WordWrap
-                width: Math.min(380, contentWidth)
+                width: parent.width - 16
             }
         }
 
@@ -134,7 +135,8 @@ ApplicationWindow {
     Component { id: profilesPage; ProfilesPage {} }
     Component { id: browserPage; BrowserPage {} }
     Component { id: proxiesPage; ProxiesPage {} }
-    Component { id: scenariosPage; ScenariosPage {} }
+    Component { id: marketplacePage; MarketplacePage {} }
+    Component { id: scenariosPage; ScenariosWorkspacePage {} }
     Component { id: logsPage; LogsPage {} }
     Component { id: settingsPage; SettingsPage {} }
 }

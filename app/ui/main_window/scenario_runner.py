@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from app.storage.db import Scenario
+
 import asyncio
 import json
 import logging

@@ -1,3 +1,6 @@
+from functools import wraps
+from threading import RLock
+
 import json
 import logging
 import os
@@ -11,6 +14,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 LOGGER = logging.getLogger(__name__)
+_STORAGE_LOCK = RLock()
+
+
+def _serialized_write(func):
+    @wraps(func)
+    def locked(*args, **kwargs):
+        with _STORAGE_LOCK:
+            return func(*args, **kwargs)
+    return locked
+
 
 APP_NAME = "CamouFlow"
 CODE_ROOT = Path(__file__).resolve().parents[2]
@@ -309,6 +322,7 @@ def _normalize_account(payload: Dict[str, Any]) -> Dict[str, Any]:
     return data
 
 
+@_serialized_write
 def db_add_account(account: Dict[str, Any]) -> Dict[str, Any]:
     accounts = _load_accounts_raw()
     normalized = _normalize_account(account)
@@ -332,6 +346,7 @@ def db_get_accounts() -> List[Dict[str, Any]]:
     return accounts
 
 
+@_serialized_write
 def db_delete_account(account_name: str) -> None:
     accounts = _load_accounts_raw()
     key = str(account_name or "").lower()
@@ -339,6 +354,7 @@ def db_delete_account(account_name: str) -> None:
     _save_accounts_raw(filtered)
 
 
+@_serialized_write
 def db_update_stage(account_name: str, stage: Optional[str]) -> None:
     accounts = _load_accounts_raw()
     updated = []
@@ -350,6 +366,7 @@ def db_update_stage(account_name: str, stage: Optional[str]) -> None:
     _save_accounts_raw(updated)
 
 
+@_serialized_write
 def db_update_account(account_name: str, updates: Dict[str, Any]) -> None:
     """
     Update an account by its identifier (name), allowing all fields including name to change.
@@ -433,6 +450,7 @@ def db_get_setting(key: str) -> Optional[str]:
     return str(val)
 
 
+@_serialized_write
 def db_set_setting(key: str, value: str) -> None:
     settings = _load_settings()
     settings[key] = value
@@ -517,6 +535,7 @@ def db_get_selector_index(selector: str) -> Optional[int]:
         return None
 
 
+@_serialized_write
 def db_set_selector_index(selector: str, index: int) -> None:
     settings = _load_settings()
     mapping = settings.get("selector_indices")
@@ -530,6 +549,7 @@ def db_set_selector_index(selector: str, index: int) -> None:
     _save_settings(settings)
 
 
+@_serialized_write
 def db_set_selector_indices(mapping: Dict[str, int]) -> None:
     if not isinstance(mapping, dict):
         return
@@ -542,6 +562,7 @@ def db_set_selector_indices(mapping: Dict[str, int]) -> None:
     _save_settings(settings)
 
 
+@_serialized_write
 def db_delete_selector_index(selector: str) -> None:
     settings = _load_settings()
     mapping = settings.get("selector_indices")
@@ -589,6 +610,7 @@ def db_get_scenario_path(name: str) -> Path:
     return _scenario_file_for_name(name)
 
 
+@_serialized_write
 def db_save_scenario(name: str, steps: List[Dict], description: Optional[str] = None) -> None:
     existing = _scenario_file_for_name(name)
     path = existing if existing.exists() else _scenario_path(name)
@@ -596,6 +618,7 @@ def db_save_scenario(name: str, steps: List[Dict], description: Optional[str] = 
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+@_serialized_write
 def db_delete_scenario(name: str) -> None:
     path = _scenario_file_for_name(name)
     try:

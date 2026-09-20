@@ -1,4 +1,5 @@
 from typing import Dict
+import asyncio
 
 from app.storage.db import db_get_scenario, db_get_scenario_path, db_update_stage
 
@@ -12,7 +13,8 @@ class FlowSteps:
         scenario_name = (scenario_name or "").strip()
         if not scenario_name:
             return StepResult.stop("Scenario name is empty for run_scenario action")
-        nested = db_get_scenario(scenario_name)
+        library = getattr(self, "_scenario_library", None)
+        nested = library.get(scenario_name) if library is not None else db_get_scenario(scenario_name)
         if not nested:
             return StepResult.stop(f"Scenario {scenario_name} not found")
         display_name = nested.name or scenario_name
@@ -35,7 +37,11 @@ class FlowSteps:
     async def _action_set_tag(self, step: Dict) -> StepResult:
         tag = self._apply_template(step.get("value") or step.get("tag") or step.get("stage") or "")
         tag = tag.strip()
-        db_update_stage(self.profile_name, tag or None)
+        updater = getattr(self, "_tag_updater", None)
+        if updater is not None:
+            await asyncio.to_thread(updater, tag)
+        else:
+            db_update_stage(self.profile_name, tag or None)
         self.account_payload["stage"] = tag
         self.logger.info("Tag for %s -> %s", self.profile_name, tag or "None")
         return StepResult.next()
@@ -43,7 +49,10 @@ class FlowSteps:
     async def _action_end(self, step: Dict) -> StepResult:
         self.logger.info("End step triggered; closing browser for %s", self.profile_name)
         try:
-            await self.close(force=True)
+            try:
+                await self.stop_run_capture()
+            finally:
+                await self.close(force=True)
         except Exception as exc:
             self.logger.warning("Failed to close browser on end step: %s", exc)
         return StepResult.end()

@@ -7,19 +7,40 @@ import "../components"
 Item {
     id: root
     clip: true
+    property string editingId: ""
+    property string editingEngine: "camoufox"
+    property var contextActions: ({})
     property string editingProfile: ""
     property string contextProfile: ""
     property string profileSettingsTab: "profile"
+    property var loadedTabs: ({})
+    property bool cookiesLoading: false
+    property var proxyChoices: []
+    Connections {
+        target: profilesBridge
+        function onModelChanged() { root.contextActions = profilesBridge.actionState(root.contextProfile) }
+        function onProfileSaved(name) { if (name === root.editingProfile) profileDialog.close() }
+        function onCookiesLoaded(name, payload, error) {
+            if (name !== root.editingProfile || !root.cookiesLoading) return
+            root.cookiesLoading = false
+            if (error) { appState.notify(error); root.loadedTabs.cookies = false }
+            else profileCookiesJson.text = payload
+        }
+    }
 
     function openProfileModal(profileName) {
-        var data = profilesBridge.getProfile(profileName, browserSettingsBridge.engine)
+        var data = profilesBridge.getProfile(profileName, "")
+        if (!data.name) { appState.notify("Profile is unavailable; refresh the list"); return }
+        editingEngine = data.engine
+        editingId = data.id || ""
         editingProfile = profileName
         editName.text = data.name || profileName
         editStage.text = data.stage || ""
-        editProxyHost.text = data.proxy_host || ""
-        editProxyPort.text = data.proxy_port || ""
-        editProxyUser.text = data.proxy_user || ""
-        editProxyPassword.text = data.proxy_password || ""
+        loadedTabs = ({})
+        cookiesLoading = false
+        proxyChoices = profilesBridge.proxyOptions()
+        editProxyChoice.currentIndex = 0
+        editProxy.text = data.proxy_url || ""
         editLocale.text = data.locale || ""
         editTimezone.text = data.timezone || ""
         editUserAgent.text = data.user_agent || ""
@@ -35,9 +56,11 @@ Item {
             profileDialog.open()
         }
         profileSettingsTab = tab
+        if (loadedTabs[tab]) return
+        loadedTabs[tab] = true
         if (tab === "variables") profileVarsJson.text = profilesBridge.getProfileVariables(editingProfile)
-        if (tab === "cookies") profileCookiesJson.text = profilesBridge.getProfileCookiesJson(editingProfile)
-        if (tab === "browser") profileBrowserSettingsJson.text = profilesBridge.getProfileBrowserSettingsJson(editingProfile, browserSettingsBridge.engine)
+        if (tab === "cookies") { profileCookiesJson.text = ""; cookiesLoading = true; profilesBridge.loadCookies(editingProfile) }
+        if (tab === "browser") profileBrowserSettingsJson.text = profilesBridge.getProfileBrowserSettingsJson(editingProfile, root.editingEngine)
     }
     function openVariablesModal(profileName) {
         openProfileTab(profileName, "variables")
@@ -73,19 +96,46 @@ Item {
         confirmDialog.ask('Delete profile "' + name + '"? This action cannot be undone.', function() { profilesBridge.deleteProfile(name) })
     }
     ConfirmDialog { id: confirmDialog }
+    Menu {
+        id: profileImportMenu
+        parent: importButton; y: importButton.height
+        MenuItem { text: "Import profile list"; onTriggered: importDialog.open() }
+        MenuItem { text: appState.cloudEnabled ? "Restore archive (local workspace only)" : "Restore archive"; enabled: !appState.cloudEnabled; onTriggered: { profileActions.mode = "restore"; profileActionsDialog.open() } }
+    }
+    Menu {
+        id: selectedActionsMenu
+        parent: selectedActionsButton; y: selectedActionsButton.height
+        MenuItem { text: "Schedule scenario"; enabled: scenariosBridge.canRun; onTriggered: appState.setPage("ScenarioRuns") }
+        MenuItem { text: appState.cloudEnabled ? "Bulk edit / export (local only)" : "Bulk edit / export"; enabled: !appState.cloudEnabled; onTriggered: { profileActions.mode = "bulk"; profileActionsDialog.open() } }
+        MenuItem { text: appState.cloudEnabled ? "Profile archive (local only)" : "Full profile archive"; enabled: !appState.cloudEnabled; onTriggered: { profileActions.mode = "backup"; profileActionsDialog.open() } }
+    }
+    WorkspaceDialog {
+        id: profileActionsDialog
+        objectName: "profileActionsDialog"
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(880, root.width - 48); height: Math.min(720, root.height - 48)
+        title: profileActions.mode === "bulk" ? "Selected profile actions" : profileActions.mode === "restore" ? "Restore profile archive" : "Profile archives"
+        contentItem: ProfileActionsPanel { id: profileActions; objectName: "profileActionsPanel" }
+        footer: Item {
+            height: 56
+            PrimaryButton { text: "Close"; secondary: true; anchors.right: parent.right; anchors.rightMargin: 20; onClicked: profileActionsDialog.close() }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 28; spacing: 14
         RowLayout {
             Layout.fillWidth: true
             PageHeader { Layout.fillWidth: true; height: 72; title: "Profiles"; subtitle: "Browser sessions, identities and assigned connections" }
-            PrimaryButton { text: "Import"; icon: "save"; secondary: true; enabled: profilesBridge.canManage; onClicked: importDialog.open() }
-            PrimaryButton { text: "New Profile"; icon: "plus"; enabled: profilesBridge.canManage; onClicked: profilesBridge.createProfile() }
+            PrimaryButton { id: importButton; text: "Import"; icon: "save"; secondary: true; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: profileImportMenu.open() }
+            PrimaryButton { text: "New Profile"; icon: "plus"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: profilesBridge.createProfile() }
         }
         RowLayout {
             Layout.fillWidth: true; spacing: 12
             SearchBox { id: search; Layout.fillWidth: true; Layout.preferredHeight: 42; placeholder: "Search profiles, tags or proxies"; onTextChanged: profilesBridge.setSearch(text) }
-            PrimaryButton { text: "Batch run"; icon: "play"; secondary: true; enabled: scenariosBridge.canRun && profileList.count > 0; onClicked: batchDialog.open() }
-            PrimaryButton { text: "Shared variables"; secondary: true; onClicked: variablesDialog.open() }
+            PrimaryButton { id: selectedActionsButton; text: "Selected actions"; enabled: operationsBridge.selectedProfiles !== ""; secondary: true; onClicked: selectedActionsMenu.open() }
+            PrimaryButton { text: "Run scenarios"; icon: "play"; secondary: true; enabled: scenariosBridge.canRun && profileList.count > 0; onClicked: appState.setPage("ScenarioRuns") }
+            PrimaryButton { text: "Local variables"; secondary: true; onClicked: variablesDialog.open() }
         }
         RowLayout {
             Layout.fillWidth: true; spacing: 12
@@ -113,13 +163,14 @@ Item {
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: profilesBridge.setStageFilter(model.name) }
             }
         }
-            PrimaryButton { text: "Manage tags"; secondary: true; enabled: profilesBridge.canManage; onClicked: root.openTagsModal() }
+            PrimaryButton { text: "Local tag presets"; secondary: true; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: root.openTagsModal() }
         }
         ListView {
             Layout.fillWidth: true
             Layout.fillHeight: true
             id: profileList
-            EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: profileList.count === 0; title: search.text ? "No matching profiles" : "Your first profile starts here"; description: search.text ? "Try a different name, tag or proxy." : "Create a browser profile or import existing accounts."; icon: "user" }
+            EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: profileList.count === 0 && !profilesBridge.loading; title: search.text ? "No matching profiles" : "Your first profile starts here"; description: search.text ? "Try a different name, tag or proxy." : "Create a browser profile or import existing accounts."; icon: "user" }
+            BusyIndicator { anchors.centerIn: parent; running: profilesBridge.loading && profileList.count === 0; visible: running }
             model: profilesBridge.model
             spacing: 14
             clip: true
@@ -128,6 +179,8 @@ Item {
             delegate: ProfileRow {
                 id: profileRow
                 width: ListView.view.width
+                chosen: operationsBridge.selectedProfiles.split("\n").indexOf(model.name) >= 0
+                onSelectionToggled: function(selected) { operationsBridge.selectProfile(model.name, selected) }
                 name: model.name
                 ident: model.id
                 browser: model.browser
@@ -140,8 +193,10 @@ Item {
                 lockedBy: model.lockedBy
                 lockExpires: model.lockExpires
                 canRun: profilesBridge.canRun
-                canManage: profilesBridge.canManage
-                canAdmin: profilesBridge.canAdmin
+                startAllowed: model.startAllowed
+                stopAllowed: model.stopAllowed
+                canManage: model.editAllowed
+                canAdmin: model.deleteAllowed
                 height: 78
                 onStartClicked: profilesBridge.startProfile(model.name)
                 onStopClicked: profilesBridge.stopProfile(model.name)
@@ -149,6 +204,7 @@ Item {
                 onDeleteClicked: root.confirmDelete(model.name)
                 onContextRequested: function(x, y) {
                     root.contextProfile = model.name
+                    root.contextActions = profilesBridge.actionState(model.name)
                     var point = profileRow.mapToItem(root, x, y)
                     profileMenu.popup(point.x, point.y)
                 }
@@ -156,65 +212,6 @@ Item {
         }
         Text { text: profileList.count + " profiles shown"; color: Theme.dim; font.pixelSize: 11 }
     }
-    WorkspaceDialog {
-        id: batchDialog
-        objectName: "batchDialog"
-        anchors.centerIn: Overlay.overlay
-        width: Math.min(820, root.width - 48); height: 210; padding: 0
-        contentItem: Item { ColumnLayout {
-                anchors.fill: parent; anchors.margins: 22
-                spacing: 12
-                Text { text: "Run a scenario across a tag"; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold }
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
-                Rectangle {
-                    Layout.preferredWidth: 180
-                    height: 42
-                    radius: 11
-                    color: Theme.subtle
-                    border.color: Theme.border
-                    ComboBox {
-                        id: runTagSelect
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        model: profilesBridge.stagesModel
-                        textRole: "name"
-                        background: Item {}
-                        contentItem: Text { text: runTagSelect.displayText || "Tag"; color: Theme.text; verticalAlignment: Text.AlignVCenter; font.pixelSize: 13; elide: Text.ElideRight }
-                    }
-                }
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 140
-                    Layout.preferredWidth: 240
-                    height: 42
-                    radius: 11
-                    color: Theme.subtle
-                    border.color: Theme.border
-                    ComboBox {
-                        id: runScenarioSelect
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        model: scenariosBridge.model
-                        textRole: "name"
-                        background: Item {}
-                        contentItem: Text { text: runScenarioSelect.displayText || "Scenario"; color: Theme.text; verticalAlignment: Text.AlignVCenter; font.pixelSize: 13; elide: Text.ElideRight }
-                    }
-                }
-                FormField { id: runMax; Layout.minimumWidth: 60; Layout.preferredWidth: 70; label: "Max"; text: "10" }
-                PrimaryButton {
-                    Layout.preferredWidth: 130
-                    text: "Run for tag"
-                    icon: "play"
-                    enabled: scenariosBridge.canRun
-                    onClicked: scenariosBridge.runForTag(runTagSelect.currentText, runScenarioSelect.currentText, parseInt(runMax.text || "1"))
-                }
-
-                }
-            } }
-    }
-
     WorkspaceDialog {
         id: importDialog
         objectName: "importDialog"
@@ -278,7 +275,7 @@ Item {
                     width: 120
                     text: "Import"
                     icon: "save"
-                    enabled: profilesBridge.canManage
+                    enabled: profilesBridge.canManage && !profilesBridge.busy
                     onClicked: {
                         profilesBridge.importProfiles(importLines.text, importTemplate.text, importTag.text, importProxyPool.currentText === "All pools" ? "" : importProxyPool.currentText)
                         importDialog.close()
@@ -304,7 +301,7 @@ Item {
             RowLayout {
                 width: parent.width - 44
                 Text { text: "Profile Tags"; color: Theme.text; font.pixelSize: 22; font.weight: Font.DemiBold; Layout.fillWidth: true }
-                PrimaryButton { Layout.preferredWidth: 40; text: ""; icon: "plus"; enabled: profilesBridge.canManage; onClicked: tagCreateDialog.open() }
+                PrimaryButton { Layout.preferredWidth: 40; text: ""; icon: "plus"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: tagCreateDialog.open() }
             }
             Text { width: parent.width - 44; text: "Create tags here, then assign them in profile settings."; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap }
             ListView {
@@ -320,7 +317,7 @@ Item {
                     color: Theme.subtle
                     border.color: Theme.border
                     Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
-                    PrimaryButton { anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter; width: 34; height: 28; text: ""; icon: "trash"; danger: true; enabled: profilesBridge.canManage; onClicked: { settingsBridge.deleteStage(model.name); profilesBridge.refresh() } }
+                    PrimaryButton { anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter; width: 34; height: 28; text: ""; icon: "trash"; danger: true; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: { settingsBridge.deleteStage(model.name); profilesBridge.refresh() } }
                 }
             }
         }
@@ -342,7 +339,7 @@ Item {
             FormField { id: tagName; width: parent.width - 44; label: "Tag name" }
             Row {
                 spacing: 10
-                PrimaryButton { width: 110; text: "Create"; icon: "plus"; enabled: profilesBridge.canManage; onClicked: { settingsBridge.addStage(tagName.text); profilesBridge.refresh(); tagCreateDialog.close() } }
+                PrimaryButton { width: 110; text: "Create"; icon: "plus"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: { settingsBridge.addStage(tagName.text); profilesBridge.refresh(); tagCreateDialog.close() } }
                 PrimaryButton { width: 100; text: "Cancel"; secondary: true; onClicked: tagCreateDialog.close() }
             }
         }
@@ -369,7 +366,7 @@ Item {
                 y: 22
                 spacing: 18
                 Text { text: "Profile Settings"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
-                Text { text: "Profile data + per-profile browser overrides for " + browserSettingsBridge.engine; color: Theme.muted; font.pixelSize: 13 }
+                Text { text: "Profile engine: " + root.editingEngine + " / ID: " + (root.editingId || "local"); color: Theme.muted; font.pixelSize: 13 }
                 Row {
                     spacing: 8
                     ProfileTab { title: "Profile"; tabId: "profile" }
@@ -388,10 +385,16 @@ Item {
                         rowSpacing: 14
                         FormField { id: editName; Layout.fillWidth: true; label: "Name" }
                         FormField { id: editStage; Layout.fillWidth: true; label: "Tag / Scenario" }
-                        FormField { id: editProxyHost; Layout.fillWidth: true; label: "Proxy host" }
-                        FormField { id: editProxyPort; Layout.fillWidth: true; label: "Proxy port" }
-                        FormField { id: editProxyUser; Layout.fillWidth: true; label: "Proxy user" }
-                        FormField { id: editProxyPassword; Layout.fillWidth: true; label: "Proxy password" }
+                        ComboBox {
+                            id: editProxyChoice
+                            Layout.fillWidth: true; Layout.columnSpan: 2
+                            model: root.proxyChoices; textRole: "label"
+                        }
+                        FormField {
+                            id: editProxy; Layout.fillWidth: true; Layout.columnSpan: 2
+                            visible: editProxyChoice.currentIndex <= 0
+                            label: "Proxy connection"; placeholder: "socks5://user:password@host:port (empty = no proxy)"
+                        }
                     }
                     Rectangle { width: parent.width; height: 1; color: Theme.border }
                     Text { text: "Browser Overrides"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
@@ -424,7 +427,7 @@ Item {
                     Text { text: "Cookies"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
                     Text { text: "Edit JSON array and save. Encrypted Chromium values may be read-only."; color: Theme.muted; font.pixelSize: 12 }
                     Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
-                        TextArea { id: profileCookiesJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
+                        TextArea { id: profileCookiesJson; enabled: !root.cookiesLoading; placeholderText: root.cookiesLoading ? "Loading cookies..." : ""; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
                     }
                 }
                 Column {
@@ -432,7 +435,7 @@ Item {
                     spacing: 12
                     visible: root.profileSettingsTab === "browser"
                     Text { text: "Browser JSON"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
-                    Text { text: "Overrides for current engine: " + browserSettingsBridge.engine; color: Theme.muted; font.pixelSize: 12 }
+                    Text { text: "Overrides for current engine: " + root.editingEngine; color: Theme.muted; font.pixelSize: 12 }
                     Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
                         TextArea { id: profileBrowserSettingsJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} wrapMode: TextArea.Wrap }
                     }
@@ -440,26 +443,33 @@ Item {
                 Row {
                     spacing: 12
                     visible: root.profileSettingsTab === "profile"
-                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: { profilesBridge.saveProfile(root.editingProfile, editName.text, editStage.text, editProxyHost.text, editProxyPort.text, editProxyUser.text, editProxyPassword.text, browserSettingsBridge.engine, editLocale.text, editTimezone.text, editUserAgent.text, editWebgl.text, editCpu.text); profileDialog.close() } }
+                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: {
+                        var choice = root.proxyChoices[editProxyChoice.currentIndex] || {}
+                        profilesBridge.saveProfileForm(root.editingProfile, JSON.stringify({
+                            name: editName.text, stage: editStage.text, engine: root.editingEngine,
+                            pool: choice.pool || "", proxy: editProxyChoice.currentIndex > 0 ? choice.value : editProxy.text,
+                            locale: editLocale.text, timezone: editTimezone.text, user_agent: editUserAgent.text,
+                            webgl_vendor: editWebgl.text, hardware_concurrency: editCpu.text
+                        })) } }
                     PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
                 }
                 Row {
                     spacing: 12
                     visible: root.profileSettingsTab === "variables"
-                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: profilesBridge.saveProfileVariables(root.editingProfile, profileVarsJson.text) }
+                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: profilesBridge.saveProfileVariables(root.editingProfile, profileVarsJson.text) }
                     PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
                 }
                 Row {
                     spacing: 12
                     visible: root.profileSettingsTab === "cookies"
-                    PrimaryButton { width: 120; text: "Refresh"; secondary: true; onClicked: profileCookiesJson.text = profilesBridge.getProfileCookiesJson(root.editingProfile) }
-                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: profilesBridge.saveProfileCookiesJson(root.editingProfile, profileCookiesJson.text) }
+                    PrimaryButton { width: 120; text: "Refresh"; secondary: true; enabled: !root.cookiesLoading; onClicked: { root.cookiesLoading = true; profilesBridge.loadCookies(root.editingProfile) } }
+                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage && !profilesBridge.busy && !root.cookiesLoading; onClicked: profilesBridge.saveProfileCookiesJson(root.editingProfile, profileCookiesJson.text) }
                     PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
                 }
                 Row {
                     spacing: 12
                     visible: root.profileSettingsTab === "browser"
-                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: profilesBridge.saveProfileBrowserSettingsJson(root.editingProfile, browserSettingsBridge.engine, profileBrowserSettingsJson.text) }
+                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: profilesBridge.saveProfileBrowserSettingsJson(root.editingProfile, root.editingEngine, profileBrowserSettingsJson.text) }
                     PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
                 }
             }
@@ -482,7 +492,7 @@ Item {
             RowLayout {
                 width: parent.width
                 height: 38
-                Text { text: "Shared Variables"; color: Theme.text; font.pixelSize: 22; font.weight: Font.DemiBold; Layout.fillWidth: true }
+                Text { text: "Variables on this computer"; color: Theme.text; font.pixelSize: 22; font.weight: Font.DemiBold; Layout.fillWidth: true }
                 PrimaryButton { Layout.preferredWidth: 104; text: "Close"; secondary: true; onClicked: variablesDialog.close() }
             }
             RowLayout {
@@ -524,8 +534,8 @@ Item {
                     }
                     Row {
                         spacing: 10
-                        PrimaryButton { width: 130; text: "Save"; icon: "save"; enabled: profilesBridge.canManage; onClicked: settingsBridge.saveVariable(sharedKey.text, sharedType.text, sharedValue.text) }
-                        PrimaryButton { width: 110; text: "Delete"; danger: true; enabled: profilesBridge.canManage; onClicked: settingsBridge.deleteVariable(sharedKey.text) }
+                        PrimaryButton { width: 130; text: "Save"; icon: "save"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: settingsBridge.saveVariable(sharedKey.text, sharedType.text, sharedValue.text) }
+                        PrimaryButton { width: 110; text: "Delete"; danger: true; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: settingsBridge.deleteVariable(sharedKey.text) }
                     }
                 }
             }
@@ -534,15 +544,23 @@ Item {
 
     Menu {
         id: profileMenu
-        MenuItem { text: "Profile settings"; enabled: profilesBridge.canManage; onTriggered: root.openProfileModal(root.contextProfile) }
-        MenuItem { text: "Open browser"; enabled: profilesBridge.canRun; onTriggered: profilesBridge.startProfile(root.contextProfile) }
-        MenuItem { text: "Profile health check"; enabled: profilesBridge.canRun; onTriggered: profilesBridge.runHealthCheck(root.contextProfile) }
-        MenuItem { text: "Force unlock"; enabled: appState && appState.cloudEnabled && profilesBridge.canManage; onTriggered: profilesBridge.forceUnlockProfile(root.contextProfile) }
-        MenuItem { text: "Variables"; enabled: profilesBridge.canManage; onTriggered: root.openVariablesModal(root.contextProfile) }
-        MenuItem { text: "Cookies"; enabled: profilesBridge.canManage; onTriggered: root.openCookiesModal(root.contextProfile) }
-        MenuItem { text: "Browser overrides"; enabled: profilesBridge.canManage; onTriggered: root.openBrowserOverridesModal(root.contextProfile) }
-        MenuItem { text: "Run selected scenario"; enabled: scenariosBridge.canRun; onTriggered: { scenariosBridge.setRunProfile(root.contextProfile); scenariosBridge.runSelected() } }
+        MenuItem { text: "Open browser"; enabled: !!root.contextActions.startAllowed; onTriggered: profilesBridge.startProfile(root.contextProfile) }
+        MenuItem { text: "Stop browser"; visible: !!root.contextActions.stopAllowed; onTriggered: profilesBridge.stopProfile(root.contextProfile) }
+        MenuItem { text: "Run scenario..."; enabled: !!root.contextActions.startAllowed; onTriggered: operationsBridge.prepareRun(root.contextProfile) }
         MenuSeparator {}
-        MenuItem { text: "Delete profile"; enabled: profilesBridge.canAdmin; onTriggered: root.confirmDelete(root.contextProfile) }
+        MenuItem { text: "Profile settings"; enabled: !!root.contextActions.editAllowed; onTriggered: root.openProfileModal(root.contextProfile) }
+        MenuItem { text: "Profile health check"; enabled: !!root.contextActions.startAllowed; onTriggered: profilesBridge.runHealthCheck(root.contextProfile) }
+        MenuItem {
+            text: "Unlock profile"
+            visible: root.contextActions.status === "Locked"
+            enabled: !!root.contextActions.unlockAllowed
+            onTriggered: {
+                var name = root.contextProfile
+                confirmDialog.ask('Unlock "' + name + '"? Confirm its browser has stopped on all devices.',
+                                  function() { profilesBridge.forceUnlockProfile(name) }, "Unlock")
+            }
+        }
+        MenuSeparator {}
+        MenuItem { text: "Delete profile"; enabled: !!root.contextActions.deleteAllowed; onTriggered: root.confirmDelete(root.contextProfile) }
     }
 }
