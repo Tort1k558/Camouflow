@@ -52,18 +52,16 @@ Rectangle {
         }
 
         Column {
-            Layout.preferredWidth: 200
+            Layout.preferredWidth: 168
             Layout.minimumWidth: 110
-            Layout.fillWidth: true
             spacing: 1
             Text { text: root.name; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
             Text { text: root.location; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
         }
 
         Text {
-            Layout.preferredWidth: 210
-            Layout.minimumWidth: 120
             Layout.fillWidth: true
+            Layout.minimumWidth: 140
             text: root.address
             color: Theme.muted
             font.family: Theme.monoFamily
