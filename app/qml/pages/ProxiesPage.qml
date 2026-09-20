@@ -17,7 +17,7 @@ Item {
             PrimaryButton { text: "Import proxies"; icon: "plus"; enabled: root.bridge && root.bridge.canManage; onClicked: proxyImportDialog.open() }
         }
         // compact stat strip instead of blocky cards
-        RowLayout {
+        Row {
             Layout.fillWidth: true
             spacing: 0
             Repeater {
@@ -27,12 +27,20 @@ Item {
                     { label: "FAILED", value: root.bridge ? root.bridge.failed : 0, color: Theme.danger },
                     { label: "LOCATIONS", value: root.bridge ? root.bridge.locations : 0, color: Theme.primaryLight },
                 ]
-                delegate: RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    Item { Layout.preferredWidth: index === 0 ? 0 : 22; Layout.fillHeight: true }
-                    Rectangle { visible: index > 0; Layout.fillHeight: true; Layout.preferredWidth: 1; color: Theme.borderSubtle }
+                delegate: Item {
+                    implicitWidth: statCol.implicitWidth + (index > 0 ? 31 : 0)
+                    implicitHeight: 40
+
+                    Rectangle {
+                        visible: index > 0
+                        x: 0; y: 3
+                        width: 1; height: 34
+                        color: Theme.borderSubtle
+                    }
+
                     Column {
+                        id: statCol
+                        x: index > 0 ? 31 : 0
                         spacing: 2
                         Text { text: modelData.label; color: Theme.dim; font.family: Theme.monoFamily; font.pixelSize: 9; font.letterSpacing: 1.2 }
                         Text { text: modelData.value; color: modelData.color; font.pixelSize: 22; font.weight: Font.DemiBold }
