@@ -40,9 +40,11 @@ class ScenarioDebuggerWindow(QWidget):
         session: ScenarioDebugSession,
         *,
         scenario_path: Optional[Path] = None,
+        snapshots: Optional[dict] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
+        self._snapshots = snapshots
         self._session = session
         self._scenario_path = scenario_path
         self._scenario_name: str = ""
@@ -95,6 +97,9 @@ class ScenarioDebuggerWindow(QWidget):
         self._pause_btn = QPushButton("Pause", controls)
         self._pause_btn.clicked.connect(self._toggle_pause)
         controls_layout.addWidget(self._pause_btn)
+        step_btn = QPushButton("Next step", controls)
+        step_btn.clicked.connect(session.step_once)
+        controls_layout.addWidget(step_btn)
 
         stop_btn = QPushButton("Stop", controls)
         stop_btn.setProperty("class", "danger")
@@ -122,7 +127,7 @@ class ScenarioDebuggerWindow(QWidget):
         jump_row.addStretch(1)
         jump_layout.addLayout(jump_row)
 
-        steps_title = QLabel("Steps (auto reload):", jump)
+        steps_title = QLabel("Steps (run snapshot):" if snapshots is not None else "Steps (auto reload):", jump)
         steps_title.setProperty("class", "cardTitle")
         jump_layout.addWidget(steps_title)
 
@@ -151,7 +156,11 @@ class ScenarioDebuggerWindow(QWidget):
             try:
                 from app.storage.db import db_get_scenario_path
 
-                self._set_scenario_path(db_get_scenario_path(update.scenario_name))
+                if self._snapshots is None:
+                    self._set_scenario_path(db_get_scenario_path(update.scenario_name))
+                else:
+                    self._display_steps(self._snapshots.get(update.scenario_name, []))
+                    self._reload_label.setText("Frozen run snapshot; edit and enqueue again to change steps")
             except Exception:
                 pass
         self._scenario_label.setText(f"Scenario: {update.scenario_name or '-'}")
@@ -189,6 +198,11 @@ class ScenarioDebuggerWindow(QWidget):
         self._refresh_pause_button()
 
     def mark_finished(self, *, stopped: bool = False) -> None:
+        if self._snapshots is not None:
+            self._step_label.setText("Run ended. Enqueue a new debug run to execute again.")
+            for button in self.findChildren(QPushButton):
+                button.setEnabled(False)
+            return
         update = self._last_update
         if update is not None:
             step_no = int(update.step_index) + 1
@@ -332,6 +346,7 @@ class ScenarioDebuggerWindow(QWidget):
         if not isinstance(steps, list):
             return
 
+    def _display_steps(self, steps):
         ordered = self._order_steps_for_display(steps)
         prev_row = self._steps_list.currentRow()
         self._steps_list.blockSignals(True)

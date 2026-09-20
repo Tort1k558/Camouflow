@@ -11,6 +11,7 @@ from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.storage.db import DATA_ROOT
 from app.ui.bridge.models import DictListModel
+from app.ui.bridge.background import BackgroundRead
 
 _LINE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?)\s+([A-Z]+)\s+(.*)$")
 
@@ -129,12 +130,25 @@ class LogsBridge(QObject):
 
     @pyqtSlot()
     def refresh(self) -> None:
+        if not hasattr(self, "_read"):
+            self._read = BackgroundRead(self, self._apply_refresh, lambda error: None)
+        self._read.submit(self._fetch_refresh)
+
+    @staticmethod
+    def _fetch_refresh(session):
         rows: List[dict] = []
         logs_dir = DATA_ROOT / "logs"
         if logs_dir.exists():
             for path in sorted(logs_dir.glob("*.log")):
                 try:
-                    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-80:]
+                    with path.open("rb") as source:
+                        source.seek(0, 2)
+                        size = source.tell()
+                        source.seek(max(0, size - 128 * 1024))
+                        lines = source.read().decode("utf-8", errors="replace").splitlines()
+                        if size > 128 * 1024:
+                            lines = lines[1:]
+                        lines = lines[-80:]
                 except Exception:
                     lines = []
                 for line in lines:
@@ -142,6 +156,9 @@ class LogsBridge(QObject):
                     if not parsed_level:
                         parsed_level = "ERROR" if "ERROR" in line else "WARNING" if "WARN" in line else "INFO"
                     rows.append({"level": parsed_level, "text": line, "time": timestamp or line[:19], "message": message})
+        return rows[-500:]
+
+    def _apply_refresh(self, rows):
         self._rows = rows[-500:]
         self._apply()
         self._text = "\n".join(r["text"] for r in self._rows[-500:])

@@ -19,6 +19,7 @@ hiddenimports = collect_submodules("browserforge")
 hiddenimports += [
     "PyQt6.QtQml",
     "PyQt6.QtQuick",
+    "playwright.__main__",
 ]
 
 # camoufox ships non-.py assets (e.g. YAML manifests) that must be bundled.

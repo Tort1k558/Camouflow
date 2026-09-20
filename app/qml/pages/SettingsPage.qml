@@ -23,7 +23,7 @@ Flickable {
 
         SettingsSection {
             width: parent.width
-            height: 248
+            height: 294
             title: "App Settings"
             subtitle: "Runtime configuration"
             icon: "settings"
@@ -43,11 +43,12 @@ Flickable {
                 FormField {
                     id: serverUrl
                     width: parent.width
-                    label: "Server URL"
+                    label: "Server URL (changing servers requires signing in again)"
                     placeholder: "https://api.example.com"
                     text: settingsBridge ? settingsBridge.serverUrl : ""
-                    onEditingFinished: settingsBridge.saveServerUrl(text)
+
                 }
+                PrimaryButton { text: "Save server URL"; secondary: true; onClicked: settingsBridge.saveServerUrl(serverUrl.text) }
             }
         }
     }

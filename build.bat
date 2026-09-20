@@ -1,21 +1,12 @@
 @echo off
-setlocal enabledelayedexpansion
-
+setlocal
 cd /d "%~dp0"
-
-echo [1/2] Closing running CamouFlow (if any)...
-taskkill /F /IM CamouFlow.exe >nul 2>&1
-
-echo [2/2] Building with PyInstaller...
-if exist dist rmdir /s /q dist
-if exist build rmdir /s /q build
-
-if exist ".venv\Scripts\python.exe" (
-    ".venv\Scripts\python.exe" -m PyInstaller camouflow.spec --noconfirm --clean || exit /b 1
-) else (
-    py -3.12 -m PyInstaller camouflow.spec --noconfirm --clean || exit /b 1
+for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss-fff"') do set "BUILD_ID=%%i"
+if not defined BUILD_ID exit /b 1
+if not exist ".venv\Scripts\python.exe" (
+    echo Missing .venv\Scripts\python.exe
+    exit /b 1
 )
-
-echo.
-echo Build done: dist\CamouFlow\CamouFlow.exe
+".venv\Scripts\python.exe" -m PyInstaller camouflow.spec --distpath "dist\%BUILD_ID%" --workpath "build\%BUILD_ID%" || exit /b 1
+echo Build done: dist\%BUILD_ID%\CamouFlow\CamouFlow.exe
 endlocal

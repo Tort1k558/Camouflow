@@ -149,3 +149,41 @@ All working data — profiles, scenarios, proxies, settings, logs and browser pr
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Repository and safe releases
+
+The desktop lives in `app/` and its CI runs from this repository. The optional backend, web console, migrations and server tests are maintained privately in the sibling `../server/` directory, outside this Git repository. The old local server path and `.github/workflows/server.yml` remain ignored. Back up the backend separately; cloning this repository does not restore it.
+
+`build.bat` writes a separate timestamped release under `dist/` and never deletes previous builds or stops running browsers. Portable data lives beside the executable; upgrading the executable does not migrate it automatically. Stop the application and back up `settings/`, `profiles/`, `scenaries/` and `outputs/` before transferring a portable workspace.
+
+Local synchronization binds that data directory to one server/team. Switching the active team still permits direct cloud work, but does not authorize transferring local resources to a different team. Manual synchronization confirms the destination; cookie upload requires separate confirmation. Deletions require an explicit conflict resolution and browser directories are retained.
+
+## Desktop operations
+
+Select profiles with their checkboxes, then use **Selected actions** to schedule a scenario, bulk edit/export, or create a full archive. Restore archives through **Profiles > Import > Restore archive**. The queue and results live under **Scenarios > Runs**, beside the editor. Run/Batch run actions use this same queue; switching pages does not stop jobs.
+
+- **Queue & results:** one job per profile, optional local date/time (`YYYY-MM-DD HH:MM`), 1–8 simultaneous browsers, pause new starts, cancel running/queued jobs. The application must remain open. After restart the queue is paused, unfinished executions are marked interrupted, and pending jobs are retained. Resume explicitly; no automatic retries of interrupted work. Scenario definitions (including nested scenarios) are saved locally with the job. Keep the data directory private.
+- **Results:** inspect status, failure reason, step metadata, screenshots and Playwright traces. Retry starts the entire scenario and requires confirmation because previous submissions may repeat. Artifacts can contain sensitive account data. Trace viewer uses the local Playwright runtime and requires its Chromium browser; failures are reported with a local diagnostic log.
+- **Bulk changes:** preview and apply tag/proxy/engine-setting changes to stopped local profiles. If profiles changed since preview, the operation is rejected. Local metadata export omits credentials and browser sessions. Cloud bulk editing is not enabled by this screen.
+- **Backup & restore:** export a local profile to a checksummed ZIP; choose browser session files and sensitive metadata separately. Archives are unencrypted. Session directories can contain secrets even when the metadata-secrets option is off. Restore only trusted archives, always under a new name. Optional scenarios are imported as new copies, engine defaults are applied only to the restored profile, and existing global settings remain unchanged. Browser-encrypted credentials may not transfer between OS users or machines.
+- **Proxy policy:** keep the current assignment, check it and stop on failure, or explicitly allow replacement from one named pool before launch. Occupied/quarantined proxies are excluded from replacement; healthy replacements remain assigned. No automatic IP changes are made after launch. Cloud replacement requires manager privileges; queued cloud execution acquires and renews the profile lock.
+
+Queue capacity is limited to 500 unfinished jobs and 32 MiB of metadata. Archive verification is limited to 2 GiB and 50,000 files. These are protective limits, not commercial quotas. Clearing finished jobs preserves artifact files; manage those separately in the data directory.
+
+
+## Record a scenario (desktop)
+
+Open **Scenarios > Record**, select a stopped local or cloud Camoufox profile and enter an HTTP(S) start URL. Click **Start recording**, perform actions in the browser, then **Stop** and **Save & edit**. Stop closes the recording browser. Saving requires a new scenario name and never replaces existing scenarios. Recording reserves the profile against simultaneous launches and workspace operations. Cloud recording also acquires and renews the server profile lock, then releases it after the browser closes. Cloud recording requires operator access; saving a new scenario requires manager access. Save in the same workspace where recording started; switching teams does not transfer the draft.
+
+The first version records the initial tab and main frame: navigation, clicks, text input, single-value HTML selects, checkboxes/radio buttons and Enter. Selectors prefer unique test IDs, IDs, names and accessible attributes; ambiguous targets are reported rather than guessed. Sequential typing is combined into one step. The select_option, set_checked and press actions are available in the editor and executor.
+
+Password inputs use the profile variable {{password}}; other recognized sensitive inputs use {{recorded_secret_N}}. Their literal values are removed before crossing from the page into Python. Missing required variables stop replay. Other text and URLs are recorded as entered and must be reviewed before sharing.
+
+Limitations: Camoufox only, no iframe/popup recording, file uploads, rich-text editors or multiple selects. The installed CloakBrowser runtime does not support the required exposed binding. Unsupported actions generate review warnings. Browser-initiated navigation immediately after an action is represented by a load wait; unusual delayed or multi-stage navigation may need manual editing. Recording is capped at 1,000 steps. Unsaved drafts exist only in memory until the application exits. Automation executes real actions: inspect the draft before replaying submissions.
+
+### Profile editing and step debugging
+
+- Profile settings accept one proxy connection string, an existing pool proxy, or any available proxy from a selected pool. Empty manual input removes the proxy. An exhausted pool is an error, not a direct-connection fallback.
+- Workspace list refreshes run in background workers. Profile tabs retain their drafts while switching; cookies load asynchronously.
+- In **Scenarios > Runs**, enable **Debug in separate window** before adding a job, then resume the queue. The debugger pauses before the first step. **Next step** executes one step; **Resume** continues; **Run selected** jumps to a step. Closing the debugger stops its run.
+- Queue debugging uses the saved run snapshot, not hot reload. After completion, enqueue another run to execute edited steps.

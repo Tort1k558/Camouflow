@@ -44,9 +44,9 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            PageHeader { Layout.fillWidth: true; height: 72; title: "Logs"; subtitle: "Application and automation events" }
+            PageHeader { Layout.fillWidth: true; height: 72; title: "Logs"; subtitle: "Logs from this computer; team audit is in the account workspace" }
             PrimaryButton { text: "Refresh"; icon: "refresh"; secondary: true; enabled: root.bridge; onClicked: root.bridge.refresh() }
-            PrimaryButton { text: "Clear log"; icon: "trash"; danger: true; enabled: root.bridge && root.bridge.totalCount > 0; onClicked: confirmDialog.ask("Clear the captured log events? Log files on disk are kept.", function() { root.bridge.clear() }, "Clear") }
+            PrimaryButton { text: "Clear view"; icon: "trash"; danger: true; enabled: root.bridge && root.bridge.totalCount > 0; onClicked: confirmDialog.ask("Clear this view? Log files are kept; Refresh will load them again.", function() { root.bridge.clear() }, "Clear") }
         }
 
         RowLayout {

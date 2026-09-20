@@ -471,7 +471,8 @@ class ScenarioExecutor(
                 return False, "Canceled by user"
             step = steps[idx] or {}
             if self.debug_session and self.debug_session.enabled:
-                decision = self.debug_session.before_step(
+                decision = await asyncio.to_thread(
+                    self.debug_session.before_step,
                     scenario_name=label,
                     account_name=str(getattr(self, "profile_name", "") or ""),
                     step_index=idx,
@@ -605,6 +606,12 @@ class ScenarioExecutor(
                 return await self._action_click(step)
             if action == "type":
                 return await self._action_type(step)
+            if action == "select_option":
+                return await self._action_select_option(step)
+            if action == "set_checked":
+                return await self._action_set_checked(step)
+            if action == "press":
+                return await self._action_press(step)
             if action == "set_var":
                 return await self._action_set_var(step)
             if action in {"extract_text", "extract"}:

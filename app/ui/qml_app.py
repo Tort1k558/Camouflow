@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from PyQt6.QtWidgets import QApplication
+
 import logging
 import os
 import sys
@@ -9,13 +11,15 @@ from pathlib import Path
 from typing import Dict
 
 from PyQt6.QtCore import QTimer, QUrl
-from PyQt6.QtGui import QFont, QGuiApplication, QIcon
+from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 
 from app.ui.bridge.app_state import AppState
 from app.ui.bridge.browser_settings import BrowserSettingsBridge
 from app.ui.bridge.dashboard import DashboardBridge
 from app.ui.bridge.logs import LogsBridge
+from app.ui.bridge.operations import OperationsBridge
+from app.ui.bridge.recorder import RecorderBridge
 from app.ui.bridge.profiles import ProfilesBridge
 from app.ui.bridge.proxies import ProxiesBridge
 from app.ui.bridge.scenarios import ScenariosBridge
@@ -38,14 +42,23 @@ class QmlApplication:
     def __init__(self, argv: list[str]) -> None:
         os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
         _install_qt_logging_rules()
-        self.app = QGuiApplication(argv)
+        self.app = QApplication(argv)
         self.app.setFont(QFont("Segoe UI", 10))
         self.engine = QQmlApplicationEngine()
         self.root_dir = self._resource_path("app/qml")
         self.state = AppState()
         self.profiles = ProfilesBridge(self.state)
         self.scenarios = ScenariosBridge(self.profiles, self.state)
+        self.operations = OperationsBridge(self.profiles, self.scenarios, self.state)
+        self.recorder = RecorderBridge(self.operations, self.scenarios, self.state)
+        self.profiles.recorder = self.recorder
+        self.recorder.changed.connect(self.profiles._render_accounts)
+        self.app.aboutToQuit.connect(self.recorder.shutdown)
+        self.profiles.operations = self.operations
+        self.scenarios.operations = self.operations
+        self.app.aboutToQuit.connect(self.operations.shutdown)
         self.proxies = ProxiesBridge(self.state)
+        self.profiles.proxies = self.proxies
         self.browser_settings = BrowserSettingsBridge(self.state)
         self.logs = LogsBridge(self.state)
         self.settings = SettingsBridge(self.state)
@@ -79,6 +92,8 @@ class QmlApplication:
 
     def _install_context(self) -> None:
         context = self.engine.rootContext()
+        context.setContextProperty("operationsBridge", self.operations)
+        context.setContextProperty("recorderBridge", self.recorder)
         context.setContextProperty("AppState", self.state)
         context.setContextProperty("appState", self.state)
         context.setContextProperty("DashboardBridge", self.dashboard)

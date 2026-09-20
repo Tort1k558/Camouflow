@@ -9,7 +9,7 @@ from PyQt6.QtCore import QUrl, QObject, pyqtProperty, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QApplication
 
-from app.services.cloud_sync import CloudWorkspaceSync
+from app.services.cloud_sync import CloudWorkspaceSync, SYNC_WORKSPACE_KEY
 from app.services.server_client import (
     ServerClient,
     ServerClientError,
@@ -30,6 +30,8 @@ class UserBridge(QObject):
     cloudRefreshFinished = pyqtSignal(object, str)
     cloudSyncFinished = pyqtSignal(object, str)
     uiCall = pyqtSignal(object)  # run a callable on the UI thread
+    authChanged = pyqtSignal()
+    loginSucceeded = pyqtSignal()
 
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
@@ -44,13 +46,15 @@ class UserBridge(QObject):
         self._members_model = DictListModel(["id", "email", "full_name", "role", "last_seen", "is_superadmin"], parent=self)
         self._sent_invites_model = DictListModel(["id", "email", "role", "expires_at", "status"], parent=self)
         self._audit_model = DictListModel(["time", "action", "entity", "details"], parent=self)
-        self._conflicts_model = DictListModel(["resource", "key", "remote_id"], parent=self)
+        self._conflicts_model = DictListModel(["resource", "key", "remote_id", "reason"], parent=self)
         self._email = ""
         self._name = ""
         self._is_superadmin = False
         self._server_role = ""
         self._status = "Local mode"
         self._last_invite_link = ""
+        self._auth_busy = False
+        self._auth_message = ""
         self.cloudRefreshFinished.connect(self._apply_cloud_refresh)
         self.cloudSyncFinished.connect(self._apply_cloud_sync)
         self.uiCall.connect(lambda fn: fn())
@@ -61,6 +65,19 @@ class UserBridge(QObject):
     @pyqtProperty(QObject, constant=True)
     def teamsModel(self) -> QObject:  # noqa: N802
         return self._teams_model
+
+    @pyqtProperty(bool, notify=authChanged)
+    def authBusy(self) -> bool:  # noqa: N802
+        return self._auth_busy
+
+    @pyqtProperty(str, notify=authChanged)
+    def authMessage(self) -> str:  # noqa: N802
+        return self._auth_message
+
+    def _set_auth_status(self, text: str, busy: bool = False) -> None:
+        self._auth_message = text
+        self._auth_busy = busy
+        self.authChanged.emit()
 
     @pyqtProperty(QObject, constant=True)
     def invitesModel(self) -> QObject:  # noqa: N802
@@ -189,11 +206,7 @@ class UserBridge(QObject):
             self._app_state.notify(text)
 
     def _pending_conflicts(self) -> list:
-        try:
-            items = json.loads(db_get_setting("cloud_sync_conflicts_v1") or "[]")
-        except Exception:
-            items = []
-        return items if isinstance(items, list) else []
+        return CloudWorkspaceSync(ServerClient()).pending_conflicts()
 
     @pyqtSlot(str)
     def copyToClipboard(self, text: str) -> None:  # noqa: N802
@@ -209,7 +222,7 @@ class UserBridge(QObject):
 
     @pyqtSlot()
     def maybeAutoSync(self) -> None:  # noqa: N802
-        if self.autoSyncEnabled and get_server_session().enabled:
+        if self.autoSyncEnabled and get_server_session().enabled and db_get_setting(SYNC_WORKSPACE_KEY):
             self.syncCloudWorkspace()
 
     @pyqtSlot(str)
@@ -228,7 +241,7 @@ class UserBridge(QObject):
             try:
                 error = CloudWorkspaceSync(client).resolve(resource, key, choice)
                 self.cloudSyncFinished.emit({"resolved": 1, "error_text": error}, "")
-            except ServerClientError as exc:
+            except Exception as exc:
                 self.cloudSyncFinished.emit({}, str(exc))
 
         threading.Thread(target=worker, daemon=True, name="camouflow-conflict-resolve").start()
@@ -559,7 +572,7 @@ class UserBridge(QObject):
             try:
                 result = CloudWorkspaceSync(client).sync(upload_cookies=bool(upload_cookies))
                 self.cloudSyncFinished.emit({"uploaded": result.uploaded, "downloaded": result.downloaded, "conflicts": result.conflicts, "conflict_items": result.conflict_items}, "")
-            except ServerClientError as exc:
+            except Exception as exc:
                 self.cloudSyncFinished.emit({}, str(exc))
 
         threading.Thread(target=worker, daemon=True, name="camouflow-cloud-sync").start()
@@ -593,40 +606,50 @@ class UserBridge(QObject):
 
     @pyqtSlot(str, str)
     def login(self, email: str, password: str) -> None:
-        self._notify("Signing in…")
+        if self._auth_busy:
+            return
+        self._set_auth_status("Signing in…", busy=True)
 
         def work():
             return ServerClient().login(get_server_session().url, str(email or "").strip(), str(password or ""))
 
-        self._async(work, then=self._after_login, fail=lambda exc: self._notify(f"Login failed: {exc}"))
+        self._async(work, then=self._after_login, fail=lambda exc: self._set_auth_status(f"Login failed: {exc}"))
 
     @pyqtSlot()
     def googleLogin(self) -> None:  # noqa: N802
-        self._notify("Opening Google sign-in…")
+        if self._auth_busy:
+            return
+        self._set_auth_status("Opening Google sign-in…", busy=True)
 
         def work():
             return ServerClient().google_login_url(app_pair=True)
 
         def done(url: str) -> None:
-            QDesktopServices.openUrl(QUrl(url))
-            self._notify("Browser opened — finish Google sign-in and paste the pairing code here")
+            if not QDesktopServices.openUrl(QUrl(url)):
+                self._set_auth_status("Could not open the browser. Check your default browser in system settings and retry.")
+                return
+            self._set_auth_status("Finish Google sign-in in your browser, then paste the pairing code below.")
 
-        self._async(work, then=done, fail=lambda exc: self._notify(f"Google sign-in unavailable: {exc}"))
+        self._async(work, then=done, fail=lambda exc: self._set_auth_status(f"Google sign-in unavailable: {exc}"))
 
     @pyqtSlot(str)
     def loginWithPairCode(self, code: str) -> None:  # noqa: N802
+        if self._auth_busy:
+            return
         code = str(code or "").strip()
         if not code:
-            self._notify("Paste the pairing code from the browser first")
+            self._set_auth_status("Paste the pairing code from the browser first")
             return
-        try:
-            result = ServerClient().login_with_pair_code(code)
-        except ServerClientError as exc:
-            self._notify(f"Pairing failed: {exc}")
-            return
-        self._after_login(result)
+        self._set_auth_status("Connecting your account…", busy=True)
+        self._async(
+            lambda: ServerClient().login_with_pair_code(code),
+            then=self._after_login,
+            fail=lambda exc: self._set_auth_status(f"Pairing failed: {exc}"),
+        )
 
     def _after_login(self, result: dict) -> None:
+        self._set_auth_status("")
+        self.loginSucceeded.emit()
         db_set_setting(ONBOARDING_COMPLETED_KEY, "true")
         team_id = str(result.get("team_id") or "")
         self._notify(f"Cloud connected, team {team_id[:8]}" if team_id else "Cloud connected. Accept an invite below.")

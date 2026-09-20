@@ -10,7 +10,7 @@ Rectangle {
     property var pages: [
         ["Dashboard", "dashboard", "Overview"], ["Profiles", "user", "Profiles"],
         ["Browser", "globe", "Browser engines"], ["Proxies", "network", "Proxies"],
-        ["Scenarios", "workflow", "Scenarios"], ["Logs", "logs", "Activity log"],
+        ["Scenarios", "workflow", "Scenarios"], ["Marketplace", "globe", "Scenario market"], ["Logs", "logs", "Activity log"],
         ["Settings", "settings", "Settings"]
     ]
     Brand { x: 23; y: 28; ink: Theme.sidebarText }
@@ -25,7 +25,7 @@ Rectangle {
             delegate: Button {
                 id: navButton
                 required property var modelData
-                readonly property bool selected: appState && appState.currentPage === modelData[0]
+                readonly property bool selected: appState && (appState.currentPage === modelData[0] || (modelData[0] === "Scenarios" && (appState.currentPage === "ScenarioRuns" || appState.currentPage === "ScenarioRecord")))
                 width: parent.width; height: 44
                 text: modelData[2]
                 Accessible.name: text

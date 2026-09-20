@@ -43,7 +43,10 @@ class ScenarioDebugSession:
         on_update: Optional[Callable[[ScenarioDebugUpdate], None]] = None,
         on_browser_closed: Optional[Callable[[], None]] = None,
         on_finished: Optional[Callable[[bool, Optional[str]], None]] = None,
+        cancel_event: Optional[Event] = None,
     ) -> None:
+        self._cancel_event = cancel_event
+        self._step_once = False
         self._enabled = True
         self._run_event = Event()
         self._run_event.set()
@@ -75,7 +78,14 @@ class ScenarioDebugSession:
         if self._enabled:
             self._run_event.clear()
 
+    def step_once(self) -> None:
+        with self._lock:
+            self._step_once = True
+        self._run_event.set()
+
     def resume(self) -> None:
+        with self._lock:
+            self._step_once = False
         self._run_event.set()
 
     def request_stop(self) -> None:
@@ -227,7 +237,13 @@ class ScenarioDebugSession:
             else:
                 self._on_update(update)
 
-        self._run_event.wait()
-        if self._stop_event.is_set():
+        while not self._run_event.wait(0.1):
+            if self._cancel_event is not None and self._cancel_event.is_set():
+                self.request_stop()
+        if self._stop_event.is_set() or (self._cancel_event is not None and self._cancel_event.is_set()):
             return ScenarioDebugDecision(stop=True)
+        with self._lock:
+            if self._step_once:
+                self._step_once = False
+                self._run_event.clear()
         return self.consume_jump()

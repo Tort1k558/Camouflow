@@ -86,7 +86,7 @@ Flickable {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: root.cloud ? root.bridge.email : "Nothing leaves this computer"
+                    text: root.cloud ? root.bridge.email : "Profiles stored on this computer"
                     color: Theme.muted; font.pixelSize: 13
                     elide: Text.ElideRight
                 }
@@ -121,14 +121,14 @@ Flickable {
                 icon: "save"
                 secondary: true
                 enabled: root.bridge ? root.bridge.canManageCloud : false
-                onClicked: root.bridge.syncCloudWorkspace()
+                onClicked: syncConfirm.ask("Synchronize all local profiles, proxies and scenarios with team " + root.bridge.selectedTeamId + " at " + root.bridge.serverUrl + "? This links local data to this team.", function() { root.bridge.syncCloudWorkspace() })
             }
             PrimaryButton {
                 text: "Sync + cookies"
                 icon: "cookie"
                 secondary: true
                 enabled: root.bridge ? root.bridge.canManageCloud : false
-                onClicked: root.bridge.syncCloudWorkspace(true)
+                onClicked: syncConfirm.ask("Upload local data AND browser cookies to team " + root.bridge.selectedTeamId + " at " + root.bridge.serverUrl + "? Cookies can grant access to signed-in accounts.", function() { root.bridge.syncCloudWorkspace(true) })
             }
             PrimaryButton {
                 text: root.bridge && root.bridge.conflictCount > 0 ? "Conflicts (" + root.bridge.conflictCount + ")" : "Conflicts"
@@ -156,7 +156,7 @@ Flickable {
         Text {
             width: parent.width
             visible: !root.cloud
-            text: "Login to unlock teams, roles, invites, profile locks between teammates and the audit log. Everything also works fully offline."
+            text: "Login to unlock teams, roles, invites, profile locks between teammates and the audit log. Local profiles and saved scenarios do not require signing in."
             color: Theme.muted
             font.pixelSize: 12
             wrapMode: Text.WordWrap
@@ -541,55 +541,80 @@ Flickable {
         ConfirmDialog { id: inviteConfirm }
     }
 
+    ConfirmDialog { id: syncConfirm }
+
     WorkspaceDialog {
         id: loginDialog
         objectName: "loginDialog"
         modal: true
         width: Math.min(460, root.width - 80)
-        height: 470
+        height: Math.min(implicitHeight, root.height - 24)
         anchors.centerIn: Overlay.overlay
-        padding: 0
         background: Rectangle { color: Theme.elevated; radius: Theme.radiusLg; border.color: Theme.border }
-        contentItem: Column {
-            anchors.fill: parent
-            anchors.margins: 24
-            spacing: 14
-
-            Text { text: "Login"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
-            Text { text: "Connect your account to enable teams, roles, invites and cloud sync."; color: Theme.muted; font.pixelSize: 13; wrapMode: Text.WordWrap; width: parent.width }
-            FormField { id: loginEmail; width: parent.width; label: "Email"; placeholder: "you@company.com" }
-            FormField { id: loginPassword; width: parent.width; label: "Password"; placeholder: "Password"; echoMode: TextInput.Password }
-            Row {
+        padding: 24
+        contentItem: Flickable {
+            implicitHeight: loginContent.implicitHeight
+            contentHeight: loginContent.implicitHeight
+            clip: true
+            ScrollBar.vertical: ScrollBar {}
+            Column {
+                id: loginContent
                 width: parent.width
-                spacing: 10
-                PrimaryButton { width: (parent.width - 10) / 2; text: "Cancel"; secondary: true; onClicked: loginDialog.close() }
-                PrimaryButton {
-                    width: (parent.width - 10) / 2
-                    text: "Login"
-                    icon: "link"
-                    onClicked: {
-                        if (root.bridge) root.bridge.login(loginEmail.text, loginPassword.text)
-                        loginDialog.close()
+                spacing: 14
+
+                Text { text: "Login"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
+                Text { text: "Connect your account to enable teams, roles, invites and cloud sync."; color: Theme.muted; font.pixelSize: 13; wrapMode: Text.WordWrap; width: parent.width }
+                FormField { id: loginEmail; width: parent.width; label: "Email"; placeholder: "you@company.com" }
+                FormField { id: loginPassword; width: parent.width; label: "Password"; placeholder: "Password"; echoMode: TextInput.Password }
+                Row {
+                    width: parent.width
+                    spacing: 10
+                    PrimaryButton { width: (parent.width - 10) / 2; text: "Cancel"; secondary: true; onClicked: loginDialog.close() }
+                    PrimaryButton {
+                        width: (parent.width - 10) / 2
+                        text: "Login"
+                        enabled: root.bridge && !root.bridge.authBusy
+                        icon: "link"
+                        onClicked: {
+                            if (root.bridge) root.bridge.login(loginEmail.text, loginPassword.text)
+                        }
                     }
                 }
-            }
-            Rectangle { width: parent.width; height: 1; color: Theme.borderSubtle }
-            Text { text: "OR SIGN IN WITH GOOGLE"; color: Theme.dim; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 1 }
-            PrimaryButton {
-                width: parent.width
-                text: "Continue with Google"
-                icon: "user"
-                onClicked: { if (root.bridge) root.bridge.googleLogin() }
-            }
-            FormField { id: loginPairCode; width: parent.width; label: "Pairing code from browser"; placeholder: "cf_…" }
-            PrimaryButton {
-                width: parent.width
-                text: "Link app"
-                secondary: true
-                onClicked: {
-                    if (root.bridge) root.bridge.loginWithPairCode(loginPairCode.text)
-                    loginDialog.close()
+                Rectangle { width: parent.width; height: 1; color: Theme.borderSubtle }
+                Text { text: "OR SIGN IN WITH GOOGLE"; color: Theme.dim; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 1 }
+                PrimaryButton {
+                    width: parent.width
+                    text: "Continue with Google"
+                    enabled: root.bridge && !root.bridge.authBusy
+                    icon: "user"
+                    onClicked: { if (root.bridge) root.bridge.googleLogin() }
                 }
+                FormField { id: loginPairCode; width: parent.width; label: "Pairing code from browser"; placeholder: "cf_…" }
+                PrimaryButton {
+                    width: parent.width
+                    text: "Link app"
+                    enabled: root.bridge && !root.bridge.authBusy && loginPairCode.text.trim() !== ""
+                    secondary: true
+                    onClicked: {
+                        if (root.bridge) root.bridge.loginWithPairCode(loginPairCode.text)
+                    }
+                }
+                Text {
+                    width: parent.width
+                    visible: text !== ""
+                    text: root.bridge ? root.bridge.authMessage : ""
+                    color: Theme.muted
+                    font.pixelSize: 12
+                    wrapMode: Text.Wrap
+                }
+            }
+        }
+        Connections {
+            target: root.bridge
+            function onLoginSucceeded() {
+                loginPassword.text = ""
+                loginPairCode.text = ""
+                loginDialog.close()
             }
         }
     }
@@ -628,11 +653,11 @@ Flickable {
                         spacing: 8
                         Column {
                             Layout.fillWidth: true
-                            Text { text: model.resource; color: Theme.primaryLight; font.pixelSize: 10; font.weight: Font.DemiBold; font.capitalization: Font.AllUppercase }
+                            Text { text: model.resource + (model.reason === "remote_deleted" ? " / deleted on server" : model.reason === "local_deleted" ? " / deleted locally" : ""); color: Theme.primaryLight; font.pixelSize: 10; font.weight: Font.DemiBold; font.capitalization: Font.AllUppercase }
                             Text { width: parent.width; text: model.key; color: Theme.text; font.pixelSize: 12; elide: Text.ElideMiddle }
                         }
-                        PrimaryButton { Layout.preferredWidth: 96; text: "Keep local"; secondary: true; onClicked: root.bridge.resolveConflict(model.resource + "|" + model.key + "|local") }
-                        PrimaryButton { Layout.preferredWidth: 104; text: "Keep remote"; secondary: true; onClicked: root.bridge.resolveConflict(model.resource + "|" + model.key + "|remote") }
+                        PrimaryButton { Layout.preferredWidth: 96; text: model.reason === "local_deleted" ? "Delete remote" : "Keep local"; secondary: true; onClicked: syncConfirm.ask("Apply the local version for " + model.key + "? If deleted locally, this deletes the server record.", function() { root.bridge.resolveConflict(model.resource + "|" + model.key + "|local") }) }
+                        PrimaryButton { Layout.preferredWidth: 104; text: model.reason === "remote_deleted" ? "Delete local" : "Keep remote"; secondary: true; onClicked: syncConfirm.ask("Apply the server version for " + model.key + "? If deleted on the server, this deletes the local record.", function() { root.bridge.resolveConflict(model.resource + "|" + model.key + "|remote") }) }
                     }
                 }
                 EmptyState { anchors.centerIn: parent; width: Math.min(320, parent.width); visible: root.bridge && root.bridge.conflictCount === 0; title: "No conflicts"; description: "Local and cloud versions agree."; icon: "check" }

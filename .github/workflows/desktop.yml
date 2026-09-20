@@ -4,10 +4,17 @@ on:
   push:
     paths:
       - "app/**"
+      - "requirements.txt"
+      - "camouflow.spec"
+      - "build.bat"
       - ".github/workflows/desktop.yml"
   pull_request:
     paths:
       - "app/**"
+      - "requirements.txt"
+      - "camouflow.spec"
+      - "build.bat"
+      - ".github/workflows/desktop.yml"
 
 jobs:
   static-check:
@@ -25,5 +32,158 @@ jobs:
       - name: Syntax check (compileall)
         run: python -m compileall -q app
 
-      - name: Lint (ruff, non-blocking on legacy)
-        run: ruff check app || true
+      - name: Undefined names and syntax errors
+        run: ruff check app --select F821,F822,F823,E9
+
+  qml-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install desktop dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Load every application page
+        shell: python
+        run: |
+          import os
+          import sys
+          import tempfile
+          import time
+          from unittest.mock import Mock
+          sys.path.insert(0, os.getcwd())
+          os.environ["QT_QPA_PLATFORM"] = "offscreen"
+          os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
+          os.environ["CAMOUFLOW_DATA_DIR"] = tempfile.mkdtemp(prefix="camouflow-ci-")
+          from PyQt6.QtCore import QMetaObject, QObject, QUrl
+          from PyQt6.QtQuick import QQuickWindow
+          from app.storage.db import init_db, db_set_setting
+          init_db()
+          db_set_setting("onboarding_completed", "true")
+          from app.ui.qml_app import QmlApplication
+          ui = QmlApplication([])
+          warnings = []
+          ui.engine.warnings.connect(lambda rows: warnings.extend(r.toString() for r in rows))
+          ui.engine.load(QUrl.fromLocalFile(str(ui.root_dir / "Main.qml")))
+          assert ui.engine.rootObjects(), "QML failed to load"
+          market_client = Mock()
+          market_client.market_scenarios.return_value = []
+          ui.scenarios._public_client = lambda: market_client
+          from threading import Event
+          market_gate = Event()
+          market_requests = []
+          def delayed_market(query, category, sort):
+              market_requests.append(query)
+              assert market_gate.wait(5), "Marketplace worker stalled"
+              return []
+          market_client.market_scenarios.side_effect = delayed_market
+          started = time.monotonic()
+          ui.scenarios.ensureMarketLoaded()
+          assert time.monotonic() - started < 0.2, "Marketplace blocked the UI"
+          ui.scenarios.ensureMarketLoaded()
+          ui.scenarios.searchMarket("old")
+          ui.scenarios.searchMarket("latest")
+          market_gate.set()
+          deadline = time.monotonic() + 5
+          while ui.scenarios.marketLoading and time.monotonic() < deadline:
+              ui.app.processEvents()
+              time.sleep(0.01)
+          assert not ui.scenarios.marketLoading
+          assert market_requests == ["", "latest"], market_requests
+          ui.scenarios.ensureMarketLoaded()
+          assert market_requests == ["", "latest"], "Cached page refetched"
+          market_client.market_scenarios.side_effect = None
+          for page in ("ScenarioRecord", "ScenarioRuns", "Profiles", "Proxies", "Scenarios", "Marketplace", "Browser", "Settings", "User", "Logs", "Dashboard"):
+              ui.state.setPage(page)
+              for _ in range(10):
+                  ui.app.processEvents()
+                  time.sleep(0.01)
+              if page == "Profiles":
+                  profile_page = ui.engine.rootObjects()[0].findChild(QObject, "pageLoader").property("item")
+                  actions = profile_page.findChild(QObject, "profileActionsDialog")
+                  panel = actions.findChild(QObject, "profileActionsPanel")
+                  for mode in ("bulk", "backup", "restore"):
+                      assert panel.setProperty("mode", mode)
+                      QMetaObject.invokeMethod(actions, "open")
+                      for _ in range(10):
+                          ui.app.processEvents()
+                      QMetaObject.invokeMethod(actions, "close")
+              if page == "Browser":
+                  root = ui.engine.rootObjects()[0]
+                  browser_page = root.findChild(QObject, "pageLoader").property("item")
+                  assert browser_page.objectName() == "browserPage"
+                  for engine in ("camoufox", "cloakbrowser"):
+                      ui.browser_settings.setEngine(engine)
+                      for tab in ("Runtime", "Fingerprint", "Network", "Context", "Storage", "Advanced", "Maintenance"):
+                          assert browser_page.setProperty("tab", tab)
+                          for _ in range(10):
+                              ui.app.processEvents()
+                          assert browser_page.property("tab") == tab
+          assert not warnings, warnings
+          from app.storage import db
+          db.db_add_account({"name": "ci-profile"})
+          db.db_save_scenario("ci-scenario", [{"action": "end"}], "CI")
+          ui.operations.queue.runner = lambda job, cancel: {"status": "success", "error": ""}
+          ui.operations.enqueue("ci-profile", "ci-scenario", "", "unchanged", "")
+          ui.operations.configure(1, False)
+          ui.operations.queue.tick()
+          ui.state.setPage("Profiles")
+          deadline = time.monotonic() + 3
+          while ui.operations.queue.snapshot()[0]["status"] != "success" and time.monotonic() < deadline:
+              ui.app.processEvents()
+              time.sleep(0.01)
+          assert ui.operations.queue.snapshot()[0]["status"] == "success"
+          ui.operations.previewBulk("ci-profile", "tag", "ci-updated")
+          ui.operations.applyBulk()
+          deadline = time.monotonic() + 3
+          while ui.operations.busy and time.monotonic() < deadline:
+              ui.app.processEvents()
+              time.sleep(0.01)
+          assert db.db_get_accounts()[0]["stage"] == "ci-updated"
+          import asyncio
+          import app.ui.bridge.recorder as recorder_module
+          original_browser = recorder_module.BrowserInterface
+          recorder_started = Event()
+          recorder_closed = Event()
+          class SlowRecordingBrowser:
+              def __init__(self, *args, **kwargs):
+                  self.page = None
+              async def start(self):
+                  recorder_started.set()
+                  await asyncio.sleep(60)
+              async def close(self, force=False):
+                  recorder_closed.set()
+          recorder_module.BrowserInterface = SlowRecordingBrowser
+          try:
+              db.db_set_setting("browser_engine", "camoufox")
+              ui.recorder.start("ci-profile", "https://example.test/")
+              assert ui.recorder.active
+              assert recorder_started.wait(3)
+              assert ui.operations.isReserved("ci-profile")
+              ui.recorder.stop()
+              ui.recorder.stop()
+              deadline = time.monotonic() + 5
+              while ui.recorder.active and time.monotonic() < deadline:
+                  ui.app.processEvents()
+                  time.sleep(0.01)
+              assert not ui.recorder.active, "Recording startup did not cancel"
+              assert recorder_closed.is_set()
+              assert not ui.operations.isReserved("ci-profile")
+          finally:
+              ui.recorder.shutdown()
+              recorder_module.BrowserInterface = original_browser
+          ui.operations.shutdown()
+          client = Mock()
+          ui.profiles._server_client = lambda: client
+          ui.profiles._live_server_profile_ids = {"smoke-profile": "profile-id"}
+          for _ in range(2):
+              ui.profiles._heartbeat_server_profiles()
+              deadline = time.monotonic() + 3
+              while ui.profiles._heartbeat_in_flight and time.monotonic() < deadline:
+                  ui.app.processEvents()
+                  time.sleep(0.01)
+              assert not ui.profiles._heartbeat_in_flight, "Heartbeat callback was not delivered"
+          assert client.heartbeat_profile_lock.call_count == 2
+          ui.profiles._heartbeat_timer.stop()
+          ui.engine.rootObjects()[0].close()

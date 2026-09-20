@@ -1158,9 +1158,9 @@ class AccountsMixin:
                 except Exception as exc:
                     cookies = []
 
-                    def fail() -> None:
+                    def fail(error=exc) -> None:
                         _set_cookies_busy(False)
-                        QMessageBox.warning(self, "Error", f"Cannot read cookies for {account_name}: {exc}")
+                        QMessageBox.warning(self, "Error", f"Cannot read cookies for {account_name}: {error}")
 
                     self._invoke_ui(fail)
                     return
@@ -1330,9 +1330,9 @@ class AccountsMixin:
                 try:
                     self._write_profile_cookies(account_name, cookies_state)
                 except Exception as exc:
-                    def fail() -> None:
+                    def fail(error=exc) -> None:
                         _set_cookies_busy(False)
-                        QMessageBox.warning(self, "Error", f"Cannot save cookies for {account_name}: {exc}")
+                        QMessageBox.warning(self, "Error", f"Cannot save cookies for {account_name}: {error}")
 
                     self._invoke_ui(fail)
                     return
