@@ -594,6 +594,9 @@ class ScenarioExecutor(
                 await self._update_timestamp_variable()
             if action == "start":
                 return StepResult.next()
+            if action == "python":
+                from app.services.python_script import execute_script
+                return await execute_script(self, step)
             if action == "goto":
                 return await self._action_goto(step)
             if action == "wait_for_load_state":
@@ -785,7 +788,8 @@ class ScenarioExecutor(
     async def start_run_capture(self) -> None:
         safe_scenario = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(self.scenario.name or "scenario"))[:80]
         safe_profile = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(self.profile_name or "profile"))[:80]
-        self._run_artifact_dir = OUTPUTS_DIR / "runs" / safe_scenario / safe_profile / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        if self._run_artifact_dir is None:
+            self._run_artifact_dir = OUTPUTS_DIR / "runs" / safe_scenario / safe_profile / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         self._run_artifact_dir.mkdir(parents=True, exist_ok=True)
         if self.page is not None:
             self.page.on("console", lambda message: self._browser_events.append({"type": "console", "level": str(message.type), "text": str(message.text)}))

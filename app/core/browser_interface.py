@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, Optional
 from urllib.parse import urlsplit
 
 from app.storage.db import (
+    DATA_ROOT,
     db_get_browser_engine,
     db_get_camoufox_defaults,
     db_get_cloakbrowser_defaults,
@@ -120,8 +121,8 @@ class BrowserInterface:
         proxy_logger = logging.getLogger("proxy_log")
         if not proxy_logger.handlers:
             proxy_logger.setLevel(logging.INFO)
-            log_path = os.path.join(os.getcwd(), "logs", "proxy.log")
-            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+            log_path = DATA_ROOT / "logs" / "proxy.log"
+            log_path.parent.mkdir(parents=True, exist_ok=True)
             handler = logging.FileHandler(log_path, encoding="utf-8")
             from app.utils.gui_logging import PROFILE_FILTER, ProfileFormatter
 

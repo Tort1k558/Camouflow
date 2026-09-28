@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import threading
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
@@ -69,8 +71,7 @@ class SettingsBridge(QObject):
             "No shared profiles/proxies/scenarios\n"
             "No roles or access control\n"
             "No profile locks between teammates\n"
-            "No audit log or cloud backup\n"
-            "No license/team policy enforcement"
+            "No audit log or cloud backup"
         )
 
     def _emit_message(self, text: str) -> None:
@@ -212,3 +213,75 @@ class SettingsBridge(QObject):
     def resetOnboarding(self) -> None:  # noqa: N802
         db_set_setting(ONBOARDING_COMPLETED_KEY, "false")
         self.refresh()
+
+    # --- AI agent provider ---------------------------------------------------------
+
+    @pyqtProperty(bool, notify=changed)
+    def aiEnabled(self) -> bool:  # noqa: N802
+        return (db_get_setting("ai_enabled") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+    @pyqtProperty(str, notify=changed)
+    def aiBaseUrl(self) -> str:  # noqa: N802
+        return db_get_setting("ai_base_url") or ""
+
+    @pyqtProperty(str, notify=changed)
+    def aiApiKey(self) -> str:  # noqa: N802
+        return db_get_setting("ai_api_key") or ""
+
+    @pyqtProperty(str, notify=changed)
+    def aiModel(self) -> str:  # noqa: N802
+        return db_get_setting("ai_model") or ""
+
+    @pyqtProperty(str, notify=changed)
+    def aiMaxSteps(self) -> str:  # noqa: N802
+        return db_get_setting("ai_max_steps") or "25"
+
+    @pyqtSlot(bool, str, str, str, str)
+    def saveAiSettings(self, enabled, base_url, api_key, model, max_steps):  # noqa: N802
+        base_url = str(base_url or "").strip().rstrip("/")
+        model = str(model or "").strip()
+        try:
+            steps = int(str(max_steps or "25").strip() or 25)
+        except ValueError:
+            self._emit_message("Max steps must be a number")
+            return
+        steps = max(5, min(100, steps))
+        if enabled and (not base_url or not model):
+            self._emit_message("AI provider needs a base URL and a model")
+            return
+        if base_url and not base_url.startswith(("http://", "https://")):
+            self._emit_message("AI base URL must start with http:// or https://")
+            return
+        db_set_setting("ai_enabled", "true" if enabled else "false")
+        db_set_setting("ai_base_url", base_url)
+        db_set_setting("ai_api_key", str(api_key or "").strip())
+        db_set_setting("ai_model", model)
+        db_set_setting("ai_max_steps", str(steps))
+        self._emit_message("AI settings saved" + ("" if enabled else " (disabled)"))
+        self.refresh()
+
+    @pyqtSlot()
+    def testAiProvider(self):  # noqa: N802
+        from app.ui.bridge.ai import ai_config, ai_configured
+
+        if not ai_configured():
+            self._emit_message("Configure the AI provider first")
+            return
+        threading.Thread(target=self._test_ai_worker, daemon=True, name="ai-test").start()
+
+    def _test_ai_worker(self):
+        from app.services.ai_agent.llm import LLMClient, LLMError
+        from app.services.ai_agent.loop import SYSTEM_PROMPT
+        from app.ui.bridge.ai import ai_config
+
+        try:
+            client = LLMClient(ai_config())
+            thought, action = asyncio.run(client.next_action([
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": "Connection test. Reply with the done action and result 'connection ok'."},
+            ]))
+            self.message.emit(f"AI provider works: {action['name']} ({thought[:60]})")
+        except LLMError as exc:
+            self.message.emit(f"AI provider test failed: {exc}")
+        except Exception as exc:  # noqa: BLE001
+            self.message.emit(f"AI provider test failed: {exc}")

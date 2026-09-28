@@ -91,6 +91,34 @@ Flickable {
                 PrimaryButton { text: "Retry from start"; secondary: true; enabled: root.selectedJob !== ""; onClicked: confirmation.ask("Repeat the entire scenario on this profile? Previously completed actions, payments or submissions may run again. Review the error and artifacts first.", function() { operationsBridge.retry(root.selectedJob) }, "Retry") }
             }
             Text { Layout.fillWidth: true; text: "Artifacts may contain signed-in pages and sensitive data. Open trace.zip with the local Playwright trace viewer; do not upload it to untrusted services."; color: Theme.muted; wrapMode: Text.WordWrap }
+            RowLayout {
+                Layout.fillWidth: true
+                Text { Layout.fillWidth: true; text: "Local history"; color: Theme.text; font.pixelSize: 16; font.weight: Font.DemiBold }
+                PrimaryButton { text: "Clear history"; secondary: true; onClicked: confirmation.ask("Clear local run history for this workspace? Artifact files will be retained.", function() { operationsBridge.clearHistory() }, "Clear history") }
+            }
+            ListView {
+                id: historyList
+                Layout.fillWidth: true; Layout.preferredHeight: 220; clip: true; spacing: 6
+                model: operationsBridge.historyModel
+                ScrollBar.vertical: ScrollBar {}
+                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: historyList.count === 0; title: "No local run history"; description: "Finished queue jobs will appear here even after queue cleanup."; icon: "clock" }
+                delegate: Rectangle {
+                    width: ListView.view.width; height: 66; radius: 8
+                    color: root.selectedJob === model.id ? Theme.subtle : Theme.card
+                    border.color: Theme.border
+                    RowLayout {
+                        anchors.fill: parent; anchors.margins: 10
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Text { Layout.fillWidth: true; text: model.scenario + " / " + model.profile; color: Theme.text; elide: Text.ElideRight }
+                            Text { text: model.status + " · " + model.finished + " · " + model.duration; color: Theme.muted; font.pixelSize: 11 }
+                            Text { visible: model.error !== ""; Layout.fillWidth: true; text: model.error; color: Theme.danger; font.pixelSize: 11; elide: Text.ElideRight }
+                        }
+                        PrimaryButton { text: "Details"; secondary: true; onClicked: { root.selectedJob = model.id; operationsBridge.selectJob(model.id) } }
+                        PrimaryButton { text: "Artifacts"; secondary: true; enabled: model.artifacts !== ""; onClicked: { root.selectedJob = model.id; operationsBridge.openArtifacts(model.id) } }
+                    }
+                }
+            }
             ScrollView {
                 Layout.fillWidth: true; Layout.preferredHeight: 250
                 TextArea { text: operationsBridge.details; readOnly: true; selectByMouse: true; color: Theme.text; wrapMode: TextEdit.Wrap }

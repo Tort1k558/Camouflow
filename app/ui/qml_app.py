@@ -15,6 +15,7 @@ from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtQml import QQmlApplicationEngine
 
 from app.ui.bridge.app_state import AppState
+from app.ui.bridge.ai import AIBridge
 from app.ui.bridge.browser_settings import BrowserSettingsBridge
 from app.ui.bridge.dashboard import DashboardBridge
 from app.ui.bridge.logs import LogsBridge
@@ -61,6 +62,9 @@ class QmlApplication:
         self.profiles.proxies = self.proxies
         self.browser_settings = BrowserSettingsBridge(self.state)
         self.logs = LogsBridge(self.state)
+        self.ai = AIBridge(self.operations, self.scenarios, self.state)
+        self.ai.message.connect(self.logs.append)
+        self.app.aboutToQuit.connect(self.ai.shutdown)
         self.settings = SettingsBridge(self.state)
         self.user = UserBridge(self.state)
         self.dashboard = DashboardBridge(self.profiles, self.state)
@@ -94,6 +98,7 @@ class QmlApplication:
         context = self.engine.rootContext()
         context.setContextProperty("operationsBridge", self.operations)
         context.setContextProperty("recorderBridge", self.recorder)
+        context.setContextProperty("aiBridge", self.ai)
         context.setContextProperty("AppState", self.state)
         context.setContextProperty("appState", self.state)
         context.setContextProperty("DashboardBridge", self.dashboard)

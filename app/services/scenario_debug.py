@@ -47,6 +47,7 @@ class ScenarioDebugSession:
     ) -> None:
         self._cancel_event = cancel_event
         self._step_once = False
+        self._pause_target = None
         self._enabled = True
         self._run_event = Event()
         self._run_event.set()
@@ -75,16 +76,26 @@ class ScenarioDebugSession:
         self._run_event.set()
 
     def pause(self) -> None:
+        with self._lock:
+            self._pause_target = None
         if self._enabled:
             self._run_event.clear()
 
+    def run_until(self, scenario_name: str, step_index: int) -> None:
+        with self._lock:
+            self._pause_target = (scenario_name, step_index)
+            self._step_once = False
+        self._run_event.set()
+
     def step_once(self) -> None:
         with self._lock:
+            self._pause_target = None
             self._step_once = True
         self._run_event.set()
 
     def resume(self) -> None:
         with self._lock:
+            self._pause_target = None
             self._step_once = False
         self._run_event.set()
 
@@ -231,6 +242,9 @@ class ScenarioDebugSession:
         )
         with self._lock:
             self._current_account_name = update.account_name
+            if self._pause_target == (update.scenario_name, update.step_index):
+                self._pause_target = None
+                self._run_event.clear()
         if self._on_update:
             if self._ui_invoke:
                 self._ui_invoke(lambda: self._on_update(update))

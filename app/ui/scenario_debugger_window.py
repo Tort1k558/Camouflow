@@ -12,6 +12,7 @@ from PyQt6.QtCore import QFileSystemWatcher, Qt, QTimer
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import (
     QFrame,
+    QPlainTextEdit,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -35,6 +36,17 @@ def _fmt_ts(ts: Optional[float]) -> str:
 
 
 class ScenarioDebuggerWindow(QWidget):
+    def append_script_event(self, event):
+        self._script_output.setVisible(True)
+        if event.get("type") == "python_start":
+            text = "Python block (step-level debugging)\n" + event.get("code", "")
+            text += "\nInputs: " + json.dumps(event.get("inputs", {}), ensure_ascii=False)
+        elif event.get("type") == "python_result":
+            text = "Return: " + json.dumps(event.get("result"), ensure_ascii=False)
+        else:
+            text = event.get("text", "")
+        self._script_output.appendPlainText(text[:32768])
+
     def __init__(
         self,
         session: ScenarioDebugSession,
@@ -87,6 +99,13 @@ class ScenarioDebuggerWindow(QWidget):
         info_layout.addWidget(self._reload_label)
         info_layout.addWidget(self._steps_label)
         root.addWidget(info)
+        self._script_output = QPlainTextEdit(self)
+        self._script_output.setReadOnly(True)
+        self._script_output.setMaximumBlockCount(1500)
+        self._script_output.setMinimumHeight(160)
+        self._script_output.setVisible(False)
+        root.addWidget(self._script_output)
+
 
         controls = QFrame(self)
         controls.setFrameShape(QFrame.Shape.NoFrame)
@@ -138,6 +157,10 @@ class ScenarioDebuggerWindow(QWidget):
         jump_layout.addWidget(self._steps_list, 1)
 
         run_sel_row = QHBoxLayout()
+        run_until_btn = QPushButton("Run to selected", jump)
+        run_until_btn.setToolTip("Execute intervening steps and pause before the selected step")
+        run_until_btn.clicked.connect(self._run_until_selected)
+        run_sel_row.addWidget(run_until_btn)
         run_sel_row.addStretch(1)
         run_selected_btn = QPushButton("Run selected", jump)
         run_selected_btn.clicked.connect(self._run_selected_step)
@@ -263,6 +286,16 @@ class ScenarioDebuggerWindow(QWidget):
             return
         self._session.request_jump_to_step(actual + 1)
         self._session.resume()
+        self._refresh_pause_button()
+
+    def _run_until_selected(self) -> None:
+        actual = self._step_index_for_row(self._steps_list.currentRow())
+        if actual is None or self._last_update is None:
+            return
+        if actual <= self._last_update.step_index:
+            self._desc_label.setText("Choose a later step. Run to selected does not rewind executed actions.")
+            return
+        self._session.run_until(self._last_update.scenario_name, actual)
         self._refresh_pause_button()
 
     def _setup_step_watcher(self) -> None:

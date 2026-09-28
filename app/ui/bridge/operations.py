@@ -16,6 +16,7 @@ from PyQt6.QtGui import QDesktopServices
 from app.services.cloud_sync import CloudWorkspaceSync
 from app.services.profile_backup import export_profile, restore_profile
 from app.services.proxy_policy import account_proxy, choose_proxy
+from app.services.run_history import RunHistory
 from app.services.run_queue import RunQueue, TERMINAL
 from app.services.scenario_engine import ScenarioExecutor
 from app.services.scenario_debug import ScenarioDebugSession
@@ -26,6 +27,7 @@ from app.ui.bridge.models import DictListModel
 
 
 class OperationsBridge(QObject):
+    pythonApprovalRequested = pyqtSignal(str)
     changed = pyqtSignal()
     message = pyqtSignal(str)
     uiCall = pyqtSignal(object)
@@ -34,9 +36,11 @@ class OperationsBridge(QObject):
         super().__init__(parent)
         self.profiles, self.scenarios, self.state = profiles, scenarios, state
         self._model = DictListModel(["id", "scenario", "profile", "status", "due", "error", "artifacts", "duration"], parent=self)
+        self._history_model = DictListModel(["id", "scenario", "profile", "status", "started", "finished", "duration", "error", "artifacts"], parent=self)
         self._debug_windows = {}
         self._debug_enabled = str(db.db_get_setting("general_debug_mode") or "").lower() in {"true", "1"}
         self._busy = False
+        self._pending_python = None
         self._preview = ""
         self._plan = None
         self._selected = ""
@@ -49,7 +53,13 @@ class OperationsBridge(QObject):
         self._proxy_lock = threading.Lock()
         self.uiCall.connect(self._invoke)
         state.cloudChanged.connect(self._check_selection_workspace)
-        self.queue = RunQueue(db.SETTINGS_DIR / "run-queue.json", self._run_job, lambda: self.uiCall.emit(self.refresh))
+        self.history = RunHistory(db.SETTINGS_DIR / "run-history.json")
+        self.queue = RunQueue(
+            db.SETTINGS_DIR / "run-queue.json",
+            self._run_job,
+            lambda: self.uiCall.emit(self.refresh),
+            lambda job: self.history.record(job),
+        )
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
         self.timer.timeout.connect(lambda: self.queue.tick(workspace=self._workspace()))
@@ -90,6 +100,11 @@ class OperationsBridge(QObject):
         window.show()
         window.raise_()
 
+    def _script_event(self, job_id, event):
+        window = self._debug_windows.get(job_id)
+        if window:
+            window.append_script_event(event)
+
     def _debug_update(self, job_id, update):
         window = self._debug_windows.get(job_id)
         if window:
@@ -103,6 +118,10 @@ class OperationsBridge(QObject):
     @pyqtProperty(QObject, constant=True)
     def jobsModel(self):
         return self._model
+
+    @pyqtProperty(QObject, constant=True)
+    def historyModel(self):
+        return self._history_model
 
     @pyqtProperty(int, notify=changed)
     def parallelism(self):
@@ -160,9 +179,25 @@ class OperationsBridge(QObject):
             rows.append({**job, "due": datetime.fromtimestamp(job["due"]).strftime("%Y-%m-%d %H:%M"),
                          "duration": f"{max(0, (job.get('finished') or time.time()) - job['started']):.1f}s" if job["started"] else "—"})
         self._model.set_rows(rows)
+        self._history_model.set_rows([self._history_row(row) for row in self.history.list(self._workspace(), limit=120)])
         if self._selected:
             self.selectJob(self._selected)
         self.changed.emit()
+
+    @staticmethod
+    def _time_label(value):
+        return datetime.fromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S") if value else "—"
+
+    @classmethod
+    def _history_row(cls, row):
+        started = float(row.get("started") or 0)
+        finished = float(row.get("finished") or 0)
+        return {
+            **row,
+            "started": cls._time_label(started),
+            "finished": cls._time_label(finished),
+            "duration": f"{max(0, finished - started):.1f}s" if started and finished else "—",
+        }
 
     @staticmethod
     def _workspace():
@@ -201,11 +236,43 @@ class OperationsBridge(QObject):
             if policy == "replace_failed" and not pool.strip():
                 raise ValueError("Select a proxy pool for replacement")
             library = {s.name: {"steps": s.steps, "description": s.description or ""} for s in self.scenarios._list_scenarios()}
-            self.queue.enqueue([{"profile": n, "scenario": scenario.name, "workspace": self._workspace(),
-                                 "profile_id": str(accounts[n].get("id") or ""),
-                                 "steps": copy.deepcopy(scenario.steps), "description": scenario.description or "",
-                                 "policy": policy, "pool": pool.strip(), "library": library, "debug": self._debug_enabled} for n in selected], due)
+            from app.services.python_script import script_bundle
+            digest, preview = script_bundle(scenario.steps, library)
+            specs = [{"profile": n, "scenario": scenario.name, "workspace": self._workspace(),
+                      "profile_id": str(accounts[n].get("id") or ""),
+                      "steps": copy.deepcopy(scenario.steps), "description": scenario.description or "",
+                      "policy": policy, "pool": pool.strip(), "library": library, "debug": self._debug_enabled}
+                     for n in selected]
+            if digest and not self._python_approved(digest):
+                self._pending_python = (copy.deepcopy(specs), due, digest, get_server_session(), self._workspace())
+                self.pythonApprovalRequested.emit(preview)
+                return
+            self.queue.enqueue(specs, due)
             self._notify(f"Queued {len(selected)} profile(s). Resume the queue when ready; keep the application open.")
+        except Exception as exc:
+            self._notify(str(exc))
+
+    def _python_approved(self, digest):
+        approved = json.loads(db.db_get_setting("python_script_approvals") or "{}")
+        return digest in approved.get(self._workspace(), [])
+
+    @pyqtSlot(bool)
+    def approvePython(self, approved):
+        pending, self._pending_python = self._pending_python, None
+        if not pending or not approved:
+            return
+        specs, due, digest, session, workspace = pending
+        try:
+            if session != get_server_session() or workspace != self._workspace():
+                raise ValueError("Workspace changed. Configure this run again.")
+            if not self.scenarios._ensure_allowed("operator"):
+                return
+            with db._STORAGE_LOCK:
+                approvals = json.loads(db.db_get_setting("python_script_approvals") or "{}")
+                approvals[workspace] = list(dict.fromkeys([*approvals.get(workspace, []), digest]))[-500:]
+                db.db_set_setting("python_script_approvals", json.dumps(approvals))
+            self.queue.enqueue(specs, due)
+            self._notify(f"Queued {len(specs)} profile(s). Resume the queue when ready.")
         except Exception as exc:
             self._notify(str(exc))
 
@@ -226,6 +293,13 @@ class OperationsBridge(QObject):
         self._selected = ""
         self._details = ""
         self.changed.emit()
+
+    @pyqtSlot()
+    def clearHistory(self):
+        self.history.clear(self._workspace())
+        self._selected = ""
+        self._details = ""
+        self.refresh()
 
     def isReserved(self, name):
         with self._reservation_lock:
@@ -257,6 +331,12 @@ class OperationsBridge(QObject):
     def _run_job(self, job, cancel):
         if job["workspace"] != self._workspace():
             raise ValueError("Workspace changed. Switch back and explicitly retry this job.")
+        from app.services.python_script import script_bundle
+        from app.services.scenario_worker import run_worker, WorkerCleanupError
+        digest, _ = script_bundle(job["steps"], job.get("library", {}))
+        if digest and not self._python_approved(digest):
+            raise ValueError("This Python scenario version requires local approval. Configure the run again.")
+        cleanup_failed = False
         name = job["profile"]
         self._reserve([name], reason="Scenario running")
         client = ServerClient() if get_server_session().enabled else None
@@ -361,7 +441,13 @@ class OperationsBridge(QObject):
                     finally:
                         await runner.close(force=True)
             try:
-                result = asyncio.run(execute())
+                if digest:
+                    updater = (lambda tag: client.update_profile(account["id"], {"group_name": tag})) if client else None
+                    def script_event(event):
+                        self.uiCall.emit(lambda: self._script_event(job["id"], event))
+                    result = run_worker(account, job, cancel, debug_session, updater, script_event if debug_session else None)
+                else:
+                    result = asyncio.run(execute())
             finally:
                 if debug_session:
                     debug_session.request_stop()
@@ -371,6 +457,12 @@ class OperationsBridge(QObject):
             if client and run_id:
                 client.update_scenario_run(run_id, {"status": "canceled" if cancel.is_set() else result["status"], "error": result["error"], "duration_ms": int((time.monotonic() - started) * 1000)})
             return result
+        except WorkerCleanupError:
+            cleanup_failed = True
+            with self._reservation_lock:
+                self._reservation_labels[name] = "Cleanup required"
+            self.uiCall.emit(self.profiles._render_accounts)
+            raise
         except Exception as exc:
             if client and run_id:
                 try:
@@ -380,19 +472,23 @@ class OperationsBridge(QObject):
             raise
         finally:
             heartbeat_stop.set()
-            if client and locked:
+            if client and locked and not cleanup_failed:
                 try:
                     client.unlock_profile(job["profile_id"])
                 except Exception as exc:
                     self.uiCall.emit(lambda error=str(exc): self._notify("Could not release cloud lock: " + error))
-            self._release([name])
+            if not cleanup_failed:
+                self._release([name])
 
     @pyqtSlot(str)
     def selectJob(self, job_id):
         self._selected = job_id
-        job = next((j for j in self.queue.snapshot() if j["id"] == job_id), None)
+        job = self._find_run(job_id)
         self._details = json.dumps({k: v for k, v in job.items() if k not in {"steps", "library"}}, ensure_ascii=False, indent=2) if job else ""
         if job and job.get("artifacts"):
+            script_log = Path(job["artifacts"]) / "python.jsonl"
+            if script_log.is_file() and script_log.resolve().is_relative_to(db.OUTPUTS_DIR.resolve()):
+                self._details += "\n\nPython output:\n" + script_log.read_text(encoding="utf-8")[-32768:]
             path = Path(job["artifacts"]) / "error.json"
             if path.is_file() and path.resolve().is_relative_to(db.OUTPUTS_DIR.resolve()):
                 self._details += "\n\nFailure details:\n" + path.read_text(encoding="utf-8")
@@ -400,7 +496,7 @@ class OperationsBridge(QObject):
 
     @pyqtSlot(str, str)
     def openResultFile(self, job_id, kind):
-        job = next((j for j in self.queue.snapshot() if j["id"] == job_id), {})
+        job = self._find_run(job_id) or {}
         directory = Path(job.get("artifacts") or "").resolve()
         if not job.get("artifacts") or not directory.is_relative_to(db.OUTPUTS_DIR.resolve()):
             self._notify("No artifacts available")
@@ -444,13 +540,16 @@ class OperationsBridge(QObject):
 
     @pyqtSlot(str)
     def openArtifacts(self, job_id):
-        job = next((j for j in self.queue.snapshot() if j["id"] == job_id), {})
+        job = self._find_run(job_id) or {}
         path = Path(job.get("artifacts") or "").resolve()
         if not job.get("artifacts") or not path.is_dir() or not path.is_relative_to(db.OUTPUTS_DIR.resolve()):
             self._notify("No artifacts available")
             return
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
             self._notify("Could not open artifact directory")
+
+    def _find_run(self, run_id):
+        return next((j for j in self.queue.snapshot() if j["id"] == run_id), None) or self.history.get(run_id)
 
     def _background(self, names, work):
         if self._busy:

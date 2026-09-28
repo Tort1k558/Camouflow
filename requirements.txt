@@ -8,5 +8,7 @@ browserforge==1.2.4
 PyQt6==6.11.0
 PySocks==1.7.1
 PyInstaller==6.20.0
+# AI assistant LLM client (OpenAI-compatible providers).
+httpx==0.28.1
 # Reproduce the tested Playwright build on clean installs and engine updates.
 playwright @ git+https://github.com/microsoft/playwright-python.git@0c818614414cc0b5de348db8e295e8cf64bad2d6

@@ -360,9 +360,6 @@ class ServerClient:
     def audit_log(self, limit: int = 100) -> List[Dict[str, Any]]:
         return list(self.request("GET", f"/api/v1/teams/{self.session.team_id}/audit-log?limit={int(limit)}") or [])
 
-    def license(self) -> Dict[str, Any]:
-        return dict(self.request("GET", f"/api/v1/teams/{self.session.team_id}/license") or {})
-
     def export_backup(self) -> Dict[str, Any]:
         return dict(self.request("GET", "/api/v1/backups/export") or {})
 

@@ -29,9 +29,7 @@ class SharedSteps:
             msg = f"No items in shared var {key}"
             return StepResult.stop(msg)
 
-        item = items.pop(0)
-        remaining = "\n".join(items)
-        self.shared_manager.set(key, remaining)
+        item, remaining = self.shared_manager.pop_first(key)
         self.shared_vars = self.shared_manager.all()
         self.variables[key] = remaining
         self._persist_shared_setting(key, remaining)
@@ -59,7 +57,11 @@ class SharedSteps:
         self.logger.info("Popped from shared %s -> %s", key, item)
         if account_updates:
             try:
-                db_update_account(self.profile_name, account_updates)
+                updater = getattr(self, "_account_updater", None)
+                if updater:
+                    updater(account_updates)
+                else:
+                    db_update_account(self.profile_name, account_updates)
                 self.account_payload.update(account_updates)
             except Exception as exc:
                 self.logger.warning("Failed to save account data for %s: %s", self.profile_name, exc)

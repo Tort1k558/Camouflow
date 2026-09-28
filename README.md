@@ -29,7 +29,8 @@ CamouFlow is a desktop app for working with isolated browser profiles. Every pro
 - 🔒 **Local-first** — profiles, scenarios and data stay on your machine; local mode needs no server login
 - 🧬 **Anti-detect engines** — Camoufox (Firefox-based) and CloakBrowser (Chromium-based) with configurable fingerprints
 - 🕸 **Visual automation** — scenarios are assembled on a canvas from steps linked by success/error transitions
-- 🌐 **Teams and control center** — optional server: roles, shared pools, audit, billing
+- 🤖 **AI assistant** — describe a task in plain language and a built-in agent (any OpenAI-compatible provider, incl. local Ollama) drives the profile's browser on both engines; save its actions as a replayable scenario
+- 🌐 **Teams and control center** — optional server: roles, shared pools, audit, marketplace
 
 ## Screenshots
 
@@ -98,7 +99,7 @@ Supported steps: `start`/`end` · open URL · HTTP request · wait for element/l
 ┌─────────────────────────────┐        ┌─────────────────────────────┐
 │   Desktop app (this repo)   │        │   Server (optional)         │
 │   PyQt6/QML + Python core   │◄──────►│   teams · roles · pools     │
-│   Camoufox · CloakBrowser   │  API   │   audit · billing · market  │
+│   Camoufox · CloakBrowser   │  API   │   audit · market            │
 │   local profiles and data   │        │   owner web console         │
 └─────────────────────────────┘        └─────────────────────────────┘
 ```
@@ -159,6 +160,11 @@ The desktop lives in `app/` and its CI runs from this repository. The optional b
 Local synchronization binds that data directory to one server/team. Switching the active team still permits direct cloud work, but does not authorize transferring local resources to a different team. Manual synchronization confirms the destination; cookie upload requires separate confirmation. Deletions require an explicit conflict resolution and browser directories are retained.
 
 ## Desktop operations
+
+Python blocks are available under **Scenarios > Scripting > Python script**.
+Use **Edit Python script** for code, inputs and the result variable; test through
+the existing run debugger. Native Python requires local approval and executes in
+a supervised process, not a security sandbox. See the [Python scripting guide](docs-site/docs/python-scripting.md).
 
 Select profiles with their checkboxes, then use **Selected actions** to schedule a scenario, bulk edit/export, or create a full archive. Restore archives through **Profiles > Import > Restore archive**. The queue and results live under **Scenarios > Runs**, beside the editor. Run/Batch run actions use this same queue; switching pages does not stop jobs.
 

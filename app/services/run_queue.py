@@ -16,12 +16,14 @@ TERMINAL = {"success", "failed", "canceled", "interrupted"}
 
 
 class RunQueue:
-    def __init__(self, path: Path, runner: Callable, changed: Callable = lambda: None):
+    def __init__(self, path: Path, runner: Callable, changed: Callable = lambda: None, finished: Callable = lambda job: None):
         self.path = path
         self.runner = runner
         self.changed = changed
+        self.finished = finished
         self._lock = threading.RLock()
         self._active: dict[str, threading.Event] = {}
+        self._workers: dict[str, threading.Thread] = {}
         self.paused = True
         self.parallelism = 1
         self.jobs: list[dict] = []
@@ -34,6 +36,7 @@ class RunQueue:
             for job in self.jobs:
                 if job["status"] == "running":
                     job.update(status="interrupted", error="Application stopped during execution; review results before retrying.", finished=time.time())
+                    self._record_finished(job)
             self._save()
 
     def _save(self):
@@ -105,7 +108,9 @@ class RunQueue:
                 busy_profiles.add(job["profile"])
                 job.update(status="running", started=time.time())
                 self._save()
-                threading.Thread(target=self._execute, args=(job, event), daemon=True, name="camouflow-queue").start()
+                worker = threading.Thread(target=self._execute, args=(job, event), daemon=True, name="camouflow-queue")
+                self._workers[job["id"]] = worker
+                worker.start()
                 launched = True
         if launched:
             self.changed()
@@ -121,12 +126,26 @@ class RunQueue:
             result = {"status": "canceled" if event.is_set() else "failed", "error": str(exc)}
         with self._lock:
             job.update({key: result[key] for key in ("status", "error", "artifacts", "step") if key in result}, finished=time.time())
+            finished_job = copy.deepcopy(job)
             self._active.pop(job["id"], None)
+            self._workers.pop(job["id"], None)
             self._save()
+        self._record_finished(finished_job)
         self.changed()
+
+    def _record_finished(self, job):
+        try:
+            self.finished(copy.deepcopy(job))
+        except Exception:
+            pass
 
     def shutdown(self):
         with self._lock:
             self.paused = True
             for event in self._active.values():
                 event.set()
+            workers = list(self._workers.values())
+        deadline = time.monotonic() + 8
+        for worker in workers:
+            if worker is not threading.current_thread():
+                worker.join(max(0, deadline - time.monotonic()))

@@ -37,7 +37,7 @@ class UserBridge(QObject):
         super().__init__(parent)
         self._app_state = app_state
         self._teams_model = DictListModel([
-            "id", "name", "slug", "role", "plan", "license_status", "invited_by",
+            "id", "name", "slug", "role", "invited_by",
             "invited_by_email", "selected", "profiles", "proxies", "scenarios",
         ], parent=self)
         self._invites_model = DictListModel([
@@ -336,8 +336,6 @@ class UserBridge(QObject):
                 "name": str(team.get("name") or ""),
                 "slug": str(team.get("slug") or ""),
                 "role": str(team.get("role") or ""),
-                "plan": str(team.get("plan") or ""),
-                "license_status": str(team.get("license_status") or ""),
                 "invited_by": str(team.get("invited_by") or ""),
                 "invited_by_email": str(team.get("invited_by_email") or ""),
                 "selected": str(team.get("id") or "") == selected,

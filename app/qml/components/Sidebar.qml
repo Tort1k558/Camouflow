@@ -25,7 +25,7 @@ Rectangle {
             delegate: Button {
                 id: navButton
                 required property var modelData
-                readonly property bool selected: appState && (appState.currentPage === modelData[0] || (modelData[0] === "Scenarios" && (appState.currentPage === "ScenarioRuns" || appState.currentPage === "ScenarioRecord")))
+                readonly property bool selected: appState && (appState.currentPage === modelData[0] || (modelData[0] === "Scenarios" && (appState.currentPage === "ScenarioRuns" || appState.currentPage === "ScenarioRecord" || appState.currentPage === "ScenarioAI")))
                 width: parent.width; height: 44
                 text: modelData[2]
                 Accessible.name: text

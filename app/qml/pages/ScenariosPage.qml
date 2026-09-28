@@ -25,6 +25,7 @@ Item {
     }
 
     ConfirmDialog { id: confirmDialog }
+    PythonScriptDialog { id: pythonEditor }
 
     function confirmDeleteStep() {
         var step = scenariosBridge.selectedStep()
@@ -264,24 +265,31 @@ Item {
                         PrimaryButton { width: (parent.width - 8) / 2; text: "Delete"; danger: true; enabled: scenariosBridge.canManage; onClicked: root.confirmDeleteStep() }
                     }
                     FormField { id: stepTag; width: parent.width; label: "Tag" }
-                    Row { width: parent.width; spacing: 8
-                        FormField { id: stepAction; width: (parent.width - 8) / 2; label: "Action" }
-                        FormField { id: stepSelectorType; width: (parent.width - 8) / 2; label: "Selector type" }
+                    PrimaryButton {
+                        width: parent.width
+                        visible: stepAction.text === "python"
+                        text: "Edit Python script"
+                        enabled: scenariosBridge.canManage
+                        onClicked: pythonEditor.edit(scenariosBridge.selectedStep())
                     }
-                    FormField { id: stepSelector; width: parent.width; label: "Selector" }
-                    FormField { id: stepValue; width: parent.width; label: "Value / URL / text" }
-                    FormField { id: stepVariable; width: parent.width; label: "Variable" }
-                    FormField { id: stepPattern; width: parent.width; label: "Pattern / targets" }
                     Row { width: parent.width; spacing: 8
-                        FormField { id: stepTimeout; width: (parent.width - 8) / 2; label: "Timeout ms" }
-                        FormField { id: stepSeconds; width: (parent.width - 8) / 2; label: "Sleep sec" }
+                        FormField { id: stepAction; width: text === "python" ? parent.width : (parent.width - 8) / 2; label: "Action" }
+                        FormField { id: stepSelectorType; visible: stepAction.text !== "python"; width: (parent.width - 8) / 2; label: "Selector type" }
+                    }
+                    FormField { id: stepSelector; visible: stepAction.text !== "python"; width: parent.width; label: "Selector" }
+                    FormField { id: stepValue; visible: stepAction.text !== "python"; width: parent.width; label: "Value / URL / text" }
+                    FormField { id: stepVariable; visible: stepAction.text !== "python"; width: parent.width; label: "Variable" }
+                    FormField { id: stepPattern; visible: stepAction.text !== "python"; width: parent.width; label: "Pattern / targets" }
+                    Row { width: parent.width; spacing: 8
+                        FormField { id: stepTimeout; width: stepAction.text === "python" ? parent.width : (parent.width - 8) / 2; label: "Timeout ms" }
+                        FormField { id: stepSeconds; visible: stepAction.text !== "python"; width: (parent.width - 8) / 2; label: "Sleep sec" }
                     }
                     Row { width: parent.width; spacing: 8
                         FormField { id: stepNextOk; width: (parent.width - 8) / 2; label: "Next success tag" }
                         FormField { id: stepNextErr; width: (parent.width - 8) / 2; label: "Next error tag" }
                     }
-                    Text { text: "Extra JSON"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
-                    Rectangle { width: parent.width; height: 118; radius: Theme.radiusSm; color: Theme.subtle; border.color: Theme.border
+                    Text { visible: stepAction.text !== "python"; text: "Extra JSON"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
+                    Rectangle { visible: stepAction.text !== "python"; width: parent.width; height: 118; radius: Theme.radiusSm; color: Theme.subtle; border.color: Theme.border
                         TextArea { id: stepExtra; anchors.fill: parent; anchors.margins: 10; color: Theme.text; placeholderTextColor: Theme.dim; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
                     }
                     PrimaryButton {
@@ -304,8 +312,8 @@ Item {
                             stepExtra.text
                         )
                     }
-                    Text { text: "Raw step"; color: Theme.dim; font.pixelSize: 12 }
-                    Rectangle { width: parent.width; height: 110; radius: Theme.radiusSm; color: Theme.background; border.color: Theme.border
+                    Text { visible: stepAction.text !== "python"; text: "Raw step"; color: Theme.dim; font.pixelSize: 12 }
+                    Rectangle { visible: stepAction.text !== "python"; width: parent.width; height: 110; radius: Theme.radiusSm; color: Theme.background; border.color: Theme.border
                         Text { anchors.fill: parent; anchors.margins: 10; text: scenariosBridge.selectedStepJson; color: Theme.muted; font.family: "Consolas"; font.pixelSize: 11; wrapMode: Text.Wrap; elide: Text.ElideRight }
                     }
                 }

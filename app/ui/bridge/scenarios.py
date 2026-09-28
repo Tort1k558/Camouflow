@@ -10,6 +10,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from PyQt6.QtCore import QThread, QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtQuick import QQuickTextDocument
 
 from app.services.server_client import ServerClient, ServerClientError, server_enabled
 from app.storage.db import (
@@ -30,6 +31,7 @@ from app.services.server_client import get_server_session
 LOGGER = logging.getLogger(__name__)
 
 ACTION_OPTIONS: List[Tuple[str, str]] = [
+    ("Python script", "python"),
     ("Start scenario", "start"),
     ("Open URL", "goto"),
     ("HTTP request", "http_request"),
@@ -57,6 +59,7 @@ ACTION_OPTIONS: List[Tuple[str, str]] = [
 ]
 ACTION_LABELS = {value: label for label, value in ACTION_OPTIONS}
 ACTION_CATEGORY_PRESETS: List[Tuple[str, List[str]]] = [
+    ("Scripting", ["python"]),
     ("Navigation & interaction", ["goto", "wait_for_load_state", "wait_element", "sleep", "click", "type", "select_option", "set_checked", "press"]),
     ("Variables", ["set_var", "parse_var", "pop_shared", "extract_text", "write_file"]),
     ("Network", ["http_request"]),
@@ -227,7 +230,7 @@ class ScenariosBridge(QObject):
 
     @pyqtProperty(str, notify=marketChanged)
     def selectedMarketDescription(self) -> str:  # noqa: N802
-        return str(self._selected_market.get("description") or "")
+        return ("Contains Python code. Review before running.\n" if any(s.get("action") == "python" for s in self._market_steps(self._selected_market) if isinstance(s, dict)) else "") + str(self._selected_market.get("description") or "")
 
     @pyqtProperty(str, notify=marketChanged)
     def selectedMarketCategory(self) -> str:  # noqa: N802
@@ -450,7 +453,7 @@ class ScenariosBridge(QObject):
         return {
             "id": item_id,
             "title": str(row.get("title") or "Scenario"),
-            "description": str(row.get("description") or ""),
+            "description": ("[Python - requires local trust] " if any(s.get("action") == "python" for s in steps if isinstance(s, dict)) else "") + str(row.get("description") or ""),
             "category": str(row.get("category") or "Utility"),
             "tags": ", ".join(str(tag) for tag in tags if str(tag).strip()),
             "downloads": int(row.get("downloads") or 0),
@@ -1069,11 +1072,88 @@ class ScenariosBridge(QObject):
         if self._selected_step_index == 0:
             step["action"] = "start"
             step["tag"] = "Start"
+        if step.get("action") == "python":
+            from app.services.python_script import validate_script
+            try:
+                validate_script(step)
+            except (ValueError, SyntaxError, TypeError) as exc:
+                self._emit_message(str(exc))
+                return
         self._current_steps[self._selected_step_index] = step
         self._save_current()
         self._emit_message("Step saved")
 
+    @pyqtSlot(QQuickTextDocument)
+    def highlightPython(self, document):
+        from app.ui.python_highlighter import PythonHighlighter
+        text_document = document.textDocument()
+        if not text_document.property("pythonHighlighted"):
+            if not hasattr(self, "_python_highlighters"):
+                self._python_highlighters = {}
+            key = id(text_document)
+            self._python_highlighters[key] = PythonHighlighter(text_document)
+            text_document.destroyed.connect(lambda: self._python_highlighters.pop(key, None))
+            text_document.setProperty("pythonHighlighted", True)
+
+    @pyqtSlot(QQuickTextDocument, int, int, bool, result="QVariantMap")
+    def indentPython(self, document, start, end, unindent):
+        from PyQt6.QtGui import QTextCursor
+        text_document = document.textDocument()
+        start_block = text_document.findBlock(start)
+        end_block = text_document.findBlock(max(start, end - 1))
+        cursor = QTextCursor(text_document)
+        begin = start_block.position()
+        finish = end_block.position() + end_block.length() - 1
+        cursor.setPosition(begin)
+        cursor.setPosition(finish, QTextCursor.MoveMode.KeepAnchor)
+        rows = cursor.selectedText().split("\u2029")
+        if unindent:
+            rows = [row[min(4, len(row) - len(row.lstrip(" "))):] for row in rows]
+        else:
+            rows = ["    " + row for row in rows]
+        replacement = "\n".join(rows)
+        cursor.beginEditBlock()
+        cursor.insertText(replacement)
+        cursor.endEditBlock()
+        return {"start": begin, "end": cursor.position()}
+
+    @pyqtSlot(str, result="QVariantMap")
+    def checkPython(self, code):
+        from app.services.python_script import validate_script
+        try:
+            validate_script({"script_api_version": 1, "code": code})
+            return {"ok": True, "message": "Syntax valid. Code has not been executed.", "line": 0}
+        except (ValueError, SyntaxError, TypeError) as exc:
+            return {"ok": False, "message": str(exc), "line": getattr(exc, "lineno", 0) or 0}
+
+    @pyqtSlot(str, str, str, int, result=bool)
+    def savePythonStep(self, code, inputs_json, result_variable, timeout_ms):
+        from app.services.python_script import validate_script
+        if not self._ensure_allowed("manager") or self._selected_step_index <= 0:
+            return False
+        try:
+            step = dict(self._current_steps[self._selected_step_index])
+            if step.get("action") != "python":
+                raise ValueError("Select a Python block first")
+            step.update(code=code, inputs=json.loads(inputs_json), result_variable=result_variable.strip(),
+                        timeout_ms=timeout_ms, script_api_version=1)
+            validate_script(step)
+            updated = _deepcopy_steps(self._current_steps)
+            updated[self._selected_step_index] = step
+            self._current_steps = updated
+            self._rebuild_steps_model()
+            self.selectedStepChanged.emit()
+            self.saveSelected(self._selected_name, self._selected_description)
+            return True
+        except Exception as exc:
+            self._emit_message(str(exc))
+            return False
+
     def _default_step(self, action: str) -> Dict[str, Any]:
+        if action == "python":
+            from app.services.python_script import DEFAULT_CODE
+            return {"action": "python", "script_api_version": 1, "code": DEFAULT_CODE,
+                    "inputs": {}, "result_variable": "script_result", "timeout_ms": 60000}
         if action == "start":
             return {"action": "start", "tag": "Start"}
         if action == "goto":
@@ -1217,6 +1297,12 @@ class ScenariosBridge(QObject):
             action = str(step.get("action") or "").strip()
             if action not in ACTION_LABELS:
                 return f"Step {index}: unsupported action '{action or 'empty'}'"
+            if action == "python":
+                from app.services.python_script import validate_script
+                try:
+                    validate_script(step)
+                except (ValueError, SyntaxError, TypeError) as exc:
+                    return f"Step {index}: {exc}"
             if action in {"goto", "new_tab", "http_request"} and not str(step.get("url") or step.get("value") or "").strip():
                 return f"Step {index}: URL is required"
             if action in {"click", "type", "wait_element", "extract_text"} and not str(step.get("selector") or "").strip():

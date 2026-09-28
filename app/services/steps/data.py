@@ -278,7 +278,11 @@ class DataSteps:
         update_account = True if update_account_raw is None else bool(update_account_raw)
         if update_account and extracted:
             try:
-                db_update_account(self.profile_name, extracted)
+                updater = getattr(self, "_account_updater", None)
+                if updater:
+                    updater(extracted)
+                else:
+                    db_update_account(self.profile_name, extracted)
                 self.account_payload.update(extracted)
             except Exception as exc:
                 self.logger.warning("Failed to save account data for %s: %s", self.profile_name, exc)

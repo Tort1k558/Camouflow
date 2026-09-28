@@ -12,11 +12,18 @@ datas = [
     (str(ROOT / "logo.ico"), "."),
     (str(ROOT / "scenaries"), "scenaries"),
     (str(ROOT / "app" / "qml"), "app/qml"),
+    (str(ROOT / "app" / "services" / "ai_agent" / "dom.js"), "app/services/ai_agent"),
 ]
 
 datas += collect_data_files("browserforge")
+datas += collect_data_files("apify_fingerprint_datapoints")
 hiddenimports = collect_submodules("browserforge")
 hiddenimports += [
+    "csv",
+    "math",
+    "datetime",
+    "pathlib",
+    "asyncio",
     "PyQt6.QtQml",
     "PyQt6.QtQuick",
     "playwright.__main__",

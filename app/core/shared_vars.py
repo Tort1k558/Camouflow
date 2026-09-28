@@ -30,6 +30,19 @@ class SharedVarsManager:
     def get(self, key: str, default=None):
         return self.store.get(key, default)
 
+    def pop_first(self, key: str):
+        from app.storage.db import _STORAGE_LOCK
+        with _STORAGE_LOCK:
+            value = self.get(key, "")
+            rows = value if isinstance(value, list) else str(value or "").replace("\r\n", "\n").splitlines()
+            rows = [str(row).strip() for row in rows if str(row).strip()]
+            if not rows:
+                raise ValueError(f"No items in shared var {key}")
+            first = rows.pop(0)
+            remaining = "\n".join(rows)
+            self.set(key, remaining)
+            return first, remaining
+
     def set(self, key: str, value: object) -> None:
         self.store[key] = value
         self._notify()

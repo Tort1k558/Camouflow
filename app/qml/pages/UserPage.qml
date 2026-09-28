@@ -273,7 +273,7 @@ Flickable {
                                 }
                             }
                             Text {
-                                text: model.slug + " · " + model.plan + " · " + model.profiles + "p " + model.proxies + "x " + model.scenarios + "s"
+                                text: model.slug + " · " + model.profiles + "p " + model.proxies + "x " + model.scenarios + "s"
                                 color: Theme.dim
                                 font.family: Theme.monoFamily
                                 font.pixelSize: 10

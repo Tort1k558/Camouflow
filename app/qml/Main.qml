@@ -31,6 +31,37 @@ ApplicationWindow {
     palette.toolTipText: Theme.sidebarText
     palette.placeholderText: Theme.dim
 
+    Connections {
+        target: operationsBridge
+        function onPythonApprovalRequested(code) {
+            pythonReview.text = code
+            pythonApproval.open()
+        }
+    }
+    WorkspaceDialog {
+        id: pythonApproval
+        title: "Review Python before running"
+        width: Math.min(920, root.width - 80)
+        height: Math.min(660, root.height - 80)
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onAccepted: operationsBridge.approvePython(true)
+        onRejected: operationsBridge.approvePython(false)
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: "Python runs with your computer permissions, including files and network access. Only approve code you trust. Approval applies to this exact scenario version and its nested scripts on this computer. OK adds jobs to the queue; it does not bypass queue controls."
+            }
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                TextArea { id: pythonReview; readOnly: true; font.family: "Consolas"; wrapMode: TextEdit.NoWrap; selectByMouse: true }
+            }
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         color: Theme.background
@@ -53,7 +84,7 @@ ApplicationWindow {
                         spacing: 12
                         Text { text: "WORKSPACE"; font.family: Theme.monoFamily; font.pixelSize: 10; font.letterSpacing: 1.2; color: Theme.dim }
                         Text { text: "/"; color: Theme.border }
-                        Text { text: appState ? (appState.currentPage === "ScenarioRuns" ? "Scenarios / Runs" : appState.currentPage === "ScenarioRecord" ? "Scenarios / Record" : appState.currentPage) : "Dashboard"; color: Theme.text; font.pixelSize: 12 }
+                        Text { text: appState ? (appState.currentPage === "ScenarioRuns" ? "Scenarios / Runs" : appState.currentPage === "ScenarioRecord" ? "Scenarios / Record" : appState.currentPage === "ScenarioAI" ? "Scenarios / AI" : appState.currentPage) : "Dashboard"; color: Theme.text; font.pixelSize: 12 }
                     }
                     Row {
                         anchors.right: parent.right; anchors.rightMargin: 28; anchors.verticalCenter: parent.verticalCenter
@@ -74,7 +105,7 @@ ApplicationWindow {
                         if (appState.currentPage === "Browser") return browserPage
                         if (appState.currentPage === "Proxies") return proxiesPage
                         if (appState.currentPage === "Marketplace") return marketplacePage
-                        if (appState.currentPage === "Scenarios" || appState.currentPage === "ScenarioRuns" || appState.currentPage === "ScenarioRecord") return scenariosPage
+                        if (appState.currentPage === "Scenarios" || appState.currentPage === "ScenarioRuns" || appState.currentPage === "ScenarioRecord" || appState.currentPage === "ScenarioAI") return scenariosPage
                         if (appState.currentPage === "Logs") return logsPage
                         if (appState.currentPage === "Settings") return settingsPage
                         return dashboardPage
