@@ -18,6 +18,7 @@ from app.ui.bridge.app_state import AppState
 from app.ui.bridge.ai import AIBridge
 from app.ui.bridge.browser_settings import BrowserSettingsBridge
 from app.ui.bridge.dashboard import DashboardBridge
+from app.version import APP_VERSION
 from app.ui.bridge.logs import LogsBridge
 from app.ui.bridge.operations import OperationsBridge
 from app.ui.bridge.recorder import RecorderBridge
@@ -96,6 +97,7 @@ class QmlApplication:
 
     def _install_context(self) -> None:
         context = self.engine.rootContext()
+        context.setContextProperty("appVersion", APP_VERSION)
         context.setContextProperty("operationsBridge", self.operations)
         context.setContextProperty("recorderBridge", self.recorder)
         context.setContextProperty("aiBridge", self.ai)

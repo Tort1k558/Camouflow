@@ -15,6 +15,9 @@ datas = [
     (str(ROOT / "app" / "services" / "ai_agent" / "dom.js"), "app/services/ai_agent"),
 ]
 
+# Windows Explorer / SmartScreen metadata for CamouFlow.exe.
+APP_VERSION_INFO = str(ROOT / "version_info.txt")
+
 datas += collect_data_files("browserforge")
 datas += collect_data_files("apify_fingerprint_datapoints")
 hiddenimports = collect_submodules("browserforge")
@@ -71,6 +74,7 @@ exe = EXE(
     upx=True,
     console=False,
     icon=str(ROOT / "logo.ico"),
+    version=APP_VERSION_INFO,
 )
 
 coll = COLLECT(

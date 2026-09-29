@@ -12,6 +12,7 @@
 </p>
 
 <p align="center">
+  <img alt="release" src="https://img.shields.io/github/v/release/Tort1k558/Camouflow?label=release&color=202820&labelColor=d1f366" />
   <img alt="platform" src="https://img.shields.io/badge/platform-Windows-202820?labelColor=d1f366" />
   <img alt="stack" src="https://img.shields.io/badge/Python%203.12%20·%20PyQt6%20·%20QML-202820?labelColor=d1f366" />
   <img alt="engines" src="https://img.shields.io/badge/Camoufox%20·%20CloakBrowser-202820?labelColor=d1f366" />
@@ -118,7 +119,7 @@ images/         screenshots used by the README
 
 ## Quick start
 
-**Download the ready-to-run Windows build:** [CamouFlow 0.2.0 (zip)](https://github.com/Tort1k558/Camouflow/releases/download/v0.2.0/CamouFlow-0.2.0-win64.zip) — unpack and run `CamouFlow.exe` (browser engines download on first launch). All releases: [Releases](https://github.com/Tort1k558/Camouflow/releases).
+**Download the ready-to-run Windows build:** [latest release (zip)](https://github.com/Tort1k558/Camouflow/releases/latest) — unpack and run `CamouFlow.exe` (browser engines download on first launch). All releases and per-version changes: [Releases](https://github.com/Tort1k558/Camouflow/releases) · [CHANGELOG.md](CHANGELOG.md).
 
 Or run from source. Requirements: **Windows**, Python 3.12, Git.
 

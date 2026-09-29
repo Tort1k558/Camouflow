@@ -12,7 +12,7 @@ ApplicationWindow {
     minimumWidth: 1180
     minimumHeight: 720
     visible: true
-    title: "CamouFlow"
+    title: "CamouFlow " + (typeof appVersion !== "undefined" ? appVersion : "")
     color: Theme.background
     font.family: Theme.fontFamily
     palette.window: Theme.background
