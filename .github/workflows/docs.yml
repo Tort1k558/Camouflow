@@ -18,6 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: node:20-bookworm
     steps:
       - name: Checkout
         uses: actions/checkout@v4

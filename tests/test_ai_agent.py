@@ -91,6 +91,19 @@ def test_llm_gives_up_after_two_bad_replies():
         asyncio.run(client.next_action([]))
 
 
+def test_llm_retry_reports_that_rejected_action_was_not_executed():
+    calls = []
+
+    async def transport(method, url, headers, payload):
+        calls.append(payload)
+        content = "invalid" if len(calls) == 1 else reply("retry", {"name": "click", "index": 0})
+        return 200, {"choices": [{"message": {"content": content}}]}
+
+    client = LLMClient(LLMConfig(base_url="https://llm.test/v1", api_key="k", model="m"), transport=transport)
+    asyncio.run(client.next_action([], element_count=1))
+    assert "no action was executed and no data was saved" in calls[1]["messages"][-1]["content"]
+
+
 def test_llm_surfaces_http_errors():
     async def transport(method, url, headers, payload):
         return 401, {"error": "bad key"}

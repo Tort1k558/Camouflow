@@ -203,6 +203,7 @@ class AgentSession:
                     continue
 
                 observation = self._snapshot_to_observation(snapshot)
+                observation += "\nSAVED OUTPUT VARIABLES: " + json.dumps(list(self.outputs))
                 if self._pending_note:
                     observation = f"{self._pending_note}\n{observation}"
                     self._pending_note = ""

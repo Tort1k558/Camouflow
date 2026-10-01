@@ -74,7 +74,7 @@ class LLMClient:
             # Feed the failure back so the model can correct itself once.
             work = work + [
                 {"role": "assistant", "content": content[:2000]},
-                {"role": "user", "content": f"Invalid reply: {last_error}. Answer again with ONE JSON object: {{\"thought\": \"...\", \"action\": {{...}}}}."},
+                {"role": "user", "content": f"Invalid reply: {last_error}. Your reply was rejected; no action was executed and no data was saved. Correct the rejected action, do not advance as if it succeeded. Answer again with ONE JSON object: {{\"thought\": \"...\", \"action\": {{...}}}}."},
             ]
         raise LLMError(f"LLM kept returning invalid actions ({last_error})")
 
