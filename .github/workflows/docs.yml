@@ -29,11 +29,11 @@ jobs:
 
       - name: Install docs dependencies
         working-directory: docs-site
-        run: npm install
+        run: npm ci
 
       - name: Build docs
         working-directory: docs-site
-        run: npx retype build
+        run: node node_modules/retypeapp/retype.js build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
