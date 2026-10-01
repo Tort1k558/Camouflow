@@ -19,7 +19,7 @@ Settings -> AI: configure and test a Chat Completions-compatible provider. Scena
 
 ## Verified
 
-78 automated tests; real-browser fixture extraction/replay and CLI/MCP checks on Camoufox and CloakBrowser; three successful configured DeepSeek runs on each engine; real-provider UI export/replay/save; isolated Windows n8n 2.41.5 import/execution/JSON parsing; packaged runtime checks on both engines; 35 documentation pages built without warnings.
+79 automated tests; real-browser fixture extraction/replay and CLI/MCP checks on Camoufox and CloakBrowser; three successful configured DeepSeek runs on each engine; real-provider UI export/replay/save; isolated Windows n8n 2.41.5 import/execution/JSON parsing; packaged runtime checks on both engines; 35 documentation pages built without warnings.
 
 These are synthetic catalog checks, not a benchmark of every model or website. Live cloud auth/list access was checked read-only; production cloud runs were not exercised.
 
