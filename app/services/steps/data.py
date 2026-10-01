@@ -193,7 +193,9 @@ class DataSteps:
         if candidate.is_absolute():
             return StepResult.stop("Absolute file paths are not allowed for write_file action")
 
-        file_path = (OUTPUTS_DIR / candidate)
+        file_path = (OUTPUTS_DIR / candidate).resolve()
+        if not file_path.is_relative_to(OUTPUTS_DIR.resolve()):
+            return StepResult.stop("File path must stay inside outputs")
 
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -388,7 +390,15 @@ class DataSteps:
         if element is None:
             return StepResult.stop("Element not found for extract_text")
         attribute = step.get("attribute")
-        content = await element.get_attribute(attribute) if attribute else await element.text_content()
+        if step.get("format") == "table":
+            from app.services.ai_agent.extraction import extract_table
+            content = json.dumps(await extract_table(element), ensure_ascii=False)
+        elif step.get("exclude_editable"):
+            content = await element.evaluate("el => { if (el.matches('input,textarea,[contenteditable]')) throw new Error('Editable extraction is forbidden'); const copy = el.cloneNode(true); copy.querySelectorAll('input,textarea,[contenteditable],script,style').forEach(e => e.remove()); return (copy.textContent || '').trim(); }")
+        else:
+            content = await element.get_attribute(attribute) if attribute else await element.text_content()
+        if step.get("require_nonempty") and not str(content or "").strip():
+            return StepResult.stop("Required extraction result is empty")
         if content is None:
             content = ""
         if step.get("strip", True):

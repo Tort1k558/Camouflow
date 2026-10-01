@@ -42,13 +42,20 @@ Transport = Callable[[str, str, Dict[str, str], Dict[str, Any]], Awaitable[Tuple
 
 class LLMClient:
     def __init__(self, config: LLMConfig, transport: Optional[Transport] = None) -> None:
+        self.requests = 0
+        self.prompt_tokens = 0
+        self.completion_tokens = 0
         self.config = config
         self._transport = transport or self._http_transport
 
     async def _http_transport(self, method: str, url: str, headers: Dict[str, str], payload: Dict[str, Any]) -> Tuple[int, Any]:
         async with httpx.AsyncClient(timeout=self.config.timeout_s) as client:
             response = await client.request(method, url, headers=headers, json=payload)
-            return response.status_code, response.json()
+            try:
+                body = response.json()
+            except ValueError as exc:
+                raise LLMError(f"provider returned non-JSON HTTP {response.status_code}") from exc
+            return response.status_code, body
 
     async def next_action(self, messages: List[Dict[str, Any]], element_count: int = 250) -> Tuple[str, Dict[str, Any]]:
         """Ask the model for one action. Returns (thought, validated action).
@@ -79,11 +86,21 @@ class LLMClient:
         headers = {"Authorization": f"Bearer {self.config.api_key}"} if self.config.api_key else {}
         payload = {"model": self.config.model.strip(), "messages": messages, "temperature": 0}
         try:
-            return await self._transport("POST", url, headers, payload)
+            self.requests += 1
+            status, body = await self._transport("POST", url, headers, payload)
+            usage = body.get("usage") if isinstance(body, dict) else None
+            usage = usage if isinstance(usage, dict) else {}
+            self.prompt_tokens += self._token_count(usage.get("prompt_tokens"))
+            self.completion_tokens += self._token_count(usage.get("completion_tokens"))
+            return status, body
         except LLMError:
             raise
         except (httpx.HTTPError, asyncio.TimeoutError, OSError) as exc:
             raise LLMError(f"provider request failed: {exc}") from exc
+
+    @staticmethod
+    def _token_count(value):
+        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else 0
 
     def _content(self, status: int, body: Any) -> str:
         if status != 200:

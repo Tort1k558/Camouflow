@@ -593,6 +593,12 @@ class ScenarioExecutor(
             if self._contains_timestamp_template(step):
                 await self._update_timestamp_variable()
             if action == "start":
+                required = step.get("_required_inputs", [])
+                if not isinstance(required, list) or any(not isinstance(name, str) for name in required):
+                    return StepResult.stop("Invalid required inputs")
+                missing = [name for name in required if not self.variables.get(name)]
+                if missing:
+                    return StepResult.stop("Missing scenario inputs: " + ", ".join(missing))
                 return StepResult.next()
             if action == "python":
                 from app.services.python_script import execute_script

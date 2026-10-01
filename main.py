@@ -15,4 +15,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 4 and sys.argv[1] == "--check-python-runtime":
         from app.python_runtime_check import check_runtime
         sys.exit(check_runtime(sys.argv[2], sys.argv[3]))
+    if len(sys.argv) > 1 and sys.argv[1] == "--cli":
+        from app.cli import main as cli_main
+        sys.exit(cli_main(sys.argv[2:]))
     main()

@@ -21,6 +21,7 @@ build/
 # Documentation output
 site/
 docs-site/site/
+docs-site/retype.manifest
 
 # App runtime data (repo root only)
 /.local/

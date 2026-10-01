@@ -43,7 +43,7 @@
     const cssPath = (el) => {
         const parts = [];
         let node = el;
-        while (node && node.nodeType === 1 && parts.length < 6) {
+        while (node && node.nodeType === 1 && parts.length < 64) {
             let part = node.tagName.toLowerCase();
             const parent = node.parentElement;
             if (parent) {
@@ -59,7 +59,8 @@
     const INTERACTIVE = [
         "a[href]", "button", "input", "textarea", "select", "summary",
         "[role=\"button\"]", "[role=\"link\"]", "[role=\"tab\"]", "[role=\"menuitem\"]",
-        "[role=\"option\"]", "[role=\"checkbox\"]", "[contenteditable=\"true\"]",
+        "[role=\"option\"]", "[role=\"checkbox\"]", "[contenteditable]",
+        "table", "h1", "h2", "h3", "p", "[data-testid]",
     ].join(",");
 
     const elements = [];
@@ -68,8 +69,10 @@
         if (el.tagName === "INPUT" && el.type === "hidden") continue;
         const rect = el.getBoundingClientRect();
         const style = window.getComputedStyle(el);
-        if (rect.width < 2 || rect.height < 2 || style.display === "none" || style.visibility === "hidden") continue;
+        if (rect.width < 2 || rect.height < 2 || style.display === "none" || style.visibility === "hidden" ||
+            rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) continue;
 
+        if (el.closest("textarea,[contenteditable]") && !el.matches("textarea,[contenteditable]")) continue;
         const stable = uniqueSelector(el);
         const item = {
             index: elements.length,
@@ -83,7 +86,10 @@
         if (el.isContentEditable) item.editable = true;
 
         /* Context text: never element values, only labels/aria/text content. */
-        let text = clip(el.getAttribute("aria-label") || el.textContent, 80);
+        const editable = el.matches("input,textarea,[contenteditable]");
+        const safe = el.cloneNode(true);
+        safe.querySelectorAll("input,textarea,[contenteditable],script,style").forEach(node => node.remove());
+        let text = clip(el.getAttribute("aria-label") || (editable ? "" : safe.textContent), 80);
         if (!text && el.labels && el.labels.length) text = clip(el.labels[0].textContent, 60);
         if (!text) text = clip(el.getAttribute("placeholder"), 60);
         if (text) item.text = text;
@@ -98,12 +104,25 @@
         elements.push(item);
     }
 
-    /* Page text window: head + tail so answers deep in long pages stay visible. */
-    let text = document.body ? document.body.innerText : "";
-    text = String(text == null ? "" : text).replace(/\s+/g, " ").trim();
-    if (text.length > 3800) {
-        text = text.slice(0, 1600) + " …[middle truncated]… " + text.slice(-2000);
+    /* Read visible text without values or editable document contents. */
+    const pieces = [];
+    if (document.body) {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode()) && pieces.join(" ").length < 12000) {
+            const parent = node.parentElement;
+            if (!parent || parent.closest('input,textarea,[contenteditable],script,style,noscript')) continue;
+            const style = getComputedStyle(parent);
+            if (style.display === "none" || style.visibility === "hidden") continue;
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const rect = range.getBoundingClientRect();
+            if (rect.width < 1 || rect.height < 1 || rect.bottom < 0 || rect.top > innerHeight) continue;
+            const part = clip(node.textContent, 2000);
+            if (part) pieces.push(part);
+        }
     }
+    const text = pieces.join(" ").slice(0, 12000);
 
     return {
         url: location.href,

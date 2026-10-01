@@ -23,6 +23,18 @@
 
 📚 **Documentation (RU/EN): [camouflow.site/docs](https://camouflow.site/docs)** · API reference: [camouflow.site/api](https://camouflow.site/api)
 
+## Describe once. Review. Replay without a model.
+
+Try the isolated catalog demo, inspect a structured table, export JSON/CSV, then turn recorded actions into a parameterized scenario. Read-only replay checks outputs using the existing automation engine, without another model request.
+
+**[AI workflow quickstart](AI_WORKFLOWS.md)** · [CLI / optional MCP / n8n example](AI_WORKFLOWS.md#local-cli)
+
+Available in **v0.4.0**. Model-reported success is not a verified workflow. Page content goes to your chosen provider; editable field contents are excluded from snapshots, not every possible secret.
+
+![Real AI catalog extraction and verified replay](images/ai-workflow-demo.png)
+
+[Watch the recorded UI demo](images/ai-workflow-demo.gif) — synthetic catalog, real configured DeepSeek model, export and replay check. No personal browser profile was used.
+
 ## What is CamouFlow
 
 CamouFlow is a desktop app for working with isolated browser profiles. Every profile has its own context: cookies, fingerprint, proxy and engine settings. Profiles come together in one workflow: visual automation scenarios, proxy pools with health checks, logging and team collaboration through an optional server.
@@ -30,7 +42,7 @@ CamouFlow is a desktop app for working with isolated browser profiles. Every pro
 - 🔒 **Local-first** — profiles, scenarios and data stay on your machine; local mode needs no server login
 - 🧬 **Anti-detect engines** — Camoufox (Firefox-based) and CloakBrowser (Chromium-based) with configurable fingerprints
 - 🕸 **Visual automation** — scenarios are assembled on a canvas from steps linked by success/error transitions
-- 🤖 **AI assistant** — describe a task in plain language and a built-in agent (any OpenAI-compatible provider, incl. local Ollama) drives the profile's browser on both engines; save its actions as a replayable scenario
+- 🤖 **AI assistant** — describe a task in plain language and a built-in agent (a Chat Completions-compatible provider, including local Ollama) drives the profile's browser on both engines; save its actions as a replayable scenario
 - 🌐 **Teams and control center** — optional server: roles, shared pools, audit, marketplace
 
 ## Screenshots

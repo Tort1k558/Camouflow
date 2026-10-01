@@ -46,6 +46,8 @@ class QmlApplication:
         _install_qt_logging_rules()
         self.app = QApplication(argv)
         self.app.setFont(QFont("Segoe UI", 10))
+        from app.services.workspace_lock import acquire_workspace_lock
+        self._workspace_lock = acquire_workspace_lock()
         self.engine = QQmlApplicationEngine()
         self.root_dir = self._resource_path("app/qml")
         self.state = AppState()
@@ -67,12 +69,16 @@ class QmlApplication:
         self.ai.message.connect(self.logs.append)
         self.app.aboutToQuit.connect(self.ai.shutdown)
         self.settings = SettingsBridge(self.state)
+        self.settings.changed.connect(self.ai.refresh)
+        self.state.cloudChanged.connect(self.ai.refresh)
+        self.profiles.modelChanged.connect(self.ai.refresh)
         self.user = UserBridge(self.state)
         self.dashboard = DashboardBridge(self.profiles, self.state)
         self._connect_messages()
         self._install_context()
         self._install_icon()
         QTimer.singleShot(4000, self.user.maybeAutoSync)
+        self.app.aboutToQuit.connect(self._workspace_lock.unlock)
 
     def _resource_path(self, relative: str) -> Path:
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
@@ -132,7 +138,14 @@ class QmlApplication:
 
 
 def run_qml_app(argv: list[str] | None = None) -> int:
+    from PyQt6.QtWidgets import QMessageBox
+    from app.services.workspace_lock import WorkspaceInUseError
+
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
     _install_qt_logging_rules()
-    app = QmlApplication(list(argv if argv is not None else sys.argv))
+    try:
+        app = QmlApplication(list(argv if argv is not None else sys.argv))
+    except WorkspaceInUseError as exc:
+        QMessageBox.warning(None, "CamouFlow", str(exc))
+        return 1
     return app.exec()

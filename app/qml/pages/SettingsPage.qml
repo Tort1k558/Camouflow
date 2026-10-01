@@ -81,9 +81,9 @@ Flickable {
                 }
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap; color: Theme.muted; font.pixelSize: 11
-                    text: "Privacy: while running a task, the structure of the visited pages (element texts, no input values) is sent to the provider you configure. Run a local Ollama endpoint to keep everything on this machine."
+                    text: "Privacy: while running a task, the structure of the visited pages (page text, URLs and labels; editable document contents are excluded) is sent to the provider you configure. Run a local Ollama endpoint to keep everything on this machine."
                 }
-                FormField { id: aiBaseUrl; width: parent.width; label: "Base URL (OpenAI-compatible, e.g. https://api.z.ai/api/paas/v4)"; placeholder: "https://localhost:11434/v1"; text: settingsBridge ? settingsBridge.aiBaseUrl : "" }
+                FormField { id: aiBaseUrl; width: parent.width; label: "Base URL (OpenAI-compatible, e.g. https://api.z.ai/api/paas/v4)"; placeholder: "http://localhost:11434/v1"; text: settingsBridge ? settingsBridge.aiBaseUrl : "" }
                 FormField { id: aiApiKey; width: parent.width; label: "API key (stored locally, like server tokens)"; placeholder: "sk-…"; echoMode: TextInput.Password; text: settingsBridge ? settingsBridge.aiApiKey : "" }
                 RowLayout {
                     width: parent.width; spacing: 10
@@ -93,7 +93,7 @@ Flickable {
                 RowLayout {
                     width: parent.width; spacing: 10
                     PrimaryButton { text: "Save AI settings"; secondary: true; onClicked: settingsBridge.saveAiSettings(aiEnabled.checked, aiBaseUrl.text, aiApiKey.text, aiModel.text, aiMaxSteps.text) }
-                    PrimaryButton { text: "Test connection"; secondary: true; onClicked: settingsBridge.testAiProvider() }
+                    PrimaryButton { text: "Test connection"; secondary: true; onClicked: settingsBridge.testAiDraft(aiBaseUrl.text, aiApiKey.text, aiModel.text) }
                 }
             }
         }

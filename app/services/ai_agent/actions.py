@@ -25,7 +25,7 @@ MAX_TYPE_LENGTH = 2000
 MAX_URL_LENGTH = 2000
 MAX_DONE_RESULT = 8000
 
-ACTION_NAMES = ("goto", "click", "type", "select_option", "set_checked", "press", "scroll", "wait", "done")
+ACTION_NAMES = ("goto", "click", "type", "select_option", "set_checked", "press", "scroll", "wait", "extract", "ask_user", "find", "done")
 
 
 class ActionError(ValueError):
@@ -36,7 +36,7 @@ def _require_str(action: Dict[str, Any], key: str, max_length: int) -> str:
     value = action.get(key)
     if not isinstance(value, str) or not value.strip():
         raise ActionError(f"'{key}' must be a non-empty string")
-    value = value.strip()
+    value = value if key == "text" else value.strip()
     if len(value) > max_length:
         raise ActionError(f"'{key}' is too long (max {max_length} chars)")
     return value
@@ -46,7 +46,7 @@ def _require_index(action: Dict[str, Any], element_count: int) -> int:
     value = action.get("index")
     if not isinstance(value, int) or isinstance(value, bool):
         raise ActionError("'index' must be an integer element index from the snapshot")
-    if value < 0 or value >= max(element_count, 1):
+    if value < 0 or value >= element_count:
         raise ActionError(f"'index' {value} is not in the current snapshot (0..{max(element_count - 1, 0)})")
     return value
 
@@ -73,7 +73,9 @@ def validate_action(payload: Any, element_count: int = 250) -> Dict[str, Any]:
     elif name == "type":
         action["index"] = _require_index(payload, element_count)
         action["text"] = _require_str(payload, "text", MAX_TYPE_LENGTH)
-        action["submit"] = bool(payload.get("submit", False))
+        if not isinstance(payload.get("submit", False), bool):
+            raise ActionError("submit must be true or false")
+        action["submit"] = payload.get("submit", False)
         unknown -= {"index", "text", "submit"}
     elif name == "select_option":
         action["index"] = _require_index(payload, element_count)
@@ -105,9 +107,31 @@ def validate_action(payload: Any, element_count: int = 250) -> Dict[str, Any]:
             raise ActionError("'seconds' must be between 0.5 and 10")
         action["seconds"] = float(seconds)
         unknown -= {"seconds"}
+    elif name == "extract":
+        action["index"] = _require_index(payload, element_count)
+        action["variable"] = _require_str(payload, "variable", 50)
+        if action["variable"] in {"name", "timestamp", "cookies"}:
+            raise ActionError("Output variable is reserved by the scenario engine")
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", action["variable"]):
+            raise ActionError("Invalid output variable name")
+        action["format"] = payload.get("format", "text")
+        if action["format"] not in {"text", "table"}:
+            raise ActionError("Extraction format must be text or table")
+        unknown -= {"index", "variable", "format"}
+    elif name == "ask_user":
+        action["question"] = _require_str(payload, "question", 500)
+        unknown -= {"question"}
+    elif name == "find":
+        action["text"] = _require_str(payload, "text", 200)
+        unknown -= {"text"}
     elif name == "done":
         action["result"] = _require_str(payload, "result", MAX_DONE_RESULT) if payload.get("result") else ""
-        unknown -= {"result"}
+        status = payload.get("status", "done")
+        if status not in {"done", "success", "partial", "failed"}:
+            raise ActionError("done status must be success, partial or failed")
+        if "status" in payload:
+            action["status"] = status
+        unknown -= {"result", "status"}
 
     if unknown:
         raise ActionError(f"unknown argument(s): {', '.join(sorted(unknown))}")
@@ -127,7 +151,10 @@ def action_protocol_prompt() -> str:
         '- {"name":"press","key":"Enter"} — press a key (Enter, Escape, Tab, arrows...)\n'
         '- {"name":"scroll","direction":"down","amount":600} — scroll the page\n'
         '- {"name":"wait","seconds":2} — wait for content to load\n'
-        '- {"name":"done","result":"<final answer for the user>"} — task complete; ALWAYS use this to finish\n'
+        '- {"name":"extract","index":<int>,"variable":"result","format":"text"} ? extract visible text; format=table for a HTML table with unique headers\n'
+        '- {"name":"find","text":"phrase"} ? scroll to matching page text\n'
+        '- {"name":"ask_user","question":"..."} ? pause for help or missing information\n'
+        '- {"name":"done","status":"success|partial|failed","result":"<final answer for the user>"} — task complete; ALWAYS use this to finish\n'
     )
 
 
@@ -154,36 +181,18 @@ def describe_action(action: Dict[str, Any], elements: Optional[List[Dict[str, An
         return f"scroll {action['direction']} {action['amount']}"
     if name == "wait":
         return f"wait {action['seconds']}s"
+    if name == "extract":
+        return f"Extract {action["format"]} into {action["variable"]}"
+    if name == "ask_user":
+        return action["question"]
+    if name == "find":
+        return f"Find {action["text"]!r}"
     return "done"
 
 
 async def _click(page, selector: str) -> None:
-    """Click with a JS fallback for elements obscured by sticky headers/overlays."""
-    try:
-        await page.locator(selector).click(timeout=8000)
-        return
-    except Exception:
-        match = TEXT_IS_RE.match(selector.strip())
-        if match:
-            tag, raw_text = match.group(1), match.group(2)
-            try:
-                text = json.loads(raw_text)
-            except json.JSONDecodeError:
-                text = raw_text.strip('"')
-            await page.evaluate(
-                """([tag, text]) => {
-                    const clip = s => String(s == null ? '' : s).replace(/\\s+/g, ' ').trim();
-                    const found = [...document.querySelectorAll(tag)].filter(el => clip(el.textContent) === text);
-                    if (found.length === 1) { found[0].click(); return true; }
-                    return false;
-                }""",
-                [tag, text],
-            )
-        else:
-            await page.evaluate(
-                "(sel) => { const el = document.querySelector(sel); if (el) el.click(); return Boolean(el); }",
-                selector,
-            )
+    """Use browser actionability checks; never bypass overlays or missing targets."""
+    await page.locator(selector).click(timeout=8000)
 
 
 async def execute_action(page, action: Dict[str, Any], elements: List[Dict[str, Any]], secret_serial: int = 0) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, str]], str]:
@@ -241,6 +250,39 @@ async def execute_action(page, action: Dict[str, Any], elements: List[Dict[str, 
         await page.evaluate("(delta) => window.scrollBy(0, delta)", delta)
     elif name == "wait":
         await asyncio.sleep(action["seconds"])
+        steps.append({"action": "sleep", "seconds": action["seconds"]})
+    elif name == "extract":
+        element = elements[action["index"]]
+        if element.get("type") or element.get("editable"):
+            raise ActionError("Cannot extract editable field contents")
+        locator = page.locator(element["selector"])
+        if action["format"] == "table":
+            from app.services.ai_agent.extraction import extract_table
+            value = json.dumps(await extract_table(locator), ensure_ascii=False)
+        else:
+            value = await locator.evaluate("el => { const copy = el.cloneNode(true); copy.querySelectorAll('input,textarea,[contenteditable],script,style').forEach(e => e.remove()); return (copy.textContent || '').trim(); }")
+            if not value or len(value) > 20000:
+                raise ActionError("Extracted text must contain 1-20000 characters")
+        steps.append({"action": "extract_text", "selector": element["selector"], "to_var": action["variable"],
+                      "format": action["format"], "require_nonempty": True, "exclude_editable": True})
+        return steps, None, value
+    elif name == "find":
+        found = await page.evaluate("""text => {
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            let node;
+            while ((node = walker.nextNode())) {
+                const p = node.parentElement;
+                if (!p || p.closest('input,textarea,[contenteditable],script,style')) continue;
+                const style = getComputedStyle(p);
+                if (style.display === 'none' || style.visibility === 'hidden') continue;
+                if ((node.textContent || '').toLowerCase().includes(text.toLowerCase())) {
+                    p.scrollIntoView({block:'center'}); return true;
+                }
+            }
+            return false;
+        }""", action["text"])
+        if not found:
+            raise ActionError("Text was not found on this page")
     elif name == "done":
         return [], None, "done"
 

@@ -9,6 +9,7 @@ Column {
     Layout.preferredWidth: 260
     property string label: "Label"
     property alias text: input.text
+    property alias validator: input.validator
     property string placeholder: ""
     property int echoMode: TextInput.Normal
     signal editingFinished()

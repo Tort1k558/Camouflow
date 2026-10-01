@@ -6,6 +6,20 @@ build attached.
 
 ## Unreleased
 
+## 0.4.0 - 2026-10-02
+
+- AI tasks: starting URL/host policy, action confirmations, operator questions,
+  pause/resume and partial action retention on stop; fixed silent click fallback
+  and stale provider/profile readiness.
+- Bounded table/text extraction, source URLs, preview and JSON/CSV export;
+  editable contents excluded from snapshots, typed-password redaction hardened.
+- Parameterized drafts, read-only replay/schema checks, workspace-scoped local
+  history/restore and reviewed local starters with an isolated catalog demo.
+- Local read-only JSON CLI using the existing run queue, shared desktop/CLI
+  workspace lock, optional restricted MCP adapter and inactive n8n example.
+- Added workflow walkthroughs and real-browser/UI verification scripts; fixed
+  write_file traversal outside the outputs directory.
+
 - Removed ~8,700 lines of dead legacy Qt-Widgets UI (`app/ui/main_window`,
   `app/ui/tabs`, `app/ui/scenario_editor.py`, `app/ui/style.py`,
   `app/ui/icons.py`, unused `run`/`cookies` bridges, `app/stages/stage_ads.py`).

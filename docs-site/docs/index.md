@@ -3,7 +3,15 @@ order: 100
 ---
 # CamouFlow
 
-CamouFlow is a desktop app for running browser automation scenarios (Camoufox/Playwright) across a list of profiles.
+CamouFlow is a local-first desktop workspace for isolated browser profiles and reusable automation on Camoufox and CloakBrowser.
+
+## AI workflows
+
+Describe a task, inspect structured data, then replay a reviewed parameterized workflow without another model request. Start with a separate demo profile and a synthetic catalog; no personal profile is needed.
+
+[Try the AI catalog demo](ai-agent.md) · [Download the Windows release](https://github.com/Tort1k558/Camouflow/releases/latest)
+
+AI page data goes to your configured provider. Model-reported success is distinct from a read-only replay check; review interactive scenarios before running them.
 
 ## Features
 

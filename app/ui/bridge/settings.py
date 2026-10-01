@@ -269,13 +269,22 @@ class SettingsBridge(QObject):
             return
         threading.Thread(target=self._test_ai_worker, daemon=True, name="ai-test").start()
 
-    def _test_ai_worker(self):
+    @pyqtSlot(str, str, str)
+    def testAiDraft(self, base_url, api_key, model):
+        from app.services.ai_agent.llm import LLMConfig
+        config = LLMConfig(base_url.strip(), api_key.strip(), model.strip())
+        if not config.base_url.startswith(("http://", "https://")) or not config.model:
+            self._emit_message("Enter an HTTP(S) base URL and a model first")
+            return
+        threading.Thread(target=self._test_ai_worker, args=(config,), daemon=True, name="ai-test").start()
+
+    def _test_ai_worker(self, config=None):
         from app.services.ai_agent.llm import LLMClient, LLMError
         from app.services.ai_agent.loop import SYSTEM_PROMPT
         from app.ui.bridge.ai import ai_config
 
         try:
-            client = LLMClient(ai_config())
+            client = LLMClient(config or ai_config())
             thought, action = asyncio.run(client.next_action([
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": "Connection test. Reply with the done action and result 'connection ok'."},
