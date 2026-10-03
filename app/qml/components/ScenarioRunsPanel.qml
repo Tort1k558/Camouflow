@@ -11,7 +11,7 @@ Flickable {
     contentHeight: body.implicitHeight + 56
     clip: true
     ScrollBar.vertical: ScrollBar {}
-    property string selectedJob: ""
+    property string selectedJob: operationsBridge.selectedJob
     ConfirmDialog { id: confirmation; width: Math.min(460, root.width - 32) }
     ColumnLayout {
         id: body

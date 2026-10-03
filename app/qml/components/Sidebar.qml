@@ -10,7 +10,8 @@ Rectangle {
     property var pages: [
         ["Dashboard", "dashboard", "Overview"], ["Profiles", "user", "Profiles"],
         ["Browser", "globe", "Browser engines"], ["Proxies", "network", "Proxies"],
-        ["Scenarios", "workflow", "Scenarios"], ["Marketplace", "globe", "Scenario market"], ["Logs", "logs", "Activity log"],
+        ["Tasks", "play", "Tasks"], ["Scenarios", "workflow", "Scenarios"], ["ScenarioAI", "zap", "AI workspace"],
+        ["Marketplace", "globe", "Scenario market"], ["Logs", "logs", "Activity log"],
         ["Settings", "settings", "Settings"]
     ]
     Brand { x: 23; y: 28; ink: Theme.sidebarText }
@@ -25,7 +26,7 @@ Rectangle {
             delegate: Button {
                 id: navButton
                 required property var modelData
-                readonly property bool selected: appState && (appState.currentPage === modelData[0] || (modelData[0] === "Scenarios" && (appState.currentPage === "ScenarioRuns" || appState.currentPage === "ScenarioRecord" || appState.currentPage === "ScenarioAI")))
+                readonly property bool selected: appState && (appState.currentPage === modelData[0] || (modelData[0] === "Scenarios" && (appState.currentPage === "ScenarioRuns" || appState.currentPage === "ScenarioRecord")))
                 width: parent.width; height: 44
                 text: modelData[2]
                 Accessible.name: text
@@ -41,6 +42,12 @@ Rectangle {
                     Text { text: navButton.text; color: navButton.selected ? Theme.primaryText : Theme.sidebarMuted; font.pixelSize: 13; font.weight: navButton.selected ? Font.DemiBold : Font.Normal; anchors.verticalCenter: parent.verticalCenter }
                 }
                 onClicked: if (appState) appState.setPage(modelData[0])
+                Rectangle {
+                    anchors.right: parent.right; anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter
+                    width: 6; height: 6; radius: 3
+                    visible: navButton.modelData[0] === "ScenarioAI" && aiBridge.active
+                    color: navButton.selected ? Theme.primaryInk : Theme.primary
+                }
             }
         }
     }

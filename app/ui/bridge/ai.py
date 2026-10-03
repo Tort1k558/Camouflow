@@ -28,6 +28,7 @@ from app.storage.db import DATA_ROOT
 
 EVENT_ROLES = ["type", "step", "text", "action", "url"]
 MAX_EVENT_ROWS = 500
+READONLY_REPLAY_ACTIONS = {"start", "goto", "extract_text", "sleep", "wait_element", "wait_for_load_state", "write_file"}
 
 
 def _ai_setting(key: str, default: str = "") -> str:
@@ -92,6 +93,7 @@ class AIBridge(QObject):
         self._options = {"start_url": "", "stay_on_host": True, "allow_local_files": False, "confirm_actions": True}
         self._inputs = {}
         self._verified_signature = ""
+        self._workflow_error = ""
         self._demo = None
         self._validation = False
         self._history = RunHistory(DATA_ROOT / "settings" / "ai-history.json", limit=100)
@@ -147,6 +149,42 @@ class AIBridge(QObject):
         return json.dumps({"data": self._outputs, "sources": self._sources}, ensure_ascii=False, indent=2) if self._outputs else ""
 
     @pyqtProperty("QVariantList", notify=changed)
+    def outputPreviews(self):
+        previews = []
+        for name, value in self._outputs.items():
+            table = isinstance(value, list)
+            columns = list(value[0]) if table and value else []
+            previews.append({"name": name, "format": "table" if table else "text",
+                             "columns": columns, "cells": [str(row.get(key, "")) for row in value[:30] for key in columns] if table else [],
+                             "count": len(value) if table else 0, "text": "" if table else str(value),
+                             "source": self._sources.get(name, "")})
+        return previews
+
+    @pyqtProperty(str, notify=changed)
+    def outcome(self):
+        return self._outcome
+
+    @pyqtProperty(bool, notify=changed)
+    def verifying(self):
+        return self._validation
+
+    @pyqtProperty(bool, notify=changed)
+    def replayChecked(self):
+        return bool(self._verified_signature)
+
+    @pyqtProperty(bool, notify=changed)
+    def canCheckReplay(self):
+        return bool(self.hasDraft and self._outputs and all(step.get("action") in READONLY_REPLAY_ACTIONS for step in self._draft_steps))
+
+    @pyqtProperty("QVariantList", notify=changed)
+    def inputFields(self):
+        return [{"name": name, "value": value} for name, value in self._inputs.items()]
+
+    @pyqtProperty(str, notify=changed)
+    def startingUrl(self):
+        return self._options["start_url"]
+
+    @pyqtProperty("QVariantList", notify=changed)
     def tableColumns(self):
         table = next((value for value in self._outputs.values() if isinstance(value, list) and value), [])
         return list(table[0]) if table else []
@@ -179,6 +217,8 @@ class AIBridge(QObject):
 
     @pyqtProperty(str, notify=changed)
     def workflowStatus(self):
+        if self._workflow_error:
+            return "Replay check failed: " + self._workflow_error
         return "Replay checked for these inputs" if self._verified_signature else "Not replay-checked"
 
     @pyqtSlot(str, bool, bool, bool)
@@ -188,18 +228,21 @@ class AIBridge(QObject):
         self._options = {"start_url": url.strip(), "stay_on_host": stay_on_host,
                          "allow_local_files": local_files, "confirm_actions": confirm_actions}
 
-    @pyqtSlot(str)
+    @pyqtSlot(str, result=bool)
     def setInputs(self, text):
         if self.busy:
-            return
+            return False
         try:
             inputs = json.loads(text)
             compile_workflow(self._draft_steps, inputs, self._outputs)
             self._inputs = inputs
             self._verified_signature = ""
+            self._workflow_error = ""
             self.changed.emit()
+            return True
         except (ValueError, TypeError) as exc:
             self.state.notify(f"Invalid inputs: {exc}")
+            return False
 
     @pyqtSlot()
     def togglePause(self):
@@ -297,14 +340,17 @@ class AIBridge(QObject):
             self.state.notify(f"Cannot load run: {exc}")
 
     @pyqtSlot(str)
-    def exportResults(self, destination):
+    @pyqtSlot(str, str)
+    def exportResults(self, destination, variable=""):
         if self.busy or not self._outputs:
             return
         try:
             path = Path(QUrl(destination).toLocalFile() if destination.startswith("file:") else destination)
             if path.suffix.lower() == ".csv":
                 from app.services.ai_agent.extraction import table_csv
-                tables = [value for value in self._outputs.values() if isinstance(value, list)]
+                tables = [self._outputs[variable]] if variable in self._outputs and isinstance(self._outputs[variable], list) else []
+                if not variable:
+                    tables = [value for value in self._outputs.values() if isinstance(value, list)]
                 if len(tables) != 1:
                     raise ValueError("CSV export needs exactly one extracted table; use JSON otherwise")
                 content = table_csv(tables[0])
@@ -312,7 +358,7 @@ class AIBridge(QObject):
                 content = self.outputsJson
             else:
                 raise ValueError("Choose a .json or .csv file")
-            path.write_text(content, encoding="utf-8")
+            path.write_text(content, encoding="utf-8", newline="")
             self.state.notify("Results exported")
         except Exception as exc:
             self.state.notify(f"Cannot export results: {exc}")
@@ -469,6 +515,7 @@ class AIBridge(QObject):
         self._question = ""
         self._outputs, self._sources, self._inputs = {}, {}, {}
         self._verified_signature = ""
+        self._workflow_error = ""
         self._usage = self._outcome = ""
         self._session = session
         self._task = task
@@ -550,17 +597,19 @@ class AIBridge(QObject):
             steps = compile_workflow(self._draft_steps, self._inputs, self._outputs)
             if not self._outputs:
                 raise ValueError("Extract an output before checking a repeatable workflow")
-            allowed = {"start", "goto", "extract_text", "sleep", "wait_element", "wait_for_load_state", "write_file"}
-            if any(step.get("action") not in allowed for step in steps):
+            if any(step.get("action") not in READONLY_REPLAY_ACTIONS for step in steps):
                 raise ValueError("Automatic replay check is read-only. Review interactive drafts in the editor and use Runs explicitly.")
             self.operations._reserve([account["name"]])
         except Exception as exc:
+            self._workflow_error = str(exc)
+            self.changed.emit()
             self.state.notify(str(exc))
             return
         self._validation_steps = steps
         self._validation = True
         self._active = True
         self._verified_signature = ""
+        self._workflow_error = ""
         self._stop.clear()
         self._status = "Checking replay and output schemas..."
         self.changed.emit()
@@ -611,6 +660,7 @@ class AIBridge(QObject):
     @pyqtSlot(str, str)
     def _validation_finished(self, signature, error):
         self._verified_signature = signature
+        self._workflow_error = error
         self._status = "Replay check failed: " + error if error else "Replay checked: required outputs match their schemas"
         self.state.notify(self._status)
         self.changed.emit()
@@ -714,6 +764,7 @@ class AIBridge(QObject):
         self._session = None
         self._outputs, self._sources, self._inputs = {}, {}, {}
         self._verified_signature = ""
+        self._workflow_error = ""
         self._usage = self._outcome = ""
         self._task = ""
         self._result_text = ""

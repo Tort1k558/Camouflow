@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtWidgets import QApplication
+from PyQt6 import sip
 
 import logging
 import os
@@ -26,6 +27,7 @@ from app.ui.bridge.profiles import ProfilesBridge
 from app.ui.bridge.proxies import ProxiesBridge
 from app.ui.bridge.scenarios import ScenariosBridge
 from app.ui.bridge.settings import SettingsBridge
+from app.ui.bridge.tasks import TasksBridge
 from app.ui.bridge.user import UserBridge
 
 LOGGER = logging.getLogger(__name__)
@@ -55,6 +57,7 @@ class QmlApplication:
         self.scenarios = ScenariosBridge(self.profiles, self.state)
         self.operations = OperationsBridge(self.profiles, self.scenarios, self.state)
         self.recorder = RecorderBridge(self.operations, self.scenarios, self.state)
+        self.tasks = TasksBridge(self.operations, self.scenarios, self.state)
         self.profiles.recorder = self.recorder
         self.recorder.changed.connect(self.profiles._render_accounts)
         self.app.aboutToQuit.connect(self.recorder.shutdown)
@@ -106,6 +109,7 @@ class QmlApplication:
         context.setContextProperty("appVersion", APP_VERSION)
         context.setContextProperty("operationsBridge", self.operations)
         context.setContextProperty("recorderBridge", self.recorder)
+        context.setContextProperty("tasksBridge", self.tasks)
         context.setContextProperty("aiBridge", self.ai)
         context.setContextProperty("AppState", self.state)
         context.setContextProperty("appState", self.state)
@@ -130,11 +134,15 @@ class QmlApplication:
 
     def exec(self) -> int:
         qml_file = self.root_dir / "Main.qml"
-        self.engine.load(QUrl.fromLocalFile(str(qml_file)))
-        if not self.engine.rootObjects():
-            LOGGER.error("Failed to load QML root: %s", qml_file)
-            return 1
-        return self.app.exec()
+        try:
+            self.engine.load(QUrl.fromLocalFile(str(qml_file)))
+            if not self.engine.rootObjects():
+                LOGGER.error("Failed to load QML root: %s", qml_file)
+                return 1
+            return self.app.exec()
+        finally:
+            # QML bindings must be destroyed while their Python bridges are still alive.
+            sip.delete(self.engine)
 
 
 def run_qml_app(argv: list[str] | None = None) -> int:

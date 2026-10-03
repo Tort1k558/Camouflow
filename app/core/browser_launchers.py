@@ -300,6 +300,9 @@ class CamoufoxLaunchBuilder:
         }
         if persistent_context_value:
             kwargs["user_data_dir"] = str(self.user_data_dir)
+            context_settings = CloakBrowserLaunchBuilder._context_kwargs(merged)
+            context_settings.pop("storage_state", None)
+            kwargs.update(context_settings)
 
         locale_list = self._normalize_locale_list(locale_value)
         if locale_list:
@@ -308,10 +311,14 @@ class CamoufoxLaunchBuilder:
         desired_pair = None
         if webgl_vendor and webgl_renderer:
             desired_pair = (webgl_vendor, webgl_renderer)
+        elif webgl_vendor or webgl_renderer:
+            raise ValueError("Set both WebGL vendor and renderer, or clear both for Auto GPU")
         elif stored_webgl:
             desired_pair = stored_webgl
 
         validated_pair = self._valid_webgl_pair(fp.navigator.userAgent, desired_pair)
+        if webgl_vendor and webgl_renderer and not validated_pair:
+            raise ValueError("WebGL vendor/renderer is not supported for the profile OS; choose a supported pair or Auto GPU")
         if validated_pair:
             kwargs["webgl_config"] = validated_pair
             if not os_payload:
@@ -336,7 +343,7 @@ class CamoufoxLaunchBuilder:
             kwargs["disable_coop"] = True
         if stable_overrides:
             for key, value in stable_overrides.items():
-                if key not in config_overrides and key not in {"webgl_vendor", "webgl_renderer"}:
+                if key not in config_overrides and key not in {"webgl_vendor", "webgl_renderer", "window.history.length"}:
                     config_overrides[key] = value
         if timezone_value:
             config_overrides["timezone"] = timezone_value
@@ -344,10 +351,13 @@ class CamoufoxLaunchBuilder:
             timezone_id = self.proxy_service.detect_timezone()
             if timezone_id:
                 config_overrides["timezone"] = timezone_id
+        for setting, field in (("screen_width", "width"), ("screen_height", "height")):
+            size = positive_int(merged.get(setting))
+            if size:
+                config_overrides[f"screen.{field}"] = size
+                config_overrides[f"screen.avail{field.capitalize()}"] = size
 
         navigator_payload = normalize_navigator_overrides(merged.get("navigator_overrides"))
-        if not navigator_payload and locale_list:
-            navigator_payload = {"language": locale_list[0], "languages": list(locale_list)}
         if navigator_payload:
             for key, value in navigator_payload.items():
                 config_overrides[f"navigator.{key}"] = value
@@ -641,16 +651,18 @@ class CloakBrowserLaunchBuilder:
             args.append("--disable-http2")
         args.extend(split_setting_list(merged.get("launch_args")))
 
-        width = merged.get("screen_width") or merged.get("window_width")
-        height = merged.get("screen_height") or merged.get("window_height")
+        width = merged.get("window_width")
+        height = merged.get("window_height")
         viewport: Optional[Dict[str, int]] = None
         w_int = positive_int(width)
         h_int = positive_int(height)
         if w_int and h_int:
             viewport = {"width": w_int, "height": h_int}
             args.append(f"--window-size={w_int},{h_int}")
-            args.append(f"--fingerprint-screen-width={w_int}")
-            args.append(f"--fingerprint-screen-height={h_int}")
+        for setting, flag in (("screen_width", "--fingerprint-screen-width"), ("screen_height", "--fingerprint-screen-height")):
+            size = positive_int(merged.get(setting))
+            if size:
+                args.append(f"{flag}={size}")
 
         humanize_value = merged.get("humanize", True)
         if isinstance(humanize_value, bool):
@@ -706,8 +718,6 @@ class CloakBrowserLaunchBuilder:
         kwargs["geoip"] = bool(merged.get("geoip", False))
         if viewport:
             kwargs["viewport"] = viewport
-        else:
-            kwargs["viewport"] = None
         context_kwargs = self._context_kwargs(merged)
         if context_kwargs:
             kwargs["context_kwargs"] = context_kwargs

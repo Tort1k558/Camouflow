@@ -192,6 +192,12 @@ Queue capacity is limited to 500 unfinished jobs and 32 MiB of metadata. Archive
 
 ## Record a scenario (desktop)
 
+### Saved tasks: record once, run with a form
+
+Open **Tasks → Record a task**, record your actions and stop. Review the action list and warnings, select the URL/text/selection values that change between runs, give them readable labels, then **Save task**. Equal recorded values become one shared input; recognized secrets remain profile variables. The technical JSON and variable names are optional advanced details.
+
+In **Tasks**, choose a saved scenario, select a profile, fill all required inputs and **Queue task**. This uses the existing queue, profile locks and Python approval; no model request is needed. Resume the queue explicitly in **Runs** and keep the application open. The task definition is snapshotted with the job. Run inputs are stored locally in the queue, not as profile defaults; never enter credentials here. A changed task must be selected and reviewed again. **Run details** opens the existing result/error/artifact controls. Recording warnings are retained with the saved task.
+
 Open **Scenarios > Record**, select a stopped local or cloud Camoufox profile and enter an HTTP(S) start URL. Click **Start recording**, perform actions in the browser, then **Stop** and **Save & edit**. Stop closes the recording browser. Saving requires a new scenario name and never replaces existing scenarios. Recording reserves the profile against simultaneous launches and workspace operations. Cloud recording also acquires and renews the server profile lock, then releases it after the browser closes. Cloud recording requires operator access; saving a new scenario requires manager access. Save in the same workspace where recording started; switching teams does not transfer the draft.
 
 The first version records the initial tab and main frame: navigation, clicks, text input, single-value HTML selects, checkboxes/radio buttons and Enter. Selectors prefer unique test IDs, IDs, names and accessible attributes; ambiguous targets are reported rather than guessed. Sequential typing is combined into one step. The select_option, set_checked and press actions are available in the editor and executor.

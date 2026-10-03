@@ -83,6 +83,9 @@ class BrowserInterface:
         self._camoufox_settings = self._browser_settings
         self._camoufox_defaults = db_get_camoufox_defaults()
         self._cloakbrowser_defaults = db_get_cloakbrowser_defaults()
+        defaults = self._cloakbrowser_defaults if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER else self._camoufox_defaults
+        self._browser_settings = {**defaults, **{key: value for key, value in self._browser_settings.items() if value is not None}}
+        self._camoufox_settings = self._browser_settings
 
         self.logger = logging.LoggerAdapter(logging.getLogger(__name__), {"profile": self.profile_name})
         self._proxy_logger = self._init_proxy_logger()
@@ -296,7 +299,15 @@ class BrowserInterface:
             if isinstance(humanize_raw, bool)
             else str(humanize_raw).lower() not in {"0", "false", "no", "off"}
         )
+        if not humanize_enabled:
+            if clear:
+                await element.fill(text)
+            else:
+                await element.type(text)
+            return
         if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER and humanize_enabled:
+            if not self.page.viewport_size:
+                raise RuntimeError("CloakBrowser humanization requires a fixed viewport. Set both window width and height in the profile/browser settings, or explicitly disable humanization.")
             if clear:
                 await element.fill(text)
             else:
@@ -388,7 +399,7 @@ class BrowserInterface:
 
     async def _start_camoufox(self) -> None:
         launch_kwargs = self._build_launch_kwargs()
-        self.logger.info("Launching Camoufox for %s with kwargs keys: %s", self.profile_name, str(launch_kwargs))
+        self.logger.info("Launching Camoufox for %s with kwargs keys: %s", self.profile_name, sorted(launch_kwargs))
         Camoufox = _import_camoufox()
         self._camoufox_ctx = Camoufox(**launch_kwargs)
 
@@ -399,7 +410,9 @@ class BrowserInterface:
             self.browser = getattr(self.context, "browser", None)
         else:
             self.browser = camoufox_result
-            context_kwargs = self._context_kwargs_from_settings(self._browser_settings)
+            settings = dict(self._camoufox_defaults)
+            settings.update({key: value for key, value in self._browser_settings.items() if value is not None})
+            context_kwargs = self._context_kwargs_from_settings(settings)
             if self._storage_state_payload is not None:
                 context_kwargs["storage_state"] = self._storage_state_payload
             self.context = await self.browser.new_context(**context_kwargs)
@@ -408,7 +421,7 @@ class BrowserInterface:
 
     async def _start_cloakbrowser(self) -> None:
         try:
-            from cloakbrowser import launch_async, launch_persistent_context_async
+            from cloakbrowser import launch_context_async, launch_persistent_context_async
         except Exception as exc:
             raise RuntimeError("CloakBrowser is not installed. Run: pip install -r requirements.txt") from exc
 
@@ -419,7 +432,7 @@ class BrowserInterface:
         self.logger.info(
             "Launching CloakBrowser for %s with kwargs keys: %s",
             self.profile_name,
-            str(launch_kwargs),
+            sorted(launch_kwargs),
         )
         try:
             context_kwargs = launch_kwargs.pop("context_kwargs", {})
@@ -434,28 +447,11 @@ class BrowserInterface:
                 self._cloakbrowser_context = self.context
                 self.browser = getattr(self.context, "browser", None)
             else:
-                launch_only_kwargs = dict(launch_kwargs)
-                launch_only_kwargs.pop("viewport", None)
-                user_agent_value = launch_only_kwargs.pop("user_agent", None)
-                color_scheme_value = launch_only_kwargs.pop("color_scheme", None)
-                self.browser = await launch_async(**launch_only_kwargs)
-                context_kwargs = dict(context_kwargs)
-                viewport = launch_kwargs.get("viewport")
-                if isinstance(viewport, dict):
-                    context_kwargs["viewport"] = viewport
-                locale_value = launch_kwargs.get("locale")
-                timezone_value = launch_kwargs.get("timezone")
-                if locale_value:
-                    context_kwargs["locale"] = locale_value
-                if timezone_value:
-                    context_kwargs["timezone_id"] = timezone_value
-                if user_agent_value:
-                    context_kwargs["user_agent"] = user_agent_value
-                if color_scheme_value:
-                    context_kwargs["color_scheme"] = color_scheme_value
                 if self._storage_state_payload is not None:
                     context_kwargs["storage_state"] = self._storage_state_payload
-                self.context = await self.browser.new_context(**context_kwargs)
+                self.context = await launch_context_async(**launch_kwargs, **context_kwargs)
+                self._cloakbrowser_context = self.context
+                self.browser = getattr(self.context, "browser", None)
                 self._storage_state_native = True
         except Exception as exc:
             self.logger.exception("CloakBrowser start failed for %s", self.profile_name)

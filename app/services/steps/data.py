@@ -193,8 +193,9 @@ class DataSteps:
         if candidate.is_absolute():
             return StepResult.stop("Absolute file paths are not allowed for write_file action")
 
-        file_path = (OUTPUTS_DIR / candidate).resolve()
-        if not file_path.is_relative_to(OUTPUTS_DIR.resolve()):
+        output_directory = Path(getattr(self, "_output_directory", OUTPUTS_DIR)).resolve()
+        file_path = (output_directory / candidate).resolve()
+        if not output_directory.is_relative_to(OUTPUTS_DIR.resolve()) or not file_path.is_relative_to(output_directory):
             return StepResult.stop("File path must stay inside outputs")
 
         try:

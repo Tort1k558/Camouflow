@@ -174,12 +174,12 @@ Item {
                         Row { width: parent.width; spacing: 10
                             ModeButton { width: (parent.width - 20) / 3; label: "Standard"; active: browserSettingsBridge.headlessMode === "standard"; onClicked: browserSettingsBridge.setHeadlessMode("standard") }
                             ModeButton { width: (parent.width - 20) / 3; label: "Headless"; active: browserSettingsBridge.headlessMode === "headless"; onClicked: browserSettingsBridge.setHeadlessMode("headless") }
-                            ModeButton { width: (parent.width - 20) / 3; label: "Virtual"; active: browserSettingsBridge.headlessMode === "virtual"; enabled: root.isCamoufox; opacity: enabled ? 1 : 0.35; onClicked: if (enabled) browserSettingsBridge.setHeadlessMode("virtual") }
+                            ModeButton { width: (parent.width - 20) / 3; label: "Virtual"; active: browserSettingsBridge.headlessMode === "virtual"; enabled: root.isCamoufox && Qt.platform.os === "linux"; opacity: enabled ? 1 : 0.35; onClicked: if (enabled) browserSettingsBridge.setHeadlessMode("virtual") }
                         }
                         ToggleRow { label: "Human-like cursor"; hint: "Enable natural mouse movement"; checked: browserSettingsBridge.humanize; onToggled: function(value) { browserSettingsBridge.setHumanizeEnabled(value) } }
-                        FormField { width: parent.width; label: "Cursor duration"; placeholder: "Auto"; text: browserSettingsBridge.humanizeDuration; onEditingFinished: browserSettingsBridge.setValue("humanize", text) }
-                        Text { text: "Human preset"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
-                        Row { width: parent.width; spacing: 10
+                        FormField { visible: root.isCamoufox; width: parent.width; label: "Cursor duration"; placeholder: "Auto"; text: browserSettingsBridge.humanizeDuration; onEditingFinished: browserSettingsBridge.setValue("humanize", text) }
+                        Text { visible: !root.isCamoufox; text: "Human preset"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        Row { visible: !root.isCamoufox; width: parent.width; spacing: 10
                             ModeButton { width: (parent.width - 10) / 2; label: "Default human"; active: browserSettingsBridge.humanPreset === "default"; onClicked: browserSettingsBridge.setValue("human_preset", "default") }
                             ModeButton { width: (parent.width - 10) / 2; label: "Careful human"; active: browserSettingsBridge.humanPreset === "careful"; onClicked: browserSettingsBridge.setValue("human_preset", "careful") }
                         }
@@ -321,8 +321,8 @@ Item {
                         FormField { Layout.fillWidth: true; label: "WebGL / GPU renderer"; placeholder: "Auto"; text: browserSettingsBridge.webglRenderer; onEditingFinished: browserSettingsBridge.setValue("webgl_renderer", text) }
                         RowLayout { Layout.fillWidth: true; spacing: 10
                             ModeButton { Layout.fillWidth: true; label: "Auto GPU"; active: browserSettingsBridge.webglVendor === "" && browserSettingsBridge.webglRenderer === ""; onClicked: { browserSettingsBridge.setValue("webgl_vendor", ""); browserSettingsBridge.setValue("webgl_renderer", "") } }
-                            ModeButton { Layout.fillWidth: true; label: "NVIDIA"; active: browserSettingsBridge.webglVendor.indexOf("NVIDIA") >= 0; onClicked: { browserSettingsBridge.setValue("webgl_vendor", "NVIDIA Corporation"); browserSettingsBridge.setValue("webgl_renderer", "NVIDIA GeForce RTX") } }
-                            ModeButton { Layout.fillWidth: true; label: "Intel"; active: browserSettingsBridge.webglVendor.indexOf("Intel") >= 0; onClicked: { browserSettingsBridge.setValue("webgl_vendor", "Intel Inc."); browserSettingsBridge.setValue("webgl_renderer", "Intel Iris OpenGL Engine") } }
+                            ModeButton { visible: !root.isCamoufox; Layout.fillWidth: true; label: "NVIDIA"; active: browserSettingsBridge.webglVendor.indexOf("NVIDIA") >= 0; onClicked: { browserSettingsBridge.setValue("webgl_vendor", "NVIDIA Corporation"); browserSettingsBridge.setValue("webgl_renderer", "NVIDIA GeForce RTX") } }
+                            ModeButton { visible: !root.isCamoufox; Layout.fillWidth: true; label: "Intel"; active: browserSettingsBridge.webglVendor.indexOf("Intel") >= 0; onClicked: { browserSettingsBridge.setValue("webgl_vendor", "Intel Inc."); browserSettingsBridge.setValue("webgl_renderer", "Intel Iris OpenGL Engine") } }
                         }
                         RowLayout { visible: !root.isCamoufox; Layout.fillWidth: true; spacing: 10
                             ModeButton { Layout.fillWidth: true; label: "Auto"; active: browserSettingsBridge.colorScheme === ""; onClicked: browserSettingsBridge.setValue("color_scheme", "") }

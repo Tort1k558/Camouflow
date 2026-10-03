@@ -100,7 +100,7 @@ jobs:
           ui.scenarios.ensureMarketLoaded()
           assert market_requests == ["", "latest"], "Cached page refetched"
           market_client.market_scenarios.side_effect = None
-          for page in ("ScenarioRecord", "ScenarioRuns", "Profiles", "Proxies", "Scenarios", "Marketplace", "Browser", "Settings", "User", "Logs", "Dashboard"):
+          for page in ("ScenarioRecord", "ScenarioRuns", "ScenarioAI", "Profiles", "Proxies", "Scenarios", "Marketplace", "Browser", "Settings", "User", "Logs", "Dashboard"):
               ui.state.setPage(page)
               for _ in range(10):
                   ui.app.processEvents()

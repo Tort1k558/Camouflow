@@ -13,6 +13,7 @@ from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 from app.core.browser_interface import BrowserInterface
 from app.services.proxy_policy import account_proxy
 from app.services.scenario_recorder import ScenarioRecorder
+from app.services.task_inputs import prepare_recording, recording_candidates
 from app.services.server_client import ServerClient, get_server_session, role_allows
 from app.storage import db
 
@@ -74,6 +75,20 @@ class RecorderBridge(QObject):
     @pyqtProperty(str, notify=changed)
     def warnings(self):
         return "\n".join(self._warnings)
+
+    @pyqtProperty("QVariantList", notify=changed)
+    def parameterCandidates(self):  # noqa: N802
+        return recording_candidates(self._steps)
+
+    @pyqtProperty("QVariantList", notify=changed)
+    def recordedActions(self):  # noqa: N802
+        labels = {"goto": "Open website", "click": "Click", "type": "Fill field",
+                  "select_option": "Choose option", "set_checked": "Set checkbox",
+                  "press": "Press key", "wait_for_load_state": "Wait for page"}
+        return [{"number": index, "title": labels.get(step.get("action"), step.get("action", "")),
+                 "detail": "Profile variable required" if step.get("required_variable") else
+                 str(step.get("field_label") or step.get("url") or step.get("value") or step.get("selector") or "")[:200]}
+                for index, step in enumerate(self._steps[1:], 1)]
 
     @pyqtProperty(bool, notify=changed)
     def hasDraft(self):  # noqa: N802
@@ -249,6 +264,13 @@ class RecorderBridge(QObject):
 
     @pyqtSlot(str)
     def save(self, name):
+        self._save(name)
+
+    @pyqtSlot(str, "QVariantList")
+    def saveTask(self, name, fields):  # noqa: N802
+        self._save(name, fields)
+
+    def _save(self, name, fields=None):
         if self._active or self._saving or not self.hasDraft:
             return
         session = get_server_session()
@@ -262,6 +284,14 @@ class RecorderBridge(QObject):
             self.state.notify("Enter a scenario name (1-100 characters)")
             return
         steps = copy.deepcopy(self._steps)
+        as_task = fields is not None
+        if as_task:
+            try:
+                steps = prepare_recording(steps, fields)
+            except (ValueError, TypeError) as exc:
+                self.state.notify(str(exc))
+                return
+        steps[0]["_recording_warnings"] = list(self._warnings)
         self._saving = True
         self._status = "Saving recording..."
         self.changed.emit()
@@ -280,7 +310,7 @@ class RecorderBridge(QObject):
                         if db.db_get_scenario(name) is not None:
                             raise ValueError("That scenario already exists. Choose a new name.")
                         db.db_save_scenario(name, steps, description)
-                self.saveFinished.emit((session, db.Scenario(name, steps, description), scenario_id), "")
+                self.saveFinished.emit((session, db.Scenario(name, steps, description), scenario_id, as_task), "")
             except Exception as exc:
                 self.saveFinished.emit(None, str(exc))
         self._thread = threading.Thread(target=worker, daemon=True, name="recording-save")
@@ -294,14 +324,14 @@ class RecorderBridge(QObject):
             self.changed.emit()
             self.state.notify(f"Cannot save recording: {error}")
             return
-        session, scenario, scenario_id = result
+        session, scenario, scenario_id, as_task = result
         self.discard()
         if self._workspace(session) == self._workspace(get_server_session()):
             self.scenarios.refresh()
             if scenario_id:
                 self.scenarios._server_scenario_ids[scenario.name] = scenario_id
             self.scenarios._set_selected(scenario)
-            self.state.setPage("Scenarios")
+            self.state.setPage("Tasks" if as_task else "Scenarios")
         self.state.notify(f"Recording saved: {scenario.name}")
 
     @pyqtSlot()

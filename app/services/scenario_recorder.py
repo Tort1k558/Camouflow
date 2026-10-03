@@ -51,7 +51,8 @@ RECORDER_SCRIPT = r"""
         if (!target) { send({warning: 'An element has no unique stable selector. Add this step manually.'}); return; }
         const password = el.type === 'password';
         const sensitive = password || /password|one-time-code|cc-number|cc-csc/.test(el.autocomplete || '');
-        send({action, selector: target, value: sensitive && action === 'type' ? '' : value, sensitive, password});
+        const label = (el.getAttribute('aria-label') || (el.labels && el.labels[0] ? el.labels[0].textContent : '') || el.getAttribute('placeholder') || '').trim().replace(/\s+/g, ' ').slice(0, 100);
+        send({action, selector: target, value: sensitive && action === 'type' ? '' : value, sensitive, password, field_label: label});
     };
     document.addEventListener('click', event => {
         if (!event.isTrusted || event.button !== 0) return;
@@ -138,6 +139,9 @@ class ScenarioRecorder:
             self.warn("An oversized field was skipped.")
             return
         step = {"action": action, "selector": selector, "selector_type": "css", "timeout_ms": 15000}
+        label = payload.get("field_label")
+        if isinstance(label, str) and label.strip():
+            step["field_label"] = label.strip()[:100]
         if action == "type" and payload.get("sensitive"):
             variable = "password" if payload.get("password") else self._secrets.setdefault(selector, f"recorded_secret_{len(self._secrets) + 1}")
             value = "{{" + variable + "}}"
@@ -159,7 +163,10 @@ class ScenarioRecorder:
         self._last_action_at = time.monotonic()
 
     def navigated(self, frame):
-        if not self.active or frame != self.page.main_frame:
+        if not self.active:
+            return
+        if frame != self.page.main_frame:
+            self.warn("A frame was loaded. Its actions are not recorded; review the draft.")
             return
         url = frame.url
         parsed = urlsplit(url)

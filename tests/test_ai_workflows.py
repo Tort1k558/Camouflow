@@ -2,6 +2,8 @@
 
 import asyncio
 import json
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -12,6 +14,60 @@ from app.services.ai_agent.loop import AgentSession, save_transcript
 from app.services.ai_agent.templates import template
 from app.services.ai_agent.to_steps import compile_workflow
 from test_ai_agent import FakeClient, FakePage, make_client, reply, run_session
+
+
+def test_ui_output_previews_cover_text_and_bounded_tables():
+    from app.ui.bridge.ai import AIBridge
+
+    table = [{"Product": f"Item {index}", "Price": "12"} for index in range(45)]
+    bridge = SimpleNamespace(_outputs={"catalog": table, "report": "Отчёт"},
+                             _sources={"catalog": "https://shop.test"})
+    previews = AIBridge.outputPreviews.fget(bridge)
+    assert previews[0]["count"] == 45
+    assert previews[0]["columns"] == ["Product", "Price"]
+    assert len(previews[0]["cells"]) == 60
+    assert previews[0]["source"] == "https://shop.test"
+    assert previews[1]["format"] == "text" and previews[1]["text"] == "Отчёт"
+
+
+def test_ui_csv_exports_the_selected_table(tmp_path):
+    from app.ui.bridge.ai import AIBridge
+
+    bridge = SimpleNamespace(busy=False, _outputs={"first": [{"Name": "First"}],
+                             "second": [{"Name": "Second"}]}, state=SimpleNamespace(notify=Mock()))
+    destination = tmp_path / "selected.csv"
+    AIBridge.exportResults(bridge, str(destination), "second")
+    assert destination.read_text(encoding="utf-8") == "Name\nSecond\n"
+    AIBridge.exportResults(bridge, str(tmp_path / "unknown.csv"), "unknown")
+    assert not (tmp_path / "unknown.csv").exists()
+
+
+def test_ui_invalid_inputs_keep_the_previous_verified_draft():
+    from app.ui.bridge.ai import AIBridge
+
+    bridge = SimpleNamespace(busy=False, _draft_steps=[{"action": "start"}, {"action": "goto", "value": "https://shop.test"}],
+                             _outputs={}, _inputs={"page_url": "https://shop.test"},
+                             _verified_signature="verified", changed=SimpleNamespace(emit=Mock()),
+                             state=SimpleNamespace(notify=Mock()))
+    assert not AIBridge.setInputs(bridge, '{"unknown":"does not match"}')
+    assert bridge._inputs == {"page_url": "https://shop.test"}
+    assert bridge._verified_signature == "verified"
+    bridge.changed.emit.assert_not_called()
+    assert AIBridge.setInputs(bridge, '{"page_url":"https://shop.test"}')
+    assert bridge._verified_signature == ""
+    assert AIBridge.inputFields.fget(bridge) == [{"name": "page_url", "value": "https://shop.test"}]
+
+
+def test_ui_replay_status_keeps_errors_and_disallows_interactive_checks():
+    from app.ui.bridge.ai import AIBridge
+
+    bridge = SimpleNamespace(hasDraft=True, _outputs={"report": "text"},
+                             _draft_steps=[{"action": "start"}, {"action": "extract_text"}],
+                             _workflow_error="Output is empty", _verified_signature="")
+    assert AIBridge.canCheckReplay.fget(bridge)
+    assert AIBridge.workflowStatus.fget(bridge) == "Replay check failed: Output is empty"
+    bridge._draft_steps.append({"action": "click"})
+    assert not AIBridge.canCheckReplay.fget(bridge)
 
 
 @pytest.mark.parametrize(

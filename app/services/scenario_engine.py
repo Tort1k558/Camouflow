@@ -717,8 +717,13 @@ class ScenarioExecutor(
         """
         try:
             self._profile_vars_path.parent.mkdir(parents=True, exist_ok=True)
+            transient = getattr(self, "_transient_inputs", {})
+            values = {key: value for key, value in self.variables.items() if key not in transient}
+            if transient and self._profile_vars_path.exists():
+                saved = json.loads(self._profile_vars_path.read_text(encoding="utf-8-sig"))
+                values.update({key: saved[key] for key in transient if key in saved})
             with self._profile_vars_path.open("w", encoding="utf-8") as fh:
-                json.dump(self.variables, fh, ensure_ascii=False, indent=2)
+                json.dump(values, fh, ensure_ascii=False, indent=2)
         except Exception as exc:
             self.logger.debug("Failed to persist profile vars to %s: %s", self._profile_vars_path, exc)
 

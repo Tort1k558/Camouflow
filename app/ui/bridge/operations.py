@@ -7,6 +7,7 @@ import copy
 import json
 import threading
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -144,6 +145,10 @@ class OperationsBridge(QObject):
         return self._details
 
     @pyqtProperty(str, notify=changed)
+    def selectedJob(self):
+        return self._selected
+
+    @pyqtProperty(str, notify=changed)
     def selectedProfiles(self):
         return "\n".join(self._selection)
 
@@ -215,19 +220,41 @@ class OperationsBridge(QObject):
 
     @pyqtSlot(str, str, str, str, str)
     def enqueue(self, names, scenario_name, when, policy, pool):
+        self._enqueue(names, scenario_name, when, policy, pool)
+
+    @pyqtSlot(str, str, "QVariantMap", result=bool)
+    def enqueueTask(self, profile, scenario_name, inputs):  # noqa: N802
+        return self._enqueue(profile, scenario_name, "", "unchanged", "", inputs)
+
+    def enqueue_batch(self, profile, scenario_name, rows):
+        return self._enqueue(profile, scenario_name, "", "unchanged", "", batch_rows=rows)
+
+    def _enqueue(self, names, scenario_name, when, policy, pool, inputs=None, batch_rows=None):
         try:
             if not self.scenarios._ensure_allowed("operator"):
-                return
+                return False
             scenario = self.scenarios._get_scenario(scenario_name.strip())
             if scenario is None:
                 raise ValueError("Scenario not found")
             error = self.scenarios._validate_scenario(scenario)
             if error:
                 raise ValueError(error)
+            if inputs is not None:
+                from app.services.task_inputs import validate_inputs
+                inputs = validate_inputs(scenario.steps, inputs)
+            if batch_rows is not None:
+                from app.services.task_inputs import validate_inputs
+                if not isinstance(batch_rows, list) or not 1 <= len(batch_rows) <= 200:
+                    raise ValueError("Select 1-200 CSV rows")
+                batch_rows = [{"row": row["row"], "inputs": validate_inputs(scenario.steps, row["inputs"])} for row in batch_rows]
+                if any(type(row["row"]) is not int or not 1 <= row["row"] <= 200 for row in batch_rows):
+                    raise ValueError("Invalid CSV row number")
             selected = self._names(names)
             accounts = {a["name"]: a for a in self._accounts()}
             if not selected or any(n not in accounts for n in selected):
                 raise ValueError("Select existing profiles")
+            if batch_rows is not None and len(selected) != 1:
+                raise ValueError("Choose one profile for a CSV batch")
             due = datetime.strptime(when.strip(), "%Y-%m-%d %H:%M").timestamp() if when.strip() else time.time()
             if when.strip() and due < time.time() - 60:
                 raise ValueError("Scheduled time is in the past")
@@ -243,14 +270,23 @@ class OperationsBridge(QObject):
                       "steps": copy.deepcopy(scenario.steps), "description": scenario.description or "",
                       "policy": policy, "pool": pool.strip(), "library": library, "debug": self._debug_enabled}
                      for n in selected]
+            if inputs is not None:
+                for spec in specs:
+                    spec["inputs"] = inputs
+            if batch_rows is not None:
+                batch_id = uuid.uuid4().hex
+                specs = [{**copy.deepcopy(specs[0]), "inputs": row["inputs"], "batch_id": batch_id,
+                          "batch_row": row["row"], "batch_size": len(batch_rows)} for row in batch_rows]
             if digest and not self._python_approved(digest):
                 self._pending_python = (copy.deepcopy(specs), due, digest, get_server_session(), self._workspace())
                 self.pythonApprovalRequested.emit(preview)
-                return
+                return True
             self.queue.enqueue(specs, due)
-            self._notify(f"Queued {len(selected)} profile(s). Resume the queue when ready; keep the application open.")
+            self._notify(f"Queued {len(specs)} job(s). Resume the queue when ready; keep the application open.")
+            return True
         except Exception as exc:
             self._notify(str(exc))
+            return False
 
     def _python_approved(self, digest):
         approved = json.loads(db.db_get_setting("python_script_approvals") or "{}")
@@ -423,6 +459,8 @@ class OperationsBridge(QObject):
                 account["_browser_engine"] = engine
                 account["_browser_settings"] = account.get("cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings", {})
                 runner = ScenarioExecutor(account, account_proxy(account), scenario, keep_browser_open=False, cancel_event=cancel, debug_session=debug_session)
+                from app.services.task_inputs import configure_task_run
+                configure_task_run(runner, job, db.OUTPUTS_DIR)
                 if debug_session:
                     runner.add_process_exit_callback(debug_session.notify_browser_closed)
                 runner._scenario_library = {name: db.Scenario(name, row["steps"], row.get("description")) for name, row in job.get("library", {}).items()}
@@ -534,7 +572,7 @@ class OperationsBridge(QObject):
             self._notify("Switch to the original workspace before retrying")
             return
         try:
-            self.queue.enqueue([{k: job[k] for k in ("profile", "profile_id", "scenario", "workspace", "steps", "description", "policy", "pool", "library") if k in job}], time.time())
+            self.queue.enqueue([{k: job[k] for k in ("profile", "profile_id", "scenario", "workspace", "steps", "description", "policy", "pool", "library", "inputs", "debug", "batch_id", "batch_row", "batch_size") if k in job}], time.time())
         except Exception as exc:
             self._notify(str(exc))
 

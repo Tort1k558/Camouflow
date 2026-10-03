@@ -25,7 +25,8 @@ def main():
     os.environ["CAMOUFLOW_DATA_DIR"] = str(root)
     os.environ["QT_QPA_PLATFORM"] = "offscreen"
     os.environ["QT_QUICK_BACKEND"] = "software"
-    from PyQt6.QtCore import QObject, QUrl
+    from PyQt6.QtCore import QObject, QPoint, QPointF, Qt, QUrl
+    from PyQt6.QtTest import QTest
     from app.services.ai_agent.llm import LLMConfig
     from app.storage import db
     from app.ui.qml_app import QmlApplication
@@ -37,6 +38,8 @@ def main():
     )
     db.init_db()
     db.db_set_setting("ai_enabled", "true")
+    db.db_set_setting("ai_base_url", config.base_url)
+    db.db_set_setting("ai_model", config.model)
     db.db_set_setting("onboarding_completed", "true")
     app = QmlApplication(["Real provider demo"])
     if args.screenshot or args.gif:
@@ -74,20 +77,40 @@ def main():
             time.sleep(0.01)
         return until()
 
+    def control(name):
+        item = app.engine.rootObjects()[0].findChild(QObject, name)
+        if item is None:
+            queue = [app.engine.rootObjects()[0].contentItem()]
+            while queue:
+                candidate = queue.pop()
+                if candidate.objectName() == name:
+                    item = candidate
+                    break
+                queue.extend(candidate.childItems())
+        assert item is not None, name
+        return item
+
+    def click(name):
+        item = control(name)
+        assert item.property("visible") and item.property("enabled"), name
+        point = item.mapToScene(QPointF(item.width() / 2, item.height() / 2))
+        QTest.mouseClick(app.engine.rootObjects()[0], Qt.MouseButton.LeftButton,
+                         Qt.KeyboardModifier.NoModifier, QPoint(round(point.x()), round(point.y())))
+        pump(timeout=0.2)
+
     try:
         app.engine.load(QUrl.fromLocalFile(str(app.root_dir / "Main.qml")))
         assert app.engine.rootObjects()
         app.state.setPage("ScenarioAI")
-        app.ai.prepareDemo()
-        assert pump(lambda: bool(app.profiles._cached_account("AI demo")), 10)
         with patch("app.ui.bridge.ai.ai_config", return_value=config):
-            app.ai.configureTask(app.ai._demo.url, True, False, True)
-            app.ai.start(
-                "AI demo",
-                "Extract the catalog HTML table into the catalog variable using table format. "
-                "Use extract, then done with the number of rows. Do not change the page.",
-                8,
-            )
+            app.ai.refresh()
+            pump(timeout=0.3)
+            click("aiDemoButton")
+            assert pump(lambda: bool(app.profiles._cached_account("AI demo")), 10)
+            pump(timeout=0.3)
+            assert control("aiProfileSelector").property("currentText") == "AI demo"
+            control("aiAssistantPanel").setProperty("maxSteps", 8)
+            click("aiStartButton")
             assert app.ai.active
             assert pump(lambda: not app.ai.busy, 200)
         rows = app.ai._outputs.get("catalog", [])
@@ -103,22 +126,25 @@ def main():
             .read_text(encoding="utf-8")
             .startswith("Name,Price,Link")
         )
-        app.ai.setInputs(json.dumps({"catalog_url": app.ai._demo.url}))
-        panel = app.engine.rootObjects()[0].findChild(QObject, "aiAssistantPanel")
-        panel.setProperty("contentY", 1000)
         pump(timeout=0.5)
-        app.ai.verifyDraft()
+        control("aiTaskScroll").setProperty("contentY", 0)
+        click("aiCreateWorkflow")
+        assert control("aiWorkflowDialog").property("visible")
+        click("aiAddInput")
+        control("aiInputName").setProperty("text", "catalog_url")
+        control("aiInputValue").setProperty("text", app.ai._demo.url)
+        click("aiVerifyWorkflow")
         assert app.ai.active and pump(lambda: not app.ai.busy, 90)
         assert app.ai._verified_signature, "Replay was not verified"
+        assert app.ai._inputs == {"catalog_url": app.ai._demo.url}
         if args.screenshot:
-            app.state.setPage("ScenarioAI")
-            pump(timeout=0.5)
-            panel = app.engine.rootObjects()[0].findChild(QObject, "aiAssistantPanel")
-            panel.setProperty("contentY", 1000)
+            control("aiWorkflowDialog").close()
             pump(timeout=0.5)
             args.screenshot.parent.mkdir(parents=True, exist_ok=True)
             assert app.engine.rootObjects()[0].grabWindow().save(str(args.screenshot))
-        app.ai.save("Catalog workflow verified with real provider")
+            click("aiCreateWorkflow")
+        control("aiScenarioName").setProperty("text", "Catalog workflow verified with real provider")
+        click("aiSaveWorkflow")
         assert pump(lambda: not app.ai.busy, 10)
         scenario = db.db_get_scenario("Catalog workflow verified with real provider")
         assert scenario and scenario.steps[0]["_ai_replay_checked"]
@@ -149,6 +175,7 @@ def main():
                 "parameterization",
                 "real replay",
                 "verified scenario save",
+                "actual QML button clicks",
                 "QML warnings",
             ],
         }

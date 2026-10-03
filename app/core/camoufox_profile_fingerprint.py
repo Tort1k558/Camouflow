@@ -37,7 +37,11 @@ def _fingerprint_from_dict(payload: Dict) -> Fingerprint:
     FingerprintCls, NavigatorFingerprint, ScreenFingerprint = _import_fingerprint_types()
     screen_raw = payload.get("screen") or {}
     navigator_raw = payload.get("navigator") or {}
-    screen = ScreenFingerprint(**screen_raw)
+    if "screenY" in screen_raw:
+        from camoufox.fingerprints import ExtendedScreen
+        screen = ExtendedScreen(**screen_raw)
+    else:
+        screen = ScreenFingerprint(**screen_raw)
     navigator = NavigatorFingerprint(**navigator_raw)
     return FingerprintCls(
         screen=screen,
@@ -62,7 +66,7 @@ def _stable_overrides_from_dict(payload: Dict) -> Dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
     overrides: Dict[str, Any] = {}
-    for key in ("window.history.length", "fonts:spacing_seed", "canvas:aaOffset"):
+    for key in ("window.history.length", "fonts:spacing_seed", "canvas:aaOffset", "audio:seed"):
         value = payload.get(key)
         if isinstance(value, (int, float)):
             overrides[key] = int(value)
@@ -74,6 +78,7 @@ def _generate_stable_overrides() -> Dict[str, int]:
         "window.history.length": random.randint(1, 5),
         "fonts:spacing_seed": random.randint(0, 1_073_741_823),
         "canvas:aaOffset": random.randint(-50, 50),
+        "audio:seed": random.randint(1, 4_294_967_295),
     }
 
 
@@ -154,7 +159,22 @@ def load_or_create_profile_fingerprint_bundle(
                 raise ValueError("Fingerprint payload missing")
             overrides = _stable_overrides_from_dict(data.get("overrides") or {})
             fp = _fingerprint_from_dict(fp_raw)
+            requested_os = [os_payload] if isinstance(os_payload, str) else os_payload
+            actual_os = {"win": "windows", "mac": "macos", "lin": "linux"}[_target_os_from_user_agent(fp.navigator.userAgent)]
+            if requested_os and actual_os not in requested_os:
+                raise ValueError("Profile OS changed; regenerating its fingerprint")
             if _fingerprint_gpu_matches_ua(fp):
+                missing_seeds = {key: random.randint(1, 4_294_967_295) for key in ("audio:seed",) if key not in overrides}
+                if missing_seeds:
+                    overrides.update(missing_seeds)
+                    data.setdefault("overrides", {}).update(missing_seeds)
+                    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+                if window and (fp.screen.outerWidth, fp.screen.outerHeight) != window:
+                    from camoufox.fingerprints import handle_window_size
+                    fp.screen.screenX = 0
+                    handle_window_size(fp, *window)
+                    data["fingerprint"] = asdict(fp)
+                    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
                 return (
                     fp,
                     overrides,

@@ -84,7 +84,7 @@ ApplicationWindow {
                         spacing: 12
                         Text { text: "WORKSPACE"; font.family: Theme.monoFamily; font.pixelSize: 10; font.letterSpacing: 1.2; color: Theme.dim }
                         Text { text: "/"; color: Theme.border }
-                        Text { text: appState ? (appState.currentPage === "ScenarioRuns" ? "Scenarios / Runs" : appState.currentPage === "ScenarioRecord" ? "Scenarios / Record" : appState.currentPage === "ScenarioAI" ? "Scenarios / AI" : appState.currentPage) : "Dashboard"; color: Theme.text; font.pixelSize: 12 }
+                        Text { text: appState ? (appState.currentPage === "ScenarioRuns" ? "Scenarios / Runs" : appState.currentPage === "ScenarioRecord" ? "Scenarios / Record" : appState.currentPage === "ScenarioAI" ? "AI workspace" : appState.currentPage) : "Dashboard"; color: Theme.text; font.pixelSize: 12 }
                     }
                     Row {
                         anchors.right: parent.right; anchors.rightMargin: 28; anchors.verticalCenter: parent.verticalCenter
@@ -98,6 +98,7 @@ ApplicationWindow {
                     anchors.fill: parent
                     anchors.topMargin: workspaceBar.height
                     objectName: "pageLoader"
+                    visible: appState.currentPage !== "ScenarioAI"
                     sourceComponent: {
                         if (!appState) return dashboardPage
                         if (appState.currentPage === "User") return userPage
@@ -105,17 +106,30 @@ ApplicationWindow {
                         if (appState.currentPage === "Browser") return browserPage
                         if (appState.currentPage === "Proxies") return proxiesPage
                         if (appState.currentPage === "Marketplace") return marketplacePage
-                        if (appState.currentPage === "Scenarios" || appState.currentPage === "ScenarioRuns" || appState.currentPage === "ScenarioRecord" || appState.currentPage === "ScenarioAI") return scenariosPage
+                        if (appState.currentPage === "Tasks") return tasksPage
+                        if (appState.currentPage === "ScenarioAI") return null
+                        if (appState.currentPage === "Scenarios" || appState.currentPage === "ScenarioRuns" || appState.currentPage === "ScenarioRecord") return scenariosPage
                         if (appState.currentPage === "Logs") return logsPage
                         if (appState.currentPage === "Settings") return settingsPage
                         return dashboardPage
                     }
+                }
+                Loader {
+                    id: aiPageLoader
+                    anchors.fill: parent
+                    anchors.topMargin: workspaceBar.height
+                    property bool visited: appState.currentPage === "ScenarioAI"
+                    active: visited
+                    visible: appState.currentPage === "ScenarioAI"
+                    sourceComponent: aiPage
+                    Connections { target: appState; function onCurrentPageChanged() { if (appState.currentPage === "ScenarioAI") aiPageLoader.visited = true } }
                 }
             }
         }
     }
 
     WelcomeDialog {}
+    Component { id: tasksPage; TasksPage {} }
 
     Rectangle {
         id: appToast
@@ -168,6 +182,7 @@ ApplicationWindow {
     Component { id: proxiesPage; ProxiesPage {} }
     Component { id: marketplacePage; MarketplacePage {} }
     Component { id: scenariosPage; ScenariosWorkspacePage {} }
+    Component { id: aiPage; AIAssistantPanel {} }
     Component { id: logsPage; LogsPage {} }
     Component { id: settingsPage; SettingsPage {} }
 }

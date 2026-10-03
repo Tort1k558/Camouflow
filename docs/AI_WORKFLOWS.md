@@ -7,12 +7,20 @@ Create an AI browser task, inspect its outputs, then save and replay a parameter
 ## First useful result
 
 1. Settings → AI: enable the assistant, set a Chat Completions-compatible base URL and model. Test the currently entered settings, then save. Native provider APIs with different protocols are not supported.
-2. Scenarios → AI → **Try isolated demo**. This starts a loopback-only synthetic catalog and creates a separate local profile; it does not send model requests yet.
-3. Start the suggested task explicitly. Inspect the extracted table, source URL and request/token counts; export JSON or CSV.
-4. In workflow inputs, enter `{"catalog_url":"<the demo URL>"}`. Apply inputs, then **Check read-only replay**. This uses the existing scenario engine, not the model. It checks non-empty outputs and table column names, not business correctness or exact values.
-5. Save the draft. Set `catalog_url` in the target profile's variables. Run through Scenarios → Runs. Replace the demo URL with your own page and review selectors before reusing it. The demo URL is temporary and stops working when CamouFlow closes.
+2. Open **AI workspace** in the sidebar → **Try a demo**. This starts a loopback-only synthetic catalog and creates a separate local profile; it does not send model requests yet.
+3. Press **Start task** explicitly. Inspect the extracted table and source URL; export JSON or CSV. Request/token counts and the full log are under **Activity & details**. Limits and permissions are under **Options**.
+4. Press **Create scenario** → **Add input**. Enter `catalog_url` as the variable name and the exact demo URL as its value, then **Check read-only replay**. This uses the existing scenario engine, not the model. It checks non-empty outputs and table column names, not business correctness or exact values.
+5. Name the scenario and **Save & open editor**. Open **Tasks**, select the saved scenario and target profile, enter `catalog_url`, then queue it and explicitly resume **Runs**. Alternatively, set required inputs in profile variables and run through Scenarios → Runs. Replace the demo URL with your own page and review selectors before reusing it. The demo URL is temporary and stops working when CamouFlow closes.
 
 Three reviewed starters are included: HTML catalog → JSON; one page → text report; fill one configurable form field without submitting. Sites with auto-save can still react to filling a field.
+
+## CSV batch runs
+
+In **Tasks**, select a task with inputs and expand **Run from CSV**. Choose comma or semicolon, save a **CSV template**, fill the headers' columns and import it. UTF-8 (including BOM) is supported; maximum 200 data rows / 1 MiB. All rows must match the declared inputs. Preview identifies identical rows; they are included unless you explicitly enable skipping duplicates.
+
+Queuing captures the imported values and scenario version; it does not start a paused queue. Resume **Runs** explicitly. Each row is an independent job, sequential on the selected profile. Failed rows do not stop later rows and are never automatically retried. Latest batch statuses remain visible in Tasks after queue cleanup, within the existing 500-run history limit. Manual retry preserves the original inputs.
+
+**Write file** actions use separate `outputs/batches/<batch-id>/<job-id>/` folders, including manual retries. This does not isolate arbitrary Python scripts, shared variables, browser downloads or website side effects. Run details contain browser artifacts. Inputs are stored in the local queue, not profile defaults; do not import secrets.
 
 ## Control and limitations
 

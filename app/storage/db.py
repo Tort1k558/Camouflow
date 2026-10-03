@@ -99,6 +99,10 @@ CAMOUFOX_DEFAULTS: Dict[str, Any] = {
     "fonts": [],
     "window_width": 0,
     "window_height": 0,
+    "screen_width": 0,
+    "screen_height": 0,
+    "webgl_vendor": "",
+    "webgl_renderer": "",
     "persistent_context": True,
     "enable_cache": True,
     "block_webrtc": False,
@@ -109,6 +113,13 @@ CAMOUFOX_DEFAULTS: Dict[str, Any] = {
     "exclude_addons": [],
     "navigator_overrides": {},
     "window_overrides": {},
+    "permissions": [],
+    "extra_http_headers": {},
+    "storage_state_path": "",
+    "ignore_https_errors": False,
+    "java_script_enabled": True,
+    "bypass_csp": False,
+    "accept_downloads": True,
 }
 
 CLOAKBROWSER_DEFAULTS: Dict[str, Any] = {

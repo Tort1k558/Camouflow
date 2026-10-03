@@ -24,19 +24,21 @@ matters to you.
 
 ## Running a task
 
-**Scenarios → AI task**: pick a profile, describe the task, set the step limit
-(5–100, default 25) and press **Start AI task**.
+Open **AI workspace** in the sidebar. Describe the task, enter its starting URL,
+pick a browser profile and press **Start task** (or Ctrl+Enter).
+Limits and permissions are under **Options** (5–100 steps, default 25).
 
 - The profile browser opens visibly and the agent works one action at a time:
   navigate, click, fill fields, pick options, scroll, wait.
-- The live log shows each thought, action and result; **Stop** cancels anytime.
+- The current step is visible while running; **Activity & details** opens the full log. **Stop** cancels anytime.
 - When finished, the agent's answer appears in **Result**; a full transcript is
   saved under `outputs/ai-runs/<timestamp>/transcript.json`.
 - Cloud profiles are locked for the session, exactly like recording.
 
 ## Saving as a scenario
 
-Press **Save & edit** to turn the session into a scenario. The agent's actions
+Press **Create scenario**, configure optional inputs, check read-only replay,
+then name the scenario and **Save & open editor**. The agent's actions
 become ordinary visual steps (`goto`, `type`, `click`, `select_option`, …) with
 the same unique selectors the recorder produces — review them in the editor like
 any recording. From then on the workflow replays deterministically and costs
@@ -47,13 +49,13 @@ Password typing is never written into steps: it becomes a
 
 ## Isolated demo and structured outputs
 
-Choose **Try isolated demo** in Scenarios -> AI. It creates a separate local profile and a loopback-only synthetic catalog. Start explicitly: the configured provider may charge for requests.
+Choose **Try a demo** in AI workspace. It creates a separate local profile and a loopback-only synthetic catalog. Start explicitly: the configured provider may charge for requests.
 
 The assistant can extract HTML tables and text, show sources, preview the first 30 rows and export JSON or CSV. Tables require unique non-empty headers and consistent columns: at most 200 data rows, 30 columns and 1 MiB, with no merged cells.
 
 ## Parameterize and verify
 
-Inputs map variable names to exact recorded navigation/form values, for example `{"catalog_url":"<demo URL>"}`. Apply inputs, check read-only replay, then save. Set required inputs in the destination profile variables before using Runs. The demo URL expires when the app closes.
+In **Create scenario → Add input**, enter a variable name and the exact recorded navigation/form value, for example `catalog_url` and the demo URL. Apply inputs, check read-only replay, then save. No JSON editing is required. Set required inputs in the destination profile variables before using Runs. The demo URL expires when the app closes.
 
 Read-only replay uses the existing scenario engine without a model request. It checks non-empty outputs and table column names, not business correctness. Interactive drafts require explicit desktop review; automatic replay refuses clicks, typing and submissions. A model's success message is separate from verified replay.
 

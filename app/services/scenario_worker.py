@@ -373,6 +373,9 @@ def worker_main(connection):
         scenario = Scenario(job["scenario"], job["steps"], job.get("description", ""))
         runner = ScenarioExecutor(account, account_proxy(account), scenario, keep_browser_open=False,
                                   cancel_event=cancel, debug_session=DebugProxy(cancel_event=cancel) if payload["debug"] else None)
+        from app.services.task_inputs import configure_task_run
+        from app.storage.db import OUTPUTS_DIR
+        configure_task_run(runner, job, OUTPUTS_DIR)
         runner._python_worker = True
         runner.add_process_exit_callback(cancel.set)
         runner._worker_emit = channel.send

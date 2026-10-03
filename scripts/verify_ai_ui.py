@@ -64,6 +64,14 @@ def main():
         )
         pump(timeout=0.3)
         assert panel.property("sessionProblem") == "", panel.property("sessionProblem")
+        task_input = app.engine.rootObjects()[0].findChild(QObject, "aiTaskInput")
+        task_input.setProperty("text", "Keep this task while configuring the provider")
+        app.state.setPage("Settings")
+        pump(timeout=0.1)
+        app.state.setPage("ScenarioAI")
+        pump(timeout=0.1)
+        assert app.engine.rootObjects()[0].findChild(QObject, "aiTaskInput") == task_input
+        assert task_input.property("text") == "Keep this task while configuring the provider"
         app.ai._active = True
         app.ai.togglePause()
         assert app.ai.paused
@@ -169,6 +177,7 @@ def main():
                         "pause/resume",
                         "QML root",
                         "initial profile selection",
+                        "AI navigation keeps unsent task",
                         "settings invalidation",
                         "demo profile selection",
                         "template installation",

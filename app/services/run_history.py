@@ -54,6 +54,9 @@ class RunHistory:
                 "error",
                 "artifacts",
                 "step",
+                "batch_id",
+                "batch_row",
+                "batch_size",
             )
             if key in job
         }
