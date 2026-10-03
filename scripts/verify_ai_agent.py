@@ -1,6 +1,6 @@
-"""Phase 0 spike: verify the AI-agent DOM snapshot on real engines.
+"""Real-browser check: verify the AI-agent DOM snapshot on real engines.
 
-Run: python verify_ai_agent.py [engine]   (engine: camoufox | cloakbrowser, default camoufox)
+Run from the repository root: python scripts/verify_ai_agent.py [engine]   (engine: camoufox | cloakbrowser, default camoufox)
 
 Checks (no network, no LLM):
   1. dom.js evaluates on the engine and returns a snapshot
@@ -15,12 +15,12 @@ import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 TEMP_DATA = tempfile.mkdtemp(prefix="camouflow-ai-spike-")
 os.environ["CAMOUFLOW_DATA_DIR"] = TEMP_DATA
 
-DOM_JS = (Path(__file__).resolve().parent / "app" / "services" / "ai_agent" / "dom.js").read_text(encoding="utf-8")
+DOM_JS = (Path(__file__).resolve().parents[1] / "app" / "services" / "ai_agent" / "dom.js").read_text(encoding="utf-8")
 
 TEST_PAGE = """<!doctype html>
 <html><head><title>Spike Page</title></head><body>
@@ -57,6 +57,9 @@ TEST_PAGE = """<!doctype html>
 
 async def run(engine: str) -> int:
     from app.core.browser_interface import BrowserInterface
+    from app.storage import db
+
+    db.init_db()
 
     page_file = Path(TEMP_DATA) / "spike.html"
     page_file.write_text(TEST_PAGE, encoding="utf-8")

@@ -13,6 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 def main():
     engine = sys.argv[1] if len(sys.argv) > 1 else "camoufox"
     root = Path(tempfile.mkdtemp(prefix="camouflow-ai-workflow-"))

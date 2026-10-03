@@ -71,6 +71,6 @@ Reviewed local starters cover a catalog table, one-page text report and filling 
 
 The source-only JSON CLI reuses the desktop queue/history. Close the desktop first; a workspace lock prevents simultaneous access. CLI runs only local read-only extraction workflows. Optional stdio MCP exposes list/history by default; execution requires a startup-approved scenario/profile and unchanged workflow hash. Canceling an MCP request does not cancel an already-started local run.
 
-[CLI, MCP setup and inactive n8n example](https://github.com/Tort1k558/Camouflow/blob/main/AI_WORKFLOWS.md#local-cli)
+[CLI, MCP setup and inactive n8n example](https://github.com/Tort1k558/Camouflow/blob/main/docs/AI_WORKFLOWS.md#local-cli)
 
-[Russian walkthrough](https://github.com/Tort1k558/Camouflow/blob/main/AI_WORKFLOWS.ru.md)
+[Russian walkthrough](https://github.com/Tort1k558/Camouflow/blob/main/docs/AI_WORKFLOWS.ru.md)

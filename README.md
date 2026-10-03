@@ -27,7 +27,7 @@
 
 Try the isolated catalog demo, inspect a structured table, export JSON/CSV, then turn recorded actions into a parameterized scenario. Read-only replay checks outputs using the existing automation engine, without another model request.
 
-**[AI workflow quickstart](AI_WORKFLOWS.md)** · [CLI / optional MCP / n8n example](AI_WORKFLOWS.md#local-cli)
+**[AI workflow quickstart](docs/AI_WORKFLOWS.md)** · [CLI / optional MCP / n8n example](docs/AI_WORKFLOWS.md#local-cli)
 
 Available in **v0.4.0**. Model-reported success is not a verified workflow. Page content goes to your chosen provider; editable field contents are excluded from snapshots, not every possible secret.
 

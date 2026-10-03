@@ -6,9 +6,12 @@ import argparse
 import asyncio
 import json
 import os
+import sys
 import tempfile
 from pathlib import Path
 
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 async def verify(engine, config, root, repeats):
     from app.core.browser_interface import BrowserInterface

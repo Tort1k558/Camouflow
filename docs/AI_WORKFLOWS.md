@@ -61,12 +61,14 @@ Use only a trusted self-hosted Windows n8n instance on the same host/user as Cam
 
 ## Verification
 
+Run these commands from the repository root. Verification scripts live in `scripts/`; temporary reports are not committed.
+
 ```powershell
 .venv\Scripts\python.exe -m pytest -q
-.venv\Scripts\python.exe verify_ai_workflows.py camoufox
-.venv\Scripts\python.exe verify_ai_workflows.py cloakbrowser
-.venv\Scripts\python.exe verify_ai_ui.py
-.venv\Scripts\python.exe verify_release.py --runtime
+.venv\Scripts\python.exe scripts\verify_ai_workflows.py camoufox
+.venv\Scripts\python.exe scripts\verify_ai_workflows.py cloakbrowser
+.venv\Scripts\python.exe scripts\verify_ai_ui.py
+.venv\Scripts\python.exe scripts\verify_release.py --runtime
 ```
 
 Workflow smoke uses actual browsers and a local fixture Chat Completions endpoint: extraction, editable privacy, scrolling, parameterized replay with changed input, JSON artifact and CLI queue execution. UI smoke includes profile selection, settings changes, demo, export, real replay, history and saving. It does not validate the reasoning quality of paid/cloud/local models or compatibility with every provider/site. Release smoke checks the packaged browser/Python runtime.
@@ -78,9 +80,9 @@ To also test MCP stdio and allowlisted execution against that isolated fixture, 
 The release demo was checked three times on each engine with the configured `deepseek-flash` model, plus a full UI start/export/replay/save flow. Only synthetic catalog data was sent; keys remain in memory and are not copied into the test workspace. Each session is bounded to eight actions and 180 seconds. These checks use your configured provider and may incur API charges:
 
 ```powershell
-.venv\Scripts\python.exe verify_ai_provider.py --settings-file settings/settings.json --engine camoufox --repeats 3 --report .local/provider-camoufox.json
-.venv\Scripts\python.exe verify_ai_provider.py --settings-file settings/settings.json --engine cloakbrowser --repeats 3 --report .local/provider-cloakbrowser.json
-.venv\Scripts\python.exe verify_ai_provider_ui.py --settings-file settings/settings.json --report .local/provider-ui.json
+.venv\Scripts\python.exe scripts\verify_ai_provider.py --settings-file settings/settings.json --engine camoufox --repeats 3 --report .local/provider-camoufox.json
+.venv\Scripts\python.exe scripts\verify_ai_provider.py --settings-file settings/settings.json --engine cloakbrowser --repeats 3 --report .local/provider-cloakbrowser.json
+.venv\Scripts\python.exe scripts\verify_ai_provider_ui.py --settings-file settings/settings.json --report .local/provider-ui.json
 ```
 
 For an isolated n8n check, install n8n separately, then run `integrations/verify_n8n.py --n8n <path-to-bin/n8n> --report .local/n8n-smoke.json` using the project's Python. It imports an inactive workflow into a temporary n8n database and executes only the synthetic catalog job. It does not change a running n8n deployment.

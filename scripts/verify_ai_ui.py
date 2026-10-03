@@ -12,6 +12,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 def main():
     root = Path(tempfile.mkdtemp(prefix="camouflow-ai-ui-"))
     os.environ["CAMOUFLOW_DATA_DIR"] = str(root)

@@ -7,7 +7,7 @@ on:
       - "requirements.txt"
       - "camouflow.spec"
       - "build.bat"
-      - "verify_release.py"
+      - "scripts/**"
       - ".github/workflows/desktop.yml"
   pull_request:
     paths:
@@ -15,7 +15,7 @@ on:
       - "requirements.txt"
       - "camouflow.spec"
       - "build.bat"
-      - "verify_release.py"
+      - "scripts/**"
       - ".github/workflows/desktop.yml"
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
         run: pip install ruff
 
       - name: Syntax check (compileall)
-        run: python -m compileall -q app main.py verify_release.py
+        run: python -m compileall -q app main.py scripts
 
       - name: Undefined names and syntax errors
         run: ruff check app --select F821,F822,F823,E9

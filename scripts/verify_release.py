@@ -14,7 +14,7 @@ import subprocess
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 PYTHON = ROOT / ".venv" / "Scripts" / "python.exe"
 
 
@@ -79,7 +79,7 @@ def main() -> int:
     args = parser.parse_args()
 
     python = require_venv()
-    run([str(python), "-m", "compileall", "-q", "app", "main.py", "verify_ai_agent.py", "verify_release.py"])
+    run([str(python), "-m", "compileall", "-q", "app", "main.py", "scripts"])
     run([str(python), "-m", "pytest", "-q"])
 
     exe: Path | None = None
