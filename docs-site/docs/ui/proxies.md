@@ -13,7 +13,7 @@ The left panel contains proxy groups:
 
 ## Bulk import
 
-Use **Import List** / **Add Proxy** and paste proxies one per line.
+Use **Import proxies** and paste proxies one per line.
 
 Supported formats:
 
@@ -37,10 +37,13 @@ Each proxy row supports:
 
 Top actions:
 
-- **Check Group** checks all visible proxies.
-- **Release** clears assignment for selected proxies and removes proxy fields from assigned profiles.
-- **Remove** deletes selected proxies from their pools.
-- **Clear** clears selection.
+- **Check all proxies** checks every pool, not only the visible group; quarantined
+  entries are skipped.
+- **Release assignment** clears assignment for selected proxies and removes proxy
+  fields from assigned profiles.
+- **Remove quarantine** explicitly releases selected quarantined proxies.
+- **Delete selected** deletes selected proxies after confirmation.
+- **Clear selection** clears selection.
 
 ## Statistics
 
@@ -52,3 +55,11 @@ The page shows:
 - detected locations
 
 Health checks store latency, status and geo metadata in the proxy pool.
+
+Repeated failures quarantine a connection. Invalid or timezone-ambiguous quarantine
+expiry also remains blocked until manual release; the app does not guess a timezone.
+Checking one proxy manually can refresh its health while bulk checks skip quarantine.
+
+Results are merged into the current matching proxy, preserving name/assignment,
+other proxies and edits made during the check. Removed or changed endpoint results
+are discarded. A check never silently restores a deleted proxy.

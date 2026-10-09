@@ -159,3 +159,76 @@ def test_cancel_during_proxy_probe_does_not_return_an_assignment(assigned):
     account = {"proxy_host": "assigned", "proxy_port": "1080"} if assigned else {}
     with pytest.raises(ValueError, match="canceled"):
         choose_proxy(account, "replace_failed", [{"value": "socks5://replacement:1080"}], cancel, probe)
+
+
+@pytest.mark.parametrize("check_all", [False, True])
+@pytest.mark.parametrize("mutation", ["edit", "delete", "replace"])
+def test_proxy_probe_completion_preserves_concurrent_pool_edits(monkeypatch, check_all, mutation):
+    import copy
+    import json
+    import threading
+    from app.ui.bridge import proxies
+
+    state = {"QA": {"proxies": [{"value": "socks5://synthetic:1080", "name": "Before"}]}}
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+    refreshes = [0]
+    def save(data):
+        state.clear()
+        state.update(copy.deepcopy(data))
+    def refresh():
+        refreshes[0] += 1
+        if refreshes[0] > 1:
+            finished.set()
+    def probe(value, timeout_s):
+        entered.set()
+        assert release.wait(3)
+        return True, 1, "", {}
+    monkeypatch.setattr(proxies, "server_enabled", lambda: False)
+    monkeypatch.setattr(proxies, "db_get_setting", lambda key: json.dumps(state))
+    monkeypatch.setattr(proxies, "db_set_setting", lambda key, value: save(json.loads(value)))
+    monkeypatch.setattr("app.services.proxy_health.probe_proxy_endpoint", probe)
+    bridge = SimpleNamespace(_ensure_allowed=lambda _: True, _server_client=lambda: None,
+                             _load=lambda: copy.deepcopy(state), _save=save, refresh=refresh,
+                             _record_check=proxies.ProxiesBridge._record_check,
+                             _is_quarantined=proxies.ProxiesBridge._is_quarantined, _emit_message=Mock())
+    bridge._store_local_check = lambda pool, value, result: proxies.ProxiesBridge._store_local_check(bridge, pool, value, result)
+    try:
+        if check_all:
+            proxies.ProxiesBridge.checkAll(bridge)
+        else:
+            proxies.ProxiesBridge.checkProxy(bridge, "QA", 0)
+        assert entered.wait(3)
+        if mutation == "edit":
+            state["QA"]["proxies"][0].update(name="Edited during check", assigned_to="Synthetic profile")
+        elif mutation == "delete":
+            state["QA"]["proxies"].clear()
+        else:
+            state["QA"]["proxies"][0].update(value="socks5://replacement:1080", last_check={"status": "unchecked"})
+        state["QA"]["proxies"].append({"value": "socks5://new:1080", "name": "Added during check"})
+        release.set()
+        assert finished.wait(3)
+        rows = state["QA"]["proxies"]
+        assert rows[-1]["name"] == "Added during check"
+        assert "last_check" not in rows[-1]
+        if mutation == "edit":
+            assert rows[0]["name"] == "Edited during check"
+            assert rows[0]["assigned_to"] == "Synthetic profile"
+            assert rows[0]["last_check"]["status"] == "ok"
+        elif mutation == "delete":
+            assert len(rows) == 1
+        else:
+            assert rows[0]["value"] == "socks5://replacement:1080"
+            assert rows[0]["last_check"]["status"] == "unchecked"
+    finally:
+        release.set()
+
+
+def test_local_proxy_result_is_discarded_after_cloud_switch(monkeypatch):
+    from app.ui.bridge import proxies
+
+    monkeypatch.setattr(proxies, "server_enabled", lambda: True)
+    save = Mock()
+    monkeypatch.setattr(proxies, "db_set_setting", save)
+    bridge = SimpleNamespace(_record_check=proxies.ProxiesBridge._record_check)
+    assert not proxies.ProxiesBridge._store_local_check(bridge, "QA", "socks5://synthetic:1080", {"status": "ok"})
+    save.assert_not_called()

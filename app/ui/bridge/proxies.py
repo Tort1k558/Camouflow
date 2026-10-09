@@ -10,6 +10,7 @@ from typing import Any, Dict, List
 from PyQt6.QtCore import QThread, QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.storage.db import db_get_setting, db_set_setting
+from app.storage import db
 from app.services.server_client import ServerClient, ServerClientError, server_enabled
 from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
@@ -93,6 +94,23 @@ class ProxiesBridge(QObject):
     @staticmethod
     def _is_quarantined(entry: Dict[str, Any]) -> bool:
         return is_proxy_quarantined(entry)
+
+    def _store_local_check(self, pool_name: str, value: str, result: Dict[str, Any]) -> bool:
+        if server_enabled():
+            return False
+        with db._STORAGE_LOCK:
+            pools = json.loads(db_get_setting("proxy_pools") or "{}")
+            pool = pools.get(pool_name)
+            if not isinstance(pool, dict):
+                return False
+            matches = [entry for entry in pool.get("proxies", [])
+                       if isinstance(entry, dict) and str(entry.get("value") or "") == value]
+            if not matches:
+                return False
+            for entry in matches:
+                self._record_check(entry, dict(result))
+            db_set_setting("proxy_pools", json.dumps(pools, ensure_ascii=False))
+        return True
 
     @pyqtProperty(bool, notify=modelChanged)
     def loading(self):
@@ -747,23 +765,21 @@ class ProxiesBridge(QObject):
             self._emit_message("Proxy not found")
             return
         proxies[index]["last_check"] = {"status": "checking"}
+        value = str(proxies[index].get("value") or "")
         self._save(pools)
         self.refresh()
 
         def worker() -> None:
             try:
                 from app.services.proxy_health import probe_proxy_endpoint
-                data = self._load()
-                entry = data.get(pool_name, {}).get("proxies", [])[index]
-                ok, ms, err, meta = probe_proxy_endpoint(str(entry.get("value") or ""), timeout_s=5.0)
+                ok, ms, err, meta = probe_proxy_endpoint(value, timeout_s=5.0)
                 result = dict(meta or {})
                 result["status"] = "ok" if ok else "fail"
                 result["ms"] = ms
                 if err:
                     result["error"] = err
-                self._record_check(entry, result)
-                self._save(data)
-                self._emit_message("Proxy check finished")
+                applied = self._store_local_check(pool_name, value, result)
+                self._emit_message("Proxy check finished" if applied else "Proxy changed or workspace switched; check result discarded")
             except Exception as exc:
                 self._emit_message(f"Proxy check failed: {exc}")
             finally:
@@ -803,13 +819,19 @@ class ProxiesBridge(QObject):
             return
         pools = self._load()
         skipped = 0
-        for pool in pools.values():
+        targets = []
+        for pool_name, pool in pools.items():
             for entry in pool.get("proxies", []) if isinstance(pool, dict) else []:
                 if isinstance(entry, dict):
                     if self._is_quarantined(entry):
                         skipped += 1
                         continue
                     entry["last_check"] = {"status": "checking"}
+                    targets.append((pool_name, str(entry.get("value") or "")))
+        targets = list(dict.fromkeys(targets))
+        if not targets:
+            self._emit_message("No available proxies to check")
+            return
         self._save(pools)
         self.refresh()
         self._emit_message(f"Proxy check started{f'; {skipped} quarantined' if skipped else ''}")
@@ -817,22 +839,17 @@ class ProxiesBridge(QObject):
         def worker() -> None:
             try:
                 from app.services.proxy_health import probe_proxy_endpoint
-                data = self._load()
-                for pool in data.values():
-                    for entry in pool.get("proxies", []) if isinstance(pool, dict) else []:
-                        if not isinstance(entry, dict):
-                            continue
-                        if self._is_quarantined(entry):
-                            continue
-                        ok, ms, err, meta = probe_proxy_endpoint(str(entry.get("value") or ""), timeout_s=5.0)
-                        result = dict(meta or {})
-                        result["status"] = "ok" if ok else "fail"
-                        result["ms"] = ms
-                        if err:
-                            result["error"] = err
-                        self._record_check(entry, result)
-                self._save(data)
+                for pool_name, value in targets:
+                    ok, ms, err, meta = probe_proxy_endpoint(value, timeout_s=5.0)
+                    result = dict(meta or {})
+                    result["status"] = "ok" if ok else "fail"
+                    result["ms"] = ms
+                    if err:
+                        result["error"] = err
+                    self._store_local_check(pool_name, value, result)
                 self._emit_message("Proxy check finished")
+            except Exception as exc:
+                self._emit_message(f"Proxy checks failed ({type(exc).__name__})")
             finally:
                 self.refresh()
 

@@ -302,3 +302,19 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   patches are staged locally, not deployed. Backend suite now **93 passed without
   warnings** after replacing the one exercised legacy SQLAlchemy lookup.
 - Full desktop suite after quarantine/cancellation changes: **163 passed**.
+
+## Iteration 10 — non-destructive concurrent proxy checks
+
+- Reproduced an asynchronous proxy probe restoring its stale pool snapshot: a name
+  edit reverted and a newly added row disappeared. Both single/bulk checks now
+  capture requested endpoints and merge only health results into latest local
+  storage under the existing storage lock. Deleted/changed endpoints are not
+  restored or updated; cloud switches discard local results. Duplicate endpoints
+  in bulk are probed once. Bulk worker errors are reported instead of silent thread
+  failure. No new dependency or parallel-check architecture.
+- Six threaded regressions hold the probe while editing/deleting/replacing rows
+  and adding another row, for single and bulk checks. Added cloud-switch guard.
+  Full desktop suite: **170 passed**; critical Ruff checks passed.
+- Updated proxy documentation to actual labels and all-pool/quarantine behavior.
+- Fresh desktop CI: `38004888417` (`5cf9aaa3`) and `38004547753` (`9df28357`)
+  succeeded; subsequent heads still need their own fresh CI inspection.
