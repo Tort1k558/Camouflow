@@ -82,3 +82,9 @@ Resume the queue explicitly in **Runs**; keep the application open.
 the scheduling form. Starting from selected profiles opens that form automatically.
 Collapsing it does not discard selected profiles, scenario, time or proxy policy.
 Artifact actions and detailed output appear after selecting a run.
+
+Search by scenario, profile or error text and filter by status. Filters affect
+both the queue and local history, not execution. Queue controls and cleanup still
+apply to all jobs in the current workspace. History search covers all retained
+records (at most 500), displaying up to 120 matches. **Reset filters** restores
+the full view; selected run details are preserved.

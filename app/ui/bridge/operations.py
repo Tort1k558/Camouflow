@@ -38,6 +38,8 @@ class OperationsBridge(QObject):
         self.profiles, self.scenarios, self.state = profiles, scenarios, state
         self._model = DictListModel(["id", "scenario", "profile", "status", "due", "error", "artifacts", "duration"], parent=self)
         self._history_model = DictListModel(["id", "scenario", "profile", "status", "started", "finished", "duration", "error", "artifacts"], parent=self)
+        self._run_query = ""
+        self._run_status = ""
         self._debug_windows = {}
         self._debug_enabled = str(db.db_get_setting("general_debug_mode") or "").lower() in {"true", "1"}
         self._busy = False
@@ -160,6 +162,30 @@ class OperationsBridge(QObject):
     def selectedProfiles(self):
         return "\n".join(self._selection)
 
+    @pyqtProperty(str, notify=changed)
+    def runQuery(self):
+        return self._run_query
+
+    @pyqtProperty(str, notify=changed)
+    def runStatus(self):
+        return self._run_status
+
+    @pyqtSlot(str, str)
+    def setRunFilters(self, query, status):
+        status = status.strip().lower()
+        if status and status not in TERMINAL | {"queued", "running"}:
+            return
+        if (query, status) == (self._run_query, self._run_status):
+            return
+        self._run_query, self._run_status = query, status
+        self.refresh()
+
+    def _matches_run(self, row):
+        if self._run_status and row.get("status") != self._run_status:
+            return False
+        query = self._run_query.strip().casefold()
+        return not query or any(query in str(row.get(key) or "").casefold() for key in ("scenario", "profile", "error"))
+
     @pyqtSlot(str)
     def prepareRun(self, names):
         self._selection = self._names(names)
@@ -186,13 +212,17 @@ class OperationsBridge(QObject):
     @pyqtSlot()
     def refresh(self):
         rows = []
+        workspace = self._workspace()
         for job in reversed(self.queue.snapshot()):
-            if job.get("workspace") != self._workspace():
+            if job.get("workspace") != workspace or not self._matches_run(job):
                 continue
             rows.append({**job, "due": datetime.fromtimestamp(job["due"]).strftime("%Y-%m-%d %H:%M"),
                          "duration": f"{max(0, (job.get('finished') or time.time()) - job['started']):.1f}s" if job["started"] else "—"})
-        self._model.set_rows(rows)
-        self._history_model.set_rows([self._history_row(row) for row in self.history.list(self._workspace(), limit=120)])
+        if rows != self._model.rows():
+            self._model.set_rows(rows)
+        history_rows = [self._history_row(row) for row in self.history.list(workspace) if self._matches_run(row)][:120]
+        if history_rows != self._history_model.rows():
+            self._history_model.set_rows(history_rows)
         if self._selected:
             self.selectJob(self._selected)
         self.changed.emit()

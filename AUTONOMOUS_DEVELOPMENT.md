@@ -228,3 +228,29 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   change the tested pin automatically.
 - Public documentation updated for queue/resume and scheduling controls. Private
   cache/header deployment remains healthy; backend code stays outside Git.
+
+## Iteration 7 — searchable desktop results and team run visibility
+
+- Desktop Runs now searches scenario/profile/error text and filters statuses
+  across queue and local history. Searches cover retained records, not just the
+  newest 120 displayed matches. Execution/cleanup remain workspace-wide; filters
+  never change jobs. Selection/details survive filtering. Identical idle models
+  no longer reset, preserving scroll position during refresh.
+- Regression tests cover Unicode casefold, older-history search, team isolation,
+  invalid filters, unchanged job state, idle model resets and real QML wiring.
+  Full desktop suite: **148 passed**. Windows Qt screenshots at 1180x720 verified
+  filter placement and results with no QML warnings. Offscreen Windows renders
+  font boxes; used the real Windows platform for visual proof instead.
+- Current-head desktop CI `38003332010` for `20cea3b4`: **success**.
+- Private team console adds read-only scenario runs with server search/status,
+  stable pagination, cancellation/interruption labels, duration and error detail.
+  Browser checks on isolated 105-row data verified 100+5 pages, combined filters,
+  empty state, API error/recovery, in-flight team switch isolation and 375px layout.
+  Fixed shared table overflow revealed by mobile testing. No remote execution or
+  local artifact access is implied by this screen.
+- Fixed existing timezone-offset parsing in console relative times; added SPA
+  HEAD responses. Private backend suite: **93 passed**, one pre-existing legacy
+  SQLAlchemy warning. Candidate image tested with isolated PostgreSQL: escaped
+  wildcard search, deterministic tie ordering/pagination, workspace boundaries,
+  viewer read-only permissions and HEAD/security/cache headers passed. Test-only
+  HTTP client packages mounted separately; production dependencies unchanged.

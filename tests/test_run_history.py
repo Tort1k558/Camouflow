@@ -249,3 +249,38 @@ def test_queue_timer_reports_write_error_without_escaping(tmp_path):
     message = bridge._notify.call_args.args[0]
     assert "OSError" in message
     assert "synthetic sensitive payload" not in message
+
+
+def test_run_filters_search_all_retained_rows_without_mutating_jobs(tmp_path):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from app.ui.bridge.models import DictListModel
+    from app.ui.bridge.operations import OperationsBridge
+
+    history = RunHistory(tmp_path / "history.json")
+    for index in range(130):
+        history.record({"id": str(index), "workspace": "local", "scenario": "Report", "profile": "Research",
+                        "status": "success", "finished": index + 1, "error": "old special failure" if index == 0 else ""})
+    history.record({"id": "other", "workspace": "other", "scenario": "Report", "status": "success", "finished": 500})
+    job = {"id": "queue", "workspace": "local", "scenario": "Straße", "profile": "Research", "status": "queued", "due": 1, "started": 0}
+    bridge = SimpleNamespace(_run_query="", _run_status="", queue=SimpleNamespace(snapshot=lambda: [job]), history=history,
+                             _workspace=lambda: "local", _model=DictListModel(["id"]), _history_model=DictListModel(["id"]),
+                             _selected="", _history_row=OperationsBridge._history_row, changed=Mock())
+    bridge._matches_run = lambda row: OperationsBridge._matches_run(bridge, row)
+    bridge.refresh = lambda: OperationsBridge.refresh(bridge)
+    bridge.refresh()
+    assert len(bridge._history_model.rows()) == 120
+    reset = Mock()
+    bridge._model.modelReset.connect(reset)
+    bridge.refresh()
+    reset.assert_not_called()
+    OperationsBridge.setRunFilters(bridge, " STRASSE ", "queued")
+    assert [row["id"] for row in bridge._model.rows()] == ["queue"]
+    assert bridge._history_model.rows() == []
+    OperationsBridge.setRunFilters(bridge, "special", "success")
+    assert [row["id"] for row in bridge._history_model.rows()] == ["0"]
+    assert bridge._model.rows() == []
+    OperationsBridge.setRunFilters(bridge, "other", "invalid")
+    assert bridge._run_query == "special"
+    assert job["status"] == "queued"

@@ -291,6 +291,19 @@ try:
     toggle = find_item(ui.engine.rootObjects()[0].contentItem(), 'toggleRunScheduling')
     assert schedule is not None and toggle is not None
     assert not schedule.isVisible()
+    search = find_item(ui.engine.rootObjects()[0].contentItem(), 'runSearch')
+    status_filter = find_item(ui.engine.rootObjects()[0].contentItem(), 'runStatusFilter')
+    assert search is not None and status_filter is not None
+    search.setProperty('text', 'missing run')
+    pump(seconds=0.1)
+    assert ui.operations.runQuery == 'missing run'
+    assert ui.operations.jobsModel.rowCount() == 0
+    ui.operations.setRunFilters('', 'queued')
+    pump(seconds=0.1)
+    assert ui.operations.jobsModel.rowCount() == 3
+    assert status_filter.property('currentIndex') == 1
+    assert search.property('text') == ''
+    ui.operations.setRunFilters('', '')
     QMetaObject.invokeMethod(toggle, 'clicked')
     pump(seconds=0.1)
     assert schedule.isVisible()

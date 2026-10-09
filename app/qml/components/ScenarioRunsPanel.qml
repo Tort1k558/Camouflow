@@ -14,6 +14,7 @@ Flickable {
     property string selectedJob: operationsBridge.selectedJob
     property string schedulingSelection: operationsBridge.selectedProfiles
     property bool schedulingExpanded: schedulingSelection !== ""
+    property bool filtersActive: operationsBridge.runQuery.trim() !== "" || operationsBridge.runStatus !== ""
     onSchedulingSelectionChanged: if (schedulingSelection !== "") schedulingExpanded = true
     ConfirmDialog { id: confirmation; width: Math.min(460, root.width - 32) }
     ColumnLayout {
@@ -81,12 +82,31 @@ Flickable {
                 PrimaryButton { text: "Cancel all"; danger: true; onClicked: confirmation.ask("Cancel queued jobs and request cooperative cancellation of running jobs?", function() { operationsBridge.cancel("") }, "Cancel jobs") }
                 PrimaryButton { text: "Clear finished"; secondary: true; onClicked: confirmation.ask("Remove finished queue records? Artifact files will be retained.", function() { operationsBridge.clearFinished() }, "Clear records") }
             }
+            RowLayout {
+                Layout.fillWidth: true
+                SearchBox {
+                    objectName: "runSearch"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 44
+                    placeholder: "Search scenario, profile or error"
+                    text: operationsBridge.runQuery
+                    onTextChanged: operationsBridge.setRunFilters(text, operationsBridge.runStatus)
+                }
+                ComboBox {
+                    objectName: "runStatusFilter"
+                    Layout.preferredWidth: 180
+                    model: ["All statuses", "queued", "running", "success", "failed", "canceled", "interrupted"]
+                    currentIndex: Math.max(0, model.indexOf(operationsBridge.runStatus))
+                    onActivated: operationsBridge.setRunFilters(operationsBridge.runQuery, currentIndex === 0 ? "" : currentText)
+                }
+                PrimaryButton { text: "Reset filters"; secondary: true; visible: root.filtersActive; onClicked: operationsBridge.setRunFilters("", "") }
+            }
             ListView {
                 id: queueList
                 Layout.fillWidth: true; Layout.preferredHeight: Math.min(260, Math.max(140, queueList.count * 70)); clip: true; spacing: 6
                 model: operationsBridge.jobsModel
                 ScrollBar.vertical: ScrollBar {}
-                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: queueList.count === 0; title: "No queued jobs"; description: "Select profiles and a scenario, then add them to the queue."; icon: "play" }
+                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: queueList.count === 0; title: root.filtersActive ? "No matching jobs" : "No queued jobs"; description: root.filtersActive ? "Change or reset the filters. Queue controls still apply to all jobs in this workspace." : "Select profiles and a scenario, then add them to the queue."; icon: "play" }
                 delegate: Rectangle {
                     width: ListView.view.width; height: 64; radius: 8
                     color: root.selectedJob === model.id ? Theme.subtle : Theme.card
@@ -121,7 +141,7 @@ Flickable {
                 Layout.fillWidth: true; Layout.preferredHeight: 220; clip: true; spacing: 6
                 model: operationsBridge.historyModel
                 ScrollBar.vertical: ScrollBar {}
-                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: historyList.count === 0; title: "No local run history"; description: "Finished queue jobs will appear here even after queue cleanup."; icon: "clock" }
+                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: historyList.count === 0; title: root.filtersActive ? "No matching history" : "No local run history"; description: root.filtersActive ? "Search covers retained history; up to 120 matching results are shown." : "Finished queue jobs will appear here even after queue cleanup."; icon: "clock" }
                 delegate: Rectangle {
                     width: ListView.view.width; height: 66; radius: 8
                     color: root.selectedJob === model.id ? Theme.subtle : Theme.card
