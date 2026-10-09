@@ -37,7 +37,7 @@ production changes. Production updates need backups, rollback and smoke checks.
 | P1 | Backend baseline and source/runtime comparison | In progress | Isolated test database; inspect deployed vs local source |
 | P2 | Saved task navigation/input UX | Implemented | Search by name/description, preserves selected task and input draft; real Qt screenshots and tests |
 | P2 | Run results/search/filter usability | Pending | Reuse current queue/history, avoid new execution architecture |
-| P2 | Queue/storage failure and concurrency audit | Pending | Prevent silent data loss and stuck reservations |
+| P2 | Queue/storage failure and concurrency audit | Implemented initial safeguards | Reproduced disk-write failure leaving running job with no worker; rollback, pause and visible errors added |
 | P2 | Useful server functionality | Pending | Select from observed workflow gaps, preserve RBAC |
 | P2 | Current-source browser and packaging smoke | Pending | Fresh reports, real Camoufox/CloakBrowser synthetic scenarios |
 
@@ -100,3 +100,31 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   recreating from the old image reverts the frontend until a controlled rebuild.
 - Created/pushed commits `6b07975` (cancellation history) and `4a2dead` (CI coverage).
   Fresh GitHub workflow outcomes still need inspection.
+
+## Iteration 3 — persistence failures and cloud status compatibility
+
+- Reproduced queue startup write failure: `running`, one active profile, zero
+  workers. Execution state now persists before registering active work; a failed
+  write restores pending state and pauses new starts. The Qt timer catches and
+  reports failures rather than allowing exceptions to escape the event loop.
+- Enqueue, configuration, queue cleanup, pending cancellation and history writes
+  roll back in-memory changes if their atomic write fails. Completed browser work
+  cannot be rolled back: keep its result in memory, pause, log a safe diagnostic
+  and still record independent history. History callback failures are no longer
+  silent; diagnostics omit exception payloads to avoid leaking sensitive data.
+- Storage faults now have deterministic regression tests including pending
+  cancellation and history retention. Combined desktop/backend tests:
+  **218 passed**, one existing backend deprecation warning. Focused Ruff critical
+  rules passed; release build/runtime verification currently running.
+- Cloud compatibility bug reproduced: API rejected desktop `canceled` statuses
+  with HTTP 400. Private backend now accepts `canceled` and `interrupted` as terminal
+  statuses and timestamps them. Four status tests plus RBAC/team/invalid-status
+  regressions pass. Runtime verified in a separate temporary VPS container with
+  **no network**, read-only image, synthetic credentials and tmpfs SQLite; all four
+  terminal statuses passed. Temporary container stopped/removed after verification.
+  **Production API remains unchanged**; private code is not committed or pushed.
+- GitHub CI is freshly green for both `4a2dead` and `471de99`.
+- Final iteration-2 desktop suite was **136 passed**, including geometry checks;
+  task search committed and pushed as `471de99`.
+- Post-frontend-deploy landing has no document overflow at 375px; desktop
+  screenshot captured at 1440px. No production service restarted.

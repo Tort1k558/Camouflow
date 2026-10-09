@@ -63,9 +63,17 @@ class OperationsBridge(QObject):
         )
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
-        self.timer.timeout.connect(lambda: self.queue.tick(workspace=self._workspace()))
+        self.timer.timeout.connect(self._tick_queue)
         self.timer.start()
         self.refresh()
+
+    def _tick_queue(self):
+        try:
+            self.queue.tick(workspace=self._workspace())
+        except Exception as exc:
+            self.queue.paused = True
+            self._notify(f"Queue paused: execution state could not be saved ({type(exc).__name__}). Check storage before resuming.")
+            self.refresh()
 
     def _check_selection_workspace(self):
         workspace = self._workspace()
@@ -321,18 +329,29 @@ class OperationsBridge(QObject):
 
     @pyqtSlot(str)
     def cancel(self, job_id):
-        self.queue.cancel(job_id, workspace=self._workspace())
+        try:
+            self.queue.cancel(job_id, workspace=self._workspace())
+        except Exception as exc:
+            self._notify(f"Could not save queue cancellation ({type(exc).__name__}). Check storage and review running jobs.")
 
     @pyqtSlot()
     def clearFinished(self):
-        self.queue.clear_finished(workspace=self._workspace())
+        try:
+            self.queue.clear_finished(workspace=self._workspace())
+        except Exception as exc:
+            self._notify(f"Could not clear finished jobs ({type(exc).__name__}). Check storage before trying again.")
+            return
         self._selected = ""
         self._details = ""
         self.changed.emit()
 
     @pyqtSlot()
     def clearHistory(self):
-        self.history.clear(self._workspace())
+        try:
+            self.history.clear(self._workspace())
+        except Exception as exc:
+            self._notify(f"Could not clear run history ({type(exc).__name__}). Check storage before trying again.")
+            return
         self._selected = ""
         self._details = ""
         self.refresh()
