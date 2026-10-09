@@ -569,27 +569,40 @@ class OperationsBridge(QObject):
 
     @pyqtSlot(str)
     def selectJob(self, job_id):
-        self._selected = job_id
         job = self._find_run(job_id)
+        self._selected = job_id if job else ""
         self._details = json.dumps({k: v for k, v in job.items() if k not in {"steps", "library"}}, ensure_ascii=False, indent=2) if job else ""
         if job and job.get("artifacts"):
-            script_log = Path(job["artifacts"]) / "python.jsonl"
-            if script_log.is_file() and script_log.resolve().is_relative_to(db.OUTPUTS_DIR.resolve()):
-                self._details += "\n\nPython output:\n" + script_log.read_text(encoding="utf-8")[-32768:]
-            path = Path(job["artifacts"]) / "error.json"
-            if path.is_file() and path.resolve().is_relative_to(db.OUTPUTS_DIR.resolve()):
-                self._details += "\n\nFailure details:\n" + path.read_text(encoding="utf-8")
+            for name, label in (("python.jsonl", "Python output"), ("error.json", "Failure details")):
+                preview = self._artifact_preview(Path(job["artifacts"]) / name)
+                if preview:
+                    self._details += f"\n\n{label}:\n{preview}"
         self.changed.emit()
+
+    @staticmethod
+    def _artifact_preview(path):
+        try:
+            path = path.resolve()
+            if not path.is_relative_to(db.OUTPUTS_DIR.resolve()) or not path.is_file():
+                return ""
+            with path.open("rb") as source:
+                size = source.seek(0, 2)
+                source.seek(max(0, size - 32768))
+                text = source.read(32768).decode("utf-8", errors="replace")
+            return ("[Showing the last 32 KiB; open artifacts for the complete file.]\n" if size > 32768 else "") + text
+        except (OSError, RuntimeError, ValueError) as exc:
+            return f"Artifact preview unavailable ({type(exc).__name__})."
 
     @pyqtSlot(str, str)
     def openResultFile(self, job_id, kind):
         job = self._find_run(job_id) or {}
-        directory = Path(job.get("artifacts") or "").resolve()
-        if not job.get("artifacts") or not directory.is_relative_to(db.OUTPUTS_DIR.resolve()):
+        directory = self._artifact_directory(job)
+        if directory is None:
             self._notify("No artifacts available")
             return
         choices = {"screenshot": ("page.png", "viewport.png"), "trace": ("trace.zip",)}
-        path = next((directory / n for n in choices.get(kind, ()) if (directory / n).is_file()), None)
+        path = next(((directory / n).resolve() for n in choices.get(kind, ())
+                     if (directory / n).is_file() and (directory / n).resolve().is_relative_to(db.OUTPUTS_DIR.resolve())), None)
         if path is None:
             self._notify("Requested artifact was not captured")
         elif kind == "screenshot":
@@ -602,6 +615,8 @@ class OperationsBridge(QObject):
             def viewer():
                 log = directory / "trace-viewer.log"
                 try:
+                    if not log.resolve().is_relative_to(db.OUTPUTS_DIR.resolve()):
+                        raise OSError("Invalid trace viewer log path")
                     with log.open("w", encoding="utf-8") as output:
                         process = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
                         code = process.wait()
@@ -628,15 +643,27 @@ class OperationsBridge(QObject):
     @pyqtSlot(str)
     def openArtifacts(self, job_id):
         job = self._find_run(job_id) or {}
-        path = Path(job.get("artifacts") or "").resolve()
-        if not job.get("artifacts") or not path.is_dir() or not path.is_relative_to(db.OUTPUTS_DIR.resolve()):
+        path = self._artifact_directory(job)
+        if path is None:
             self._notify("No artifacts available")
             return
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
             self._notify("Could not open artifact directory")
 
+    @staticmethod
+    def _artifact_directory(job):
+        try:
+            if job.get("artifacts"):
+                path = Path(job["artifacts"]).resolve()
+                if path.is_dir() and path.is_relative_to(db.OUTPUTS_DIR.resolve()):
+                    return path
+        except (OSError, RuntimeError, ValueError):
+            pass
+        return None
+
     def _find_run(self, run_id):
-        return next((j for j in self.queue.snapshot() if j["id"] == run_id), None) or self.history.get(run_id)
+        job = next((j for j in self.queue.snapshot() if j["id"] == run_id), None) or self.history.get(run_id)
+        return job if job and job.get("workspace") == self._workspace() else None
 
     def _background(self, names, work):
         if self._busy:

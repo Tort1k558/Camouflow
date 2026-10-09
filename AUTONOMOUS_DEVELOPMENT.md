@@ -36,9 +36,9 @@ production changes. Production updates need backups, rollback and smoke checks.
 | P1 | Production functional/responsive audit | In progress | Browser flows, docs/API, auth boundaries; no real-account automation |
 | P1 | Backend baseline and source/runtime comparison | In progress | Isolated test database; inspect deployed vs local source |
 | P2 | Saved task navigation/input UX | Implemented | Search by name/description, preserves selected task and input draft; real Qt screenshots and tests |
-| P2 | Run results/search/filter usability | Pending | Reuse current queue/history, avoid new execution architecture |
+| P2 | Run results/search/filter usability | Implemented | Collapsible scheduling, search/status filters, retained-history matching and minimum-window proof |
 | P2 | Queue/storage failure and concurrency audit | Implemented initial safeguards | Reproduced disk-write failure leaving running job with no worker; rollback, pause and visible errors added |
-| P2 | Useful server functionality | Initial compatibility/security fixes deployed | Correct terminal statuses and token lifecycle; richer team workflow UI remains pending |
+| P2 | Useful server functionality | Team run history deployed | Correct terminal statuses/token lifecycle plus read-only team search/filter/pagination; isolated auth/RBAC/browser proof |
 | P2 | Current-source browser and packaging smoke | Verified through d49930f | Clean Windows build, both fresh engine/Python reports passed, isolated packaged GUI startup passed |
 
 ## Research direction
@@ -254,3 +254,28 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   wildcard search, deterministic tie ordering/pagination, workspace boundaries,
   viewer read-only permissions and HEAD/security/cache headers passed. Test-only
   HTTP client packages mounted separately; production dependencies unchanged.
+- Deployed private Runs image `runs-20261009T232500Z` on loopback 18083 via
+  graceful Caddy reload. Both previous APIs remain running for rollback; original
+  PostgreSQL/Caddy/VPN start timestamps unchanged. New image includes old hashed
+  assets. Verified root-private DB/source/Caddy backup before switching.
+- Switch health probe: **79/80**, one unclassified failure (not zero-downtime
+  proof). Post-switch repeat: **80/80**; public SPA HEAD/cache headers pass.
+  Fresh production browser loads the new bundle and console sign-in. Authenticated
+  run interactions were tested only on isolated synthetic local/PostgreSQL data.
+
+## Iteration 8 — bounded and workspace-safe artifact inspection
+
+- Reproduced `UnicodeDecodeError` when selecting a run with malformed Python
+  output. Previously the UI read the entire file before trimming, and error JSON
+  had no bound. Both previews now read at most the last 32 KiB, label truncation,
+  tolerate malformed bytes and report filesystem errors without exception payloads.
+- Run lookup checks current workspace even when a direct run ID is supplied.
+  Screenshot links resolving outside output storage are rejected; trace-viewer
+  logs are checked before writing. No external artifact upload added.
+- Removed QML assignments that broke the selected-job binding after clicking
+  Details; bridge-driven selection clear remains authoritative.
+- Artifact/history regressions: **21 passed**, including an actual filesystem
+  link escape test (not skipped on this Windows host). Full suite: **153 passed**.
+  Real-QML test clicks Details and verifies bridge selection clear still propagates.
+- Retype documentation build: **35 pages, 0 errors, 0 warnings** using locked
+  `npm ci` and the repository's `retype.js build` command.

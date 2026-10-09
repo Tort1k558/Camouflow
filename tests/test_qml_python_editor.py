@@ -304,6 +304,15 @@ try:
     assert status_filter.property('currentIndex') == 1
     assert search.property('text') == ''
     ui.operations.setRunFilters('', '')
+    details_button = find_property(ui.engine.rootObjects()[0].contentItem(), 'text', 'Details')
+    runs_panel = find_item(ui.engine.rootObjects()[0].contentItem(), 'scenarioRunsPanel')
+    assert details_button is not None and runs_panel is not None
+    QMetaObject.invokeMethod(details_button, 'clicked')
+    pump(seconds=0.1)
+    assert runs_panel.property('selectedJob') == ui.operations.selectedJob != ''
+    ui.operations.selectJob('unknown')
+    pump(seconds=0.1)
+    assert runs_panel.property('selectedJob') == ''
     QMetaObject.invokeMethod(toggle, 'clicked')
     pump(seconds=0.1)
     assert schedule.isVisible()

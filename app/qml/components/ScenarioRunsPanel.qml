@@ -7,6 +7,7 @@ import "../components"
 
 Flickable {
     id: root
+    objectName: "scenarioRunsPanel"
     contentWidth: width
     contentHeight: body.implicitHeight + 56
     clip: true
@@ -118,7 +119,7 @@ Flickable {
                             Text { Layout.fillWidth: true; text: model.scenario + " / " + model.profile; textFormat: Text.PlainText; color: Theme.text; elide: Text.ElideRight }
                             Text { text: model.status + " · " + model.due + " · " + model.duration; textFormat: Text.PlainText; color: Theme.muted; font.pixelSize: 11 }
                         }
-                        PrimaryButton { text: "Details"; secondary: true; onClicked: { root.selectedJob = model.id; operationsBridge.selectJob(model.id) } }
+                        PrimaryButton { text: "Details"; secondary: true; onClicked: operationsBridge.selectJob(model.id) }
                         PrimaryButton { text: "Cancel"; secondary: true; visible: model.status === "queued" || model.status === "running"; onClicked: operationsBridge.cancel(model.id) }
                     }
                 }
@@ -154,8 +155,8 @@ Flickable {
                             Text { text: model.status + " · " + model.finished + " · " + model.duration; textFormat: Text.PlainText; color: Theme.muted; font.pixelSize: 11 }
                             Text { visible: !!model.error; Layout.fillWidth: true; text: model.error; textFormat: Text.PlainText; color: Theme.danger; font.pixelSize: 11; elide: Text.ElideRight }
                         }
-                        PrimaryButton { text: "Details"; secondary: true; onClicked: { root.selectedJob = model.id; operationsBridge.selectJob(model.id) } }
-                        PrimaryButton { text: "Artifacts"; secondary: true; enabled: !!model.artifacts; onClicked: { root.selectedJob = model.id; operationsBridge.openArtifacts(model.id) } }
+                        PrimaryButton { text: "Details"; secondary: true; onClicked: operationsBridge.selectJob(model.id) }
+                        PrimaryButton { text: "Artifacts"; secondary: true; enabled: !!model.artifacts; onClicked: operationsBridge.openArtifacts(model.id) }
                     }
                 }
             }

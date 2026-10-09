@@ -284,3 +284,84 @@ def test_run_filters_search_all_retained_rows_without_mutating_jobs(tmp_path):
     OperationsBridge.setRunFilters(bridge, "other", "invalid")
     assert bridge._run_query == "special"
     assert job["status"] == "queued"
+
+
+def test_artifact_preview_is_bounded_and_handles_bad_encoding(tmp_path, monkeypatch):
+    from app.storage import db
+    from app.ui.bridge.operations import OperationsBridge
+
+    monkeypatch.setattr(db, "OUTPUTS_DIR", tmp_path)
+    path = tmp_path / "python.jsonl"
+    data = b"old output\n" * 100000 + "Latest output: Привет".encode("utf-8") + b"\xff"
+    path.write_bytes(data)
+    preview = OperationsBridge._artifact_preview(path)
+    assert "last 32 KiB" in preview
+    assert "Latest output: Привет" in preview
+    assert len(preview) < 33000
+    assert path.read_bytes() == data
+    assert OperationsBridge._artifact_preview(tmp_path / "missing.json") == ""
+
+
+def test_artifact_preview_does_not_read_outside_outputs(tmp_path, monkeypatch):
+    from app.storage import db
+    from app.ui.bridge.operations import OperationsBridge
+
+    monkeypatch.setattr(db, "OUTPUTS_DIR", tmp_path / "outputs")
+    outside = tmp_path / "outside.json"
+    outside.write_text("synthetic private content", encoding="utf-8")
+    assert OperationsBridge._artifact_preview(outside) == ""
+
+
+def test_artifact_preview_reports_read_failure_without_sensitive_payload(tmp_path, monkeypatch):
+    from pathlib import Path
+    from unittest.mock import Mock
+
+    from app.storage import db
+    from app.ui.bridge.operations import OperationsBridge
+
+    monkeypatch.setattr(db, "OUTPUTS_DIR", tmp_path)
+    path = tmp_path / "error.json"
+    path.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(Path, "open", Mock(side_effect=PermissionError("synthetic sensitive payload")))
+    assert OperationsBridge._artifact_preview(path) == "Artifact preview unavailable (PermissionError)."
+
+
+def test_run_detail_lookup_is_workspace_scoped(tmp_path):
+    from types import SimpleNamespace
+
+    from app.ui.bridge.operations import OperationsBridge
+
+    history = RunHistory(tmp_path / "history.json")
+    history.record({"id": "other-history", "workspace": "other", "status": "success"})
+    jobs = [{"id": "other-queue", "workspace": "other"}, {"id": "current", "workspace": "local"}]
+    bridge = SimpleNamespace(queue=SimpleNamespace(snapshot=lambda: jobs), history=history, _workspace=lambda: "local")
+    assert OperationsBridge._find_run(bridge, "other-history") is None
+    assert OperationsBridge._find_run(bridge, "other-queue") is None
+    assert OperationsBridge._find_run(bridge, "current")["id"] == "current"
+
+
+def test_artifact_file_links_cannot_escape_output_root(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from app.storage import db
+    from app.ui.bridge.operations import OperationsBridge, QDesktopServices
+
+    outputs = tmp_path / "outputs"
+    run = outputs / "run"
+    run.mkdir(parents=True)
+    monkeypatch.setattr(db, "OUTPUTS_DIR", outputs)
+    outside = tmp_path / "outside.png"
+    outside.write_bytes(b"synthetic outside content")
+    try:
+        (run / "page.png").symlink_to(outside)
+    except OSError:
+        pytest.skip("Creating filesystem links requires Windows privileges")
+    job = {"artifacts": str(run)}
+    opened = Mock()
+    monkeypatch.setattr(QDesktopServices, "openUrl", opened)
+    bridge = SimpleNamespace(_find_run=lambda _: job, _artifact_directory=OperationsBridge._artifact_directory, _notify=Mock())
+    OperationsBridge.openResultFile(bridge, "synthetic", "screenshot")
+    opened.assert_not_called()
+    bridge._notify.assert_called_once_with("Requested artifact was not captured")
+    assert OperationsBridge._artifact_preview(run / "page.png") == ""
