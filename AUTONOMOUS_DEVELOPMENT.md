@@ -38,7 +38,7 @@ production changes. Production updates need backups, rollback and smoke checks.
 | P2 | Saved task navigation/input UX | Implemented | Search by name/description, preserves selected task and input draft; real Qt screenshots and tests |
 | P2 | Run results/search/filter usability | Pending | Reuse current queue/history, avoid new execution architecture |
 | P2 | Queue/storage failure and concurrency audit | Implemented initial safeguards | Reproduced disk-write failure leaving running job with no worker; rollback, pause and visible errors added |
-| P2 | Useful server functionality | Pending | Select from observed workflow gaps, preserve RBAC |
+| P2 | Useful server functionality | Initial compatibility/security fixes deployed | Correct terminal statuses and token lifecycle; richer team workflow UI remains pending |
 | P2 | Current-source browser and packaging smoke | Verified through d49930f | Clean Windows build, both fresh engine/Python reports passed, isolated packaged GUI startup passed |
 
 ## Research direction
@@ -157,3 +157,49 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   private suite and isolated PostgreSQL runtime proof pending.
 - `d49930f` fresh GitHub desktop CI is green. Production API security/status changes
   are not yet deployed; no production API restart or migration performed.
+
+## Iteration 5 — verified private backend publication
+
+- Private backend full suite: **84 passed**, one pre-existing SQLAlchemy warning;
+  focused critical Ruff checks passed. Added SPA-header/API-boundary tests.
+- Candidate image: `camouflow-server:autonomous-20261009T225737Z`, built from the
+  original image plus narrow route/frontend patches; no dependency changes.
+- Verified on disposable PostgreSQL in network-isolated containers: concurrent
+  refresh **5/5 rounds** (one success, one rejection), four terminal run statuses,
+  stale reset invalidation and fresh administrator recovery. Temporary containers
+  were stopped/removed; original services' start timestamps stayed unchanged.
+- Publication was blue-green: new `server-candidate` service on loopback **18082**,
+  existing original API retained on **18080**. No production API/DB/VPN restart,
+  no schema migration. Caddy validated/gracefully reloaded with only CamouFlow's
+  upstream changed; **80/80** healthy responses observed during the switch.
+- Private rollback assets: `/opt/camouflow/deployment-backup-20261009T230041Z/`,
+  readable 80-KiB PostgreSQL dump, prior Caddy/compose/source files; old image and
+  old running API retained. Rollback is an in-place Caddyfile restore and graceful
+  reload to 18080, without restoring the database.
+- Fresh production browser verified new RU/EN docs, supported load action and
+  queue storage reference, corrected reset form and zero console errors. Public
+  HTML security headers and anonymous admin-API rejection verified. State-changing
+  auth/status tests were isolated, not performed on real production users.
+- Browser cache exposed stale HTML after deployment. Added SPA-only `no-cache`
+  revalidation at the edge; old JS/CSS retained for open clients. API/assets routes
+  left unchanged. Current image contains security headers; cache header at edge
+  is also staged in private Python source for the next image build.
+- Deployment scripting initially masked missing host `web/dist` copy errors.
+  Corrected with fail-fast commands and created/verified host dist. The source
+  backup contains six source files, not a dist snapshot; old image/container are
+  the actual frontend rollback source. Private deployment doc records this.
+- Active private compose: `/opt/camouflow/compose.autonomous-20261009T230041Z.yml`.
+  Do not casually recreate/remove candidate or original: public traffic targets
+  the candidate. Preserve old assets in future images. No backend file committed.
+- New finding: SPA HEAD requests return 405; GET works. Track as a small web
+  compatibility improvement, not a current production outage.
+
+## Next iteration priorities (03:07 Samara)
+
+1. Inspect real desktop Runs/profile/proxy screens, not just source/QML loading.
+2. Improve run-result navigation/filtering using current queue/history models.
+3. Verify authenticated console workflows on the isolated local test backend;
+   choose useful team-run visibility improvements, preserving permissions.
+4. Add HEAD compatibility and robust candidate/old-asset deployment procedure.
+5. Continue security/storage/worker cancellation audit; prioritize reproduced bugs.
+6. Build/verify docs and keep main stable; current work stays on the feature branch.
