@@ -462,10 +462,14 @@ def db_get_setting(key: str) -> Optional[str]:
 
 
 @_serialized_write
-def db_set_setting(key: str, value: str) -> None:
+def db_set_settings(values: Dict[str, str]) -> None:
     settings = _load_settings()
-    settings[key] = value
+    settings.update(values)
     _save_settings(settings)
+
+
+def db_set_setting(key: str, value: str) -> None:
+    db_set_settings({key: value})
 
 
 def db_get_camoufox_defaults() -> Dict[str, Any]:

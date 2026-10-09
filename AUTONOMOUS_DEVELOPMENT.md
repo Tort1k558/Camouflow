@@ -318,3 +318,26 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 - Updated proxy documentation to actual labels and all-pool/quarantine behavior.
 - Fresh desktop CI: `38004888417` (`5cf9aaa3`) and `38004547753` (`9df28357`)
   succeeded; subsequent heads still need their own fresh CI inspection.
+
+## Iteration 11 — desktop single-flight token refresh and atomic session storage
+
+- Reproduced two desktop clients rotating the same refresh token concurrently,
+  incompatible with the newly enforced one-use server token. Desktop refresh now
+  serializes rotation and adopts an already refreshed token pair when handling a
+  stale 401. Captures the token used by the failed request, including shared-client
+  races; does not blindly rotate the latest token again.
+- Checks session identity before/after network refresh. Logout/account/server
+  change cannot resurrect or overwrite a session; changing selected team is
+  preserved. Incomplete response leaves the existing saved pair untouched.
+- Session fields now save in one existing atomic settings write instead of six
+  separate replacements; reads take the same existing storage lock. The new bulk
+  setter backs the single-setting API, preserving existing contracts.
+- Focused regressions: **11 passed**. Actual HTTP against isolated local backend:
+  **6 expired-token requests, 1 refresh, 6 successful replies**; logout held during
+  a successful remote rotation stayed logged out. Full desktop: **181 passed**.
+  No production account/session used in these state-changing checks.
+- Packaged release from `6b5e411` (before these new auth changes) passed build and
+  both fresh engine/Python runtime reports:
+  `dist/release-20261010-033802/CamouFlow/CamouFlow.exe`.
+  The latest auth changes still require a later rebuild; do not treat this package
+  as current-head proof.
