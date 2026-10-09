@@ -154,7 +154,7 @@ python main.py
 build.bat
 ```
 
-Готовый билд: `dist\CamouFlow\CamouFlow.exe`.
+Готовый билд: `dist\<build-id>\CamouFlow\CamouFlow.exe` (новая папка с датой и временем для каждой сборки).
 
 ## Данные и приватность
 

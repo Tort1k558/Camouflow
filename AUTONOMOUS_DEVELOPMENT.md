@@ -39,7 +39,7 @@ production changes. Production updates need backups, rollback and smoke checks.
 | P2 | Run results/search/filter usability | Pending | Reuse current queue/history, avoid new execution architecture |
 | P2 | Queue/storage failure and concurrency audit | Implemented initial safeguards | Reproduced disk-write failure leaving running job with no worker; rollback, pause and visible errors added |
 | P2 | Useful server functionality | Pending | Select from observed workflow gaps, preserve RBAC |
-| P2 | Current-source browser and packaging smoke | Pending | Fresh reports, real Camoufox/CloakBrowser synthetic scenarios |
+| P2 | Current-source browser and packaging smoke | Verified through d49930f | Clean Windows build, both fresh engine/Python reports passed, isolated packaged GUI startup passed |
 
 ## Research direction
 
@@ -128,3 +128,32 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   task search committed and pushed as `471de99`.
 - Post-frontend-deploy landing has no document overflow at 375px; desktop
   screenshot captured at 1440px. No production service restarted.
+
+## Iteration 4 — release proof, docs and private security fixes
+
+- `scripts/verify_release.py --build --runtime`: **passed**, desktop **145 tests**.
+  Build: `dist/release-20261010-024802/CamouFlow/CamouFlow.exe`. Fresh reports for
+  Camoufox and CloakBrowser both have `passed: true`; real browser/import and hard
+  timeout checks passed. Packaged GUI stayed running for five seconds with a
+  disposable offscreen workspace. Optional PyInstaller warnings for unused
+  PySide6/undetected_playwright were observed; both required engines worked.
+- Corrected timestamped build paths in both READMEs and installation docs;
+  documentation install uses pinned `npm ci`, not adding dependencies.
+- Private production docs source corrected unsupported `wait_load`, `fill` and
+  `tabs` action names; added supported recorded/Python actions, queue resume and
+  storage locations. Publication pending; currently only locally built.
+- Private security review found and reproduced concurrent refresh token reuse
+  (`200,200`) and previously issued reset reactivating an inactive account.
+  Conditional atomic token consumption fixes refresh/reset races. Blocking now
+  invalidates old reset/refresh tokens; existing `created_by` preserves new
+  authorized administrator recovery without a schema change. Auth suite:
+  **12 passed**, including simultaneous requests and recovery boundaries.
+- React client shares one in-flight refresh and prevents token restoration after
+  logout. Actual Node 24 module checks passed for three parallel API calls and
+  logout during refresh; frontend build passed.
+- Built web HTML gets CSP/frame/referrer/nosniff headers locally. Live production
+  inspection confirmed their prior absence. API/Swagger serving stays unchanged.
+  Backend suite before the latest reset additions: **81 passed**. Updated full
+  private suite and isolated PostgreSQL runtime proof pending.
+- `d49930f` fresh GitHub desktop CI is green. Production API security/status changes
+  are not yet deployed; no production API restart or migration performed.

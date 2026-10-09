@@ -154,7 +154,7 @@ python main.py
 build.bat
 ```
 
-Output: `dist\CamouFlow\CamouFlow.exe`.
+Output: `dist\<build-id>\CamouFlow\CamouFlow.exe` (a new timestamped directory for each build).
 
 ## Data and privacy
 
