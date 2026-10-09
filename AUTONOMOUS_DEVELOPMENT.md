@@ -341,3 +341,24 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   `dist/release-20261010-033802/CamouFlow/CamouFlow.exe`.
   The latest auth changes still require a later rebuild; do not treat this package
   as current-head proof.
+
+## Iteration 12 — web workspace isolation, error honesty and auth accessibility
+
+- Reproduced a delayed member response showing old-team rows after switching
+  workspace. Private web now remounts page state by team ID, aborts old role fetch,
+  and associates role state with its team. Browser verifies old rows and owner
+  role cannot populate a viewer team. Backend RBAC was never bypassed.
+- Workspace list failures now show an accessible error and Retry instead of
+  clearing stored selection and pretending there are zero teams. Browser verified
+  failure preservation, retry recovery and initial settings hydration.
+- Deployed private console image `console-20261009T235000Z` on 18082. Replaced
+  only an owned, unserved earlier candidate; prior serving 18083 and original
+  18080 retained. Backup/rollback verified; original API/PostgreSQL/Caddy/VPN
+  starts unchanged. Models/startup/dependencies/auth/run routes byte-identical;
+  private suite **93 passed, no warnings**.
+- Switch health **80/80**; public SPA HEAD/cache checks passed. Fresh production
+  browser validates updated sign-in/signup labels/autocomplete, reset wording and
+  mobile width, with zero console errors/warnings. No production account mutation.
+- Documentation rebuilt: **35 pages, zero errors/warnings**.
+- Fresh CI `38005684654` (`c1e72c23`), `38005347486` (`6b5e4118`) and
+  `38005203849` (`aef395f5`): **success**.
