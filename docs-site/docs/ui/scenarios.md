@@ -75,4 +75,10 @@ The **Variables** button opens the shared variables editor. Shared variables can
 
 ## Run selected scenario
 
-Select a profile in the top bar and press **Run** to execute the current scenario for that profile.
+Select a profile in the top bar and press **Run** to queue the current scenario.
+Resume the queue explicitly in **Runs**; keep the application open.
+
+**Runs** opens with execution controls and results in focus. **Add jobs** expands
+the scheduling form. Starting from selected profiles opens that form automatically.
+Collapsing it does not discard selected profiles, scenario, time or proxy policy.
+Artifact actions and detailed output appear after selecting a run.

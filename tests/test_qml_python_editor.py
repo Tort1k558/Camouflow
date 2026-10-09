@@ -287,6 +287,19 @@ try:
     assert len(ui.operations.queue.snapshot()) == 3
     ui.state.setPage('ScenarioRuns')
     pump(seconds=0.1)
+    schedule = find_item(ui.engine.rootObjects()[0].contentItem(), 'runSchedulingForm')
+    toggle = find_item(ui.engine.rootObjects()[0].contentItem(), 'toggleRunScheduling')
+    assert schedule is not None and toggle is not None
+    assert not schedule.isVisible()
+    QMetaObject.invokeMethod(toggle, 'clicked')
+    pump(seconds=0.1)
+    assert schedule.isVisible()
+    QMetaObject.invokeMethod(toggle, 'clicked')
+    pump(seconds=0.1)
+    assert not schedule.isVisible()
+    ui.operations.prepareRun('Task profile')
+    pump(seconds=0.1)
+    assert schedule.isVisible()
     assert not warnings, warnings
 finally:
     ui.recorder.shutdown()

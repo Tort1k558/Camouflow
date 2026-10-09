@@ -12,47 +12,66 @@ Flickable {
     clip: true
     ScrollBar.vertical: ScrollBar {}
     property string selectedJob: operationsBridge.selectedJob
+    property string schedulingSelection: operationsBridge.selectedProfiles
+    property bool schedulingExpanded: schedulingSelection !== ""
+    onSchedulingSelectionChanged: if (schedulingSelection !== "") schedulingExpanded = true
     ConfirmDialog { id: confirmation; width: Math.min(460, root.width - 32) }
     ColumnLayout {
         id: body
         x: 28; y: 24; width: parent.width - 56; spacing: 16
-        PageHeader { title: "Scenario runs"; subtitle: "Schedule, monitor and inspect your executions"; Layout.fillWidth: true }
+        RowLayout {
+            Layout.fillWidth: true
+            PageHeader { title: "Scenario runs"; subtitle: "Schedule, monitor and inspect your executions"; Layout.fillWidth: true }
+            PrimaryButton {
+                objectName: "toggleRunScheduling"
+                text: root.schedulingExpanded ? "Hide scheduling" : "Add jobs"
+                icon: root.schedulingExpanded ? "" : "plus"
+                secondary: root.schedulingExpanded
+                onClicked: root.schedulingExpanded = !root.schedulingExpanded
+            }
+        }
         ColumnLayout {
             Layout.fillWidth: true; spacing: 12
             Text { Layout.fillWidth: true; text: "Desktop must remain open. Queue starts paused after restart; interrupted jobs are never retried automatically. Pausing prevents new jobs; running steps continue."; color: Theme.muted; wrapMode: Text.WordWrap }
-            CheckBox { text: "Debug in separate window"; checked: operationsBridge.debugEnabled; onToggled: operationsBridge.setDebugEnabled(checked) }
-            RowLayout {
+            ColumnLayout {
+                objectName: "runSchedulingForm"
                 Layout.fillWidth: true
-                ColumnLayout {
-                    Layout.fillWidth: true; Layout.preferredWidth: 1
-                    Text { text: "Profiles"; color: Theme.muted }
-                    ScrollView {
-                        Layout.fillWidth: true; Layout.preferredHeight: 120
-                        Column {
-                            width: parent.width
-                            Repeater {
-                                model: profilesBridge.selectionModel
-                                CheckBox {
-                                    text: model.name
-                                    checked: operationsBridge.selectedProfiles.split("\n").indexOf(model.name) >= 0
-                                    onClicked: operationsBridge.selectProfile(model.name, checked)
+                spacing: 12
+                visible: root.schedulingExpanded
+                CheckBox { text: "Debug in separate window"; checked: operationsBridge.debugEnabled; onToggled: operationsBridge.setDebugEnabled(checked) }
+                RowLayout {
+                    Layout.fillWidth: true
+                    ColumnLayout {
+                        Layout.fillWidth: true; Layout.preferredWidth: 1
+                        Text { text: "Profiles"; color: Theme.muted }
+                        ScrollView {
+                            Layout.fillWidth: true; Layout.preferredHeight: 120
+                            Column {
+                                width: parent.width
+                                Repeater {
+                                    model: profilesBridge.selectionModel
+                                    CheckBox {
+                                        text: model.name
+                                        checked: operationsBridge.selectedProfiles.split("\n").indexOf(model.name) >= 0
+                                        onClicked: operationsBridge.selectProfile(model.name, checked)
+                                    }
                                 }
                             }
                         }
                     }
+                    ColumnLayout {
+                        Layout.fillWidth: true; Layout.preferredWidth: 1
+                        Text { text: "Scenario"; color: Theme.muted }
+                        ComboBox { id: scenario; Layout.fillWidth: true; model: scenariosBridge.model; textRole: "name"; onCountChanged: { var selected = find(scenariosBridge.selectedName); if (selected >= 0) currentIndex = selected } }
+                        FormField { id: scheduled; Layout.fillWidth: true; label: "Local time (empty = now)"; placeholder: "YYYY-MM-DD HH:MM" }
+                    }
                 }
-                ColumnLayout {
-                    Layout.fillWidth: true; Layout.preferredWidth: 1
-                    Text { text: "Scenario"; color: Theme.muted }
-                    ComboBox { id: scenario; Layout.fillWidth: true; model: scenariosBridge.model; textRole: "name"; onCountChanged: { var selected = find(scenariosBridge.selectedName); if (selected >= 0) currentIndex = selected } }
-                    FormField { id: scheduled; Layout.fillWidth: true; label: "Local time (empty = now)"; placeholder: "YYYY-MM-DD HH:MM" }
+                RowLayout {
+                    Layout.fillWidth: true
+                    ComboBox { id: policy; Layout.preferredWidth: 260; model: ["Keep assigned proxy", "Check assigned proxy; stop if failed", "Replace failed from selected pool"] }
+                    FormField { id: pool; Layout.fillWidth: true; label: "Replacement pool"; enabled: policy.currentIndex === 2 }
+                    PrimaryButton { text: "Add to queue"; enabled: scenariosBridge.canRun && operationsBridge.selectedProfiles !== "" && scenario.currentIndex >= 0; onClicked: confirmation.ask("Queue these profiles? Scenario steps are saved with the job. Proxy replacement, if selected, persists the new assignment before launch.", function() { operationsBridge.enqueue(operationsBridge.selectedProfiles, scenario.currentText, scheduled.text, ["unchanged", "check", "replace_failed"][policy.currentIndex], pool.text) }, "Add to queue") }
                 }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                ComboBox { id: policy; Layout.preferredWidth: 260; model: ["Keep assigned proxy", "Check assigned proxy; stop if failed", "Replace failed from selected pool"] }
-                FormField { id: pool; Layout.fillWidth: true; label: "Replacement pool"; enabled: policy.currentIndex === 2 }
-                PrimaryButton { text: "Add to queue"; enabled: scenariosBridge.canRun && operationsBridge.selectedProfiles !== "" && scenario.currentIndex >= 0; onClicked: confirmation.ask("Queue these profiles? Scenario steps are saved with the job. Proxy replacement, if selected, persists the new assignment before launch.", function() { operationsBridge.enqueue(operationsBridge.selectedProfiles, scenario.currentText, scheduled.text, ["unchanged", "check", "replace_failed"][policy.currentIndex], pool.text) }, "Add to queue") }
             }
             RowLayout {
                 Text { text: "Parallel browsers"; color: Theme.text }
@@ -64,7 +83,7 @@ Flickable {
             }
             ListView {
                 id: queueList
-                Layout.fillWidth: true; Layout.preferredHeight: 260; clip: true; spacing: 6
+                Layout.fillWidth: true; Layout.preferredHeight: Math.min(260, Math.max(140, queueList.count * 70)); clip: true; spacing: 6
                 model: operationsBridge.jobsModel
                 ScrollBar.vertical: ScrollBar {}
                 EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: queueList.count === 0; title: "No queued jobs"; description: "Select profiles and a scenario, then add them to the queue."; icon: "play" }
@@ -76,8 +95,8 @@ Flickable {
                         anchors.fill: parent; anchors.margins: 10
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Text { Layout.fillWidth: true; text: model.scenario + " / " + model.profile; color: Theme.text; elide: Text.ElideRight }
-                            Text { text: model.status + " · " + model.due + " · " + model.duration; color: Theme.muted; font.pixelSize: 11 }
+                            Text { Layout.fillWidth: true; text: model.scenario + " / " + model.profile; textFormat: Text.PlainText; color: Theme.text; elide: Text.ElideRight }
+                            Text { text: model.status + " · " + model.due + " · " + model.duration; textFormat: Text.PlainText; color: Theme.muted; font.pixelSize: 11 }
                         }
                         PrimaryButton { text: "Details"; secondary: true; onClicked: { root.selectedJob = model.id; operationsBridge.selectJob(model.id) } }
                         PrimaryButton { text: "Cancel"; secondary: true; visible: model.status === "queued" || model.status === "running"; onClicked: operationsBridge.cancel(model.id) }
@@ -85,6 +104,7 @@ Flickable {
                 }
             }
             RowLayout {
+                visible: root.selectedJob !== ""
                 PrimaryButton { text: "Open artifacts"; secondary: true; enabled: root.selectedJob !== ""; onClicked: operationsBridge.openArtifacts(root.selectedJob) }
                 PrimaryButton { text: "Screenshot"; secondary: true; enabled: root.selectedJob !== ""; onClicked: operationsBridge.openResultFile(root.selectedJob, "screenshot") }
                 PrimaryButton { text: "Trace viewer"; secondary: true; enabled: root.selectedJob !== ""; onClicked: operationsBridge.openResultFile(root.selectedJob, "trace") }
@@ -110,16 +130,17 @@ Flickable {
                         anchors.fill: parent; anchors.margins: 10
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Text { Layout.fillWidth: true; text: model.scenario + " / " + model.profile; color: Theme.text; elide: Text.ElideRight }
-                            Text { text: model.status + " · " + model.finished + " · " + model.duration; color: Theme.muted; font.pixelSize: 11 }
-                            Text { visible: model.error !== ""; Layout.fillWidth: true; text: model.error; color: Theme.danger; font.pixelSize: 11; elide: Text.ElideRight }
+                            Text { Layout.fillWidth: true; text: model.scenario + " / " + model.profile; textFormat: Text.PlainText; color: Theme.text; elide: Text.ElideRight }
+                            Text { text: model.status + " · " + model.finished + " · " + model.duration; textFormat: Text.PlainText; color: Theme.muted; font.pixelSize: 11 }
+                            Text { visible: !!model.error; Layout.fillWidth: true; text: model.error; textFormat: Text.PlainText; color: Theme.danger; font.pixelSize: 11; elide: Text.ElideRight }
                         }
                         PrimaryButton { text: "Details"; secondary: true; onClicked: { root.selectedJob = model.id; operationsBridge.selectJob(model.id) } }
-                        PrimaryButton { text: "Artifacts"; secondary: true; enabled: model.artifacts !== ""; onClicked: { root.selectedJob = model.id; operationsBridge.openArtifacts(model.id) } }
+                        PrimaryButton { text: "Artifacts"; secondary: true; enabled: !!model.artifacts; onClicked: { root.selectedJob = model.id; operationsBridge.openArtifacts(model.id) } }
                     }
                 }
             }
             ScrollView {
+                visible: operationsBridge.details !== ""
                 Layout.fillWidth: true; Layout.preferredHeight: 250
                 TextArea { text: operationsBridge.details; readOnly: true; selectByMouse: true; color: Theme.text; wrapMode: TextEdit.Wrap }
             }

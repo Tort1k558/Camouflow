@@ -203,3 +203,28 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 4. Add HEAD compatibility and robust candidate/old-asset deployment procedure.
 5. Continue security/storage/worker cancellation audit; prioritize reproduced bugs.
 6. Build/verify docs and keep main stable; current work stays on the feature branch.
+
+## Iteration 6 — result-first Runs UI and honest workflow smoke
+
+- Inspected real Qt screenshots with synthetic queue/history at 1460x900 and
+  minimum 1180x720. Scheduling controls pushed the run history below the fold.
+  Runs now collapses scheduling behind **Add jobs**, and selected-profile entry
+  automatically expands it. The form stays alive, so hiding does not lose drafts.
+  Queue height adapts to short lists; unused artifact/detail controls are hidden.
+  Resume/pause/concurrency/cancellation controls remain immediately available.
+- Corrected artifact-button enablement for history records with absent artifact
+  paths, observed in the synthetic screenshot. Model strings render as plain text.
+- Existing real-QML task regression tests cover scheduling toggle and automatic
+  selected-profile expansion. Full desktop suite: **147 passed**; focused QML
+  suite after final layout adjustment: **4 passed**.
+- An incorrectly invoked workflow verifier accepted `--engine` as an engine name
+  and reported success after the browser layer normalized it. Do not count that
+  output as engine proof. CLI now validates its positional engine via argparse;
+  two regressions reject invalid names/options before browser/workspace creation.
+- Re-ran correctly on **camoufox** and **cloakbrowser**: both actual-browser,
+  fixture-LLM extraction/privacy/scrolling/parameterized replay/JSON/CLI queue
+  checks reported `passed: true` with the correct engine names. This is not a
+  paid-provider reasoning test. CloakBrowser announced a wrapper update; do not
+  change the tested pin automatically.
+- Public documentation updated for queue/resume and scheduling controls. Private
+  cache/header deployment remains healthy; backend code stays outside Git.
