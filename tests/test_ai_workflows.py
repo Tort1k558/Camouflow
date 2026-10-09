@@ -270,3 +270,16 @@ def test_malformed_optional_usage_does_not_break_reply():
     assert (
         client.requests == 1 and client.prompt_tokens == client.completion_tokens == 0
     )
+
+
+@pytest.mark.parametrize("arguments", [["unsupported"], ["--engine", "camoufox"]])
+def test_workflow_verifier_rejects_invalid_engine_arguments(arguments):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run([sys.executable, str(root / "scripts" / "verify_ai_workflows.py"), *arguments],
+                            cwd=root, capture_output=True, text=True, timeout=5)
+    assert result.returncode == 2
+    assert "usage:" in result.stderr
