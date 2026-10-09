@@ -2,6 +2,18 @@
 
 The **Scenarios** page is the scenario library and visual node editor.
 
+## Saved tasks
+
+Use **Tasks** to run a saved scenario through its input form without opening the
+node editor. Search matches task names and descriptions, ignoring case. Filtering
+does not clear the selected task or its current inputs; clear the search to show
+the full library again. A search with no matches is distinct from an empty library.
+
+Queue a task after reviewing its steps, then resume explicitly in **Runs**.
+Canceled pending jobs remain in local run history even after the finished queue
+is cleared. Running jobs are recorded only after execution and cleanup finish.
+History and queue are workspace-scoped; clearing history is a separate action.
+
 ## Scenario library
 
 Click the current scenario card to open the library.

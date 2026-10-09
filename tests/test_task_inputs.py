@@ -113,3 +113,34 @@ def test_cloakbrowser_humanized_typing_requires_an_explicit_viewport():
     with pytest.raises(RuntimeError, match="Set both window width and height"):
         asyncio.run(BrowserInterface._human_type(browser, element, "November"))
     element.fill.assert_not_called()
+
+
+def test_saved_task_search_preserves_selection_inputs_and_refreshes():
+    from app.storage.db import Scenario
+    from app.ui.bridge.tasks import TasksBridge
+
+    steps = prepare_recording(recording(), [{"name": "period", "label": "Period", "value": "October"}])
+    scenarios = [Scenario("Monthly report", steps, "Catalog inventory"),
+                 Scenario("Ежедневный отчёт", steps, "Daily website check")]
+    source = SimpleNamespace(modelChanged=Mock(), _list_scenarios=lambda: scenarios,
+                             _get_scenario=lambda name: next((row for row in scenarios if row.name == name), None),
+                             _validate_scenario=lambda row: "")
+    operations = SimpleNamespace(_workspace=lambda: "local", history=Mock(), queue=Mock(), changed=Mock())
+    operations.history.list.return_value = []
+    operations.queue.snapshot.return_value = []
+    bridge = TasksBridge(operations, source, SimpleNamespace(cloudChanged=Mock(), notify=Mock()))
+    bridge.select("Monthly report")
+    selected_fields = bridge.inputFields
+
+    for query, names in (("  CATALOG  ", ["Monthly report"]),
+                         ("ОТЧЁТ", ["Ежедневный отчёт"]), ("missing", [])):
+        bridge.setSearch(query)
+        assert [row["name"] for row in bridge.model.rows()] == names
+        assert bridge.selectedName == "Monthly report"
+        assert bridge.inputFields == selected_fields
+    bridge.setSearch("inventory")
+    scenarios.append(Scenario("Second report", steps, "Inventory review"))
+    bridge.refresh()
+    assert [row["name"] for row in bridge.model.rows()] == ["Monthly report", "Second report"]
+    bridge.setSearch("")
+    assert bridge.model.rowCount() == 3

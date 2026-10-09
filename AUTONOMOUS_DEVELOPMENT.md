@@ -35,7 +35,7 @@ production changes. Production updates need backups, rollback and smoke checks.
 | P1 | CI test triggers and Tasks QML coverage | Implemented | Tests/pytest.ini trigger desktop CI; all 13 pages including Tasks load warning-free locally |
 | P1 | Production functional/responsive audit | In progress | Browser flows, docs/API, auth boundaries; no real-account automation |
 | P1 | Backend baseline and source/runtime comparison | In progress | Isolated test database; inspect deployed vs local source |
-| P2 | Saved task navigation/input UX | Pending | Inspect actual Qt rendering before UI changes |
+| P2 | Saved task navigation/input UX | Implemented | Search by name/description, preserves selected task and input draft; real Qt screenshots and tests |
 | P2 | Run results/search/filter usability | Pending | Reuse current queue/history, avoid new execution architecture |
 | P2 | Queue/storage failure and concurrency audit | Pending | Prevent silent data loss and stuck reservations |
 | P2 | Useful server functionality | Pending | Select from observed workflow gaps, preserve RBAC |
@@ -74,3 +74,29 @@ browser. No production mutations performed.
 Full desktop suite after this fix: **135 passed**; `compileall` passed. Independent
 offscreen QML smoke loaded all **13 pages** (including Tasks) without warnings.
 This proves local QML loadability, not visual quality or fresh GitHub CI.
+
+## Iteration 2 — saved task search and production reset UX
+
+- Added Tasks search using existing `SearchBox` and cached `DictListModel` rows,
+  following Profiles search patterns. Case-insensitive name/description matching;
+  no cloud request per keystroke. No-results state does not clear task selection
+  or user input. UI column width is bounded after screenshot verification exposed
+  an expanding-column layout issue during development.
+- Regression: Unicode/description search and source refresh; existing real-QML
+  task test now checks filtering, no-results, draft preservation and geometry.
+  Task input tests: **23 passed**; QML tests: **4 passed**; full desktop suite
+  before the final geometry assertions: **136 passed**. Final full suite pending.
+- Private server frontend: removed new-password field from the reset-link request
+  stage; token confirmation retains new/repeat inputs with associated labels,
+  appropriate autocomplete and accessible error feedback. Build passed.
+- Local built-browser checks: request success, mismatch validation, confirmation
+  success/redirect, using synthetic intercepted API responses only.
+- Source comparison confirmed only `App.tsx` differed from deployed frontend.
+  Frontend assets published without restarting any service. New hashes uploaded
+  before atomic index replacement; old assets retained for existing clients.
+  Production browser verified both reset form stages at 375px; health remains ok.
+- Private rollback backup: `/opt/camouflow/frontend-backup-20261009T224346Z/`.
+  Host source/dist and running container dist updated. Current image is unchanged:
+  recreating from the old image reverts the frontend until a controlled rebuild.
+- Created/pushed commits `6b07975` (cancellation history) and `4a2dead` (CI coverage).
+  Fresh GitHub workflow outcomes still need inspection.

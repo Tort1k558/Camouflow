@@ -224,6 +224,20 @@ try:
     field = find_item(ui.engine.rootObjects()[0].contentItem(), 'taskInput_input_2')
     assert field.property('label') == 'Text field'
     field.setProperty('text', 'November')
+    search = find_item(ui.engine.rootObjects()[0].contentItem(), 'savedTaskSearch')
+    assert search is not None
+    search.setProperty('text', 'monthly')
+    pump(seconds=0.1)
+    assert ui.tasks.model.rowCount() == 1
+    assert field.property('text') == 'November'
+    assert 0 < search.width() <= 380
+    assert field.width() > 250
+    search.setProperty('text', 'no-matching-task')
+    pump(seconds=0.1)
+    assert ui.tasks.model.rowCount() == 0
+    assert ui.tasks.selectedName == 'Monthly report'
+    assert field.property('text') == 'November'
+    search.setProperty('text', '')
     ui.operations.refresh()
     pump(seconds=0.1)
     assert field.property('text') == 'November'
