@@ -77,6 +77,7 @@ class RunQueue:
         self.changed()
 
     def cancel(self, job_id: str = "", workspace=None):
+        canceled = []
         with self._lock:
             for job in self.jobs:
                 if workspace is not None and job.get("workspace") != workspace:
@@ -87,7 +88,10 @@ class RunQueue:
                     self._active[job["id"]].set()
                 elif job["status"] == "queued":
                     job.update(status="canceled", finished=time.time())
+                    canceled.append(copy.deepcopy(job))
             self._save()
+        for job in canceled:
+            self._record_finished(job)
         self.changed()
 
     def tick(self, workspace=None):
