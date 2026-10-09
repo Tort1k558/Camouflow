@@ -118,3 +118,44 @@ def test_cloak_context_uses_native_launcher_and_inherited_defaults(tmp_path, mon
     assert "timezone_id" not in options
     assert "viewport" not in options
     assert browser._browser_settings["humanize"] is False
+
+
+@pytest.mark.parametrize("entry, expected", [
+    ({}, False), ({"quarantine_until": ""}, False),
+    ({"quarantine_until": "2000-01-01T00:00:00Z"}, False),
+    ({"quarantine_until": "2099-01-01T00:00:00+03:00"}, True),
+    ({"quarantine_until": "2099-01-01T00:00:00"}, True),
+    ({"quarantine_until": "malformed"}, True),
+    ({"status": "quarantined"}, True),
+])
+def test_quarantine_is_consistent_between_launch_policy_and_ui(entry, expected):
+    from app.services.proxy_policy import is_proxy_quarantined
+    from app.ui.bridge.proxies import ProxiesBridge
+
+    assert is_proxy_quarantined(entry) is expected
+    assert ProxiesBridge._is_quarantined(entry) is expected
+
+
+def test_invalid_quarantine_skips_candidate_without_disabling_healthy_pool():
+    import threading
+    from app.services.proxy_policy import choose_proxy
+
+    probe = Mock(return_value=(True, 1, "", {}))
+    candidates = [{"value": "socks5://invalid:1080", "quarantine_until": "malformed"},
+                  {"value": "socks5://healthy:1080"}]
+    assert choose_proxy({}, "replace_failed", candidates, threading.Event(), probe) == "socks5://healthy:1080"
+    probe.assert_called_once_with("socks5://healthy:1080", timeout_s=5.0)
+
+
+@pytest.mark.parametrize("assigned", [True, False])
+def test_cancel_during_proxy_probe_does_not_return_an_assignment(assigned):
+    import threading
+    from app.services.proxy_policy import choose_proxy
+
+    cancel = threading.Event()
+    def probe(value, timeout_s):
+        cancel.set()
+        return True, 1, "", {}
+    account = {"proxy_host": "assigned", "proxy_port": "1080"} if assigned else {}
+    with pytest.raises(ValueError, match="canceled"):
+        choose_proxy(account, "replace_failed", [{"value": "socks5://replacement:1080"}], cancel, probe)

@@ -15,6 +15,7 @@ from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
 from app.ui.bridge.background import BackgroundRead
 from app.services.server_client import get_server_session
+from app.services.proxy_policy import is_proxy_quarantined
 
 
 class ProxiesBridge(QObject):
@@ -91,10 +92,7 @@ class ProxiesBridge(QObject):
 
     @staticmethod
     def _is_quarantined(entry: Dict[str, Any]) -> bool:
-        try:
-            return datetime.fromisoformat(str(entry.get("quarantine_until") or "").replace("Z", "+00:00")) > datetime.now(timezone.utc)
-        except ValueError:
-            return False
+        return is_proxy_quarantined(entry)
 
     @pyqtProperty(bool, notify=modelChanged)
     def loading(self):
@@ -849,7 +847,11 @@ class ProxiesBridge(QObject):
         for pool_name, index in list(self._selected):
             entries = (pools.get(pool_name) or {}).get("proxies", [])
             if 0 <= index < len(entries) and isinstance(entries[index], dict):
-                if entries[index].pop("quarantine_until", None) is not None:
+                until = entries[index].pop("quarantine_until", None)
+                explicit = entries[index].get("status") == "quarantined"
+                if explicit:
+                    entries[index]["status"] = "unchecked"
+                if until is not None or explicit:
                     released += 1
         if not released:
             self._emit_message("No quarantined proxies selected")

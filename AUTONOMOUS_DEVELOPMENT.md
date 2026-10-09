@@ -279,3 +279,26 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   Real-QML test clicks Details and verifies bridge selection clear still propagates.
 - Retype documentation build: **35 pages, 0 errors, 0 warnings** using locked
   `npm ci` and the repository's `retype.js build` command.
+
+## Iteration 9 — consistent proxy quarantine and cancellation checkpoints
+
+- Reproduced a naive quarantine timestamp causing `TypeError` in proxy UI. One
+  shared policy now handles UI/launch quarantine consistently: invalid or timezone-
+  ambiguous expiry stays quarantined until manual release; no timezone assumption.
+  A malformed candidate no longer prevents trying other explicitly available
+  healthy candidates. Explicit quarantine can also be released from existing UI.
+- Cancellation during a blocking health probe is checked before returning a
+  replacement and again before persisting assignment. A canceled job does not
+  proceed merely because the probe succeeded. No direct-connection fallback.
+- Browser-settings/proxy regressions: **20 passed**. Existing real launcher
+  verifier: **8/8 cases passed**, both engines, auto/custom/ephemeral/blocked,
+  browser restart, locale/timezone, typing, persistence and requested blockers.
+  Local fixture checks, not a claim of universal anti-detection effectiveness.
+  Camoufox canvas exports changed across restarts and were reported as warnings;
+  this audit does not prove Camoufox canvas stability. CloakBrowser canvas was stable.
+- Private auth forms now have linked labels, proper password-manager autocomplete,
+  required email/password and accessible error feedback. Browser checks passed for
+  sign-in/signup/invite and corrected reset-session wording. These last private
+  patches are staged locally, not deployed. Backend suite now **93 passed without
+  warnings** after replacing the one exercised legacy SQLAlchemy lookup.
+- Full desktop suite after quarantine/cancellation changes: **163 passed**.

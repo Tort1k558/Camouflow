@@ -471,6 +471,8 @@ class OperationsBridge(QObject):
                     assignments = {account_proxy(a): a["name"] for a in db.db_get_accounts() if account_proxy(a) and a["name"] != name}
                     candidates = [p for p in candidates if p.get("value") not in assignments]
                 value = choose_proxy(account, job["policy"], candidates, cancel)
+                if cancel.is_set():
+                    return {"status": "canceled", "error": "Canceled before proxy assignment"}
                 if value != account_proxy(account):
                     if client:
                         if not role_allows(member.get("role", ""), "manager") and not context.get("user", {}).get("is_superadmin"):
