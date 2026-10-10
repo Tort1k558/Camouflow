@@ -21,7 +21,10 @@ Alias: `http`.
   - Aliases: `json`, `body`.
 - `form` *(object, optional)* - `application/x-www-form-urlencoded`.
 - `multipart` *(object, optional)* - `multipart/form-data` (simple fields).
-- `timeout_ms` *(int, optional)* - timeout (ms).
+- `timeout_ms` *(number, optional)* - timeout in milliseconds, passed unchanged
+  to Playwright; `0` disables this request timeout. Negative, non-finite, boolean
+  and non-numeric values are rejected before network I/O. An omitted value uses
+  Playwright's context default.
 - `max_redirects` *(int, optional)*, `max_retries` *(int, optional)*.
 - `fail_on_status_code` *(bool, optional)* - error on non-2xx at the Playwright level.
 - `ignore_https_errors` *(bool, optional)*.

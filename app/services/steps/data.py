@@ -1,4 +1,5 @@
 import json
+import math
 import re
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -75,12 +76,16 @@ class DataSteps:
             multipart = None
 
         timeout_ms = merged_step.get("timeout_ms")
-        timeout_seconds: Optional[float] = None
+        request_timeout: Optional[float] = None
         if timeout_ms is not None:
             try:
-                timeout_seconds = float(timeout_ms) / 1000.0
-            except Exception:
-                timeout_seconds = None
+                if isinstance(timeout_ms, bool):
+                    raise ValueError
+                request_timeout = float(timeout_ms)
+                if not math.isfinite(request_timeout) or request_timeout < 0:
+                    raise ValueError
+            except (TypeError, ValueError, OverflowError):
+                return StepResult.stop("timeout_ms must be a finite non-negative number for http_request")
 
         fail_on_status_code = merged_step.get("fail_on_status_code")
         ignore_https_errors = merged_step.get("ignore_https_errors")
@@ -95,7 +100,7 @@ class DataSteps:
             data=data,
             form=form,
             multipart=multipart,
-            timeout=timeout_seconds,
+            timeout=request_timeout,
             fail_on_status_code=fail_on_status_code,
             ignore_https_errors=ignore_https_errors,
             max_redirects=max_redirects,

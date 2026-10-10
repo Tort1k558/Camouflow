@@ -1281,3 +1281,17 @@ process environment inputs, never source, documentation or report values.
   malformed/oversized input, owned tunnel teardown and launcher credential scope.
 - Primary Playwright contract: https://playwright.dev/python/docs/network#http-proxy
   and https://playwright.dev/python/docs/api/class-browsercontext#browser-context-request .
+
+### Iteration 47: fix visual HTTP-request timeout units
+
+- Confirmed http_request divided timeout_ms by 1000 before passing it to
+  Playwright, whose API expects milliseconds. A 30-second UI limit became 30 ms.
+- Preserve the requested millisecond value, including zero to disable this
+  request timeout. Reject boolean, negative, non-finite and non-numeric values
+  before network I/O; do not silently replace invalid values with defaults.
+- Thirteen regression cases cover exact numeric/string values and invalid input.
+  Native ScenarioExecutor action against an owned 250 ms HTTP fixture passed
+  with timeout_ms=1000 in both engines (266/328 ms observed) and correctly raised
+  the actual Playwright 20 ms timeout with timeout_ms=20. No mocked HTTP response.
+- Documentation now states the exact units and zero/omission/error behavior.
+  Primary API: https://playwright.dev/python/docs/api/class-apirequestcontext#api-request-context-fetch .

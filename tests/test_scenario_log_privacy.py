@@ -70,3 +70,25 @@ def test_explicit_log_action_keeps_user_requested_output(runner):
     result = asyncio.run(runner._action_log({"value": SECRET}))
     assert result.status == "next"
     runner.logger.info.assert_called_once_with("SCENARIO LOG: %s", SECRET)
+
+
+@pytest.mark.parametrize("timeout_ms", [None, 0, 1500, "30000", 1.5])
+def test_http_request_preserves_playwright_millisecond_timeout(runner, timeout_ms):
+    response = SimpleNamespace(status=200, headers={}, text=AsyncMock(return_value="OK"), json=AsyncMock(return_value={}))
+    runner.context = SimpleNamespace(request=SimpleNamespace(fetch=AsyncMock(return_value=response)))
+
+    result = asyncio.run(runner._action_http_request({"url": "https://example.invalid/", "timeout_ms": timeout_ms}))
+
+    assert result.status == "next"
+    expected = None if timeout_ms is None else float(timeout_ms)
+    assert runner.context.request.fetch.call_args.kwargs["timeout"] == expected
+
+
+@pytest.mark.parametrize("timeout_ms", [True, False, -1, "invalid", "", [], float("nan"), float("inf")])
+def test_http_request_rejects_invalid_timeout_before_network_io(runner, timeout_ms):
+    runner.context = SimpleNamespace(request=SimpleNamespace(fetch=AsyncMock()))
+
+    result = asyncio.run(runner._action_http_request({"url": "https://example.invalid/", "timeout_ms": timeout_ms}))
+
+    assert result.status == "stop" and "timeout_ms" in result.stop_reason
+    runner.context.request.fetch.assert_not_awaited()
