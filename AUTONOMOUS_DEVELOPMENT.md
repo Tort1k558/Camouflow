@@ -1312,3 +1312,19 @@ process environment inputs, never source, documentation or report values.
   on intentionally saved variable bodies/artifacts. Python authors still own
   responses they create directly through ctx.context.request.
 - Primary disposal contract: https://playwright.dev/python/docs/api/class-apiresponse#api-response-dispose .
+
+### Iteration 49: require complete HTTP framing before proxy Active status
+
+- Independently reproduced positive health results for valid geo JSON carried
+  in truncated Content-Length responses, invalid/oversized declared lengths,
+  missing terminal chunks and malformed chunk endings. TCP/JSON alone is not
+  proof of a complete successful internet response.
+- Enforce bounded complete content lengths, chunk sizes/endings/terminators and
+  trailers; reject conflicting framing and unsupported transfer encodings.
+  Preserve valid chunked/trailer and close-delimited responses and CONNECT
+  headers-only behavior (never wait for a CONNECT body before TLS handshake).
+- Fourteen framing regressions cover positive and negative paths. Existing
+  strict-certificate/hostname HTTP CONNECT fixture still passes six rounds.
+  Proxy format documentation now explicitly says omitted scheme means SOCKS5.
+- This fixes false positive application state; it does not assert the supplied
+  providers themselves sent malformed HTTP responses.

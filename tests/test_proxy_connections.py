@@ -270,3 +270,55 @@ def test_http_socks_bridge_tunnels_after_connect_and_stops_owned_connections(htt
     while server._connections and time.monotonic() < deadline:
         time.sleep(0.01)
     assert not server._connections
+
+
+@pytest.mark.parametrize("framing, passed", [
+    ("content-length", True), ("truncated-length", False), ("invalid-length", False),
+    ("oversized-length", False), ("chunked", True), ("truncated-chunked", False),
+    ("invalid-chunk-ending", False), ("conflicting-framing", False),
+    ("chunked-trailer", True), ("truncated-trailer", False), ("negative-chunk", False),
+    ("oversized-chunk", False), ("close-delimited", True), ("unsupported-encoding", False),
+])
+def test_health_check_requires_complete_valid_http_body(monkeypatch, framing, passed):
+    body = b'{"success":true,"ip":"192.0.2.1"}'
+    headers = b""
+    encoded = body
+    if "length" in framing:
+        length = len(body)
+        if framing == "truncated-length":
+            length += 5
+        elif framing == "oversized-length":
+            length = 3 * 1024 * 1024
+        headers = b"Content-Length: " + (b"invalid" if framing == "invalid-length" else str(length).encode()) + b"\r\n"
+    elif framing == "close-delimited":
+        pass
+    elif framing == "unsupported-encoding":
+        headers = b"Transfer-Encoding: notchunked\r\n"
+        encoded = f"{len(body):x}\r\n".encode() + body + b"\r\n0\r\n\r\n"
+    else:
+        headers = b"Transfer-Encoding: chunked\r\n"
+        encoded = f"{len(body):x}\r\n".encode() + body + b"\r\n0\r\n\r\n"
+        if framing == "truncated-chunked":
+            encoded = f"{len(body):x}\r\n".encode() + body + b"\r\n"
+        elif framing == "invalid-chunk-ending":
+            encoded = f"{len(body):x}\r\n".encode() + body + b"xx0\r\n\r\n"
+        elif framing == "conflicting-framing":
+            encoded = body
+            headers += f"Content-Length: {len(body)}\r\n".encode()
+        elif framing == "chunked-trailer":
+            encoded = encoded[:-2] + b"X-Trailer: synthetic\r\n\r\n"
+        elif framing == "truncated-trailer":
+            encoded = encoded[:-2]
+        elif framing == "negative-chunk":
+            encoded = b"-1\r\n" + body + b"\r\n0\r\n\r\n"
+        elif framing == "oversized-chunk":
+            encoded = b"300000\r\n" + body + b"\r\n0\r\n\r\n"
+    connection = Mock()
+    connection.recv.side_effect = [b"HTTP/1.1 200 OK\r\n" + headers + b"\r\n" + encoded, b""]
+    monkeypatch.setattr(proxy_health.socket, "create_connection", lambda *args, **kwargs: connection)
+    monkeypatch.setattr(proxy_health, "PROXY_INTERNET_CHECK_URL", "http://geo.example.invalid/")
+
+    result, _, _, _ = proxy_health.probe_proxy_endpoint("http://proxy.example.invalid:8080")
+
+    assert result is passed
+    connection.close.assert_called_once()

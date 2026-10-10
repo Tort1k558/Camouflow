@@ -37,6 +37,8 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         if b"\r\n\r\n" not in head:
             return None, {}, b"", "invalid response headers"
         header_raw, remainder = head.split(b"\r\n\r\n", 1)
+        if len(header_raw) > 256 * 1024:
+            return None, {}, b"", "HTTP response headers exceed size limit"
         lines = header_raw.split(b"\r\n")
         if not lines:
             return None, {}, b"", "empty response"
@@ -56,12 +58,16 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         if headers_only:
             return status, headers, b"", ""
         body = b""
+        if "content-length" in headers and "transfer-encoding" in headers:
+            return status, headers, b"", "conflicting HTTP response framing"
         if "content-length" in headers:
             try:
                 need = int(headers["content-length"])
-            except Exception:
-                need = None
-            if isinstance(need, int) and need >= 0:
+            except ValueError:
+                return status, headers, b"", "invalid HTTP content length"
+            if not 0 <= need <= 2 * 1024 * 1024:
+                return status, headers, b"", "HTTP content length exceeds response limit"
+            if need >= 0:
                 body = remainder
                 while len(body) < need and len(body) < 2 * 1024 * 1024:
                     chunk = sock_obj.recv(min(8192, need - len(body)))
@@ -69,13 +75,15 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
                         break
                     body += chunk
                 body = body[:need]
+                if len(body) != need:
+                    return status, headers, b"", "truncated HTTP response body"
                 return status, headers, body, ""
 
         # Transfer-Encoding: chunked
-        if "transfer-encoding" in headers and "chunked" in headers["transfer-encoding"].lower():
+        if headers.get("transfer-encoding", "").lower() == "chunked":
             data = remainder
             out = b""
-            while len(out) < 2 * 1024 * 1024:
+            while len(out) <= 2 * 1024 * 1024:
                 # Ensure we have a full chunk-size line
                 while b"\r\n" not in data and len(data) < 256 * 1024:
                     chunk = sock_obj.recv(8192)
@@ -88,9 +96,18 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
                 size_str = size_line.split(b";", 1)[0].decode("ascii", errors="replace").strip()
                 try:
                     size = int(size_str, 16)
-                except Exception:
-                    break
+                except ValueError:
+                    return status, headers, b"", "invalid HTTP chunk size"
+                if size < 0 or size > 2 * 1024 * 1024 - len(out):
+                    return status, headers, b"", "HTTP chunk exceeds response limit"
                 if size == 0:
+                    while not (data.startswith(b"\r\n") or b"\r\n\r\n" in data) and len(data) < 256 * 1024:
+                        chunk = sock_obj.recv(8192)
+                        if not chunk:
+                            break
+                        data += chunk
+                    if not (data.startswith(b"\r\n") or b"\r\n\r\n" in data):
+                        return status, headers, b"", "truncated HTTP chunk trailer"
                     return status, headers, out, ""
                 while len(data) < size + 2 and len(data) < 2 * 1024 * 1024:
                     chunk = sock_obj.recv(8192)
@@ -98,18 +115,24 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
                         break
                     data += chunk
                 if len(data) < size + 2:
-                    break
+                    return status, headers, b"", "truncated HTTP chunk body"
+                if data[size:size + 2] != b"\r\n":
+                    return status, headers, b"", "invalid HTTP chunk ending"
                 out += data[:size]
                 data = data[size + 2 :]  # skip data + CRLF
-            return status, headers, out, ""
+            return status, headers, b"", "incomplete HTTP chunked response"
+        if "transfer-encoding" in headers:
+            return status, headers, b"", "unsupported HTTP transfer encoding"
 
         # Fallback: read until close (bounded).
         body = remainder
-        while len(body) < 2 * 1024 * 1024:
-            chunk = sock_obj.recv(8192)
+        while len(body) <= 2 * 1024 * 1024:
+            chunk = sock_obj.recv(min(8192, 2 * 1024 * 1024 + 1 - len(body)))
             if not chunk:
                 break
             body += chunk
+        if len(body) > 2 * 1024 * 1024:
+            return status, headers, b"", "HTTP response exceeds size limit"
         return status, headers, body, ""
 
     def _json_ok(payload: Dict[str, object]) -> bool:
@@ -239,7 +262,7 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         sock_obj.sendall(req.encode("iso-8859-1", errors="replace"))
         status, _, body, status_err = _read_http_response(sock_obj)
         ms = int((time.perf_counter() - start) * 1000)
-        if status is None:
+        if status is None or status_err:
             return False, ms, status_err, meta
         meta["http_status"] = int(status)
         if not (200 <= status < 300):

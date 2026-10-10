@@ -26,6 +26,9 @@ user:pass@host:port
 
 Duplicates are ignored during bulk import.
 
+An omitted scheme means **SOCKS5**, not automatic protocol detection. Prefix
+HTTP connections with `http://`; use the protocol supplied by your provider.
+
 ## Proxy list actions
 
 Search the cached inventory by name, visible address, group, type or detected
@@ -81,6 +84,8 @@ starting a direct connection.
 The internet probe requires a successful geo response with a valid exit IP.
 Empty/list JSON, missing/invalid IP, negative success flags and redirects do not
 make a proxy Active.
+Truncated, invalid or conflicting HTTP body framing and oversized responses are
+also rejected, even if the received prefix contains valid geo JSON.
 
 Geo lookups use a per-profile connection, never process-wide SOCKS settings.
 Environment proxy/bypass settings cannot route a configured profile's lookup
@@ -88,6 +93,11 @@ directly. SOCKS DNS stays at the proxy; IPv6 upstreams are supported by the heal
 probe and local adapter. TLS-to-proxy geo/health checks are unsupported and fail
 closed; HTTPS sites through HTTP CONNECT or SOCKS still use certificate and
 hostname verification.
+
+CloakBrowser routes SOCKS profiles through an owned loopback HTTP/CONNECT
+adapter. Browser pages, visual **HTTP request** actions and Python
+`ctx.context.request` use the same upstream proxy and cookie jar. The adapter
+does not replace the system proxy or configure independent Python HTTP clients.
 
 Proxy lists and dashboard summaries show only the scheme, host and port, without
 credentials. The connection value is unchanged; managers can inspect/edit it in
