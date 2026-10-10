@@ -978,3 +978,34 @@ appropriate storage export. Cloud namespacing and crash-safe transactions remain
 separate work, not hidden fallbacks.
 
 Full current desktop suite: **441 passed**.
+
+## Iteration 41 - validate AI history before replacing UI state
+
+Eleven regressions initially failed: malformed task/status/result, secrets,
+sources, events and usage counters either partly replaced the current state or
+were accepted into properties that require different types. Validate all consumed
+transcript fields and normalize event roles before any state assignment. Invalid
+history retains the previous task/profile/session/results; valid history keeps
+the original completion time and does not rerun a task. Eleven regressions now
+pass, as does the actual Windows AI QML/replay/history verifier.
+
+Current native diagnostic audit bypassed ScenarioExecutor entirely. Both engines
+observed a deliberately aborted local request; Camoufox forwarded explicit
+console calls while CloakBrowser did not (including raw CDP observation).
+Neither forwarded the timer-thrown page error despite the timer executing.
+These are capture limitations, not proof that a page has no errors. No stealth
+settings were disabled or dependencies upgraded to hide the limitation.
+Failure-artifact checks separately verified screenshots/HTML/error/events files
+and valid trace archives on both engines. Added a user-facing Runs/diagnostics
+guide with privacy, retention, viewer prerequisites and engine limitations.
+
+Package 090801 contains cookie/runtime 640b579: clean build, **441 tests**, fresh
+parsed engine/Python reports passed on both engines. Packaged authenticated HTTP
+proxy queue/export proof passed twice, with four verified target TLS requests,
+four pages, two authentication challenges and no unexpected forwards. AI workflow
+fixture-provider checks passed both engines; the full current 13-page QML recipe
+passed. This package predates iteration 41; rebuild before the final handoff.
+
+Full current desktop suite: **452 passed**. Fresh CI 640b579 run 38026449646,
+25d4c0a run 38023791088, d10aa28 run 38022824289 and b46bdf4 run 38022253112
+all completed successfully. Iteration 41 needs its own fresh CI after push.

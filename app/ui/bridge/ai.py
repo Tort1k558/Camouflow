@@ -324,14 +324,35 @@ class AIBridge(QObject):
             if (not isinstance(result, dict) or not isinstance(result.get("steps"), list)
                     or any(not isinstance(step, dict) for step in result["steps"])
                     or not isinstance(result.get("outputs", {}), dict)
-                    or not isinstance(result.get("events", []), list)):
+                    or not isinstance(result.get("events", []), list)
+                    or any(not isinstance(result.get(key), str) for key in ("task", "status", "result"))
+                    or not isinstance(row.get("profile"), str)):
                 raise ValueError("Invalid transcript structure")
+            for key in ("secrets", "output_sources"):
+                values = result.get(key, {})
+                if not isinstance(values, dict) or any(not isinstance(name, str) or not isinstance(value, str)
+                                                       for name, value in values.items()):
+                    raise ValueError(f"Invalid transcript {key}")
+            for key in ("requests", "prompt_tokens", "completion_tokens"):
+                value = result.get(key, 0)
+                if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                    raise ValueError(f"Invalid transcript {key}")
+            rows = []
+            for event in result.get("events", []):
+                if not isinstance(event, dict):
+                    raise ValueError("Invalid transcript event")
+                step = event.get("step", 0)
+                if isinstance(step, bool) or not isinstance(step, int) or step < 0:
+                    raise ValueError("Invalid transcript event step")
+                item = {role: str(event.get(role, "")) for role in EVENT_ROLES}
+                item["step"] = step
+                rows.append(item)
             compile_workflow(result["steps"], {}, result.get("outputs", {}))
             self._session = copy.deepcopy(get_server_session())
             self._task = result["task"]
             self._profile_name = row["profile"]
             self._accept_result(result, str(path.parent), record_history=False)
-            self._rows = result.get("events", [])[-MAX_EVENT_ROWS:]
+            self._rows = rows[-MAX_EVENT_ROWS:]
             if self._events_model is not None:
                 self._events_model.set_rows(self._rows)
             self._status = "Loaded previous AI run; review before replay"
