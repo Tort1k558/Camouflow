@@ -167,7 +167,7 @@ assert not warnings, warnings
 
 def test_untrusted_qml_labels_do_not_fetch_inline_images(tmp_path):
     script = '''
-import faulthandler, threading, time
+import faulthandler, socketserver, threading, time
 faulthandler.enable()
 faulthandler.dump_traceback_later(15)
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -184,7 +184,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(404)
         self.end_headers()
     def log_message(self, *args): pass
-server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+class LocalServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # The fixture needs no reverse DNS; macOS CI's resolver can block here.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name = 'localhost'
+        self.server_port = self.server_address[1]
+server = LocalServer(('127.0.0.1', 0), Handler)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 db.init_db()
 db.db_set_setting('onboarding_completed', 'true')
