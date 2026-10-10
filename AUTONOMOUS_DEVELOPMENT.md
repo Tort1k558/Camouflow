@@ -1505,3 +1505,43 @@ process environment inputs, never source, documentation or report values.
   deferred by the user; SMTP source/config changes were not retained.
 - Private backend candidate is prepared with only routes/google_auth.py changed,
   no frontend or schema migration; production cutover remains pending here.
+
+### Follow-up verified delivery — 2026-10-10 13:40 Samara
+
+- Runtime a643c12 pushed to feat/autonomous-product-20261010; desktop CI
+  38041695375 completed successfully. Fresh public full suite/build gate:
+  547 passed. Private full suite: 152 passed. Retype: 35 pages, no warnings/errors.
+- New clean package release-20261010-133201 passed both frozen runtime checks.
+  Four actual executable workers additionally verified frozen module provenance,
+  identity-scoped browser/variable paths, authenticated synthetic SOCKS page/API
+  routing, JSON extraction, and cookie roundtrip in both engine/context modes.
+  Independent ZIP CRC/extract/runtime checks passed. ZIP:
+  dist/CamouFlow-autonomous-20261010-133201-windows.zip, 138,455,354 bytes;
+  SHA-256 1cae77fc799c062ba883dd454c24e1d7e1e6456195d36e6f49bc52d0d5a09ded.
+  EXE SHA-256 994114e3bc5cdaaf0e938feb15a7cec318c0c527a79cdefc53d9dff19ef9e88b.
+- Production switched to healthy camouflow-server-oauth-1 / 127.0.0.1:18086,
+  image camouflow-server:oauth-20261010T092801Z /
+  sha256:fd45271fe96e94bbe381b0507045ae3123d3de4b179ac100cda790d7ae41b808.
+  Post-cutover default checks 90/90; separate physical-Ethernet TLS health 5/5.
+  This is post-cutover evidence, not proof of zero dropped in-flight requests.
+- Live browser web button opened Google's actual account sign-in form. Without
+  submitting credentials, it verified matching Secure/HttpOnly/SameSite=Lax
+  state, denied-callback cookie cleanup, replay rejection, and responsive error
+  UI at widths 375/768/1440 with zero application page errors. Real Google account
+  consent and successful production login remain untested; synthetic positive
+  callback/pairing tests against the restored isolated clone are separate proof.
+- Latest deployment backup deployment-oauth-backup-20261010T092801Z/database.dump
+  was also fully restored and passed the same 17-table logical roundtrip and
+  exact-image application checks. Production DB was not overwritten. Owned
+  recovery containers and browser sessions were closed. SMTP remains deferred.
+- Canonical private Google source, README/DEPLOYMENT and regression tests were
+  synchronized with private prior-file backups; active-image source hash matches.
+  Nine running services are healthy; original API/PostgreSQL/Caddy/VPN starts
+  remain unchanged. Rollback restores the new backup's Caddyfile IN PLACE and
+  reloads Caddy to retained healthy 18085, without database restore.
+- Only the public application branch was committed/pushed. Main remains 37207b9;
+  private server source is outside Git. Install the new desktop build for Google
+  login after browser-state hardening; old name-based browser folders are retained
+  but are not auto-imported into scoped cloud identities.
+- OAuth browser-state rationale: https://developers.google.com/identity/protocols/oauth2/web-server
+  Restore flags: https://www.postgresql.org/docs/16/app-pgrestore.html
