@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import hashlib
 import json
 import os
 import sys
 import time
+
+from app.services.scenario_definition import definition_hash
 
 READ_ONLY_ACTIONS = {
     "start",
@@ -19,12 +20,6 @@ READ_ONLY_ACTIONS = {
     "extract_text",
     "write_file",
 }
-
-
-def definition_hash(steps):
-    return hashlib.sha256(
-        json.dumps(steps, sort_keys=True, ensure_ascii=False).encode("utf-8")
-    ).hexdigest()
 
 
 def validate_readonly(steps):

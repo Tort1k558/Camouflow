@@ -1825,3 +1825,32 @@ green styling, keep server sources private, and verify each capability separatel
   test fixture's HTTP bind, before Qt initialization. The loopback-only fixture
   now skips reverse DNS without removing assertions or extending its timeout.
   Follow-up native CI must pass before reporting the platform fix as verified.
+
+### Selector repair core - 2026-10-11
+
+- Added a read-only proposal service using the existing application LLM protocol,
+  DOM snapshot and frame/locator resolution. It never executes the failed action,
+  sends raw artifacts/input values, retries the scenario or saves automatically.
+  The proposal is bounded to 30 seconds, two provider requests (the existing
+  JSON-validation retry), and 512 completion tokens per request.
+- Full local regression suite after the repair core: **587 passed**; compile and
+  undefined-name/syntax checks passed. Shared definition hashes retain the CLI's
+  previous serialization and public import contract.
+- Proposed targets must be unique, visible and compatible in the original frame;
+  navigation or target label/type changes invalidate the proposal. Password
+  variables cannot be redirected into plain-text inputs. Negative assertions are
+  excluded. Confirmation and the frozen scenario hash are required before patching.
+  Only selector fields change; explicit index zero bypasses stale global overrides.
+- Real OpenRouter free-model verification on both engines: a broken table selector
+  failed first; the service verified a replacement without extracting data; an
+  unconfirmed patch was refused; the confirmed definition was saved and replayed
+  successfully with zero new AI requests. All calls reported cost zero. The first
+  CloakBrowser probe correctly rejected malformed model output; the existing
+  bounded validation retry was retained for the successful follow-up check.
+- This service is not yet wired to the desktop failure/approval UI or private
+  hosted runs. Screenshot/trace analysis and full self-healing rollout remain
+  pending; a controlled table recovery is not evidence of arbitrary-site healing.
+- Native Python/QML checks now passed on Windows, Linux and macOS. All packages
+  built, but actual browser runtime gates correctly failed because clean runners
+  had no installed Camoufox binary. CI now explicitly fetches both engine binaries
+  before bounded worker/runtime checks. Native platform readiness remains pending.
