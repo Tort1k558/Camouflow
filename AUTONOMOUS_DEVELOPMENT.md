@@ -1699,3 +1699,23 @@ process environment inputs, never source, documentation or report values.
   Clean packaged release gate passed at `dist/release-20261011-003123`, including
   Camoufox/CloakBrowser runtime and hard-timeout checks. Publication is gated on
   independent extracted ZIP checks and fresh exact-head GitHub CI.
+- Published **v0.4.2** at code commit `6685d0d`. Desktop/docs CI runs
+  38084368899 and 38084368950 passed. The independent fresh-extracted ZIP runtime
+  checks passed for both engines; uploaded/downloaded SHA-256 matched:
+  `72f77831da4b293572522c8b0d1e421ca4167c094dfd9368074b33b9de35b4f6`.
+  Windows ZIP is 138,456,309 bytes; public asset and team-center guide verified.
+- Final UI checks fixed wrapping for long assignee emails on 375 px screens
+  (document width now exactly 375 px) and refreshed role permissions after
+  ownership transfer. Actual production transfer disabled former-owner settings
+  and removed the owner-only transfer section without requiring a page reload.
+  No application console errors were observed. Final upstream is loopback 18094;
+  both the previous feature API and original API remain healthy for rollback.
+- Public HTTPS regression checks passed again, including the existing desktop
+  scenario-run recording/linking contract. This is linkage proof, not a claim of
+  cloud execution of arbitrary local scripts. Actual hosted worker/browser flows
+  and independent packaged runtime checks provide their separate execution proof.
+- Final customer counts are unchanged: 23 users, 10 teams, 4 profiles, 2 scenarios.
+  All owned test hosted/assignment/comment/claim rows were removed and the renderer
+  is ready/idle. Original database/Caddy/VPN service starts and restricted worker
+  DB permissions are preserved. Only our superseded first team-center API was
+  stopped; backups and the verified restored clone are retained privately.
