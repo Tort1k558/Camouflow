@@ -124,3 +124,21 @@ def test_incomplete_cloud_session_does_not_import_locally(monkeypatch):
     profiles.ProfilesBridge.importProfiles(bridge, "profile1", "{name}", "", "")
     create.assert_not_called()
     assert "Cloud session is not configured" in bridge._emit_message.call_args.args[0]
+
+
+@pytest.mark.parametrize("host,user,password,value", [
+    ("proxy.example.invalid", "user@name", "p:a/s#s", "socks5://user%40name:p%3Aa%2Fs%23s@proxy.example.invalid:1080"),
+    ("::1", "user", "password", "socks5://user:password@[::1]:1080"),
+    ("proxy.example.invalid", "user", "", "socks5://user:@proxy.example.invalid:1080"),
+])
+@pytest.mark.parametrize("existing", [False, True])
+def test_cloud_profile_proxy_fields_use_canonical_connection_strings(host, user, password, value, existing):
+    rows = [{"id": "existing", "value": value}] if existing else []
+    client = SimpleNamespace(proxies=lambda: rows, create_proxy=Mock(return_value={"id": "new"}))
+    identity = profiles.ProfilesBridge._server_proxy_id_from_fields(
+        None, client, stage="QA", proxy_host=host, proxy_port="1080", proxy_user=user, proxy_password=password)
+    assert identity == ("existing" if existing else "new")
+    if existing:
+        client.create_proxy.assert_not_called()
+    else:
+        client.create_proxy.assert_called_once_with({"value": value, "group_name": "QA"})

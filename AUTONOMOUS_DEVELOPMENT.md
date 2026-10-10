@@ -856,3 +856,14 @@ proved quarantine skip, pool exhaustion blocking, failed-line draft retention,
 explicit no-pool success and zero warnings. No real accounts or public backend
 sources involved. Package 073450 passed both fresh engine/Python reports at
 593b34c (306 tests); a new build is required for this import iteration.
+
+## Iteration 36 - canonical cloud proxy fields
+
+Legacy profile-field cloud saves built unescaped userinfo/unbracketed IPv6 and
+dropped usernames with empty passwords. Reused existing `account_proxy` instead
+of a new encoder. Six focused creation/reuse regressions failed before, passed
+after; **330 full tests passed**. Actual isolated authenticated API verified
+three canonical values and three existing-row reuse checks, decoded credentials
+and IPv6/empty-password identity; owned synthetic rows cleaned. No production
+customer updates. An earlier QA fixture incorrectly treated parse_proxy's tuple
+as ProxyDetails; corrected to its documented config/details pair before proof.

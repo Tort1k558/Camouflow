@@ -214,8 +214,8 @@ class ProfilesBridge(QObject):
             return None
         user = str(proxy_user or "").strip()
         password = str(proxy_password or "").strip()
-        auth = f"{user}:{password}@" if user and password else ""
-        value = f"socks5://{auth}{host}:{port}"
+        value = account_proxy({"proxy_host": host, "proxy_port": port,
+                               "proxy_user": user, "proxy_password": password})
         group_name = str(stage or "").strip() or "Default"
         for proxy in client.proxies():
             if str(proxy.get("value") or "") == value:
