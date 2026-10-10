@@ -99,6 +99,21 @@ Item {
     function confirmDelete(name) {
         confirmDialog.ask('Delete profile "' + name + '"? This action cannot be undone.', function() { profilesBridge.deleteProfile(name) })
     }
+    function saveCookieDraft() {
+        var target = root.editingProfile
+        var draft = profileCookiesJson.text
+        var clearAll = false
+        try {
+            var parsed = JSON.parse(draft)
+            clearAll = Array.isArray(parsed) && parsed.length === 0
+        } catch (error) {
+            profilesBridge.saveProfileCookiesJson(target, draft)
+            return
+        }
+        if (clearAll) confirmDialog.ask('Clear ALL cookies for local profile "' + target + '"?',
+            function() { profilesBridge.saveProfileCookiesJson(target, draft) }, "Clear cookies")
+        else profilesBridge.saveProfileCookiesJson(target, draft)
+    }
     ConfirmDialog { id: confirmDialog }
     Menu {
         id: profileImportMenu
@@ -378,7 +393,7 @@ Item {
                     spacing: 8
                     ProfileTab { title: "Profile"; tabId: "profile" }
                     ProfileTab { title: "Variables"; tabId: "variables" }
-                    ProfileTab { title: "Cookies"; tabId: "cookies" }
+                    ProfileTab { title: "Cookies"; tabId: "cookies"; visible: profilesBridge.canEditCookies }
                     ProfileTab { title: "Browser JSON"; tabId: "browser" }
                 }
                 Column {
@@ -430,11 +445,11 @@ Item {
                 Column {
                     width: parent.width
                     spacing: 12
-                    visible: root.profileSettingsTab === "cookies"
+                    visible: root.profileSettingsTab === "cookies" && profilesBridge.canEditCookies
                     Text { text: "Cookies"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
-                    Text { text: "Edit JSON array and save. Encrypted Chromium values may be read-only."; color: Theme.muted; font.pixelSize: 12 }
+                    Text { width: parent.width; text: "Save replaces all local cookies. Encrypted preview values cannot be reused."; wrapMode: Text.WordWrap; color: Theme.muted; font.pixelSize: 12 }
                     Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
-                        TextArea { id: profileCookiesJson; enabled: !root.cookiesLoading; placeholderText: root.cookiesLoading ? "Loading cookies..." : ""; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
+                        TextArea { id: profileCookiesJson; objectName: "cookieEditor"; enabled: !root.cookiesLoading; placeholderText: root.cookiesLoading ? "Loading cookies..." : ""; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
                     }
                 }
                 Column {
@@ -470,7 +485,7 @@ Item {
                     spacing: 12
                     visible: root.profileSettingsTab === "cookies"
                     PrimaryButton { width: 120; text: "Refresh"; secondary: true; enabled: !root.cookiesLoading; onClicked: { root.cookiesLoading = true; profilesBridge.loadCookies(root.editingProfile) } }
-                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage && !profilesBridge.busy && !root.cookiesLoading; onClicked: profilesBridge.saveProfileCookiesJson(root.editingProfile, profileCookiesJson.text) }
+                    PrimaryButton { objectName: "cookieSave"; width: 120; text: "Save"; icon: "save"; visible: profilesBridge.canEditCookies; enabled: !profilesBridge.busy && !root.cookiesLoading; onClicked: root.saveCookieDraft() }
                     PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
                 }
                 Row {

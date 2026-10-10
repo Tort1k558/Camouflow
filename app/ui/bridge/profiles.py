@@ -7,29 +7,34 @@ import datetime
 import hashlib
 import json
 import logging
+import math
 import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse, unquote
-from app.services.proxy_policy import account_proxy, is_proxy_quarantined
+from urllib.parse import unquote, urlparse
 
-from PyQt6.QtCore import QThread, QObject, QTimer, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QThread, QTimer, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.core.browser_interface import BrowserInterface
+from app.services.proxy_policy import account_proxy, is_proxy_quarantined
+from app.services.server_client import (
+    ServerClient,
+    ServerClientError,
+    get_server_session,
+    server_enabled,
+)
 from app.storage.db import (
+    checked_profile_dir_for_email,
     db_add_account,
     db_delete_account,
     db_get_accounts,
     db_get_setting,
     db_set_setting,
     db_update_account,
-    checked_profile_dir_for_email,
 )
-from app.services.server_client import ServerClient, ServerClientError, server_enabled
+from app.ui.bridge.background import BackgroundRead
 from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
-from app.ui.bridge.background import BackgroundRead
-from app.services.server_client import get_server_session
 from app.utils.parsing import DEFAULT_ACCOUNT_TEMPLATE, parse_account_line
 
 LOGGER = logging.getLogger(__name__)
@@ -136,6 +141,10 @@ class ProfilesBridge(QObject):
     @pyqtProperty(bool, notify=modelChanged)
     def canManage(self) -> bool:  # noqa: N802
         return allows(self._app_state, "manager")
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def canEditCookies(self) -> bool:  # noqa: N802
+        return not server_enabled() and self.canManage
 
     @pyqtProperty(bool, notify=modelChanged)
     def canAdmin(self) -> bool:  # noqa: N802
@@ -768,17 +777,25 @@ class ProfilesBridge(QObject):
         self._mutate(work, [target])
 
     @staticmethod
-    def _read_cookie_rows(profile_name: str) -> List[Dict[str, Any]]:
+    def _read_cookie_rows(profile_name: str, engine: str = "") -> List[Dict[str, Any]]:
         import os
         import shutil
         import sqlite3
         import tempfile
 
-        profile_dir = Path(checked_profile_dir_for_email(profile_name))
+        root = checked_profile_dir_for_email(profile_name)
+        if not engine:
+            account = next((account for account in db_get_accounts() if account["name"] == profile_name), {})
+            engine = str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox")
+        if engine not in {"camoufox", "cloakbrowser"}:
+            raise ValueError("Unsupported cookie browser engine")
+        profile_dir = root / "cloakbrowser" if engine == "cloakbrowser" else root
+        if profile_dir.is_symlink() or profile_dir.is_junction() or not profile_dir.resolve().is_relative_to(root.resolve()):
+            raise ValueError("Cookie storage must remain inside its dedicated profile directory")
         if not profile_dir.exists():
             return []
 
-        def read_rows(db_path: Path, query: str) -> List[tuple]:
+        def read_rows(db_path: Path, query: str):
             tmp_path: Optional[str] = None
             try:
                 try:
@@ -792,7 +809,9 @@ class ProfilesBridge(QObject):
                 try:
                     cur = con.cursor()
                     cur.execute(query)
-                    return list(cur.fetchall())
+                    rows = list(cur.fetchall())
+                    version = con.execute("PRAGMA user_version").fetchone()[0]
+                    return version, rows
                 finally:
                     con.close()
             finally:
@@ -803,8 +822,7 @@ class ProfilesBridge(QObject):
                         pass
 
         rows_out: List[Dict[str, Any]] = []
-        candidates = [
-            ("firefox", profile_dir / "cookies.sqlite"),
+        candidates = [("firefox", profile_dir / "cookies.sqlite")] if engine == "camoufox" else [
             ("chromium", profile_dir / "Cookies"),
             ("chromium", profile_dir / "Network" / "Cookies"),
             ("chromium", profile_dir / "Default" / "Cookies"),
@@ -817,27 +835,38 @@ class ProfilesBridge(QObject):
                 continue
             try:
                 if source == "firefox":
-                    for host, cookie_name, value, cookie_path, expiry, secure, http_only in read_rows(
+                    version, rows = read_rows(
                         path,
                         "SELECT host, name, value, path, expiry, isSecure, isHttpOnly FROM moz_cookies",
-                    ):
+                    )
+                    if not 1 <= version <= 17:
+                        raise ValueError(f"Unsupported Firefox cookie schema version {version}")
+                    for host, cookie_name, value, cookie_path, expiry, secure, http_only in rows:
+                        if not isinstance(expiry, (int, float)) or not math.isfinite(expiry):
+                            raise ValueError("Invalid cookie expiration timestamp")
+                        # Firefox schema 16 migrated expiry from seconds to milliseconds.
+                        expiry_seconds = expiry / 1000 if version >= 16 else expiry
                         rows_out.append({
                             "domain": str(host or ""),
                             "name": str(cookie_name or ""),
                             "value": str(value or ""),
                             "path": str(cookie_path or "/"),
-                            "expires": int(expiry or 0),
+                            "expires": expiry_seconds,
                             "secure": bool(secure),
                             "httpOnly": bool(http_only),
                         })
                 else:
-                    for host, cookie_name, value, encrypted, cookie_path, expires_utc, secure, http_only in read_rows(
+                    _, rows = read_rows(
                         path,
                         "SELECT host_key, name, value, encrypted_value, path, expires_utc, is_secure, is_httponly FROM cookies",
-                    ):
+                    )
+                    for host, cookie_name, value, encrypted, cookie_path, expires_utc, secure, http_only in rows:
                         cookie_value = str(value or "")
                         if not cookie_value and encrypted:
                             cookie_value = "<encrypted>"
+                        expiry = expires_utc or 0
+                        if not isinstance(expiry, (int, float)) or not math.isfinite(expiry):
+                            raise ValueError("Invalid cookie expiration timestamp")
                         rows_out.append({
                             "domain": str(host or ""),
                             "name": str(cookie_name or ""),
@@ -845,9 +874,11 @@ class ProfilesBridge(QObject):
                             "path": str(cookie_path or "/"),
                             "secure": bool(secure),
                             "httpOnly": bool(http_only),
+                            "expires": (expiry / 1000000 - 11644473600) if expiry else -1,
                         })
-            except Exception:
-                LOGGER.exception("Cannot read cookies from %s", path)
+            except Exception as exc:
+                detail = f": {exc}" if isinstance(exc, ValueError) else "; close the browser and review a verified backup"
+                raise RuntimeError("Cannot read cookie storage" + detail) from exc
         return [row for row in rows_out if row.get("domain") and row.get("name")]
 
     @pyqtSlot(str)
@@ -855,9 +886,17 @@ class ProfilesBridge(QObject):
         self._cookie_request_id += 1
         request_id = self._cookie_request_id
         session = get_server_session()
+        if session.enabled:
+            self.cookiesLoaded.emit(name, "", "Cookie editing supports local profiles only")
+            return
+        account = self._cached_account(name)
+        if account is None:
+            self.cookiesLoaded.emit(name, "", "Profile unavailable; refresh the list")
+            return
+        engine = str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox")
         def worker():
             try:
-                payload, error = json.dumps(self._read_cookie_rows(name), ensure_ascii=False, indent=2), ""
+                payload, error = json.dumps(self._read_cookie_rows(name, engine), ensure_ascii=False, indent=2), ""
             except Exception as exc:
                 payload, error = "", str(exc)
             self.uiCall.emit(lambda: self.cookiesLoaded.emit(name, payload, error)
@@ -961,82 +1000,107 @@ class ProfilesBridge(QObject):
 
     @pyqtSlot(str, result=str)
     def getProfileCookiesJson(self, name: str) -> str:  # noqa: N802
-        return json.dumps(self._read_cookie_rows(str(name or "")), ensure_ascii=False, indent=2)
+        try:
+            if server_enabled():
+                raise ValueError("Cookie editing supports local profiles only")
+            return json.dumps(self._read_cookie_rows(str(name or "")), ensure_ascii=False, indent=2)
+        except Exception as exc:
+            self._emit_message(f"Cannot read cookies: {exc}")
+            return ""
+
+    @staticmethod
+    def _cookie_draft(raw: str) -> List[Dict[str, Any]]:
+        if not str(raw or "").strip():
+            raise ValueError("Cookies JSON is empty; use [] only to explicitly clear cookies")
+        try:
+            cookies = json.loads(raw)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise ValueError("Cookies must be valid JSON") from exc
+        if not isinstance(cookies, list):
+            raise ValueError("Cookies must be a JSON array")
+        clean = []
+        for index, cookie in enumerate(cookies, start=1):
+            if not isinstance(cookie, dict) or any(not isinstance(cookie.get(key), str) for key in ("name", "domain", "value")):
+                raise ValueError(f"Cookie {index} needs string name, domain and value fields")
+            item = {"name": cookie["name"].strip(), "domain": cookie["domain"].strip(),
+                    "value": cookie["value"], "path": cookie.get("path", "/")}
+            if not item["name"] or not item["domain"] or not isinstance(item["path"], str) or not item["path"].startswith("/"):
+                raise ValueError(f"Cookie {index} needs a name, domain and absolute path")
+            if item["value"] == "<encrypted>":
+                raise ValueError(f"Cookie {index} is an encrypted preview, not a reusable value")
+            for key in ("httpOnly", "secure"):
+                if key in cookie:
+                    if not isinstance(cookie[key], bool):
+                        raise ValueError(f"Cookie {index}: {key} must be a boolean")
+                    item[key] = cookie[key]
+            if "sameSite" in cookie:
+                if not isinstance(cookie["sameSite"], str) or cookie["sameSite"] not in {"Strict", "Lax", "None"}:
+                    raise ValueError(f"Cookie {index}: sameSite must be Strict, Lax or None")
+                item["sameSite"] = cookie["sameSite"]
+            if "expires" in cookie:
+                expiry = cookie["expires"]
+                if isinstance(expiry, bool) or not isinstance(expiry, (int, float)) or not math.isfinite(expiry) or (expiry < 0 and expiry != -1):
+                    raise ValueError(f"Cookie {index}: expires must be Unix seconds or -1")
+                item["expires"] = expiry
+            clean.append(item)
+        return clean
+
+    @staticmethod
+    async def _replace_cookie_jar(context, cookies):
+        original = await context.cookies()
+        try:
+            await context.clear_cookies()
+            if cookies:
+                await context.add_cookies(cookies)
+        except Exception:
+            try:
+                await context.clear_cookies()
+                if original:
+                    await context.add_cookies(original)
+            except Exception as exc:
+                raise RuntimeError("Cookie replacement failed and the original cookies could not be restored") from exc
+            raise
 
     @pyqtSlot(str, str)
     def saveProfileCookiesJson(self, name: str, cookies_json: str) -> None:  # noqa: N802
-        if getattr(self, "operations", None) and self.operations.isReserved(name):
-            self._emit_message("Profile is reserved by an operation; wait for completion")
+        if server_enabled():
+            self._emit_message("Cookie editing supports local profiles only")
+            return
+        if not self._ensure_allowed("manager"):
             return
         target = str(name or "").strip()
         try:
-            cookies = json.loads(str(cookies_json or "[]"))
+            cookies = self._cookie_draft(cookies_json)
         except Exception as exc:
             self._emit_message(f"Cookies JSON error: {exc}")
             return
-        if not isinstance(cookies, list):
-            self._emit_message("Cookies must be a JSON array")
+        if target in getattr(self, "_pending_starts", {}):
+            self._emit_message("Wait for the profile browser to finish starting")
             return
-        acc = next((item for item in db_get_accounts() if str(item.get("name") or "") == target), None)
-        if not acc:
-            self._emit_message("Profile not found")
-            return
-
-        def worker() -> None:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        def work(client):
+            if client:
+                raise ValueError("Cookie editing supports local profiles only")
+            acc = next((item for item in db_get_accounts() if str(item.get("name") or "") == target), None)
+            if not acc:
+                raise ValueError("Profile not found")
             engine = str(acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox")
-            settings = self._settings_dict(
-                acc.get("cloakbrowser_settings")
-                if engine == "cloakbrowser"
-                else acc.get("camoufox_settings")
-            )
-            try:
-                browser = BrowserInterface(
-                    profile_name=target,
-                    proxy=self._proxy_for(acc),
-                    keep_browser_open=False,
-                    browser_engine=engine,
-                    browser_settings=settings,
-                )
-                async def run() -> None:
+            settings = self._settings_dict(acc.get("cloakbrowser_settings") if engine == "cloakbrowser" else acc.get("camoufox_settings"))
+            async def run():
+                browser = None
+                try:
+                    browser = BrowserInterface(profile_name=target, proxy=self._proxy_for(acc), keep_browser_open=False,
+                                               browser_engine=engine, browser_settings=settings)
                     await browser.start()
                     context = getattr(browser, "context", None)
                     if context is None:
                         raise RuntimeError("Browser context is not initialized")
-                    await context.clear_cookies()
-                    clean = []
-                    for cookie in cookies:
-                        if not isinstance(cookie, dict):
-                            continue
-                        item = {
-                            "name": str(cookie.get("name") or "").strip(),
-                            "value": str(cookie.get("value") or ""),
-                            "domain": str(cookie.get("domain") or "").strip(),
-                            "path": str(cookie.get("path") or "/") or "/",
-                        }
-                        if not item["name"] or not item["domain"]:
-                            continue
-                        for key in ("expires", "httpOnly", "secure", "sameSite"):
-                            if key in cookie:
-                                item[key] = cookie[key]
-                        clean.append(item)
-                    if clean:
-                        await context.add_cookies(clean)
-                    await browser.close(force=True)
-
-                loop.run_until_complete(run())
-                self.uiCall.emit(lambda: self._emit_message(f"Cookies saved for {target}"))
-            except Exception as exc:
-                LOGGER.exception("Cannot save cookies for %s", target)
-                self.uiCall.emit(lambda exc=exc: self._emit_message(f"Cannot save cookies: {exc}"))
-            finally:
-                try:
-                    loop.close()
-                except Exception:
-                    pass
-
-        threading.Thread(target=worker, daemon=True).start()
+                    await self._replace_cookie_jar(context, cookies)
+                finally:
+                    if browser is not None:
+                        await browser.close(force=True)
+            asyncio.run(run())
+            return f"Local cookies saved for {target}"
+        self._mutate(work, [target])
 
     @pyqtSlot(str, str, str, str, str, str, str, str, str, str, str, str, str)
     def saveProfile(

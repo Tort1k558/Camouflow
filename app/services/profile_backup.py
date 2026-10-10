@@ -170,5 +170,3 @@ def restore_profile(source: Path, new_name: str, import_scenarios: bool = False)
                 shutil.rmtree(target)
                 raise
     return target
-
-

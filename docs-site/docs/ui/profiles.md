@@ -71,9 +71,19 @@ The settings dialog edits:
 From profile settings or the context menu:
 
 - **Vars** edits profile variables as a JSON object.
-- **Cookies** reads profile cookies from local browser storage and saves a JSON cookie array back through the browser context.
+- **Cookies** is available in local mode only. It reads the selected engine's storage and replaces cookies through that profile's browser context.
 
-Chromium encrypted cookie values can be displayed as `<encrypted>` and may not be reusable.
+Blank input, invalid cookie fields and Chromium `<encrypted>` preview values are
+rejected before launching a browser. To clear cookies, enter `[]` and confirm;
+cancel leaves the current jar unchanged. Profiles already running, starting or
+reserved by another operation cannot be edited. Failed replacement attempts to
+restore the original jar; this is not a crash-safe transaction.
+
+Preview expiration timestamps use Unix seconds, including Chromium's Windows
+epoch and Firefox schema 16/17 millisecond conversion. Unsupported Firefox
+schemas and corrupt storage produce an error rather than an empty preview.
+The preview is not a complete browser-session export: use a trusted profile
+archive to preserve browser storage, and never share cookie values publicly.
 
 ## Run scenario for tag
 

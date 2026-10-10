@@ -945,3 +945,36 @@ controlled constructor-race failure used GUI cleanup, no browser launched and
 zero warnings. Updated guides explicitly avoid crash-transaction/sandbox claims.
 Cloud browser storage is still name-based; cross-team ID-based namespacing needs
 a separate compatibility/recovery design, not an automatic ambiguous migration.
+
+## Iteration 40 - safe local cookie replacement and engine-correct preview
+
+Initial cookie regressions: 13 failed / 3 passed. Blank drafts previously cleared
+the jar, invalid rows were discarded after clearing, and CloakBrowser's nested
+cookie database was not read. Cookie editing now explicitly supports local
+profiles only instead of implying cloud/team-scoped storage. Validate the whole
+draft before effects; block encrypted preview reuse. Reuse existing operation
+ownership/reservations and reject pending browser starts. Snapshot the actual
+jar before replacement and attempt rollback on failure, reporting rollback
+failure explicitly. An explicit empty array requires GUI confirmation and
+captures the original target/draft; cancel does not mutate.
+
+Read only the selected engine's bounded storage. Corrupt/unsupported databases
+report errors, not a successful empty preview. Convert Chromium's Windows epoch
+and Firefox schema 16/17 millisecond expiry to Unix seconds; older schemas use
+seconds, unknown schema versions are rejected. Mozilla's case-15 migration was
+checked against the current upstream CookiePersistentStorage.cpp, not a numeric
+guess. Actual Camoufox schema 17 and CloakBrowser closed previews matched their
+native context expiry within two seconds. Real synthetic browser jars on both
+engines passed snapshot/clear/restore under a controlled first-add failure and
+successful replacement. Persistent QA cookies were used; session-only cookies
+are correctly not promised to survive browser closure.
+
+38 focused regressions passed. Actual Windows QML blank rejection, empty-array
+cancel/accept, captured target and cloud-control hiding passed with zero
+warnings. That UI check intercepted its worker; real jar execution was verified
+separately on both native engines. No real customer cookies or logins were used.
+The preview is not a full-fidelity browser-session backup; archives remain the
+appropriate storage export. Cloud namespacing and crash-safe transactions remain
+separate work, not hidden fallbacks.
+
+Full current desktop suite: **441 passed**.
