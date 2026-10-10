@@ -240,6 +240,20 @@ jobs:
           python -m camoufox fetch
           python -c "from camoufox.pkgman import camoufox_path; camoufox_path(download_if_missing=False)"
           python -c "from cloakbrowser import ensure_binary; ensure_binary()"
+      - name: Install matching upstream Native bootstrap Chromium
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/camouflow-native-browsers
+        run: python -m playwright install chromium --no-shell
+      - name: Verify real Native source runtime and profile isolation
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/camouflow-native-browsers
+        shell: python
+        run: |
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+          subprocess.run([sys.executable, "scripts/verify_native_runtime.py", "--work-dir", str(Path(os.environ["RUNNER_TEMP"]) / "camouflow-native-checks"), "--report", "outputs/native-runtime/source.json"], check=True)
       - name: Build and verify both packaged browser engines
         shell: python
         run: |
@@ -273,4 +287,11 @@ jobs:
         with:
           name: runtime-report-${{ runner.os }}-${{ runner.arch }}
           path: outputs/release-smoke/*.json
+          if-no-files-found: ignore
+      - name: Retain Native source runtime report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-source-runtime-${{ runner.os }}-${{ runner.arch }}
+          path: outputs/native-runtime/*.json
           if-no-files-found: ignore

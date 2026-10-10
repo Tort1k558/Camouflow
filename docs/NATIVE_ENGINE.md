@@ -96,5 +96,49 @@ not anti-bot bypass. No real customer profile, account or session was used.
 No unsupported masking, guaranteed stealth, real-Android identity or production
 readiness is claimed. The full Native goal remains active.
 
+## Reproducible source-runtime gate
+
+`scripts/verify_native_runtime.py` now verifies actual Native Chromium, rather
+than a mocked browser, against owned HTTP fixtures. Example on the approved D:
+workspace (the existing SDK installer downloads the matching full browser):
+
+```powershell
+$env:PLAYWRIGHT_BROWSERS_PATH = 'D:\CamouFlowNative\browsers'
+$env:TEMP = 'D:\CamouFlowNative\tmp'
+$env:TMP = $env:TEMP
+python -m playwright install chromium --no-shell
+python scripts/verify_native_runtime.py --work-dir D:\CamouFlowNative\tmp --report D:\CamouFlowNative\native-source-gate.json
+```
+
+Run with the project's virtual-environment Python. Create the D: temporary
+directory first. `--executable` explicitly selects an own compatible build;
+without it the verifier resolves the installed matching binary through the
+public Playwright API. It does not substitute a different installed browser.
+
+Verified Windows checks:
+
+- Two concurrent isolated profiles and rejection from a separate owner process.
+- Independent persistent cookies, localStorage, IndexedDB, CacheStorage and
+  service-worker registrations after each profile is restarted.
+- Real navigation, tab open/close, fill/click/extraction and screenshot capture.
+- Mobile Web 390×844 layout on a responsive fixture, DPR 3 and touch input.
+- HTTP proxy authentication: actual 407 challenge, credentialed proxy traffic
+  and successful navigation to a fixture hostname with no direct DNS route.
+
+The updated local full suite passed **622 tests**, including negative proxy-auth
+fixture checks and explicit missing-binary failure/reporting without fallback.
+
+This is not yet evidence for external HTTPS/SOCKS proxies, crash recovery or
+existing CamouFlow scenario/AI/Recorder integration. `webdriver` stays visible.
+Temporary test profiles are owned and removed after teardown; no customer
+profiles or external accounts are used. A JSON report includes actual version,
+measured executable checksum, check names and pass/fail state.
+
+Native package CI now installs the matching upstream bootstrap Chromium and
+runs this source gate on Windows/Linux/macOS before packaging existing engines;
+the report is retained even when a later step fails. This checks source runtime,
+**not yet packaged/selectable Native functionality**. Fresh CI evidence is
+required; a workflow edit alone does not establish platform readiness.
+
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).
