@@ -388,6 +388,8 @@ class OperationsBridge(QObject):
 
     def isReserved(self, name):
         with self._reservation_lock:
+            if not self._reserved:
+                return False
             return db.profile_dir_for_email(name).resolve() in {db.profile_dir_for_email(n).resolve() for n in self._reserved}
 
     def reservationLabel(self, name):

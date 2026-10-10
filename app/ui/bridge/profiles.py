@@ -363,8 +363,12 @@ class ProfilesBridge(QObject):
     @pyqtSlot(str, result="QVariantMap")
     def actionState(self, name):
         account = self._cached_account(name)
+        return self._action_state(name, account, (self.canRun, self.canManage, self.canAdmin))
+
+    def _action_state(self, name, account, permissions):
         if account is None:
             return {}
+        can_run, can_manage, can_admin = permissions
         running = name in self._live_browsers
         starting = name in self._pending_starts or (running and self._live_browsers[name].page is None)
         stopping = running and self._browser_stops.get(name) is not None and self._browser_stops[name].is_set()
@@ -377,14 +381,16 @@ class ProfilesBridge(QObject):
         status = ("Stopping" if stopping else "Starting" if starting else "Recording" if recording
                   else "Browser open" if running else operations.reservationLabel(name) if reserved else "Locked" if locked else "Available")
         return {"status": status,
-                "startAllowed": self.canRun and not occupied and not self._busy,
-                "stopAllowed": self.canRun and (running or starting) and not stopping,
-                "editAllowed": self.canManage and not occupied and not self._busy,
-                "deleteAllowed": self.canAdmin and not occupied and not self._busy,
-                "unlockAllowed": self.canRun and locked and not (running or starting or reserved or self._busy)}
+                "startAllowed": can_run and not occupied and not self._busy,
+                "stopAllowed": can_run and (running or starting) and not stopping,
+                "editAllowed": can_manage and not occupied and not self._busy,
+                "deleteAllowed": can_admin and not occupied and not self._busy,
+                "unlockAllowed": can_run and locked and not (running or starting or reserved or self._busy)}
 
     def _render_accounts(self):
         accounts = self._accounts_cache
+        session_matches = self._accounts_session == get_server_session()
+        permissions = (self.canRun, self.canManage, self.canAdmin)
         rows: List[Dict[str, Any]] = []
         stage_counts: Dict[str, int] = {}
         for acc in accounts:
@@ -437,7 +443,7 @@ class ProfilesBridge(QObject):
                 "proxy": self._proxy_label(acc),
                 "health": health_status,
                 "lastActive": str(acc.get("last_active") or "now" if running else acc.get("last_active") or "idle"),
-                **self.actionState(name),
+                **self._action_state(name, self._accounts_index.get(name) if session_matches else None, permissions),
                 "stage": stage or "No tag",
                 "tags": "  ".join(f"#{tag}" for tag in tags) if tags else "#profile",
                 "running": running,

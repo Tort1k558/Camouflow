@@ -900,3 +900,20 @@ recorder/heartbeat/single-flight callbacks locally. Private suite rerun:
 63 timestamp-tied filtered audit rows, null PATCH 422/subsequent list 200,
 OAuth failure/Back token-fragment removal and readable no-input-echo validation
 all passed; no mocked API in the five-role integration flow.
+
+## Iteration 38 - avoid per-row disk reads in profile presentation
+
+Measured 10,000 synthetic profiles: render performed 10,000 session reads and
+blocked for 4465.9 ms (resolved-capability fixture). Presentation now snapshots
+the current session and three capabilities once, while public actionState still
+checks the live session. Shared private state calculation retains occupancy and
+stale-session guards. Fixture result 57.4 ms / one session read; no network.
+
+Actual Windows QML then exposed remaining empty-reservation path resolution:
+1979.6 ms median for 10,000 profiles. A lock-protected empty-set short circuit
+preserves path-alias checks when reservations exist. Actual Windows QML after
+both changes: 84.1 ms median, search/tag counts correct, zero warnings; no browser
+launch or cloud calls. These are local observations, not universal hardware
+thresholds. 14 focused state/capability/alias regressions and **368 full tests
+passed**. The previous 074400 package predates these two runtime changes;
+rebuild and reverify before handoff.
