@@ -11,7 +11,7 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, unquote
-from app.services.proxy_policy import account_proxy
+from app.services.proxy_policy import account_proxy, is_proxy_quarantined
 
 from PyQt6.QtCore import QThread, QObject, QTimer, pyqtProperty, pyqtSignal, pyqtSlot
 
@@ -40,6 +40,7 @@ LOCK_HEARTBEAT_MS = 45_000
 class ProfilesBridge(QObject):
     busyChanged = pyqtSignal()
     profileSaved = pyqtSignal(str)
+    profilesImportFinished = pyqtSignal(str)
     cookiesLoaded = pyqtSignal(str, str, str)
     modelChanged = pyqtSignal()
     countsChanged = pyqtSignal()
@@ -313,13 +314,8 @@ class ProfilesBridge(QObject):
                 continue
             if str(entry.get("assigned_to") or "").strip():
                 continue
-            quarantine_until = str(entry.get("quarantine_until") or "")
-            if quarantine_until:
-                try:
-                    if datetime.datetime.fromisoformat(quarantine_until.replace("Z", "+00:00")) > datetime.datetime.now(datetime.timezone.utc):
-                        continue
-                except ValueError:
-                    entry.pop("quarantine_until", None)
+            if is_proxy_quarantined(entry):
+                continue
             details = self._parse_proxy_value(str(entry.get("value") or ""))
             if not details:
                 continue
@@ -327,7 +323,7 @@ class ProfilesBridge(QObject):
             db_set_setting("proxy_pools", json.dumps(pools, ensure_ascii=False))
             details["proxy_pool"] = pool_name
             return details
-        return {"proxy_pool": pool_name}
+        raise ValueError("No available proxy in this pool; profile import stopped")
 
     @pyqtSlot()
     def refresh(self) -> None:
@@ -535,18 +531,19 @@ class ProfilesBridge(QObject):
         self._mutate(work)
 
     def _take_server_proxy_from_pool(self, client, pool_name: str) -> str:
-        """First unassigned server proxy in the pool (group); '' if none."""
-        try:
-            rows = client.proxies()
-        except ServerClientError:
-            return ""
+        """Resolve an available pool connection or fail without a direct fallback."""
+        rows = client.proxies()
         for row in rows:
             if str(row.get("group_name") or "") != str(pool_name or ""):
                 continue
             if str(row.get("assigned_profile_id") or ""):
                 continue
-            return str(row.get("id") or "")
-        return ""
+            if is_proxy_quarantined(row):
+                continue
+            identity = str(row.get("id") or "")
+            if identity:
+                return identity
+        raise ValueError("No available proxy in this pool; profile import stopped")
 
     @pyqtSlot(str, str, str, str)
     def importProfiles(self, lines: str, template: str, default_stage: str, proxy_pool: str) -> None:  # noqa: N802
@@ -561,8 +558,12 @@ class ProfilesBridge(QObject):
         proxy_pool = str(proxy_pool or "").strip()
         added = 0
         errors = 0
+        failed_lines = []
         client = self._server_client() if server_enabled() else None
-        for line in raw_lines:
+        if server_enabled() and not client:
+            self._emit_message("Cloud session is not configured; connect before importing profiles")
+            return
+        for line_number, line in enumerate(raw_lines, start=1):
             try:
                 parsed = parse_account_line(line, template)
                 name = str(parsed.get("name") or parsed.get("email") or "").strip()
@@ -592,13 +593,26 @@ class ProfilesBridge(QObject):
                         except ServerClientError:
                             LOGGER.exception("Could not assign proxy to imported profile %s", name)
                 else:
-                    account.update(self._take_proxy_from_pool(proxy_pool, name))
-                    db_add_account(account)
+                    from app.storage import db
+                    with db._STORAGE_LOCK:
+                        previous_pools = db_get_setting("proxy_pools") if proxy_pool else None
+                        account.update(self._take_proxy_from_pool(proxy_pool, name))
+                        try:
+                            db_add_account(account)
+                        except Exception:
+                            if proxy_pool:
+                                try:
+                                    db_set_setting("proxy_pools", previous_pools or "{}")
+                                except Exception:
+                                    LOGGER.exception("Could not restore proxy assignment after failed import")
+                            raise
                 added += 1
             except Exception:
-                LOGGER.exception("Profile import failed for line: %s", line)
+                LOGGER.exception("Profile import failed for line %d", line_number)
                 errors += 1
+                failed_lines.append(line)
         self._emit_message(f"Imported {added} profile(s)" + (f", {errors} failed" if errors else ""))
+        self.profilesImportFinished.emit("\n".join(failed_lines))
         self.refresh()
 
     @pyqtSlot(str, str, result="QVariant")

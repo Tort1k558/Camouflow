@@ -20,6 +20,10 @@ Item {
         target: profilesBridge
         function onModelChanged() { root.contextActions = profilesBridge.actionState(root.contextProfile) }
         function onProfileSaved(name) { if (name === root.editingProfile) profileDialog.close() }
+        function onProfilesImportFinished(remaining) {
+            if (remaining) importLines.text = remaining
+            else importDialog.close()
+        }
         function onCookiesLoaded(name, payload, error) {
             if (name !== root.editingProfile || !root.cookiesLoading) return
             root.cookiesLoading = false
@@ -227,7 +231,7 @@ Item {
             anchors.margins: 22
             spacing: 14
             Text { text: "Import Profiles"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
-            FormField { id: importTemplate; width: parent.width; label: "Account parse template"; text: "{email};{password};{secret_key};{extra};{twofa_url}" }
+            FormField { id: importTemplate; objectName: "importTemplate"; width: parent.width; label: "Account parse template"; text: "{email};{password};{secret_key};{extra};{twofa_url}" }
             Row {
                 width: parent.width
                 spacing: 12
@@ -242,6 +246,7 @@ Item {
                         height: 40; radius: Theme.radiusSm; color: Theme.subtle; border.color: Theme.border
                         PlainComboBox {
                             id: importProxyPool
+                            objectName: "importProxyPool"
                             anchors.fill: parent
                             anchors.margins: 6
                             model: proxiesBridge.poolsModel
@@ -261,6 +266,7 @@ Item {
                 border.color: Theme.border
                 TextArea {
                     id: importLines
+                    objectName: "importLines"
                     anchors.fill: parent
                     anchors.margins: 12
                     color: Theme.text
@@ -275,11 +281,11 @@ Item {
                 PrimaryButton {
                     width: 120
                     text: "Import"
+                    objectName: "importSubmit"
                     icon: "save"
                     enabled: profilesBridge.canManage && !profilesBridge.busy
                     onClicked: {
                         profilesBridge.importProfiles(importLines.text, importTemplate.text, importTag.text, importProxyPool.currentText === "All pools" ? "" : importProxyPool.currentText)
-                        importDialog.close()
                     }
                 }
                 PrimaryButton { width: 100; text: "Cancel"; secondary: true; onClicked: importDialog.close() }

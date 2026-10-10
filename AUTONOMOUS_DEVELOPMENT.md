@@ -836,3 +836,23 @@ steady-state 160/160. Exact-image isolated Caddy reproduction and rollback
 remain documented privately; no zero-downtime claim. Root-private backup and
 healthy previous 18083 retained; original API/PG/Caddy/VPN starts unchanged.
 Server sources remain outside public Git.
+
+## Iteration 35 - explicit import pools and actionable partial failures
+
+Profile-list import used a separate quarantine parser: malformed timestamps
+silently released quarantine and naive timestamps raised TypeError. Exhausted
+local/cloud pools and cloud read errors silently created profiles without the
+requested proxy. Reused the existing quarantine predicate; explicit pool
+resolution now fails closed, while intentionally choosing no pool remains
+supported. Incomplete cloud sessions cannot import locally. Local selection,
+assignment and account save are serialized; a failed account write attempts
+assignment rollback (not a crash-safe cross-file transaction). Logs identify
+line numbers instead of credential-bearing input lines.
+
+New additive completion signal retains only failed lines in the open dialog;
+all-success imports close it. 18 focused regressions, baseline 11/14 failed,
+and **324 full desktop tests passed**. Actual Windows QML native import clicks
+proved quarantine skip, pool exhaustion blocking, failed-line draft retention,
+explicit no-pool success and zero warnings. No real accounts or public backend
+sources involved. Package 073450 passed both fresh engine/Python reports at
+593b34c (306 tests); a new build is required for this import iteration.

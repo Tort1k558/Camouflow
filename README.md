@@ -216,3 +216,7 @@ Limitations: Camoufox only, no iframe/popup recording, file uploads, rich-text e
 ### Local storage recovery
 
 Account/settings mutations refuse to overwrite malformed, wrongly shaped or unreadable JSON. Restore `settings/accounts.json` or `settings/settings.json` from a verified backup before retrying; do not delete these files as a reset. Missing files can initialize a new workspace. UTF-8 BOM documents are accepted; updates use UTF-8 without BOM. These guards are not a recovery tool or cross-process lock.
+
+### Profile-list import and explicit proxy pools
+
+Selecting a proxy pool requires an available unassigned, non-quarantined connection for each imported profile. Exhausted pools and failed cloud reads stop affected imports; they never silently create a direct-connection profile. Malformed or timezone-naive quarantine timestamps remain blocked until explicitly released. Choose **All pools** only when no pool assignment is intended. Partial failures keep the dialog open with only failed lines, so successful rows are not resubmitted. Failed local account writes attempt to restore the pool assignment; multiple-file writes are not a crash-safe transaction. Import error logs identify line numbers, not the credential-bearing input lines.
