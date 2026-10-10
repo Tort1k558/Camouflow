@@ -83,6 +83,9 @@ class SocksBridgeHandler(socketserver.StreamRequestHandler):
         methods = self._recv_exact(nmethods)
         if methods is None:
             return False
+        if not methods or 0x00 not in methods:
+            self.connection.sendall(b"\x05\xff")
+            return False
         # Respond with "no authentication"
         try:
             self.connection.sendall(b"\x05\x00")
@@ -152,53 +155,49 @@ class SocksBridgeHandler(socketserver.StreamRequestHandler):
 
     def _pipe(self, upstream: socket.socket):
         client = self.connection
-        client.setblocking(False)
-        upstream.setblocking(False)
-        sockets = [client, upstream]
-        while True:
-            try:
-                # Keep the tunnel alive; don't drop on inactivity to avoid surprising disconnects.
-                readable, _, _ = select.select(sockets, [], [], 60)
-            except OSError:
-                break
-            if not readable:
-                # Idle period: keep waiting instead of closing the connection.
-                continue
-            if client in readable:
-                try:
-                    data = client.recv(8192)
-                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-                    break
-                except OSError:
-                    break
-                if not data:
-                    break
-                try:
-                    upstream.sendall(data)
-                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-                    break
-                except OSError:
-                    break
-            if upstream in readable:
-                try:
-                    data = upstream.recv(8192)
-                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-                    break
-                except OSError:
-                    break
-                if not data:
-                    break
-                try:
-                    client.sendall(data)
-                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-                    break
-                except OSError:
-                    break
+        peers = {client: upstream, upstream: client}
+        pending = {client: bytearray(), upstream: bytearray()}
+        reading = {client, upstream}
+        write_closed = set()
+        buffer_limit = 64 * 1024
         try:
-            upstream.shutdown(socket.SHUT_RDWR)
+            client.setblocking(False)
+            upstream.setblocking(False)
+            while reading or any(pending.values()):
+                for connection, peer in peers.items():
+                    if peer not in reading and not pending[connection] and connection not in write_closed:
+                        connection.shutdown(socket.SHUT_WR)
+                        write_closed.add(connection)
+                readable, writable, _ = select.select(
+                    [connection for connection in reading if len(pending[peers[connection]]) < buffer_limit],
+                    [connection for connection in peers if pending[connection]],
+                    [], 60,
+                )
+                for connection in writable:
+                    try:
+                        sent = connection.send(pending[connection])
+                    except BlockingIOError:
+                        continue
+                    if not sent:
+                        return
+                    del pending[connection][:sent]
+                for connection in readable:
+                    peer = peers[connection]
+                    try:
+                        data = connection.recv(min(8192, buffer_limit - len(pending[peer])))
+                    except BlockingIOError:
+                        continue
+                    if data:
+                        pending[peer].extend(data)
+                    else:
+                        reading.remove(connection)
+            for connection in peers:
+                if connection not in write_closed:
+                    connection.shutdown(socket.SHUT_WR)
         except OSError:
-            pass
-        upstream.close()
+            return
+        finally:
+            upstream.close()
 
 
 class LocalSocksProxyServer:

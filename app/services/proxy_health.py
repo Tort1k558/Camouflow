@@ -191,6 +191,7 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         target_path += "?" + parsed.query
 
     start = time.perf_counter()
+    sock_obj = None
     try:
         meta: Dict[str, object] = {"mode": "internet", "target": check_url}
         scheme_l = (scheme or "socks5").lower()
@@ -237,11 +238,6 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         req = "GET " + request_target + " HTTP/1.1\r\n" + "\r\n".join(headers) + "\r\n\r\n"
         sock_obj.sendall(req.encode("iso-8859-1", errors="replace"))
         status, _, body, status_err = _read_http_response(sock_obj)
-        try:
-            sock_obj.close()
-        except Exception:
-            pass
-
         ms = int((time.perf_counter() - start) * 1000)
         if status is None:
             return False, ms, status_err, meta
@@ -292,4 +288,7 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
             str(exc),
             {"mode": "internet", "target": PROXY_INTERNET_CHECK_URL},
         )
+    finally:
+        if sock_obj is not None:
+            sock_obj.close()
 

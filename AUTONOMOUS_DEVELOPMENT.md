@@ -1223,3 +1223,30 @@ d10aa28 perf: snapshot profile presentation state and skip empty reservations
 fbb8891 docs: record verified resource guards migrations and final integration build
 55b4a19 docs: distinguish native browser diagnostics and verify cookie workers
 ```
+
+
+## Resumed mission: 13:00 Samara (09:00 UTC), 2026-10-10
+
+User resumed work at 11:07 Samara. Keep previous 10:00 closeout as historical
+proof, not the new deadline. Same branch/private-server/security boundaries.
+New baseline: clean 59a9073, 452 public tests passed; production upstream 18084
+healthy, original PostgreSQL/Caddy/VPN start timestamps unchanged. A separate
+read-only production soak runs until 09:00 UTC. Real proxy credentials are only
+process environment inputs, never source, documentation or report values.
+
+### Iteration 45: proxy connection ownership and SOCKS stream correctness
+
+- Reproduced unclosed health-check sockets after response timeout and TLS failure.
+  The probe now releases its owned socket in a finally block on every outcome.
+- Reproduced SOCKS bridge accepting an authentication method the client did not
+  offer; reject with 0xff according to RFC 1928 instead of claiming no-auth.
+- Reproduced losing the response after a client write-half-close. Replaced
+  nonblocking sendall with writable-select/partial-send handling and bounded
+  64 KiB per-direction buffers; preserve half-close after draining pending data.
+- Nine regression cases include real socketpairs, slow-reader 2 MiB transfers
+  in both directions, partial writes and temporary BlockingIOError.
+- These code defects are independently reproduced, not claimed as the cause
+  of the physical-Ethernet proxy timeouts. Real SOCKS5 works via default/VPN
+  routing; HTTP CONNECT does not work on the supplied SOCKS endpoints.
+- Primary references: https://www.rfc-editor.org/rfc/rfc1928 and
+  https://docs.python.org/3/library/socket.html#socket.socket.send .
