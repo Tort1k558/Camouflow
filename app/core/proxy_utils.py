@@ -5,7 +5,7 @@ import socketserver
 import threading
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urlparse, urlsplit
 
 import socks
 
@@ -30,7 +30,36 @@ class _ProxyTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(self, address, handler_cls, proxy_details: ProxyDetails):
         self.proxy_details = proxy_details
         self.logger = logging.getLogger("proxy_log")
+        self.stopping = threading.Event()
+        self._connections = set()
+        self._connections_lock = threading.Lock()
         super().__init__(address, handler_cls)
+
+    def process_request(self, request, client_address):
+        with self._connections_lock:
+            stopping = self.stopping.is_set()
+            if not stopping:
+                self._connections.add(request)
+        if stopping:
+            self.shutdown_request(request)
+            return
+        super().process_request(request, client_address)
+
+    def close_request(self, request):
+        with self._connections_lock:
+            self._connections.discard(request)
+        super().close_request(request)
+
+    def stop_connections(self):
+        self.stopping.set()
+        with self._connections_lock:
+            connections = list(self._connections)
+        for connection in connections:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            connection.close()
 
 
 class SocksBridgeHandler(socketserver.StreamRequestHandler):
@@ -160,10 +189,11 @@ class SocksBridgeHandler(socketserver.StreamRequestHandler):
         reading = {client, upstream}
         write_closed = set()
         buffer_limit = 64 * 1024
+        stopping = getattr(getattr(self, "server", None), "stopping", None)
         try:
             client.setblocking(False)
             upstream.setblocking(False)
-            while reading or any(pending.values()):
+            while (reading or any(pending.values())) and (stopping is None or not stopping.is_set()):
                 for connection, peer in peers.items():
                     if peer not in reading and not pending[connection] and connection not in write_closed:
                         connection.shutdown(socket.SHUT_WR)
@@ -200,10 +230,100 @@ class SocksBridgeHandler(socketserver.StreamRequestHandler):
             upstream.close()
 
 
+class HttpSocksBridgeHandler(SocksBridgeHandler):
+    """Expose an HTTP proxy while retaining the selected SOCKS upstream."""
+
+    rbufsize = 0
+
+    def _http_error(self, status: int) -> None:
+        self.connection.sendall(
+            f"HTTP/1.1 {status} Proxy Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".encode("ascii")
+        )
+
+    def handle(self):
+        upstream = None
+        try:
+            request = self.rfile.readline(8193)
+            if len(request) > 8192 or not request.endswith(b"\r\n"):
+                self._http_error(400)
+                return
+            method, target, version = request[:-2].decode("ascii").split(" ")
+            if version not in {"HTTP/1.0", "HTTP/1.1"} or not method.isalpha():
+                self._http_error(400)
+                return
+            headers = []
+            upgrading = False
+            size = len(request)
+            while True:
+                line = self.rfile.readline(32769 - size)
+                size += len(line)
+                if size > 32768 or not line.endswith(b"\r\n"):
+                    self._http_error(400)
+                    return
+                if line == b"\r\n":
+                    break
+                key, separator, _ = line.partition(b":")
+                if not separator or not key or any(character <= 32 or character >= 127 for character in key):
+                    self._http_error(400)
+                    return
+                if key.lower() == b"upgrade":
+                    upgrading = True
+                if key.lower() not in {b"proxy-authorization", b"proxy-connection", b"host", b"connection"}:
+                    headers.append(line)
+            connect = method == "CONNECT"
+            parsed = urlsplit("//" + target if connect else target)
+            if not parsed.hostname or parsed.username is not None or parsed.password is not None or parsed.fragment:
+                self._http_error(400)
+                return
+            if connect:
+                if parsed.path or parsed.query or parsed.port is None:
+                    self._http_error(400)
+                    return
+                port = parsed.port
+            else:
+                if parsed.scheme != "http":
+                    self._http_error(400)
+                    return
+                port = parsed.port if parsed.port is not None else 80
+            if not 1 <= port <= 65535:
+                self._http_error(400)
+                return
+            upstream = self._open_socks_connection(parsed.hostname, port)
+            if upstream is None:
+                self._http_error(502)
+                return
+            if connect:
+                self.connection.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+            else:
+                path = parsed.path or "/"
+                if parsed.query:
+                    path += "?" + parsed.query
+                host = f"[{parsed.hostname}]" if ":" in parsed.hostname else parsed.hostname
+                if port != 80:
+                    host += f":{port}"
+                upstream.sendall(
+                    f"{method} {path} {version}\r\nHost: {host}\r\n".encode("ascii")
+                    + b"".join(headers)
+                    + (b"Connection: Upgrade\r\n" if upgrading else b"Connection: close\r\n")
+                    + b"\r\n"
+                )
+            self._pipe(upstream)
+        except (ValueError, UnicodeError):
+            self._http_error(400)
+        except OSError:
+            return
+        finally:
+            if upstream is not None:
+                upstream.close()
+
+
 class LocalSocksProxyServer:
     """
     Local SOCKS5 server without authentication that forwards through an upstream SOCKS proxy.
     """
+
+    handler_class = SocksBridgeHandler
+    scheme = "socks5"
 
     def __init__(self, details: ProxyDetails, profile_name: Optional[str] = None):
         self._details = details
@@ -214,9 +334,9 @@ class LocalSocksProxyServer:
 
     def start(self) -> str:
         if self._server:
-            return f"socks5://127.0.0.1:{self.port}"
+            return f"{self.scheme}://127.0.0.1:{self.port}"
         try:
-            self._server = _ProxyTCPServer(("127.0.0.1", 0), SocksBridgeHandler, self._details)
+            self._server = _ProxyTCPServer(("127.0.0.1", 0), self.handler_class, self._details)
             self._server.logger = self._logger
             self.port = self._server.server_address[1]
         except Exception:
@@ -230,18 +350,26 @@ class LocalSocksProxyServer:
         )
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()
-        return f"socks5://127.0.0.1:{self.port}"
+        return f"{self.scheme}://127.0.0.1:{self.port}"
 
     def stop(self):
         if not self._server:
             return
         self._logger.info("Local proxy: stopping SOCKS bridge on 127.0.0.1:%s", self.port)
+        self._server.stop_connections()
         self._server.shutdown()
         self._server.server_close()
         self._server = None
         if self._thread:
             self._thread.join(timeout=1)
             self._thread = None
+
+
+class LocalHttpProxyServer(LocalSocksProxyServer):
+    """Loopback-only HTTP/CONNECT adapter for a selected SOCKS upstream."""
+
+    handler_class = HttpSocksBridgeHandler
+    scheme = "http"
 
 
 def parse_proxy(proxy: str, profile_name: Optional[str] = None) -> Tuple[Optional[Dict[str, str]], Optional[ProxyDetails]]:

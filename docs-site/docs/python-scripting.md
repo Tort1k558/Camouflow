@@ -36,6 +36,10 @@ Use the existing variable parsing block to extract structured results.
 | `await ctx.sleep(seconds)` | Asynchronous cancellable wait |
 
 For authenticated HTTP calls use Playwright's `ctx.context.request`. The script
+uses this profile's cookies and proxy, including authenticated SOCKS in both
+browser engines. Independent libraries such as `requests` or `httpx` do not
+automatically inherit the browser proxy.
+The script
 working directory is the run's artifacts directory. `print()` and logging are
 captured, bounded, and visible in run details and the debugger. Do not print
 passwords, tokens or sensitive page contents: outputs are not automatically redacted.

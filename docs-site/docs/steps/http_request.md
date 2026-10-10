@@ -2,6 +2,11 @@
 
 Performs an HTTP(S) request via `context.request.fetch` (Playwright). Context cookies are automatically included and updated.
 
+The request uses the profile's configured proxy in both browser engines, including
+authenticated SOCKS4/5. CloakBrowser uses a loopback-only HTTP/CONNECT adapter so
+browser pages and the Playwright request context retain the same SOCKS upstream.
+This does not configure unrelated Python HTTP libraries or the operating system.
+
 Alias: `http`.
 
 ## Parameters (main)

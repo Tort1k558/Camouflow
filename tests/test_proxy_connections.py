@@ -3,6 +3,9 @@
 import socket
 import threading
 import time
+import http.client
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 from unittest.mock import Mock
 
 import pytest
@@ -159,3 +162,111 @@ def test_socks_bridge_preserves_large_transfer_with_slow_reader(reverse):
             connection.close()
         producer.join(timeout=2)
         relay.join(timeout=2)
+
+
+@pytest.fixture
+def http_socks_bridge(monkeypatch):
+    observations = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            observations.append({"path": self.path, "headers": dict(self.headers), "body": body})
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    target = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    worker = threading.Thread(target=target.serve_forever, daemon=True)
+    worker.start()
+    connections = []
+
+    def connect(handler, host, port):
+        connections.append((host, port))
+        return socket.create_connection(target.server_address, timeout=2)
+
+    monkeypatch.setattr(proxy_utils.HttpSocksBridgeHandler, "_open_socks_connection", connect)
+    details = proxy_utils.ProxyDetails("socks5", "upstream.example.invalid", 1080, "synthetic-user", "synthetic-password")
+    bridge = proxy_utils.LocalHttpProxyServer(details)
+    parsed = urlsplit(bridge.start())
+    try:
+        assert parsed.scheme == "http" and parsed.hostname == "127.0.0.1"
+        assert bridge.start() == parsed.geturl()
+        yield bridge, observations, connections
+    finally:
+        bridge.stop()
+        target.shutdown()
+        target.server_close()
+        worker.join(timeout=2)
+
+
+def test_http_socks_bridge_rewrites_origin_request_and_preserves_body(http_socks_bridge):
+    bridge, observations, connections = http_socks_bridge
+    body = bytes(range(256)) * 4096
+    connection = http.client.HTTPConnection("127.0.0.1", bridge.port, timeout=5)
+    try:
+        connection.request("POST", "http://fixture.example.invalid:8081/path?q=1", body=body,
+                           headers={"Host": "wrong.example.invalid", "Proxy-Authorization": "synthetic-secret", "Proxy-Connection": "keep-alive"})
+        response = connection.getresponse()
+        assert response.status == 200 and response.read() == body
+    finally:
+        connection.close()
+    assert connections == [("fixture.example.invalid", 8081)]
+    assert observations[0]["path"] == "/path?q=1"
+    assert observations[0]["body"] == body
+    assert observations[0]["headers"]["Host"] == "fixture.example.invalid:8081"
+    assert observations[0]["headers"]["Connection"] == "close"
+    assert "Proxy-Authorization" not in observations[0]["headers"]
+    assert "Proxy-Connection" not in observations[0]["headers"]
+
+
+@pytest.mark.parametrize("wire_request", [
+    b"CONNECT fixture.example.invalid HTTP/1.1\r\n\r\n",
+    b"CONNECT fixture.example.invalid:0 HTTP/1.1\r\n\r\n",
+    b"CONNECT fixture.example.invalid:65536 HTTP/1.1\r\n\r\n",
+    b"CONNECT fixture.example.invalid:443/path HTTP/1.1\r\n\r\n",
+    b"CONNECT user:password@fixture.example.invalid:443 HTTP/1.1\r\n\r\n",
+    b"GET /relative HTTP/1.1\r\n\r\n",
+    b"GET ftp://fixture.example.invalid/ HTTP/1.1\r\n\r\n",
+    b"GET http://fixture.example.invalid:0/ HTTP/1.1\r\n\r\n",
+    b"GET http://fixture.example.invalid/ HTTP/1.1\r\nInvalid header\r\n\r\n",
+    b"GET http://fixture.example.invalid/ HTTP/1.1\r\n" + b"X: " + b"a" * 32768 + b"\r\n\r\n",
+], ids=["missing-port", "zero-port", "large-port", "connect-path", "userinfo", "relative", "wrong-scheme", "http-zero-port", "invalid-header", "large-header"])
+def test_http_socks_bridge_rejects_malformed_request_before_connect(http_socks_bridge, wire_request):
+    bridge, _, connections = http_socks_bridge
+    with socket.create_connection(("127.0.0.1", bridge.port), timeout=2) as connection:
+        connection.sendall(wire_request)
+        assert connection.recv(100).startswith(b"HTTP/1.1 400 ")
+    assert not connections
+
+
+def test_http_socks_bridge_tunnels_after_connect_and_stops_owned_connections(http_socks_bridge):
+    bridge, observations, connections = http_socks_bridge
+    server = bridge._server
+    with socket.create_connection(("127.0.0.1", bridge.port), timeout=2) as connection:
+        connection.sendall(b"CONNECT fixture.example.invalid:443 HTTP/1.1\r\nHost: fixture.example.invalid:443\r\n\r\n")
+        header = b""
+        while not header.endswith(b"\r\n\r\n"):
+            header += connection.recv(1)
+        assert header == b"HTTP/1.1 200 Connection Established\r\n\r\n"
+        connection.sendall(b"POST /tunnel HTTP/1.1\r\nHost: fixture.example.invalid\r\nContent-Length: 4\r\nConnection: close\r\n\r\ndata")
+        response = http.client.HTTPResponse(connection)
+        response.begin()
+        assert response.status == 200 and response.read() == b"data"
+    assert connections == [("fixture.example.invalid", 443)]
+    assert observations[0]["path"] == "/tunnel"
+    with socket.create_connection(("127.0.0.1", bridge.port), timeout=2) as connection:
+        connection.sendall(b"CONNECT fixture.example.invalid:443 HTTP/1.1\r\n\r\n")
+        assert connection.recv(100).startswith(b"HTTP/1.1 200 ")
+        bridge.stop()
+        assert connection.recv(100) == b""
+    assert server.stopping.is_set()
+    deadline = time.monotonic() + 2
+    while server._connections and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert not server._connections

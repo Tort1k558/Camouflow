@@ -26,7 +26,7 @@ from .browser_launchers import (
 from .browser_lifecycle import BrowserLifecycleManager
 from .browser_proxy_service import BrowserProxyService
 from .locale_mapping import country_to_locale
-from .proxy_utils import LocalSocksProxyServer, parse_proxy
+from .proxy_utils import LocalHttpProxyServer, LocalSocksProxyServer, parse_proxy
 
 
 AsyncCamoufox = Any
@@ -159,11 +159,15 @@ class BrowserInterface:
                 self._proxy_service.set_local_proxy(self._local_proxy)
 
     def _build_cloakbrowser_launch_kwargs(self) -> Dict[str, object]:
+        proxy_config = self._proxy_config
+        if self._proxy_details and self._proxy_details.scheme.startswith("socks"):
+            self._local_proxy = LocalHttpProxyServer(self._proxy_details, profile_name=self.profile_name)
+            proxy_config = {"server": self._local_proxy.start()}
         builder = CloakBrowserLaunchBuilder(
             profile_root=Path(self.profile_root),
             defaults=self._cloakbrowser_defaults,
             browser_settings=self._browser_settings,
-            proxy_config=self._proxy_config,
+            proxy_config=proxy_config,
             detect_browser_locale=self._detect_browser_locale,
             detect_browser_timezone=self._detect_browser_timezone,
         )

@@ -1250,3 +1250,34 @@ process environment inputs, never source, documentation or report values.
   routing; HTTP CONNECT does not work on the supplied SOCKS endpoints.
 - Primary references: https://www.rfc-editor.org/rfc/rfc1928 and
   https://docs.python.org/3/library/socket.html#socket.socket.send .
+
+### Iteration 46: close the native CloakBrowser SOCKS request-route leak
+
+- Real supplied endpoints: SOCKS5 authentication, verified TLS 1.3 IP lookup and
+  256 KiB Cloudflare transfer each passed three identical default-route rounds.
+  Exit addresses match each endpoint; geo API reports PL. The physical-Ethernet
+  path failed repeated CONNECT/negotiation attempts; TCP alone was reachable.
+  HTTP CONNECT also failed on these SOCKS endpoints: do not import them as HTTP.
+- Native baseline: both engines navigated HTTPS with the correct proxy IP, but
+  CloakBrowser context.request used another exit address on all three endpoints.
+  This affects visual http_request and the documented Python context API.
+- Root cause verified in pinned CloakBrowser 0.3.28: SOCKS configuration becomes
+  a Chromium command-line flag, absent from Playwright's API request context.
+  Keep the SDK, fingerprint controls and dependency pins; no runtime monkeypatch.
+- Reuse the existing loopback bridge ownership for an HTTP/CONNECT-to-SOCKS
+  adapter. Pass the adapter as the SDK's native HTTP proxy so pages and requests
+  share the selected upstream, cookies, response-cookie updates and TLS policy.
+  Do not pass upstream credentials in Chromium command-line arguments.
+- HTTP forwarding rewrites absolute to origin form, preserves request bodies,
+  removes proxy credentials and hop-by-hop proxy headers, reconstructs Host,
+  closes ordinary origin connections and supports CONNECT/WebSocket upgrades.
+  Bound header sizes; malformed targets/ports/headers fail before upstream I/O.
+  Upstream failure returns 502, never a direct connection. Stop closes only
+  this bridge's owned client/tunnel sockets; active system VPN stays unchanged.
+- Corrected source: all three endpoints x both native engines x persistent and
+  ephemeral contexts passed HTTPS navigation, repeated matching browser/API IP
+  and a real 256 KiB transfer. Twelve native sessions; not synthetic proxy proof.
+- Regression tests exercise local real TCP POST/CONNECT, 1 MiB body preservation,
+  malformed/oversized input, owned tunnel teardown and launcher credential scope.
+- Primary Playwright contract: https://playwright.dev/python/docs/network#http-proxy
+  and https://playwright.dev/python/docs/api/class-browsercontext#browser-context-request .

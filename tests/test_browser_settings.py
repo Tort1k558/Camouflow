@@ -121,6 +121,45 @@ def test_cloak_context_uses_native_launcher_and_inherited_defaults(tmp_path, mon
     assert browser._browser_settings["humanize"] is False
 
 
+@pytest.mark.parametrize("scheme", ["socks4", "socks5"])
+def test_cloak_socks_proxy_uses_owned_http_bridge_for_browser_and_request_context(tmp_path, monkeypatch, scheme):
+    from app.core import browser_interface
+
+    monkeypatch.setattr(browser_interface, "checked_profile_dir_for_email", lambda name: tmp_path / name)
+    bridge = Mock()
+    bridge.start.return_value = "http://127.0.0.1:12345"
+    factory = Mock(return_value=bridge)
+    monkeypatch.setattr(browser_interface, "LocalHttpProxyServer", factory)
+    browser = BrowserInterface("bridge-test", proxy=f"{scheme}://synthetic-user:synthetic-password@upstream.example.invalid:1080",
+                               browser_engine="cloakbrowser", browser_settings={"locale": "en-US", "timezone": "UTC", "proxy_bypass": "*.example.invalid"})
+
+    options = browser._build_cloakbrowser_launch_kwargs()
+
+    assert options["proxy"] == {"server": "http://127.0.0.1:12345", "bypass": "*.example.invalid"}
+    assert browser._local_proxy is bridge
+    assert factory.call_args.args[0].scheme == scheme
+    assert factory.call_args.args[0].username == "synthetic-user"
+    assert factory.call_args.args[0].password == "synthetic-password"
+    assert browser._proxy_service.local_proxy is None
+    assert "synthetic-password" not in repr(options)
+
+
+def test_cloak_http_proxy_preserves_native_launcher_configuration(tmp_path, monkeypatch):
+    from app.core import browser_interface
+
+    monkeypatch.setattr(browser_interface, "checked_profile_dir_for_email", lambda name: tmp_path / name)
+    factory = Mock()
+    monkeypatch.setattr(browser_interface, "LocalHttpProxyServer", factory)
+    browser = BrowserInterface("http-test", proxy="http://synthetic-user:synthetic-password@upstream.example.invalid:1080",
+                               browser_engine="cloakbrowser", browser_settings={"locale": "en-US", "timezone": "UTC"})
+
+    options = browser._build_cloakbrowser_launch_kwargs()
+
+    assert options["proxy"] == browser._proxy_config
+    assert browser._local_proxy is None
+    factory.assert_not_called()
+
+
 @pytest.mark.parametrize("entry, expected", [
     ({}, False), ({"quarantine_until": ""}, False),
     ({"quarantine_until": "2000-01-01T00:00:00Z"}, False),
