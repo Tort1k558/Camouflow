@@ -609,3 +609,32 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   automatically rolled back to retained 18083. Both candidates healthy, next
   passive preflight **20/20**. Retrying only after that check; no zero-downtime
   claim. Production soak and cutover evidence are separate measurements.
+
+## Iteration 25 — audit/session rollout and fresh packaged verification
+
+- Private audit/session/docs candidate now serves production on 18082, image
+  `audit-20261010T015300Z`, SHA256
+  `336e846f77c7a80adfd378f78c98188a8e76a73e669f4629a3fa521ee89b8ed7`.
+  Previous 18083 remains healthy for rollback. Original API/PostgreSQL/Caddy/VPN
+  start times unchanged; no schema migrations, new dependencies or customer
+  account mutations. Private source/docs synced; none committed/pushed.
+- Two initial switches each saw one external connection-close and rolled back.
+  Final cutover **79/80**, one TLS EOF near reload, then independent steady-state
+  **80/80**. Exact failures retained, not silently retried. Root cause/path scope
+  of transport closure remains unproven; no zero-downtime claim.
+- Root-private validated DB dump/config/source backups retained. The first source
+  archive missed README; complete source archive plus separate README is the
+  usable snapshot. Rollback restores Caddyfile in place to retained 18083.
+- Fresh anonymous production browser loads Brov4sEH, supports secure Web Locks,
+  auth 375px has no overflow, both language guides show accurate proxy scope,
+  zero page errors. Authenticated behavior is isolated proof, not production
+  customer-account proof. Older hashed assets remain available.
+- Latest package `dist/release-20261010-054247/CamouFlow/CamouFlow.exe` includes
+  progress-log changes and **235 passing tests**. Both fresh parsed engine smoke
+  reports `passed: true`; packaged authenticated proxy/queue/export proof again
+  succeeds on both engines (four verified geo TLS / four pages / zero unexpected
+  routes). Privacy semantics are regression-tested; pure recording CLI does not
+  emit python.jsonl, so no fabricated packaged-log capture claim.
+- Focused Ruff passed, Retype **35 pages / zero errors/warnings**. Fresh GitHub
+  CI **38014212609**, head **fadc3c0**, succeeded. Passive production soak interim
+  **102 rounds / 186 checks / zero failures**, still running until the deadline.
