@@ -1295,3 +1295,20 @@ process environment inputs, never source, documentation or report values.
   the actual Playwright 20 ms timeout with timeout_ms=20. No mocked HTTP response.
 - Documentation now states the exact units and zero/omission/error behavior.
   Primary API: https://playwright.dev/python/docs/api/class-apirequestcontext#api-request-context-fetch .
+
+### Iteration 48: release native HTTP response buffers after visual actions
+
+- Confirmed visual http_request never disposed its Playwright APIResponse.
+  Playwright retains response bodies until context close, so repeated requests
+  unnecessarily retain every response even when result variables are overwritten.
+- Read status/headers/text/JSON before disposing the response in finally.
+  Preserve output-variable content, JSON extraction, cookies and failure policy.
+  Release buffers after non-JSON and non-success responses and processing errors.
+- Three new regressions plus disposal assertions on existing successful actions.
+  Native action verification in both engines: response.body fails as disposed
+  after the action, exported body still correct, response HttpOnly cookie retained.
+  Millisecond success/timeout proof remains positive (265/344 ms for 250 ms fixture).
+- This is owned-response cleanup, not a measured total-RAM benchmark or a limit
+  on intentionally saved variable bodies/artifacts. Python authors still own
+  responses they create directly through ctx.context.request.
+- Primary disposal contract: https://playwright.dev/python/docs/api/class-apiresponse#api-response-dispose .

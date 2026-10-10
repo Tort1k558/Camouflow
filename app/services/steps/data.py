@@ -107,26 +107,29 @@ class DataSteps:
             max_retries=max_retries,
         )
 
-        status = int(response.status)
-        ok = 200 <= status <= 299
-        response_headers = dict(response.headers or {})
-
-        body_text = ""
-        body_bytes: Optional[bytes] = None
         try:
-            body_text = await response.text()
-        except Exception:
+            status = int(response.status)
+            ok = 200 <= status <= 299
+            response_headers = dict(response.headers or {})
+
+            body_text = ""
+            body_bytes: Optional[bytes] = None
             try:
-                body_bytes = await response.body()
-                body_text = body_bytes.decode("utf-8", errors="replace")
+                body_text = await response.text()
             except Exception:
-                body_text = ""
+                try:
+                    body_bytes = await response.body()
+                    body_text = body_bytes.decode("utf-8", errors="replace")
+                except Exception:
+                    body_text = ""
 
-        parsed_json: Optional[object] = None
-        try:
-            parsed_json = await response.json()
-        except Exception:
-            parsed_json = None
+            parsed_json: Optional[object] = None
+            try:
+                parsed_json = await response.json()
+            except Exception:
+                parsed_json = None
+        finally:
+            await response.dispose()
 
         save_as = self._apply_template(
             merged_step.get("save_as")
