@@ -1719,3 +1719,41 @@ process environment inputs, never source, documentation or report values.
   is ready/idle. Original database/Caddy/VPN service starts and restricted worker
   DB permissions are preserved. Only our superseded first team-center API was
   stopped; backups and the verified restored clone are retained privately.
+
+## Website workspace redesign — 2026-10-11
+
+- Scope is the private website (`server/web`), not the desktop application.
+  Desktop edits were reverted. Preserve the established dark-green sidebar,
+  lime accents and warm light surfaces; do not substitute a blue palette.
+- Reworked the console/admin shell: workspace breadcrumbs, explicit server/team
+  switching, collapsible desktop navigation and a keyboard-accessible mobile
+  drawer instead of a full-height navigation block above the page.
+- Overview now groups workspace metrics and operational shortcuts. Team center
+  uses a work queue with a help/detail rail. Hosted history and webhook settings,
+  pool management, team settings and admin record/create panels use task-specific
+  responsive layouts without the previous narrow content-width caps.
+- Shared tables, inputs, actions, empty states and native confirmation dialogs
+  use the same green design system. Search fields retain shared input styling.
+  Admin users have search; audit filtering explicitly covers the latest 100 events.
+- Password sign-in verifies the session before navigation and preserves the
+  requested admin section. Verification errors are shown instead of silently
+  opening `/console`. Google callback handling uses the same destination rules;
+  no new claim of real-provider OAuth verification is made. Team admin permissions
+  remain distinct from server superadmin access.
+- Local frontend build passed; backend regression suite: **217 passed**.
+  Mocked-browser coverage exercised 14 routes at six viewport widths, including
+  verification failure and denied non-superadmin access. Production verification
+  uses isolated owned fixtures, never customer-account credentials.
+- Deployment changes only our owned API's frontend assets, behind the verified
+  warm fallback. No database migration or worker/database/VPN restart. Compiled
+  asset hashes were checked inside the deployed container. Private frontend
+  sources are archived alongside the deployment, never committed to public Git.
+- Final production pass: all 14 console/admin routes at 1440, 768 and 375 px
+  (**42 views**), without page-wide overflow or application JavaScript errors.
+  Real password sign-in preserved `/admin/teams`; assignment creation, discussion,
+  status changes, mobile navigation and cancellation of destructive confirmation
+  were verified against the owned workspace. All test accounts/workspaces were
+  removed; customer counts remain 23 users, 10 teams, 4 profiles and 2 scenarios.
+  Final frontend image digest is
+  `sha256:7fa2a157ad4948290d2b1af00fbe64101df3183b64b0b03e0a526603d46a3c6e`.
+  Database, worker, renderer, egress, Caddy and VPN container starts are unchanged.
