@@ -111,6 +111,8 @@ If that snapshot changes or the list shifts to another connection, the action
 is rejected: reopen settings or select the proxy again. No stored IDs or data
 migration are introduced. Legacy programmatic slots without a snapshot remain
 compatible; this protection applies to the current desktop dialogs.
+Dialogs capture the row actually displayed, not a newly loaded disk position;
+rejected stale actions refresh the list before selecting again.
 
 Changing a local connection value clears its old check, score and check history;
 it must be checked again. Renaming keeps health evidence. Assignment and any

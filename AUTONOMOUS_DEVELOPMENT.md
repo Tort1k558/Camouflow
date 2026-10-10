@@ -734,3 +734,55 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   this does not validate paid-model quality. Changed source/docs UTF-8 scan:
   **58 files, no BOM, strict decoding passed**. Passive public soak interim
   **127 rounds / 231 checks / zero failures**, final deadline pending.
+
+## Iteration 30 — real API/browser verification and remaining edge cases
+
+- Probe/session candidate now serves production on 18083, immutable image
+  `probe-20261010T020700Z` / SHA256
+  `da18db27d69b7b731af29ec19d43e2789dc4e0e8b725a1a8c0f6d8754ca9e337`.
+  Final switch default **80/80**, Ethernet **79/80** (one connection close),
+  independent dual-path steady-state **160/160**. Exact-image isolated Caddy
+  reproduction is documented above; no per-request retry or zero-downtime claim.
+  Retained 18082 healthy; original API/PostgreSQL/Caddy/VPN starts unchanged.
+- Private sources/compiled assets/README/deployment/security notes synced after
+  that rollout; no server files committed/pushed. Verified DB/config/source
+  backups remain root-private; rollback Caddyfile targets retained 18082.
+- Fresh production anonymous browser loads DBonekiG; secure Web Locks, mobile
+  auth and both-language proxy guide pass, zero page errors. No real login.
+- Current private API in a disposable SQLite fixture: actual UI login/logout for
+  viewer/operator/manager/admin/superadmin; expected Check/Add/Remove visibility,
+  zero viewer audit requests, actual isolated TCP check and 60+3 tied filtered
+  audit rows. **Zero mocked API responses**, zero page errors. This complements
+  actual PostgreSQL race proofs rather than replacing them.
+- Latest verified package `release-20261010-063407` includes **246 passing tests**,
+  both fresh parsed engine runtime reports true and actual packaged authenticated
+  proxy/queue/export success on both engines. Subsequent dialog fix is newer and
+  requires another current-source package before declaring it packaged.
+- Private staged OAuth privacy fix: reproduced tokens remaining in the callback
+  URL on auth failure and in the Back history after success. Replace current
+  history entry before verification; both browser cases now remove fragments,
+  preserve session and normal admin navigation. Synthetic tokens, no Google call.
+- Private staged schema fix: six nullable patch fields returned 500; JSON-null
+  last_check committed and then made every team proxy list return 500. Real local
+  HTTP proof **PATCH 500 / subsequent GET 500**, restored only that synthetic
+  fixture. Typed nonnullable fields now reject null before persistence:
+  **PATCH 422 / GET 200**. Omission and actual nullable assignments remain valid.
+  Full private suite **125 passed**; live read-only JSON-null count is **zero**,
+  so no production data repair/migration performed.
+- Private staged error UX: short signup password showed '[object Object]'. Web
+  helper renders validation field/message, not raw input. Real rejected signup
+  now shows the password-length rule and never echoes the input; seven auth
+  boundary cases still pass. These three staged changes are not yet deployed.
+
+## Iteration 31 — capture local dialogs from displayed cache, not fresh position
+
+- Reproduced a shift *before* dialog opening: displayed B at index 1, disk now C
+  at index 1; opening fetched C, so the earlier after-open guard could accept the
+  wrong target. getProxy now uses the displayed inventory and shared workspace
+  identity guard for both modes. Missing/stale workspaces return no target.
+- Save/delete still validate against current storage under lock; rejected actions
+  refresh the view. No persisted identity migration or fallback row guessing.
+- New focused regression failed before and passes after; full desktop **247
+  passed**, critical/import Ruff passed. Real Windows QML now clicks both Save
+  and Delete for shifts before/after opening: C unchanged, view refreshed, zero
+  warnings. Bulk positional actions remain a separate follow-up audit.

@@ -1,5 +1,6 @@
 """Settings must survive persistence and reach the selected browser engine."""
 import asyncio
+import copy
 import json
 from dataclasses import asdict
 from types import SimpleNamespace
@@ -366,8 +367,11 @@ def test_local_proxy_dialog_rejects_shifted_inventory(monkeypatch, method):
     from app.ui.bridge import proxies
 
     monkeypatch.setattr(proxies, "server_enabled", lambda: False)
+    session = SimpleNamespace(enabled=False, url="", team_id="", email="")
+    monkeypatch.setattr(proxies, "get_server_session", lambda: session)
     entries = [{"name": name, "value": f"http://{name}:1080"} for name in ["A", "B", "C"]]
-    bridge = SimpleNamespace(_load=lambda: {"QA": {"proxies": entries}}, _save=Mock(),
+    bridge = SimpleNamespace(_load=lambda: {"QA": {"proxies": entries}}, _save=Mock(), _cache_session=session,
+                             _pools_cache={"QA": {"proxies": copy.deepcopy(entries)}},
                              _ensure_allowed=lambda _: True, _server_client=lambda: None,
                              _emit_message=Mock(), refresh=Mock(), _selected=set(),
                              _local_proxy_identity=lambda entry: proxies.ProxiesBridge._local_proxy_identity(entry))
@@ -386,12 +390,15 @@ def test_local_proxy_edit_keeps_health_only_for_unchanged_endpoint(monkeypatch, 
     from app.ui.bridge import proxies
 
     monkeypatch.setattr(proxies, "server_enabled", lambda: False)
+    session = SimpleNamespace(enabled=False, url="", team_id="", email="")
+    monkeypatch.setattr(proxies, "get_server_session", lambda: session)
     original = "http://old:1080"
     entry = {"name": "Original", "value": original, "assigned_to": "Profile",
              "last_check": {"status": "ok", "mode": "internet", "ip": "192.0.2.1"},
              "check_history": [{"status": "ok"}], "health_score": 100,
              "quarantine_until": "2099-01-01T00:00:00Z"}
-    bridge = SimpleNamespace(_load=lambda: {"QA": {"proxies": [entry]}}, _save=Mock(),
+    bridge = SimpleNamespace(_load=lambda: {"QA": {"proxies": [entry]}}, _save=Mock(), _cache_session=session,
+                             _pools_cache={"QA": {"proxies": copy.deepcopy([entry])}},
                              _ensure_allowed=lambda _: True, _server_client=lambda: None,
                              _emit_message=Mock(), refresh=Mock(),
                              _local_proxy_identity=lambda value: proxies.ProxiesBridge._local_proxy_identity(value))
@@ -402,6 +409,22 @@ def test_local_proxy_edit_keeps_health_only_for_unchanged_endpoint(monkeypatch, 
     assert entry["quarantine_until"] == "2099-01-01T00:00:00Z"
     for field in ["last_check", "check_history", "health_score"]:
         assert (field not in entry) == changed
+
+
+def test_local_proxy_dialog_captures_displayed_row_not_new_disk_position(monkeypatch):
+    from app.ui.bridge import proxies
+
+    session = SimpleNamespace(enabled=False, url="", team_id="", email="")
+    monkeypatch.setattr(proxies, "get_server_session", lambda: session)
+    monkeypatch.setattr(proxies, "server_enabled", lambda: False)
+    cached = {"QA": {"proxies": [{"name": name, "value": f"http://{name}:1080"} for name in ["A", "B", "C"]]}}
+    current = copy.deepcopy(cached)
+    current["QA"]["proxies"].pop(0)
+    bridge = SimpleNamespace(_cache_session=session, _pools_cache=cached, _load=Mock(return_value=current),
+                             _local_proxy_identity=proxies.ProxiesBridge._local_proxy_identity)
+    payload = proxies.ProxiesBridge.getProxy(bridge, "QA", 1)
+    assert payload["name"] == "B" and payload["value"] == "http://B:1080"
+    bridge._load.assert_not_called()
 
 
 def test_proxy_workspace_switch_clears_selection_before_background_read(monkeypatch):

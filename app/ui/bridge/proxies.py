@@ -25,6 +25,11 @@ from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
 
 
+def _proxy_workspace_matches(cached, current) -> bool:
+    return cached is not None and all(getattr(cached, key) == getattr(current, key)
+                                      for key in ("enabled", "url", "team_id", "email"))
+
+
 class ProxiesBridge(QObject):
     modelChanged = pyqtSignal()
     statsChanged = pyqtSignal()
@@ -246,9 +251,7 @@ class ProxiesBridge(QObject):
 
     def _server_proxy_entry(self, pool_name: str, index: int, expected_id: str = "") -> Dict[str, Any]:
         session = get_server_session()
-        cached = self._cache_session
-        if cached is None or any(getattr(cached, key) != getattr(session, key)
-                                 for key in ("enabled", "url", "team_id", "email")):
+        if not _proxy_workspace_matches(self._cache_session, session):
             return {}
         try:
             index = int(index)
@@ -603,15 +606,18 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot(str, int, result="QVariant")
     def getProxy(self, pool_name: str, index: int) -> Dict[str, Any]:  # noqa: N802
+        session = get_server_session()
+        if not _proxy_workspace_matches(self._cache_session, session):
+            return {}
         pool_name = str(pool_name or "").strip()
         try:
             index = int(index)
         except Exception:
             return {}
-        if server_enabled():
+        if session.enabled:
             entry = self._server_proxy_entry(pool_name, index)
             return {**entry, "pool": pool_name, "index": index} if entry else {}
-        pool = self._load().get(pool_name)
+        pool = self._pools_cache.get(pool_name)
         if not isinstance(pool, dict):
             return {}
         proxies = pool.get("proxies", [])
@@ -676,6 +682,7 @@ class ProxiesBridge(QObject):
             entry = proxies[index]
             if expected_id.startswith("local:") and self._local_proxy_identity(entry) != expected_id:
                 self._emit_message("Proxy changed; reopen proxy settings")
+                self.refresh()
                 return
             if str(entry.get("value") or "") != value:
                 for field in ("last_check", "check_history", "health_score"):
@@ -724,6 +731,7 @@ class ProxiesBridge(QObject):
                 return
             if expected_id.startswith("local:") and (not isinstance(proxies[index], dict) or self._local_proxy_identity(proxies[index]) != expected_id):
                 self._emit_message("Proxy changed; select the proxy again")
+                self.refresh()
                 return
             proxies.pop(index)
             self._save(pools)
