@@ -15,7 +15,7 @@ Column {
     signal editingFinished()
     spacing: 7
 
-    Text { text: root.label; color: Theme.dim; font.pixelSize: 11; font.bold: true }
+    Text { text: root.label; textFormat: Text.PlainText; color: Theme.dim; font.pixelSize: 11; font.bold: true }
     Item {
         width: parent.width
         height: 40

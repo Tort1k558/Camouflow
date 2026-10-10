@@ -70,6 +70,7 @@ Item {
                                 spacing: 7
                                 Text {
                                     id: groupName
+                                    textFormat: Text.PlainText
                                     text: model.name === "All pools" ? "All" : model.name
                                     color: model.selected ? Theme.primaryText : Theme.text
                                     font.pixelSize: 12

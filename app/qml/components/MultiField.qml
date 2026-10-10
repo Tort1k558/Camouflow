@@ -10,7 +10,7 @@ Column {
     property int fieldHeight: 92
     signal editingFinished()
     spacing: 8
-    Text { text: mf.label; color: Theme.dim; font.pixelSize: 11; font.weight: Font.DemiBold }
+    Text { text: mf.label; textFormat: Text.PlainText; color: Theme.dim; font.pixelSize: 11; font.weight: Font.DemiBold }
     Item { width: parent.width; height: mf.fieldHeight
         ScrollView { anchors.fill: parent; anchors.bottomMargin: 8; clip: true
             TextArea {

@@ -62,9 +62,9 @@ GlassCard {
             Layout.maximumWidth: 360
             Layout.alignment: Qt.AlignVCenter
             spacing: 5
-            Text { text: root.name; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+            Text { textFormat: Text.PlainText; text: root.name; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
 
-            Text { text: root.tags + "  /  " + root.ident.substring(0, 8); color: Theme.primaryLight; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
+            Text { textFormat: Text.PlainText; text: root.tags + "  /  " + root.ident.substring(0, 8); color: Theme.primaryLight; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
         }
 
         InfoColumn { title: "Browser"; value: root.browser; Layout.minimumWidth: 110; Layout.preferredWidth: 110 }
@@ -79,6 +79,7 @@ GlassCard {
             spacing: 8
             Rectangle { width: 7; height: 7; radius: 4; color: running ? Theme.success : root.lockedBy ? Theme.warning : Theme.dim; anchors.verticalCenter: parent.verticalCenter }
             Text {
+                textFormat: Text.PlainText
                 text: root.lockedBy && !root.running
                     ? "Locked: " + root.lockedBy + (root.lockExpires ? " until " + new Date(root.lockExpires).toLocaleTimeString(Qt.locale(), "HH:mm") : "")
                     : root.status

@@ -165,6 +165,106 @@ assert not warnings, warnings
     assert "TypeError" not in result.stdout + result.stderr
 
 
+def test_untrusted_qml_labels_do_not_fetch_inline_images(tmp_path):
+    script = '''
+import threading, time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from PyQt6 import sip
+from PyQt6.QtCore import QUrl, QMetaObject
+from PyQt6.QtQml import QQmlComponent
+from app.storage import db
+from app.ui.qml_app import QmlApplication
+
+requests = []
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        requests.append(self.path)
+        self.send_response(404)
+        self.end_headers()
+    def log_message(self, *args): pass
+server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+threading.Thread(target=server.serve_forever, daemon=True).start()
+db.init_db()
+db.db_set_setting('onboarding_completed', 'true')
+ui = QmlApplication(['Untrusted label regression'])
+warnings = []
+ui.engine.warnings.connect(lambda rows: warnings.extend(row.toString() for row in rows))
+components, rows = [], []
+try:
+    ui.engine.load(QUrl.fromLocalFile(str(ui.root_dir / 'Main.qml')))
+    window = ui.engine.rootObjects()[0]
+    cases = [('ProfileRow', ['name', 'tags', 'proxy', 'lockedBy']),
+             ('ProxyRow', ['name', 'location', 'address']),
+             ('InfoColumn', ['title', 'value']), ('PageHeader', ['title', 'subtitle', 'badge']),
+             ('EmptyState', ['title', 'description']), ('PrimaryButton', ['text']),
+             ('ScenarioNode', ['title', 'subtitle']), ('FormField', ['label']),
+             ('MultiField', ['label']), ('PlainCheckBox', ['text'])]
+    for index, (name, fields) in enumerate(cases):
+        payload = f'<img src="http://127.0.0.1:{server.server_port}/pixel-{index}.png">Synthetic label'
+        component = QQmlComponent(ui.engine, QUrl.fromLocalFile(str(ui.root_dir / 'components' / (name + '.qml'))))
+        row = component.createWithInitialProperties({**{field: payload for field in fields}, 'width': 800})
+        assert row is not None, [error.toString() for error in component.errors()]
+        row.setParentItem(window.contentItem())
+        row.setY(index * 90)
+        components.append(component)
+        rows.append(row)
+    from app.ui.bridge.models import DictListModel
+    payload = f'<img src="http://127.0.0.1:{server.server_port}/combo.png">Synthetic choice'
+    role_model = DictListModel(['name'], [{'name': payload}, {'name': 'Second choice'}])
+    for model, role in [([payload, 'Second choice'], ''), ([{'name': payload}, {'name': 'Second choice'}], 'name'), (role_model, 'name')]:
+        wrapper = QQmlComponent(ui.engine)
+        wrapper.setData(b"""import QtQuick
+import "components"
+Item {
+    id: root
+    property var choices
+    property string choiceRole
+    property int activatedIndex: -1
+    property alias selectedIndex: combo.currentIndex
+    property alias selectedText: combo.currentText
+    width: 800; height: 44
+    PlainComboBox { id: combo; width: parent.width; model: root.choices; textRole: root.choiceRole; onActivated: function(index) { root.activatedIndex = index } }
+    function openChoices() { combo.popup.open() }
+    function pickSecond() { combo.popup.contentItem.itemAtIndex(1).clicked() }
+}""", QUrl.fromLocalFile(str(ui.root_dir / 'inline-label-test.qml')))
+        row = wrapper.createWithInitialProperties({'choices': model, 'choiceRole': role})
+        assert row is not None, [error.toString() for error in wrapper.errors()]
+        row.setParentItem(window.contentItem())
+        QMetaObject.invokeMethod(row, 'openChoices')
+        until = time.monotonic() + .15
+        while time.monotonic() < until:
+            ui.app.processEvents()
+            time.sleep(.01)
+        assert row.property('selectedText') == payload
+        QMetaObject.invokeMethod(row, 'pickSecond')
+        ui.app.processEvents()
+        assert row.property('selectedIndex') == row.property('activatedIndex') == 1
+        assert row.property('selectedText') == 'Second choice'
+        components.append(wrapper)
+        rows.append(row)
+    until = time.monotonic() + .6
+    while time.monotonic() < until:
+        ui.app.processEvents()
+        time.sleep(.01)
+    assert not requests, requests
+    assert not warnings, warnings
+finally:
+    server.shutdown()
+    server.server_close()
+    ui.recorder.shutdown()
+    ui.operations.shutdown()
+    ui.ai.shutdown()
+    sip.delete(ui.engine)
+    ui._workspace_lock.unlock()
+'''
+    result = subprocess.run(
+        [sys.executable, "-c", script], cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "CAMOUFLOW_DATA_DIR": str(tmp_path), "QT_QPA_PLATFORM": "offscreen"},
+        capture_output=True, text=True, encoding="utf-8", timeout=20,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_recorded_task_form_and_queue_load_without_qml_errors(tmp_path):
     script = """
 import time

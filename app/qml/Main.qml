@@ -90,7 +90,7 @@ ApplicationWindow {
                         anchors.right: parent.right; anchors.rightMargin: 28; anchors.verticalCenter: parent.verticalCenter
                         spacing: 9
                         Rectangle { width: 6; height: 6; radius: 3; color: Theme.success; anchors.verticalCenter: parent.verticalCenter }
-                        Text { text: appState && appState.cloudEnabled ? (appState.cloudTeamName || "Team workspace") : "This computer"; font.pixelSize: 11; color: Theme.muted }
+                        Text { textFormat: Text.PlainText; text: appState && appState.cloudEnabled ? (appState.cloudTeamName || "Team workspace") : "This computer"; font.pixelSize: 11; color: Theme.muted }
                     }
                 }
                 Loader {
@@ -154,6 +154,7 @@ ApplicationWindow {
             Rectangle { width: 7; height: 7; radius: 4; color: "#d1f366"; anchors.verticalCenter: parent.verticalCenter }
             Text {
                 id: toastText
+                textFormat: Text.PlainText
                 text: appToast.text
                 color: "#edf4e6"
                 font.pixelSize: 12

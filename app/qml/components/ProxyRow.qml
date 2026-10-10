@@ -40,7 +40,7 @@ Rectangle {
             radius: 9
             color: root.selected ? Theme.primary : "transparent"
             border.color: root.selected ? Theme.primaryLight : Theme.border
-            Text { anchors.centerIn: parent; text: root.selected ? "✓" : ""; color: Theme.primaryText; font.weight: Font.DemiBold; font.pixelSize: 11 }
+            Text { anchors.centerIn: parent; textFormat: Text.PlainText; text: root.selected ? "✓" : ""; color: Theme.primaryText; font.weight: Font.DemiBold; font.pixelSize: 11 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.selectionToggled(root.pool, root.proxyIndex, !root.selected) }
         }
 
@@ -55,14 +55,15 @@ Rectangle {
             Layout.preferredWidth: 168
             Layout.minimumWidth: 110
             spacing: 1
-            Text { text: root.name; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-            Text { text: root.location; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
+            Text { textFormat: Text.PlainText; text: root.name; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+            Text { textFormat: Text.PlainText; text: root.location; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
         }
 
         Text {
             Layout.fillWidth: true
             Layout.minimumWidth: 140
             text: root.address
+            textFormat: Text.PlainText
             color: Theme.muted
             font.family: Theme.monoFamily
             font.pixelSize: 11
@@ -74,7 +75,7 @@ Rectangle {
             Layout.preferredHeight: 19
             radius: 6
             color: Theme.subtle
-            Text { id: typeLabel; anchors.centerIn: parent; text: root.type; color: Theme.primaryLight; font.pixelSize: 9; font.weight: Font.DemiBold; font.letterSpacing: 0.5 }
+            Text { id: typeLabel; anchors.centerIn: parent; textFormat: Text.PlainText; text: root.type; color: Theme.primaryLight; font.pixelSize: 9; font.weight: Font.DemiBold; font.letterSpacing: 0.5 }
         }
 
         Text {

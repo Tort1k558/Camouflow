@@ -362,3 +362,23 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 - Documentation rebuilt: **35 pages, zero errors/warnings**.
 - Fresh CI `38005684654` (`c1e72c23`), `38005347486` (`6b5e4118`) and
   `38005203849` (`aef395f5`): **success**.
+
+## Iteration 13 — metadata must not fetch images or become rich text
+
+- Reproduced a profile name containing an HTML image causing one actual network
+  request to an isolated loopback fixture. After explicit plain-text labels: zero
+  requests and literal tag display in real Windows Qt screenshots.
+- [Qt documents automatic rich-text detection and remote inline images](https://doc.qt.io/qt-6/qml-qtquick-text.html#textFormat-prop).
+  Applied plain-text rendering to user/cloud/profile/proxy/scenario/marketplace
+  names, descriptions, logs, metadata and shared presentation components. This is
+  not a browser-JavaScript execution finding; no secret exfiltration was demonstrated.
+- Native CheckBox also fetched the fixture image. Native ItemDelegate rendered
+  ordinary text but crashed with an inline-image label on this Qt 6.11 host.
+  Added small plain-text CheckBox/ComboBox data-label components, retaining native
+  interaction/background/indicator behavior. Only untrusted-data selectors and
+  checkboxes use them; engine/status option controls remain unchanged.
+- Real-QML regression covers ten common components and opened selector popups
+  for string arrays, object arrays and the actual DictListModel. Selection and
+  activation still work, image requests remain zero, no QML warnings.
+  Focused QML suite: **5 passed**. Final full suite after selector wrappers:
+  **182 passed**. Current-source packaged rebuild still pending.

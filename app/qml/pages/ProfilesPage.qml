@@ -154,6 +154,7 @@ Item {
                 border.color: model.selected ? Theme.primaryLight : Theme.border
                 Text {
                     id: tagText
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: model.name + "  " + model.count
                     color: model.selected ? Theme.primaryText : Theme.muted
@@ -239,14 +240,14 @@ Item {
                     Rectangle {
                         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
                         height: 40; radius: Theme.radiusSm; color: Theme.subtle; border.color: Theme.border
-                        ComboBox {
+                        PlainComboBox {
                             id: importProxyPool
                             anchors.fill: parent
                             anchors.margins: 6
                             model: proxiesBridge.poolsModel
                             textRole: "name"
                             background: Item {}
-                            contentItem: Text { text: importProxyPool.displayText || "Default"; color: Theme.text; verticalAlignment: Text.AlignVCenter; font.pixelSize: 13 }
+                            contentItem: Text { text: importProxyPool.displayText || "Default"; textFormat: Text.PlainText; color: Theme.text; verticalAlignment: Text.AlignVCenter; font.pixelSize: 13 }
                         }
                     }
                 }
@@ -316,7 +317,7 @@ Item {
                     radius: 11
                     color: Theme.subtle
                     border.color: Theme.border
-                    Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
+                    Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; textFormat: Text.PlainText; text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
                     PrimaryButton { anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter; width: 34; height: 28; text: ""; icon: "trash"; danger: true; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: { settingsBridge.deleteStage(model.name); profilesBridge.refresh() } }
                 }
             }
@@ -385,7 +386,7 @@ Item {
                         rowSpacing: 14
                         FormField { id: editName; Layout.fillWidth: true; label: "Name" }
                         FormField { id: editStage; Layout.fillWidth: true; label: "Tag / Scenario" }
-                        ComboBox {
+                        PlainComboBox {
                             id: editProxyChoice
                             Layout.fillWidth: true; Layout.columnSpan: 2
                             model: root.proxyChoices; textRole: "label"

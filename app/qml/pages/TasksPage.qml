@@ -80,7 +80,7 @@ Item {
                         ColumnLayout {
                             Layout.fillWidth: true; spacing: 6
                             Text { text: "Browser profile"; color: Theme.muted; font.pixelSize: 12 }
-                            ComboBox { id: profile; objectName: "taskProfileSelector"; Layout.fillWidth: true; model: profilesBridge.selectionModel; textRole: "name" }
+                            PlainComboBox { id: profile; objectName: "taskProfileSelector"; Layout.fillWidth: true; model: profilesBridge.selectionModel; textRole: "name" }
                         }
                         Repeater {
                             model: fields

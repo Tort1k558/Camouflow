@@ -153,6 +153,7 @@ Item {
                             anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                             anchors.margins: 14
                             text: browserSettingsBridge.compatibilityReport === "Not checked" ? "Run a compatibility check to verify this engine installation." : browserSettingsBridge.compatibilityReport
+                            textFormat: Text.PlainText
                             color: browserSettingsBridge.compatibilityReport.indexOf("Blocked") >= 0 ? Theme.danger : Theme.muted
                             font.pixelSize: 13; wrapMode: Text.WordWrap
                         }

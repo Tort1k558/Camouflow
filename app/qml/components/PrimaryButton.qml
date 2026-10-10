@@ -30,7 +30,7 @@ Rectangle {
         anchors.centerIn: parent
         spacing: root.iconOnly || root.text === "" ? 0 : 8
         LineIcon { visible: root.icon !== ""; name: root.icon; color: root.danger ? Theme.danger : root.secondary ? Theme.muted : Theme.primaryText; size: 16; anchors.verticalCenter: parent.verticalCenter }
-        Text { id: label; visible: !root.iconOnly && root.text !== ""; text: root.text; color: root.danger ? Theme.danger : Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
+        Text { id: label; visible: !root.iconOnly && root.text !== ""; textFormat: Text.PlainText; text: root.text; color: root.danger ? Theme.danger : Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
     }
     MouseArea { id: mouse; anchors.fill: parent; enabled: root.enabled; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { root.forceActiveFocus(); root.clicked() } }
     ToolTip.visible: mouse.containsMouse && (root.tooltip !== "" || root.iconOnly || root.text === "")

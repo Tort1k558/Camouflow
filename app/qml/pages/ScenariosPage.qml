@@ -97,8 +97,8 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.margins: 14
                         spacing: 4
-                        Text { text: scenariosBridge.selectedName || "Select scenario"; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                        Text { text: scenariosBridge.selectedDescription || "Click to choose/create"; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
+                        Text { textFormat: Text.PlainText; text: scenariosBridge.selectedName || "Select scenario"; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                        Text { textFormat: Text.PlainText; text: scenariosBridge.selectedDescription || "Click to choose/create"; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
                     }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: scenarioDialog.open() }
                 }
@@ -134,12 +134,12 @@ Item {
                             Row {
                                 width: parent.width
                                 spacing: 8
-                                Text { text: model.status; color: model.accent; font.pixelSize: 11; font.weight: Font.DemiBold }
-                                Text { text: model.duration; color: Theme.dim; font.pixelSize: 11 }
-                                Text { text: model.started; color: Theme.dim; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width - 120 }
+                                Text { textFormat: Text.PlainText; text: model.status; color: model.accent; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                Text { textFormat: Text.PlainText; text: model.duration; color: Theme.dim; font.pixelSize: 11 }
+                                Text { textFormat: Text.PlainText; text: model.started; color: Theme.dim; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width - 120 }
                             }
-                            Text { text: model.scenario + " / " + model.profile; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                            Text { visible: model.error !== ""; text: model.error; color: Theme.danger; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: model.scenario + " / " + model.profile; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                            Text { visible: model.error !== ""; textFormat: Text.PlainText; text: model.error; color: Theme.danger; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
                         }
                     }
                 }
@@ -157,8 +157,8 @@ Item {
                         radius: 10
                         color: model.selected ? Theme.selection : Theme.input
                         border.color: model.selected ? Theme.primary : Theme.border
-                        Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.name; color: model.selected ? Theme.primaryLight : Theme.muted; font.pixelSize: 12; font.weight: Font.DemiBold }
-                        Text { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.count; color: Theme.dim; font.pixelSize: 11 }
+                        Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; textFormat: Text.PlainText; text: model.name; color: model.selected ? Theme.primaryLight : Theme.muted; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        Text { anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter; textFormat: Text.PlainText; text: model.count; color: Theme.dim; font.pixelSize: 11 }
                         MouseArea { anchors.fill: parent; onClicked: scenariosBridge.setCategory(model.name) }
                     }
                 }
@@ -178,7 +178,7 @@ Item {
                         border.color: Theme.border
                         Row { anchors.fill: parent; anchors.margins: 12; spacing: 12
                             Rectangle { width: 30; height: 30; radius: 12; color: Theme.primary; Text { anchors.centerIn: parent; text: "+"; color: Theme.primaryText; font.weight: Font.DemiBold } }
-                            Column { width: parent.width - 42; spacing: 2; Text { width: parent.width; elide: Text.ElideRight; text: model.title; color: Theme.text; font.weight: Font.DemiBold; font.pixelSize: 13 } Text { width: parent.width; elide: Text.ElideRight; text: model.subtitle; color: Theme.dim; font.pixelSize: 12 } }
+                            Column { width: parent.width - 42; spacing: 2; Text { width: parent.width; elide: Text.ElideRight; textFormat: Text.PlainText; text: model.title; color: Theme.text; font.weight: Font.DemiBold; font.pixelSize: 13 } Text { width: parent.width; elide: Text.ElideRight; textFormat: Text.PlainText; text: model.subtitle; color: Theme.dim; font.pixelSize: 12 } }
                         }
                         MouseArea { anchors.fill: parent; enabled: scenariosBridge.canManage; onClicked: scenariosBridge.addAction(model.action) }
                     }
@@ -314,7 +314,7 @@ Item {
                     }
                     Text { visible: stepAction.text !== "python"; text: "Raw step"; color: Theme.dim; font.pixelSize: 12 }
                     Rectangle { visible: stepAction.text !== "python"; width: parent.width; height: 110; radius: Theme.radiusSm; color: Theme.background; border.color: Theme.border
-                        Text { anchors.fill: parent; anchors.margins: 10; text: scenariosBridge.selectedStepJson; color: Theme.muted; font.family: "Consolas"; font.pixelSize: 11; wrapMode: Text.Wrap; elide: Text.ElideRight }
+                        Text { anchors.fill: parent; anchors.margins: 10; textFormat: Text.PlainText; text: scenariosBridge.selectedStepJson; color: Theme.muted; font.family: "Consolas"; font.pixelSize: 11; wrapMode: Text.Wrap; elide: Text.ElideRight }
                     }
                 }
             }
@@ -373,6 +373,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: parent.width - 92
                                 text: "[" + model.type + "] " + model.key + ": " + model.value
+                                textFormat: Text.PlainText
                                 color: Theme.muted
                                 font.pixelSize: 12
                                 elide: Text.ElideRight
@@ -504,8 +505,8 @@ Item {
                         radius: 12
                         color: scenariosBridge.selectedName === model.name ? Theme.selection : Theme.subtle
                         border.color: scenariosBridge.selectedName === model.name ? Theme.primary : Theme.border
-                        Text { anchors.left: parent.left; anchors.leftMargin: 14; anchors.top: parent.top; anchors.topMargin: 8; text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width - 70 }
-                        Text { anchors.left: parent.left; anchors.leftMargin: 14; anchors.bottom: parent.bottom; anchors.bottomMargin: 8; text: model.steps + " steps"; color: Theme.dim; font.pixelSize: 11 }
+                        Text { anchors.left: parent.left; anchors.leftMargin: 14; anchors.top: parent.top; anchors.topMargin: 8; textFormat: Text.PlainText; text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width - 70 }
+                        Text { anchors.left: parent.left; anchors.leftMargin: 14; anchors.bottom: parent.bottom; anchors.bottomMargin: 8; textFormat: Text.PlainText; text: model.steps + " steps"; color: Theme.dim; font.pixelSize: 11 }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: scenariosBridge.selectScenario(model.name) }
                     }
                 }

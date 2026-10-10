@@ -52,7 +52,7 @@ Flickable {
                                 width: parent.width
                                 Repeater {
                                     model: profilesBridge.selectionModel
-                                    CheckBox {
+                                    PlainCheckBox {
                                         text: model.name
                                         checked: operationsBridge.selectedProfiles.split("\n").indexOf(model.name) >= 0
                                         onClicked: operationsBridge.selectProfile(model.name, checked)
@@ -64,7 +64,7 @@ Flickable {
                     ColumnLayout {
                         Layout.fillWidth: true; Layout.preferredWidth: 1
                         Text { text: "Scenario"; color: Theme.muted }
-                        ComboBox { id: scenario; Layout.fillWidth: true; model: scenariosBridge.model; textRole: "name"; onCountChanged: { var selected = find(scenariosBridge.selectedName); if (selected >= 0) currentIndex = selected } }
+                        PlainComboBox { id: scenario; Layout.fillWidth: true; model: scenariosBridge.model; textRole: "name"; onCountChanged: { var selected = find(scenariosBridge.selectedName); if (selected >= 0) currentIndex = selected } }
                         FormField { id: scheduled; Layout.fillWidth: true; label: "Local time (empty = now)"; placeholder: "YYYY-MM-DD HH:MM" }
                     }
                 }
