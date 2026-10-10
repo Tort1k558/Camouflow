@@ -34,7 +34,9 @@ but a browser startup failure cannot capture a page that never opened.
 Browser-event capture is engine-dependent. Native synthetic checks observed
 Camoufox console messages and request failures on both engines, but CloakBrowser
 did not forward explicit `console.log/warn/error` calls, and neither engine
-forwarded the tested timer-thrown page error. An empty events list is not proof
+forwarded a timer error scheduled through `page.evaluate`. A separate HTML-script
+test did capture Camoufox's uncaught page error, but not CloakBrowser's. This
+distinguishes page-script errors from evaluated-script errors. An empty events list is not proof
 that the page had no errors. HTML, screenshots and traces may contain signed-in
 pages or sensitive data: review locally and do not upload them to untrusted
 services.

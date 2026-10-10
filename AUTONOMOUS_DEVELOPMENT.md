@@ -1064,3 +1064,33 @@ n8n import/static-command/browser CLI/JSON export/history/parse-result passed.
 Both use existing separate integration runtimes, no desktop dependency changes.
 Fresh CI 6a773c1 run **38026742763** completed successfully. Current full 13-page
 QML recipe passed; Retype **35 pages, zero errors/warnings**, built not published.
+
+## Iteration 44 - strengthen native cookie and diagnostic integration proof
+
+Actual Windows QML Save clicks now exercised the real asynchronous cookie worker,
+not its intercepted UI seam. Both engines acquired/released operation ownership,
+rejected an already-owned profile, kept GUI heartbeats processing during the
+browser worker and saved a persistent synthetic cookie. Reopening each actual
+browser verified the saved value. Zero QML warnings; owned workspace cleaned.
+This complements the earlier confirmation/cancel test and controlled native
+rollback boundary, without implying crash-safe cookie transactions.
+
+Refined the native event audit to distinguish evaluated scripts from real HTML
+scripts. Camoufox captured the HTML page's uncaught timer error; neither engine
+forwarded the page.evaluate timer error. CloakBrowser forwarded failed requests
+but not explicit console calls or the HTML page error; raw Runtime CDP also
+remained empty. Corrected the guide rather than implying all Camoufox errors
+are missing. [PinchTab's own CloakBrowser integration documentation](https://pinchtab.com/docs/cloakbrowser/#console-log-capture)
+describes related Runtime-event suppression and a different capture path; it
+does not establish our installed binary's precise upstream cause or detection
+trade-offs. No fallback, page instrumentation, stealth changes or dependency
+upgrade were added. Current wrapper 0.3.28 is kept for this verified build.
+
+Fresh native Windows reruns passed dedicated path/junction, profile import,
+actual archive-worker callbacks, stale proxy-dialog clicks and minimum-window
+Runs filters/screenshots with zero warnings. Live production responsive checks
+passed after the resource-guard cutover; isolated API roles/audit pagination,
+OAuth failure/history fragment removal and readable validation passed again.
+Seven canonical private host source/handoff files were byte-hash verified;
+the immutable image stayed unchanged, all prior upstreams remained healthy,
+and original API/PostgreSQL/Caddy/VPN start timestamps were preserved.
