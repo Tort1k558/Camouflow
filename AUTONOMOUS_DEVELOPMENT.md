@@ -658,3 +658,28 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 - Real Windows QML opened B's dialog, changed the synthetic inventory, then
   clicked Save: rejection displayed, C unchanged, dialog closed, zero warnings.
   No real profiles/endpoints or user data touched. Current package rebuild pending.
+
+## Iteration 27 — reset selection before a workspace fetch can fail
+
+- Reproduced workspace refresh clearing proxy rows but retaining old positional
+  bulk selection until a successful inventory read. Switching cloud → local with
+  a delayed/failed read could leave stale bulk targets available in the new mode.
+- Clear selection synchronously with the existing workspace-cache reset, before
+  background submission. One focused regression failed before and passes after;
+  browser-settings **80 passed**, critical/import Ruff passed. Same-workspace
+  ordinary refresh retains existing behavior.
+- Private staged follow-up: reproduced cloud value edits inheriting old TCP
+  health, probes marking an edited endpoint healthy, and deletion during a probe
+  raising StaleDataError. Endpoint edits reset implicit health; conditional SQL
+  persistence discards stale results. Explicit caller-supplied health remains
+  supported. Private full suite **117 passed**; PostgreSQL rollout still pending.
+- Private staged post-login recovery: actual successful login followed by auth/me
+  503 erased newly issued tokens. Built UI now retains them, opens explicit session
+  recovery and Retry succeeds. Normal superadmin navigation remains unchanged.
+- Read-only production investigation: five HTTPS health requests bound to the
+  physical Ethernet interface succeeded with verified TLS 1.3; active VPN/core
+  untouched. This is a separate path, not proof of the earlier default-path EOF
+  cause. Next cutover should measure both paths simultaneously.
+- Synthetic performance baseline: 10,000 cached proxy entries, five unmatched
+  searches **175.9–180.7ms**, median **179.3ms**. URL parsing still repeats on each
+  filter despite no network calls; investigate bounded display-cache reuse.

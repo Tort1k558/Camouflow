@@ -277,6 +277,7 @@ class ProxiesBridge(QObject):
             return
         session = get_server_session()
         if session != self._cache_session:
+            self._selected.clear()
             self._server_pools = {}
             self._pools_cache = {}
             self._render_pools()

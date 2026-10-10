@@ -403,6 +403,23 @@ def test_local_proxy_edit_keeps_health_only_for_unchanged_endpoint(monkeypatch, 
         assert (field not in entry) == changed
 
 
+def test_proxy_workspace_switch_clears_selection_before_background_read(monkeypatch):
+    from PyQt6.QtCore import QThread
+
+    from app.ui.bridge import proxies
+
+    local = SimpleNamespace(enabled=False)
+    monkeypatch.setattr(proxies, "get_server_session", lambda: local)
+    bridge = SimpleNamespace(_cache_session=SimpleNamespace(enabled=True), _selected={("QA", 0)},
+                             _server_pools={"QA": {}}, _pools_cache={"QA": {"proxies": [{"id": "cloud-id"}]}},
+                             _render_pools=Mock(), _read=SimpleNamespace(submit=Mock()), _fetch_refresh=Mock(),
+                             thread=lambda: QThread.currentThread())
+    proxies.ProxiesBridge.refresh(bridge)
+    assert not bridge._selected
+    assert not bridge._pools_cache
+    bridge._read.submit.assert_called_once_with(bridge._fetch_refresh)
+
+
 def test_proxy_filters_use_cached_metadata_preserve_indices_and_pool_stats():
     from app.ui.bridge.models import DictListModel
     from app.ui.bridge.proxies import ProxiesBridge
