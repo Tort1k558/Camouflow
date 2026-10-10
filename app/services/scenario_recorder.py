@@ -1,4 +1,4 @@
-"""Single-tab browser action capture. No browser or UI ownership."""
+"""Browser action capture using the existing replay frame selectors."""
 
 from __future__ import annotations
 
@@ -10,8 +10,10 @@ from urllib.parse import urlsplit
 
 RECORDER_SCRIPT = r"""
 (() => {
-    if (window.__camouflowRecording) return;
+    // Firefox can replace an iframe's initial document without replacing its window.
+    if (window.__camouflowRecording && window.__camouflowRecordingDocument === document) return;
     window.__camouflowRecording = true;
+    window.__camouflowRecordingDocument = document;
     const pending = new Set();
     let enterForm = null;
     let enterAt = 0;
@@ -46,11 +48,10 @@ RECORDER_SCRIPT = r"""
     };
     const emit = (el, action, value = '') => {
         if (!window.__camouflowRecording) return;
-        if (window !== window.top) { send({warning: 'Iframe actions are not supported in this recording version.'}); return; }
         const target = selector(el);
         if (!target) { send({warning: 'An element has no unique stable selector. Add this step manually.'}); return; }
         const password = el.type === 'password';
-        const sensitive = password || /password|one-time-code|cc-number|cc-csc/.test(el.autocomplete || '');
+        const sensitive = password || /password|one-time-code|cc-number|cc-csc/i.test(el.getAttribute('autocomplete') || '');
         const label = (el.getAttribute('aria-label') || (el.labels && el.labels[0] ? el.labels[0].textContent : '') || el.getAttribute('placeholder') || '').trim().replace(/\s+/g, ' ').slice(0, 100);
         send({action, selector: target, value: sensitive && action === 'type' ? '' : value, sensitive, password, field_label: label});
     };
@@ -88,6 +89,18 @@ RECORDER_SCRIPT = r"""
 })();
 """
 
+FRAME_SELECTOR_SCRIPT = r"""el => {
+    for (const attr of ['data-testid', 'id', 'name', 'aria-label', 'title']) {
+        const value = el.getAttribute(attr);
+        if (!value || value.includes('{{')) continue;
+        const candidate = el.tagName.toLowerCase() + '[' + attr + '=' + JSON.stringify(value) + ']';
+        try {
+            if (el.ownerDocument.querySelectorAll(candidate).length === 1) return candidate;
+        } catch (_) {}
+    }
+    return '';
+}"""
+
 
 class ScenarioRecorder:
     MAX_STEPS = 1000
@@ -99,6 +112,7 @@ class ScenarioRecorder:
         self.page = None
         self._last_action_at = 0.0
         self._secrets = {}
+        self._event_lock = asyncio.Lock()
         self._on_change = on_change or (lambda: None)
 
     def snapshot(self):
@@ -118,11 +132,38 @@ class ScenarioRecorder:
         self.steps.append(step)
         self._on_change()
 
-    def receive(self, source, payload):
+    async def _frame_selectors(self, frame):
+        selectors = []
+        while frame != self.page.main_frame:
+            if frame is None or len(selectors) >= 8:
+                self.warn("A frame outside the recorded document or deeper than 8 levels was skipped.")
+                return None
+            try:
+                element = await frame.frame_element()
+                selector = await element.evaluate(FRAME_SELECTOR_SCRIPT)
+            except Exception:
+                self.warn("A detached frame action was skipped; review the draft.")
+                return None
+            if not isinstance(selector, str) or not selector or len(selector) > 2000:
+                self.warn("An iframe needs a unique stable id, name or test attribute to record its actions.")
+                return None
+            selectors.insert(0, selector)
+            frame = frame.parent_frame
+        return selectors
+
+    async def _receive_event(self, source, payload):
+        async with self._event_lock:
+            if not self.active or source["page"] != self.page:
+                return
+            selectors = await self._frame_selectors(source["frame"])
+            if selectors is not None:
+                self.receive(source, payload, frame_selectors=selectors)
+
+    def receive(self, source, payload, *, frame_selectors=None):
         if not self.active or not isinstance(payload, dict):
             return
-        if source["page"] != self.page or source["frame"] != self.page.main_frame:
-            self.warn("Only the initial tab and its main frame are recorded.")
+        if source["page"] != self.page or (source["frame"] != self.page.main_frame and frame_selectors is None):
+            self.warn("An action outside the recorded tab or with no verified frame was skipped.")
             return
         if payload.get("warning"):
             self.warn(str(payload["warning"])[:200])
@@ -139,11 +180,14 @@ class ScenarioRecorder:
             self.warn("An oversized field was skipped.")
             return
         step = {"action": action, "selector": selector, "selector_type": "css", "timeout_ms": 15000}
+        if frame_selectors:
+            step["frame_selector"] = list(frame_selectors)
         label = payload.get("field_label")
         if isinstance(label, str) and label.strip():
             step["field_label"] = label.strip()[:100]
         if action == "type" and payload.get("sensitive"):
-            variable = "password" if payload.get("password") else self._secrets.setdefault(selector, f"recorded_secret_{len(self._secrets) + 1}")
+            scope = (tuple(frame_selectors or []), selector)
+            variable = "password" if payload.get("password") else self._secrets.setdefault(scope, f"recorded_secret_{len(self._secrets) + 1}")
             value = "{{" + variable + "}}"
             step["required_variable"] = variable
             self.warn("Sensitive fields use profile variables; their values are not recorded.")
@@ -154,7 +198,7 @@ class ScenarioRecorder:
             step["value"] = value
         if action == "type":
             step["clear"] = True
-        if action == "type" and self.steps[-1].get("action") == "type" and self.steps[-1].get("selector") == selector:
+        if action == "type" and self.steps[-1].get("action") == "type" and self.steps[-1].get("selector") == selector and self.steps[-1].get("frame_selector", []) == (frame_selectors or []):
             step["tag"] = self.steps[-1]["tag"]
             self.steps[-1] = step
             self._on_change()
@@ -166,7 +210,6 @@ class ScenarioRecorder:
         if not self.active:
             return
         if frame != self.page.main_frame:
-            self.warn("A frame was loaded. Its actions are not recorded; review the draft.")
             return
         url = frame.url
         parsed = urlsplit(url)
@@ -184,12 +227,26 @@ class ScenarioRecorder:
     async def attach(self, page):
         self.page = page
         self.active = True
-        await page.context.expose_binding("__camouflowRecord", self.receive)
+        await page.context.expose_binding("__camouflowRecord", self._receive_event)
         await page.evaluate("window.__camouflowRecord({})")
         await page.context.add_init_script(RECORDER_SCRIPT)
-        await page.evaluate(RECORDER_SCRIPT)
-        page.on("framenavigated", self.navigated)
+        for frame in page.frames:
+            try:
+                await frame.evaluate(RECORDER_SCRIPT)
+            except Exception:
+                self.warn("A frame could not be instrumented; review its actions before replay.")
+        page.on("framenavigated", self._frame_navigated)
         page.context.on("page", self._new_page)
+
+    async def _frame_navigated(self, frame):
+        if not self.active:
+            return
+        self.navigated(frame)
+        try:
+            await frame.evaluate(RECORDER_SCRIPT)
+        except Exception:
+            if self.active:
+                self.warn("A frame could not be instrumented; review its actions before replay.")
 
     def _new_page(self, page):
         if self.active:
@@ -198,12 +255,14 @@ class ScenarioRecorder:
     async def stop(self):
         if self.page is not None and not self.page.is_closed():
             try:
-                failed = await asyncio.wait_for(self.page.evaluate("window.__camouflowStopRecording?.()"), timeout=3)
-                if failed:
+                results = await asyncio.wait_for(asyncio.gather(*[
+                    frame.evaluate("window.__camouflowStopRecording?.()") for frame in self.page.frames
+                ], return_exceptions=True), timeout=3)
+                if any(isinstance(result, Exception) or result for result in results):
                     self.warn("Some browser events could not be delivered. Review this draft before replay.")
             except Exception:
                 self.warn("Could not flush the last browser events. Review the final steps.")
         self.active = False
         if self.page is not None:
-            self.page.remove_listener("framenavigated", self.navigated)
+            self.page.remove_listener("framenavigated", self._frame_navigated)
             self.page.context.remove_listener("page", self._new_page)

@@ -1782,3 +1782,24 @@ green styling, keep server sources private, and verify each capability separatel
   PyInstaller build and actual packaged Camoufox/CloakBrowser runtime/timeout
   checks. Native Linux/macOS execution is delegated to their own CI runners and
   must be inspected before reporting platform support as achieved.
+
+### Recorder frame capture - 2026-10-11
+
+- Camoufox recording now captures nested iframe actions using the existing
+  replay `frame_selector` chain, derived from actual frame elements rather than
+  page-supplied scope. Frames without unique stable identifiers are skipped with
+  a visible warning. Same-selector edits and sensitive variables are frame-scoped.
+- Actual local browser verification recorded and replayed eight steps across a
+  main document and two nested frames: text, a single-choice select, a checkbox
+  and clicks. The one-time-code literal was excluded and replay used a variable.
+  Test storage was isolated; no customer profiles or sessions were used.
+- Fixed iframe instrumentation after Firefox replaces the initial document,
+  and read the raw autocomplete attribute for sensitive-field detection.
+- Frame lookups preserve received event order. Full local regression suite:
+  **576 passed**; actual Camoufox recording/replay passed again after this check.
+- CloakBrowser recording remains disabled: its live event-delivery check did
+  not pass. Popup/file/multi-select/rich-text recording remains pending. This is
+  a verified Recorder increment, not completion of Recorder 2.0.
+- Native CI for the platform foundation passed Windows/Linux Python and QML
+  checks, but the macOS inline-image regression subprocess exceeded 20 seconds;
+  package jobs were correctly gated off. Platform readiness is not established.

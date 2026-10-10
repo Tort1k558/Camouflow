@@ -91,7 +91,7 @@ def test_run_inputs_are_not_persisted_as_profile_defaults(tmp_path):
     assert json.loads(runner._profile_vars_path.read_text(encoding="utf-8")) == {"other": "keep"}
 
 
-def test_unrecorded_frames_produce_a_warning_even_without_delivered_events():
+def test_frame_navigation_does_not_insert_main_document_navigation():
     from app.services.scenario_recorder import ScenarioRecorder
 
     recorder = ScenarioRecorder()
@@ -99,8 +99,7 @@ def test_unrecorded_frames_produce_a_warning_even_without_delivered_events():
     recorder.page = SimpleNamespace(main_frame=object())
     recorder.navigated(object())
     recorder.navigated(object())
-    assert len(recorder.warnings) == 1
-    assert "frame" in recorder.warnings[0]
+    assert recorder.warnings == []
     assert len(recorder.steps) == 1
 
 
