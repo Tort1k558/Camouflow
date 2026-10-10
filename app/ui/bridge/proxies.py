@@ -42,6 +42,7 @@ class ProxiesBridge(QObject):
         self._active = 0
         self._checking = 0
         self._failed = 0
+        self._unchecked = 0
         self._locations = 0
         if app_state is not None:
             app_state.refreshRequested.connect(self.refresh)
@@ -146,6 +147,10 @@ class ProxiesBridge(QObject):
         return self._failed
 
     @pyqtProperty(int, notify=statsChanged)
+    def unchecked(self) -> int:
+        return self._unchecked
+
+    @pyqtProperty(int, notify=statsChanged)
     def locations(self) -> int:
         return self._locations
 
@@ -180,7 +185,10 @@ class ProxiesBridge(QObject):
                 group = str(proxy.get("group_name") or "Default")
                 check = proxy.get("last_check") if isinstance(proxy.get("last_check"), dict) else {}
                 if not check:
-                    check = {"status": proxy.get("status") or "active", "country": proxy.get("country") or ""}
+                    raw_status = str(proxy.get("status") or "").lower()
+                    check = {"status": raw_status if raw_status in {"fail", "failed", "checking", "quarantined"} else "unchecked", "country": proxy.get("country") or ""}
+                else:
+                    check = {**check, "mode": check.get("mode") or "tcp"}
                 pools.setdefault(group, {"proxies": []})["proxies"].append({
                     "id": str(proxy.get("id") or ""),
                     "name": str(proxy.get("name") or ""),
@@ -267,7 +275,7 @@ class ProxiesBridge(QObject):
             + pool_rows
         )
         rows: List[Dict[str, Any]] = []
-        active = checking = failed = 0
+        active = checking = failed = unchecked = 0
         locations = set()
         for pool_name, pool in sorted(pools.items()):
             if self._selected_pool and pool_name != self._selected_pool:
@@ -278,19 +286,28 @@ class ProxiesBridge(QObject):
                 if not value:
                     continue
                 check = entry.get("last_check") if isinstance(entry, dict) else {}
-                status_raw = str(check.get("status") or "active").lower() if isinstance(check, dict) else "active"
+                status_raw = str(check.get("status") or "unchecked").lower() if isinstance(check, dict) else "unchecked"
                 quarantined = isinstance(entry, dict) and self._is_quarantined(entry)
-                status = "Quarantined" if quarantined else ("Active" if status_raw in {"ok", "active"} else "Checking" if status_raw == "checking" else "Failed")
-                if status == "Active":
+                if quarantined:
+                    status = "Quarantined"
+                elif status_raw in {"ok", "active"}:
+                    status = "Reachable" if check.get("mode") == "tcp" else "Active"
+                else:
+                    status = {"checking": "Checking", "unchecked": "Unchecked"}.get(status_raw, "Failed")
+                if status in {"Active", "Reachable"}:
                     active += 1
                 elif status == "Checking":
                     checking += 1
+                elif status == "Unchecked":
+                    unchecked += 1
                 else:
                     failed += 1
                 country = str(check.get("country") or "") if isinstance(check, dict) else ""
                 city = str(check.get("city") or "") if isinstance(check, dict) else ""
-                location = ", ".join(p for p in [city, country] if p) or pool_name
-                locations.add(location)
+                geo_location = ", ".join(p for p in [city, country] if p)
+                location = geo_location or pool_name
+                if geo_location:
+                    locations.add(geo_location)
                 type_label = "SOCKS5" if "socks" in value.lower() else "HTTP"
                 latency = check.get("ms") if isinstance(check, dict) else None
                 rows.append({
@@ -301,11 +318,12 @@ class ProxiesBridge(QObject):
                     "type": type_label,
                     "latency": f"{latency}ms" if isinstance(latency, int) else "?",
                     "status": status,
-                    "accent": "#3f714a" if status == "Active" else "#94671c" if status in {"Checking", "Quarantined"} else "#b33d47",
+                    "accent": "#3f714a" if status == "Active" else "#94671c" if status in {"Checking", "Quarantined"} else "#b33d47" if status == "Failed" else "#737e6b",
                     "index": pool_index,
                     "selected": (pool_name, pool_index) in self._selected,
                 })
         self._active, self._checking, self._failed, self._locations = active, checking, failed, len(locations)
+        self._unchecked = unchecked
         self._model.set_rows(rows)
         self.modelChanged.emit()
         self.statsChanged.emit()

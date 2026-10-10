@@ -22,7 +22,8 @@ Item {
             spacing: 0
             Repeater {
                 model: [
-                    { label: "ACTIVE", value: root.bridge ? root.bridge.active : 0, color: Theme.success },
+                    { label: "REACHABLE", value: root.bridge ? root.bridge.active : 0, color: Theme.success },
+                    { label: "UNCHECKED", value: root.bridge ? root.bridge.unchecked : 0, color: Theme.dim },
                     { label: "CHECKING", value: root.bridge ? root.bridge.checking : 0, color: Theme.warning },
                     { label: "FAILED", value: root.bridge ? root.bridge.failed : 0, color: Theme.danger },
                     { label: "LOCATIONS", value: root.bridge ? root.bridge.locations : 0, color: Theme.primaryLight },

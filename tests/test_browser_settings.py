@@ -248,3 +248,46 @@ def test_proxy_list_address_never_displays_credentials(value, expected):
     from app.core.proxy_utils import proxy_display_address
 
     assert proxy_display_address(value) == expected
+
+
+def test_proxy_inventory_distinguishes_unchecked_tcp_and_internet_checks():
+    from app.ui.bridge.models import DictListModel
+    from app.ui.bridge.proxies import ProxiesBridge
+
+    entries = [
+        {"value": "http://synthetic-user:synthetic-secret@fresh:1080", "status": "unchecked"},
+        {"value": "http://internet:1080", "last_check": {"status": "ok", "mode": "internet"}},
+        {"value": "http://tcp:1080", "last_check": {"status": "ok", "mode": "tcp"}},
+        {"value": "http://checking:1080", "last_check": {"status": "checking"}},
+        {"value": "http://failed:1080", "last_check": {"status": "fail"}},
+        {"value": "http://quarantined:1080", "quarantine_until": "malformed"},
+    ]
+    bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": entries}}, _server_pools={}, _selected_pool="", _selected=set(),
+                             _pools_model=DictListModel(["name"]), _model=DictListModel(["status", "address"]),
+                             _is_quarantined=ProxiesBridge._is_quarantined, modelChanged=Mock(), statsChanged=Mock())
+    ProxiesBridge._render_pools(bridge)
+    rows = bridge._model.rows()
+    assert [row["status"] for row in rows] == ["Unchecked", "Active", "Reachable", "Checking", "Failed", "Quarantined"]
+    assert rows[0]["address"] == "http://fresh:1080"
+    assert "synthetic-secret" in entries[0]["value"]
+    assert (bridge._active, bridge._unchecked, bridge._checking, bridge._failed) == (2, 1, 1, 2)
+    assert bridge._locations == 0
+
+
+def test_cloud_proxy_check_scope_is_conservative_and_does_not_mutate_response(monkeypatch):
+    import copy
+    from app.ui.bridge import proxies
+
+    rows = [
+        {"value": "http://fresh:1080", "status": "active", "last_check": {}},
+        {"value": "http://legacy:1080", "last_check": {"status": "ok", "ms": 1}},
+        {"value": "http://full:1080", "last_check": {"status": "ok", "mode": "internet"}},
+    ]
+    original = copy.deepcopy(rows)
+    monkeypatch.setattr(proxies, "ServerClient", lambda session: SimpleNamespace(proxies=lambda: rows))
+    pools = proxies.ProxiesBridge._load(SimpleNamespace(), SimpleNamespace(enabled=True))
+    checks = [row["last_check"] for row in pools["Default"]["proxies"]]
+    assert checks[0]["status"] == "unchecked"
+    assert checks[1]["mode"] == "tcp"
+    assert checks[2]["mode"] == "internet"
+    assert rows == original

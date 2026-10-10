@@ -49,12 +49,19 @@ Top actions:
 
 The page shows:
 
-- active proxies
+- reachable proxies (successful checks; scope described below)
+- unchecked proxies
 - checking proxies
 - failed proxies
 - detected locations
 
 Health checks store latency, status and geo metadata in the proxy pool.
+
+New connections remain **Unchecked** until tested. **Reachable** means the cloud
+TCP check reached the host and port; it does not prove proxy authentication,
+internet access or exit location. **Active** means the desktop internet probe
+succeeded. Neither result guarantees future availability. Location statistics
+count detected locations only, not group names.
 
 Proxy lists and dashboard summaries show only the scheme, host and port, without
 credentials. The connection value is unchanged; managers can inspect/edit it in

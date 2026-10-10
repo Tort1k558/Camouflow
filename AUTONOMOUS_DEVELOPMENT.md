@@ -396,3 +396,22 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 - Next reproduced finding: a newly imported `unchecked` proxy appears Active and
   increments active statistics before any probe. Fix status honesty before adding
   inventory search/filter controls.
+
+## Iteration 15 — honest proxy health and limited cloud checks
+
+- Reproduced an unchecked import appearing Active. Desktop now distinguishes
+  Unchecked, Checking, TCP Reachable, internet Active, Failed and Quarantined;
+  the stat strip includes unchecked entries and counts actual geolocation only.
+  Legacy cloud check results are conservatively classified as TCP. Payloads and
+  connection values are not mutated by presentation.
+- Private backend adds explicit TCP mode and UTC check time to stored results.
+  It still performs only the existing TCP probe, with unchanged dependencies.
+  Private web masks proxy addresses/tooltips, labels TCP scope and renders 0ms
+  instead of treating zero as missing. These private changes are staged locally,
+  not yet deployed; the server directory remains outside public Git.
+- Full desktop **193 passed**, private backend **96 passed**. Real Windows Qt
+  minimum-window screenshot verifies five proxy states. Real browser on isolated
+  local API verifies three states, no credential text/tooltips, zero latency and
+  no document overflow at 375px. TypeScript/Vite production build passed.
+- Passive production observation is running to the mission deadline. Interim
+  15 rounds / 27 checks / zero failures is not a final stability result.
