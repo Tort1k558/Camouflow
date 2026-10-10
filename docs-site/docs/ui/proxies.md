@@ -56,6 +56,10 @@ The page shows:
 
 Health checks store latency, status and geo metadata in the proxy pool.
 
+Proxy lists and dashboard summaries show only the scheme, host and port, without
+credentials. The connection value is unchanged; managers can inspect/edit it in
+the proxy settings dialog. Treat that dialog and exported configuration as sensitive.
+
 Repeated failures quarantine a connection. Invalid or timezone-ambiguous quarantine
 expiry also remains blocked until manual release; the app does not guess a timezone.
 Checking one proxy manually can refresh its health while bulk checks skip quarantine.

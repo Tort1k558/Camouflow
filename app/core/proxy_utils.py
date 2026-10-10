@@ -322,3 +322,17 @@ def parse_proxy(proxy: str, profile_name: Optional[str] = None) -> Tuple[Optiona
         password=password,
     )
     return _build(scheme, host, port, username, password), details
+
+
+def proxy_display_address(proxy: str) -> str:
+    value = str(proxy or "").strip()
+    if not value:
+        return "None"
+    try:
+        _, details = parse_proxy(value if "://" in value else "socks5://" + value)
+    except ValueError:
+        return "Invalid proxy"
+    if details is None:
+        return "Invalid proxy"
+    host = f"[{details.host}]" if ":" in details.host else details.host
+    return f"{details.scheme}://{host}:{details.port}"

@@ -6,6 +6,7 @@ import json
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
+from app.core.proxy_utils import proxy_display_address
 from app.storage.db import db_get_accounts, db_get_scenarios, db_get_setting
 from app.services.server_client import ServerClient, ServerClientError, server_enabled, get_server_session
 from app.ui.bridge.models import DictListModel
@@ -155,7 +156,7 @@ class DashboardBridge(QObject):
         self._activity.set_rows(self._activity_rows(audit_rows, scenario_runs))
         rows = []
         for name, browser in live.items():
-            rows.append({"name": name, "browser": getattr(browser, "browser_engine", "Camoufox"), "proxy": getattr(browser, "proxy", "None") or "None", "uptime": "live", "color": "#3f714a"})
+            rows.append({"name": name, "browser": getattr(browser, "browser_engine", "Camoufox"), "proxy": proxy_display_address(getattr(browser, "proxy", "")), "uptime": "live", "color": "#3f714a"})
         active = {row["name"] for row in rows}
         for job in jobs:
             if job["status"] == "running" and job["profile"] not in active:
@@ -229,7 +230,7 @@ class DashboardBridge(QObject):
                 if status == "failed" or check_status in {"fail", "failed"}:
                     rows.append({
                         "type": "proxy",
-                        "title": str(proxy.get("name") or proxy.get("value") or "Proxy"),
+                        "title": str(proxy.get("name") or proxy_display_address(proxy.get("value") or "")),
                         "desc": str(check.get("error") or "Proxy check failed"),
                         "meta": str(pool_name),
                         "accent": "#b33d47",

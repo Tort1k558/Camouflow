@@ -382,3 +382,17 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   activation still work, image requests remain zero, no QML warnings.
   Focused QML suite: **5 passed**. Final full suite after selector wrappers:
   **182 passed**. Current-source packaged rebuild still pending.
+
+## Iteration 14 — credential-free proxy presentation
+
+- Proxy list addresses and dashboard running/failure summaries displayed raw
+  connection strings, including credentials. Added a display-only formatter using
+  the existing proxy parser. Lists show scheme/host/port; stored connection and
+  manager edit dialog remain unchanged. Invalid input never falls back to raw text.
+- Tests cover nine cases: URL/legacy formats, userinfo without scheme, encoded
+  passwords, IPv6, invalid port and malformed input. No real credentials used.
+  Browser-settings suite: **36 passed**; critical Ruff checks passed.
+  Full desktop suite: **191 passed**.
+- Next reproduced finding: a newly imported `unchecked` proxy appears Active and
+  increments active statistics before any probe. Fix status honesty before adding
+  inventory search/filter controls.

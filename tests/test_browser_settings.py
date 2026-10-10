@@ -232,3 +232,19 @@ def test_local_proxy_result_is_discarded_after_cloud_switch(monkeypatch):
     bridge = SimpleNamespace(_record_check=proxies.ProxiesBridge._record_check)
     assert not proxies.ProxiesBridge._store_local_check(bridge, "QA", "socks5://synthetic:1080", {"status": "ok"})
     save.assert_not_called()
+
+
+@pytest.mark.parametrize("value, expected", [
+    ("", "None"), ("socks5://host:1080", "socks5://host:1080"),
+    ("socks5://username:secret@host:1080", "socks5://host:1080"),
+    ("http://host:8080:username:secret", "http://host:8080"),
+    ("host:1080:username:secret", "socks5://host:1080"),
+    ("username:secret@host:1080", "socks5://host:1080"),
+    ("http://u:p%40ss@[::1]:8080", "http://[::1]:8080"),
+    ("http://u:secret@host:invalid", "Invalid proxy"),
+    ("malformed-secret", "Invalid proxy"),
+])
+def test_proxy_list_address_never_displays_credentials(value, expected):
+    from app.core.proxy_utils import proxy_display_address
+
+    assert proxy_display_address(value) == expected

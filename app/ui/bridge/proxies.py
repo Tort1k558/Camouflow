@@ -17,6 +17,7 @@ from app.ui.bridge.models import DictListModel
 from app.ui.bridge.background import BackgroundRead
 from app.services.server_client import get_server_session
 from app.services.proxy_policy import is_proxy_quarantined
+from app.core.proxy_utils import proxy_display_address
 
 
 class ProxiesBridge(QObject):
@@ -296,7 +297,7 @@ class ProxiesBridge(QObject):
                     "pool": pool_name,
                     "name": str(entry.get("name") or f"{pool_name}-{pool_index + 1:02d}") if isinstance(entry, dict) else f"{pool_name}-{pool_index + 1:02d}",
                     "location": location,
-                    "address": value,
+                    "address": proxy_display_address(value),
                     "type": type_label,
                     "latency": f"{latency}ms" if isinstance(latency, int) else "?",
                     "status": status,
