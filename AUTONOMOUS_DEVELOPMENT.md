@@ -473,3 +473,21 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   excluded); legacy schema typing style warnings were not mass-refactored.
 - Fresh CI through `cbfcc57` passed (`38009033137`); prior identity/health and
   plain-text/privacy commits also have completed successful current-head runs.
+
+## Iteration 19 — web data failures are not empty workspaces
+
+- Browser reproduced HTTP 503 silently becoming No pools yet / Members 0;
+  invite errors were discarded too. Private web now shows loading, accessible
+  errors and Retry for members, invites, pools and proxies. Pool actions/data
+  wait for successful inventory reads; retry recovers without reloading the page.
+- Overview statistics wait for data; invitations and sharing are fetched only
+  for admins/owners instead of hiding expected permission failures as empty data.
+  Share reads also retain the selected request identity through pool changes.
+- Real browser injected four independent 503 cases and verified visible errors,
+  no misleading empty counts and successful Retry. Previous-team row/owner-role
+  race still passes; proxy masking/TCP status/0ms/mobile checks still pass.
+  TypeScript/Vite build passed. Injected 503 console messages are expected, not
+  a claim of zero console errors during failure testing.
+- These private web/backend changes remain local pending the next backed-up
+  candidate deployment. No server sources are committed/pushed. Public desktop
+  clean packaging/runtime verification is running for source commit `19990a8`.
