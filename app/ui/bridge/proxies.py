@@ -39,6 +39,7 @@ class ProxiesBridge(QObject):
         self._pools_model = DictListModel(["name", "total", "used", "selected", "source", "permission"], parent=self)
         self._server_pools: Dict[str, Dict[str, Any]] = {}
         self._pools_cache = {}
+        self._address_cache: dict[str, str] = {}
         self._cache_session = None
         self._read = BackgroundRead(self, self._apply_refresh, self._emit_message)
         self._read.busyChanged.connect(self.modelChanged.emit)
@@ -278,6 +279,7 @@ class ProxiesBridge(QObject):
         session = get_server_session()
         if session != self._cache_session:
             self._selected.clear()
+            self._address_cache.clear()
             self._server_pools = {}
             self._pools_cache = {}
             self._render_pools()
@@ -298,6 +300,7 @@ class ProxiesBridge(QObject):
             if identities(pools) != identities(self._pools_cache):
                 self._selected.clear()
         self._cache_session, self._pools_cache, self._server_pools = result
+        self._address_cache.clear()
         self._render_pools()
 
     def _render_pools(self):
@@ -357,13 +360,16 @@ class ProxiesBridge(QObject):
                 location = geo_location or pool_name
                 if geo_location:
                     locations.add(geo_location)
-                type_label = "SOCKS5" if "socks" in value.lower() else "HTTP"
+                if value not in self._address_cache:
+                    self._address_cache[value] = proxy_display_address(value)
+                address = self._address_cache[value]
+                type_label = address.split("://", 1)[0].upper() if "://" in address else "INVALID"
                 latency = check.get("ms") if isinstance(check, dict) else None
                 row = {
                     "pool": pool_name,
                     "name": str(entry.get("name") or f"{pool_name}-{pool_index + 1:02d}") if isinstance(entry, dict) else f"{pool_name}-{pool_index + 1:02d}",
                     "location": location,
-                    "address": proxy_display_address(value),
+                    "address": address,
                     "type": type_label,
                     "latency": f"{latency}ms" if isinstance(latency, int) else "?",
                     "status": status,

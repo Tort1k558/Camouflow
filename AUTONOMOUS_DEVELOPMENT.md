@@ -683,3 +683,23 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 - Synthetic performance baseline: 10,000 cached proxy entries, five unmatched
   searches **175.9–180.7ms**, median **179.3ms**. URL parsing still repeats on each
   filter despite no network calls; investigate bounded display-cache reuse.
+
+## Iteration 28 — avoid repeated proxy parsing while typing
+
+- Reuse sanitized display addresses within the current inventory; clear the
+  cache on every applied refresh and workspace reset. Bound to entries currently
+  rendered from that inventory, not a process-global credential cache. Status,
+  quarantine, selection, pool statistics and search predicates still recompute.
+- Same synthetic 10,000-entry benchmark: cold **191.3ms**, five warm searches
+  **31.6–32.5ms**, median **31.8ms**, versus prior **179.3ms** median (~82% less
+  warm UI-thread time). Cold rendering is not improved; this is a synthetic
+  CPU/model test, not a production-user latency or rendering benchmark.
+- Reproduced HTTP credential containing 'socks' being labeled SOCKS5, SOCKS4
+  mislabeled SOCKS5 and bare/default SOCKS5 labeled HTTP. Type now comes from
+  the validated, credential-free address scheme; malformed entries show INVALID.
+  No second URL parse and no credential-dependent protocol guessing.
+- Five focused baseline failures now pass; full desktop **246 passed**,
+  critical/import Ruff passed. Regression checks parsing once per inventory and
+  refresh/workspace invalidation, not hardware-dependent timing thresholds.
+- Real Windows QML masked/status/search/reset/minimum-window checks pass without
+  warnings. Final current-source package verification still pending.

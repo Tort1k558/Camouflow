@@ -265,7 +265,7 @@ def test_proxy_inventory_distinguishes_unchecked_tcp_and_internet_checks():
         {"value": "http://failed:1080", "last_check": {"status": "fail"}},
         {"value": "http://quarantined:1080", "quarantine_until": "malformed"},
     ]
-    bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": entries}}, _server_pools={}, _selected_pool="", _selected=set(), _proxy_query="", _proxy_status="",
+    bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": entries}}, _address_cache={}, _server_pools={}, _selected_pool="", _selected=set(), _proxy_query="", _proxy_status="",
                              _pools_model=DictListModel(["name"]), _model=DictListModel(["status", "address"]),
                              _is_quarantined=ProxiesBridge._is_quarantined, modelChanged=Mock(), statsChanged=Mock())
     ProxiesBridge._render_pools(bridge)
@@ -339,10 +339,11 @@ def test_cloud_refresh_clears_positional_selection_when_inventory_changes():
     from app.ui.bridge.proxies import ProxiesBridge
 
     session = SimpleNamespace(enabled=True)
-    bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": [{"id": "A"}]}},
+    bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": [{"id": "A"}]}}, _address_cache={"old-synthetic": "http://old:1080"},
                              _selected={("QA", 0)}, _render_pools=Mock())
     ProxiesBridge._apply_refresh(bridge, (session, {"QA": {"proxies": [{"id": "B"}, {"id": "A"}]}}, {}))
     assert not bridge._selected
+    assert not bridge._address_cache
     bridge._selected.add(("QA", 1))
     ProxiesBridge._apply_refresh(bridge, (session, {"QA": {"proxies": [{"id": "B", "name": "changed"}, {"id": "A"}]}}, {}))
     assert bridge._selected == {("QA", 1)}
@@ -410,24 +411,29 @@ def test_proxy_workspace_switch_clears_selection_before_background_read(monkeypa
 
     local = SimpleNamespace(enabled=False)
     monkeypatch.setattr(proxies, "get_server_session", lambda: local)
-    bridge = SimpleNamespace(_cache_session=SimpleNamespace(enabled=True), _selected={("QA", 0)},
+    bridge = SimpleNamespace(_cache_session=SimpleNamespace(enabled=True), _selected={("QA", 0)}, _address_cache={"old-synthetic": "http://old:1080"},
                              _server_pools={"QA": {}}, _pools_cache={"QA": {"proxies": [{"id": "cloud-id"}]}},
                              _render_pools=Mock(), _read=SimpleNamespace(submit=Mock()), _fetch_refresh=Mock(),
                              thread=lambda: QThread.currentThread())
     proxies.ProxiesBridge.refresh(bridge)
     assert not bridge._selected
     assert not bridge._pools_cache
+    assert not bridge._address_cache
     bridge._read.submit.assert_called_once_with(bridge._fetch_refresh)
 
 
-def test_proxy_filters_use_cached_metadata_preserve_indices_and_pool_stats():
+def test_proxy_filters_use_cached_metadata_preserve_indices_and_pool_stats(monkeypatch):
+    from app.ui.bridge import proxies
     from app.ui.bridge.models import DictListModel
     from app.ui.bridge.proxies import ProxiesBridge
+
+    display = Mock(wraps=proxies.proxy_display_address)
+    monkeypatch.setattr(proxies, "proxy_display_address", display)
 
     bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": [
         {"name": "Stra\u00dfe", "value": "http://username:secret@first:1080"},
         {"name": "Europe", "value": "http://second:1080", "last_check": {"status": "ok", "mode": "tcp", "country": "Synthetic"}},
-    ]}}, _server_pools={}, _selected_pool="", _selected={("QA", 0)}, _proxy_query="", _proxy_status="",
+    ]}}, _address_cache={}, _server_pools={}, _selected_pool="", _selected={("QA", 0)}, _proxy_query="", _proxy_status="",
         _pools_model=DictListModel(["name"]), _model=DictListModel(["status", "address"]),
         _is_quarantined=ProxiesBridge._is_quarantined, modelChanged=Mock(), statsChanged=Mock(), _load=Mock())
     bridge._render_pools = lambda: ProxiesBridge._render_pools(bridge)
@@ -447,6 +453,25 @@ def test_proxy_filters_use_cached_metadata_preserve_indices_and_pool_stats():
     ProxiesBridge.setProxyFilters(bridge, "", "")
     assert bridge._model.rowCount() == 2
     bridge._load.assert_not_called()
+    assert display.call_count == 2
+
+
+@pytest.mark.parametrize("value, expected", [
+    ("http://socks-user:synthetic-pass@host:1080", "HTTP"),
+    ("socks4://host:1080", "SOCKS4"),
+    ("host:1080", "SOCKS5"),
+    ("malformed", "INVALID"),
+])
+def test_proxy_type_comes_from_validated_scheme_not_credentials(value, expected):
+    from app.ui.bridge.models import DictListModel
+    from app.ui.bridge.proxies import ProxiesBridge
+
+    bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": [{"value": value}]}}, _address_cache={},
+                             _server_pools={}, _selected_pool="", _selected=set(), _proxy_query="", _proxy_status="",
+                             _pools_model=DictListModel(["name"]), _model=DictListModel(["type"]),
+                             _is_quarantined=ProxiesBridge._is_quarantined, modelChanged=Mock(), statsChanged=Mock())
+    ProxiesBridge._render_pools(bridge)
+    assert bridge._model.rows()[0]["type"] == expected
 
 
 @pytest.mark.parametrize("host", ["synthetic.invalid", "::1"])
