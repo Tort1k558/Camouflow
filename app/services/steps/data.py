@@ -179,7 +179,7 @@ class DataSteps:
             return StepResult.stop(f"http_request failed with status {status}")
 
         await self._persist_profile_vars()
-        self.logger.info("HTTP %s %s -> %s", method, url, status)
+        self.logger.info("HTTP %s -> %s", method, status)
         return StepResult.next()
 
     async def _action_write_file(self, step: Dict) -> StepResult:
@@ -237,9 +237,9 @@ class DataSteps:
             if scope in {"shared", "both"}:
                 self.shared_manager.set(name, value or "")
                 self.shared_vars = self.shared_manager.all()
-                self.logger.info("Shared variable %s set to %s", name, value)
+                self.logger.info("Shared variable %s set", name)
             else:
-                self.logger.info("Scenario variable %s set to %s", name, value)
+                self.logger.info("Scenario variable %s set", name)
             await self._persist_profile_vars()
         return StepResult.next()
 
@@ -406,5 +406,5 @@ class DataSteps:
             content = content.strip()
         target = step.get("to_var") or step.get("var") or step.get("name") or "last_value"
         self.variables[target] = content
-        self.logger.info("Saved content to var %s: %s", target, content)
+        self.logger.info("Saved content to var %s", target)
         return StepResult.next()

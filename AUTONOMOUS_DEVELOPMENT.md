@@ -586,3 +586,26 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   Actual built UI auth/me 503 retains both tokens and Retry recovers.
 - Production remains the earlier DNx3 proxy-console deployment. Passive soak
   interim **90 rounds / 162 checks / zero failures**; final deadline pending.
+
+## Iteration 24 — avoid copying private scenario values into progress logs
+
+- Reproduced six automatic value leaks with synthetic markers: profile/shared/
+  both variable assignment, extracted content, popped credential-pool items,
+  and HTTP URLs containing userinfo/query tokens. Explicit log action was the
+  seventh case and intentionally remains unchanged.
+- Five progress messages now retain variable/pool names or HTTP method/status,
+  not values/URLs. No generic secret-pattern guessing, new dependency or changes
+  to scenario variables, account updates, requests, persistence and exports.
+- Seven regressions: baseline **6 failed / 1 passed**, fixed full desktop
+  **235 passed**. Critical/import Ruff passed. Broad Ruff still reports 32 existing
+  legacy typing/exception-style findings in the two touched modules; no unrelated
+  modernization. Logs guide documents explicit-output/error boundaries and that
+  historical logs are not rewritten. Fresh package rebuild pending.
+- Private audit image passed actual isolated PostgreSQL **125 timestamp ties**,
+  both action filters, legacy cursor, team scope, viewer/auth RBAC and retained
+  assets. Browser verified viewer issues zero restricted reads and initial/recent
+  activity failures recover via Retry instead of appearing empty.
+- First audit cutover observed **79/80**, one external TLS EOF (not an HTTP 5xx);
+  automatically rolled back to retained 18083. Both candidates healthy, next
+  passive preflight **20/20**. Retrying only after that check; no zero-downtime
+  claim. Production soak and cutover evidence are separate measurements.
