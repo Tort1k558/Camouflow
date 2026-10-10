@@ -415,3 +415,17 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   no document overflow at 375px. TypeScript/Vite production build passed.
 - Passive production observation is running to the mission deadline. Interim
   15 rounds / 27 checks / zero failures is not a final stability result.
+
+## Iteration 16 — cloud proxy actions retain displayed identity
+
+- Reproduced a displayed proxy A resolving to newly inserted C because actions
+  reloaded the server and addressed its current numeric position. Bulk deletion
+  could also shift positions after each request and target an unselected row.
+- Cloud actions now resolve IDs from the displayed snapshot, not a new list.
+  Refresh clears positional selection if the cloud inventory changes. Edit and
+  delete dialogs capture the cloud ID, retain it through reorder and reject
+  removed identities or local/cloud/workspace changes. Existing slot signatures
+  remain available; no server API or storage format changes.
+- Seven regressions cover insertion, bulk deletion/reorder, refresh selection,
+  missing IDs and local/cloud dialog switches. Full desktop **200 passed**;
+  critical Ruff passed; real Windows Proxies page loads without QML warnings.

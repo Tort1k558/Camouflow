@@ -291,3 +291,66 @@ def test_cloud_proxy_check_scope_is_conservative_and_does_not_mutate_response(mo
     assert checks[1]["mode"] == "tcp"
     assert checks[2]["mode"] == "internet"
     assert rows == original
+
+
+def test_cloud_proxy_actions_resolve_displayed_snapshot_not_fresh_position(monkeypatch):
+    from app.ui.bridge import proxies
+
+    session = SimpleNamespace(enabled=True, url="https://synthetic.invalid", team_id="team", email="qa@synthetic.invalid")
+    monkeypatch.setattr(proxies, "get_server_session", lambda: session)
+    load = Mock(return_value={"QA": {"proxies": [{"id": "new-row"}, {"id": "shown-row"}]}})
+    bridge = SimpleNamespace(_cache_session=session, _pools_cache={"QA": {"proxies": [{"id": "shown-row"}]}}, _load=load)
+    assert proxies.ProxiesBridge._server_proxy_entry(bridge, "QA", 0)["id"] == "shown-row"
+    load.assert_not_called()
+    bridge._pools_cache["QA"]["proxies"].insert(0, {"id": "new-row"})
+    assert proxies.ProxiesBridge._server_proxy_entry(bridge, "QA", 0, "shown-row")["id"] == "shown-row"
+    assert proxies.ProxiesBridge._server_proxy_entry(bridge, "QA", 0, "removed-row") == {}
+    monkeypatch.setattr(proxies, "get_server_session", lambda: SimpleNamespace(**{**vars(session), "team_id": "other-team"}))
+    assert proxies.ProxiesBridge._server_proxy_entry(bridge, "QA", 0) == {}
+
+
+def test_cloud_bulk_delete_uses_original_ids_after_each_server_reorder(monkeypatch):
+    from app.ui.bridge import proxies
+
+    session = SimpleNamespace(enabled=True, url="https://synthetic.invalid", team_id="team", email="qa@synthetic.invalid")
+    monkeypatch.setattr(proxies, "get_server_session", lambda: session)
+    monkeypatch.setattr(proxies, "server_enabled", lambda: True)
+    server_rows = [{"id": "selected-A"}, {"id": "selected-B"}, {"id": "unselected-C"}]
+    deleted = []
+    def delete(identity):
+        deleted.append(identity)
+        server_rows[:] = [row for row in server_rows if row["id"] != identity]
+    client = SimpleNamespace(delete_proxy=delete)
+    bridge = SimpleNamespace(_cache_session=session, _pools_cache={"QA": {"proxies": list(server_rows)}},
+                             _selected={("QA", 0), ("QA", 1)}, _server_client=lambda: client,
+                             _ensure_allowed=lambda _: True, _emit_message=Mock(), refresh=Mock(),
+                             _load=lambda: {"QA": {"proxies": list(server_rows)}})
+    bridge._server_proxy_entry = lambda pool, index: proxies.ProxiesBridge._server_proxy_entry(bridge, pool, index)
+    proxies.ProxiesBridge.removeSelected(bridge)
+    assert set(deleted) == {"selected-A", "selected-B"}
+    assert server_rows == [{"id": "unselected-C"}]
+
+
+def test_cloud_refresh_clears_positional_selection_when_inventory_changes():
+    from app.ui.bridge.proxies import ProxiesBridge
+
+    session = SimpleNamespace(enabled=True)
+    bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": [{"id": "A"}]}},
+                             _selected={("QA", 0)}, _render_pools=Mock())
+    ProxiesBridge._apply_refresh(bridge, (session, {"QA": {"proxies": [{"id": "B"}, {"id": "A"}]}}, {}))
+    assert not bridge._selected
+    bridge._selected.add(("QA", 1))
+    ProxiesBridge._apply_refresh(bridge, (session, {"QA": {"proxies": [{"id": "B", "name": "changed"}, {"id": "A"}]}}, {}))
+    assert bridge._selected == {("QA", 1)}
+
+
+@pytest.mark.parametrize("method", ["saveProxy", "deleteProxy"])
+@pytest.mark.parametrize("enabled, identity", [(False, "cloud-id"), (True, "local")])
+def test_proxy_dialog_action_rejects_local_cloud_switch(monkeypatch, method, enabled, identity):
+    from app.ui.bridge import proxies
+
+    monkeypatch.setattr(proxies, "server_enabled", lambda: enabled)
+    bridge = SimpleNamespace(_ensure_allowed=lambda _: True, _emit_message=Mock())
+    args = ("QA", 0, "Name", "http://synthetic:1080", identity) if method == "saveProxy" else ("QA", 0, identity)
+    getattr(proxies.ProxiesBridge, method)(bridge, *args)
+    bridge._emit_message.assert_called_once()

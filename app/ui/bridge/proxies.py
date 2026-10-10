@@ -212,13 +212,21 @@ class ProxiesBridge(QObject):
         client = ServerClient()
         return client if client.configured else None
 
-    def _server_proxy_entry(self, pool_name: str, index: int) -> Dict[str, Any]:
+    def _server_proxy_entry(self, pool_name: str, index: int, expected_id: str = "") -> Dict[str, Any]:
+        session = get_server_session()
+        cached = self._cache_session
+        if cached is None or any(getattr(cached, key) != getattr(session, key)
+                                 for key in ("enabled", "url", "team_id", "email")):
+            return {}
         try:
             index = int(index)
         except Exception:
             return {}
-        pool = self._load().get(str(pool_name or "").strip())
+        pool = self._pools_cache.get(str(pool_name or "").strip())
         proxies = pool.get("proxies", []) if isinstance(pool, dict) else []
+        if expected_id:
+            return next((entry for entry in proxies if isinstance(entry, dict)
+                         and str(entry.get("id") or "") == expected_id), {})
         if 0 <= index < len(proxies) and isinstance(proxies[index], dict):
             return proxies[index]
         return {}
@@ -249,6 +257,14 @@ class ProxiesBridge(QObject):
         return session, self._load(session), {str(row["name"]): row for row in rows if row.get("name")}
 
     def _apply_refresh(self, result):
+        session, pools, _ = result
+        if session.enabled:
+            def identities(data):
+                return {name: [entry.get("id") if isinstance(entry, dict) else None
+                               for entry in pool.get("proxies", [])]
+                        for name, pool in data.items() if isinstance(pool, dict)}
+            if identities(pools) != identities(self._pools_cache):
+                self._selected.clear()
         self._cache_session, self._pools_cache, self._server_pools = result
         self._render_pools()
 
@@ -548,6 +564,9 @@ class ProxiesBridge(QObject):
             index = int(index)
         except Exception:
             return {}
+        if server_enabled():
+            entry = self._server_proxy_entry(pool_name, index)
+            return {**entry, "pool": pool_name, "index": index} if entry else {}
         pool = self._load().get(pool_name)
         if not isinstance(pool, dict):
             return {}
@@ -564,8 +583,12 @@ class ProxiesBridge(QObject):
         }
 
     @pyqtSlot(str, int, str, str)
-    def saveProxy(self, pool_name: str, index: int, name: str, value: str) -> None:  # noqa: N802
+    @pyqtSlot(str, int, str, str, str)
+    def saveProxy(self, pool_name: str, index: int, name: str, value: str, expected_id: str = "") -> None:  # noqa: N802
         if not self._ensure_allowed("manager"):
+            return
+        if expected_id and server_enabled() != (expected_id != "local"):
+            self._emit_message("Workspace changed; reopen proxy settings")
             return
         pool_name = str(pool_name or "").strip()
         value = str(value or "").strip()
@@ -579,7 +602,7 @@ class ProxiesBridge(QObject):
             return
         client = self._server_client()
         if server_enabled() and client:
-            entry = self._server_proxy_entry(pool_name, index)
+            entry = self._server_proxy_entry(pool_name, index, expected_id)
             if not entry or not entry.get("id"):
                 self._emit_message("Proxy not found")
                 return
@@ -607,8 +630,12 @@ class ProxiesBridge(QObject):
         self.refresh()
 
     @pyqtSlot(str, int)
-    def deleteProxy(self, pool_name: str, index: int) -> None:  # noqa: N802
+    @pyqtSlot(str, int, str)
+    def deleteProxy(self, pool_name: str, index: int, expected_id: str = "") -> None:  # noqa: N802
         if not self._ensure_allowed("admin"):
+            return
+        if expected_id and server_enabled() != (expected_id != "local"):
+            self._emit_message("Workspace changed; select the proxy again")
             return
         pool_name = str(pool_name or "").strip()
         try:
@@ -617,7 +644,7 @@ class ProxiesBridge(QObject):
             return
         client = self._server_client()
         if server_enabled() and client:
-            entry = self._server_proxy_entry(pool_name, index)
+            entry = self._server_proxy_entry(pool_name, index, expected_id)
             if not entry or not entry.get("id"):
                 return
             try:

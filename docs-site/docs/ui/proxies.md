@@ -74,3 +74,8 @@ Checking one proxy manually can refresh its health while bulk checks skip quaran
 Results are merged into the current matching proxy, preserving name/assignment,
 other proxies and edits made during the check. Removed or changed endpoint results
 are discarded. A check never silently restores a deleted proxy.
+
+Cloud row actions target the ID shown in the current list, not a newly loaded
+position. If a refresh changes inventory order or membership, bulk selection is
+cleared. Edit/delete dialogs retain the original cloud ID; a workspace change
+requires reopening the dialog.

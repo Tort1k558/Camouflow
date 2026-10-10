@@ -152,6 +152,8 @@ Item {
                     onSettingsClicked: function(pool, index) {
                         if (!root.bridge || !root.bridge.canManage) return
                         var payload = root.bridge ? root.bridge.getProxy(pool, index) : {}
+                        if (!payload.value) return
+                        proxyEditDialog.proxyId = payload.id || "local"
                         proxyEditPool.text = payload.pool || pool
                         proxyEditIndex.text = String(payload.index !== undefined ? payload.index : index)
                         proxyEditName.text = payload.name || ""
@@ -162,7 +164,11 @@ Item {
                         if (root.bridge && root.bridge.canRun) root.bridge.checkProxy(pool, index)
                     }
                     onDeleteClicked: function(pool, index) {
-                        if (root.bridge && root.bridge.canAdmin) confirmDialog.ask("Delete this proxy? This action cannot be undone.", function() { root.bridge.deleteProxy(pool, index) })
+                        if (!root.bridge || !root.bridge.canAdmin) return
+                        var payload = root.bridge.getProxy(pool, index)
+                        if (!payload.value) return
+                        var proxyId = payload.id || "local"
+                        confirmDialog.ask("Delete this proxy? This action cannot be undone.", function() { root.bridge.deleteProxy(pool, index, proxyId) })
                     }
                 }
             }
@@ -220,6 +226,7 @@ Item {
 
     WorkspaceDialog {
         id: proxyEditDialog
+        property string proxyId: ""
         objectName: "proxyEditDialog"
         modal: true
         width: 560
@@ -244,7 +251,7 @@ Item {
                     icon: "save"
                     enabled: root.bridge && root.bridge.canManage
                     onClicked: {
-                        if (root.bridge) root.bridge.saveProxy(proxyEditPool.text, parseInt(proxyEditIndex.text), proxyEditName.text, proxyEditValue.text)
+                        if (root.bridge) root.bridge.saveProxy(proxyEditPool.text, parseInt(proxyEditIndex.text), proxyEditName.text, proxyEditValue.text, proxyEditDialog.proxyId)
                         proxyEditDialog.close()
                     }
                 }
