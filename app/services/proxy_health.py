@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import ipaddress
 import json
 import re
 import socket
@@ -119,7 +120,7 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         status = payload.get("status")
         if isinstance(status, str):
             return status.lower() == "success"
-        return True
+        return False
 
     def _open_tls(sock_obj: socket.socket, server_hostname: str) -> ssl.SSLSocket:
         ctx = ssl.create_default_context()
@@ -251,18 +252,27 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         if status is None:
             return False, ms, status_err, meta
         meta["http_status"] = int(status)
-        if not (200 <= status < 400):
+        if not (200 <= status < 300):
             return False, ms, f"http status {status}", meta
         try:
             payload = json.loads(body.decode("utf-8", errors="replace") or "{}")
         except Exception as exc:
             return False, ms, f"invalid json: {exc}", meta
-        if isinstance(payload, dict) and not _json_ok(payload):
+        if not isinstance(payload, dict):
+            return False, ms, "geo response must be a JSON object", meta
+        if not _json_ok(payload):
             msg = payload.get("message") if isinstance(payload.get("message"), str) else payload.get("error")
             return False, ms, str(msg or "geo lookup failed"), meta
 
+        ip = payload.get("ip") or payload.get("query")
+        try:
+            if not isinstance(ip, str):
+                raise ValueError("missing IP")
+            ipaddress.ip_address(ip)
+        except ValueError:
+            return False, ms, "geo response has no valid IP address", meta
+
         if isinstance(payload, dict):
-            ip = payload.get("ip") or payload.get("query")
             country = payload.get("country")
             city = payload.get("city")
             timezone = payload.get("timezone")

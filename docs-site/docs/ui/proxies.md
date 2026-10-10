@@ -78,6 +78,10 @@ URL-encoded credentials are decoded for authentication; IPv6 hosts stay brackete
 in browser configuration. Invalid ports/formats block browser launch rather than
 starting a direct connection.
 
+The internet probe requires a successful geo response with a valid exit IP.
+Empty/list JSON, missing/invalid IP, negative success flags and redirects do not
+make a proxy Active.
+
 Proxy lists and dashboard summaries show only the scheme, host and port, without
 credentials. The connection value is unchanged; managers can inspect/edit it in
 the proxy settings dialog. Treat that dialog and exported configuration as sensitive.

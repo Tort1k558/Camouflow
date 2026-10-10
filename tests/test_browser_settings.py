@@ -472,3 +472,27 @@ def test_https_proxy_probe_does_not_send_credentials_over_plaintext(monkeypatch)
     assert "no plaintext fallback" in error
     assert "synthetic-secret" not in error
     connect.assert_not_called()
+
+
+@pytest.mark.parametrize("payload, status, expected", [
+    ([], 200, False), ({}, 200, False), ({"ip": "192.0.2.1"}, 200, False), ({"success": True}, 200, False),
+    ({"success": True, "ip": "invalid"}, 200, False),
+    ({"success": False, "ip": "192.0.2.1"}, 200, False),
+    ({"success": True, "ip": "192.0.2.1"}, 302, False),
+    ({"success": True, "ip": "192.0.2.1"}, 200, True),
+    ({"status": "success", "query": "2001:db8::1"}, 200, True),
+])
+def test_internet_probe_requires_successful_object_with_valid_exit_ip(monkeypatch, payload, status, expected):
+    from app.services import proxy_health
+
+    body = json.dumps(payload).encode("utf-8")
+    packet = f"HTTP/1.1 {status} Synthetic\r\nContent-Length: {len(body)}\r\n\r\n".encode("ascii") + body
+    connection = Mock()
+    connection.recv.return_value = packet
+    monkeypatch.setattr(proxy_health.socket, "create_connection", lambda *args, **kwargs: connection)
+    monkeypatch.setattr(proxy_health, "PROXY_INTERNET_CHECK_URL", "http://synthetic.invalid/check")
+    ok, _, error, meta = proxy_health.probe_proxy_endpoint("http://proxy.invalid:1080")
+    assert ok is expected
+    assert bool(error) is not expected
+    assert ("ip" in meta) is expected
+    connection.close.assert_called_once()

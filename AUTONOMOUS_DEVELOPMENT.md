@@ -514,3 +514,19 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   packaged checks succeeded. Documentation **35 pages, zero errors/warnings**.
 - Passive production soak interim: **40 rounds / 72 checks / zero failures**;
   final observation still pending the mission deadline.
+
+## Iteration 21 — valid JSON is not proof of a proxy exit
+
+- Reproduced HTTP 200 with JSON [] being accepted as a healthy internet check,
+  without an exit IP. Probe now requires a successful object/recognized success
+  flag and valid IPv4/IPv6 exit address; redirects and empty/invalid shapes fail.
+  No response-body contents are echoed in structural validation errors.
+- Added nine response-shape/status regressions. Auth/CONNECT fixtures still pass;
+  repeated actual TLS fixture remains three successful verified TLS 1.3 rounds.
+  Full desktop **223 passed**; critical Ruff passed.
+- Fresh anonymous production browser loads the deployed DNx3 bundle, labels and
+  375px layout, zero console errors/warnings. This is not authenticated production
+  proof; role/failure behavior remains verified on isolated data.
+- Next reproduced routing defect: interleaved geo contexts leave process-wide
+  socket.socket patched and a global SOCKS proxy set. Fix per-request routing
+  before additional multi-profile launch verification.
