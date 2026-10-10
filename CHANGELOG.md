@@ -6,6 +6,19 @@ build attached.
 
 ## Unreleased
 
+## 0.4.1 - 2026-10-10
+
+- Added **Tasks → Hosted tasks**, opening the configured server's console without
+  transferring desktop credentials in a URL. Local workflows remain unchanged.
+- Private hosted service: UTF-8 CSV datasets, per-row results/change tracking,
+  interval/daily schedules, approval, selected-row retries and signed completion
+  webhooks. Runs continue while the desktop is closed.
+- Ephemeral hosted JavaScript browser with manual login/CAPTCHA/review checkpoints,
+  authenticated screenshots, bounded input controls and cancellation cleanup.
+  No saved login state, arbitrary uploaded scripts or CAPTCHA bypass.
+- Added hosted-task user documentation. Backend/worker sources remain private;
+  administrator-approved domains and one bounded hosted browser slot apply.
+
 ## 0.4.0 - 2026-10-02
 
 - AI tasks: starting URL/host policy, action confirmations, operator questions,

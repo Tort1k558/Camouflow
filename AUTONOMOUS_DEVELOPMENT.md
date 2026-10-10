@@ -1545,3 +1545,64 @@ process environment inputs, never source, documentation or report values.
   but are not auto-imported into scoped cloud identities.
 - OAuth browser-state rationale: https://developers.google.com/identity/protocols/oauth2/web-server
   Restore flags: https://www.postgresql.org/docs/16/app-pgrestore.html
+
+### Hosted tasks release 0.4.1 (2026-10-10)
+
+- Scope: CSV datasets, row results and changes, recurring schedules, approval,
+  selected-row retries, human intervention, signed completion webhooks and a
+  desktop entry to the hosted console. Local task execution remains unchanged.
+- Backend and workers remain private, outside the public repository. Browser
+  execution uses one bounded slot and ephemeral contexts; it does not save login
+  state or run arbitrary uploaded scripts. No CAPTCHA bypass is implemented.
+- Added a browser-mode console form and authenticated screenshot/input controls
+  for manual login, CAPTCHA or review. Waiting rows refresh automatically. Password
+  fields are masked in screenshots; typed input is not stored in task results or
+  audit payloads. Intervention is limited to the run initiator or workspace managers.
+- Current checks: private suite 206 passed; complete desktop suite 550 passed;
+  TypeScript/Vite production build passed. A real local sandboxed renderer verified
+  text/keyboard input, an explicit checkpoint, cross-team denial and context cleanup.
+- Isolated Linux QA verified actual HTTPS catalog access through the private egress
+  proxy, authenticated JPEG screenshots, worker-driven waiting/resume, persisted row
+  results and cancellation cleanup. Direct browser Internet access and proxy access
+  to a loopback target were denied. These are controlled owned-fixture checks, not
+  proof of a third-party login or CAPTCHA integration.
+- Production uses the new private hosted API and additive database revision.
+  Customer data and original API/PostgreSQL/Caddy/VPN service starts remain unchanged.
+- Rendered intervention UI was inspected at 1440 and 375 px against the isolated
+  server. Continue resumed the worker and the UI displayed the persisted result;
+  there were no observed application console errors. Active run status now updates
+  alongside row detail. Selector edits begin a new comparison baseline; expired
+  executor leases cannot finalize a run.
+- Real HTTPS webhook requests verified normal TLS validation and receiver-side
+  HMAC verification. A controlled 503 followed by 204 reused the same delivery ID.
+  This sender/receiver test is separate from durable outbox retry/fencing tests.
+  Its temporary owned Caddy route was removed and the original file restored in place.
+- `scripts/verify_release.py --build --runtime` passed with build
+  `dist/release-20261010-215148`, including both packaged Camoufox/CloakBrowser
+  runtime and hard-timeout checks. Versioned 0.4.1 packaging is checked separately.
+- A fresh production backup was fully restored into a new isolated PostgreSQL
+  database. Additive migration to `0011_hosted_intervention` preserved exact row
+  fingerprints of all 16 legacy data tables (Alembic metadata intentionally changed).
+  The retained old image could read its existing user/team/profile/scenario models
+  against the migrated clone. The live database was upgraded only after this proof.
+- Production upstream is loopback 18090, with the retained healthy 18086 API for
+  routing rollback. Deployment includes a fresh cutover dump in the private backup;
+  rollback restores Caddy in place and does not restore/downgrade customer data.
+  Only owned QA containers were stopped before starting the new bounded stack.
+- The worker has a dedicated DB login restricted to hosted tables plus workspace
+  reads/locking. It cannot read the users table or create schema objects. The
+  browser/egress containers have no DB/JWT credentials or public control ports.
+- Production functional checks used public HTTPS with a unique owned user/team:
+  approval/idempotency, static results, selective retry, schedules without desktop,
+  approval expiry, manual browser screenshots/resume, stored results and cancellation
+  cleanup. Owned test data was removed afterwards. Original counts remained
+  23 users, 10 teams, 4 profiles and 2 scenarios; no test hosted rows remained.
+- Direct Internet access from the production browser and proxy access to loopback
+  were denied. Cross-team session identity was rejected and the context was closed.
+  About 935 MiB memory and 9.7 GiB disk remained available after checks; one slot is
+  the supported capacity, not a claim of an unlimited worker farm.
+- Actual QML Tasks-button signal opened the configured hosted URL without credentials.
+  Retype built 36 pages with zero errors/warnings, including the hosted-task guide.
+  Public desktop changes are released directly on main; backend sources, private
+  Compose/environment files, worker images and recovery dumps remain outside Git.
+  Fresh GitHub desktop/docs checks and verified Windows packaging gate publication.

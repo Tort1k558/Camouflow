@@ -29,6 +29,10 @@ Try the isolated catalog demo, inspect a structured table, export JSON/CSV, then
 
 **[AI workflow quickstart](docs/AI_WORKFLOWS.md)** · [CLI / optional MCP / n8n example](docs/AI_WORKFLOWS.md#local-cli)
 
+**[Hosted catalog tasks](docs-site/docs/hosted-tasks.md)** — optional private-server CSV
+monitors, recurring schedules, row results, manual browser assistance and signed
+completion webhooks. Open **Tasks → Hosted tasks**; local execution is unchanged.
+
 Available in **v0.4.0**. Model-reported success is not a verified workflow. Page content goes to your chosen provider; editable field contents are excluded from snapshots, not every possible secret.
 
 ![Real AI catalog extraction and verified replay](images/ai-workflow-demo.png)

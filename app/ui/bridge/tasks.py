@@ -7,12 +7,23 @@ from PyQt6.QtCore import QObject, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QDesktopServices
 
 from app.services.task_inputs import csv_rows, csv_template, input_fields
+from app.services.server_client import ServerClientError, get_server_session, normalize_server_url
 from app.storage import db
 from app.ui.bridge.models import DictListModel
 
 
 class TasksBridge(QObject):
     changed = pyqtSignal()
+
+    @pyqtSlot()
+    def openHostedTasks(self):
+        try:
+            url = normalize_server_url(get_server_session().url) + "/console/hosted"
+        except ServerClientError as exc:
+            self.state.notify(str(exc))
+            return
+        if not QDesktopServices.openUrl(QUrl(url)):
+            self.state.notify("Could not open hosted tasks in your browser")
 
     def __init__(self, operations, scenarios, state, parent=None):
         super().__init__(parent)

@@ -11,6 +11,10 @@ Describe a task, inspect structured data, then replay a reviewed parameterized w
 
 [Try the AI catalog demo](ai-agent.md) · [Download the Windows release](https://github.com/Tort1k558/Camouflow/releases/latest)
 
+[Hosted catalog tasks](hosted-tasks.md): optional private-server CSV monitors,
+recurring schedules, row results, manual browser assistance and signed webhooks.
+Your existing desktop-local workflows remain local.
+
 AI page data goes to your configured provider. Model-reported success is distinct from a read-only replay check; review interactive scenarios before running them.
 
 ## Features
