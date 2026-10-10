@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
+import sys
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
@@ -73,8 +74,8 @@ exe = EXE(
     strip=False,
     upx=True,
     console=False,
-    icon=str(ROOT / "logo.ico"),
-    version=APP_VERSION_INFO,
+    icon=str(ROOT / "logo.ico") if sys.platform == "win32" else "NONE",
+    version=APP_VERSION_INFO if sys.platform == "win32" else None,
 )
 
 coll = COLLECT(
@@ -87,3 +88,11 @@ coll = COLLECT(
     upx_exclude=[],
     name="CamouFlow",
 )
+
+if sys.platform == "darwin":
+    app = BUNDLE(
+        coll,
+        name="CamouFlow.app",
+        bundle_identifier="site.camouflow.desktop",
+        info_plist={"NSHighResolutionCapable": True},
+    )

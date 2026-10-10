@@ -31,8 +31,8 @@ QtObject {
     readonly property color pink: "#886172"
     readonly property color blue: "#526e88"
     readonly property color emerald: "#46735b"
-    readonly property string fontFamily: "Segoe UI"
-    readonly property string monoFamily: "Consolas"
+    readonly property string fontFamily: Qt.platform.os === "windows" ? "Segoe UI" : Qt.platform.os === "osx" ? "Helvetica Neue" : "DejaVu Sans"
+    readonly property string monoFamily: Qt.platform.os === "windows" ? "Consolas" : Qt.platform.os === "osx" ? "Menlo" : "DejaVu Sans Mono"
     readonly property int sidebarWidth: 228
     readonly property int radiusSm: 7
     readonly property int radius: 10

@@ -1757,3 +1757,28 @@ process environment inputs, never source, documentation or report values.
   Final frontend image digest is
   `sha256:7fa2a157ad4948290d2b1af00fbe64101df3183b64b0b03e0a526603d46a3c6e`.
   Database, worker, renderer, egress, Caddy and VPN container starts are unchanged.
+
+## Platform and reliability mission — active, 2026-10-11
+
+The agreed scope includes confirmed self-healing, a public Hub based on the
+existing marketplace, browser health/reporting, expanded controlled MCP sessions,
+Recorder 2.0 and unsigned-development Linux/macOS packages. Preserve existing
+green styling, keep server sources private, and verify each capability separately.
+
+- Live AI connection evidence: the configured DeepSeek endpoint returned HTTP
+  402 (`Insufficient Balance`) for one bounded test. No credentials were changed
+  or exported. Live AI/replay evidence needs the provider balance restored;
+  deterministic tests must not be reported as real-provider success. Existing
+  max-steps configuration is not a monetary spending limit.
+- Native-platform foundation adds a three-OS Python/QML CI matrix and native
+  package/runtime jobs. The release gate selects the correct executable for each
+  OS; macOS gets an app bundle, and packaged Unix data lives outside the binary
+  directory unless portable mode is explicit. Native-platform readiness remains
+  unproven until current CI, both engine runtimes and follow-up checks pass.
+- See [platform verification and limitations](docs/CROSS_PLATFORM.md). The other
+  mission requirements remain pending; this foundation does not complete them.
+- Local checks for this foundation: **566 tests passed**, full 13-page QML smoke
+  with the CI software renderer, syntax/undefined-name checks, clean Windows
+  PyInstaller build and actual packaged Camoufox/CloakBrowser runtime/timeout
+  checks. Native Linux/macOS execution is delegated to their own CI runners and
+  must be inspected before reporting platform support as achieved.

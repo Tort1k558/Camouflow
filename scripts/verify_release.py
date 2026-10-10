@@ -11,11 +11,12 @@ import argparse
 import datetime as dt
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PYTHON = ROOT / ".venv" / "Scripts" / "python.exe"
+PYTHON = ROOT / ".venv" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
 
 
 def run(command: list[str], *, cwd: Path = ROOT) -> None:
@@ -23,19 +24,19 @@ def run(command: list[str], *, cwd: Path = ROOT) -> None:
     subprocess.run(command, cwd=cwd, check=True)
 
 
-def require_venv() -> Path:
-    if not PYTHON.exists():
-        raise SystemExit("Missing .venv\\Scripts\\python.exe")
-    return PYTHON
+def require_venv(python: Path = PYTHON) -> Path:
+    if not python.is_file():
+        raise SystemExit(f"Missing Python interpreter: {python}")
+    return python
 
 
-def build() -> Path:
+def build(python: Path = PYTHON) -> Path:
     build_id = "release-" + dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     dist_path = ROOT / "dist" / build_id
     work_path = ROOT / "build" / build_id
     run(
         [
-            str(require_venv()),
+            str(require_venv(python)),
             "-m",
             "PyInstaller",
             "--clean",
@@ -46,7 +47,10 @@ def build() -> Path:
             str(work_path),
         ]
     )
-    exe = dist_path / "CamouFlow" / "CamouFlow.exe"
+    if sys.platform == "darwin":
+        exe = dist_path / "CamouFlow.app" / "Contents" / "MacOS" / "CamouFlow"
+    else:
+        exe = dist_path / "CamouFlow" / ("CamouFlow.exe" if sys.platform == "win32" else "CamouFlow")
     if not exe.exists():
         raise SystemExit(f"Build finished but executable was not found: {exe}")
     return exe
@@ -70,6 +74,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", action="store_true", help="create a clean PyInstaller build")
     parser.add_argument("--runtime", action="store_true", help="run packaged runtime checks")
+    parser.add_argument("--python", type=Path, default=PYTHON, help="Python interpreter with installed build/test dependencies")
     parser.add_argument(
         "--engine",
         action="append",
@@ -78,13 +83,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    python = require_venv()
+    python = require_venv(args.python.resolve())
     run([str(python), "-m", "compileall", "-q", "app", "main.py", "scripts"])
     run([str(python), "-m", "pytest", "-q"])
 
     exe: Path | None = None
     if args.build or args.runtime:
-        exe = build()
+        exe = build(python)
         print(f"Build done: {exe}")
 
     if args.runtime:

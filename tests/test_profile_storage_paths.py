@@ -1,6 +1,7 @@
 """Profile operations must not target workspace roots or another identity."""
 
 from unittest.mock import Mock
+from pathlib import Path
 
 import pytest
 
@@ -10,6 +11,72 @@ from app.storage import db
 
 TEAM_ID = "11111111-1111-4111-8111-111111111111"
 PROFILE_ID = "22222222-2222-4222-8222-222222222222"
+
+
+@pytest.mark.parametrize("platform,relative", [
+    ("darwin", "Library/Application Support/CamouFlow"),
+    ("linux", ".local/share/CamouFlow"),
+])
+def test_native_packages_store_data_outside_application_bundle(tmp_path, monkeypatch, platform, relative):
+    monkeypatch.delenv("CAMOUFLOW_DATA_DIR", raising=False)
+    monkeypatch.delenv("CAMOUFLOW_PORTABLE", raising=False)
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+    monkeypatch.setattr(db.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(db.sys, "platform", platform)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(db, "_portable_root", lambda: tmp_path / "bundle")
+    assert db._data_root() == tmp_path / relative
+
+
+@pytest.mark.parametrize("platform", ["win32", "darwin", "linux"])
+def test_explicit_portable_mode_keeps_data_next_to_executable(tmp_path, monkeypatch, platform):
+    monkeypatch.delenv("CAMOUFLOW_DATA_DIR", raising=False)
+    monkeypatch.setenv("CAMOUFLOW_PORTABLE", "1")
+    monkeypatch.setattr(db.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(db.sys, "platform", platform)
+    monkeypatch.setattr(db, "_portable_root", lambda: tmp_path)
+    assert db._data_root() == tmp_path
+
+
+def test_linux_native_data_directory_honors_xdg(tmp_path, monkeypatch):
+    monkeypatch.delenv("CAMOUFLOW_DATA_DIR", raising=False)
+    monkeypatch.delenv("CAMOUFLOW_PORTABLE", raising=False)
+    monkeypatch.setattr(db.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(db.sys, "platform", "linux")
+    monkeypatch.setattr(db, "_portable_root", lambda: tmp_path / "bundle")
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    assert db._data_root() == tmp_path / "data" / "CamouFlow"
+    monkeypatch.setenv("XDG_DATA_HOME", "relative")
+    with pytest.raises(ValueError, match="absolute"):
+        db._data_root()
+
+
+def test_data_override_has_priority_over_native_and_portable_modes(tmp_path, monkeypatch):
+    monkeypatch.setenv("CAMOUFLOW_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("CAMOUFLOW_PORTABLE", "1")
+    monkeypatch.setattr(db.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(db.sys, "platform", "darwin")
+    assert db._data_root() == tmp_path.resolve()
+
+
+@pytest.mark.parametrize("platform,frozen", [("win32", True), ("darwin", False), ("linux", False)])
+def test_windows_packages_and_source_runs_preserve_existing_data_root(tmp_path, monkeypatch, platform, frozen):
+    monkeypatch.delenv("CAMOUFLOW_DATA_DIR", raising=False)
+    monkeypatch.delenv("CAMOUFLOW_PORTABLE", raising=False)
+    monkeypatch.setattr(db.sys, "frozen", frozen, raising=False)
+    monkeypatch.setattr(db.sys, "platform", platform)
+    monkeypatch.setattr(db, "_portable_root", lambda: tmp_path)
+    assert db._data_root() == tmp_path
+
+
+def test_portable_flag_selects_package_directory(tmp_path, monkeypatch):
+    monkeypatch.delenv("CAMOUFLOW_DATA_DIR", raising=False)
+    monkeypatch.delenv("CAMOUFLOW_PORTABLE", raising=False)
+    monkeypatch.setattr(db.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(db.sys, "platform", "darwin")
+    monkeypatch.setattr(db, "_portable_root", lambda: tmp_path)
+    (tmp_path / "portable.flag").touch()
+    assert db._data_root() == tmp_path
 
 
 def test_cloud_identity_is_canonical_and_rename_stable(workspace):

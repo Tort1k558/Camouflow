@@ -75,7 +75,16 @@ def _data_root() -> Path:
     if override:
         return Path(override).expanduser().resolve()
 
-    # Default to "portable" behavior for both source runs and frozen builds.
+    if getattr(sys, "frozen", False) and not _is_portable_mode():
+        if sys.platform == "darwin":
+            return Path.home() / "Library" / "Application Support" / APP_NAME
+        if sys.platform.startswith("linux"):
+            base = Path(os.getenv("XDG_DATA_HOME") or Path.home() / ".local" / "share").expanduser()
+            if not base.is_absolute():
+                raise ValueError("XDG_DATA_HOME must be an absolute path")
+            return base / APP_NAME
+
+    # Preserve Windows and source-run portable storage.
     return _portable_root()
 
 
