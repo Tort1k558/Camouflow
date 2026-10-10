@@ -54,7 +54,7 @@ class SharedSteps:
             self.variables[normalized] = clean
             account_updates[normalized] = clean
 
-        self.logger.info("Popped from shared %s -> %s", key, item)
+        self.logger.info("Popped item from shared %s", key)
         if account_updates:
             try:
                 updater = getattr(self, "_account_updater", None)

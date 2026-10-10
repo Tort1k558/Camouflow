@@ -154,7 +154,7 @@ python main.py
 build.bat
 ```
 
-Output: `dist\CamouFlow\CamouFlow.exe`.
+Output: `dist\<build-id>\CamouFlow\CamouFlow.exe` (a new timestamped directory for each build).
 
 ## Data and privacy
 
@@ -212,3 +212,46 @@ Limitations: Camoufox only, no iframe/popup recording, file uploads, rich-text e
 - Workspace list refreshes run in background workers. Profile tabs retain their drafts while switching; cookies load asynchronously.
 - In **Scenarios > Runs**, enable **Debug in separate window** before adding a job, then resume the queue. The debugger pauses before the first step. **Next step** executes one step; **Resume** continues; **Run selected** jumps to a step. Closing the debugger stops its run.
 - Queue debugging uses the saved run snapshot, not hot reload. After completion, enqueue another run to execute edited steps.
+
+### Local storage recovery
+
+Account/settings mutations refuse to overwrite malformed, wrongly shaped or unreadable JSON. Restore `settings/accounts.json` or `settings/settings.json` from a verified backup before retrying; do not delete these files as a reset. Missing files can initialize a new workspace. UTF-8 BOM documents are accepted; updates use UTF-8 without BOM. These guards are not a recovery tool or cross-process lock.
+
+### Profile-list import and explicit proxy pools
+
+Selecting a proxy pool requires an available unassigned, non-quarantined connection for each imported profile. Exhausted pools and failed cloud reads stop affected imports; they never silently create a direct-connection profile. Malformed or timezone-naive quarantine timestamps remain blocked until explicitly released. Choose **All pools** only when no pool assignment is intended. Partial failures keep the dialog open with only failed lines, so successful rows are not resubmitted. Failed local account writes attempt to restore the pool assignment; multiple-file writes are not a crash-safe transaction. Import error logs identify line numbers, not the credential-bearing input lines.
+
+### Dedicated browser storage
+
+New/renamed profile names must map to a valid, distinct browser directory.
+Reserved Windows names, workspace-root identities and names that sanitize to
+another profile's directory are rejected. Browser launch, cookie reads/resets,
+profile-directory deletion and restore targets validate their storage boundary.
+Profile-root links and linked engine directories are not accepted.
+
+Existing ambiguous/unsafe names are not automatically migrated or deleted.
+Preserve the workspace and review a verified backup before recovering those
+records; do not reset or remove shared browser files. Renames refuse an existing
+unmanaged target directory. A failed metadata save attempts to move a renamed
+directory back. These guards do not provide crash-safe multi-file transactions,
+protect against arbitrary local Python.
+
+Cloud browser directories are keyed by the canonical server origin, team UUID,
+and profile UUID, not the display name. The full SHA-256 identity key uses one
+bounded directory component below `profiles/.cloud`, avoiding deep Windows
+Chromium paths. Renaming a cloud profile keeps its browser session; changing
+server, team, or profile identity uses separate cookies, fingerprints, and
+scenario variables. Both browser engines, recorder, AI replay, queue workers,
+and profile health checks use the captured identity, not the current UI session.
+Cloud storage-state files must remain inside that identity's directory.
+
+Existing name-based folders are preserved but never automatically adopted by a
+cloud profile: ownership cannot be inferred safely. Sign in again in the new
+cloud directory. Review a verified backup before any manual session recovery.
+Local profiles keep their existing name-based directories; local cleanup does
+not delete the reserved cloud namespace.
+
+Google sign-in opens the configured server's `/api/v1/auth/google/start` in the
+system browser so the callback can validate its HttpOnly state cookie. Updated
+servers reject callbacks from another browser or an expired flow. After this
+OAuth hardening, use the updated desktop build and restart any in-flight login.

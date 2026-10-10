@@ -8,8 +8,12 @@ import threading
 
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
-from app.services.server_client import get_server_session, normalize_server_url, save_server_session
-from app.storage.db import DATA_ROOT, db_get_setting, db_set_setting
+from app.services.server_client import (
+    get_server_session,
+    normalize_server_url,
+    save_server_session,
+)
+from app.storage.db import DATA_ROOT, db_get_setting, db_set_settings
 from app.ui.bridge.models import DictListModel
 
 ONBOARDING_COMPLETED_KEY = "onboarding_completed"
@@ -145,7 +149,8 @@ class SettingsBridge(QObject):
         data = self._load_vars()
         val = [line.strip() for line in str(value or "").splitlines() if line.strip()] if typ == "list" else str(value or "")
         data[key] = {"type": typ, "value": val}
-        db_set_setting("shared_variables", json.dumps(data, ensure_ascii=False))
+        if not self._persist({"shared_variables": json.dumps(data, ensure_ascii=False)}):
+            return
         self._emit_message(f"Variable {key} saved")
         self.refresh()
 
@@ -153,7 +158,8 @@ class SettingsBridge(QObject):
     def deleteVariable(self, key: str) -> None:  # noqa: N802
         data = self._load_vars()
         data.pop(str(key or ""), None)
-        db_set_setting("shared_variables", json.dumps(data, ensure_ascii=False))
+        if not self._persist({"shared_variables": json.dumps(data, ensure_ascii=False)}):
+            return
         self.refresh()
 
     @pyqtSlot(str, result="QVariant")
@@ -176,27 +182,34 @@ class SettingsBridge(QObject):
         stages = self._load_stages()
         if name not in stages:
             stages.append(name)
-            db_set_setting("stages_json", json.dumps(stages, ensure_ascii=False))
+            if not self._persist({"stages_json": json.dumps(stages, ensure_ascii=False)}):
+                return
         self.refresh()
 
     @pyqtSlot(str)
     def deleteStage(self, name: str) -> None:  # noqa: N802
         stages = [item for item in self._load_stages() if str(item) != str(name)]
-        db_set_setting("stages_json", json.dumps(stages, ensure_ascii=False))
+        if not self._persist({"stages_json": json.dumps(stages, ensure_ascii=False)}):
+            return
         self.refresh()
 
     @pyqtSlot()
     def startLocalMode(self) -> None:  # noqa: N802
         session = get_server_session()
-        save_server_session(
-            enabled=False,
-            url=session.url,
-            token=session.token,
-            refresh_token=session.refresh_token,
-            team_id=session.team_id,
-            email=session.email,
-        )
-        db_set_setting(ONBOARDING_COMPLETED_KEY, "true")
+        try:
+            save_server_session(
+                enabled=False,
+                url=session.url,
+                token=session.token,
+                refresh_token=session.refresh_token,
+                team_id=session.team_id,
+                email=session.email,
+            )
+        except Exception as exc:
+            self._emit_message(f"Cannot save local mode: {exc}")
+            return
+        if not self._persist({ONBOARDING_COMPLETED_KEY: "true"}):
+            return
         self._emit_message("Local mode enabled. You can connect Cloud later in User.")
         self.refresh()
         if self._app_state is not None:
@@ -204,14 +217,16 @@ class SettingsBridge(QObject):
 
     @pyqtSlot()
     def openUserLogin(self) -> None:  # noqa: N802
-        db_set_setting(ONBOARDING_COMPLETED_KEY, "true")
+        if not self._persist({ONBOARDING_COMPLETED_KEY: "true"}):
+            return
         self.refresh()
         if self._app_state is not None:
             self._app_state.setPage("User")
 
     @pyqtSlot()
     def resetOnboarding(self) -> None:  # noqa: N802
-        db_set_setting(ONBOARDING_COMPLETED_KEY, "false")
+        if not self._persist({ONBOARDING_COMPLETED_KEY: "false"}):
+            return
         self.refresh()
 
     # --- AI agent provider ---------------------------------------------------------
@@ -252,13 +267,24 @@ class SettingsBridge(QObject):
         if base_url and not base_url.startswith(("http://", "https://")):
             self._emit_message("AI base URL must start with http:// or https://")
             return
-        db_set_setting("ai_enabled", "true" if enabled else "false")
-        db_set_setting("ai_base_url", base_url)
-        db_set_setting("ai_api_key", str(api_key or "").strip())
-        db_set_setting("ai_model", model)
-        db_set_setting("ai_max_steps", str(steps))
+        if not self._persist({
+            "ai_enabled": "true" if enabled else "false",
+            "ai_base_url": base_url,
+            "ai_api_key": str(api_key or "").strip(),
+            "ai_model": model,
+            "ai_max_steps": str(steps),
+        }):
+            return
         self._emit_message("AI settings saved" + ("" if enabled else " (disabled)"))
         self.refresh()
+
+    def _persist(self, values: dict) -> bool:
+        try:
+            db_set_settings(values)
+        except Exception as exc:
+            self._emit_message(f"Cannot save settings: {exc}")
+            return False
+        return True
 
     @pyqtSlot()
     def testAiProvider(self):  # noqa: N802

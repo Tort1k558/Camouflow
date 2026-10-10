@@ -103,12 +103,14 @@ Rectangle {
                 Text {
                     width: parent.width
                     text: accountPod.displayName !== "" ? accountPod.displayName.split("@")[0] : "Local workspace"
+                    textFormat: Text.PlainText
                     color: Theme.sidebarText; font.pixelSize: 12; font.weight: Font.DemiBold
                     elide: Text.ElideRight
                 }
                 Text {
                     width: parent.width
                     text: appState && appState.cloudEnabled ? "CONNECTED · " + (appState.cloudTeamName || "team") : "LOCAL WORKSPACE"
+                    textFormat: Text.PlainText
                     color: Theme.sidebarMuted; font.family: Theme.monoFamily; font.pixelSize: 9; font.letterSpacing: 0.4
                     elide: Text.ElideRight
                 }

@@ -28,6 +28,7 @@ docs-site/retype.manifest
 /logs/
 /output/
 /outputs/
+/.playwright-cli/
 /profiles/
 /settings/
 

@@ -2,6 +2,18 @@
 
 The **Scenarios** page is the scenario library and visual node editor.
 
+## Saved tasks
+
+Use **Tasks** to run a saved scenario through its input form without opening the
+node editor. Search matches task names and descriptions, ignoring case. Filtering
+does not clear the selected task or its current inputs; clear the search to show
+the full library again. A search with no matches is distinct from an empty library.
+
+Queue a task after reviewing its steps, then resume explicitly in **Runs**.
+Canceled pending jobs remain in local run history even after the finished queue
+is cleared. Running jobs are recorded only after execution and cleanup finish.
+History and queue are workspace-scoped; clearing history is a separate action.
+
 ## Scenario library
 
 Click the current scenario card to open the library.
@@ -63,4 +75,16 @@ The **Variables** button opens the shared variables editor. Shared variables can
 
 ## Run selected scenario
 
-Select a profile in the top bar and press **Run** to execute the current scenario for that profile.
+Select a profile in the top bar and press **Run** to queue the current scenario.
+Resume the queue explicitly in **Runs**; keep the application open.
+
+**Runs** opens with execution controls and results in focus. **Add jobs** expands
+the scheduling form. Starting from selected profiles opens that form automatically.
+Collapsing it does not discard selected profiles, scenario, time or proxy policy.
+Artifact actions and detailed output appear after selecting a run.
+
+Search by scenario, profile or error text and filter by status. Filters affect
+both the queue and local history, not execution. Queue controls and cleanup still
+apply to all jobs in the current workspace. History search covers all retained
+records (at most 500), displaying up to 120 matches. **Reset filters** restores
+the full view; selected run details are preserved.

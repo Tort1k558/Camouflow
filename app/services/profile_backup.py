@@ -73,11 +73,11 @@ def export_profile(name: str, target: Path, sessions: bool, secrets: bool) -> No
 
 def restore_profile(source: Path, new_name: str, import_scenarios: bool = False) -> Path:
     new_name = new_name.strip()
-    if not new_name or len(new_name) > 80 or db._safe_profile_name(new_name) in {".", ".."} or _unsafe_windows_name(db._safe_profile_name(new_name)):
+    if not new_name or len(new_name) > 80 or db._safe_profile_name(new_name) in {".", ".."} or db._unsafe_windows_name(db._safe_profile_name(new_name)):
         raise ValueError("Enter a valid new profile name")
     if any(a["name"].casefold() == new_name.casefold() for a in db.db_get_accounts()):
         raise ValueError("Profile already exists; choose a new name")
-    target = db.profile_dir_for_email(new_name).resolve()
+    target = db.checked_profile_dir_for_email(new_name).resolve()
     if not target.is_relative_to(db.PROFILES_DIR.resolve()) or target.exists():
         raise ValueError("Profile storage already exists or is outside the workspace")
     db.PROFILES_DIR.mkdir(parents=True, exist_ok=True)
@@ -93,7 +93,7 @@ def restore_profile(source: Path, new_name: str, import_scenarios: bool = False)
                 path = PurePosixPath(name)
                 if (path.is_absolute() or ".." in path.parts or "\\" in name or ":" in name
                         or name.casefold() in seen or stat.S_ISLNK(entry.external_attr >> 16)
-                        or any(_unsafe_windows_name(p) for p in path.parts)):
+                        or any(db._unsafe_windows_name(p) for p in path.parts)):
                     raise ValueError("Unsafe archive path")
                 seen.add(name.casefold())
             if archive.getinfo("manifest.json").file_size > 8 * 1024 * 1024:
@@ -170,10 +170,3 @@ def restore_profile(source: Path, new_name: str, import_scenarios: bool = False)
                 shutil.rmtree(target)
                 raise
     return target
-
-
-def _unsafe_windows_name(name: str) -> bool:
-    stem = name.split(".", 1)[0].upper()
-    return (name.endswith((".", " ")) or stem in {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
-            or stem in {f"{prefix}{n}" for prefix in ("COM", "LPT") for n in range(1, 10)}
-            or any(ord(c) < 32 or c in '<>"|?*' for c in name))

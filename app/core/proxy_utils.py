@@ -5,7 +5,7 @@ import socketserver
 import threading
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse, urlsplit
 
 import socks
 
@@ -30,7 +30,36 @@ class _ProxyTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(self, address, handler_cls, proxy_details: ProxyDetails):
         self.proxy_details = proxy_details
         self.logger = logging.getLogger("proxy_log")
+        self.stopping = threading.Event()
+        self._connections = set()
+        self._connections_lock = threading.Lock()
         super().__init__(address, handler_cls)
+
+    def process_request(self, request, client_address):
+        with self._connections_lock:
+            stopping = self.stopping.is_set()
+            if not stopping:
+                self._connections.add(request)
+        if stopping:
+            self.shutdown_request(request)
+            return
+        super().process_request(request, client_address)
+
+    def close_request(self, request):
+        with self._connections_lock:
+            self._connections.discard(request)
+        super().close_request(request)
+
+    def stop_connections(self):
+        self.stopping.set()
+        with self._connections_lock:
+            connections = list(self._connections)
+        for connection in connections:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            connection.close()
 
 
 class SocksBridgeHandler(socketserver.StreamRequestHandler):
@@ -82,6 +111,9 @@ class SocksBridgeHandler(socketserver.StreamRequestHandler):
             return False
         methods = self._recv_exact(nmethods)
         if methods is None:
+            return False
+        if not methods or 0x00 not in methods:
+            self.connection.sendall(b"\x05\xff")
             return False
         # Respond with "no authentication"
         try:
@@ -141,77 +173,157 @@ class SocksBridgeHandler(socketserver.StreamRequestHandler):
         details: ProxyDetails = self.server.proxy_details
         scheme = details.scheme.lower()
         proxy_type = socks.SOCKS5 if "5" in scheme else socks.SOCKS4
-        sock = socks.socksocket()
-        sock.set_proxy(
-            proxy_type,
-            details.host,
-            details.port,
-            True,
-            details.username,
-            details.password,
-        )
-        sock.settimeout(10)
         try:
-            sock.connect((host, port))
-        except Exception:
+            return socks.create_connection(
+                (host, port), timeout=10, proxy_type=proxy_type,
+                proxy_addr=details.host, proxy_port=details.port, proxy_rdns=True,
+                proxy_username=details.username, proxy_password=details.password,
+            )
+        except OSError:
             return None
-        return sock
 
     def _pipe(self, upstream: socket.socket):
         client = self.connection
-        client.setblocking(False)
-        upstream.setblocking(False)
-        sockets = [client, upstream]
-        while True:
-            try:
-                # Keep the tunnel alive; don't drop on inactivity to avoid surprising disconnects.
-                readable, _, _ = select.select(sockets, [], [], 60)
-            except OSError:
-                break
-            if not readable:
-                # Idle period: keep waiting instead of closing the connection.
-                continue
-            if client in readable:
-                try:
-                    data = client.recv(8192)
-                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-                    break
-                except OSError:
-                    break
-                if not data:
-                    break
-                try:
-                    upstream.sendall(data)
-                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-                    break
-                except OSError:
-                    break
-            if upstream in readable:
-                try:
-                    data = upstream.recv(8192)
-                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-                    break
-                except OSError:
-                    break
-                if not data:
-                    break
-                try:
-                    client.sendall(data)
-                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-                    break
-                except OSError:
-                    break
+        peers = {client: upstream, upstream: client}
+        pending = {client: bytearray(), upstream: bytearray()}
+        reading = {client, upstream}
+        write_closed = set()
+        buffer_limit = 64 * 1024
+        stopping = getattr(getattr(self, "server", None), "stopping", None)
         try:
-            upstream.shutdown(socket.SHUT_RDWR)
+            client.setblocking(False)
+            upstream.setblocking(False)
+            while (reading or any(pending.values())) and (stopping is None or not stopping.is_set()):
+                for connection, peer in peers.items():
+                    if peer not in reading and not pending[connection] and connection not in write_closed:
+                        connection.shutdown(socket.SHUT_WR)
+                        write_closed.add(connection)
+                readable, writable, _ = select.select(
+                    [connection for connection in reading if len(pending[peers[connection]]) < buffer_limit],
+                    [connection for connection in peers if pending[connection]],
+                    [], 60,
+                )
+                for connection in writable:
+                    try:
+                        sent = connection.send(pending[connection])
+                    except BlockingIOError:
+                        continue
+                    if not sent:
+                        return
+                    del pending[connection][:sent]
+                for connection in readable:
+                    peer = peers[connection]
+                    try:
+                        data = connection.recv(min(8192, buffer_limit - len(pending[peer])))
+                    except BlockingIOError:
+                        continue
+                    if data:
+                        pending[peer].extend(data)
+                    else:
+                        reading.remove(connection)
+            for connection in peers:
+                if connection not in write_closed:
+                    connection.shutdown(socket.SHUT_WR)
         except OSError:
-            pass
-        upstream.close()
+            return
+        finally:
+            upstream.close()
+
+
+class HttpSocksBridgeHandler(SocksBridgeHandler):
+    """Expose an HTTP proxy while retaining the selected SOCKS upstream."""
+
+    rbufsize = 0
+
+    def _http_error(self, status: int) -> None:
+        self.connection.sendall(
+            f"HTTP/1.1 {status} Proxy Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".encode("ascii")
+        )
+
+    def handle(self):
+        upstream = None
+        try:
+            request = self.rfile.readline(8193)
+            if len(request) > 8192 or not request.endswith(b"\r\n"):
+                self._http_error(400)
+                return
+            method, target, version = request[:-2].decode("ascii").split(" ")
+            if version not in {"HTTP/1.0", "HTTP/1.1"} or not method.isalpha():
+                self._http_error(400)
+                return
+            headers = []
+            upgrading = False
+            size = len(request)
+            while True:
+                line = self.rfile.readline(32769 - size)
+                size += len(line)
+                if size > 32768 or not line.endswith(b"\r\n"):
+                    self._http_error(400)
+                    return
+                if line == b"\r\n":
+                    break
+                key, separator, _ = line.partition(b":")
+                if not separator or not key or any(character <= 32 or character >= 127 for character in key):
+                    self._http_error(400)
+                    return
+                if key.lower() == b"upgrade":
+                    upgrading = True
+                if key.lower() not in {b"proxy-authorization", b"proxy-connection", b"host", b"connection"}:
+                    headers.append(line)
+            connect = method == "CONNECT"
+            parsed = urlsplit("//" + target if connect else target)
+            if not parsed.hostname or parsed.username is not None or parsed.password is not None or parsed.fragment:
+                self._http_error(400)
+                return
+            if connect:
+                if parsed.path or parsed.query or parsed.port is None:
+                    self._http_error(400)
+                    return
+                port = parsed.port
+            else:
+                if parsed.scheme != "http":
+                    self._http_error(400)
+                    return
+                port = parsed.port if parsed.port is not None else 80
+            if not 1 <= port <= 65535:
+                self._http_error(400)
+                return
+            upstream = self._open_socks_connection(parsed.hostname, port)
+            if upstream is None:
+                self._http_error(502)
+                return
+            if connect:
+                self.connection.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+            else:
+                path = parsed.path or "/"
+                if parsed.query:
+                    path += "?" + parsed.query
+                host = f"[{parsed.hostname}]" if ":" in parsed.hostname else parsed.hostname
+                if port != 80:
+                    host += f":{port}"
+                upstream.sendall(
+                    f"{method} {path} {version}\r\nHost: {host}\r\n".encode("ascii")
+                    + b"".join(headers)
+                    + (b"Connection: Upgrade\r\n" if upgrading else b"Connection: close\r\n")
+                    + b"\r\n"
+                )
+            self._pipe(upstream)
+        except (ValueError, UnicodeError):
+            self._http_error(400)
+        except OSError:
+            return
+        finally:
+            if upstream is not None:
+                upstream.close()
 
 
 class LocalSocksProxyServer:
     """
     Local SOCKS5 server without authentication that forwards through an upstream SOCKS proxy.
     """
+
+    handler_class = SocksBridgeHandler
+    scheme = "socks5"
 
     def __init__(self, details: ProxyDetails, profile_name: Optional[str] = None):
         self._details = details
@@ -222,9 +334,9 @@ class LocalSocksProxyServer:
 
     def start(self) -> str:
         if self._server:
-            return f"socks5://127.0.0.1:{self.port}"
+            return f"{self.scheme}://127.0.0.1:{self.port}"
         try:
-            self._server = _ProxyTCPServer(("127.0.0.1", 0), SocksBridgeHandler, self._details)
+            self._server = _ProxyTCPServer(("127.0.0.1", 0), self.handler_class, self._details)
             self._server.logger = self._logger
             self.port = self._server.server_address[1]
         except Exception:
@@ -238,18 +350,26 @@ class LocalSocksProxyServer:
         )
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()
-        return f"socks5://127.0.0.1:{self.port}"
+        return f"{self.scheme}://127.0.0.1:{self.port}"
 
     def stop(self):
         if not self._server:
             return
         self._logger.info("Local proxy: stopping SOCKS bridge on 127.0.0.1:%s", self.port)
+        self._server.stop_connections()
         self._server.shutdown()
         self._server.server_close()
         self._server = None
         if self._thread:
             self._thread.join(timeout=1)
             self._thread = None
+
+
+class LocalHttpProxyServer(LocalSocksProxyServer):
+    """Loopback-only HTTP/CONNECT adapter for a selected SOCKS upstream."""
+
+    handler_class = HttpSocksBridgeHandler
+    scheme = "http"
 
 
 def parse_proxy(proxy: str, profile_name: Optional[str] = None) -> Tuple[Optional[Dict[str, str]], Optional[ProxyDetails]]:
@@ -269,11 +389,9 @@ def parse_proxy(proxy: str, profile_name: Optional[str] = None) -> Tuple[Optiona
     if not raw:
         return None, None
 
-    def _warn(reason: str):
-        return
-
     def _build(scheme: str, host: str, port: str, username: Optional[str], password: Optional[str]):
-        server = f"{scheme}://{host}:{port}"
+        display_host = f"[{host}]" if ":" in host else host
+        server = f"{scheme}://{display_host}:{port}"
         cfg: Dict[str, str] = {"server": server}
         if username:
             cfg["username"] = username
@@ -281,44 +399,64 @@ def parse_proxy(proxy: str, profile_name: Optional[str] = None) -> Tuple[Optiona
             cfg["password"] = password
         return cfg
 
-    if "@" in raw:
-        parsed = urlparse(raw)
-        if not parsed.scheme or not parsed.hostname or not parsed.port:
-            _warn("invalid url-like proxy string")
+    if "://" not in raw:
+        raw = "socks5://" + raw
+    if raw.split("://", 1)[0].lower() not in {"http", "https", "socks4", "socks5"}:
+        return None, None
+    if "@" in raw or raw.split("://", 1)[1].startswith("["):
+        try:
+            parsed = urlparse(raw)
+            host, port = parsed.hostname, parsed.port
+        except ValueError:
             return None, None
+        if not host or any(character.isspace() for character in host) or port is None or not 1 <= port <= 65535:
+            return None, None
+        username = unquote(parsed.username) if parsed.username is not None else None
+        password = unquote(parsed.password) if parsed.password is not None else None
         details = ProxyDetails(
-            scheme=parsed.scheme,
-            host=parsed.hostname,
-            port=int(parsed.port),
-            username=parsed.username,
-            password=parsed.password,
+            scheme=parsed.scheme.lower(),
+            host=host,
+            port=port,
+            username=username,
+            password=password,
         )
-        return _build(parsed.scheme, parsed.hostname, str(parsed.port), parsed.username, parsed.password), details
+        return _build(details.scheme, host, str(port), username, password), details
 
     try:
         scheme, rest = raw.split("://", 1)
     except ValueError:
-        _warn("scheme missing (expected scheme://host:port[:user:pass])")
         return None, None
 
     parts = rest.split(":")
     if len(parts) not in (2, 4):
-        _warn("unexpected parts count; use host:port or host:port:user:pass")
         return None, None
 
     host, port = parts[0], parts[1]
     username = parts[2] if len(parts) == 4 else None
     password = parts[3] if len(parts) == 4 else None
 
-    if not host or not port.isdigit():
-        _warn("bad host or non-numeric port")
+    if not host or any(character.isspace() for character in host) or not port.isascii() or not port.isdecimal() or not 1 <= int(port) <= 65535:
         return None, None
 
     details = ProxyDetails(
-        scheme=scheme,
+        scheme=scheme.lower(),
         host=host,
         port=int(port),
         username=username,
         password=password,
     )
-    return _build(scheme, host, port, username, password), details
+    return _build(details.scheme, host, port, username, password), details
+
+
+def proxy_display_address(proxy: str) -> str:
+    value = str(proxy or "").strip()
+    if not value:
+        return "None"
+    try:
+        _, details = parse_proxy(value if "://" in value else "socks5://" + value)
+    except ValueError:
+        return "Invalid proxy"
+    if details is None:
+        return "Invalid proxy"
+    host = f"[{details.host}]" if ":" in details.host else details.host
+    return f"{details.scheme}://{host}:{details.port}"

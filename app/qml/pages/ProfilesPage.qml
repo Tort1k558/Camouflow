@@ -20,6 +20,10 @@ Item {
         target: profilesBridge
         function onModelChanged() { root.contextActions = profilesBridge.actionState(root.contextProfile) }
         function onProfileSaved(name) { if (name === root.editingProfile) profileDialog.close() }
+        function onProfilesImportFinished(remaining) {
+            if (remaining) importLines.text = remaining
+            else importDialog.close()
+        }
         function onCookiesLoaded(name, payload, error) {
             if (name !== root.editingProfile || !root.cookiesLoading) return
             root.cookiesLoading = false
@@ -95,6 +99,21 @@ Item {
     function confirmDelete(name) {
         confirmDialog.ask('Delete profile "' + name + '"? This action cannot be undone.', function() { profilesBridge.deleteProfile(name) })
     }
+    function saveCookieDraft() {
+        var target = root.editingProfile
+        var draft = profileCookiesJson.text
+        var clearAll = false
+        try {
+            var parsed = JSON.parse(draft)
+            clearAll = Array.isArray(parsed) && parsed.length === 0
+        } catch (error) {
+            profilesBridge.saveProfileCookiesJson(target, draft)
+            return
+        }
+        if (clearAll) confirmDialog.ask('Clear ALL cookies for local profile "' + target + '"?',
+            function() { profilesBridge.saveProfileCookiesJson(target, draft) }, "Clear cookies")
+        else profilesBridge.saveProfileCookiesJson(target, draft)
+    }
     ConfirmDialog { id: confirmDialog }
     Menu {
         id: profileImportMenu
@@ -154,6 +173,7 @@ Item {
                 border.color: model.selected ? Theme.primaryLight : Theme.border
                 Text {
                     id: tagText
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: model.name + "  " + model.count
                     color: model.selected ? Theme.primaryText : Theme.muted
@@ -226,7 +246,7 @@ Item {
             anchors.margins: 22
             spacing: 14
             Text { text: "Import Profiles"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
-            FormField { id: importTemplate; width: parent.width; label: "Account parse template"; text: "{email};{password};{secret_key};{extra};{twofa_url}" }
+            FormField { id: importTemplate; objectName: "importTemplate"; width: parent.width; label: "Account parse template"; text: "{email};{password};{secret_key};{extra};{twofa_url}" }
             Row {
                 width: parent.width
                 spacing: 12
@@ -239,14 +259,15 @@ Item {
                     Rectangle {
                         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
                         height: 40; radius: Theme.radiusSm; color: Theme.subtle; border.color: Theme.border
-                        ComboBox {
+                        PlainComboBox {
                             id: importProxyPool
+                            objectName: "importProxyPool"
                             anchors.fill: parent
                             anchors.margins: 6
                             model: proxiesBridge.poolsModel
                             textRole: "name"
                             background: Item {}
-                            contentItem: Text { text: importProxyPool.displayText || "Default"; color: Theme.text; verticalAlignment: Text.AlignVCenter; font.pixelSize: 13 }
+                            contentItem: Text { text: importProxyPool.displayText || "Default"; textFormat: Text.PlainText; color: Theme.text; verticalAlignment: Text.AlignVCenter; font.pixelSize: 13 }
                         }
                     }
                 }
@@ -260,6 +281,7 @@ Item {
                 border.color: Theme.border
                 TextArea {
                     id: importLines
+                    objectName: "importLines"
                     anchors.fill: parent
                     anchors.margins: 12
                     color: Theme.text
@@ -274,11 +296,11 @@ Item {
                 PrimaryButton {
                     width: 120
                     text: "Import"
+                    objectName: "importSubmit"
                     icon: "save"
                     enabled: profilesBridge.canManage && !profilesBridge.busy
                     onClicked: {
                         profilesBridge.importProfiles(importLines.text, importTemplate.text, importTag.text, importProxyPool.currentText === "All pools" ? "" : importProxyPool.currentText)
-                        importDialog.close()
                     }
                 }
                 PrimaryButton { width: 100; text: "Cancel"; secondary: true; onClicked: importDialog.close() }
@@ -316,7 +338,7 @@ Item {
                     radius: 11
                     color: Theme.subtle
                     border.color: Theme.border
-                    Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
+                    Text { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; textFormat: Text.PlainText; text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
                     PrimaryButton { anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter; width: 34; height: 28; text: ""; icon: "trash"; danger: true; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: { settingsBridge.deleteStage(model.name); profilesBridge.refresh() } }
                 }
             }
@@ -371,7 +393,7 @@ Item {
                     spacing: 8
                     ProfileTab { title: "Profile"; tabId: "profile" }
                     ProfileTab { title: "Variables"; tabId: "variables" }
-                    ProfileTab { title: "Cookies"; tabId: "cookies" }
+                    ProfileTab { title: "Cookies"; tabId: "cookies"; visible: profilesBridge.canEditCookies }
                     ProfileTab { title: "Browser JSON"; tabId: "browser" }
                 }
                 Column {
@@ -385,7 +407,7 @@ Item {
                         rowSpacing: 14
                         FormField { id: editName; Layout.fillWidth: true; label: "Name" }
                         FormField { id: editStage; Layout.fillWidth: true; label: "Tag / Scenario" }
-                        ComboBox {
+                        PlainComboBox {
                             id: editProxyChoice
                             Layout.fillWidth: true; Layout.columnSpan: 2
                             model: root.proxyChoices; textRole: "label"
@@ -423,11 +445,11 @@ Item {
                 Column {
                     width: parent.width
                     spacing: 12
-                    visible: root.profileSettingsTab === "cookies"
+                    visible: root.profileSettingsTab === "cookies" && profilesBridge.canEditCookies
                     Text { text: "Cookies"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
-                    Text { text: "Edit JSON array and save. Encrypted Chromium values may be read-only."; color: Theme.muted; font.pixelSize: 12 }
+                    Text { width: parent.width; text: "Save replaces all local cookies. Encrypted preview values cannot be reused."; wrapMode: Text.WordWrap; color: Theme.muted; font.pixelSize: 12 }
                     Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
-                        TextArea { id: profileCookiesJson; enabled: !root.cookiesLoading; placeholderText: root.cookiesLoading ? "Loading cookies..." : ""; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
+                        TextArea { id: profileCookiesJson; objectName: "cookieEditor"; enabled: !root.cookiesLoading; placeholderText: root.cookiesLoading ? "Loading cookies..." : ""; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} }
                     }
                 }
                 Column {
@@ -463,7 +485,7 @@ Item {
                     spacing: 12
                     visible: root.profileSettingsTab === "cookies"
                     PrimaryButton { width: 120; text: "Refresh"; secondary: true; enabled: !root.cookiesLoading; onClicked: { root.cookiesLoading = true; profilesBridge.loadCookies(root.editingProfile) } }
-                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage && !profilesBridge.busy && !root.cookiesLoading; onClicked: profilesBridge.saveProfileCookiesJson(root.editingProfile, profileCookiesJson.text) }
+                    PrimaryButton { objectName: "cookieSave"; width: 120; text: "Save"; icon: "save"; visible: profilesBridge.canEditCookies; enabled: !profilesBridge.busy && !root.cookiesLoading; onClicked: root.saveCookieDraft() }
                     PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
                 }
                 Row {

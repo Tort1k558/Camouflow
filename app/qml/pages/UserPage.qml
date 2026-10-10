@@ -63,7 +63,7 @@ Flickable {
                     anchors.fill: parent
                     radius: 27
                     color: root.avatarTones[root.avatarTone]
-                    Text { anchors.centerIn: parent; text: root.accountInitials; color: Theme.primaryText; font.pixelSize: 17; font.weight: Font.DemiBold }
+                    Text { anchors.centerIn: parent; textFormat: Text.PlainText; text: root.accountInitials; color: Theme.primaryText; font.pixelSize: 17; font.weight: Font.DemiBold }
                 }
                 Rectangle {
                     anchors.right: parent.right
@@ -191,8 +191,8 @@ Flickable {
                         Column {
                             Layout.fillWidth: true
                             spacing: 1
-                            Text { text: model.team_name; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                            Text { text: "invited as " + model.role + (model.invited_by_email ? " · by " + model.invited_by_email : ""); color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: model.team_name; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: "invited as " + model.role + (model.invited_by_email ? " · by " + model.invited_by_email : ""); color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
                         }
                         PrimaryButton { Layout.preferredHeight: 27; text: "Accept"; icon: "check"; onClicked: root.bridge.acceptInvite(model.id) }
                     }
@@ -253,7 +253,7 @@ Flickable {
                             Layout.preferredHeight: 34
                             radius: 17
                             color: root.avatarTones[root.teamTone(model.name)]
-                            Text { anchors.centerIn: parent; text: root.teamInitials(model.name); color: Theme.primaryText; font.pixelSize: 12; font.weight: Font.DemiBold }
+                            Text { anchors.centerIn: parent; textFormat: Text.PlainText; text: root.teamInitials(model.name); color: Theme.primaryText; font.pixelSize: 12; font.weight: Font.DemiBold }
                         }
 
                         ColumnLayout {
@@ -262,7 +262,7 @@ Flickable {
                             RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 8
-                                Text { text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
+                                Text { textFormat: Text.PlainText; text: model.name; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
                                 Rectangle {
                                     visible: model.selected
                                     Layout.preferredWidth: 58
@@ -274,6 +274,7 @@ Flickable {
                             }
                             Text {
                                 text: model.slug + " · " + model.profiles + "p " + model.proxies + "x " + model.scenarios + "s"
+                                textFormat: Text.PlainText
                                 color: Theme.dim
                                 font.family: Theme.monoFamily
                                 font.pixelSize: 10
@@ -287,7 +288,7 @@ Flickable {
                             Layout.preferredHeight: 21
                             radius: 7
                             color: model.role === "owner" ? "#496b2c" : Theme.subtle
-                            Text { anchors.centerIn: parent; text: model.role; color: model.role === "owner" ? "#edf4e6" : Theme.primaryLight; font.pixelSize: 10; font.weight: Font.DemiBold }
+                            Text { anchors.centerIn: parent; textFormat: Text.PlainText; text: model.role; color: model.role === "owner" ? "#edf4e6" : Theme.primaryLight; font.pixelSize: 10; font.weight: Font.DemiBold }
                         }
                     }
                 }
@@ -355,7 +356,7 @@ Flickable {
                 Column {
                     Layout.fillWidth: true
                     Text { text: "Team console"; color: Theme.text; font.pixelSize: 17; font.weight: Font.DemiBold }
-                    Text { text: root.bridge && root.bridge.canManageTeam ? "Members, invites and activity for the active team." : "Members and activity — managing requires admin role."; color: Theme.muted; font.pixelSize: 12 }
+                    Text { textFormat: Text.PlainText; text: root.bridge && root.bridge.canManageTeam ? "Members, invites and activity for the active team." : "Members and activity — managing requires admin role."; color: Theme.muted; font.pixelSize: 12 }
                 }
                 PrimaryButton {
                     Layout.preferredHeight: 30
@@ -406,8 +407,8 @@ Flickable {
                         Column {
                             Layout.fillWidth: true
                             spacing: 1
-                            Text { text: model.full_name !== "" ? model.full_name : model.email; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                            Text { text: model.last_seen !== "" ? model.email + " · seen " + model.last_seen : model.email; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: model.full_name !== "" ? model.full_name : model.email; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: model.last_seen !== "" ? model.email + " · seen " + model.last_seen : model.email; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
                         }
                         ComboBox {
                             id: roleEdit
@@ -465,7 +466,7 @@ Flickable {
                         anchors.fill: parent
                         anchors.margins: 8
                         spacing: 8
-                        Text { Layout.fillWidth: true; text: root.bridge ? root.bridge.lastInviteLink : ""; color: Theme.text; font.pixelSize: 11; elide: Text.ElideMiddle }
+                        Text { Layout.fillWidth: true; textFormat: Text.PlainText; text: root.bridge ? root.bridge.lastInviteLink : ""; color: Theme.text; font.pixelSize: 11; elide: Text.ElideMiddle }
                         PrimaryButton { Layout.preferredWidth: 66; Layout.preferredHeight: 26; text: "Copy"; secondary: true; onClicked: root.bridge.copyToClipboard(root.bridge.lastInviteLink) }
                         PrimaryButton { Layout.preferredWidth: 66; Layout.preferredHeight: 26; text: "Open"; secondary: true; onClicked: Qt.openUrlExternally(root.bridge.lastInviteLink) }
                     }
@@ -489,12 +490,12 @@ Flickable {
                             anchors.leftMargin: 9
                             anchors.rightMargin: 6
                             spacing: 8
-                            Text { Layout.fillWidth: true; text: model.email; color: Theme.text; font.pixelSize: 12; elide: Text.ElideRight }
-                            Text { Layout.preferredWidth: 70; text: model.role; color: Theme.dim; font.pixelSize: 11 }
+                            Text { Layout.fillWidth: true; textFormat: Text.PlainText; text: model.email; color: Theme.text; font.pixelSize: 12; elide: Text.ElideRight }
+                            Text { Layout.preferredWidth: 70; textFormat: Text.PlainText; text: model.role; color: Theme.dim; font.pixelSize: 11 }
                             Rectangle {
                                 Layout.preferredWidth: 62; Layout.preferredHeight: 19; radius: 9
                                 color: model.status === "active" ? Theme.selection : model.status === "used" ? Theme.subtle : Theme.dangerSurface
-                                Text { anchors.centerIn: parent; text: model.status; color: model.status === "expired" ? Theme.danger : model.status === "active" ? Theme.primaryInk : Theme.dim; font.pixelSize: 9; font.weight: Font.DemiBold }
+                                Text { anchors.centerIn: parent; textFormat: Text.PlainText; text: model.status; color: model.status === "expired" ? Theme.danger : model.status === "active" ? Theme.primaryInk : Theme.dim; font.pixelSize: 9; font.weight: Font.DemiBold }
                             }
                             PrimaryButton { Layout.preferredWidth: 62; Layout.preferredHeight: 24; text: "Revoke"; danger: true; visible: root.bridge && root.bridge.canManageTeam && model.status === "active"; onClicked: inviteConfirm.ask('Revoke invite for "' + model.email + '"?', function() { root.bridge.revokeInvite(model.id) }) }
                         }
@@ -526,10 +527,10 @@ Flickable {
                         anchors.leftMargin: 9
                         anchors.rightMargin: 9
                         spacing: 8
-                        Text { Layout.preferredWidth: 118; text: model.time; color: Theme.dim; font.pixelSize: 10; font.family: Theme.monoFamily }
-                        Text { Layout.preferredWidth: 132; text: model.action; color: Theme.primaryInk; font.pixelSize: 10; font.weight: Font.DemiBold; font.family: Theme.monoFamily; elide: Text.ElideRight }
-                        Text { Layout.preferredWidth: 110; text: model.entity; color: Theme.muted; font.pixelSize: 10; elide: Text.ElideRight }
-                        Text { Layout.fillWidth: true; text: model.details; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight }
+                        Text { Layout.preferredWidth: 118; textFormat: Text.PlainText; text: model.time; color: Theme.dim; font.pixelSize: 10; font.family: Theme.monoFamily }
+                        Text { Layout.preferredWidth: 132; textFormat: Text.PlainText; text: model.action; color: Theme.primaryInk; font.pixelSize: 10; font.weight: Font.DemiBold; font.family: Theme.monoFamily; elide: Text.ElideRight }
+                        Text { Layout.preferredWidth: 110; textFormat: Text.PlainText; text: model.entity; color: Theme.muted; font.pixelSize: 10; elide: Text.ElideRight }
+                        Text { Layout.fillWidth: true; textFormat: Text.PlainText; text: model.details; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight }
                     }
                 }
                 EmptyState { anchors.centerIn: parent; width: Math.min(320, parent.width); visible: root.bridge && root.bridge.auditModel.count === 0; title: "No activity yet"; description: "Team actions will appear here."; icon: "logs" }
@@ -653,8 +654,8 @@ Flickable {
                         spacing: 8
                         Column {
                             Layout.fillWidth: true
-                            Text { text: model.resource + (model.reason === "remote_deleted" ? " / deleted on server" : model.reason === "local_deleted" ? " / deleted locally" : ""); color: Theme.primaryLight; font.pixelSize: 10; font.weight: Font.DemiBold; font.capitalization: Font.AllUppercase }
-                            Text { width: parent.width; text: model.key; color: Theme.text; font.pixelSize: 12; elide: Text.ElideMiddle }
+                            Text { textFormat: Text.PlainText; text: model.resource + (model.reason === "remote_deleted" ? " / deleted on server" : model.reason === "local_deleted" ? " / deleted locally" : ""); color: Theme.primaryLight; font.pixelSize: 10; font.weight: Font.DemiBold; font.capitalization: Font.AllUppercase }
+                            Text { width: parent.width; textFormat: Text.PlainText; text: model.key; color: Theme.text; font.pixelSize: 12; elide: Text.ElideMiddle }
                         }
                         PrimaryButton { Layout.preferredWidth: 96; text: model.reason === "local_deleted" ? "Delete remote" : "Keep local"; secondary: true; onClicked: syncConfirm.ask("Apply the local version for " + model.key + "? If deleted locally, this deletes the server record.", function() { root.bridge.resolveConflict(model.resource + "|" + model.key + "|local") }) }
                         PrimaryButton { Layout.preferredWidth: 104; text: model.reason === "remote_deleted" ? "Delete local" : "Keep remote"; secondary: true; onClicked: syncConfirm.ask("Apply the server version for " + model.key + "? If deleted on the server, this deletes the local record.", function() { root.bridge.resolveConflict(model.resource + "|" + model.key + "|remote") }) }

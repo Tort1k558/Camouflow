@@ -116,6 +116,7 @@ Item {
                         anchors.right: parent.right; anchors.rightMargin: 16
                         anchors.verticalCenter: parent.verticalCenter
                         text: model.message
+                        textFormat: Text.PlainText
                         color: Theme.muted
                         font.family: Theme.monoFamily
                         font.pixelSize: 12

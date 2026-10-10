@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import argparse
 import json
 import os
 import re
@@ -16,7 +17,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 def main():
-    engine = sys.argv[1] if len(sys.argv) > 1 else "camoufox"
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("engine", nargs="?", choices=("camoufox", "cloakbrowser"), default="camoufox")
+    engine = parser.parse_args().engine
     root = Path(tempfile.mkdtemp(prefix="camouflow-ai-workflow-"))
     os.environ["CAMOUFLOW_DATA_DIR"] = str(root)
     from app.core.browser_interface import BrowserInterface

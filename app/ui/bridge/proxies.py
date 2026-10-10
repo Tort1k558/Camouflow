@@ -2,19 +2,38 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
-from PyQt6.QtCore import QThread, QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QThread, pyqtProperty, pyqtSignal, pyqtSlot
 
+from app.core.proxy_utils import proxy_display_address
+from app.services.proxy_policy import is_proxy_quarantined
+from app.services.server_client import (
+    ServerClient,
+    ServerClientError,
+    get_server_session,
+    server_enabled,
+)
+from app.storage import db
 from app.storage.db import db_get_setting, db_set_setting
-from app.services.server_client import ServerClient, ServerClientError, server_enabled
+from app.ui.bridge.background import BackgroundRead
 from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
-from app.ui.bridge.background import BackgroundRead
-from app.services.server_client import get_server_session
+
+
+def _proxy_workspace_matches(cached, current) -> bool:
+    return cached is not None and all(getattr(cached, key) == getattr(current, key)
+                                      for key in ("enabled", "url", "team_id", "email"))
+
+
+def _local_proxy_snapshot(entry) -> tuple[str, str, str]:
+    if isinstance(entry, dict):
+        return str(entry.get("name") or ""), str(entry.get("value") or ""), str(entry.get("assigned_to") or "")
+    return "", str(entry), ""
 
 
 class ProxiesBridge(QObject):
@@ -31,14 +50,18 @@ class ProxiesBridge(QObject):
         self._pools_model = DictListModel(["name", "total", "used", "selected", "source", "permission"], parent=self)
         self._server_pools: Dict[str, Dict[str, Any]] = {}
         self._pools_cache = {}
+        self._address_cache: dict[str, str] = {}
         self._cache_session = None
         self._read = BackgroundRead(self, self._apply_refresh, self._emit_message)
         self._read.busyChanged.connect(self.modelChanged.emit)
         self._selected_pool = ""
+        self._proxy_query = ""
+        self._proxy_status = ""
         self._selected: set[tuple[str, int]] = set()
         self._active = 0
         self._checking = 0
         self._failed = 0
+        self._unchecked = 0
         self._locations = 0
         if app_state is not None:
             app_state.refreshRequested.connect(self.refresh)
@@ -91,10 +114,24 @@ class ProxiesBridge(QObject):
 
     @staticmethod
     def _is_quarantined(entry: Dict[str, Any]) -> bool:
-        try:
-            return datetime.fromisoformat(str(entry.get("quarantine_until") or "").replace("Z", "+00:00")) > datetime.now(timezone.utc)
-        except ValueError:
+        return is_proxy_quarantined(entry)
+
+    def _store_local_check(self, pool_name: str, value: str, result: Dict[str, Any]) -> bool:
+        if server_enabled():
             return False
+        with db._STORAGE_LOCK:
+            pools = json.loads(db_get_setting("proxy_pools") or "{}")
+            pool = pools.get(pool_name)
+            if not isinstance(pool, dict):
+                return False
+            matches = [entry for entry in pool.get("proxies", [])
+                       if isinstance(entry, dict) and str(entry.get("value") or "") == value]
+            if not matches:
+                return False
+            for entry in matches:
+                self._record_check(entry, dict(result))
+            db_set_setting("proxy_pools", json.dumps(pools, ensure_ascii=False))
+        return True
 
     @pyqtProperty(bool, notify=modelChanged)
     def loading(self):
@@ -116,6 +153,25 @@ class ProxiesBridge(QObject):
     def selectedCount(self) -> int:  # noqa: N802
         return len(self._selected)
 
+    @pyqtProperty(str, notify=modelChanged)
+    def proxyQuery(self):  # noqa: N802
+        return self._proxy_query
+
+    @pyqtProperty(str, notify=modelChanged)
+    def proxyStatus(self):  # noqa: N802
+        return self._proxy_status
+
+    @pyqtSlot(str, str)
+    def setProxyFilters(self, query, status):  # noqa: N802
+        status = status.strip().lower()
+        if status not in {"", "active", "reachable", "unchecked", "checking", "failed", "quarantined"}:
+            return
+        if (query, status) == (self._proxy_query, self._proxy_status):
+            return
+        self._proxy_query, self._proxy_status = query, status
+        self._selected.clear()
+        self._render_pools()
+
     @pyqtProperty(int, notify=statsChanged)
     def active(self) -> int:
         return self._active
@@ -129,6 +185,10 @@ class ProxiesBridge(QObject):
         return self._failed
 
     @pyqtProperty(int, notify=statsChanged)
+    def unchecked(self) -> int:
+        return self._unchecked
+
+    @pyqtProperty(int, notify=statsChanged)
     def locations(self) -> int:
         return self._locations
 
@@ -139,6 +199,10 @@ class ProxiesBridge(QObject):
     @pyqtProperty(bool, notify=modelChanged)
     def canManage(self) -> bool:  # noqa: N802
         return allows(self._app_state, "manager")
+
+    @pyqtProperty(bool, notify=modelChanged)
+    def canReleaseQuarantine(self) -> bool:  # noqa: N802
+        return not server_enabled() and self.canManage
 
     @pyqtProperty(bool, notify=modelChanged)
     def canAdmin(self) -> bool:  # noqa: N802
@@ -163,7 +227,10 @@ class ProxiesBridge(QObject):
                 group = str(proxy.get("group_name") or "Default")
                 check = proxy.get("last_check") if isinstance(proxy.get("last_check"), dict) else {}
                 if not check:
-                    check = {"status": proxy.get("status") or "active", "country": proxy.get("country") or ""}
+                    raw_status = str(proxy.get("status") or "").lower()
+                    check = {"status": raw_status if raw_status in {"fail", "failed", "checking", "quarantined"} else "unchecked", "country": proxy.get("country") or ""}
+                else:
+                    check = {**check, "mode": check.get("mode") or "tcp"}
                 pools.setdefault(group, {"proxies": []})["proxies"].append({
                     "id": str(proxy.get("id") or ""),
                     "name": str(proxy.get("name") or ""),
@@ -187,13 +254,46 @@ class ProxiesBridge(QObject):
         client = ServerClient()
         return client if client.configured else None
 
-    def _server_proxy_entry(self, pool_name: str, index: int) -> Dict[str, Any]:
+    @staticmethod
+    def _local_proxy_identity(entry: Dict[str, Any]) -> str:
+        snapshot = json.dumps(_local_proxy_snapshot(entry), ensure_ascii=False)
+        return "local:" + hashlib.sha256(snapshot.encode("utf-8")).hexdigest()
+
+    def _load_local_targets(self, targets) -> Dict[str, Dict[str, Any]] | None:
+        # Caller holds the storage lock through persistence.
+        session = get_server_session()
+        if session.enabled or not _proxy_workspace_matches(self._cache_session, session):
+            self._emit_message("Workspace changed; select the proxies again")
+            self._selected.clear()
+            self.refresh()
+            return None
+        pools = self._load()
+        for pool_name, index in targets:
+            cached = self._pools_cache.get(pool_name)
+            current = pools.get(pool_name)
+            shown = cached.get("proxies", []) if isinstance(cached, dict) else []
+            stored = current.get("proxies", []) if isinstance(current, dict) else []
+            if (len(shown) != len(stored) or not 0 <= index < len(shown)
+                    or _local_proxy_snapshot(shown[index]) != _local_proxy_snapshot(stored[index])):
+                self._emit_message("Proxy list changed; select the proxies again")
+                self._selected.clear()
+                self.refresh()
+                return None
+        return pools
+
+    def _server_proxy_entry(self, pool_name: str, index: int, expected_id: str = "") -> Dict[str, Any]:
+        session = get_server_session()
+        if not _proxy_workspace_matches(self._cache_session, session):
+            return {}
         try:
             index = int(index)
         except Exception:
             return {}
-        pool = self._load().get(str(pool_name or "").strip())
+        pool = self._pools_cache.get(str(pool_name or "").strip())
         proxies = pool.get("proxies", []) if isinstance(pool, dict) else []
+        if expected_id:
+            return next((entry for entry in proxies if isinstance(entry, dict)
+                         and str(entry.get("id") or "") == expected_id), {})
         if 0 <= index < len(proxies) and isinstance(proxies[index], dict):
             return proxies[index]
         return {}
@@ -213,6 +313,8 @@ class ProxiesBridge(QObject):
             return
         session = get_server_session()
         if session != self._cache_session:
+            self._selected.clear()
+            self._address_cache.clear()
             self._server_pools = {}
             self._pools_cache = {}
             self._render_pools()
@@ -224,7 +326,15 @@ class ProxiesBridge(QObject):
         return session, self._load(session), {str(row["name"]): row for row in rows if row.get("name")}
 
     def _apply_refresh(self, result):
+        session, pools, _ = result
+        def identities(data):
+            return {name: [entry.get("id") if isinstance(entry, dict) else None for entry in pool.get("proxies", [])]
+                    if session.enabled else [_local_proxy_snapshot(entry) for entry in pool.get("proxies", [])]
+                    for name, pool in data.items() if isinstance(pool, dict)}
+        if identities(pools) != identities(self._pools_cache):
+            self._selected.clear()
         self._cache_session, self._pools_cache, self._server_pools = result
+        self._address_cache.clear()
         self._render_pools()
 
     def _render_pools(self):
@@ -250,7 +360,8 @@ class ProxiesBridge(QObject):
             + pool_rows
         )
         rows: List[Dict[str, Any]] = []
-        active = checking = failed = 0
+        query = self._proxy_query.strip().casefold()
+        active = checking = failed = unchecked = 0
         locations = set()
         for pool_name, pool in sorted(pools.items()):
             if self._selected_pool and pool_name != self._selected_pool:
@@ -261,34 +372,52 @@ class ProxiesBridge(QObject):
                 if not value:
                     continue
                 check = entry.get("last_check") if isinstance(entry, dict) else {}
-                status_raw = str(check.get("status") or "active").lower() if isinstance(check, dict) else "active"
+                status_raw = str(check.get("status") or "unchecked").lower() if isinstance(check, dict) else "unchecked"
                 quarantined = isinstance(entry, dict) and self._is_quarantined(entry)
-                status = "Quarantined" if quarantined else ("Active" if status_raw in {"ok", "active"} else "Checking" if status_raw == "checking" else "Failed")
-                if status == "Active":
+                if quarantined:
+                    status = "Quarantined"
+                elif status_raw in {"ok", "active"}:
+                    status = "Reachable" if check.get("mode") == "tcp" else "Active"
+                else:
+                    status = {"checking": "Checking", "unchecked": "Unchecked"}.get(status_raw, "Failed")
+                if status in {"Active", "Reachable"}:
                     active += 1
                 elif status == "Checking":
                     checking += 1
+                elif status == "Unchecked":
+                    unchecked += 1
                 else:
                     failed += 1
                 country = str(check.get("country") or "") if isinstance(check, dict) else ""
                 city = str(check.get("city") or "") if isinstance(check, dict) else ""
-                location = ", ".join(p for p in [city, country] if p) or pool_name
-                locations.add(location)
-                type_label = "SOCKS5" if "socks" in value.lower() else "HTTP"
+                geo_location = ", ".join(p for p in [city, country] if p)
+                location = geo_location or pool_name
+                if geo_location:
+                    locations.add(geo_location)
+                if value not in self._address_cache:
+                    self._address_cache[value] = proxy_display_address(value)
+                address = self._address_cache[value]
+                type_label = address.split("://", 1)[0].upper() if "://" in address else "INVALID"
                 latency = check.get("ms") if isinstance(check, dict) else None
-                rows.append({
+                row = {
                     "pool": pool_name,
                     "name": str(entry.get("name") or f"{pool_name}-{pool_index + 1:02d}") if isinstance(entry, dict) else f"{pool_name}-{pool_index + 1:02d}",
                     "location": location,
-                    "address": value,
+                    "address": address,
                     "type": type_label,
                     "latency": f"{latency}ms" if isinstance(latency, int) else "?",
                     "status": status,
-                    "accent": "#3f714a" if status == "Active" else "#94671c" if status in {"Checking", "Quarantined"} else "#b33d47",
+                    "accent": "#3f714a" if status == "Active" else "#94671c" if status in {"Checking", "Quarantined"} else "#b33d47" if status == "Failed" else "#737e6b",
                     "index": pool_index,
                     "selected": (pool_name, pool_index) in self._selected,
-                })
+                }
+                if self._proxy_status and status.lower() != self._proxy_status:
+                    continue
+                if query and not any(query in str(row[key]).casefold() for key in ("name", "address", "location", "pool", "type")):
+                    continue
+                rows.append(row)
         self._active, self._checking, self._failed, self._locations = active, checking, failed, len(locations)
+        self._unchecked = unchecked
         self._model.set_rows(rows)
         self.modelChanged.emit()
         self.statsChanged.emit()
@@ -508,12 +637,18 @@ class ProxiesBridge(QObject):
 
     @pyqtSlot(str, int, result="QVariant")
     def getProxy(self, pool_name: str, index: int) -> Dict[str, Any]:  # noqa: N802
+        session = get_server_session()
+        if not _proxy_workspace_matches(self._cache_session, session):
+            return {}
         pool_name = str(pool_name or "").strip()
         try:
             index = int(index)
         except Exception:
             return {}
-        pool = self._load().get(pool_name)
+        if session.enabled:
+            entry = self._server_proxy_entry(pool_name, index)
+            return {**entry, "pool": pool_name, "index": index} if entry else {}
+        pool = self._pools_cache.get(pool_name)
         if not isinstance(pool, dict):
             return {}
         proxies = pool.get("proxies", [])
@@ -521,6 +656,7 @@ class ProxiesBridge(QObject):
             return {}
         entry = proxies[index]
         return {
+            "id": self._local_proxy_identity(entry),
             "pool": pool_name,
             "index": index,
             "name": str(entry.get("name") or ""),
@@ -529,8 +665,13 @@ class ProxiesBridge(QObject):
         }
 
     @pyqtSlot(str, int, str, str)
-    def saveProxy(self, pool_name: str, index: int, name: str, value: str) -> None:  # noqa: N802
+    @pyqtSlot(str, int, str, str, str)
+    def saveProxy(self, pool_name: str, index: int, name: str, value: str, expected_id: str = "") -> None:  # noqa: N802
         if not self._ensure_allowed("manager"):
+            return
+        local_identity = expected_id == "local" or expected_id.startswith("local:")
+        if expected_id and server_enabled() == local_identity:
+            self._emit_message("Workspace changed; reopen proxy settings")
             return
         pool_name = str(pool_name or "").strip()
         value = str(value or "").strip()
@@ -544,7 +685,7 @@ class ProxiesBridge(QObject):
             return
         client = self._server_client()
         if server_enabled() and client:
-            entry = self._server_proxy_entry(pool_name, index)
+            entry = self._server_proxy_entry(pool_name, index, expected_id)
             if not entry or not entry.get("id"):
                 self._emit_message("Proxy not found")
                 return
@@ -556,24 +697,41 @@ class ProxiesBridge(QObject):
             self._emit_message("Server proxy saved")
             self.refresh()
             return
-        pools = self._load()
-        pool = pools.get(pool_name)
-        if not isinstance(pool, dict):
-            self._emit_message("Proxy pool not found")
-            return
-        proxies = pool.get("proxies", [])
-        if not (0 <= index < len(proxies)) or not isinstance(proxies[index], dict):
-            self._emit_message("Proxy not found")
-            return
-        proxies[index]["name"] = str(name or "").strip()
-        proxies[index]["value"] = value
-        self._save(pools)
+        with db._STORAGE_LOCK:
+            if server_enabled():
+                self._emit_message("Workspace changed; reopen proxy settings")
+                return
+            pools = self._load()
+            pool = pools.get(pool_name)
+            if not isinstance(pool, dict):
+                self._emit_message("Proxy pool not found")
+                return
+            proxies = pool.get("proxies", [])
+            if not (0 <= index < len(proxies)) or not isinstance(proxies[index], dict):
+                self._emit_message("Proxy not found")
+                return
+            entry = proxies[index]
+            if expected_id.startswith("local:") and self._local_proxy_identity(entry) != expected_id:
+                self._emit_message("Proxy changed; reopen proxy settings")
+                self.refresh()
+                return
+            if str(entry.get("value") or "") != value:
+                for field in ("last_check", "check_history", "health_score"):
+                    entry.pop(field, None)
+            entry["name"] = str(name or "").strip()
+            entry["value"] = value
+            self._save(pools)
         self._emit_message("Proxy saved")
         self.refresh()
 
     @pyqtSlot(str, int)
-    def deleteProxy(self, pool_name: str, index: int) -> None:  # noqa: N802
+    @pyqtSlot(str, int, str)
+    def deleteProxy(self, pool_name: str, index: int, expected_id: str = "") -> None:  # noqa: N802
         if not self._ensure_allowed("admin"):
+            return
+        local_identity = expected_id == "local" or expected_id.startswith("local:")
+        if expected_id and server_enabled() == local_identity:
+            self._emit_message("Workspace changed; select the proxy again")
             return
         pool_name = str(pool_name or "").strip()
         try:
@@ -582,7 +740,7 @@ class ProxiesBridge(QObject):
             return
         client = self._server_client()
         if server_enabled() and client:
-            entry = self._server_proxy_entry(pool_name, index)
+            entry = self._server_proxy_entry(pool_name, index, expected_id)
             if not entry or not entry.get("id"):
                 return
             try:
@@ -593,18 +751,26 @@ class ProxiesBridge(QObject):
             self._emit_message("Server proxy deleted")
             self.refresh()
             return
-        pools = self._load()
-        pool = pools.get(pool_name)
-        proxies = pool.get("proxies", []) if isinstance(pool, dict) else []
-        if not (0 <= index < len(proxies)):
-            return
-        proxies.pop(index)
+        with db._STORAGE_LOCK:
+            if server_enabled():
+                self._emit_message("Workspace changed; select the proxy again")
+                return
+            pools = self._load()
+            pool = pools.get(pool_name)
+            proxies = pool.get("proxies", []) if isinstance(pool, dict) else []
+            if not (0 <= index < len(proxies)):
+                return
+            if expected_id.startswith("local:") and (not isinstance(proxies[index], dict) or self._local_proxy_identity(proxies[index]) != expected_id):
+                self._emit_message("Proxy changed; select the proxy again")
+                self.refresh()
+                return
+            proxies.pop(index)
+            self._save(pools)
         self._selected = {
             (p, i if p != pool_name or i < index else i - 1)
             for p, i in self._selected
             if not (p == pool_name and i == index)
         }
-        self._save(pools)
         self._emit_message("Proxy deleted")
         self.refresh()
 
@@ -644,18 +810,21 @@ class ProxiesBridge(QObject):
             self._emit_message(f"Released {released} server proxy(s)")
             self.refresh()
             return
-        pools = self._load()
         released = 0
         assigned_names: set[str] = set()
-        for pool_name, index in list(self._selected):
-            proxies = pools.get(pool_name, {}).get("proxies", []) if isinstance(pools.get(pool_name), dict) else []
-            if 0 <= index < len(proxies) and isinstance(proxies[index], dict):
-                assigned = str(proxies[index].get("assigned_to") or "").strip()
-                if assigned:
-                    assigned_names.add(assigned)
-                proxies[index]["assigned_to"] = ""
-                released += 1
-        self._save(pools)
+        with db._STORAGE_LOCK:
+            pools = self._load_local_targets(list(self._selected))
+            if pools is None:
+                return
+            for pool_name, index in list(self._selected):
+                proxies = pools.get(pool_name, {}).get("proxies", []) if isinstance(pools.get(pool_name), dict) else []
+                if isinstance(proxies[index], dict):
+                    assigned = str(proxies[index].get("assigned_to") or "").strip()
+                    if assigned:
+                        assigned_names.add(assigned)
+                    proxies[index]["assigned_to"] = ""
+                    released += 1
+            self._save(pools)
         if assigned_names:
             try:
                 from app.storage.db import db_get_accounts, db_update_account
@@ -698,18 +867,19 @@ class ProxiesBridge(QObject):
             self._emit_message(f"Removed {removed} server proxy(s)")
             self.refresh()
             return
-        pools = self._load()
         removed = 0
-        for pool_name in sorted({pool for pool, _ in self._selected}):
-            pool = pools.get(pool_name)
-            proxies = pool.get("proxies", []) if isinstance(pool, dict) else []
-            indices = sorted([idx for pool, idx in self._selected if pool == pool_name], reverse=True)
-            for index in indices:
-                if 0 <= index < len(proxies):
+        with db._STORAGE_LOCK:
+            pools = self._load_local_targets(list(self._selected))
+            if pools is None:
+                return
+            for pool_name in sorted({pool for pool, _ in self._selected}):
+                proxies = pools[pool_name]["proxies"]
+                indices = sorted([idx for pool, idx in self._selected if pool == pool_name], reverse=True)
+                for index in indices:
                     proxies.pop(index)
                     removed += 1
+            self._save(pools)
         self._selected.clear()
-        self._save(pools)
         self._emit_message(f"Removed {removed} proxy(s)")
         self.refresh()
 
@@ -739,33 +909,30 @@ class ProxiesBridge(QObject):
 
             threading.Thread(target=worker, daemon=True).start()
             return
-        pools = self._load()
-        pool = pools.get(pool_name)
-        if not isinstance(pool, dict):
-            self._emit_message("Proxy pool not found")
-            return
-        proxies = pool.get("proxies", [])
-        if not (0 <= index < len(proxies)) or not isinstance(proxies[index], dict):
-            self._emit_message("Proxy not found")
-            return
-        proxies[index]["last_check"] = {"status": "checking"}
-        self._save(pools)
+        with db._STORAGE_LOCK:
+            pools = self._load_local_targets([(pool_name, index)])
+            if pools is None:
+                return
+            proxies = pools[pool_name]["proxies"]
+            if not isinstance(proxies[index], dict):
+                self._emit_message("Proxy not found")
+                return
+            proxies[index]["last_check"] = {"status": "checking"}
+            value = str(proxies[index].get("value") or "")
+            self._save(pools)
         self.refresh()
 
         def worker() -> None:
             try:
                 from app.services.proxy_health import probe_proxy_endpoint
-                data = self._load()
-                entry = data.get(pool_name, {}).get("proxies", [])[index]
-                ok, ms, err, meta = probe_proxy_endpoint(str(entry.get("value") or ""), timeout_s=5.0)
+                ok, ms, err, meta = probe_proxy_endpoint(value, timeout_s=5.0)
                 result = dict(meta or {})
                 result["status"] = "ok" if ok else "fail"
                 result["ms"] = ms
                 if err:
                     result["error"] = err
-                self._record_check(entry, result)
-                self._save(data)
-                self._emit_message("Proxy check finished")
+                applied = self._store_local_check(pool_name, value, result)
+                self._emit_message("Proxy check finished" if applied else "Proxy changed or workspace switched; check result discarded")
             except Exception as exc:
                 self._emit_message(f"Proxy check failed: {exc}")
             finally:
@@ -805,13 +972,19 @@ class ProxiesBridge(QObject):
             return
         pools = self._load()
         skipped = 0
-        for pool in pools.values():
+        targets = []
+        for pool_name, pool in pools.items():
             for entry in pool.get("proxies", []) if isinstance(pool, dict) else []:
                 if isinstance(entry, dict):
                     if self._is_quarantined(entry):
                         skipped += 1
                         continue
                     entry["last_check"] = {"status": "checking"}
+                    targets.append((pool_name, str(entry.get("value") or "")))
+        targets = list(dict.fromkeys(targets))
+        if not targets:
+            self._emit_message("No available proxies to check")
+            return
         self._save(pools)
         self.refresh()
         self._emit_message(f"Proxy check started{f'; {skipped} quarantined' if skipped else ''}")
@@ -819,22 +992,17 @@ class ProxiesBridge(QObject):
         def worker() -> None:
             try:
                 from app.services.proxy_health import probe_proxy_endpoint
-                data = self._load()
-                for pool in data.values():
-                    for entry in pool.get("proxies", []) if isinstance(pool, dict) else []:
-                        if not isinstance(entry, dict):
-                            continue
-                        if self._is_quarantined(entry):
-                            continue
-                        ok, ms, err, meta = probe_proxy_endpoint(str(entry.get("value") or ""), timeout_s=5.0)
-                        result = dict(meta or {})
-                        result["status"] = "ok" if ok else "fail"
-                        result["ms"] = ms
-                        if err:
-                            result["error"] = err
-                        self._record_check(entry, result)
-                self._save(data)
+                for pool_name, value in targets:
+                    ok, ms, err, meta = probe_proxy_endpoint(value, timeout_s=5.0)
+                    result = dict(meta or {})
+                    result["status"] = "ok" if ok else "fail"
+                    result["ms"] = ms
+                    if err:
+                        result["error"] = err
+                    self._store_local_check(pool_name, value, result)
                 self._emit_message("Proxy check finished")
+            except Exception as exc:
+                self._emit_message(f"Proxy checks failed ({type(exc).__name__})")
             finally:
                 self.refresh()
 
@@ -844,16 +1012,26 @@ class ProxiesBridge(QObject):
     def releaseQuarantineSelected(self) -> None:  # noqa: N802
         if not self._ensure_allowed("manager"):
             return
-        pools = self._load()
-        released = 0
-        for pool_name, index in list(self._selected):
-            entries = (pools.get(pool_name) or {}).get("proxies", [])
-            if 0 <= index < len(entries) and isinstance(entries[index], dict):
-                if entries[index].pop("quarantine_until", None) is not None:
-                    released += 1
-        if not released:
-            self._emit_message("No quarantined proxies selected")
+        if server_enabled():
+            self._emit_message("Quarantine release is available only in local workspaces")
             return
-        self._save(pools)
+        released = 0
+        with db._STORAGE_LOCK:
+            pools = self._load_local_targets(list(self._selected))
+            if pools is None:
+                return
+            for pool_name, index in list(self._selected):
+                entries = pools[pool_name]["proxies"]
+                if isinstance(entries[index], dict):
+                    until = entries[index].pop("quarantine_until", None)
+                    explicit = entries[index].get("status") == "quarantined"
+                    if explicit:
+                        entries[index]["status"] = "unchecked"
+                    if until is not None or explicit:
+                        released += 1
+            if not released:
+                self._emit_message("No quarantined proxies selected")
+                return
+            self._save(pools)
         self._emit_message(f"Released {released} proxy(s) from quarantine")
         self.refresh()

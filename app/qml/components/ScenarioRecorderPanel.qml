@@ -47,22 +47,22 @@ Flickable {
             ColumnLayout {
                 Layout.preferredWidth: 220
                 Text { text: "Profile"; color: Theme.muted }
-                ComboBox { id: profile; onCurrentTextChanged: root.recordingProblem = recorderBridge.recordingIssue(currentText); Layout.fillWidth: true; model: profilesBridge.selectionModel; textRole: "name"; visible: !recorderBridge.active && !recorderBridge.hasDraft }
-                Text { text: recorderBridge.profileName; visible: recorderBridge.active || recorderBridge.hasDraft; Layout.fillWidth: true; Layout.preferredHeight: 38; color: Theme.text; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
+                PlainComboBox { id: profile; onCurrentTextChanged: root.recordingProblem = recorderBridge.recordingIssue(currentText); Layout.fillWidth: true; model: profilesBridge.selectionModel; textRole: "name"; visible: !recorderBridge.active && !recorderBridge.hasDraft }
+                Text { textFormat: Text.PlainText; text: recorderBridge.profileName; visible: recorderBridge.active || recorderBridge.hasDraft; Layout.fillWidth: true; Layout.preferredHeight: 38; color: Theme.text; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
             }
             FormField { id: startUrl; Layout.fillWidth: true; label: "Start URL"; text: recorderBridge.startUrl; placeholder: "https://example.com"; enabled: !recorderBridge.active && !recorderBridge.hasDraft }
         }
-        Text { Layout.fillWidth: true; visible: !recorderBridge.active && !recorderBridge.hasDraft && root.recordingProblem !== ""; text: root.recordingProblem; color: Theme.warning; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; visible: !recorderBridge.active && !recorderBridge.hasDraft && root.recordingProblem !== ""; textFormat: Text.PlainText; text: root.recordingProblem; color: Theme.warning; wrapMode: Text.WordWrap }
         RowLayout {
             PrimaryButton { text: "Start recording"; icon: "play"; enabled: !recorderBridge.active && !recorderBridge.hasDraft && profile.currentIndex >= 0 && root.recordingProblem === "" && startUrl.text.trim() !== ""; onClicked: recorderBridge.start(profile.currentText, startUrl.text) }
             PrimaryButton { text: "Stop"; secondary: true; enabled: recorderBridge.active; onClicked: recorderBridge.stop() }
-            Text { text: recorderBridge.status; color: Theme.muted; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+            Text { textFormat: Text.PlainText; text: recorderBridge.status; color: Theme.muted; Layout.fillWidth: true; wrapMode: Text.WordWrap }
         }
         Text {
             Layout.fillWidth: true; color: Theme.muted; wrapMode: Text.WordWrap
             text: "Password fields become {{password}}; other recognized sensitive fields use recorded_secret_N profile variables. Other typed text and URLs are recorded as entered: review them before sharing. Cloud saves require manager access. Stopping closes the recording browser. Unsaved drafts remain only until the application exits."
         }
-        Text { Layout.fillWidth: true; visible: text !== ""; text: recorderBridge.warnings; color: Theme.warning; wrapMode: Text.WordWrap }
+        Text { Layout.fillWidth: true; visible: text !== ""; textFormat: Text.PlainText; text: recorderBridge.warnings; color: Theme.warning; wrapMode: Text.WordWrap }
         Text { text: "Recorded actions"; color: Theme.text; font.pixelSize: 16; font.weight: Font.DemiBold; visible: recorderBridge.hasDraft }
         ListView {
             objectName: "recordedActionsList"
@@ -88,7 +88,7 @@ Flickable {
                     required property int index
                     required property var model
                     Layout.fillWidth: true; spacing: 6
-                    CheckBox { text: model.label + ": " + model.value.substring(0, 100); checked: model.selected; onClicked: inputs.setProperty(index, "selected", checked) }
+                    PlainCheckBox { text: model.label + ": " + model.value.substring(0, 100); checked: model.selected; onClicked: inputs.setProperty(index, "selected", checked) }
                     RowLayout {
                         Layout.fillWidth: true; visible: model.selected
                         FormField { Layout.fillWidth: true; label: "Field label"; text: model.label; onTextChanged: inputs.setProperty(index, "label", text) }

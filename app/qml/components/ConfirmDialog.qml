@@ -21,7 +21,7 @@ WorkspaceDialog {
     contentItem: Column {
         spacing: 14
         Text { text: "Confirm action"; color: Theme.text; font.pixelSize: 22; font.weight: Font.Medium }
-        Text { width: parent.width; text: root.message; color: Theme.muted; wrapMode: Text.WordWrap; font.pixelSize: 13 }
+        Text { width: parent.width; textFormat: Text.PlainText; text: root.message; color: Theme.muted; wrapMode: Text.WordWrap; font.pixelSize: 13 }
     }
     footer: DialogActions {
         acceptText: root.actionText

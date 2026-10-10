@@ -13,6 +13,6 @@ Column {
         anchors.horizontalCenter: parent.horizontalCenter
         LineIcon { anchors.centerIn: parent; name: root.icon; color: Theme.primaryInk; size: 22 }
     }
-    Text { width: parent.width; text: root.title; horizontalAlignment: Text.AlignHCenter; color: Theme.text; font.pixelSize: 15; font.weight: Font.Medium }
-    Text { width: parent.width; text: root.description; horizontalAlignment: Text.AlignHCenter; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap }
+    Text { width: parent.width; textFormat: Text.PlainText; text: root.title; horizontalAlignment: Text.AlignHCenter; color: Theme.text; font.pixelSize: 15; font.weight: Font.Medium }
+    Text { width: parent.width; textFormat: Text.PlainText; text: root.description; horizontalAlignment: Text.AlignHCenter; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap }
 }

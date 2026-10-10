@@ -67,6 +67,7 @@ Reviewed local starters cover a catalog table, one-page text report and filling 
 - Browser changes require confirmation by default. The agent can ask the operator for clarification. Pause applies between actions; stop retains completed steps. An interrupted action may already have changed the page.
 - Page text, labels, URLs, task instructions, extracted data and operator answers go to the selected provider. Editable contents are excluded from snapshots/extraction; typed passwords become profile variables and are redacted from logs. Tokens rendered as ordinary text or URLs may still be exposed. Do not enter credentials in operator answers.
 - Local AI history restores transcripts only in their original workspace; the latest 100 metadata entries are retained. Artifact files are not automatically deleted.
+- Malformed history transcripts are rejected before replacing the current task, outputs or session. Restored event rows use the same display roles as live events; loading history does not rerun the task or rewrite its completion time.
 - Shared workflow export requires parameterized navigation/field values; inspect selectors and metadata before sharing.
 
 ## Local integrations

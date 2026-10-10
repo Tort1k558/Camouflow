@@ -5,12 +5,13 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
+from threading import Lock
 from typing import Any, Dict, List, Optional
 
-from app.storage.db import db_get_setting, db_set_setting
+from app.storage.db import db_get_setting, db_set_settings
+from app.storage import db
 
 
 SERVER_ENABLED_KEY = "server_enabled"
@@ -21,6 +22,7 @@ SERVER_TEAM_ID_KEY = "server_team_id"
 SERVER_EMAIL_KEY = "server_email"
 DEFAULT_SERVER_URL = "https://camouflow.site"
 _REQUEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="camouflow-cloud")
+_REFRESH_LOCK = Lock()
 
 
 class ServerClientError(RuntimeError):
@@ -55,29 +57,26 @@ def server_enabled() -> bool:
 
 
 def get_server_session() -> ServerSession:
-    stored_url = (db_get_setting(SERVER_URL_KEY) or "").strip()
-    return ServerSession(
-        enabled=server_enabled(),
-        url=stored_url.rstrip("/") or DEFAULT_SERVER_URL,
-        token=(db_get_setting(SERVER_TOKEN_KEY) or "").strip(),
-        refresh_token=(db_get_setting(SERVER_REFRESH_TOKEN_KEY) or "").strip(),
-        team_id=(db_get_setting(SERVER_TEAM_ID_KEY) or "").strip(),
-        email=(db_get_setting(SERVER_EMAIL_KEY) or "").strip(),
-    )
+    with db._STORAGE_LOCK:
+        stored_url = (db_get_setting(SERVER_URL_KEY) or "").strip()
+        return ServerSession(
+            enabled=server_enabled(),
+            url=stored_url.rstrip("/") or DEFAULT_SERVER_URL,
+            token=(db_get_setting(SERVER_TOKEN_KEY) or "").strip(),
+            refresh_token=(db_get_setting(SERVER_REFRESH_TOKEN_KEY) or "").strip(),
+            team_id=(db_get_setting(SERVER_TEAM_ID_KEY) or "").strip(),
+            email=(db_get_setting(SERVER_EMAIL_KEY) or "").strip(),
+        )
 
 
 def save_server_session(*, enabled: bool, url: str, token: str = "", refresh_token: str = "", team_id: str = "", email: str = "") -> None:
     normalized_url = normalize_server_url(url) if enabled else (str(url or "").strip().rstrip("/") or DEFAULT_SERVER_URL)
-    db_set_setting(SERVER_ENABLED_KEY, "true" if enabled else "false")
-    db_set_setting(SERVER_URL_KEY, normalized_url)
-    if token or not enabled:
-        db_set_setting(SERVER_TOKEN_KEY, str(token or "").strip())
-    if refresh_token or not enabled:
-        db_set_setting(SERVER_REFRESH_TOKEN_KEY, str(refresh_token or "").strip())
-    if team_id or not enabled:
-        db_set_setting(SERVER_TEAM_ID_KEY, str(team_id or "").strip())
-    if email or not enabled:
-        db_set_setting(SERVER_EMAIL_KEY, str(email or "").strip())
+    values = {SERVER_ENABLED_KEY: "true" if enabled else "false", SERVER_URL_KEY: normalized_url}
+    for key, value in ((SERVER_TOKEN_KEY, token), (SERVER_REFRESH_TOKEN_KEY, refresh_token),
+                       (SERVER_TEAM_ID_KEY, team_id), (SERVER_EMAIL_KEY, email)):
+        if value or not enabled:
+            values[key] = str(value or "").strip()
+    db_set_settings(values)
 
 
 def clear_server_session() -> None:
@@ -112,8 +111,9 @@ class ServerClient:
         if payload is not None:
             data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             headers["Content-Type"] = "application/json"
-        if auth and self.session.token:
-            headers["Authorization"] = f"Bearer {self.session.token}"
+        request_token = self.session.token
+        if auth and request_token:
+            headers["Authorization"] = f"Bearer {request_token}"
         method = method.upper()
         attempts = 2 if method == "GET" else 1
         for attempt in range(attempts):
@@ -126,7 +126,7 @@ class ServerClient:
                     return json.loads(raw.decode("utf-8"))
             except urllib.error.HTTPError as exc:
                 if exc.code == 401 and auth and retry_refresh and self.session.refresh_token:
-                    self.refresh_token()
+                    self.refresh_token(expected_token=request_token)
                     return self.request(method, path, payload, auth=auth, retry_refresh=False)
                 detail = exc.read().decode("utf-8", errors="ignore")
                 try:
@@ -179,9 +179,11 @@ class ServerClient:
         self.session = ServerSession(enabled=True, url=normalize_server_url(url), token="", refresh_token="", team_id="", email="")
         payload = self.request("GET", "/api/v1/auth/google/url" + ("?app=true" if app_pair else ""), auth=False)
         auth_url = str(payload.get("url") or "")
-        if "accounts.google.com" not in auth_url:
+        parsed = urllib.parse.urlsplit(auth_url)
+        if parsed.scheme != "https" or parsed.hostname != "accounts.google.com" or parsed.username or parsed.password:
             raise ServerClientError("Server did not return a Google sign-in URL")
-        return auth_url
+        # The system browser, not urllib, must receive the OAuth state cookie.
+        return self._url("/api/v1/auth/google/start" + ("?app=true" if app_pair else ""))
 
     def login_with_pair_code(self, code: str) -> Dict[str, Any]:
         url = self.session.url or DEFAULT_SERVER_URL
@@ -215,20 +217,30 @@ class ServerClient:
         save_server_session(enabled=True, url=self.session.url, token=token, refresh_token=refresh_token, team_id=team_id, email=email)
         return {"token": token, "teams": teams, "team_id": team_id}
 
-    def refresh_token(self) -> None:
-        if not self.session.refresh_token:
-            raise ServerClientError("Refresh token is empty")
-        payload = self.request("POST", "/api/v1/auth/refresh", {"refresh_token": self.session.refresh_token}, auth=False, retry_refresh=False)
-        self.session.token = str(payload.get("access_token") or "")
-        self.session.refresh_token = str(payload.get("refresh_token") or "")
-        save_server_session(
-            enabled=True,
-            url=self.session.url,
-            token=self.session.token,
-            refresh_token=self.session.refresh_token,
-            team_id=self.session.team_id,
-            email=self.session.email,
-        )
+    def refresh_token(self, expected_token: Optional[str] = None) -> None:
+        expected_token = self.session.token if expected_token is None else expected_token
+        with _REFRESH_LOCK:
+            current = get_server_session()
+            if not current.enabled or (current.url, current.email) != (self.session.url, self.session.email):
+                raise ServerClientError("Cloud session changed; sign in again")
+            if current.token and current.token != expected_token:
+                self.session.token, self.session.refresh_token = current.token, current.refresh_token
+                return
+            refresh_token = current.refresh_token
+            if not refresh_token:
+                raise ServerClientError("Refresh token is empty")
+            payload = self.request("POST", "/api/v1/auth/refresh", {"refresh_token": refresh_token}, auth=False, retry_refresh=False)
+            token = str(payload.get("access_token") or "")
+            rotated_refresh = str(payload.get("refresh_token") or "")
+            if not token or not rotated_refresh:
+                raise ServerClientError("Server did not return a complete token pair")
+            with db._STORAGE_LOCK:
+                latest = get_server_session()
+                if not latest.enabled or (latest.url, latest.email, latest.refresh_token) != (current.url, current.email, refresh_token):
+                    raise ServerClientError("Cloud session changed during refresh")
+                save_server_session(enabled=True, url=latest.url, token=token, refresh_token=rotated_refresh,
+                                    team_id=latest.team_id, email=latest.email)
+            self.session.token, self.session.refresh_token = token, rotated_refresh
 
     def logout(self) -> None:
         if self.session.refresh_token:

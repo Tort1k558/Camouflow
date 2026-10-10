@@ -23,6 +23,8 @@ class TasksBridge(QObject):
         self._fields = []
         self._problem = ""
         self._latest = {}
+        self._search_query = ""
+        self._task_rows = []
         self._csv_rows, self._csv_name, self._batch_runs = [], "", []
         self._workspace = operations._workspace()
         scenarios.modelChanged.connect(self.refresh)
@@ -33,6 +35,23 @@ class TasksBridge(QObject):
     @pyqtProperty(QObject, constant=True)
     def model(self):
         return self._model
+
+    @pyqtProperty(str, notify=changed)
+    def searchQuery(self):
+        return self._search_query
+
+    @pyqtSlot(str)
+    def setSearch(self, query):
+        self._search_query = str(query or "")
+        self._apply_search()
+        self.changed.emit()
+
+    def _apply_search(self):
+        query = self._search_query.strip().casefold()
+        self._model.set_rows(
+            row for row in self._task_rows
+            if not query or query in " ".join(str(row.get(key) or "") for key in ("name", "description")).casefold()
+        )
 
     @pyqtProperty(str, notify=changed)
     def selectedName(self):
@@ -93,14 +112,15 @@ class TasksBridge(QObject):
             latest.setdefault(job["scenario"], job)
         self._latest = latest
         scenarios = self.scenarios._list_scenarios()
-        self._model.set_rows([
+        self._task_rows = [
             {"name": scenario.name, "description": scenario.description or "",
              "steps": max(0, len(scenario.steps) - 1),
              "status": latest.get(scenario.name, {}).get("status", "Not run yet"),
              "profile": latest.get(scenario.name, {}).get("profile", ""),
              "job": latest.get(scenario.name, {}).get("id", "")}
             for scenario in scenarios
-        ])
+        ]
+        self._apply_search()
         if self._selected and not any(scenario.name == self._selected for scenario in scenarios):
             self._selected, self._steps, self._fields = "", [], []
             self._csv_rows, self._csv_name = [], ""

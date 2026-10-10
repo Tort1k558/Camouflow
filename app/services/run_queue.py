@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import threading
 import time
 import uuid
@@ -13,6 +14,7 @@ from typing import Callable
 from app.storage.db import _atomic_write_text
 
 TERMINAL = {"success", "failed", "canceled", "interrupted"}
+LOGGER = logging.getLogger(__name__)
 
 
 class RunQueue:
@@ -56,27 +58,44 @@ class RunQueue:
                 raise ValueError("Queue safety limit: 500 unfinished jobs")
             if len(json.dumps([*self.jobs, *specs]).encode("utf-8")) > 32 * 1024 * 1024:
                 raise ValueError("Queue storage exceeds 32 MiB. Remove finished jobs before adding more.")
-            for spec in specs:
-                self.jobs.append({**copy.deepcopy(spec), "id": uuid.uuid4().hex, "status": "queued", "due": due,
-                                  "created": time.time(), "started": 0, "finished": 0, "error": "", "artifacts": ""})
-            self._save()
+            original_jobs = list(self.jobs)
+            try:
+                for spec in specs:
+                    self.jobs.append({**copy.deepcopy(spec), "id": uuid.uuid4().hex, "status": "queued", "due": due,
+                                      "created": time.time(), "started": 0, "finished": 0, "error": "", "artifacts": ""})
+                self._save()
+            except Exception:
+                self.jobs = original_jobs
+                raise
         self.changed()
 
     def clear_finished(self, workspace=None):
         with self._lock:
+            original_jobs = self.jobs
             self.jobs = [j for j in self.jobs if j["status"] not in TERMINAL or (workspace is not None and j.get("workspace") != workspace)]
-            self._save()
+            try:
+                self._save()
+            except Exception:
+                self.jobs = original_jobs
+                raise
         self.changed()
 
     def configure(self, parallelism: int, paused: bool):
         if not 1 <= parallelism <= 8:
             raise ValueError("Parallelism must be between 1 and 8")
         with self._lock:
+            original_configuration = self.parallelism, self.paused
             self.parallelism, self.paused = parallelism, paused
-            self._save()
+            try:
+                self._save()
+            except Exception:
+                self.parallelism, self.paused = original_configuration
+                raise
         self.changed()
 
     def cancel(self, job_id: str = "", workspace=None):
+        canceled = []
+        original_finished = []
         with self._lock:
             for job in self.jobs:
                 if workspace is not None and job.get("workspace") != workspace:
@@ -86,8 +105,17 @@ class RunQueue:
                 if job["id"] in self._active:
                     self._active[job["id"]].set()
                 elif job["status"] == "queued":
+                    original_finished.append((job, job["finished"]))
                     job.update(status="canceled", finished=time.time())
-            self._save()
+                    canceled.append(copy.deepcopy(job))
+            try:
+                self._save()
+            except Exception:
+                for job, finished in original_finished:
+                    job.update(status="queued", finished=finished)
+                raise
+        for job in canceled:
+            self._record_finished(job)
         self.changed()
 
     def tick(self, workspace=None):
@@ -104,10 +132,16 @@ class RunQueue:
                 if job["status"] != "queued" or job["due"] > time.time() or job["profile"] in busy_profiles:
                     continue
                 event = threading.Event()
+                original_started = job["started"]
+                job.update(status="running", started=time.time())
+                try:
+                    self._save()
+                except Exception:
+                    job.update(status="queued", started=original_started)
+                    self.paused = True
+                    raise
                 self._active[job["id"]] = event
                 busy_profiles.add(job["profile"])
-                job.update(status="running", started=time.time())
-                self._save()
                 worker = threading.Thread(target=self._execute, args=(job, event), daemon=True, name="camouflow-queue")
                 self._workers[job["id"]] = worker
                 worker.start()
@@ -129,15 +163,19 @@ class RunQueue:
             finished_job = copy.deepcopy(job)
             self._active.pop(job["id"], None)
             self._workers.pop(job["id"], None)
-            self._save()
+            try:
+                self._save()
+            except Exception as exc:
+                self.paused = True
+                LOGGER.error("Queue paused: completed run state could not be saved (%s). Check storage before resuming.", type(exc).__name__)
         self._record_finished(finished_job)
         self.changed()
 
     def _record_finished(self, job):
         try:
             self.finished(copy.deepcopy(job))
-        except Exception:
-            pass
+        except Exception as exc:
+            LOGGER.error("Run history could not be saved (%s). Preserve the queue until storage is repaired.", type(exc).__name__)
 
     def shutdown(self):
         with self._lock:

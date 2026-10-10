@@ -68,10 +68,15 @@ class RunHistory:
         if not row.get("id"):
             return
         with self._lock:
+            original_rows = self.rows
             self.rows = [existing for existing in self.rows if existing.get("id") != row["id"]]
             self.rows.append(row)
             self.rows = self.rows[-self.limit :]
-            self._save()
+            try:
+                self._save()
+            except Exception:
+                self.rows = original_rows
+                raise
 
     def list(self, workspace: str | None = None, limit: int | None = None) -> list[dict[str, Any]]:
         with self._lock:
@@ -86,8 +91,13 @@ class RunHistory:
 
     def clear(self, workspace: str | None = None) -> None:
         with self._lock:
+            original_rows = self.rows
             if workspace is None:
                 self.rows = []
             else:
                 self.rows = [row for row in self.rows if row.get("workspace") != workspace]
-            self._save()
+            try:
+                self._save()
+            except Exception:
+                self.rows = original_rows
+                raise

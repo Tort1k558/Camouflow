@@ -38,6 +38,8 @@ class OperationsBridge(QObject):
         self.profiles, self.scenarios, self.state = profiles, scenarios, state
         self._model = DictListModel(["id", "scenario", "profile", "status", "due", "error", "artifacts", "duration"], parent=self)
         self._history_model = DictListModel(["id", "scenario", "profile", "status", "started", "finished", "duration", "error", "artifacts"], parent=self)
+        self._run_query = ""
+        self._run_status = ""
         self._debug_windows = {}
         self._debug_enabled = str(db.db_get_setting("general_debug_mode") or "").lower() in {"true", "1"}
         self._busy = False
@@ -63,9 +65,17 @@ class OperationsBridge(QObject):
         )
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
-        self.timer.timeout.connect(lambda: self.queue.tick(workspace=self._workspace()))
+        self.timer.timeout.connect(self._tick_queue)
         self.timer.start()
         self.refresh()
+
+    def _tick_queue(self):
+        try:
+            self.queue.tick(workspace=self._workspace())
+        except Exception as exc:
+            self.queue.paused = True
+            self._notify(f"Queue paused: execution state could not be saved ({type(exc).__name__}). Check storage before resuming.")
+            self.refresh()
 
     def _check_selection_workspace(self):
         workspace = self._workspace()
@@ -152,6 +162,30 @@ class OperationsBridge(QObject):
     def selectedProfiles(self):
         return "\n".join(self._selection)
 
+    @pyqtProperty(str, notify=changed)
+    def runQuery(self):
+        return self._run_query
+
+    @pyqtProperty(str, notify=changed)
+    def runStatus(self):
+        return self._run_status
+
+    @pyqtSlot(str, str)
+    def setRunFilters(self, query, status):
+        status = status.strip().lower()
+        if status and status not in TERMINAL | {"queued", "running"}:
+            return
+        if (query, status) == (self._run_query, self._run_status):
+            return
+        self._run_query, self._run_status = query, status
+        self.refresh()
+
+    def _matches_run(self, row):
+        if self._run_status and row.get("status") != self._run_status:
+            return False
+        query = self._run_query.strip().casefold()
+        return not query or any(query in str(row.get(key) or "").casefold() for key in ("scenario", "profile", "error"))
+
     @pyqtSlot(str)
     def prepareRun(self, names):
         self._selection = self._names(names)
@@ -178,13 +212,17 @@ class OperationsBridge(QObject):
     @pyqtSlot()
     def refresh(self):
         rows = []
+        workspace = self._workspace()
         for job in reversed(self.queue.snapshot()):
-            if job.get("workspace") != self._workspace():
+            if job.get("workspace") != workspace or not self._matches_run(job):
                 continue
             rows.append({**job, "due": datetime.fromtimestamp(job["due"]).strftime("%Y-%m-%d %H:%M"),
                          "duration": f"{max(0, (job.get('finished') or time.time()) - job['started']):.1f}s" if job["started"] else "—"})
-        self._model.set_rows(rows)
-        self._history_model.set_rows([self._history_row(row) for row in self.history.list(self._workspace(), limit=120)])
+        if rows != self._model.rows():
+            self._model.set_rows(rows)
+        history_rows = [self._history_row(row) for row in self.history.list(workspace) if self._matches_run(row)][:120]
+        if history_rows != self._history_model.rows():
+            self._history_model.set_rows(history_rows)
         if self._selected:
             self.selectJob(self._selected)
         self.changed.emit()
@@ -321,24 +359,37 @@ class OperationsBridge(QObject):
 
     @pyqtSlot(str)
     def cancel(self, job_id):
-        self.queue.cancel(job_id, workspace=self._workspace())
+        try:
+            self.queue.cancel(job_id, workspace=self._workspace())
+        except Exception as exc:
+            self._notify(f"Could not save queue cancellation ({type(exc).__name__}). Check storage and review running jobs.")
 
     @pyqtSlot()
     def clearFinished(self):
-        self.queue.clear_finished(workspace=self._workspace())
+        try:
+            self.queue.clear_finished(workspace=self._workspace())
+        except Exception as exc:
+            self._notify(f"Could not clear finished jobs ({type(exc).__name__}). Check storage before trying again.")
+            return
         self._selected = ""
         self._details = ""
         self.changed.emit()
 
     @pyqtSlot()
     def clearHistory(self):
-        self.history.clear(self._workspace())
+        try:
+            self.history.clear(self._workspace())
+        except Exception as exc:
+            self._notify(f"Could not clear run history ({type(exc).__name__}). Check storage before trying again.")
+            return
         self._selected = ""
         self._details = ""
         self.refresh()
 
     def isReserved(self, name):
         with self._reservation_lock:
+            if not self._reserved:
+                return False
             return db.profile_dir_for_email(name).resolve() in {db.profile_dir_for_email(n).resolve() for n in self._reserved}
 
     def reservationLabel(self, name):
@@ -396,6 +447,7 @@ class OperationsBridge(QObject):
                 proxy = next((p for p in proxies if p["id"] == row.get("proxy_id")), {})
                 account = CloudWorkspaceSync._profile_from_remote(row, proxy.get("value", ""))
                 account["id"] = row["id"]
+                account["_storage_scope"] = db.cloud_profile_scope(client.session.url, client.session.team_id, row["id"])
                 client.lock_profile(row["id"])
                 locked = True
                 def renew():
@@ -422,6 +474,8 @@ class OperationsBridge(QObject):
                     assignments = {account_proxy(a): a["name"] for a in db.db_get_accounts() if account_proxy(a) and a["name"] != name}
                     candidates = [p for p in candidates if p.get("value") not in assignments]
                 value = choose_proxy(account, job["policy"], candidates, cancel)
+                if cancel.is_set():
+                    return {"status": "canceled", "error": "Canceled before proxy assignment"}
                 if value != account_proxy(account):
                     if client:
                         if not role_allows(member.get("role", ""), "manager") and not context.get("user", {}).get("is_superadmin"):
@@ -520,27 +574,40 @@ class OperationsBridge(QObject):
 
     @pyqtSlot(str)
     def selectJob(self, job_id):
-        self._selected = job_id
         job = self._find_run(job_id)
+        self._selected = job_id if job else ""
         self._details = json.dumps({k: v for k, v in job.items() if k not in {"steps", "library"}}, ensure_ascii=False, indent=2) if job else ""
         if job and job.get("artifacts"):
-            script_log = Path(job["artifacts"]) / "python.jsonl"
-            if script_log.is_file() and script_log.resolve().is_relative_to(db.OUTPUTS_DIR.resolve()):
-                self._details += "\n\nPython output:\n" + script_log.read_text(encoding="utf-8")[-32768:]
-            path = Path(job["artifacts"]) / "error.json"
-            if path.is_file() and path.resolve().is_relative_to(db.OUTPUTS_DIR.resolve()):
-                self._details += "\n\nFailure details:\n" + path.read_text(encoding="utf-8")
+            for name, label in (("python.jsonl", "Python output"), ("error.json", "Failure details")):
+                preview = self._artifact_preview(Path(job["artifacts"]) / name)
+                if preview:
+                    self._details += f"\n\n{label}:\n{preview}"
         self.changed.emit()
+
+    @staticmethod
+    def _artifact_preview(path):
+        try:
+            path = path.resolve()
+            if not path.is_relative_to(db.OUTPUTS_DIR.resolve()) or not path.is_file():
+                return ""
+            with path.open("rb") as source:
+                size = source.seek(0, 2)
+                source.seek(max(0, size - 32768))
+                text = source.read(32768).decode("utf-8", errors="replace")
+            return ("[Showing the last 32 KiB; open artifacts for the complete file.]\n" if size > 32768 else "") + text
+        except (OSError, RuntimeError, ValueError) as exc:
+            return f"Artifact preview unavailable ({type(exc).__name__})."
 
     @pyqtSlot(str, str)
     def openResultFile(self, job_id, kind):
         job = self._find_run(job_id) or {}
-        directory = Path(job.get("artifacts") or "").resolve()
-        if not job.get("artifacts") or not directory.is_relative_to(db.OUTPUTS_DIR.resolve()):
+        directory = self._artifact_directory(job)
+        if directory is None:
             self._notify("No artifacts available")
             return
         choices = {"screenshot": ("page.png", "viewport.png"), "trace": ("trace.zip",)}
-        path = next((directory / n for n in choices.get(kind, ()) if (directory / n).is_file()), None)
+        path = next(((directory / n).resolve() for n in choices.get(kind, ())
+                     if (directory / n).is_file() and (directory / n).resolve().is_relative_to(db.OUTPUTS_DIR.resolve())), None)
         if path is None:
             self._notify("Requested artifact was not captured")
         elif kind == "screenshot":
@@ -553,6 +620,8 @@ class OperationsBridge(QObject):
             def viewer():
                 log = directory / "trace-viewer.log"
                 try:
+                    if not log.resolve().is_relative_to(db.OUTPUTS_DIR.resolve()):
+                        raise OSError("Invalid trace viewer log path")
                     with log.open("w", encoding="utf-8") as output:
                         process = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
                         code = process.wait()
@@ -579,15 +648,27 @@ class OperationsBridge(QObject):
     @pyqtSlot(str)
     def openArtifacts(self, job_id):
         job = self._find_run(job_id) or {}
-        path = Path(job.get("artifacts") or "").resolve()
-        if not job.get("artifacts") or not path.is_dir() or not path.is_relative_to(db.OUTPUTS_DIR.resolve()):
+        path = self._artifact_directory(job)
+        if path is None:
             self._notify("No artifacts available")
             return
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
             self._notify("Could not open artifact directory")
 
+    @staticmethod
+    def _artifact_directory(job):
+        try:
+            if job.get("artifacts"):
+                path = Path(job["artifacts"]).resolve()
+                if path.is_dir() and path.is_relative_to(db.OUTPUTS_DIR.resolve()):
+                    return path
+        except (OSError, RuntimeError, ValueError):
+            pass
+        return None
+
     def _find_run(self, run_id):
-        return next((j for j in self.queue.snapshot() if j["id"] == run_id), None) or self.history.get(run_id)
+        job = next((j for j in self.queue.snapshot() if j["id"] == run_id), None) or self.history.get(run_id)
+        return job if job and job.get("workspace") == self._workspace() else None
 
     def _background(self, names, work):
         if self._busy:

@@ -13,7 +13,7 @@ The left panel contains proxy groups:
 
 ## Bulk import
 
-Use **Import List** / **Add Proxy** and paste proxies one per line.
+Use **Import proxies** and paste proxies one per line.
 
 Supported formats:
 
@@ -26,7 +26,17 @@ user:pass@host:port
 
 Duplicates are ignored during bulk import.
 
+An omitted scheme means **SOCKS5**, not automatic protocol detection. Prefix
+HTTP connections with `http://`; use the protocol supplied by your provider.
+
 ## Proxy list actions
+
+Search the cached inventory by name, visible address, group, type or detected
+location and combine it with a status filter. Search is case-insensitive and does
+not send requests on each keystroke or search stored credentials. Reset restores
+the list. Changing filters clears selection to avoid hidden destructive targets.
+Statistics describe the selected group before search/status filtering;
+**Check all proxies** still checks all pools.
 
 Each proxy row supports:
 
@@ -37,18 +47,93 @@ Each proxy row supports:
 
 Top actions:
 
-- **Check Group** checks all visible proxies.
-- **Release** clears assignment for selected proxies and removes proxy fields from assigned profiles.
-- **Remove** deletes selected proxies from their pools.
-- **Clear** clears selection.
+- **Check all proxies** checks every pool, not only the visible group; quarantined
+  entries are skipped.
+- **Release assignment** clears assignment for selected proxies and removes proxy
+  fields from assigned profiles.
+- **Remove quarantine** explicitly releases selected quarantined proxies.
+- **Delete selected** deletes selected proxies after confirmation.
+- **Clear selection** clears selection.
 
 ## Statistics
 
 The page shows:
 
-- active proxies
+- reachable proxies (successful checks; scope described below)
+- unchecked proxies
 - checking proxies
 - failed proxies
 - detected locations
 
 Health checks store latency, status and geo metadata in the proxy pool.
+
+New connections remain **Unchecked** until tested. **Reachable** means the cloud
+TCP check reached the host and port; it does not prove proxy authentication,
+internet access or exit location. **Active** means the desktop internet probe
+succeeded. Neither result guarantees future availability. Location statistics
+count detected locations only, not group names.
+
+The desktop probe supports HTTP and SOCKS proxies, including authenticated
+HTTP CONNECT to HTTPS sites. A proxy whose own connection requires TLS
+(`https://proxy…`) is not probed: it returns an explicit unsupported error, never
+a plaintext downgrade. Use the actual scheme supplied by your proxy provider.
+URL-encoded credentials are decoded for authentication; IPv6 hosts stay bracketed
+in browser configuration. Invalid ports/formats block browser launch rather than
+starting a direct connection.
+
+The internet probe requires a successful geo response with a valid exit IP.
+Empty/list JSON, missing/invalid IP, negative success flags and redirects do not
+make a proxy Active.
+Truncated, invalid or conflicting HTTP body framing and oversized responses are
+also rejected, even if the received prefix contains valid geo JSON.
+
+Geo lookups use a per-profile connection, never process-wide SOCKS settings.
+Environment proxy/bypass settings cannot route a configured profile's lookup
+directly. SOCKS DNS stays at the proxy; IPv6 upstreams are supported by the health
+probe and local adapter. TLS-to-proxy geo/health checks are unsupported and fail
+closed; HTTPS sites through HTTP CONNECT or SOCKS still use certificate and
+hostname verification.
+
+CloakBrowser routes SOCKS profiles through an owned loopback HTTP/CONNECT
+adapter. Browser pages, visual **HTTP request** actions and Python
+`ctx.context.request` use the same upstream proxy and cookie jar. The adapter
+does not replace the system proxy or configure independent Python HTTP clients.
+
+Proxy lists and dashboard summaries show only the scheme, host and port, without
+credentials. The connection value is unchanged; managers can inspect/edit it in
+the proxy settings dialog. Treat that dialog and exported configuration as sensitive.
+
+Repeated local check failures quarantine a connection. Invalid or timezone-ambiguous quarantine
+expiry also remains blocked until manual release; the app does not guess a timezone.
+Checking one proxy manually can refresh its health while bulk checks skip quarantine.
+
+Results are merged into the current matching proxy, preserving name/assignment,
+other proxies and edits made during the check. Removed or changed endpoint results
+are discarded. A check never silently restores a deleted proxy.
+
+Cloud row actions target the ID shown in the current list, not a newly loaded
+position. If a refresh changes inventory order or membership, bulk selection is
+cleared. Edit/delete dialogs retain the original cloud ID; a workspace change
+requires reopening the dialog.
+
+Local edit/delete dialogs capture the connection's name, value and assignment.
+If that snapshot changes or the list shifts to another connection, the action
+is rejected: reopen settings or select the proxy again. No stored IDs or data
+migration are introduced. Legacy programmatic slots without a snapshot remain
+compatible; this protection applies to the current desktop dialogs.
+Dialogs capture the row actually displayed, not a newly loaded disk position;
+rejected stale actions refresh the list before selecting again.
+
+Changing a local connection value clears its old check, score and check history;
+it must be checked again. Renaming keeps health evidence. Assignment and any
+quarantine remain unchanged; replacing a value does not silently release it.
+
+Local bulk remove/release/quarantine and individual check validate the displayed
+targets under the storage lock. Changed inventory rejects the whole selection
+before writing or probing; refresh and select again. Inventory changes clear
+positional selection, while health-only refreshes retain it. Quarantine release
+is local-only and is not shown in cloud workspaces.
+
+Local snapshots are not persistent record IDs: copies with identical name/value/
+assignment cannot be distinguished by those fields alone. Bulk import ignores
+repeated values; avoid identical manual duplicates when exact copy identity matters.

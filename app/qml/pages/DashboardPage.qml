@@ -109,8 +109,8 @@ Flickable {
                             anchors.rightMargin: 2
                             spacing: 12
                             Rectangle { width: 7; height: 7; radius: 4; color: model.type === "warning" ? Theme.warning : model.type === "success" ? Theme.success : Theme.primary; anchors.verticalCenter: parent.verticalCenter }
-                            Column { width: parent.width - 92; anchors.verticalCenter: parent.verticalCenter; spacing: 3; Text { text: model.title; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width } Text { text: model.desc; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width } }
-                            Text { text: model.time; color: Theme.dim; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+                            Column { width: parent.width - 92; anchors.verticalCenter: parent.verticalCenter; spacing: 3; Text { textFormat: Text.PlainText; text: model.title; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width } Text { textFormat: Text.PlainText; text: model.desc; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width } }
+                            Text { textFormat: Text.PlainText; text: model.time; color: Theme.dim; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
                         }
                     }
                 }
@@ -153,9 +153,9 @@ Flickable {
                             anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 3
-                            Text { text: model.title; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                            Text { text: model.desc; color: Theme.muted; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
-                            Text { text: model.meta; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: model.title; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: model.desc; color: Theme.muted; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: model.meta; color: Theme.dim; font.pixelSize: 10; elide: Text.ElideRight; width: parent.width }
                         }
                     }
                 }
@@ -181,9 +181,9 @@ Flickable {
                     height: 126
                     padding: 16
                     Rectangle { width: 4; height: 42; radius: 2; color: model.accent }
-                    Text { x: 14; text: model.title; color: Theme.text; font.weight: Font.DemiBold; font.pixelSize: 14; width: parent.width - 20; elide: Text.ElideRight }
-                    Text { x: 14; y: 28; text: model.desc; color: Theme.muted; font.pixelSize: 12; width: parent.width - 20; elide: Text.ElideRight }
-                    Text { x: 14; y: 78; text: model.meta; color: Theme.dim; font.pixelSize: 11; width: parent.width - 20; elide: Text.ElideRight }
+                    Text { x: 14; textFormat: Text.PlainText; text: model.title; color: Theme.text; font.weight: Font.DemiBold; font.pixelSize: 14; width: parent.width - 20; elide: Text.ElideRight }
+                    Text { x: 14; y: 28; textFormat: Text.PlainText; text: model.desc; color: Theme.muted; font.pixelSize: 12; width: parent.width - 20; elide: Text.ElideRight }
+                    Text { x: 14; y: 78; textFormat: Text.PlainText; text: model.meta; color: Theme.dim; font.pixelSize: 11; width: parent.width - 20; elide: Text.ElideRight }
                 }
             }
         }

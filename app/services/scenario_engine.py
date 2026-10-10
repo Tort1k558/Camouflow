@@ -20,7 +20,6 @@ from app.storage.db import (
     db_get_scenario_path,
     db_get_setting,
     db_set_setting,
-    profile_dir_for_email,
 )
 from app.services.scenario_debug import ScenarioDebugSession
 from app.services.steps.base import StepResult
@@ -71,6 +70,7 @@ class ScenarioExecutor(
             keep_browser_open=keep_browser_open,
             browser_engine=browser_engine,
             browser_settings=browser_settings,
+            storage_scope=account_payload.get("_storage_scope"),
         )
         self.scenario = scenario
         self.debug_session = debug_session
@@ -100,7 +100,7 @@ class ScenarioExecutor(
             self.variables.update(shared_variables)
         self.variables.setdefault("cookies", "[]")
         self.variables.setdefault("timestamp", "")
-        self._profile_vars_path = Path(profile_dir_for_email(profile_name)) / "scenario_vars.json"
+        self._profile_vars_path = self.profile_root / "scenario_vars.json"
 
     @staticmethod
     def _contains_cookies_template(value: object) -> bool:
@@ -183,7 +183,7 @@ class ScenarioExecutor(
         import sqlite3
         import tempfile
 
-        profile_dir = Path(profile_dir_for_email(self.profile_name))
+        profile_dir = self.profile_root
         if not profile_dir.exists():
             return []
 

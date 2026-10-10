@@ -32,23 +32,34 @@ Item {
         }
         RowLayout {
             Layout.fillWidth: true; Layout.fillHeight: true; spacing: 24
-            ListView {
-                id: taskList
-                objectName: "savedTaskList"
-                Layout.preferredWidth: 380; Layout.fillHeight: true; clip: true; spacing: 10
-                model: tasksBridge.model
-                ScrollBar.vertical: ScrollBar {}
-                EmptyState { anchors.centerIn: parent; width: parent.width - 24; visible: taskList.count === 0; title: "No saved tasks"; description: "Record your browser actions or save an AI workflow. Existing scenarios appear here too."; icon: "workflow" }
-                delegate: Rectangle {
-                    width: ListView.view.width; height: cardContent.implicitHeight + 32; radius: Theme.radius
-                    color: tasksBridge.selectedName === model.name ? Theme.subtle : Theme.card
-                    border.color: tasksBridge.selectedName === model.name ? Theme.primary : Theme.border
-                    ColumnLayout {
-                        id: cardContent
-                        anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 16; spacing: 8
-                        Text { Layout.fillWidth: true; text: model.name; textFormat: Text.PlainText; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold; wrapMode: Text.WordWrap }
-                        Text { Layout.fillWidth: true; text: model.steps + " steps · " + model.status + (model.profile ? " · " + model.profile : ""); textFormat: Text.PlainText; color: Theme.muted; font.pixelSize: 11; wrapMode: Text.WordWrap }
-                        PrimaryButton { text: tasksBridge.selectedName === model.name ? "Selected" : "Open task"; secondary: true; onClicked: tasksBridge.select(model.name) }
+            ColumnLayout {
+                Layout.preferredWidth: 380; Layout.maximumWidth: 380; Layout.fillHeight: true; spacing: 12
+                SearchBox {
+                    objectName: "savedTaskSearch"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 44
+                    placeholder: "Search tasks"
+                    text: tasksBridge.searchQuery
+                    onTextChanged: tasksBridge.setSearch(text)
+                }
+                ListView {
+                    id: taskList
+                    objectName: "savedTaskList"
+                    Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 10
+                    model: tasksBridge.model
+                    ScrollBar.vertical: ScrollBar {}
+                    EmptyState { anchors.centerIn: parent; width: parent.width - 24; visible: taskList.count === 0; title: tasksBridge.searchQuery.trim() ? "No matching tasks" : "No saved tasks"; description: tasksBridge.searchQuery.trim() ? "Try another name or description." : "Record your browser actions or save an AI workflow. Existing scenarios appear here too."; icon: "workflow" }
+                    delegate: Rectangle {
+                        width: ListView.view.width; height: cardContent.implicitHeight + 32; radius: Theme.radius
+                        color: tasksBridge.selectedName === model.name ? Theme.subtle : Theme.card
+                        border.color: tasksBridge.selectedName === model.name ? Theme.primary : Theme.border
+                        ColumnLayout {
+                            id: cardContent
+                            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 16; spacing: 8
+                            Text { Layout.fillWidth: true; text: model.name; textFormat: Text.PlainText; color: Theme.text; font.pixelSize: 15; font.weight: Font.DemiBold; wrapMode: Text.WordWrap }
+                            Text { Layout.fillWidth: true; text: model.steps + " steps · " + model.status + (model.profile ? " · " + model.profile : ""); textFormat: Text.PlainText; color: Theme.muted; font.pixelSize: 11; wrapMode: Text.WordWrap }
+                            PrimaryButton { text: tasksBridge.selectedName === model.name ? "Selected" : "Open task"; secondary: true; onClicked: tasksBridge.select(model.name) }
+                        }
                     }
                 }
             }
@@ -69,7 +80,7 @@ Item {
                         ColumnLayout {
                             Layout.fillWidth: true; spacing: 6
                             Text { text: "Browser profile"; color: Theme.muted; font.pixelSize: 12 }
-                            ComboBox { id: profile; objectName: "taskProfileSelector"; Layout.fillWidth: true; model: profilesBridge.selectionModel; textRole: "name" }
+                            PlainComboBox { id: profile; objectName: "taskProfileSelector"; Layout.fillWidth: true; model: profilesBridge.selectionModel; textRole: "name" }
                         }
                         Repeater {
                             model: fields

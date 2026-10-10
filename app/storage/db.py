@@ -217,6 +217,74 @@ def profile_dir_for_email(email: str) -> Path:
     return PROFILES_DIR / _safe_profile_name(email)
 
 
+def _unsafe_windows_name(name: str) -> bool:
+    stem = name.split(".", 1)[0].upper()
+    return (name.endswith((".", " ")) or stem in {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
+            or stem in {f"{prefix}{n}" for prefix in ("COM", "LPT") for n in range(1, 10)}
+            or any(ord(c) < 32 or c in '<>"|?*' for c in name))
+
+
+def checked_profile_dir_for_email(name: str, *, renamed_from: Optional[str] = None) -> Path:
+    """Validate dedicated browser storage before creating, moving or removing it."""
+    storage_name = _safe_profile_name(name)
+    if _unsafe_windows_name(storage_name) or storage_name.casefold() == ".cloud":
+        raise ValueError("Enter a profile name with a valid browser directory")
+    path = profile_dir_for_email(name)
+    if path.is_symlink() or path.is_junction():
+        raise ValueError("Profile directory must not be a filesystem link")
+    root, target = PROFILES_DIR.resolve(), path.resolve()
+    if target == root or not target.is_relative_to(root):
+        raise ValueError("Profile directory must remain inside the profiles workspace")
+    allowed_names = {name.casefold()}
+    if renamed_from is not None:
+        allowed_names.add(renamed_from.casefold())
+    matches = 0
+    for account in _load_accounts_raw(strict=True):
+        other = str(account.get("name") or "").strip()
+        if other and _safe_profile_name(other).casefold() == storage_name.casefold():
+            matches += 1
+            if other.casefold() not in allowed_names or matches > 1:
+                raise ValueError("Profile name shares another profile's browser directory; choose a distinct name")
+    return path
+
+
+def cloud_profile_scope(server_url: str, team_id: str, profile_id: str) -> Dict[str, str]:
+    from urllib.parse import urlsplit
+    from uuid import UUID
+
+    parsed = urlsplit(str(server_url).strip())
+    if (parsed.scheme not in {"http", "https"} or not parsed.hostname
+            or parsed.username or parsed.password or parsed.path not in {"", "/"}
+            or parsed.query or parsed.fragment):
+        raise ValueError("Cloud storage requires a valid server origin")
+    host = parsed.hostname.lower().encode("idna").decode("ascii")
+    if ":" in host:
+        host = f"[{host}]"
+    port = parsed.port
+    if port == 0:
+        raise ValueError("Cloud storage requires a valid server port")
+    default_port = 443 if parsed.scheme == "https" else 80
+    origin = f"{parsed.scheme}://{host}" + (f":{port}" if port and port != default_port else "")
+    return {"server_url": origin, "team_id": str(UUID(str(team_id))), "profile_id": str(UUID(str(profile_id)))}
+
+
+def checked_profile_storage(name: str, scope: Optional[Dict[str, str]] = None) -> Path:
+    """Cloud identity is immutable and never adopts a name-based local directory."""
+    if scope is None:
+        return checked_profile_dir_for_email(name)
+    import hashlib
+
+    identity = cloud_profile_scope(scope["server_url"], scope["team_id"], scope["profile_id"])
+    identity_key = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    root = PROFILES_DIR.resolve()
+    # One bounded component avoids deep Chromium paths exceeding Windows limits.
+    path = PROFILES_DIR / ".cloud" / identity_key
+    for candidate in (PROFILES_DIR, path.parent, path):
+        if candidate.is_symlink() or candidate.is_junction() or not candidate.resolve().is_relative_to(root):
+            raise ValueError("Cloud profile storage must not contain filesystem links or escape its workspace")
+    return path
+
+
 def _safe_scenario_name(name: str) -> str:
     cleaned = re.sub(r"[^a-zA-Z0-9_.-]", "_", name.strip() or "scenario")
     return cleaned[:120]
@@ -300,11 +368,17 @@ def init_db() -> None:
             pass
 
 
-def _load_accounts_raw() -> List[Dict]:
+def _load_accounts_raw(*, strict: bool = False) -> List[Dict]:
     try:
-        data = json.loads(ACCOUNTS_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
-    except Exception:
+        data = json.loads(ACCOUNTS_FILE.read_text(encoding="utf-8-sig"))
+        if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+            raise ValueError("Accounts must be a list of objects")
+        return data
+    except FileNotFoundError:
+        return []
+    except Exception as exc:
+        if strict:
+            raise RuntimeError("Cannot update unreadable accounts.json; restore the file first") from exc
         LOGGER.exception("Failed to load accounts.json")
         return []
 
@@ -335,12 +409,13 @@ def _normalize_account(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 @_serialized_write
 def db_add_account(account: Dict[str, Any]) -> Dict[str, Any]:
-    accounts = _load_accounts_raw()
+    accounts = _load_accounts_raw(strict=True)
     normalized = _normalize_account(account)
     ids_lower = {str(acc.get("name") or "").lower() for acc in accounts}
     acc_id = str(normalized.get("name") or "")
     if acc_id and acc_id.lower() in ids_lower:
         raise ValueError("Duplicate account identifier")
+    checked_profile_dir_for_email(acc_id)
     accounts.append(normalized)
     _save_accounts_raw(accounts)
     return normalized
@@ -359,7 +434,7 @@ def db_get_accounts() -> List[Dict[str, Any]]:
 
 @_serialized_write
 def db_delete_account(account_name: str) -> None:
-    accounts = _load_accounts_raw()
+    accounts = _load_accounts_raw(strict=True)
     key = str(account_name or "").lower()
     filtered = [acc for acc in accounts if str(acc.get("name") or "").lower() != key]
     _save_accounts_raw(filtered)
@@ -367,7 +442,7 @@ def db_delete_account(account_name: str) -> None:
 
 @_serialized_write
 def db_update_stage(account_name: str, stage: Optional[str]) -> None:
-    accounts = _load_accounts_raw()
+    accounts = _load_accounts_raw(strict=True)
     updated = []
     key = str(account_name or "").lower()
     for acc in accounts:
@@ -382,7 +457,7 @@ def db_update_account(account_name: str, updates: Dict[str, Any]) -> None:
     """
     Update an account by its identifier (name), allowing all fields including name to change.
     """
-    accounts = _load_accounts_raw()
+    accounts = _load_accounts_raw(strict=True)
     key = str(account_name or "").lower()
     idx = next((i for i, acc in enumerate(accounts) if str(acc.get("name") or "").lower() == key), -1)
     if idx < 0:
@@ -405,24 +480,36 @@ def db_update_account(account_name: str, updates: Dict[str, Any]) -> None:
             raise ValueError("Duplicate account identifier")
 
     normalized = _normalize_account(merged)
+    renamed = False
+    if str(normalized.get("name") or "") != str(current.get("name") or ""):
+        old_profile = checked_profile_dir_for_email(str(current.get("name") or ""))
+        new_profile = checked_profile_dir_for_email(str(normalized.get("name") or ""), renamed_from=str(current.get("name") or ""))
+        if old_profile != new_profile:
+            if new_profile.exists():
+                raise ValueError("Profile storage already exists; choose a new name")
+            if old_profile.exists():
+                old_profile.rename(new_profile)
+                renamed = True
     accounts[idx] = normalized
-    _save_accounts_raw(accounts)
-
-    # Rename profile directory if the identifier changed.
-    old_profile = profile_dir_for_email(str(current.get("name") or ""))
-    new_profile = profile_dir_for_email(str(normalized.get("name") or ""))
-    if old_profile != new_profile and old_profile.exists():
-        try:
-            old_profile.rename(new_profile)
-        except Exception:
-            pass
-
-
-def _load_settings() -> Dict[str, str]:
     try:
-        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
+        _save_accounts_raw(accounts)
     except Exception:
+        if renamed:
+            new_profile.rename(old_profile)
+        raise
+
+
+def _load_settings(*, strict: bool = False) -> Dict[str, str]:
+    try:
+        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8-sig"))
+        if not isinstance(data, dict):
+            raise ValueError("Settings must be an object")
+        return data
+    except FileNotFoundError:
+        return {}
+    except Exception as exc:
+        if strict:
+            raise RuntimeError("Cannot update unreadable settings.json; restore the file first") from exc
         LOGGER.exception("Failed to load settings.json")
         return {}
 
@@ -462,10 +549,14 @@ def db_get_setting(key: str) -> Optional[str]:
 
 
 @_serialized_write
-def db_set_setting(key: str, value: str) -> None:
-    settings = _load_settings()
-    settings[key] = value
+def db_set_settings(values: Dict[str, str]) -> None:
+    settings = _load_settings(strict=True)
+    settings.update(values)
     _save_settings(settings)
+
+
+def db_set_setting(key: str, value: str) -> None:
+    db_set_settings({key: value})
 
 
 def db_get_camoufox_defaults() -> Dict[str, Any]:
@@ -548,7 +639,7 @@ def db_get_selector_index(selector: str) -> Optional[int]:
 
 @_serialized_write
 def db_set_selector_index(selector: str, index: int) -> None:
-    settings = _load_settings()
+    settings = _load_settings(strict=True)
     mapping = settings.get("selector_indices")
     if not isinstance(mapping, dict):
         mapping = {}
@@ -568,14 +659,14 @@ def db_set_selector_indices(mapping: Dict[str, int]) -> None:
         normalized = {str(k): int(v) for k, v in mapping.items()}
     except Exception:
         normalized = {str(k): v for k, v in mapping.items()}
-    settings = _load_settings()
+    settings = _load_settings(strict=True)
     settings["selector_indices"] = normalized
     _save_settings(settings)
 
 
 @_serialized_write
 def db_delete_selector_index(selector: str) -> None:
-    settings = _load_settings()
+    settings = _load_settings(strict=True)
     mapping = settings.get("selector_indices")
     if not isinstance(mapping, dict):
         return
@@ -640,13 +731,14 @@ def db_delete_scenario(name: str) -> None:
 
 def cleanup_profiles(accounts: List[Dict[str, Any]]) -> None:
     existing = {_safe_profile_name(str(acc.get("name") or acc.get("email") or "")) for acc in accounts}
+    existing.add(".cloud")
     for item in PROFILES_DIR.iterdir():
         if item.is_dir() and item.name not in existing:
             shutil.rmtree(item, ignore_errors=True)
 
 
 def delete_profile_for_account(name: str) -> None:
-    path = profile_dir_for_email(name)
+    path = checked_profile_dir_for_email(name)
     if path.exists():
         shutil.rmtree(path, ignore_errors=True)
 
@@ -655,7 +747,7 @@ def clear_profile_cookies(name: str) -> bool:
     """
     Remove the entire profile directory to reset cookies/storage without deleting the account.
     """
-    profile_path = profile_dir_for_email(name)
+    profile_path = checked_profile_dir_for_email(name)
     if not profile_path.exists():
         return False
 

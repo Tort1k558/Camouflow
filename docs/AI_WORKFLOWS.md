@@ -71,6 +71,10 @@ Use only a trusted self-hosted Windows n8n instance on the same host/user as Cam
 
 Run these commands from the repository root. Verification scripts live in `scripts/`; temporary reports are not committed.
 
+The workflow smoke takes a positional engine (`camoufox` or `cloakbrowser`), not
+an `--engine` option. Invalid engines/options are rejected before opening a browser
+or creating a workspace, so the report cannot silently test a different engine.
+
 ```powershell
 .venv\Scripts\python.exe -m pytest -q
 .venv\Scripts\python.exe scripts\verify_ai_workflows.py camoufox

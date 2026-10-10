@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import ipaddress
 import json
 import re
 import socket
@@ -9,7 +10,7 @@ import time
 from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
 
-from app.utils.parsing import parse_proxy_line
+from app.core.proxy_utils import parse_proxy
 
 PROXY_INTERNET_CHECK_URL = "https://ipwho.is/"
 
@@ -31,11 +32,13 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
             buf += chunk
         return buf
 
-    def _read_http_response(sock_obj: socket.socket) -> Tuple[Optional[int], Dict[str, str], bytes, str]:
+    def _read_http_response(sock_obj: socket.socket, headers_only: bool = False) -> Tuple[Optional[int], Dict[str, str], bytes, str]:
         head = _recv_until(sock_obj, b"\r\n\r\n", 256 * 1024)
         if b"\r\n\r\n" not in head:
             return None, {}, b"", "invalid response headers"
         header_raw, remainder = head.split(b"\r\n\r\n", 1)
+        if len(header_raw) > 256 * 1024:
+            return None, {}, b"", "HTTP response headers exceed size limit"
         lines = header_raw.split(b"\r\n")
         if not lines:
             return None, {}, b"", "empty response"
@@ -52,13 +55,19 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
             k, v = line.split(":", 1)
             headers[k.strip().lower()] = v.strip()
 
+        if headers_only:
+            return status, headers, b"", ""
         body = b""
+        if "content-length" in headers and "transfer-encoding" in headers:
+            return status, headers, b"", "conflicting HTTP response framing"
         if "content-length" in headers:
             try:
                 need = int(headers["content-length"])
-            except Exception:
-                need = None
-            if isinstance(need, int) and need >= 0:
+            except ValueError:
+                return status, headers, b"", "invalid HTTP content length"
+            if not 0 <= need <= 2 * 1024 * 1024:
+                return status, headers, b"", "HTTP content length exceeds response limit"
+            if need >= 0:
                 body = remainder
                 while len(body) < need and len(body) < 2 * 1024 * 1024:
                     chunk = sock_obj.recv(min(8192, need - len(body)))
@@ -66,13 +75,15 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
                         break
                     body += chunk
                 body = body[:need]
+                if len(body) != need:
+                    return status, headers, b"", "truncated HTTP response body"
                 return status, headers, body, ""
 
         # Transfer-Encoding: chunked
-        if "transfer-encoding" in headers and "chunked" in headers["transfer-encoding"].lower():
+        if headers.get("transfer-encoding", "").lower() == "chunked":
             data = remainder
             out = b""
-            while len(out) < 2 * 1024 * 1024:
+            while len(out) <= 2 * 1024 * 1024:
                 # Ensure we have a full chunk-size line
                 while b"\r\n" not in data and len(data) < 256 * 1024:
                     chunk = sock_obj.recv(8192)
@@ -85,9 +96,18 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
                 size_str = size_line.split(b";", 1)[0].decode("ascii", errors="replace").strip()
                 try:
                     size = int(size_str, 16)
-                except Exception:
-                    break
+                except ValueError:
+                    return status, headers, b"", "invalid HTTP chunk size"
+                if size < 0 or size > 2 * 1024 * 1024 - len(out):
+                    return status, headers, b"", "HTTP chunk exceeds response limit"
                 if size == 0:
+                    while not (data.startswith(b"\r\n") or b"\r\n\r\n" in data) and len(data) < 256 * 1024:
+                        chunk = sock_obj.recv(8192)
+                        if not chunk:
+                            break
+                        data += chunk
+                    if not (data.startswith(b"\r\n") or b"\r\n\r\n" in data):
+                        return status, headers, b"", "truncated HTTP chunk trailer"
                     return status, headers, out, ""
                 while len(data) < size + 2 and len(data) < 2 * 1024 * 1024:
                     chunk = sock_obj.recv(8192)
@@ -95,18 +115,24 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
                         break
                     data += chunk
                 if len(data) < size + 2:
-                    break
+                    return status, headers, b"", "truncated HTTP chunk body"
+                if data[size:size + 2] != b"\r\n":
+                    return status, headers, b"", "invalid HTTP chunk ending"
                 out += data[:size]
                 data = data[size + 2 :]  # skip data + CRLF
-            return status, headers, out, ""
+            return status, headers, b"", "incomplete HTTP chunked response"
+        if "transfer-encoding" in headers:
+            return status, headers, b"", "unsupported HTTP transfer encoding"
 
         # Fallback: read until close (bounded).
         body = remainder
-        while len(body) < 2 * 1024 * 1024:
-            chunk = sock_obj.recv(8192)
+        while len(body) <= 2 * 1024 * 1024:
+            chunk = sock_obj.recv(min(8192, 2 * 1024 * 1024 + 1 - len(body)))
             if not chunk:
                 break
             body += chunk
+        if len(body) > 2 * 1024 * 1024:
+            return status, headers, b"", "HTTP response exceeds size limit"
         return status, headers, body, ""
 
     def _json_ok(payload: Dict[str, object]) -> bool:
@@ -117,7 +143,7 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         status = payload.get("status")
         if isinstance(status, str):
             return status.lower() == "success"
-        return True
+        return False
 
     def _open_tls(sock_obj: socket.socket, server_hostname: str) -> ssl.SSLSocket:
         ctx = ssl.create_default_context()
@@ -150,7 +176,7 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         )
         try:
             sock_obj.sendall(req.encode("iso-8859-1", errors="replace"))
-            status, _, _, err = _read_http_response(sock_obj)
+            status, _, _, err = _read_http_response(sock_obj, headers_only=True)
         except OSError as exc:
             try:
                 sock_obj.close()
@@ -169,39 +195,13 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
     if not raw:
         return False, None, "empty proxy value", {"mode": "internet", "target": PROXY_INTERNET_CHECK_URL}
 
-    scheme = "socks5"
-    if "://" in raw:
-        scheme_part, raw = raw.split("://", 1)
-        scheme = (scheme_part or "").strip().lower() or "socks5"
-
-    user = ""
-    password = ""
-    if "@" in raw:
-        auth_part, raw = raw.rsplit("@", 1)
-        if ":" in auth_part:
-            user, password = auth_part.split(":", 1)
-        else:
-            user = auth_part
-
-    try:
-        parts = [p.strip() for p in raw.split(":") if p.strip()]
-        if len(parts) < 2:
-            raise ValueError("expected host:port")
-        host = parts[0]
-        port = int(parts[1])
-        if not user and len(parts) >= 4:
-            user = parts[2]
-            password = parts[3]
-    except Exception:
-        try:
-            host, port, user, password = parse_proxy_line(proxy_value)
-        except Exception as exc:
-            return (
-                False,
-                None,
-                f"invalid proxy format: {exc}",
-                {"mode": "internet", "target": PROXY_INTERNET_CHECK_URL},
-            )
+    _, details = parse_proxy(raw)
+    if details is None:
+        return False, None, "invalid proxy format", {"mode": "internet", "target": PROXY_INTERNET_CHECK_URL}
+    scheme, host, port = details.scheme, details.host, details.port
+    user, password = details.username or "", details.password or ""
+    if scheme == "https":
+        return False, None, "TLS-to-proxy health checks are not supported; no plaintext fallback", {"mode": "internet", "target": PROXY_INTERNET_CHECK_URL}
 
     check_url = PROXY_INTERNET_CHECK_URL
     parsed = urlparse(check_url)
@@ -214,6 +214,7 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         target_path += "?" + parsed.query
 
     start = time.perf_counter()
+    sock_obj = None
     try:
         meta: Dict[str, object] = {"mode": "internet", "target": check_url}
         scheme_l = (scheme or "socks5").lower()
@@ -224,17 +225,11 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
                 ms = int((time.perf_counter() - start) * 1000)
                 return False, ms, f"missing PySocks dependency: {exc}", meta
             proxy_type = socks.SOCKS5 if "5" in scheme_l else socks.SOCKS4
-            sock_obj = socks.socksocket()
-            sock_obj.set_proxy(
-                proxy_type,
-                host,
-                port,
-                True,
-                user or None,
-                password or None,
+            sock_obj = socks.create_connection(
+                (target_host, target_port), timeout=timeout_s,
+                proxy_type=proxy_type, proxy_addr=host, proxy_port=port, proxy_rdns=True,
+                proxy_username=user or None, proxy_password=password or None,
             )
-            sock_obj.settimeout(timeout_s)
-            sock_obj.connect((target_host, target_port))
             if parsed.scheme.lower() == "https":
                 sock_obj = _open_tls(sock_obj, target_host)
             request_target = target_path
@@ -260,30 +255,37 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
             "Accept: application/json",
             "Connection: close",
         ]
+        if user and scheme_l in {"http", "https"} and parsed.scheme.lower() == "http":
+            token = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode("ascii")
+            headers.append(f"Proxy-Authorization: Basic {token}")
         req = "GET " + request_target + " HTTP/1.1\r\n" + "\r\n".join(headers) + "\r\n\r\n"
         sock_obj.sendall(req.encode("iso-8859-1", errors="replace"))
         status, _, body, status_err = _read_http_response(sock_obj)
-        try:
-            sock_obj.close()
-        except Exception:
-            pass
-
         ms = int((time.perf_counter() - start) * 1000)
-        if status is None:
+        if status is None or status_err:
             return False, ms, status_err, meta
         meta["http_status"] = int(status)
-        if not (200 <= status < 400):
+        if not (200 <= status < 300):
             return False, ms, f"http status {status}", meta
         try:
             payload = json.loads(body.decode("utf-8", errors="replace") or "{}")
         except Exception as exc:
             return False, ms, f"invalid json: {exc}", meta
-        if isinstance(payload, dict) and not _json_ok(payload):
+        if not isinstance(payload, dict):
+            return False, ms, "geo response must be a JSON object", meta
+        if not _json_ok(payload):
             msg = payload.get("message") if isinstance(payload.get("message"), str) else payload.get("error")
             return False, ms, str(msg or "geo lookup failed"), meta
 
+        ip = payload.get("ip") or payload.get("query")
+        try:
+            if not isinstance(ip, str):
+                raise ValueError("missing IP")
+            ipaddress.ip_address(ip)
+        except ValueError:
+            return False, ms, "geo response has no valid IP address", meta
+
         if isinstance(payload, dict):
-            ip = payload.get("ip") or payload.get("query")
             country = payload.get("country")
             city = payload.get("city")
             timezone = payload.get("timezone")
@@ -309,4 +311,7 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
             str(exc),
             {"mode": "internet", "target": PROXY_INTERNET_CHECK_URL},
         )
+    finally:
+        if sock_obj is not None:
+            sock_obj.close()
 

@@ -1,4 +1,5 @@
 import json
+import math
 import re
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -75,12 +76,16 @@ class DataSteps:
             multipart = None
 
         timeout_ms = merged_step.get("timeout_ms")
-        timeout_seconds: Optional[float] = None
+        request_timeout: Optional[float] = None
         if timeout_ms is not None:
             try:
-                timeout_seconds = float(timeout_ms) / 1000.0
-            except Exception:
-                timeout_seconds = None
+                if isinstance(timeout_ms, bool):
+                    raise ValueError
+                request_timeout = float(timeout_ms)
+                if not math.isfinite(request_timeout) or request_timeout < 0:
+                    raise ValueError
+            except (TypeError, ValueError, OverflowError):
+                return StepResult.stop("timeout_ms must be a finite non-negative number for http_request")
 
         fail_on_status_code = merged_step.get("fail_on_status_code")
         ignore_https_errors = merged_step.get("ignore_https_errors")
@@ -95,33 +100,36 @@ class DataSteps:
             data=data,
             form=form,
             multipart=multipart,
-            timeout=timeout_seconds,
+            timeout=request_timeout,
             fail_on_status_code=fail_on_status_code,
             ignore_https_errors=ignore_https_errors,
             max_redirects=max_redirects,
             max_retries=max_retries,
         )
 
-        status = int(response.status)
-        ok = 200 <= status <= 299
-        response_headers = dict(response.headers or {})
-
-        body_text = ""
-        body_bytes: Optional[bytes] = None
         try:
-            body_text = await response.text()
-        except Exception:
+            status = int(response.status)
+            ok = 200 <= status <= 299
+            response_headers = dict(response.headers or {})
+
+            body_text = ""
+            body_bytes: Optional[bytes] = None
             try:
-                body_bytes = await response.body()
-                body_text = body_bytes.decode("utf-8", errors="replace")
+                body_text = await response.text()
             except Exception:
-                body_text = ""
+                try:
+                    body_bytes = await response.body()
+                    body_text = body_bytes.decode("utf-8", errors="replace")
+                except Exception:
+                    body_text = ""
 
-        parsed_json: Optional[object] = None
-        try:
-            parsed_json = await response.json()
-        except Exception:
-            parsed_json = None
+            parsed_json: Optional[object] = None
+            try:
+                parsed_json = await response.json()
+            except Exception:
+                parsed_json = None
+        finally:
+            await response.dispose()
 
         save_as = self._apply_template(
             merged_step.get("save_as")
@@ -179,7 +187,7 @@ class DataSteps:
             return StepResult.stop(f"http_request failed with status {status}")
 
         await self._persist_profile_vars()
-        self.logger.info("HTTP %s %s -> %s", method, url, status)
+        self.logger.info("HTTP %s -> %s", method, status)
         return StepResult.next()
 
     async def _action_write_file(self, step: Dict) -> StepResult:
@@ -237,9 +245,9 @@ class DataSteps:
             if scope in {"shared", "both"}:
                 self.shared_manager.set(name, value or "")
                 self.shared_vars = self.shared_manager.all()
-                self.logger.info("Shared variable %s set to %s", name, value)
+                self.logger.info("Shared variable %s set", name)
             else:
-                self.logger.info("Scenario variable %s set to %s", name, value)
+                self.logger.info("Scenario variable %s set", name)
             await self._persist_profile_vars()
         return StepResult.next()
 
@@ -406,5 +414,5 @@ class DataSteps:
             content = content.strip()
         target = step.get("to_var") or step.get("var") or step.get("name") or "last_value"
         self.variables[target] = content
-        self.logger.info("Saved content to var %s: %s", target, content)
+        self.logger.info("Saved content to var %s", target)
         return StepResult.next()

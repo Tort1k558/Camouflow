@@ -1,6 +1,11 @@
-﻿# http_request
+# http_request
 
 Performs an HTTP(S) request via `context.request.fetch` (Playwright). Context cookies are automatically included and updated.
+
+The request uses the profile's configured proxy in both browser engines, including
+authenticated SOCKS4/5. CloakBrowser uses a loopback-only HTTP/CONNECT adapter so
+browser pages and the Playwright request context retain the same SOCKS upstream.
+This does not configure unrelated Python HTTP libraries or the operating system.
 
 Alias: `http`.
 
@@ -16,7 +21,10 @@ Alias: `http`.
   - Aliases: `json`, `body`.
 - `form` *(object, optional)* - `application/x-www-form-urlencoded`.
 - `multipart` *(object, optional)* - `multipart/form-data` (simple fields).
-- `timeout_ms` *(int, optional)* - timeout (ms).
+- `timeout_ms` *(number, optional)* - timeout in milliseconds, passed unchanged
+  to Playwright; `0` disables this request timeout. Negative, non-finite, boolean
+  and non-numeric values are rejected before network I/O. An omitted value uses
+  Playwright's context default.
 - `max_redirects` *(int, optional)*, `max_retries` *(int, optional)*.
 - `fail_on_status_code` *(bool, optional)* - error on non-2xx at the Playwright level.
 - `ignore_https_errors` *(bool, optional)*.

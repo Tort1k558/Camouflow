@@ -82,16 +82,16 @@ Item {
                             anchors.rightMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 6
-                            Text { text: model.title; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                            Text { text: model.description || "No description"; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: model.title; color: Theme.text; font.pixelSize: 14; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: model.description || "No description"; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
                             Flow {
                                 width: parent.width
                                 spacing: 8
-                                Text { text: model.category; color: Theme.primaryLight; font.pixelSize: 11; font.weight: Font.DemiBold }
-                                Text { text: model.steps + " steps"; color: Theme.dim; font.pixelSize: 11 }
-                                Text { text: model.downloads + " downloads"; color: Theme.dim; font.pixelSize: 11 }
+                                Text { textFormat: Text.PlainText; text: model.category; color: Theme.primaryLight; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                Text { textFormat: Text.PlainText; text: model.steps + " steps"; color: Theme.dim; font.pixelSize: 11 }
+                                Text { textFormat: Text.PlainText; text: model.downloads + " downloads"; color: Theme.dim; font.pixelSize: 11 }
                             }
-                            Text { text: model.tags; visible: model.tags !== ""; color: Theme.dim; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
+                            Text { textFormat: Text.PlainText; text: model.tags; visible: model.tags !== ""; color: Theme.dim; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
                         }
 
                         PrimaryButton {
@@ -120,9 +120,9 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 16
                         spacing: 12
-                        Text { text: scenariosBridge.selectedMarketTitle || "Select scenario"; color: Theme.text; font.pixelSize: 20; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                        Text { visible: scenariosBridge.selectedMarketTitle !== ""; text: scenariosBridge.selectedMarketMeta; color: Theme.primaryLight; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
-                        Text { text: scenariosBridge.selectedMarketDescription || "Preview description and steps before installing."; color: Theme.muted; font.pixelSize: 13; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; width: parent.width }
+                        Text { textFormat: Text.PlainText; text: scenariosBridge.selectedMarketTitle || "Select scenario"; color: Theme.text; font.pixelSize: 20; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                        Text { visible: scenariosBridge.selectedMarketTitle !== ""; textFormat: Text.PlainText; text: scenariosBridge.selectedMarketMeta; color: Theme.primaryLight; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; width: parent.width }
+                        Text { textFormat: Text.PlainText; text: scenariosBridge.selectedMarketDescription || "Preview description and steps before installing."; color: Theme.muted; font.pixelSize: 13; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; width: parent.width }
                         Text { text: "Steps preview"; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
                         Rectangle {
                             width: parent.width

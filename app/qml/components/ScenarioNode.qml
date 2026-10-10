@@ -28,8 +28,8 @@ Rectangle {
     border.color: selected ? Theme.primaryInk : Theme.border
     border.width: selected ? 2 : 1
     Text { anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 18; text: "Step " + root.step + "."; color: accent; font.pixelSize: 12; font.bold: true }
-    Text { anchors.left: parent.left; anchors.top: parent.top; anchors.topMargin: 42; anchors.leftMargin: 18; width: parent.width - 36; elide: Text.ElideRight; text: root.title; color: Theme.text; font.pixelSize: 14; font.bold: true }
-    Text { anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.topMargin: 62; anchors.leftMargin: 18; anchors.rightMargin: 18; text: root.subtitle; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight }
+    Text { anchors.left: parent.left; anchors.top: parent.top; anchors.topMargin: 42; anchors.leftMargin: 18; width: parent.width - 36; elide: Text.ElideRight; textFormat: Text.PlainText; text: root.title; color: Theme.text; font.pixelSize: 14; font.bold: true }
+    Text { anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.topMargin: 62; anchors.leftMargin: 18; anchors.rightMargin: 18; textFormat: Text.PlainText; text: root.subtitle; color: Theme.muted; font.pixelSize: 12; elide: Text.ElideRight }
     Rectangle { width: 9; height: 9; radius: 5; color: Theme.primary; anchors.left: parent.left; anchors.leftMargin: -5; anchors.verticalCenter: parent.verticalCenter }
     Rectangle {
         width: 13; height: 13; radius: 7; color: Theme.success; z: 40

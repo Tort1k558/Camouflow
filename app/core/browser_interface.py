@@ -13,7 +13,8 @@ from app.storage.db import (
     db_get_browser_engine,
     db_get_camoufox_defaults,
     db_get_cloakbrowser_defaults,
-    profile_dir_for_email,
+    checked_profile_dir_for_email,
+    checked_profile_storage,
 )
 
 from .browser_launchers import (
@@ -26,7 +27,7 @@ from .browser_launchers import (
 from .browser_lifecycle import BrowserLifecycleManager
 from .browser_proxy_service import BrowserProxyService
 from .locale_mapping import country_to_locale
-from .proxy_utils import LocalSocksProxyServer, parse_proxy
+from .proxy_utils import LocalHttpProxyServer, LocalSocksProxyServer, parse_proxy
 
 
 AsyncCamoufox = Any
@@ -68,15 +69,19 @@ class BrowserInterface:
         camoufox_settings: Optional[Dict[str, object]] = None,
         browser_engine: Optional[str] = None,
         browser_settings: Optional[Dict[str, object]] = None,
+        storage_scope: Optional[Dict[str, str]] = None,
     ) -> None:
         self.profile_name = profile_name
         self.proxy = proxy
         self.keep_browser_open = keep_browser_open
-        self.profile_root = profile_dir_for_email(self.profile_name)
+        self.profile_root = (checked_profile_storage(self.profile_name, storage_scope)
+                             if storage_scope is not None else checked_profile_dir_for_email(self.profile_name))
         self.browser_engine = normalize_browser_engine(browser_engine or db_get_browser_engine())
         self.user_data_dir = self.profile_root
         if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER:
             self.user_data_dir = cloakbrowser_profile_dir(self.profile_root)
+        if self.user_data_dir.is_symlink() or self.user_data_dir.is_junction() or not self.user_data_dir.resolve().is_relative_to(self.profile_root.resolve()):
+            raise ValueError("Browser directory must not escape its dedicated profile storage")
         os.makedirs(self.user_data_dir, exist_ok=True)
 
         self._browser_settings = browser_settings if browser_settings is not None else (camoufox_settings or {})
@@ -85,6 +90,10 @@ class BrowserInterface:
         self._cloakbrowser_defaults = db_get_cloakbrowser_defaults()
         defaults = self._cloakbrowser_defaults if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER else self._camoufox_defaults
         self._browser_settings = {**defaults, **{key: value for key, value in self._browser_settings.items() if value is not None}}
+        if storage_scope is not None and self._browser_settings.get("storage_state_path"):
+            state_path = Path(str(self._browser_settings["storage_state_path"]))
+            if not state_path.resolve().is_relative_to(self.profile_root.resolve()):
+                raise ValueError("Cloud storage state must remain inside its identity-scoped profile directory")
         self._camoufox_settings = self._browser_settings
 
         self.logger = logging.LoggerAdapter(logging.getLogger(__name__), {"profile": self.profile_name})
@@ -116,7 +125,7 @@ class BrowserInterface:
         )
 
         if proxy and not self._proxy_config:
-            msg = f"Proxy string provided for {self.profile_name} but failed to parse; proxy disabled"
+            msg = f"Proxy string provided for {self.profile_name} failed to parse; browser launch will be blocked"
             self.logger.warning(msg)
             self._proxy_logger.warning(msg)
 
@@ -157,11 +166,15 @@ class BrowserInterface:
                 self._proxy_service.set_local_proxy(self._local_proxy)
 
     def _build_cloakbrowser_launch_kwargs(self) -> Dict[str, object]:
+        proxy_config = self._proxy_config
+        if self._proxy_details and self._proxy_details.scheme.startswith("socks"):
+            self._local_proxy = LocalHttpProxyServer(self._proxy_details, profile_name=self.profile_name)
+            proxy_config = {"server": self._local_proxy.start()}
         builder = CloakBrowserLaunchBuilder(
             profile_root=Path(self.profile_root),
             defaults=self._cloakbrowser_defaults,
             browser_settings=self._browser_settings,
-            proxy_config=self._proxy_config,
+            proxy_config=proxy_config,
             detect_browser_locale=self._detect_browser_locale,
             detect_browser_timezone=self._detect_browser_timezone,
         )

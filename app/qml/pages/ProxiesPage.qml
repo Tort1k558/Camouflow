@@ -7,6 +7,8 @@ import "../components"
 Item {
     id: root
     property var bridge: typeof proxiesBridge !== "undefined" ? proxiesBridge : null
+    property bool filtersActive: bridge && (bridge.proxyQuery.length > 0 || bridge.proxyStatus.length > 0)
+    readonly property var filterStatuses: ["", "active", "reachable", "unchecked", "checking", "failed", "quarantined"]
     ConfirmDialog { id: confirmDialog }
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 28; spacing: 14
@@ -22,7 +24,8 @@ Item {
             spacing: 0
             Repeater {
                 model: [
-                    { label: "ACTIVE", value: root.bridge ? root.bridge.active : 0, color: Theme.success },
+                    { label: "REACHABLE", value: root.bridge ? root.bridge.active : 0, color: Theme.success },
+                    { label: "UNCHECKED", value: root.bridge ? root.bridge.unchecked : 0, color: Theme.dim },
                     { label: "CHECKING", value: root.bridge ? root.bridge.checking : 0, color: Theme.warning },
                     { label: "FAILED", value: root.bridge ? root.bridge.failed : 0, color: Theme.danger },
                     { label: "LOCATIONS", value: root.bridge ? root.bridge.locations : 0, color: Theme.primaryLight },
@@ -70,6 +73,7 @@ Item {
                                 spacing: 7
                                 Text {
                                     id: groupName
+                                    textFormat: Text.PlainText
                                     text: model.name === "All pools" ? "All" : model.name
                                     color: model.selected ? Theme.primaryText : Theme.text
                                     font.pixelSize: 12
@@ -107,6 +111,24 @@ Item {
             PrimaryButton { text: "Group actions"; secondary: true; enabled: root.bridge && root.bridge.selectedPool; onClicked: groupMenu.popup() }
             PrimaryButton { text: "Check all proxies"; icon: "refresh"; secondary: true; enabled: root.bridge && root.bridge.canRun && proxyList.count > 0; onClicked: root.bridge.checkAll() }
         }
+        RowLayout {
+            Layout.fillWidth: true; spacing: 10
+            SearchBox {
+                objectName: "proxySearch"
+                Layout.fillWidth: true; Layout.preferredHeight: 40
+                placeholder: "Search name, address or location"
+                text: root.bridge ? root.bridge.proxyQuery : ""
+                onTextChanged: if (root.bridge) root.bridge.setProxyFilters(text, root.bridge.proxyStatus)
+            }
+            ComboBox {
+                objectName: "proxyStatusFilter"
+                Layout.preferredWidth: 170; Layout.preferredHeight: 40
+                model: ["All statuses", "Active (internet)", "Reachable (TCP)", "Unchecked", "Checking", "Failed", "Quarantined"]
+                currentIndex: root.bridge ? Math.max(0, root.filterStatuses.indexOf(root.bridge.proxyStatus)) : 0
+                onActivated: if (root.bridge) root.bridge.setProxyFilters(root.bridge.proxyQuery, root.filterStatuses[currentIndex])
+            }
+            PrimaryButton { text: "Reset"; secondary: true; visible: root.filtersActive; onClicked: root.bridge.setProxyFilters("", "") }
+        }
         Rectangle {
             visible: root.bridge && root.bridge.selectedCount > 0
             Layout.fillWidth: true; Layout.preferredHeight: 52
@@ -116,7 +138,7 @@ Item {
                 Text { text: (root.bridge ? root.bridge.selectedCount : 0) + " selected"; color: Theme.primaryInk; font.pixelSize: 12; Layout.leftMargin: 8 }
                 Item { Layout.fillWidth: true }
                 PrimaryButton { text: "Release assignment"; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: root.bridge.releaseSelected() }
-                PrimaryButton { text: "Remove quarantine"; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: root.bridge.releaseQuarantineSelected() }
+                PrimaryButton { objectName: "quarantineRelease"; text: "Remove quarantine"; secondary: true; visible: root.bridge && root.bridge.canReleaseQuarantine; enabled: root.bridge && root.bridge.canReleaseQuarantine; onClicked: root.bridge.releaseQuarantineSelected() }
                 PrimaryButton { text: "Delete selected"; danger: true; enabled: root.bridge && root.bridge.canAdmin; onClicked: confirmDialog.ask("Delete the selected proxies? This action cannot be undone.", function() { root.bridge.removeSelected() }) }
                 PrimaryButton { text: "Clear selection"; secondary: true; onClicked: root.bridge.clearSelection() }
             }
@@ -124,7 +146,7 @@ Item {
         ListView {
                 id: proxyList
                 BusyIndicator { anchors.centerIn: parent; running: root.bridge && root.bridge.loading && proxyList.count === 0; visible: running }
-                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: proxyList.count === 0 && !root.bridge.loading; title: "No proxies in this group"; description: "Import your connections or create a proxy pool to get started."; icon: "network" }
+                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: proxyList.count === 0 && root.bridge && !root.bridge.loading; title: root.filtersActive ? "No matching proxies" : "No proxies in this group"; description: root.filtersActive ? "Change the search or reset filters." : "Import your connections or create a proxy pool to get started."; icon: "network" }
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 model: root.bridge ? root.bridge.model : null
@@ -150,6 +172,8 @@ Item {
                     onSettingsClicked: function(pool, index) {
                         if (!root.bridge || !root.bridge.canManage) return
                         var payload = root.bridge ? root.bridge.getProxy(pool, index) : {}
+                        if (!payload.value) return
+                        proxyEditDialog.proxyId = payload.id || "local"
                         proxyEditPool.text = payload.pool || pool
                         proxyEditIndex.text = String(payload.index !== undefined ? payload.index : index)
                         proxyEditName.text = payload.name || ""
@@ -160,7 +184,11 @@ Item {
                         if (root.bridge && root.bridge.canRun) root.bridge.checkProxy(pool, index)
                     }
                     onDeleteClicked: function(pool, index) {
-                        if (root.bridge && root.bridge.canAdmin) confirmDialog.ask("Delete this proxy? This action cannot be undone.", function() { root.bridge.deleteProxy(pool, index) })
+                        if (!root.bridge || !root.bridge.canAdmin) return
+                        var payload = root.bridge.getProxy(pool, index)
+                        if (!payload.value) return
+                        var proxyId = payload.id || "local"
+                        confirmDialog.ask("Delete this proxy? This action cannot be undone.", function() { root.bridge.deleteProxy(pool, index, proxyId) })
                     }
                 }
             }
@@ -218,6 +246,7 @@ Item {
 
     WorkspaceDialog {
         id: proxyEditDialog
+        property string proxyId: ""
         objectName: "proxyEditDialog"
         modal: true
         width: 560
@@ -242,7 +271,7 @@ Item {
                     icon: "save"
                     enabled: root.bridge && root.bridge.canManage
                     onClicked: {
-                        if (root.bridge) root.bridge.saveProxy(proxyEditPool.text, parseInt(proxyEditIndex.text), proxyEditName.text, proxyEditValue.text)
+                        if (root.bridge) root.bridge.saveProxy(proxyEditPool.text, parseInt(proxyEditIndex.text), proxyEditName.text, proxyEditValue.text, proxyEditDialog.proxyId)
                         proxyEditDialog.close()
                     }
                 }
