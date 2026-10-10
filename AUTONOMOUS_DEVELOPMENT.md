@@ -1887,3 +1887,25 @@ green styling, keep server sources private, and verify each capability separatel
 - Final clean local Windows build and both packaged runtime gates passed with
   explicit process exit zero: `dist/release-20261011-024631/CamouFlow/CamouFlow.exe`.
   This is development verification, not publication of a new customer release.
+
+### Public Hub foundation and native CI evidence — 2026-10-11
+
+- Implemented private `/hub` catalog/detail pages on the existing marketplace,
+  with bounded search/pagination, category/sort controls, version/action metadata,
+  RU/EN and explicit consent for definition downloads. No automatic execution or
+  private-scenario publication. New catalog responses omit team/user/source IDs
+  and definitions; the existing desktop marketplace contract is unchanged.
+- Private backend: **221 passed**. TypeScript/Vite production build passed.
+  Actual local browser checks covered catalog/detail at 1440/1024/768/375 px,
+  both languages, search/filter/pagination, consent/download accounting and
+  empty/missing/error/retry states, with no application JS errors or overflow.
+  These are owned local fixtures; the Hub is not yet deployed to production.
+- Full Hub scope is retained in `docs/HUB.md`: reviewed/hash-bound scenarios,
+  screenshots, compatibility evidence, reviewed one-click import, indexing and
+  safe deployment still remain. Server code stays outside public Git.
+- Exact-head native CI run `38093125586` completed: Windows and Linux packages
+  passed both real packaged-engine browser/import checks and hard-loop timeout
+  checks. macOS passed its first Python/QML job but failed the repeated pre-build
+  gate with a Tasks-page QML incubation/context-destruction warning. It did not
+  publish a native package. This is a newly observed lifecycle issue, not a
+  successful macOS release; further diagnosis is required.
