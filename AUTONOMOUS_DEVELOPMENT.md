@@ -1671,3 +1671,31 @@ process environment inputs, never source, documentation or report values.
   Private suite now passes 217 tests (11 team-center tests). The refreshed
   deployment bundle contains no environment, credentials, worker or DB dump;
   production remains unchanged pending explicit migration confirmation.
+
+## Authorized production deployment — 2026-10-11 (Samara)
+
+- User explicitly authorized the migration and autonomous deployment. A fresh
+  custom-format backup was restored into an isolated owned PostgreSQL database.
+  Upgrade to `0012_team_center` preserved fingerprints of all 21 existing data
+  tables, and the previous API image read legacy models against the upgraded clone.
+- The production upgrade adds only the four team-center tables. API blue/green
+  deployment preserved PostgreSQL, Caddy, worker, renderer, egress, existing API
+  and unrelated VPN service starts. Healthy prior API remains for routing rollback;
+  rollback does not downgrade or restore customer data.
+- Public HTTPS checks used unique owned users/workspaces: role denials, assigned
+  UUID-idempotent starts, actual static worker results, review/completion, comments,
+  CSV export and atomic ownership transfer. An actual browser checkpoint verified
+  assignment-authorized claim acquisition, competing claim/screen denial, JPEG,
+  reassignment revocation, manual resume and persisted successful results.
+  Test fixtures were removed; the private renderer returned ready/idle.
+- Real browser testing identified stale selected-assignment run statuses. A
+  frontend-only patch now refreshes selected details alongside the shared queue,
+  preserving edit versions. An API-only blue/green patch moved routing from
+  loopback 18092 to 18093 without worker or database restart; functional HTTPS
+  checks passed again. Backend/browser sources remain outside public Git.
+- Desktop v0.4.2 metadata is synchronized with the changelog. Full checks:
+  551 desktop tests, 217 private backend tests, TypeScript/Vite build, actual QML
+  entry-button signals and 37-page docs build without errors/warnings.
+  Clean packaged release gate passed at `dist/release-20261011-003123`, including
+  Camoufox/CloakBrowser runtime and hard-timeout checks. Publication is gated on
+  independent extracted ZIP checks and fresh exact-head GitHub CI.

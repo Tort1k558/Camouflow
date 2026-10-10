@@ -35,8 +35,8 @@ completion webhooks. Open **Tasks → Hosted tasks**; local execution is unchang
 
 **[Team center](docs-site/docs/team-center.md)** — assigned work, linked runs,
 manager review and a shared browser-help queue. Open **Tasks → Team center**.
-Requires the private server's `0012_team_center` revision; not part of the v0.4.1
-server deployment. Existing team roles and local scenario execution are retained.
+Available in v0.4.2; requires the private server's `0012_team_center` revision,
+now deployed on our hosted service. Existing team roles and local execution remain.
 
 Available in **v0.4.0**. Model-reported success is not a verified workflow. Page content goes to your chosen provider; editable field contents are excluded from snapshots, not every possible secret.
 

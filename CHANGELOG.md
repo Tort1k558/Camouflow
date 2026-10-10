@@ -6,6 +6,19 @@ build attached.
 
 ## Unreleased
 
+## 0.4.2 - 2026-10-11
+
+- Added **Tasks → Team center** and the team-center guide. Desktop credentials
+  are never transferred in the console URL; local execution remains unchanged.
+- Private team assignments: assignees, deadlines, priorities, discussion,
+  matching hosted/local runs and manager review. Runs and assignments remain
+  separate; failed runs do not complete assignments.
+- Shared manual-intervention queue with exclusive bounded browser claims and
+  immediate invalidation when assignment/access permissions are revoked.
+- Atomic ownership transfer and stricter invitation/member role ceilings.
+- Team-center backend stays private. Requires server revision `0012_team_center`;
+  existing team-wide resource permissions and one hosted browser slot remain.
+
 ## 0.4.1 - 2026-10-10
 
 - Added **Tasks → Hosted tasks**, opening the configured server's console without
