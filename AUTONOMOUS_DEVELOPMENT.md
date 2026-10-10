@@ -33,13 +33,13 @@ production changes. Production updates need backups, rollback and smoke checks.
 | --- | --- | --- | --- |
 | P1 | Preserve canceled pending jobs in history | Implemented | Reproduced empty history after cancel/clear; 6 history tests pass, including workspace/idempotence/running-cancel checks |
 | P1 | CI test triggers and Tasks QML coverage | Implemented | Tests/pytest.ini trigger desktop CI; all 13 pages including Tasks load warning-free locally |
-| P1 | Production functional/responsive audit | In progress | Browser flows, docs/API, auth boundaries; no real-account automation |
-| P1 | Backend baseline and source/runtime comparison | In progress | Isolated test database; inspect deployed vs local source |
+| P1 | Production functional/responsive audit | Verified anonymous and isolated paths | Current production bundle/mobile/docs checked; authenticated RBAC/auth flows use synthetic isolated APIs, not customer accounts |
+| P1 | Backend baseline and source/runtime comparison | Verified and deployed | Private suite 125 passed; immutable candidates tested on disposable PostgreSQL; backups and retained upstream support rollback |
 | P2 | Saved task navigation/input UX | Implemented | Search by name/description, preserves selected task and input draft; real Qt screenshots and tests |
 | P2 | Run results/search/filter usability | Implemented | Collapsible scheduling, search/status filters, retained-history matching and minimum-window proof |
 | P2 | Queue/storage failure and concurrency audit | Implemented initial safeguards | Reproduced disk-write failure leaving running job with no worker; rollback, pause and visible errors added |
 | P2 | Useful server functionality | Team run history deployed | Correct terminal statuses/token lifecycle plus read-only team search/filter/pagination; isolated auth/RBAC/browser proof |
-| P2 | Current-source browser and packaging smoke | Verified through d49930f | Clean Windows build, both fresh engine/Python reports passed, isolated packaged GUI startup passed |
+| P2 | Current-source browser and packaging smoke | Runtime source c62a55f verified | Package 074400: both fresh engine/Python reports and actual authenticated-proxy queue/export checks; later changes are tests/docs only |
 
 ## Research direction
 
@@ -867,3 +867,36 @@ three canonical values and three existing-row reuse checks, decoded credentials
 and IPv6/empty-password identity; owned synthetic rows cleaned. No production
 customer updates. An earlier QA fixture incorrectly treated parse_proxy's tuple
 as ProxyDetails; corrected to its documented config/details pair before proof.
+
+## Iteration 37 - archive guarantees and stabilization evidence
+
+Added 24 isolated archive regressions: all sessions/secrets combinations,
+checksums, traversal/Windows/ADS/case-collision/symlink paths, existing destination
+preservation, size/file limits, live-session change detection, account-write
+rollback, restored-profile defaults and new scenario/reference names. No archive
+runtime refactor was needed. Full desktop suite **354 passed**. Windows ZIP
+reader normalizes backslashes; that fixture is rejected by the manifest/path
+boundary before publication, not assumed to fail at one specific internal check.
+
+Real Windows QML background archive slots verified non-blocking full export and
+restore, collision rejection, two metadata-only exports and GUI-thread callbacks;
+zero QML warnings, temporary synthetic workspace cleaned. Updated Profiles and
+Settings Retype guides; **35 pages, zero errors/warnings**. These docs are pushed
+on the feature branch, not falsely described as published GitHub Pages.
+
+Stabilized package `dist/release-20261010-074400/CamouFlow/CamouFlow.exe`
+contains runtime c62a55f. Clean build, compileall, 330 tests at build time, both
+fresh parsed engine/Python reports passed. Actual packaged authenticated HTTP
+proxy runs succeeded on both engines; exports verified, four target TLS geo
+requests, four fixture pages, two auth challenges, zero unexpected forwards,
+certificate/hostname verification enabled. No real accounts or paid LLM.
+
+Current-source AI workflow verification passed on both engines with fixture HTTP
+LLM; actual AI QML/replay verifier passed. Fresh CI c62a55f run 38021578604,
+8e38cf5 run 38021399230 and 593b34c run 38021048159 completed successfully.
+The full current CI QML recipe passed all 13 pages/settings modes and operation,
+recorder/heartbeat/single-flight callbacks locally. Private suite rerun:
+**125 passed**. Real local API browser rerun: all five roles, actual TCP check,
+63 timestamp-tied filtered audit rows, null PATCH 422/subsequent list 200,
+OAuth failure/Back token-fragment removal and readable no-input-echo validation
+all passed; no mocked API in the five-role integration flow.
