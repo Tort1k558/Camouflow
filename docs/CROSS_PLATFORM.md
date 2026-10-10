@@ -4,6 +4,28 @@ Windows remains the published desktop release. Linux and macOS are development
 targets: adding a CI matrix is not proof that either platform is ready for release.
 Check the exact commit's `desktop` workflow before using its native artifacts.
 
+## Latest observed platform evidence — 2026-10-11
+
+For source `a0c16c4`, desktop CI run
+[38093125586](https://github.com/Tort1k558/Camouflow/actions/runs/38093125586)
+passed the Windows/Linux native packaging jobs. Downloaded runtime reports for
+both platforms confirmed real Camoufox/CloakBrowser execution, imports and
+hard-loop timeout enforcement. These are development artifacts, not stable releases.
+
+macOS passed its first Python/QML job but failed the repeated pre-build test gate:
+switching Tasks/Scenarios pages could destroy a context while offscreen list
+delegates were still being created. No macOS package was published by that run.
+[Qt incubation](https://doc.qt.io/qt-6/qqmlincubator.html) can continue creating
+offscreen list delegates across rendering frames.
+
+The issue was reproduced locally with a populated task list and 100 rapid page
+switches. Lists now release their models during destruction to cancel pending
+delegates before their Loader context is destroyed. Unchanged task searches and
+refreshes also avoid redundant model resets and search-field binding loops.
+The same local probe now reports zero QML warnings; the new regression fails on
+the preceding source and passes with the fix. The full local suite passed 607
+tests. A fresh native CI run is still required to confirm macOS readiness.
+
 ## What CI verifies
 
 The existing full Python tests and QML page/interaction smoke run on Windows,

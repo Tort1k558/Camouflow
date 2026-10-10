@@ -130,6 +130,7 @@ Flickable {
             }
             ListView {
                 id: queueList
+                Component.onDestruction: model = null
                 Layout.fillWidth: true; Layout.preferredHeight: Math.min(260, Math.max(140, queueList.count * 70)); clip: true; spacing: 6
                 model: operationsBridge.jobsModel
                 ScrollBar.vertical: ScrollBar {}
@@ -171,6 +172,7 @@ Flickable {
             }
             ListView {
                 id: historyList
+                Component.onDestruction: model = null
                 Layout.fillWidth: true; Layout.preferredHeight: 220; clip: true; spacing: 6
                 model: operationsBridge.historyModel
                 ScrollBar.vertical: ScrollBar {}

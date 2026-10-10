@@ -128,6 +128,7 @@ Item {
                     visible: appState && appState.cloudEnabled
                     height: visible ? 132 : 0
                     model: scenariosBridge.runsModel
+                    Component.onDestruction: model = null
                     spacing: 7
                     clip: true
                     delegate: Rectangle {
@@ -162,6 +163,7 @@ Item {
                     width: parent.width
                     height: 198
                     model: scenariosBridge.categoriesModel
+                    Component.onDestruction: model = null
                     spacing: 7
                     clip: true
                     delegate: Rectangle {
@@ -181,6 +183,7 @@ Item {
                     width: parent.width
                     height: parent.height - y - 4
                     model: scenariosBridge.templatesModel
+                    Component.onDestruction: model = null
                     spacing: 8
                     clip: true
                     delegate: Rectangle {
@@ -372,6 +375,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 10
                         model: settingsBridge ? settingsBridge.variablesModel : null
+                        Component.onDestruction: model = null
                         spacing: 8
                         clip: true
                         delegate: Rectangle {
@@ -510,6 +514,7 @@ Item {
                     Layout.preferredWidth: 330
                     Layout.fillHeight: true
                     model: scenariosBridge.model
+                    Component.onDestruction: model = null
                     spacing: 8
                     clip: true
                     delegate: Rectangle {

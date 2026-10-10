@@ -60,16 +60,21 @@ class TasksBridge(QObject):
 
     @pyqtSlot(str)
     def setSearch(self, query):
-        self._search_query = str(query or "")
+        query = str(query or "")
+        if query == self._search_query:
+            return
+        self._search_query = query
         self._apply_search()
         self.changed.emit()
 
     def _apply_search(self):
         query = self._search_query.strip().casefold()
-        self._model.set_rows(
+        rows = [
             row for row in self._task_rows
             if not query or query in " ".join(str(row.get(key) or "") for key in ("name", "description")).casefold()
-        )
+        ]
+        if rows != self._model.rows():
+            self._model.set_rows(rows)
 
     @pyqtProperty(str, notify=changed)
     def selectedName(self):

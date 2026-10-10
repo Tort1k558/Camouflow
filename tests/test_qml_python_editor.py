@@ -11,6 +11,73 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 
+def test_task_search_and_rapid_page_switches_preserve_qml_contexts(tmp_path):
+    script = '''
+import time
+from PyQt6 import sip
+from PyQt6.QtCore import QObject, QUrl
+from app.storage import db
+from app.ui.qml_app import QmlApplication
+
+db.init_db()
+db.db_set_setting('onboarding_completed', 'true')
+for index in range(30):
+    db.db_save_scenario(f'Task {index:02d}', [{'action': 'start'}, {'action': 'log', 'value': 'test'}], '')
+ui = QmlApplication(['Task navigation regression'])
+warnings, resets = [], []
+ui.engine.warnings.connect(lambda rows: warnings.extend(row.toString() for row in rows))
+ui.tasks.model.modelReset.connect(lambda: resets.append(True))
+
+def pump(seconds=.1):
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        ui.app.processEvents()
+        time.sleep(.001)
+
+try:
+    ui.scenarios.selectScenario('Task 00')
+    ui.tasks.setSearch('Task')
+    ui.state.setPage('Tasks')
+    ui.engine.load(QUrl.fromLocalFile(str(ui.root_dir / 'Main.qml')))
+    assert ui.engine.rootObjects(), warnings
+    pump()
+    resets.clear()
+    for index in range(50):
+        ui.tasks.setSearch('Task')
+        ui.tasks.refresh()
+        ui.state.setPage('ScenarioRuns')
+        pump(.01)
+        ui.state.setPage('Tasks')
+        pump(.01)
+    pump(.2)
+    assert not resets, 'Unchanged task rows must not recreate list delegates'
+    assert ui.tasks.searchQuery == 'Task'
+    assert ui.tasks.model.rowCount() == 30
+    assert ui.tasks.selectedName == 'Task 00'
+    root = ui.engine.rootObjects()[0]
+    assert root.findChild(QObject, 'savedTaskList') is not None
+    assert not warnings, warnings
+    ui.tasks.setSearch('Task 01')
+    pump()
+    assert len(resets) == 1
+    assert ui.tasks.model.rowCount() == 1
+    assert ui.tasks.model.get(0)['name'] == 'Task 01'
+    assert not warnings, warnings
+finally:
+    ui.recorder.shutdown()
+    ui.operations.shutdown()
+    ui.ai.shutdown()
+    sip.delete(ui.engine)
+    ui._workspace_lock.unlock()
+'''
+    result = subprocess.run(
+        [sys.executable, "-c", script], cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "CAMOUFLOW_DATA_DIR": str(tmp_path), "QT_QPA_PLATFORM": "offscreen"},
+        capture_output=True, text=True, encoding="utf-8", timeout=30,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_browser_settings_qml_controls_save_and_profile_overrides(tmp_path):
     script = '''
 import json, time

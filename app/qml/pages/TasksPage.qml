@@ -51,6 +51,8 @@ Item {
                 ListView {
                     id: taskList
                     objectName: "savedTaskList"
+                    // Cancel pending delegates before the page's Loader context is destroyed.
+                    Component.onDestruction: model = null
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 10
                     model: tasksBridge.model
                     ScrollBar.vertical: ScrollBar {}

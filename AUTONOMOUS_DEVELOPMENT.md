@@ -1909,3 +1909,21 @@ green styling, keep server sources private, and verify each capability separatel
   gate with a Tasks-page QML incubation/context-destruction warning. It did not
   publish a native package. This is a newly observed lifecycle issue, not a
   successful macOS release; further diagnosis is required.
+
+### QML page lifecycle fix — 2026-10-11
+
+- Reproduced the native CI warning locally with 30 owned task scenarios and 100
+  rapid Tasks/ScenarioRuns switches. Baseline emitted search-field binding loops
+  and Loader/context-destruction warnings; identical searches and refreshes reset
+  the task model, and pending offscreen delegates outlived the page context.
+- Task search is now idempotent; identical filtered rows do not reset the model.
+  Task, scenario and run list views release models during destruction, cancelling
+  pending delegates without changing global incubation, adding waits or ignoring
+  QML warnings. The same probe now has zero warnings and no redundant resets.
+- Added a real offscreen QML regression with populated lists, preserved search,
+  selection, 100 rapid switches and a changed search that must update results.
+  It fails on isolated archived source `a0c16c4` and passes on the fix. All six
+  QML interaction tests passed; the recorded-task flow also passed eight repeat
+  checks. Full release-gate tests: **607 passed**.
+- macOS native readiness still requires the fresh exact-head CI/package gate.
+  The full Hub, Browser Health, MCP and Recorder scope remains active.
