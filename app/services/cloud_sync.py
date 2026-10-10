@@ -10,6 +10,7 @@ from urllib.parse import unquote, urlsplit
 
 from app.services.server_client import ServerClient, ServerClientError
 from app.storage.db import (
+    browser_settings_key,
     db_add_account,
     db_delete_account,
     db_delete_scenario,
@@ -255,7 +256,7 @@ class CloudWorkspaceSync:
     @staticmethod
     def _profile_payload(account: dict[str, Any], proxy_id: str | None) -> dict[str, Any]:
         engine = str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox").lower()
-        settings = account.get("cloakbrowser_settings") if engine == "cloakbrowser" else account.get("camoufox_settings")
+        settings = account.get(browser_settings_key(engine))
         settings = dict(settings) if isinstance(settings, dict) else {}
         if isinstance(account.get("extra_fields"), dict):
             settings["variables"] = account["extra_fields"]

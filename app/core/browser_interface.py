@@ -13,6 +13,8 @@ from app.storage.db import (
     db_get_browser_engine,
     db_get_camoufox_defaults,
     db_get_cloakbrowser_defaults,
+    db_get_native_defaults,
+    BROWSER_ENGINES,
     checked_profile_dir_for_email,
     checked_profile_storage,
 )
@@ -41,11 +43,12 @@ def _import_camoufox():
 
 BROWSER_ENGINE_CAMOUFOX = "camoufox"
 BROWSER_ENGINE_CLOAKBROWSER = "cloakbrowser"
+BROWSER_ENGINE_NATIVE = "native"
 
 
 def normalize_browser_engine(engine: Optional[str]) -> str:
     normalized = str(engine or "").strip().lower()
-    if normalized in {BROWSER_ENGINE_CAMOUFOX, BROWSER_ENGINE_CLOAKBROWSER}:
+    if normalized in BROWSER_ENGINES:
         return normalized
     return BROWSER_ENGINE_CAMOUFOX
 
@@ -80,15 +83,21 @@ class BrowserInterface:
         self.user_data_dir = self.profile_root
         if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER:
             self.user_data_dir = cloakbrowser_profile_dir(self.profile_root)
+        elif self.browser_engine == BROWSER_ENGINE_NATIVE:
+            self.user_data_dir = self.profile_root / "native"
         if self.user_data_dir.is_symlink() or self.user_data_dir.is_junction() or not self.user_data_dir.resolve().is_relative_to(self.profile_root.resolve()):
             raise ValueError("Browser directory must not escape its dedicated profile storage")
         os.makedirs(self.user_data_dir, exist_ok=True)
+        if self.browser_engine == BROWSER_ENGINE_NATIVE:
+            self.user_data_dir = self.user_data_dir.resolve()
 
         self._browser_settings = browser_settings if browser_settings is not None else (camoufox_settings or {})
         self._camoufox_settings = self._browser_settings
         self._camoufox_defaults = db_get_camoufox_defaults()
         self._cloakbrowser_defaults = db_get_cloakbrowser_defaults()
-        defaults = self._cloakbrowser_defaults if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER else self._camoufox_defaults
+        self._native_defaults = db_get_native_defaults()
+        defaults = (self._native_defaults if self.browser_engine == BROWSER_ENGINE_NATIVE else
+                    self._cloakbrowser_defaults if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER else self._camoufox_defaults)
         self._browser_settings = {**defaults, **{key: value for key, value in self._browser_settings.items() if value is not None}}
         if storage_scope is not None and self._browser_settings.get("storage_state_path"):
             state_path = Path(str(self._browser_settings["storage_state_path"]))
@@ -104,6 +113,7 @@ class BrowserInterface:
         self.page = None
         self._camoufox_ctx: Optional[AsyncCamoufox] = None
         self._cloakbrowser_context = None
+        self._native_runtime = None
         self._storage_state_payload: Optional[Dict[str, object]] = None
         self._storage_state_native = False
         self._proxy_config, self._proxy_details = parse_proxy(proxy, profile_name=self.profile_name)
@@ -166,10 +176,7 @@ class BrowserInterface:
                 self._proxy_service.set_local_proxy(self._local_proxy)
 
     def _build_cloakbrowser_launch_kwargs(self) -> Dict[str, object]:
-        proxy_config = self._proxy_config
-        if self._proxy_details and self._proxy_details.scheme.startswith("socks"):
-            self._local_proxy = LocalHttpProxyServer(self._proxy_details, profile_name=self.profile_name)
-            proxy_config = {"server": self._local_proxy.start()}
+        proxy_config = self._prepare_chromium_proxy()
         builder = CloakBrowserLaunchBuilder(
             profile_root=Path(self.profile_root),
             defaults=self._cloakbrowser_defaults,
@@ -179,6 +186,13 @@ class BrowserInterface:
             detect_browser_timezone=self._detect_browser_timezone,
         )
         return builder.build()
+
+    def _prepare_chromium_proxy(self):
+        proxy_config = self._proxy_config
+        if self._proxy_details and self._proxy_details.scheme.startswith("socks"):
+            self._local_proxy = LocalHttpProxyServer(self._proxy_details, profile_name=self.profile_name)
+            proxy_config = {"server": self._local_proxy.start()}
+        return proxy_config
 
     @staticmethod
     def _context_kwargs_from_settings(settings: Dict[str, object]) -> Dict[str, object]:
@@ -218,7 +232,8 @@ class BrowserInterface:
 
         Failing here (no browser started yet) is better than failing after launch.
         """
-        defaults = self._cloakbrowser_defaults if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER else self._camoufox_defaults
+        defaults = (self._native_defaults if self.browser_engine == BROWSER_ENGINE_NATIVE else
+                    self._cloakbrowser_defaults if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER else self._camoufox_defaults)
         settings = dict(defaults or {})
         settings.update({key: value for key, value in self._browser_settings.items() if value is not None})
         path = str(settings.get("storage_state_path") or "").strip()
@@ -391,6 +406,8 @@ class BrowserInterface:
         try:
             if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER:
                 await self._start_cloakbrowser()
+            elif self.browser_engine == BROWSER_ENGINE_NATIVE:
+                await self._start_native()
             else:
                 await self._start_camoufox()
             await self._restore_storage_state()
@@ -470,12 +487,30 @@ class BrowserInterface:
             self.logger.exception("CloakBrowser start failed for %s", self.profile_name)
             raise RuntimeError(f"CloakBrowser start failed: {exc}") from exc
 
+    async def _start_native(self) -> None:
+        from .native.configuration import NativeConfiguration
+        from .native.runtime import NativeRuntime
+
+        configuration = NativeConfiguration.from_settings(self._browser_settings)
+        executable = str(self._browser_settings.get("executable_path") or "").strip()
+        if not executable:
+            raise RuntimeError("Configure an explicit Native Chromium executable before launching")
+        headless = self._browser_settings.get("headless", False)
+        if not isinstance(headless, bool):
+            raise ValueError("Native headless setting must be a boolean")
+        self._native_runtime = NativeRuntime(Path(self.user_data_dir), Path(executable), configuration)
+        self.context = await self._native_runtime.start(headless=headless, proxy=self._prepare_chromium_proxy())
+        self.browser = self.context.browser
+
     def _start_process_watchdog(self) -> None:
         self._lifecycle.start_process_watchdog()
 
     TEARDOWN_TIMEOUT_SECONDS = 8.0
 
     async def _teardown_browser(self) -> None:
+        if self._native_runtime is not None:
+            await self._native_runtime.close()
+            return
         if self.context:
             await self.context.close()
         elif self.page:
@@ -507,6 +542,12 @@ class BrowserInterface:
                 "Browser teardown failed for %s", self.profile_name, exc_info=True
             )
         finally:
+            if self._native_runtime is not None:
+                try:
+                    await self._native_runtime.close()
+                except Exception:
+                    self.logger.warning("Native driver cleanup failed for %s", self.profile_name, exc_info=True)
+                self._native_runtime = None
             if self._camoufox_ctx:
                 try:
                     await asyncio.wait_for(

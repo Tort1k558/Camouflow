@@ -529,7 +529,7 @@ class OperationsBridge(QObject):
             async def execute():
                 engine = account.get("_browser_engine") or account.get("browser_engine") or "camoufox"
                 account["_browser_engine"] = engine
-                account["_browser_settings"] = account.get("cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings", {})
+                account["_browser_settings"] = account.get(db.browser_settings_key(engine), {})
                 runner = ScenarioExecutor(account, account_proxy(account), scenario, keep_browser_open=False, cancel_event=cancel, debug_session=debug_session)
                 from app.services.task_inputs import configure_task_run
                 configure_task_run(runner, job, db.OUTPUTS_DIR)

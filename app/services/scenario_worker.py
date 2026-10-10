@@ -346,7 +346,7 @@ def worker_main(connection):
     from app.services.scenario_debug import ScenarioDebugDecision, ScenarioDebugSession
     from app.services.scenario_engine import ScenarioExecutor
     from app.services.proxy_policy import account_proxy
-    from app.storage.db import Scenario
+    from app.storage.db import Scenario, browser_settings_key
 
     class DebugProxy(ScenarioDebugSession):
         def before_step(self, **kwargs):
@@ -369,7 +369,7 @@ def worker_main(connection):
         account, job = payload["account"], payload["job"]
         engine = account.get("_browser_engine") or account.get("browser_engine") or "camoufox"
         account["_browser_engine"] = engine
-        account["_browser_settings"] = account.get("cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings", {})
+        account["_browser_settings"] = account.get(browser_settings_key(engine), {})
         scenario = Scenario(job["scenario"], job["steps"], job.get("description", ""))
         runner = ScenarioExecutor(account, account_proxy(account), scenario, keep_browser_open=False,
                                   cancel_event=cancel, debug_session=DebugProxy(cancel_event=cancel) if payload["debug"] else None)

@@ -24,6 +24,8 @@ from app.services.server_client import (
     server_enabled,
 )
 from app.storage.db import (
+    BROWSER_ENGINES,
+    browser_settings_key,
     checked_profile_dir_for_email,
     checked_profile_storage,
     cloud_profile_scope,
@@ -192,6 +194,7 @@ class ProfilesBridge(QObject):
                 "lock_expires_at": str(profile.get("lock_expires_at") or ""),
                 "camoufox_settings": settings,
                 "cloakbrowser_settings": settings,
+                "native_settings": settings,
                 "extra_fields": settings.get("variables") if isinstance(settings.get("variables"), dict) else {},
                 "_server_profile": profile,
                 "_storage_scope": cloud_profile_scope(client.session.url, client.session.team_id, profile["id"]),
@@ -438,7 +441,7 @@ class ProfilesBridge(QObject):
                 if val and val not in tags:
                     tags.append(val)
             engine = str(acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox")
-            settings = self._settings_dict(acc.get("cloakbrowser_settings") if engine == "cloakbrowser" else acc.get("camoufox_settings")) or {}
+            settings = self._settings_dict(acc.get(browser_settings_key(engine))) or {}
             health = acc.get("health_check") if isinstance(acc.get("health_check"), dict) else settings.get("health_check")
             health_status = str(health.get("status") or "not checked").replace("_", " ").title() if isinstance(health, dict) else "Not checked"
             resource = self._browser_resources.get(name) if running else None
@@ -446,6 +449,8 @@ class ProfilesBridge(QObject):
                 health_status += f" · {resource['memory_mb']} MB"
             if engine == "cloakbrowser":
                 browser_label = "CloakBrowser"
+            elif engine == "native":
+                browser_label = "CamouFlow Native"
             else:
                 browser_label = "Camoufox"
             rows.append({
@@ -642,7 +647,7 @@ class ProfilesBridge(QObject):
         if not acc:
             return {}
         engine = str(engine or acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox").lower()
-        settings_key = "cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings"
+        settings_key = browser_settings_key(engine)
         settings = acc.get(settings_key)
         if isinstance(settings, str):
             try:
@@ -690,6 +695,7 @@ class ProfilesBridge(QObject):
             "proxy_pool",
             "camoufox_settings",
             "cloakbrowser_settings",
+            "native_settings",
             "_browser_engine",
             "browser_engine",
             "last_active",
@@ -710,7 +716,7 @@ class ProfilesBridge(QObject):
         if not acc:
             return "{}"
         engine = str(engine or acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox").lower()
-        key = "cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings"
+        key = browser_settings_key(engine)
         settings = self._settings_dict(acc.get(key)) or {}
         return json.dumps(settings, ensure_ascii=False, indent=2)
 
@@ -731,7 +737,7 @@ class ProfilesBridge(QObject):
             self._emit_message("Browser settings must be a JSON object")
             return
         engine = str(engine or "camoufox").lower()
-        settings_key = "cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings"
+        settings_key = browser_settings_key(engine)
         if not self._ensure_allowed("manager"):
             return
         def work(client):
@@ -773,7 +779,7 @@ class ProfilesBridge(QObject):
                 client.update_profile(acc["id"], {"settings": settings})
             else:
                 updates = {"extra_fields": payload}
-                protected = {"name", "id", "stage", "camoufox_settings", "cloakbrowser_settings", "browser_engine"}
+                protected = {"name", "id", "stage", "camoufox_settings", "cloakbrowser_settings", "native_settings", "browser_engine"}
                 updates.update({k: v for k, v in payload.items() if k not in protected and not k.startswith(("_", "proxy_"))})
                 db_update_account(target, updates)
             return f"Variables saved for {target}"
@@ -790,7 +796,7 @@ class ProfilesBridge(QObject):
         if not engine:
             account = next((account for account in db_get_accounts() if account["name"] == profile_name), {})
             engine = str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox")
-        if engine not in {"camoufox", "cloakbrowser"}:
+        if engine not in BROWSER_ENGINES:
             raise ValueError("Unsupported cookie browser engine")
         profile_dir = root / "cloakbrowser" if engine == "cloakbrowser" else root
         if profile_dir.is_symlink() or profile_dir.is_junction() or not profile_dir.resolve().is_relative_to(root.resolve()):
@@ -941,7 +947,7 @@ class ProfilesBridge(QObject):
             if not account:
                 raise ValueError("Profile not found")
             engine = str(form.get("engine") or "camoufox")
-            key = "cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings"
+            key = browser_settings_key(engine)
             settings = dict(self._settings_dict(account.get(key)) or {})
             for field in ("locale", "timezone", "user_agent", "webgl_vendor", "hardware_concurrency"):
                 value = str(form.get(field) or "").strip()
@@ -1087,7 +1093,7 @@ class ProfilesBridge(QObject):
             if not acc:
                 raise ValueError("Profile not found")
             engine = str(acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox")
-            settings = self._settings_dict(acc.get("cloakbrowser_settings") if engine == "cloakbrowser" else acc.get("camoufox_settings"))
+            settings = self._settings_dict(acc.get(browser_settings_key(engine)))
             async def run():
                 browser = None
                 try:
@@ -1168,7 +1174,7 @@ class ProfilesBridge(QObject):
             except Exception:
                 self._emit_message("CPU cores must be a number")
                 return
-        settings_key = "cloakbrowser_settings" if str(engine or "").lower() == "cloakbrowser" else "camoufox_settings"
+        settings_key = browser_settings_key(str(engine or "").lower())
         if browser_settings:
             updates[settings_key] = browser_settings
         else:
@@ -1301,7 +1307,7 @@ class ProfilesBridge(QObject):
     def _start_prepared(self, name, acc):
         proxy = self._proxy_for(acc)
         engine = str(acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox")
-        settings = self._settings_dict(acc.get("cloakbrowser_settings") if engine == "cloakbrowser" else acc.get("camoufox_settings"))
+        settings = self._settings_dict(acc.get(browser_settings_key(engine)))
         try:
             browser = BrowserInterface(
                 profile_name=name,
@@ -1459,7 +1465,7 @@ class ProfilesBridge(QObject):
             browser = None
             try:
                 engine = str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox")
-                settings = self._settings_dict(account.get("cloakbrowser_settings") if engine == "cloakbrowser" else account.get("camoufox_settings")) or {}
+                settings = self._settings_dict(account.get(browser_settings_key(engine))) or {}
                 browser = BrowserInterface(profile_name=name, proxy=self._proxy_for(account), keep_browser_open=False,
                                            browser_engine=engine, browser_settings=settings,
                                            storage_scope=account.get("_storage_scope"))
@@ -1517,7 +1523,7 @@ class ProfilesBridge(QObject):
                 dns_ok = bool(data.get("dns_ok"))
                 previous = account.get("health_check")
                 if not isinstance(previous, dict):
-                    previous = (account.get("camoufox_settings") or account.get("cloakbrowser_settings") or {}).get("health_check", {})
+                    previous = (account.get(browser_settings_key(engine)) or {}).get("health_check", {})
                 fingerprint = hashlib.sha256(json.dumps({
                     "userAgent": signals.get("userAgent"), "language": signals.get("language"), "timezone": signals.get("timezone"),
                     "hardwareConcurrency": signals.get("hardwareConcurrency"), "platform": signals.get("platform"), "screen": signals.get("screen"), "webgl": signals.get("webgl"),
@@ -1594,7 +1600,7 @@ class ProfilesBridge(QObject):
         if server_enabled() and self._server_client():
             remote = self._server_account(name)
             if remote:
-                key = "cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings"
+                key = browser_settings_key(engine)
                 remote_settings = dict(remote.get(key) or {})
                 remote_settings["health_check"] = report
                 self._server_client().update_profile(str(remote.get("id") or ""), {"settings": remote_settings})

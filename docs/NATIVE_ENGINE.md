@@ -16,8 +16,8 @@ Mobile Web must remain distinct from real Android/iOS browser execution.
 
 - `app/core/browser_interface.py`: shared Playwright page/context API, proxy
   verification, storage restoration, callbacks and startup/teardown. Current
-  selection handles Camoufox/CloakBrowser only. Native must join that existing
-  interface, not introduce a second scenario executor.
+  selection now includes Native through that existing interface, without a
+  second scenario executor.
 - `app/core/browser_launchers.py`: current engine-specific launch configuration.
   Native configuration/lifecycle lives separately in `app/core/native/`.
 - `app/storage/db.py`: checked profile paths, identity-scoped cloud storage,
@@ -125,11 +125,19 @@ Verified Windows checks:
 - HTTP proxy authentication: actual 407 challenge, credentialed proxy traffic
   and successful navigation to a fixture hostname with no direct DNS route.
 
-The updated local full suite passed **622 tests**, including negative proxy-auth
+The updated local full suite passed **633 tests**, including negative proxy-auth
 fixture checks and explicit missing-binary failure/reporting without fallback.
 
+The core adapter now dispatches `native` profiles into their own `native/`
+storage directory with independent defaults. Worker, scenario and profile
+settings use the active engine's settings key; old engine defaults are unchanged.
+The Windows gate also executes an existing `ScenarioExecutor` sequence through
+`BrowserInterface`: navigation, type, click, wait and extraction passed on the
+actual browser. Unsupported identity/header overrides fail explicitly rather
+than falling back to a different engine or applying JavaScript patches.
+
 This is not yet evidence for external HTTPS/SOCKS proxies, crash recovery or
-existing CamouFlow scenario/AI/Recorder integration. `webdriver` stays visible.
+AI/Recorder integration. `webdriver` stays visible.
 Temporary test profiles are owned and removed after teardown; no customer
 profiles or external accounts are used. A JSON report includes actual version,
 measured executable checksum, check names and pass/fail state.
@@ -139,6 +147,13 @@ runs this source gate on Windows/Linux/macOS before packaging existing engines;
 the report is retained even when a later step fails. This checks source runtime,
 **not yet packaged/selectable Native functionality**. Fresh CI evidence is
 required; a workflow edit alone does not establish platform readiness.
+
+CI at `41517e1` passed the source-runtime and package checks on Windows and
+macOS. Linux navigation timed out on the owned HTTP fixture. The fixture now
+handles concurrent connections, including idle Chromium preconnects, with a
+regression test; the corrected Linux runtime still needs fresh CI evidence.
+The verifier closes only its own workspace log handlers before deleting its
+temporary workspace, preserving unrelated application/customer log handlers.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).

@@ -93,3 +93,49 @@ def test_native_gate_missing_binary_is_reported_without_fallback(tmp_path, monke
     assert result["error_type"] == "NativeRuntimeError"
     assert "not installed" in result["error"]
     assert list((tmp_path / "owned").iterdir()) == []
+
+
+def test_native_gate_closes_only_owned_log_files(tmp_path):
+    import logging
+    from scripts.verify_native_runtime import close_owned_log_handlers
+
+    owned = tmp_path / "owned"
+    owned.mkdir()
+    logger = logging.getLogger("native-gate-owned-cleanup")
+    inside = logging.FileHandler(owned / "proxy.log")
+    outside = logging.FileHandler(tmp_path / "customer.log")
+    logger.addHandler(inside)
+    logger.addHandler(outside)
+    try:
+        close_owned_log_handlers(owned)
+        assert inside not in logger.handlers and inside.stream is None
+        assert outside in logger.handlers and outside.stream is not None
+        (owned / "proxy.log").unlink()
+    finally:
+        for handler in (inside, outside):
+            logger.removeHandler(handler)
+            handler.close()
+
+
+def test_native_fixture_serves_requests_while_browser_preconnect_is_idle():
+    import socket
+    from http.client import HTTPConnection
+    from threading import Thread
+    from scripts.verify_native_runtime import FixtureHandler, FixtureServer
+
+    server = FixtureServer(("127.0.0.1", 0), FixtureHandler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    idle = socket.create_connection(server.server_address, timeout=2)
+    request = HTTPConnection(*server.server_address, timeout=2)
+    try:
+        request.request("GET", "/")
+        response = request.getresponse()
+        assert response.status == 200
+        assert b"Owned Native fixture" in response.read()
+    finally:
+        idle.close()
+        request.close()
+        server.shutdown()
+        server.server_close()
+        thread.join()

@@ -20,6 +20,7 @@ from app.storage.db import (
     db_get_scenario_path,
     db_get_setting,
     db_set_setting,
+    browser_settings_key,
 )
 from app.services.scenario_debug import ScenarioDebugSession
 from app.services.steps.base import StepResult
@@ -58,9 +59,10 @@ class ScenarioExecutor(
         cancel_event: Optional[Event] = None,
     ) -> None:
         profile_name = str(account_payload.get("name"))
-        browser_engine = str(account_payload.get("_browser_engine") or "camoufox")
+        browser_engine = str(account_payload.get("_browser_engine") or account_payload.get("browser_engine") or "camoufox")
         browser_settings = (
             account_payload.get("_browser_settings")
+            or account_payload.get(browser_settings_key(browser_engine))
             or account_payload.get("_camoufox_settings")
             or account_payload.get("camoufox_settings")
         )

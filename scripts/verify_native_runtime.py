@@ -7,12 +7,14 @@ import asyncio
 import base64
 import hashlib
 import json
+import logging
+import os
 import platform
 import subprocess
 import sys
 import tempfile
 import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from socketserver import TCPServer
 
@@ -58,7 +60,7 @@ STORAGE = """async value => {
 }"""
 
 
-class FixtureServer(HTTPServer):
+class FixtureServer(ThreadingHTTPServer):
     authenticated_requests = 0
     challenges = 0
     proxy_mode = False
@@ -156,6 +158,30 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         assert await context.pages[0].title() == "Owned Native fixture"
         assert proxy_server.authenticated_requests > 0 and proxy_server.challenges > 0
         checks.append("authenticated-http-proxy-no-direct-dns-route")
+        from app.services.scenario_engine import ScenarioExecutor
+        from app.storage import db
+
+        db.init_db()
+        account = {"name": "Native core fixture", "browser_engine": "native", "native_settings": {
+            "executable_path": str(executable), "headless": True, "humanize": False,
+        }}
+        scenario = db.Scenario("Native core compatibility", [
+            {"action": "start"}, {"action": "goto", "value": origin},
+            {"action": "type", "selector": "input", "value": "existing scenario"},
+            {"action": "click", "selector": "button"},
+            {"action": "wait_element", "selector": "output", "state": "visible"},
+            {"action": "extract_text", "selector": "output", "to_var": "result"},
+        ], "Owned Native source check")
+        runner = ScenarioExecutor(account, "", scenario, keep_browser_open=False)
+        try:
+            await runner.start()
+            assert runner.browser_engine == "native"
+            assert runner.user_data_dir.relative_to(runner.profile_root.resolve()) == Path("native")
+            assert await runner.run()
+            assert runner.variables["result"] == "existing scenario"
+        finally:
+            await runner.close(force=True)
+        checks.append("existing-browser-interface-and-scenario-executor")
         with executable.open("rb") as binary:
             checksum = hashlib.file_digest(binary, "sha256").hexdigest()
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),
@@ -182,6 +208,18 @@ async def check_lock(profile: Path, executable: Path) -> int:
     return 1
 
 
+def close_owned_log_handlers(root: Path) -> None:
+    root = root.resolve()
+    loggers = [logging.getLogger(), *logging.Logger.manager.loggerDict.values()]
+    for logger in loggers:
+        if not isinstance(logger, logging.Logger):
+            continue
+        for handler in logger.handlers[:]:
+            if isinstance(handler, logging.FileHandler) and Path(handler.baseFilename).resolve().is_relative_to(root):
+                handler.close()
+                logger.removeHandler(handler)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--executable", default="")
@@ -201,7 +239,16 @@ def main() -> int:
         thread.start()
     try:
         with tempfile.TemporaryDirectory(prefix="native-owned-", dir=args.work_dir.resolve()) as owned:
-            report = asyncio.run(verify(Path(owned).resolve(), executable, f"http://127.0.0.1:{server.server_port}", proxy_server))
+            previous_data_dir = os.environ.get("CAMOUFLOW_DATA_DIR")
+            os.environ["CAMOUFLOW_DATA_DIR"] = str(Path(owned).resolve() / "workspace")
+            try:
+                report = asyncio.run(verify(Path(owned).resolve(), executable, f"http://127.0.0.1:{server.server_port}", proxy_server))
+            finally:
+                close_owned_log_handlers(Path(owned))
+                if previous_data_dir is None:
+                    os.environ.pop("CAMOUFLOW_DATA_DIR", None)
+                else:
+                    os.environ["CAMOUFLOW_DATA_DIR"] = previous_data_dir
     except Exception as error:
         report = {"passed": False, "platform": platform.system(), "error_type": type(error).__name__, "error": str(error)[:1000]}
     finally:

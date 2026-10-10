@@ -46,3 +46,42 @@ def test_native_refuses_existing_unrelated_browser_data(tmp_path):
         asyncio.run(runtime.start())
     assert original.read_text(encoding="utf-8") == "customer data"
     assert list(profile.iterdir()) == [original]
+
+
+@pytest.mark.parametrize("values", [
+    {"hardware_concurrency": 4}, {"fingerprint_noise": True}, {"platform": "android"},
+    {"persistent_context": False}, {"permissions": "camera"},
+    {"extra_http_headers": {"User-Agent": "other browser"}},
+    {"extra_http_headers": {"sec-ch-ua-mobile": "?1"}},
+])
+def test_native_profile_settings_fail_closed_for_unsupported_identity(values):
+    with pytest.raises(ValueError):
+        NativeConfiguration.from_settings(values)
+
+
+def test_native_profile_settings_reach_supported_configuration():
+    configuration = NativeConfiguration.from_settings({"environment": "mobile_web", "window_width": 390,
+        "window_height": 844, "device_scale_factor": 3, "permissions": ["geolocation"]})
+    assert configuration.context_options()["permissions"] == ["geolocation"]
+    assert configuration.width == 390 and configuration.height == 844
+
+
+def test_native_browser_interface_uses_separate_storage_and_never_falls_back(tmp_path, monkeypatch):
+    from unittest.mock import Mock
+    import app.core.browser_interface as interface
+    from app.storage import db
+
+    monkeypatch.setattr(interface, "checked_profile_dir_for_email", lambda name: tmp_path / "profile")
+    monkeypatch.setattr(interface, "db_get_native_defaults", lambda: dict(db.NATIVE_DEFAULTS))
+    monkeypatch.setattr(interface, "db_get_camoufox_defaults", lambda: {})
+    monkeypatch.setattr(interface, "db_get_cloakbrowser_defaults", lambda: {})
+    monkeypatch.setattr(interface.BrowserInterface, "_init_proxy_logger", lambda self: Mock())
+    fallback = Mock(side_effect=AssertionError("Native must not launch Camoufox"))
+    monkeypatch.setattr(interface, "_import_camoufox", fallback)
+    browser = interface.BrowserInterface("Owned profile", browser_engine="native", keep_browser_open=False)
+    assert browser.user_data_dir == (tmp_path / "profile/native").resolve()
+    assert browser._browser_settings["environment"] == "desktop"
+    assert "fingerprint_noise" not in browser._browser_settings
+    with pytest.raises(RuntimeError, match="explicit Native Chromium executable"):
+        asyncio.run(browser.start())
+    fallback.assert_not_called()

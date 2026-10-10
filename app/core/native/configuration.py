@@ -17,8 +17,34 @@ class NativeConfiguration:
     timezone: str = "UTC"
     permissions: tuple[str, ...] = ()
 
+    @classmethod
+    def from_settings(cls, settings: dict) -> "NativeConfiguration":
+        headers = settings.get("extra_http_headers", {})
+        if not isinstance(headers, dict):
+            raise ValueError("Native HTTP headers must be an object")
+        if any(str(key).lower() in {"user-agent", "accept-language", "sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform"} for key in headers):
+            raise ValueError("Native identity headers must not override the browser configuration")
+        unsupported = {"user_agent", "platform", "platform_version", "gpu_vendor", "gpu_renderer", "hardware_concurrency", "device_memory", "fonts", "webrtc_ip", "fingerprint_seed", "fingerprint_noise", "screen_width", "screen_height", "launch_args", "block_webrtc", "block_webgl", "geoip", "bypass_csp", "ignore_https_errors"}
+        requested = sorted(key for key in unsupported if settings.get(key))
+        if requested:
+            raise ValueError("Native does not support these settings: " + ", ".join(requested))
+        if settings.get("persistent_context", True) is not True:
+            raise ValueError("Native requires a persistent profile")
+        permissions = settings.get("permissions", [])
+        if not isinstance(permissions, (list, tuple)):
+            raise ValueError("Native permissions must be a list")
+        configuration = cls(
+            environment=settings.get("environment", "desktop"),
+            width=settings.get("window_width", 1366), height=settings.get("window_height", 768),
+            device_scale_factor=settings.get("device_scale_factor", 1.0),
+            locale=settings.get("locale", "en-US"), timezone=settings.get("timezone", "UTC"),
+            permissions=tuple(permissions),
+        )
+        configuration.validate()
+        return configuration
+
     def validate(self) -> None:
-        if self.environment not in {"desktop", "mobile_web"}:
+        if not isinstance(self.environment, str) or self.environment not in {"desktop", "mobile_web"}:
             raise ValueError("Native supports desktop or mobile_web, not real Android/iOS")
         if any(type(value) is not int or not 240 <= value <= 8192 for value in (self.width, self.height)):
             raise ValueError("Native viewport dimensions must be integers between 240 and 8192")

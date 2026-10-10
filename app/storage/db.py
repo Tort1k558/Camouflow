@@ -177,7 +177,23 @@ CLOAKBROWSER_DEFAULTS: Dict[str, Any] = {
     "accept_downloads": True,
 }
 
-BROWSER_ENGINES = {"camoufox", "cloakbrowser"}
+NATIVE_DEFAULTS: Dict[str, Any] = {
+    "executable_path": "",
+    "environment": "desktop",
+    "window_width": 1366,
+    "window_height": 768,
+    "device_scale_factor": 1.0,
+    "locale": "en-US",
+    "timezone": "UTC",
+    "permissions": [],
+    "headless": False,
+    "persistent_context": True,
+    "humanize": False,
+    "storage_state_path": "",
+    "extra_http_headers": {},
+}
+
+BROWSER_ENGINES = {"camoufox", "cloakbrowser", "native"}
 DEFAULT_BROWSER_ENGINE = "camoufox"
 
 SAMPLE_SCENARIO = {
@@ -600,6 +616,29 @@ def db_set_browser_engine(engine: str) -> None:
     if normalized not in BROWSER_ENGINES:
         normalized = DEFAULT_BROWSER_ENGINE
     db_set_setting("browser_engine", normalized)
+
+
+def browser_settings_key(engine: str) -> str:
+    if engine == "native":
+        return "native_settings"
+    return "cloakbrowser_settings" if engine == "cloakbrowser" else "camoufox_settings"
+
+
+def db_get_native_defaults() -> Dict[str, Any]:
+    raw = db_get_setting("native_defaults")
+    if raw:
+        try:
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                return {**NATIVE_DEFAULTS, **{key: data[key] for key in NATIVE_DEFAULTS if key in data}}
+        except (ValueError, TypeError):
+            pass
+    return dict(NATIVE_DEFAULTS)
+
+
+def db_set_native_defaults(settings: Dict[str, Any]) -> None:
+    merged = {**NATIVE_DEFAULTS, **{key: settings[key] for key in NATIVE_DEFAULTS if key in settings}}
+    db_set_setting("native_defaults", json.dumps(merged, ensure_ascii=False))
 
 
 def db_get_cloakbrowser_defaults() -> Dict[str, Any]:
