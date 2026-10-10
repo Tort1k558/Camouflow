@@ -217,7 +217,11 @@ class UserBridge(QObject):
 
     @pyqtSlot(bool)
     def setAutoSyncEnabled(self, enabled: bool) -> None:  # noqa: N802
-        db_set_setting("cloud_autosync", "true" if enabled else "false")
+        try:
+            db_set_setting("cloud_autosync", "true" if enabled else "false")
+        except Exception as exc:
+            self._notify(f"Cannot save automatic sync: {exc}")
+            return
         self.changed.emit()
 
     @pyqtSlot()
@@ -648,7 +652,10 @@ class UserBridge(QObject):
     def _after_login(self, result: dict) -> None:
         self._set_auth_status("")
         self.loginSucceeded.emit()
-        db_set_setting(ONBOARDING_COMPLETED_KEY, "true")
+        try:
+            db_set_setting(ONBOARDING_COMPLETED_KEY, "true")
+        except Exception as exc:
+            self._notify(f"Cannot save onboarding preference: {exc}")
         team_id = str(result.get("team_id") or "")
         self._notify(f"Cloud connected, team {team_id[:8]}" if team_id else "Cloud connected. Accept an invite below.")
         self.refresh()
@@ -663,7 +670,11 @@ class UserBridge(QObject):
                 client.logout()
         except Exception:
             pass
-        clear_server_session()
+        try:
+            clear_server_session()
+        except Exception as exc:
+            self._notify(f"Cannot clear the local cloud session: {exc}")
+            return
         self._notify("Logged out")
         self.refresh()
         if self._app_state is not None:

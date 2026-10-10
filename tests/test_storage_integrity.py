@@ -1,6 +1,8 @@
 """Mutations must not replace unreadable storage with an empty document."""
 
 import json
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -85,3 +87,82 @@ def test_unreadable_settings_are_not_overwritten(storage_files, monkeypatch):
     with pytest.raises(RuntimeError):
         db.db_set_setting("theme", "dark")
     assert settings.read_bytes() == b'{"existing":"keep"}'
+
+
+@pytest.mark.parametrize("write", SETTINGS_WRITES)
+def test_valid_setting_mutations_preserve_unrelated_fields(storage_files, write):
+    _, settings = storage_files
+    settings.write_text('{"existing":"keep","selector_indices":{"#other":1}}', encoding="utf-8")
+    write()
+    result = json.loads(settings.read_text(encoding="utf-8"))
+    assert result["existing"] == "keep"
+
+
+@pytest.mark.parametrize("write", ACCOUNT_WRITES)
+def test_valid_account_mutations_preserve_other_profiles(storage_files, write):
+    accounts, _ = storage_files
+    accounts.write_text('[{"name":"profile1"},{"name":"other","custom":"keep"}]', encoding="utf-8")
+    write()
+    result = json.loads(accounts.read_text(encoding="utf-8"))
+    assert next(entry for entry in result if entry["name"] == "other")["custom"] == "keep"
+
+
+@pytest.mark.parametrize("method,args", [
+    ("saveVariable", ("key", "string", "value")),
+    ("deleteVariable", ("key",)),
+    ("addStage", ("new",)),
+    ("deleteStage", ("old",)),
+    ("startLocalMode", ()),
+    ("openUserLogin", ()),
+    ("resetOnboarding", ()),
+    ("saveAiSettings", (True, "https://example.invalid", "synthetic-key", "model", "25")),
+])
+def test_settings_slots_report_failed_writes(storage_files, method, args):
+    from app.ui.bridge.settings import SettingsBridge
+
+    _, settings = storage_files
+    settings.write_bytes(b'{"unfinished":')
+    bridge = SimpleNamespace(_emit_message=Mock(), refresh=Mock(), _app_state=Mock(),
+                             _load_vars=lambda: {}, _load_stages=lambda: ["old"])
+    bridge._persist = lambda values: SettingsBridge._persist(bridge, values)
+    getattr(SettingsBridge, method)(bridge, *args)
+    assert bridge._emit_message.call_count == 1
+    assert "Cannot save" in bridge._emit_message.call_args.args[0]
+    assert settings.read_bytes() == b'{"unfinished":'
+    bridge.refresh.assert_not_called()
+    bridge._app_state.refreshAll.assert_not_called()
+    bridge._app_state.setPage.assert_not_called()
+
+
+def test_ai_settings_are_one_atomic_write(storage_files, monkeypatch):
+    from app.ui.bridge import settings as settings_module
+
+    _, settings = storage_files
+    settings.write_text('{"existing":"keep"}', encoding="utf-8")
+    persist = Mock(wraps=db.db_set_settings)
+    monkeypatch.setattr(settings_module, "db_set_settings", persist)
+    bridge = SimpleNamespace(_emit_message=Mock(), refresh=Mock())
+    bridge._persist = lambda values: settings_module.SettingsBridge._persist(bridge, values)
+    settings_module.SettingsBridge.saveAiSettings(bridge, True, "https://example.invalid/", "synthetic-key", "model", "30")
+    assert persist.call_count == 1
+    result = json.loads(settings.read_text(encoding="utf-8"))
+    assert result["existing"] == "keep"
+    assert result["ai_enabled"] == "true" and result["ai_max_steps"] == "30"
+    assert result["ai_base_url"] == "https://example.invalid"
+    bridge.refresh.assert_called_once()
+
+
+@pytest.mark.parametrize("method,args", [("setAutoSyncEnabled", (True,)), ("logout", ())])
+def test_user_slots_report_failed_local_writes(storage_files, monkeypatch, method, args):
+    from app.ui.bridge import user
+
+    _, settings = storage_files
+    settings.write_bytes(b'{"unfinished":')
+    monkeypatch.setattr(user, "ServerClient", lambda: SimpleNamespace(configured=False))
+    bridge = SimpleNamespace(_notify=Mock(), changed=Mock(), refresh=Mock(), _app_state=Mock())
+    getattr(user.UserBridge, method)(bridge, *args)
+    assert bridge._notify.call_count == 1
+    assert "Cannot" in bridge._notify.call_args.args[0]
+    assert settings.read_bytes() == b'{"unfinished":'
+    bridge.changed.emit.assert_not_called()
+    bridge.refresh.assert_not_called()

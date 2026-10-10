@@ -814,3 +814,25 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 ## Iteration 33 - preserve unreadable local storage
 
 Reproduced settings/account mutation replacing malformed, wrongly shaped or unreadable JSON with empty data; BOM input also lost existing keys. New regression suite initially had 22 failures and 3 passes. Mutation reads now validate containers and fail before writing; missing new files remain creatable. Existing read-only empty-state behavior is unchanged. UTF-8 BOM input is accepted and writes remain UTF-8 without BOM. All nine account/settings/selector mutation paths covered; full desktop suite **286 passed**. This does not repair existing corrupted files or guarantee cross-process serialization. GUI write-error handling is reviewed separately before final packaging.
+
+## Iteration 34 - visible storage errors and current server boundaries
+
+Settings slots now report persistence failures without uncaught Qt exceptions,
+false success, onboarding dismissal or navigation. User automatic-sync/logout
+preferences also report failed local writes. AI provider configuration is one
+atomic settings update rather than five independently persisted fields.
+45 focused storage/UI tests and **306 full desktop tests passed**. Actual Windows
+QML with a disposable corrupted settings file: native welcome-button click
+showed the error, preserved bytes/onboarding and produced zero QML warnings.
+
+Private server deployed on healthy 18082 from immutable final-034000 image:
+OAuth fragments removed before verification/history; six non-nullable proxy null
+updates rejected before persistence; readable validation messages omit inputs.
+Private suite **125 passed**, final image's isolated PostgreSQL TCP/null/retained
+asset checks passed. Actual anonymous production browser verified B0fSbFNz,
+mobile authentication, secure Web Locks and RU/EN docs; no customer login/data
+mutation. Cutover each path 79/80 (one recorded connection close), independent
+steady-state 160/160. Exact-image isolated Caddy reproduction and rollback
+remain documented privately; no zero-downtime claim. Root-private backup and
+healthy previous 18083 retained; original API/PG/Caddy/VPN starts unchanged.
+Server sources remain outside public Git.
