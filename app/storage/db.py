@@ -300,11 +300,17 @@ def init_db() -> None:
             pass
 
 
-def _load_accounts_raw() -> List[Dict]:
+def _load_accounts_raw(*, strict: bool = False) -> List[Dict]:
     try:
-        data = json.loads(ACCOUNTS_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
-    except Exception:
+        data = json.loads(ACCOUNTS_FILE.read_text(encoding="utf-8-sig"))
+        if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+            raise ValueError("Accounts must be a list of objects")
+        return data
+    except FileNotFoundError:
+        return []
+    except Exception as exc:
+        if strict:
+            raise RuntimeError("Cannot update unreadable accounts.json; restore the file first") from exc
         LOGGER.exception("Failed to load accounts.json")
         return []
 
@@ -335,7 +341,7 @@ def _normalize_account(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 @_serialized_write
 def db_add_account(account: Dict[str, Any]) -> Dict[str, Any]:
-    accounts = _load_accounts_raw()
+    accounts = _load_accounts_raw(strict=True)
     normalized = _normalize_account(account)
     ids_lower = {str(acc.get("name") or "").lower() for acc in accounts}
     acc_id = str(normalized.get("name") or "")
@@ -359,7 +365,7 @@ def db_get_accounts() -> List[Dict[str, Any]]:
 
 @_serialized_write
 def db_delete_account(account_name: str) -> None:
-    accounts = _load_accounts_raw()
+    accounts = _load_accounts_raw(strict=True)
     key = str(account_name or "").lower()
     filtered = [acc for acc in accounts if str(acc.get("name") or "").lower() != key]
     _save_accounts_raw(filtered)
@@ -367,7 +373,7 @@ def db_delete_account(account_name: str) -> None:
 
 @_serialized_write
 def db_update_stage(account_name: str, stage: Optional[str]) -> None:
-    accounts = _load_accounts_raw()
+    accounts = _load_accounts_raw(strict=True)
     updated = []
     key = str(account_name or "").lower()
     for acc in accounts:
@@ -382,7 +388,7 @@ def db_update_account(account_name: str, updates: Dict[str, Any]) -> None:
     """
     Update an account by its identifier (name), allowing all fields including name to change.
     """
-    accounts = _load_accounts_raw()
+    accounts = _load_accounts_raw(strict=True)
     key = str(account_name or "").lower()
     idx = next((i for i, acc in enumerate(accounts) if str(acc.get("name") or "").lower() == key), -1)
     if idx < 0:
@@ -418,11 +424,17 @@ def db_update_account(account_name: str, updates: Dict[str, Any]) -> None:
             pass
 
 
-def _load_settings() -> Dict[str, str]:
+def _load_settings(*, strict: bool = False) -> Dict[str, str]:
     try:
-        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except Exception:
+        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8-sig"))
+        if not isinstance(data, dict):
+            raise ValueError("Settings must be an object")
+        return data
+    except FileNotFoundError:
+        return {}
+    except Exception as exc:
+        if strict:
+            raise RuntimeError("Cannot update unreadable settings.json; restore the file first") from exc
         LOGGER.exception("Failed to load settings.json")
         return {}
 
@@ -463,7 +475,7 @@ def db_get_setting(key: str) -> Optional[str]:
 
 @_serialized_write
 def db_set_settings(values: Dict[str, str]) -> None:
-    settings = _load_settings()
+    settings = _load_settings(strict=True)
     settings.update(values)
     _save_settings(settings)
 
@@ -552,7 +564,7 @@ def db_get_selector_index(selector: str) -> Optional[int]:
 
 @_serialized_write
 def db_set_selector_index(selector: str, index: int) -> None:
-    settings = _load_settings()
+    settings = _load_settings(strict=True)
     mapping = settings.get("selector_indices")
     if not isinstance(mapping, dict):
         mapping = {}
@@ -572,14 +584,14 @@ def db_set_selector_indices(mapping: Dict[str, int]) -> None:
         normalized = {str(k): int(v) for k, v in mapping.items()}
     except Exception:
         normalized = {str(k): v for k, v in mapping.items()}
-    settings = _load_settings()
+    settings = _load_settings(strict=True)
     settings["selector_indices"] = normalized
     _save_settings(settings)
 
 
 @_serialized_write
 def db_delete_selector_index(selector: str) -> None:
-    settings = _load_settings()
+    settings = _load_settings(strict=True)
     mapping = settings.get("selector_indices")
     if not isinstance(mapping, dict):
         return

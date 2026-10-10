@@ -810,3 +810,7 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   with 422 and still lists proxies with 200; real OAuth failure/Back cases remove
   fragments, and real password validation displays its rule without input echo.
   Next deploy needs immutable-image PostgreSQL validation and saved cutover proof.
+
+## Iteration 33 - preserve unreadable local storage
+
+Reproduced settings/account mutation replacing malformed, wrongly shaped or unreadable JSON with empty data; BOM input also lost existing keys. New regression suite initially had 22 failures and 3 passes. Mutation reads now validate containers and fail before writing; missing new files remain creatable. Existing read-only empty-state behavior is unchanged. UTF-8 BOM input is accepted and writes remain UTF-8 without BOM. All nine account/settings/selector mutation paths covered; full desktop suite **286 passed**. This does not repair existing corrupted files or guarantee cross-process serialization. GUI write-error handling is reviewed separately before final packaging.

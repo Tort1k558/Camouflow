@@ -212,3 +212,7 @@ Limitations: Camoufox only, no iframe/popup recording, file uploads, rich-text e
 - Workspace list refreshes run in background workers. Profile tabs retain their drafts while switching; cookies load asynchronously.
 - In **Scenarios > Runs**, enable **Debug in separate window** before adding a job, then resume the queue. The debugger pauses before the first step. **Next step** executes one step; **Resume** continues; **Run selected** jumps to a step. Closing the debugger stops its run.
 - Queue debugging uses the saved run snapshot, not hot reload. After completion, enqueue another run to execute edited steps.
+
+### Local storage recovery
+
+Account/settings mutations refuse to overwrite malformed, wrongly shaped or unreadable JSON. Restore `settings/accounts.json` or `settings/settings.json` from a verified backup before retrying; do not delete these files as a reset. Missing files can initialize a new workspace. UTF-8 BOM documents are accepted; updates use UTF-8 without BOM. These guards are not a recovery tool or cross-process lock.
