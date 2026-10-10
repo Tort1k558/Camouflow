@@ -201,17 +201,11 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
                 ms = int((time.perf_counter() - start) * 1000)
                 return False, ms, f"missing PySocks dependency: {exc}", meta
             proxy_type = socks.SOCKS5 if "5" in scheme_l else socks.SOCKS4
-            sock_obj = socks.socksocket()
-            sock_obj.set_proxy(
-                proxy_type,
-                host,
-                port,
-                True,
-                user or None,
-                password or None,
+            sock_obj = socks.create_connection(
+                (target_host, target_port), timeout=timeout_s,
+                proxy_type=proxy_type, proxy_addr=host, proxy_port=port, proxy_rdns=True,
+                proxy_username=user or None, proxy_password=password or None,
             )
-            sock_obj.settimeout(timeout_s)
-            sock_obj.connect((target_host, target_port))
             if parsed.scheme.lower() == "https":
                 sock_obj = _open_tls(sock_obj, target_host)
             request_target = target_path

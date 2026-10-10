@@ -496,3 +496,96 @@ def test_internet_probe_requires_successful_object_with_valid_exit_ip(monkeypatc
     assert bool(error) is not expected
     assert ("ip" in meta) is expected
     connection.close.assert_called_once()
+
+
+def test_profile_geo_contexts_do_not_mutate_global_socket_or_default_proxy(monkeypatch):
+    import socket
+    import socks
+    from app.core.browser_proxy_service import BrowserProxyService
+    from app.core.proxy_utils import ProxyDetails
+
+    original_socket = socket.socket
+    original_default = socks.socksocket.default_proxy
+    set_default = Mock()
+    monkeypatch.setattr(socks, "set_default_proxy", set_default)
+    services = [BrowserProxyService(name, {}, ProxyDetails("socks5", host, 1080, None, None), Mock(), Mock())
+                for name, host in [("Synthetic A", "a.invalid"), ("Synthetic B", "b.invalid")]]
+    first, second = [service.geo_proxy_context() for service in services]
+    try:
+        assert first.__enter__() is not None and second.__enter__() is not None
+        assert socket.socket is original_socket
+        assert socks.socksocket.default_proxy == original_default
+    finally:
+        first.__exit__(None, None, None)
+        second.__exit__(None, None, None)
+    assert socket.socket is original_socket
+    assert socks.socksocket.default_proxy == original_default
+    set_default.assert_not_called()
+
+
+def test_profile_http_lookup_ignores_environment_proxy_bypass(monkeypatch):
+    import base64
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from app.core.browser_proxy_service import BrowserProxyService
+    from app.core.proxy_utils import ProxyDetails
+
+    seen = []
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            seen.append((self.path, self.headers.get("Proxy-Authorization")))
+            body = b'{"success":true,"ip":"192.0.2.1"}'
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        def log_message(self, *args):
+            pass
+    monkeypatch.setenv("NO_PROXY", "*")
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:9")
+    with ThreadingHTTPServer(("127.0.0.1", 0), Handler) as server:
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            service = BrowserProxyService("Synthetic", {}, ProxyDetails("http", "127.0.0.1", server.server_port, "user@example.invalid", "synthetic@password"), Mock(), Mock())
+            with service.geo_proxy_context() as opener, opener.open("http://127.0.0.1:9/synthetic-geo", timeout=1) as response:
+                assert json.load(response)["ip"] == "192.0.2.1"
+            auth = "Basic " + base64.b64encode(b"user@example.invalid:synthetic@password").decode("ascii")
+            assert seen == [("http://127.0.0.1:9/synthetic-geo", auth)]
+        finally:
+            server.shutdown()
+            worker.join(2)
+
+
+@pytest.mark.parametrize("scheme", ["socks4", "socks5"])
+def test_profile_socks_connections_use_per_request_proxy_and_remote_dns(monkeypatch, scheme):
+    import socks
+    from app.core.browser_proxy_service import _SocksHTTPConnection
+    from app.core.proxy_utils import ProxyDetails
+
+    create = Mock()
+    monkeypatch.setattr(socks, "create_connection", create)
+    connection = _SocksHTTPConnection("synthetic-target.invalid", port=80, timeout=3, proxy=ProxyDetails(scheme, "::1", 1080, "user", "synthetic-pass"))
+    connection.connect()
+    assert connection.sock is create.return_value
+    arguments = create.call_args
+    assert arguments.args == (("synthetic-target.invalid", 80),)
+    assert arguments.kwargs["proxy_addr"] == "::1"
+    assert arguments.kwargs["proxy_rdns"] is True
+    assert arguments.kwargs["proxy_type"] == (socks.SOCKS4 if scheme == "socks4" else socks.SOCKS5)
+    connection.close()
+
+
+def test_profile_https_proxy_lookup_refuses_plaintext_downgrade(monkeypatch):
+    import socket
+    from urllib.error import URLError
+    from app.core.browser_proxy_service import BrowserProxyService
+    from app.core.proxy_utils import ProxyDetails
+
+    connect = Mock()
+    monkeypatch.setattr(socket, "create_connection", connect)
+    service = BrowserProxyService("Synthetic", {}, ProxyDetails("https", "proxy.invalid", 443, "user", "synthetic-pass"), Mock(), Mock())
+    with service.geo_proxy_context() as opener:
+        with pytest.raises(URLError, match="no plaintext fallback"):
+            opener.open("https://synthetic.invalid/check", timeout=1)
+    connect.assert_not_called()

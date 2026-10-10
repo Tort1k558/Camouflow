@@ -1,14 +1,69 @@
+import base64
+import http.client
 import json
 import socket
-import urllib.parse
+import urllib.error
 import urllib.request
 from contextlib import contextmanager
+from functools import partial
 from typing import Dict, Optional
 
 import socks
 
 from .locale_mapping import country_to_locale
 from .proxy_utils import LocalSocksProxyServer, ProxyDetails
+
+
+class _SocksHTTPConnection(http.client.HTTPConnection):
+    def __init__(self, *args, proxy: ProxyDetails, **kwargs):
+        self._proxy = proxy
+        super().__init__(*args, **kwargs)
+
+    def connect(self):
+        self.sock = socks.create_connection(
+            (self.host, self.port), timeout=self.timeout, source_address=self.source_address,
+            proxy_type=socks.SOCKS4 if "4" in self._proxy.scheme else socks.SOCKS5,
+            proxy_addr=self._proxy.host, proxy_port=self._proxy.port, proxy_rdns=True,
+            proxy_username=self._proxy.username, proxy_password=self._proxy.password,
+            socket_options=((socket.IPPROTO_TCP, socket.TCP_NODELAY, 1),),
+        )
+
+
+class _SocksHTTPSConnection(_SocksHTTPConnection, http.client.HTTPSConnection):
+    def connect(self):
+        super().connect()
+        try:
+            self.sock = self._context.wrap_socket(self.sock, server_hostname=self.host)
+        except BaseException:
+            self.sock.close()
+            raise
+
+
+class _ProfileProxyHandler(urllib.request.HTTPHandler, urllib.request.HTTPSHandler):
+    def __init__(self, proxy: ProxyDetails):
+        urllib.request.HTTPSHandler.__init__(self)
+        self._proxy = proxy
+
+    def _prepare_http(self, request):
+        if self._proxy.scheme != "http":
+            raise urllib.error.URLError("TLS-to-proxy lookups are not supported; no plaintext fallback")
+        host = f"[{self._proxy.host}]" if ":" in self._proxy.host else self._proxy.host
+        if self._proxy.username:
+            auth = base64.b64encode(f"{self._proxy.username}:{self._proxy.password or ''}".encode("utf-8")).decode("ascii")
+            request.add_unredirected_header("Proxy-Authorization", "Basic " + auth)
+        request.set_proxy(f"{host}:{self._proxy.port}", "http")
+
+    def http_open(self, request):
+        if self._proxy.scheme.startswith("socks"):
+            return self.do_open(partial(_SocksHTTPConnection, proxy=self._proxy), request)
+        self._prepare_http(request)
+        return urllib.request.HTTPHandler.http_open(self, request)
+
+    def https_open(self, request):
+        if self._proxy.scheme.startswith("socks"):
+            return self.do_open(partial(_SocksHTTPSConnection, proxy=self._proxy), request, context=self._context)
+        self._prepare_http(request)
+        return urllib.request.HTTPSHandler.https_open(self, request)
 
 
 class BrowserProxyService:
@@ -192,30 +247,8 @@ class BrowserProxyService:
             proxy_host = "127.0.0.1"
             proxy_port = int(self.local_proxy.port)
 
-        scheme = (self.proxy_details.scheme or "").lower()
-        if scheme.startswith("socks"):
-            proxy_type = socks.SOCKS4 if "4" in scheme else socks.SOCKS5
-            original_socket = socket.socket
-            socks.set_default_proxy(
-                proxy_type,
-                proxy_host,
-                proxy_port,
-                username=self.proxy_details.username,
-                password=self.proxy_details.password,
-            )
-            socket.socket = socks.socksocket
-            try:
-                yield None
-            finally:
-                socket.socket = original_socket
-        else:
-            auth = ""
-            if self.proxy_details.username:
-                user = urllib.parse.quote(self.proxy_details.username)
-                pwd = urllib.parse.quote(self.proxy_details.password or "")
-                auth = f"{user}:{pwd}@"
-            proxy_url = f"{scheme or 'http'}://{auth}{proxy_host}:{proxy_port}"
-            opener = urllib.request.build_opener(
-                urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url})
-            )
-            yield opener
+        details = ProxyDetails(
+            scheme=(self.proxy_details.scheme or "").lower(), host=proxy_host, port=proxy_port,
+            username=self.proxy_details.username, password=self.proxy_details.password,
+        )
+        yield urllib.request.build_opener(urllib.request.ProxyHandler({}), _ProfileProxyHandler(details))

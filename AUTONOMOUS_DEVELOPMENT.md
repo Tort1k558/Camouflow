@@ -530,3 +530,28 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 - Next reproduced routing defect: interleaved geo contexts leave process-wide
   socket.socket patched and a global SOCKS proxy set. Fix per-request routing
   before additional multi-profile launch verification.
+
+## Iteration 22 — isolate profile proxy routing, including IPv6
+
+- Reproduced interleaved contexts leaving socket.socket patched and a global
+  SOCKS proxy set. Also reproduced NO_PROXY=* bypassing the explicitly configured
+  HTTP proxy: one request went direct, zero reached the proxy fixture.
+- Replaced global socket/default-proxy mutation with per-request native HTTP/
+  HTTPS handlers and explicit PySocks connections. HTTP bypass/environment proxy
+  settings cannot change profile routing; target TLS still verifies certificate
+  and hostname, and proxy auth is removed before entering the target tunnel.
+  No new dependency; no SOCKS local-DNS fallback. Context interface retained.
+  [PySocks warns against global monkeypatching](https://github.com/Anorov/PySocks).
+- Health probe and local SOCKS adapter reuse PySocks.create_connection instead
+  of an IPv4-only socket, gaining IPv6 upstream/address-family handling and
+  connection-failure cleanup. Existing protocol/auth contracts preserved.
+- Fixed route fixture: one proxy request / zero direct requests; interleaved
+  contexts leave socket/default-proxy unchanged. Five regressions added;
+  full desktop **228 passed**, focused critical/import Ruff passed.
+- Real isolated TLS matrix: HTTP IPv4 **6/6**, authenticated SOCKS5 IPv4 **9/9**,
+  authenticated SOCKS5 IPv6 **9/9**. Each covers three health and three profile
+  geo lookups; SOCKS also covers three local-adapter lookups. All TLS 1.3, with
+  certificate/hostname verification and NO_PROXY=*; fixture credentials only.
+  This proves routing/framing/auth, not a commercial proxy provider's egress.
+- Current-source packaged rebuild required after this change; earlier 214-test
+  package is not presented as including the new routing implementation.

@@ -141,21 +141,14 @@ class SocksBridgeHandler(socketserver.StreamRequestHandler):
         details: ProxyDetails = self.server.proxy_details
         scheme = details.scheme.lower()
         proxy_type = socks.SOCKS5 if "5" in scheme else socks.SOCKS4
-        sock = socks.socksocket()
-        sock.set_proxy(
-            proxy_type,
-            details.host,
-            details.port,
-            True,
-            details.username,
-            details.password,
-        )
-        sock.settimeout(10)
         try:
-            sock.connect((host, port))
-        except Exception:
+            return socks.create_connection(
+                (host, port), timeout=10, proxy_type=proxy_type,
+                proxy_addr=details.host, proxy_port=details.port, proxy_rdns=True,
+                proxy_username=details.username, proxy_password=details.password,
+            )
+        except OSError:
             return None
-        return sock
 
     def _pipe(self, upstream: socket.socket):
         client = self.connection

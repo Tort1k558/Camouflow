@@ -82,6 +82,13 @@ The internet probe requires a successful geo response with a valid exit IP.
 Empty/list JSON, missing/invalid IP, negative success flags and redirects do not
 make a proxy Active.
 
+Geo lookups use a per-profile connection, never process-wide SOCKS settings.
+Environment proxy/bypass settings cannot route a configured profile's lookup
+directly. SOCKS DNS stays at the proxy; IPv6 upstreams are supported by the health
+probe and local adapter. TLS-to-proxy geo/health checks are unsupported and fail
+closed; HTTPS sites through HTTP CONNECT or SOCKS still use certificate and
+hostname verification.
+
 Proxy lists and dashboard summaries show only the scheme, host and port, without
 credentials. The connection value is unchanged; managers can inspect/edit it in
 the proxy settings dialog. Treat that dialog and exported configuration as sensitive.
