@@ -24,12 +24,17 @@ Item {
     ConfirmDialog { id: confirmation; objectName: "taskRunConfirmation"; width: Math.min(540, root.width - 48) }
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 28; spacing: 20
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
             PageHeader { Layout.fillWidth: true; title: "Your tasks"; subtitle: "Choose a saved task, fill its inputs and queue it. No editor or AI request needed." }
-            PrimaryButton { text: "Record a task"; icon: "plus"; onClicked: appState.setPage("ScenarioRecord") }
-            PrimaryButton { text: "Runs"; secondary: true; onClicked: appState.setPage("ScenarioRuns") }
-            PrimaryButton { objectName: "openHostedTasks"; text: "Hosted tasks"; secondary: true; onClicked: tasksBridge.openHostedTasks() }
+            RowLayout {
+                Layout.fillWidth: true
+                PrimaryButton { text: "Record a task"; icon: "plus"; onClicked: appState.setPage("ScenarioRecord") }
+                PrimaryButton { text: "Runs"; secondary: true; onClicked: appState.setPage("ScenarioRuns") }
+                PrimaryButton { objectName: "openHostedTasks"; text: "Hosted tasks"; secondary: true; onClicked: tasksBridge.openHostedTasks() }
+                PrimaryButton { objectName: "openTeamCenter"; text: "Team center"; secondary: true; onClicked: tasksBridge.openTeamCenter() }
+                Item { Layout.fillWidth: true }
+            }
         }
         RowLayout {
             Layout.fillWidth: true; Layout.fillHeight: true; spacing: 24

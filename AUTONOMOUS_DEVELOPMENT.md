@@ -1622,3 +1622,46 @@ process environment inputs, never source, documentation or report values.
   Production ended with the original 23 users/10 teams/4 profiles/2 scenarios,
   zero leftover test tasks/runs/rows and an idle ready browser. Actual recipient
   configuration, SMTP and third-party login/CAPTCHA completion are not claimed.
+
+## Team center implementation — 2026-10-10
+
+- New user-requested objective: team assignments, responsible operators,
+  linked hosted/local runs, manager result review and a shared help queue.
+  No sprint planning, story points, parallel role system or arbitrary cloud
+  script execution was introduced.
+- Private backend adds four tables in additive revision `0012_team_center`.
+  Existing hosted worker tables/contracts and resource permissions are retained.
+  Assignments use optimistic versions; starts are UUID-idempotent and reuse
+  existing enqueue/approval/capacity controls. Failed runs do not close work.
+- Managers assign/edit/review; operators execute assigned work and submit it
+  for review. The latest linked run must succeed before review, and linked
+  active runs must finish first. Matching local scenario runs can be attached;
+  their execution remains on desktop. Comments and lists have bounded limits.
+- The help queue uses renewable 120-second exclusive claims, capped by the
+  original browser-intervention deadline. Initiators, current assignees and
+  managers may intervene; another claimant blocks screen/input access.
+  Existing authenticated browser controls and ephemeral contexts are reused.
+- Team management retains viewer/operator/manager/admin/owner. Hardened admin
+  invitation/promotion/reset rank guards; team locks preserve the last-owner
+  invariant. Ownership transfer promotes an active member and changes the
+  caller to admin atomically. Existing additional owners remain unchanged.
+- Public desktop adds **Tasks → Team center**, opening only the configured
+  server URL without credentials. QML action rows no longer compete with the
+  full-width task heading. Actual button signals passed the existing QML smoke.
+- Checks: desktop 551 passed; private backend 216 passed, including migration
+  install/rollback tests and 10 team-center regressions. TypeScript/Vite build
+  passed. Release gate `scripts/verify_release.py --build --runtime` passed
+  at `dist/release-20261010-231204`; packaged QML matches current source.
+  Retype built 37 pages with zero errors/warnings, including the new guide.
+- Real local browser checks created an assignment, submitted a successful
+  linked run for review, completed it and opened its exact hosted row results.
+  Desktop/mobile screenshots were inspected; 375 px document width stayed
+  375 px. No application console errors were observed. These are owned local
+  fixtures, not production proof of the new feature or a CAPTCHA completion.
+- Read-only production preflight: existing API healthy at revision 0011;
+  23 users, 10 teams, 4 profiles, 2 scenarios and no hosted test rows. Database,
+  Caddy, worker/browser and unrelated VPN were not changed or restarted.
+  About 945 MiB memory and 9.6 GiB disk were available.
+- Production migration/deployment is pending explicit confirmation for the
+  four additive tables. The new feature is not yet live, and no replacement
+  release asset has been published. Private server sources remain outside Git.

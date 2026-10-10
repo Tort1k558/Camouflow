@@ -17,13 +17,20 @@ class TasksBridge(QObject):
 
     @pyqtSlot()
     def openHostedTasks(self):
+        self._open_console("hosted", "hosted tasks")
+
+    @pyqtSlot()
+    def openTeamCenter(self):
+        self._open_console("team-center", "team center")
+
+    def _open_console(self, path, label):
         try:
-            url = normalize_server_url(get_server_session().url) + "/console/hosted"
+            url = normalize_server_url(get_server_session().url) + "/console/" + path
         except ServerClientError as exc:
             self.state.notify(str(exc))
             return
         if not QDesktopServices.openUrl(QUrl(url)):
-            self.state.notify("Could not open hosted tasks in your browser")
+            self.state.notify(f"Could not open {label} in your browser")
 
     def __init__(self, operations, scenarios, state, parent=None):
         super().__init__(parent)
