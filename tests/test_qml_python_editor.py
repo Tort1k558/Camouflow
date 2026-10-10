@@ -167,7 +167,9 @@ assert not warnings, warnings
 
 def test_untrusted_qml_labels_do_not_fetch_inline_images(tmp_path):
     script = '''
-import threading, time
+import faulthandler, threading, time
+faulthandler.enable()
+faulthandler.dump_traceback_later(15)
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from PyQt6 import sip
 from PyQt6.QtCore import QUrl, QMetaObject
@@ -256,12 +258,17 @@ finally:
     ui.ai.shutdown()
     sip.delete(ui.engine)
     ui._workspace_lock.unlock()
+    faulthandler.cancel_dump_traceback_later()
 '''
-    result = subprocess.run(
-        [sys.executable, "-c", script], cwd=Path(__file__).resolve().parents[1],
-        env={**os.environ, "CAMOUFLOW_DATA_DIR": str(tmp_path), "QT_QPA_PLATFORM": "offscreen"},
-        capture_output=True, text=True, encoding="utf-8", timeout=20,
-    )
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", script], cwd=Path(__file__).resolve().parents[1],
+            env={**os.environ, "CAMOUFLOW_DATA_DIR": str(tmp_path), "QT_QPA_PLATFORM": "offscreen"},
+            capture_output=True, text=True, encoding="utf-8", timeout=20,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stderr = exc.stderr.decode("utf-8", errors="replace") if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+        pytest.fail("Inline-label QML check timed out:\n" + stderr)
     assert result.returncode == 0, result.stdout + result.stderr
 
 
