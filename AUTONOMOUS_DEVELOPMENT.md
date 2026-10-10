@@ -555,3 +555,34 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   This proves routing/framing/auth, not a commercial proxy provider's egress.
 - Current-source packaged rebuild required after this change; earlier 214-test
   package is not presented as including the new routing implementation.
+
+## Iteration 23 — packaged routing and staged web resilience
+
+- Rebuilt current source with **228 tests passing** into
+  `dist/release-20261010-050028/CamouFlow/CamouFlow.exe`. Both fresh parsed engine
+  smoke reports have `passed: true`; optional packaging warnings remain.
+- Executed the packaged CLI queue on Camoufox and CloakBrowser through an
+  authenticated local HTTP proxy: both histories succeeded and exported page
+  content was verified. Four geo TLS requests, four page requests, two auth
+  challenges, zero blocked/unexpected routes. Certificate and hostname verified;
+  synthetic data only, no external forwarding or real accounts.
+- Fresh GitHub CI for **6c09c40**, run **38011300894**, succeeded.
+- Private server (not Git): reproduced timestamp ties dropping audit rows;
+  composite timestamp/ID cursor retains all rows, preserves legacy before-only
+  requests and existing RBAC. Backend **113 passed**. Browser fixture reads
+  60 + 60 + 5 tied records; failed append retains rows, Retry recovers, stale
+  filter responses cannot replace current results. PostgreSQL rollout pending.
+- Private web (not deployed): reproduced temporary auth/me 503 deleting tokens
+  and two tabs racing one-use refresh tokens (two refreshes, one request failed).
+  Typed HTTP errors preserve sessions on transient failures with visible Retry;
+  origin-scoped native Web Locks serialize rotation across tabs (one refresh,
+  both protected requests succeed). No unsupported-browser fallback. Requires
+  HTTPS/localhost and native Web Locks. See the
+  [Web Locks specification](https://www.w3.org/TR/web-locks/).
+- Seven real-browser module boundaries passed: malformed pair, foreign identity,
+  logout during refresh, account switch, refresh 503, public auth 401 (no refresh),
+  late same-user 401 (adopts already rotated credentials). These use controlled
+  local responses; concurrent tabs separately use the isolated real auth API.
+  Actual built UI auth/me 503 retains both tokens and Retry recovers.
+- Production remains the earlier DNx3 proxy-console deployment. Passive soak
+  interim **90 rounds / 162 checks / zero failures**; final deadline pending.
