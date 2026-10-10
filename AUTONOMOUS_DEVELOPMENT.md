@@ -491,3 +491,26 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 - These private web/backend changes remain local pending the next backed-up
   candidate deployment. No server sources are committed/pushed. Public desktop
   clean packaging/runtime verification is running for source commit `19990a8`.
+
+## Iteration 20 — verified proxy/data console rollout and fresh package
+
+- Reproduced web role mismatch: operators lacked Check, while managers saw
+  Remove that backend forbids. Corrected UI boundaries to existing API rules;
+  four-role browser matrix passed, lower roles issue no invite/share reads.
+  Private full suite **110 passed**, operator/manager route regressions included.
+- Private image `proxies-20261010T004300Z` deployed on 18083 after backup and
+  final-image PostgreSQL QA with an actual isolated TCP listener. Public switch
+  **80/80**, no probe failures; retained assets/SPA HEAD/cache verified on both
+  domains. Models/startup/auth/dependencies unchanged, no new migrations.
+  Replaced only an owned, unserved candidate; 18082 and original 18080 retained.
+  Original API/PostgreSQL/Caddy/VPN start times unchanged. No real account tests.
+- Active bundle `index-DNx3-1Qt.js`; private deployment handoff records immutable
+  image hash, context, backup and in-place Caddy rollback to retained 18082.
+  Backend directory remains uncommitted/unpushed.
+- Clean Windows package `dist/release-20261010-043712/CamouFlow/CamouFlow.exe`
+  built from source `19990a8`: **214 tests**, compileall and both fresh parsed
+  runtime reports passed:true (imports/browser plus expected hard-timeout case).
+  Optional PyInstaller GUI/undetected-playwright module warnings remain; core
+  packaged checks succeeded. Documentation **35 pages, zero errors/warnings**.
+- Passive production soak interim: **40 rounds / 72 checks / zero failures**;
+  final observation still pending the mission deadline.
