@@ -5,7 +5,7 @@ import socketserver
 import threading
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import socks
 
@@ -269,11 +269,9 @@ def parse_proxy(proxy: str, profile_name: Optional[str] = None) -> Tuple[Optiona
     if not raw:
         return None, None
 
-    def _warn(reason: str):
-        return
-
     def _build(scheme: str, host: str, port: str, username: Optional[str], password: Optional[str]):
-        server = f"{scheme}://{host}:{port}"
+        display_host = f"[{host}]" if ":" in host else host
+        server = f"{scheme}://{display_host}:{port}"
         cfg: Dict[str, str] = {"server": server}
         if username:
             cfg["username"] = username
@@ -281,47 +279,53 @@ def parse_proxy(proxy: str, profile_name: Optional[str] = None) -> Tuple[Optiona
             cfg["password"] = password
         return cfg
 
-    if "@" in raw:
-        parsed = urlparse(raw)
-        if not parsed.scheme or not parsed.hostname or not parsed.port:
-            _warn("invalid url-like proxy string")
+    if "://" not in raw:
+        raw = "socks5://" + raw
+    if raw.split("://", 1)[0].lower() not in {"http", "https", "socks4", "socks5"}:
+        return None, None
+    if "@" in raw or raw.split("://", 1)[1].startswith("["):
+        try:
+            parsed = urlparse(raw)
+            host, port = parsed.hostname, parsed.port
+        except ValueError:
             return None, None
+        if not host or any(character.isspace() for character in host) or port is None or not 1 <= port <= 65535:
+            return None, None
+        username = unquote(parsed.username) if parsed.username is not None else None
+        password = unquote(parsed.password) if parsed.password is not None else None
         details = ProxyDetails(
-            scheme=parsed.scheme,
-            host=parsed.hostname,
-            port=int(parsed.port),
-            username=parsed.username,
-            password=parsed.password,
+            scheme=parsed.scheme.lower(),
+            host=host,
+            port=port,
+            username=username,
+            password=password,
         )
-        return _build(parsed.scheme, parsed.hostname, str(parsed.port), parsed.username, parsed.password), details
+        return _build(details.scheme, host, str(port), username, password), details
 
     try:
         scheme, rest = raw.split("://", 1)
     except ValueError:
-        _warn("scheme missing (expected scheme://host:port[:user:pass])")
         return None, None
 
     parts = rest.split(":")
     if len(parts) not in (2, 4):
-        _warn("unexpected parts count; use host:port or host:port:user:pass")
         return None, None
 
     host, port = parts[0], parts[1]
     username = parts[2] if len(parts) == 4 else None
     password = parts[3] if len(parts) == 4 else None
 
-    if not host or not port.isdigit():
-        _warn("bad host or non-numeric port")
+    if not host or any(character.isspace() for character in host) or not port.isascii() or not port.isdecimal() or not 1 <= int(port) <= 65535:
         return None, None
 
     details = ProxyDetails(
-        scheme=scheme,
+        scheme=scheme.lower(),
         host=host,
         port=int(port),
         username=username,
         password=password,
     )
-    return _build(scheme, host, port, username, password), details
+    return _build(details.scheme, host, port, username, password), details
 
 
 def proxy_display_address(proxy: str) -> str:

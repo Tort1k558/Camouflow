@@ -442,3 +442,34 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 - Full desktop **201 passed**. Real Windows 1180x720 check exercises search,
   status binding, reset, empty results, selection clearing and stable indices;
   screenshots reviewed, no QML warnings. Documentation updated.
+
+## Iteration 18 — proxy credential parsing and CONNECT framing
+
+- Reproduced encoded account credentials not round-tripping and IPv6 browser
+  configuration losing brackets. Existing core parser now decodes URL userinfo,
+  brackets IPv6, validates ports/schemes and accepts documented bare formats.
+  Internet probe reuses this parser instead of its independent parsing logic.
+- Reproduced standard HTTP CONNECT 200 without Content-Length timing out before
+  TLS started. Probe now reads CONNECT headers only; authenticated HTTP forwarding
+  also sends proxy auth. Authentication is never forwarded into the target tunnel.
+- Baseline isolated TLS fixture timed out; fixed code passed three rounds of
+  real TLS 1.3 with certificate and hostname verification enabled. This fixture
+  proves framing/auth, not a real provider's egress. Unit CONNECT framing test
+  deliberately mocks TLS; it is not the TLS proof.
+- HTTPS-to-proxy was previously treated as plaintext. It now explicitly refuses
+  unsupported TLS-to-proxy checks, without downgrading or sending credentials.
+  HTTPS sites via ordinary HTTP CONNECT remain supported. No dependency added;
+  [HTTPX also documents its HTTPS-proxy limitation](https://www.python-httpx.org/troubleshooting/).
+- Existing BrowserInterface.start already blocked malformed proxies; retained
+  that behavior, made its constructor warning truthful and added launch-guard
+  regressions. A proposed early constructor raise was discarded after auditing
+  call sites, avoiding a new UI exception/lock-leak contract.
+- Focused **59 passed**; final full desktop **214 passed**. Both actual source
+  engine AI-workflow verifiers returned passed:true (fixture LLM, no paid provider).
+- Private backend now parses documented legacy/IPv6 TCP endpoints without
+  echoing credentials in format errors. New proxy-update audit records retain a
+  value_changed flag, not the connection string; historical records untouched.
+  Private full suite **108 passed**, focused route/test Ruff clean (FastAPI B008
+  excluded); legacy schema typing style warnings were not mass-refactored.
+- Fresh CI through `cbfcc57` passed (`38009033137`); prior identity/health and
+  plain-text/privacy commits also have completed successful current-head runs.

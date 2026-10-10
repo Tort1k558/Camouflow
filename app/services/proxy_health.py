@@ -9,7 +9,7 @@ import time
 from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
 
-from app.utils.parsing import parse_proxy_line
+from app.core.proxy_utils import parse_proxy
 
 PROXY_INTERNET_CHECK_URL = "https://ipwho.is/"
 
@@ -31,7 +31,7 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
             buf += chunk
         return buf
 
-    def _read_http_response(sock_obj: socket.socket) -> Tuple[Optional[int], Dict[str, str], bytes, str]:
+    def _read_http_response(sock_obj: socket.socket, headers_only: bool = False) -> Tuple[Optional[int], Dict[str, str], bytes, str]:
         head = _recv_until(sock_obj, b"\r\n\r\n", 256 * 1024)
         if b"\r\n\r\n" not in head:
             return None, {}, b"", "invalid response headers"
@@ -52,6 +52,8 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
             k, v = line.split(":", 1)
             headers[k.strip().lower()] = v.strip()
 
+        if headers_only:
+            return status, headers, b"", ""
         body = b""
         if "content-length" in headers:
             try:
@@ -150,7 +152,7 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
         )
         try:
             sock_obj.sendall(req.encode("iso-8859-1", errors="replace"))
-            status, _, _, err = _read_http_response(sock_obj)
+            status, _, _, err = _read_http_response(sock_obj, headers_only=True)
         except OSError as exc:
             try:
                 sock_obj.close()
@@ -169,39 +171,13 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
     if not raw:
         return False, None, "empty proxy value", {"mode": "internet", "target": PROXY_INTERNET_CHECK_URL}
 
-    scheme = "socks5"
-    if "://" in raw:
-        scheme_part, raw = raw.split("://", 1)
-        scheme = (scheme_part or "").strip().lower() or "socks5"
-
-    user = ""
-    password = ""
-    if "@" in raw:
-        auth_part, raw = raw.rsplit("@", 1)
-        if ":" in auth_part:
-            user, password = auth_part.split(":", 1)
-        else:
-            user = auth_part
-
-    try:
-        parts = [p.strip() for p in raw.split(":") if p.strip()]
-        if len(parts) < 2:
-            raise ValueError("expected host:port")
-        host = parts[0]
-        port = int(parts[1])
-        if not user and len(parts) >= 4:
-            user = parts[2]
-            password = parts[3]
-    except Exception:
-        try:
-            host, port, user, password = parse_proxy_line(proxy_value)
-        except Exception as exc:
-            return (
-                False,
-                None,
-                f"invalid proxy format: {exc}",
-                {"mode": "internet", "target": PROXY_INTERNET_CHECK_URL},
-            )
+    _, details = parse_proxy(raw)
+    if details is None:
+        return False, None, "invalid proxy format", {"mode": "internet", "target": PROXY_INTERNET_CHECK_URL}
+    scheme, host, port = details.scheme, details.host, details.port
+    user, password = details.username or "", details.password or ""
+    if scheme == "https":
+        return False, None, "TLS-to-proxy health checks are not supported; no plaintext fallback", {"mode": "internet", "target": PROXY_INTERNET_CHECK_URL}
 
     check_url = PROXY_INTERNET_CHECK_URL
     parsed = urlparse(check_url)
@@ -260,6 +236,9 @@ def probe_proxy_endpoint(proxy_value: str, timeout_s: float = 5.0) -> Tuple[bool
             "Accept: application/json",
             "Connection: close",
         ]
+        if user and scheme_l in {"http", "https"} and parsed.scheme.lower() == "http":
+            token = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode("ascii")
+            headers.append(f"Proxy-Authorization: Basic {token}")
         req = "GET " + request_target + " HTTP/1.1\r\n" + "\r\n".join(headers) + "\r\n\r\n"
         sock_obj.sendall(req.encode("iso-8859-1", errors="replace"))
         status, _, body, status_err = _read_http_response(sock_obj)

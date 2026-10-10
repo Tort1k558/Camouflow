@@ -70,6 +70,14 @@ internet access or exit location. **Active** means the desktop internet probe
 succeeded. Neither result guarantees future availability. Location statistics
 count detected locations only, not group names.
 
+The desktop probe supports HTTP and SOCKS proxies, including authenticated
+HTTP CONNECT to HTTPS sites. A proxy whose own connection requires TLS
+(`https://proxy…`) is not probed: it returns an explicit unsupported error, never
+a plaintext downgrade. Use the actual scheme supplied by your proxy provider.
+URL-encoded credentials are decoded for authentication; IPv6 hosts stay bracketed
+in browser configuration. Invalid ports/formats block browser launch rather than
+starting a direct connection.
+
 Proxy lists and dashboard summaries show only the scheme, host and port, without
 credentials. The connection value is unchanged; managers can inspect/edit it in
 the proxy settings dialog. Treat that dialog and exported configuration as sensitive.

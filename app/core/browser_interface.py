@@ -116,7 +116,7 @@ class BrowserInterface:
         )
 
         if proxy and not self._proxy_config:
-            msg = f"Proxy string provided for {self.profile_name} but failed to parse; proxy disabled"
+            msg = f"Proxy string provided for {self.profile_name} failed to parse; browser launch will be blocked"
             self.logger.warning(msg)
             self._proxy_logger.warning(msg)
 

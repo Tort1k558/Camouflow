@@ -383,3 +383,92 @@ def test_proxy_filters_use_cached_metadata_preserve_indices_and_pool_stats():
     ProxiesBridge.setProxyFilters(bridge, "", "")
     assert bridge._model.rowCount() == 2
     bridge._load.assert_not_called()
+
+
+@pytest.mark.parametrize("host", ["synthetic.invalid", "::1"])
+@pytest.mark.parametrize("scheme", ["http", "socks5"])
+def test_account_proxy_encoded_credentials_and_ipv6_round_trip(host, scheme):
+    from app.core.proxy_utils import parse_proxy
+    from app.services.proxy_policy import account_proxy
+
+    config, details = parse_proxy(account_proxy({"proxy_host": host, "proxy_port": 1080, "proxy_scheme": scheme,
+                                               "proxy_user": "qa@example.invalid", "proxy_password": "synthetic:@/% password"}))
+    assert details.username == "qa@example.invalid"
+    assert details.password == "synthetic:@/% password"
+    expected_host = f"[{host}]" if ":" in host else host
+    assert config == {"server": f"{scheme}://{expected_host}:1080", "username": details.username, "password": details.password}
+
+
+@pytest.mark.parametrize("value", ["http://host:0", "http://host:65536", "http://u:p@host:bad", "http://[broken:1080", "ftp://host:1080", "not-a-proxy"])
+def test_invalid_proxy_is_rejected_by_existing_browser_launch_guard(value):
+    from app.core.proxy_utils import parse_proxy
+
+    assert parse_proxy(value) == (None, None)
+    browser = SimpleNamespace(proxy=value, _proxy_config=None, _lifecycle=Mock(), _load_storage_state_payload=Mock(return_value=None),
+                              profile_name="Synthetic blocked profile", logger=Mock(), _proxy_logger=Mock())
+    with pytest.raises(RuntimeError, match="Proxy parse failed"):
+        asyncio.run(BrowserInterface.start(browser))
+
+
+@pytest.mark.parametrize("tunnel", [False, True])
+def test_internet_probe_decodes_auth_and_does_not_wait_for_connect_body(monkeypatch, tunnel):
+    import base64
+    import socketserver
+    import threading
+    from app.services import proxy_health
+
+    requests = []
+    auth = "Basic " + base64.b64encode(b"qa@example.invalid:synthetic@password").decode("ascii")
+    class Handler(socketserver.StreamRequestHandler):
+        def headers(self):
+            lines = []
+            while True:
+                line = self.rfile.readline()
+                if not line or line == b"\r\n":
+                    break
+                lines.append(line.decode("ascii").strip())
+            requests.append(lines)
+            return lines
+        def handle(self):
+            lines = self.headers()
+            if not any(line == "Proxy-Authorization: " + auth for line in lines):
+                self.wfile.write(b"HTTP/1.1 407 Proxy Authentication Required\r\nContent-Length: 0\r\n\r\n")
+                return
+            if tunnel:
+                assert lines[0].startswith("CONNECT ")
+                self.wfile.write(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                lines = self.headers()
+                assert not any(line.startswith("Proxy-Authorization:") for line in lines)
+            payload = b'{"success":true,"ip":"192.0.2.1","country":"Synthetic"}'
+            self.wfile.write(f"HTTP/1.1 200 OK\r\nContent-Length: {len(payload)}\r\n\r\n".encode("ascii") + payload)
+    class Server(socketserver.ThreadingTCPServer):
+        daemon_threads = True
+    with Server(("127.0.0.1", 0), Handler) as server:
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            monkeypatch.setattr(proxy_health, "PROXY_INTERNET_CHECK_URL", ("https" if tunnel else "http") + "://synthetic.invalid/check")
+            if tunnel:
+                # This regression tests CONNECT framing, not TLS verification.
+                monkeypatch.setattr(proxy_health.ssl, "create_default_context", lambda: SimpleNamespace(wrap_socket=lambda sock, server_hostname: sock))
+            value = f"http://qa%40example.invalid:synthetic%40password@127.0.0.1:{server.server_address[1]}"
+            ok, latency, error, meta = proxy_health.probe_proxy_endpoint(value, timeout_s=1)
+            assert ok, error
+            assert isinstance(latency, int)
+            assert meta["ip"] == "192.0.2.1"
+            assert len(requests) == (2 if tunnel else 1)
+        finally:
+            server.shutdown()
+            worker.join(2)
+
+
+def test_https_proxy_probe_does_not_send_credentials_over_plaintext(monkeypatch):
+    from app.services import proxy_health
+
+    connect = Mock()
+    monkeypatch.setattr(proxy_health.socket, "create_connection", connect)
+    ok, _, error, _ = proxy_health.probe_proxy_endpoint("https://synthetic-user:synthetic-secret@proxy.invalid:443")
+    assert not ok
+    assert "no plaintext fallback" in error
+    assert "synthetic-secret" not in error
+    connect.assert_not_called()
