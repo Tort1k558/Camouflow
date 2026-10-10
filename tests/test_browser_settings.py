@@ -138,6 +138,7 @@ def test_quarantine_is_consistent_between_launch_policy_and_ui(entry, expected):
 
 def test_invalid_quarantine_skips_candidate_without_disabling_healthy_pool():
     import threading
+
     from app.services.proxy_policy import choose_proxy
 
     probe = Mock(return_value=(True, 1, "", {}))
@@ -150,6 +151,7 @@ def test_invalid_quarantine_skips_candidate_without_disabling_healthy_pool():
 @pytest.mark.parametrize("assigned", [True, False])
 def test_cancel_during_proxy_probe_does_not_return_an_assignment(assigned):
     import threading
+
     from app.services.proxy_policy import choose_proxy
 
     cancel = threading.Event()
@@ -167,6 +169,7 @@ def test_proxy_probe_completion_preserves_concurrent_pool_edits(monkeypatch, che
     import copy
     import json
     import threading
+
     from app.ui.bridge import proxies
 
     state = {"QA": {"proxies": [{"value": "socks5://synthetic:1080", "name": "Before"}]}}
@@ -276,6 +279,7 @@ def test_proxy_inventory_distinguishes_unchecked_tcp_and_internet_checks():
 
 def test_cloud_proxy_check_scope_is_conservative_and_does_not_mutate_response(monkeypatch):
     import copy
+
     from app.ui.bridge import proxies
 
     rows = [
@@ -345,7 +349,7 @@ def test_cloud_refresh_clears_positional_selection_when_inventory_changes():
 
 
 @pytest.mark.parametrize("method", ["saveProxy", "deleteProxy"])
-@pytest.mark.parametrize("enabled, identity", [(False, "cloud-id"), (True, "local")])
+@pytest.mark.parametrize("enabled, identity", [(False, "cloud-id"), (True, "local"), (True, "local:snapshot")])
 def test_proxy_dialog_action_rejects_local_cloud_switch(monkeypatch, method, enabled, identity):
     from app.ui.bridge import proxies
 
@@ -354,6 +358,49 @@ def test_proxy_dialog_action_rejects_local_cloud_switch(monkeypatch, method, ena
     args = ("QA", 0, "Name", "http://synthetic:1080", identity) if method == "saveProxy" else ("QA", 0, identity)
     getattr(proxies.ProxiesBridge, method)(bridge, *args)
     bridge._emit_message.assert_called_once()
+
+
+@pytest.mark.parametrize("method", ["saveProxy", "deleteProxy"])
+def test_local_proxy_dialog_rejects_shifted_inventory(monkeypatch, method):
+    from app.ui.bridge import proxies
+
+    monkeypatch.setattr(proxies, "server_enabled", lambda: False)
+    entries = [{"name": name, "value": f"http://{name}:1080"} for name in ["A", "B", "C"]]
+    bridge = SimpleNamespace(_load=lambda: {"QA": {"proxies": entries}}, _save=Mock(),
+                             _ensure_allowed=lambda _: True, _server_client=lambda: None,
+                             _emit_message=Mock(), refresh=Mock(), _selected=set(),
+                             _local_proxy_identity=lambda entry: proxies.ProxiesBridge._local_proxy_identity(entry))
+    snapshot = proxies.ProxiesBridge.getProxy(bridge, "QA", 1)
+    entries.pop(0)
+    identity = snapshot.get("id", "local")
+    args = ("QA", 1, "Edited B", "http://edited-B:1080", identity) if method == "saveProxy" else ("QA", 1, identity)
+    getattr(proxies.ProxiesBridge, method)(bridge, *args)
+    bridge._save.assert_not_called()
+    assert [entry["name"] for entry in entries] == ["B", "C"]
+    assert entries[1]["value"] == "http://C:1080"
+
+
+@pytest.mark.parametrize("changed", [False, True])
+def test_local_proxy_edit_keeps_health_only_for_unchanged_endpoint(monkeypatch, changed):
+    from app.ui.bridge import proxies
+
+    monkeypatch.setattr(proxies, "server_enabled", lambda: False)
+    original = "http://old:1080"
+    entry = {"name": "Original", "value": original, "assigned_to": "Profile",
+             "last_check": {"status": "ok", "mode": "internet", "ip": "192.0.2.1"},
+             "check_history": [{"status": "ok"}], "health_score": 100,
+             "quarantine_until": "2099-01-01T00:00:00Z"}
+    bridge = SimpleNamespace(_load=lambda: {"QA": {"proxies": [entry]}}, _save=Mock(),
+                             _ensure_allowed=lambda _: True, _server_client=lambda: None,
+                             _emit_message=Mock(), refresh=Mock(),
+                             _local_proxy_identity=lambda value: proxies.ProxiesBridge._local_proxy_identity(value))
+    snapshot = proxies.ProxiesBridge.getProxy(bridge, "QA", 0)
+    proxies.ProxiesBridge.saveProxy(bridge, "QA", 0, "Renamed", "http://new:1080" if changed else original, snapshot.get("id", "local"))
+    bridge._save.assert_called_once()
+    assert entry["name"] == "Renamed" and entry["assigned_to"] == "Profile"
+    assert entry["quarantine_until"] == "2099-01-01T00:00:00Z"
+    for field in ["last_check", "check_history", "health_score"]:
+        assert (field not in entry) == changed
 
 
 def test_proxy_filters_use_cached_metadata_preserve_indices_and_pool_stats():
@@ -415,6 +462,7 @@ def test_internet_probe_decodes_auth_and_does_not_wait_for_connect_body(monkeypa
     import base64
     import socketserver
     import threading
+
     from app.services import proxy_health
 
     requests = []
@@ -500,7 +548,9 @@ def test_internet_probe_requires_successful_object_with_valid_exit_ip(monkeypatc
 
 def test_profile_geo_contexts_do_not_mutate_global_socket_or_default_proxy(monkeypatch):
     import socket
+
     import socks
+
     from app.core.browser_proxy_service import BrowserProxyService
     from app.core.proxy_utils import ProxyDetails
 
@@ -527,6 +577,7 @@ def test_profile_http_lookup_ignores_environment_proxy_bypass(monkeypatch):
     import base64
     import threading
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
     from app.core.browser_proxy_service import BrowserProxyService
     from app.core.proxy_utils import ProxyDetails
 
@@ -560,6 +611,7 @@ def test_profile_http_lookup_ignores_environment_proxy_bypass(monkeypatch):
 @pytest.mark.parametrize("scheme", ["socks4", "socks5"])
 def test_profile_socks_connections_use_per_request_proxy_and_remote_dns(monkeypatch, scheme):
     import socks
+
     from app.core.browser_proxy_service import _SocksHTTPConnection
     from app.core.proxy_utils import ProxyDetails
 
@@ -579,6 +631,7 @@ def test_profile_socks_connections_use_per_request_proxy_and_remote_dns(monkeypa
 def test_profile_https_proxy_lookup_refuses_plaintext_downgrade(monkeypatch):
     import socket
     from urllib.error import URLError
+
     from app.core.browser_proxy_service import BrowserProxyService
     from app.core.proxy_utils import ProxyDetails
 

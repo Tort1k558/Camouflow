@@ -2,22 +2,27 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
-from PyQt6.QtCore import QThread, QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QThread, pyqtProperty, pyqtSignal, pyqtSlot
 
-from app.storage.db import db_get_setting, db_set_setting
+from app.core.proxy_utils import proxy_display_address
+from app.services.proxy_policy import is_proxy_quarantined
+from app.services.server_client import (
+    ServerClient,
+    ServerClientError,
+    get_server_session,
+    server_enabled,
+)
 from app.storage import db
-from app.services.server_client import ServerClient, ServerClientError, server_enabled
+from app.storage.db import db_get_setting, db_set_setting
+from app.ui.bridge.background import BackgroundRead
 from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
-from app.ui.bridge.background import BackgroundRead
-from app.services.server_client import get_server_session
-from app.services.proxy_policy import is_proxy_quarantined
-from app.core.proxy_utils import proxy_display_address
 
 
 class ProxiesBridge(QObject):
@@ -232,6 +237,11 @@ class ProxiesBridge(QObject):
     def _server_client(self):
         client = ServerClient()
         return client if client.configured else None
+
+    @staticmethod
+    def _local_proxy_identity(entry: Dict[str, Any]) -> str:
+        snapshot = json.dumps([str(entry.get(field) or "") for field in ("name", "value", "assigned_to")], ensure_ascii=False)
+        return "local:" + hashlib.sha256(snapshot.encode("utf-8")).hexdigest()
 
     def _server_proxy_entry(self, pool_name: str, index: int, expected_id: str = "") -> Dict[str, Any]:
         session = get_server_session()
@@ -602,6 +612,7 @@ class ProxiesBridge(QObject):
             return {}
         entry = proxies[index]
         return {
+            "id": self._local_proxy_identity(entry),
             "pool": pool_name,
             "index": index,
             "name": str(entry.get("name") or ""),
@@ -614,7 +625,8 @@ class ProxiesBridge(QObject):
     def saveProxy(self, pool_name: str, index: int, name: str, value: str, expected_id: str = "") -> None:  # noqa: N802
         if not self._ensure_allowed("manager"):
             return
-        if expected_id and server_enabled() != (expected_id != "local"):
+        local_identity = expected_id == "local" or expected_id.startswith("local:")
+        if expected_id and server_enabled() == local_identity:
             self._emit_message("Workspace changed; reopen proxy settings")
             return
         pool_name = str(pool_name or "").strip()
@@ -641,18 +653,29 @@ class ProxiesBridge(QObject):
             self._emit_message("Server proxy saved")
             self.refresh()
             return
-        pools = self._load()
-        pool = pools.get(pool_name)
-        if not isinstance(pool, dict):
-            self._emit_message("Proxy pool not found")
-            return
-        proxies = pool.get("proxies", [])
-        if not (0 <= index < len(proxies)) or not isinstance(proxies[index], dict):
-            self._emit_message("Proxy not found")
-            return
-        proxies[index]["name"] = str(name or "").strip()
-        proxies[index]["value"] = value
-        self._save(pools)
+        with db._STORAGE_LOCK:
+            if server_enabled():
+                self._emit_message("Workspace changed; reopen proxy settings")
+                return
+            pools = self._load()
+            pool = pools.get(pool_name)
+            if not isinstance(pool, dict):
+                self._emit_message("Proxy pool not found")
+                return
+            proxies = pool.get("proxies", [])
+            if not (0 <= index < len(proxies)) or not isinstance(proxies[index], dict):
+                self._emit_message("Proxy not found")
+                return
+            entry = proxies[index]
+            if expected_id.startswith("local:") and self._local_proxy_identity(entry) != expected_id:
+                self._emit_message("Proxy changed; reopen proxy settings")
+                return
+            if str(entry.get("value") or "") != value:
+                for field in ("last_check", "check_history", "health_score"):
+                    entry.pop(field, None)
+            entry["name"] = str(name or "").strip()
+            entry["value"] = value
+            self._save(pools)
         self._emit_message("Proxy saved")
         self.refresh()
 
@@ -661,7 +684,8 @@ class ProxiesBridge(QObject):
     def deleteProxy(self, pool_name: str, index: int, expected_id: str = "") -> None:  # noqa: N802
         if not self._ensure_allowed("admin"):
             return
-        if expected_id and server_enabled() != (expected_id != "local"):
+        local_identity = expected_id == "local" or expected_id.startswith("local:")
+        if expected_id and server_enabled() == local_identity:
             self._emit_message("Workspace changed; select the proxy again")
             return
         pool_name = str(pool_name or "").strip()
@@ -682,18 +706,25 @@ class ProxiesBridge(QObject):
             self._emit_message("Server proxy deleted")
             self.refresh()
             return
-        pools = self._load()
-        pool = pools.get(pool_name)
-        proxies = pool.get("proxies", []) if isinstance(pool, dict) else []
-        if not (0 <= index < len(proxies)):
-            return
-        proxies.pop(index)
+        with db._STORAGE_LOCK:
+            if server_enabled():
+                self._emit_message("Workspace changed; select the proxy again")
+                return
+            pools = self._load()
+            pool = pools.get(pool_name)
+            proxies = pool.get("proxies", []) if isinstance(pool, dict) else []
+            if not (0 <= index < len(proxies)):
+                return
+            if expected_id.startswith("local:") and (not isinstance(proxies[index], dict) or self._local_proxy_identity(proxies[index]) != expected_id):
+                self._emit_message("Proxy changed; select the proxy again")
+                return
+            proxies.pop(index)
+            self._save(pools)
         self._selected = {
             (p, i if p != pool_name or i < index else i - 1)
             for p, i in self._selected
             if not (p == pool_name and i == index)
         }
-        self._save(pools)
         self._emit_message("Proxy deleted")
         self.refresh()
 

@@ -638,3 +638,23 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 - Focused Ruff passed, Retype **35 pages / zero errors/warnings**. Fresh GitHub
   CI **38014212609**, head **fadc3c0**, succeeded. Passive production soak interim
   **102 rounds / 186 checks / zero failures**, still running until the deadline.
+
+## Iteration 26 — local proxy dialogs must not act on shifted rows
+
+- Reproduced opening local B at index 1, removing preceding A, then saving or
+  confirming deletion: both actions modified/deleted C now occupying index 1.
+  Also reproduced replacing a connection while retaining old successful health.
+- Current dialogs capture a content snapshot (name/value/assignment), without
+  adding persisted IDs or migration. Changed/shifted snapshots fail explicitly,
+  not by guessing another row. Existing four/two-argument programmatic slots
+  remain compatible, cloud UUID behavior unchanged. Local/cloud switches reject
+  both legacy and snapshot markers. Local save/delete read-check-write uses the
+  existing storage lock, preventing a health merge from interleaving persistence.
+- Value edits clear old last_check/history/score; name-only edits retain them.
+  Assignment/quarantine remain unchanged. No silent quarantine release.
+- Six added cases: baseline subset **5 failed / 5 passed**, fixed full desktop
+  **241 passed**. Browser-settings subset **79 passed**; focused critical/import
+  Ruff passed after sorting touched-file imports, no broad typing refactor.
+- Real Windows QML opened B's dialog, changed the synthetic inventory, then
+  clicked Save: rejection displayed, C unchanged, dialog closed, zero warnings.
+  No real profiles/endpoints or user data touched. Current package rebuild pending.

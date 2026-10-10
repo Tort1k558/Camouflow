@@ -105,3 +105,13 @@ Cloud row actions target the ID shown in the current list, not a newly loaded
 position. If a refresh changes inventory order or membership, bulk selection is
 cleared. Edit/delete dialogs retain the original cloud ID; a workspace change
 requires reopening the dialog.
+
+Local edit/delete dialogs capture the connection's name, value and assignment.
+If that snapshot changes or the list shifts to another connection, the action
+is rejected: reopen settings or select the proxy again. No stored IDs or data
+migration are introduced. Legacy programmatic slots without a snapshot remain
+compatible; this protection applies to the current desktop dialogs.
+
+Changing a local connection value clears its old check, score and check history;
+it must be checked again. Renaming keeps health evidence. Assignment and any
+quarantine remain unchanged; replacing a value does not silently release it.
