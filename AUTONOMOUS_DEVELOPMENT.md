@@ -1765,11 +1765,10 @@ existing marketplace, browser health/reporting, expanded controlled MCP sessions
 Recorder 2.0 and unsigned-development Linux/macOS packages. Preserve existing
 green styling, keep server sources private, and verify each capability separately.
 
-- Live AI connection evidence: the configured DeepSeek endpoint returned HTTP
-  402 (`Insufficient Balance`) for one bounded test. No credentials were changed
-  or exported. Live AI/replay evidence needs the provider balance restored;
-  deterministic tests must not be reported as real-provider success. Existing
-  max-steps configuration is not a monetary spending limit.
+- The original DeepSeek connection probe returned HTTP 402 (`Insufficient
+  Balance`). Following explicit user authorization, local configuration switched
+  to OpenRouter's free-only router. Credentials remain in ignored local settings,
+  never documentation or Git. Max steps is not a monetary spending limit.
 - Native-platform foundation adds a three-OS Python/QML CI matrix and native
   package/runtime jobs. The release gate selects the correct executable for each
   OS; macOS gets an app bundle, and packaged Unix data lives outside the binary
@@ -1803,3 +1802,26 @@ green styling, keep server sources private, and verify each capability separatel
 - Native CI for the platform foundation passed Windows/Linux Python and QML
   checks, but the macOS inline-image regression subprocess exceeded 20 seconds;
   package jobs were correctly gated off. Platform readiness is not established.
+
+### Real free-provider AI/replay proof - 2026-10-11
+
+- Configured endpoint `https://openrouter.ai/api/v1`, model `openrouter/free`:
+  actual application LLM client connection check passed with HTTP 200.
+  This router selects free models only; no paid model fallback was configured.
+- Real AI sessions on Camoufox and CloakBrowser extracted a controlled page's
+  product table and compiled four-step workflows using the existing compiler.
+  Five actual provider calls across the two sessions reported cost **0**.
+- Deterministic replay used the actual scenario executor after source prices
+  changed. Both engines extracted the new values, exported matching JSON and
+  made **zero additional AI calls**. Temporary data/profile storage was isolated.
+- This proves this controlled table flow, not reliability on complex sites,
+  selector recovery, iframe AI extraction or all mission requirements. Broader
+  public-site verification and confirmed self-healing remain pending.
+- The supplied key is on OpenRouter's free tier; its provider-side spending limit
+  is unset. Free-only routing is not a general monetary budget. Do not change to
+  paid models during this mission. Local configuration remains at 25 max steps;
+  verification transport separately capped calls and output tokens.
+- Native macOS failure diagnostics traced the timeout to reverse DNS during the
+  test fixture's HTTP bind, before Qt initialization. The loopback-only fixture
+  now skips reverse DNS without removing assertions or extending its timeout.
+  Follow-up native CI must pass before reporting the platform fix as verified.
