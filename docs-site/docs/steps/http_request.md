@@ -1,4 +1,4 @@
-﻿# http_request
+# http_request
 
 Performs an HTTP(S) request via `context.request.fetch` (Playwright). Context cookies are automatically included and updated.
 
@@ -68,4 +68,4 @@ In the UI, fields map to:
 - **Save as**  -> `save_as`
 - **Response var**  -> `response_var`
 - **Extract JSON** (lines `var=$.path`)  -> `extract_json`
-- checkboxes/numbers  -> `require_success`, `fail_on_status_code`, `ignore_https_errors`, `max_redirects`, `max_retries`
+- checkboxes/numbers  -> `require_success`, `fail_on_status_code`, `ignore_https_errors`, `max_redirects`, `max_retries`

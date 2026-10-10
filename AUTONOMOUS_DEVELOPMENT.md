@@ -1388,3 +1388,73 @@ process environment inputs, never source, documentation or report values.
 - Native both-engine temporal soak continues with alternating persistent/ephemeral
   sessions; final counts are pending. Physical-Ethernet timeouts remain unresolved
   path-specific failures, not a claim that credentials or providers are dead.
+
+### Final-package verification before temporal closeout
+
+- Runtime source: f3e654aae9a32b36ffa7c4494c4ec8290ea0b8f0; full public suite
+  519 passed, compileall and current critical Ruff selections clean. Windows
+  desktop CI 38037587171 for this exact runtime commit completed successfully.
+- Clean build dist/release-20261010-122152/CamouFlow, 2521 files / 350784689 bytes.
+  EXE SHA256: 6c01a964287334ce0604ee9af4f3ecd5a80e00c67ec420d38aa0018fac6a0e21.
+  Fresh parsed both-engine runtime reports pass imports and hard timeout.
+- ZIP dist/CamouFlow-autonomous-20261010-122152-windows.zip, 138453250 bytes.
+  SHA256: f1b6d8aabbc3e60ba5b7cf19224a35751d3b2c20eddfd1486dcd19e91d1b5707.
+  CRC verified, independently extracted EXE hash matches, both extracted-engine
+  runtime/import/timeout checks pass. No untracked scenarios or private server
+  sources packaged. Keep the complete onedir/ZIP, not the EXE alone.
+- Four actual frozen supervised desktop workers (both engines x persistent/
+  ephemeral) passed an owned authenticated SOCKS fixture: browser extraction,
+  visual HTTP API/JSON extraction with a 250 ms response and 1000 ms limit,
+  browser-to-API-to-browser HttpOnly cookie roundtrip and verified export.
+  Windows QueryFullProcessImageName verifies the actual packaged executable;
+  the Python step asserts frozen module origins below its bundled _internal.
+  Parent test adapts spawn metadata to bundle-only import paths; no bundle edits
+  and no relaxed CLI whitelist. The initial CLI refusal was expected safety.
+- Independent fixture observations: 24 authenticated SOCKS connections, eight
+  strict-certificate/hostname geo TLS requests, four page/API/cookie-roundtrip
+  results each, zero blocked/unexpected forwards. This is synthetic loopback
+  proof, separate from real supplied-provider tests.
+- Native temporal provider checks additionally execute the actual visual
+  HTTP/JSON action after the regex fix. Long-run final counts remain pending
+  until the scheduled checks finish; do not infer completion from an intermediate
+  successful summary. Production soak continues until 09:00 UTC on both paths.
+- Documentation: Python example now disposes its owned response in finally.
+  Removed the pre-existing BOM from the modified HTTP-action guide; all 76
+  changed text files are verified UTF-8 without BOM/replacement characters.
+  Retype builds 35 pages with zero warnings/errors; GitHub Pages not published.
+- Credential audit: 221 new public-branch blob objects and 225 owned text
+  artifacts contain none of the supplied credential literals/auth tokens.
+  This is a bounded literal audit, not a universal secret-detection claim.
+- Six resumed runtime commits: b0b16ea, 0d4a669, 00ba6b9, ca8a14e, 0ab67d0,
+  f3e654a. Main refs remain 37207b9. Previous 114801 package is superseded;
+  no public release/tag, main merge or private-source push was performed.
+
+### Temporal closeout — 2026-10-10 09:00 UTC / 13:00 Samara
+
+- The requested work window is complete. Final verifier independently reconciled
+  completed JSONL logs: default production 109 rounds / 197 checks, physical
+  Ethernet production 28 checks, native supplied-proxy soak six rounds / 36
+  sessions / 9,437,184 downloaded bytes. Zero failures in these final soaks.
+  Both persistent and ephemeral engines were exercised; later rounds additionally
+  executed visual HTTP/JSON extraction. Source hashes vary across development
+  rounds, so these are not 36 sessions of one unchanged runtime revision.
+- Separately, the post-deployment steady check passed 160/160. Cutover evidence
+  retains one physical-path RemoteDisconnected; no zero-downtime claim.
+- Fresh private suite: 138 passed in 40.15 seconds. Public suite: 519 passed.
+  Desktop CI 38037587171 succeeded for runtime f3e654a. The final documentation
+  commit does not alter that runtime; no fictitious documentation-head CI claim.
+- Read-only production snapshot at 08:59:37 UTC confirms active upstream 18085,
+  healthy retained services, unchanged original container starts, and readable
+  database dump inventory. Dump validation is not a full restore drill.
+- Owned QA API/tunnel listeners and browser sessions were closed. Supplied
+  credentials were never added to production proxy inventory or public source.
+- Final delivery: dist/CamouFlow-autonomous-20261010-122152-windows.zip;
+  SHA-256 f1b6d8aabbc3e60ba5b7cf19224a35751d3b2c20eddfd1486dcd19e91d1b5707.
+  Full onedir archive and four frozen executable workers passed verification.
+  Previous 114801 delivery failed JSON extraction and is superseded.
+- Remaining: all three supplied SOCKS5 endpoints time out on physical Ethernet
+  despite successful independent VPN/VPS checks; root cause is not established.
+  Next priority is explicitly UUID/team/server-scoped cloud browser storage with
+  reviewed recovery, rather than unsafe automatic migration of existing folders.
+  Customer OAuth/SMTP, full database recovery, and a signed public release were
+  not tested/published. Private server changes remain outside public Git.
