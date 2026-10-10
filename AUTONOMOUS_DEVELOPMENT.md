@@ -703,3 +703,34 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   refresh/workspace invalidation, not hardware-dependent timing thresholds.
 - Real Windows QML masked/status/search/reset/minimum-window checks pass without
   warnings. Final current-source package verification still pending.
+
+## Iteration 29 — isolate the reload failure before blaming a route
+
+- Latest private probe/session candidate passed **118 backend tests** and actual
+  isolated PostgreSQL **five edit + five delete** races through a real TCP listener.
+  Stale probes return discard and audit it; new endpoints remain unchecked,
+  deletion no longer raises StaleDataError. Retained assets checked in final image.
+- Its first production switch recorded one RemoteDisconnected on the default
+  route and one on explicitly bound Ethernet; rolled back to 18082. Both serving
+  candidates healthy. This disproves a VPN-only explanation, not all possible
+  VPN contributions. Listening-port inspection confirms public TLS uses Caddy.
+- Separate temporary Caddy with the exact installed image, verified private CA,
+  loopback-only TLS/admin ports and synthetic static responses reproduced the
+  same error: plain configuration **239/240** around three reloads, proxy-protocol
+  wrapper configuration **240/240**. Earlier plain trials were **240/240**. No
+  FastAPI, PostgreSQL, reverse proxy, VPN or real account was involved.
+- Thus the wrapper, app and VPN are not necessary for this transport symptom.
+  Precise internal shutdown/handshake race remains unproven; do not attribute it
+  to a single component beyond the isolated reload reproduction. Caddy documents
+  [graceful reloads](https://caddyserver.com/docs/getting-started); measured results
+  take precedence over a blanket zero-downtime claim.
+- Only the owned temporary Caddy/container anonymous volumes were removed; active
+  Caddy/API/PostgreSQL/VPN untouched. Next candidate switch records bounded
+  connection-close failures explicitly and requires clean dual-path steady-state
+  checks; no automatic retry hides an individual request failure.
+- Fresh CI: **38015537159/f4d0e5c**, **38015421458/e5ae29e** and
+  **38014907892/35eb4ce** all succeeded. Current-source AI workflows passed on both
+  actual engines with fixture LLM (privacy/extraction/replay/artifact/CLI checks);
+  this does not validate paid-model quality. Changed source/docs UTF-8 scan:
+  **58 files, no BOM, strict decoding passed**. Passive public soak interim
+  **127 rounds / 231 checks / zero failures**, final deadline pending.
