@@ -1665,3 +1665,9 @@ process environment inputs, never source, documentation or report values.
 - Production migration/deployment is pending explicit confirmation for the
   four additive tables. The new feature is not yet live, and no replacement
   release asset has been published. Private server sources remain outside Git.
+- Follow-up permission audit fixed stale help claims after assignment changes:
+  an operator who is no longer the assignee cannot keep blocking an authorized
+  teammate. The new regression verifies claim handoff and browser-access denial.
+  Private suite now passes 217 tests (11 team-center tests). The refreshed
+  deployment bundle contains no environment, credentials, worker or DB dump;
+  production remains unchanged pending explicit migration confirmation.

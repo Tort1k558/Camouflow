@@ -50,6 +50,9 @@ task, row, reason, original deadline and teammate currently handling it.
 - **Take ownership** creates a two-minute claim; an open Team center renews it.
 - Other teammates cannot control or view that claimed browser row until the
   claim expires or is released. Managers can explicitly release a claim.
+- Reassignment or access revocation invalidates a claim when its holder no
+  longer has permission to help; the next authorized teammate need not wait
+  for the claim timeout.
 - Claim renewal never extends the worker's original intervention deadline.
 - **Continue task** resumes execution through the existing authenticated
   browser controls. Browser state remains ephemeral.
