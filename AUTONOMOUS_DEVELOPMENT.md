@@ -1585,7 +1585,7 @@ process environment inputs, never source, documentation or report values.
   fingerprints of all 16 legacy data tables (Alembic metadata intentionally changed).
   The retained old image could read its existing user/team/profile/scenario models
   against the migrated clone. The live database was upgraded only after this proof.
-- Production upstream is loopback 18090, with the retained healthy 18086 API for
+- Initial production upstream was loopback 18090, with the retained healthy 18086 API for
   routing rollback. Deployment includes a fresh cutover dump in the private backup;
   rollback restores Caddy in place and does not restore/downgrade customer data.
   Only owned QA containers were stopped before starting the new bounded stack.
@@ -1606,3 +1606,19 @@ process environment inputs, never source, documentation or report values.
   Public desktop changes are released directly on main; backend sources, private
   Compose/environment files, worker images and recovery dumps remain outside Git.
   Fresh GitHub desktop/docs checks and verified Windows packaging gate publication.
+- Final audit hardened the approval API itself against approvals past 24 hours,
+  without waiting for the scheduler sweep. Private regression tests stayed at
+  206 passed. An API-only blue/green patch moved the active route to loopback 18091;
+  worker, database and original services were not restarted. Public HTTPS functional
+  checks passed again and owned fixtures were removed. The superseded owned hosted
+  API was stopped after verification; the original healthy rollback API remains.
+- Published desktop release/tag `v0.4.1` at public code commit `bfd0d73`.
+  Desktop/docs GitHub runs 38075120859 and 38075120861 passed. Final clean build
+  `release-20261010-221432` has Windows file/product version 0.4.1. Independent ZIP
+  CRC/extraction/runtime checks and uploaded-asset download SHA-256 matched.
+  Windows ZIP: 138,456,424 bytes;
+  SHA-256 `90a9c03b2d14207961285ca831ba6c7d0f442db50ac4cfad901a49a75d64017e`.
+  The hosted guide is publicly reachable in the 36-page documentation site.
+  Production ended with the original 23 users/10 teams/4 profiles/2 scenarios,
+  zero leftover test tasks/runs/rows and an idle ready browser. Actual recipient
+  configuration, SMTP and third-party login/CAPTCHA completion are not claimed.
