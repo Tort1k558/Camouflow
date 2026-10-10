@@ -786,3 +786,27 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
   passed**, critical/import Ruff passed. Real Windows QML now clicks both Save
   and Delete for shifts before/after opening: C unchanged, view refreshed, zero
   warnings. Bulk positional actions remain a separate follow-up audit.
+
+## Iteration 32 — validate local bulk targets before any side effect
+
+- Reproduced stale selected B/index 1 releasing, deleting, dequarantining or
+  starting a check for neighboring C after inventory shifted. Eight cases:
+  baseline four failed/four passed. Shared local target validation now rejects
+  stale workspace/membership/snapshots before persistence or worker creation.
+  Read-check-write remains under the existing storage lock.
+- Applied local inventory changes also clear positional selection. Health-only
+  refreshes keep it; same-target metadata changes do not force unnecessary resets.
+  Membership-length check rejects even identical snapshot copies after deletion.
+  No persisted IDs/migration introduced; indistinguishable same-field copies are
+  a documented limitation, not a claim of true record identity.
+- Local-only quarantine capability hides the unsupported cloud action; direct
+  calls report explicit scope rather than pretending a workspace switch. No new
+  cloud quarantine feature or server-policy mutation.
+- Full desktop **261 passed**, critical/import Ruff passed; real Windows QML
+  Save/Delete, masked/status/search/minimum-window checks still pass. Synthetic
+  10,000-entry warm search remains **32.3ms median**, cold **186.6ms**; no network.
+- Private OAuth/null/error-display follow-up remains staged, not deployed. Its
+  full backend suite is **125 passed**. Real current local HTTP now rejects null
+  with 422 and still lists proxies with 200; real OAuth failure/Back cases remove
+  fragments, and real password validation displays its rule without input echo.
+  Next deploy needs immutable-image PostgreSQL validation and saved cutover proof.

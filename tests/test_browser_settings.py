@@ -188,14 +188,18 @@ def test_proxy_probe_completion_preserves_concurrent_pool_edits(monkeypatch, che
         assert release.wait(3)
         return True, 1, "", {}
     monkeypatch.setattr(proxies, "server_enabled", lambda: False)
+    session = SimpleNamespace(enabled=False, url="", team_id="", email="")
+    monkeypatch.setattr(proxies, "get_server_session", lambda: session)
     monkeypatch.setattr(proxies, "db_get_setting", lambda key: json.dumps(state))
     monkeypatch.setattr(proxies, "db_set_setting", lambda key, value: save(json.loads(value)))
     monkeypatch.setattr("app.services.proxy_health.probe_proxy_endpoint", probe)
     bridge = SimpleNamespace(_ensure_allowed=lambda _: True, _server_client=lambda: None,
+                             _cache_session=session, _pools_cache=copy.deepcopy(state), _selected=set(),
                              _load=lambda: copy.deepcopy(state), _save=save, refresh=refresh,
                              _record_check=proxies.ProxiesBridge._record_check,
                              _is_quarantined=proxies.ProxiesBridge._is_quarantined, _emit_message=Mock())
     bridge._store_local_check = lambda pool, value, result: proxies.ProxiesBridge._store_local_check(bridge, pool, value, result)
+    bridge._load_local_targets = lambda targets: proxies.ProxiesBridge._load_local_targets(bridge, targets)
     try:
         if check_all:
             proxies.ProxiesBridge.checkAll(bridge)
@@ -425,6 +429,88 @@ def test_local_proxy_dialog_captures_displayed_row_not_new_disk_position(monkeyp
     payload = proxies.ProxiesBridge.getProxy(bridge, "QA", 1)
     assert payload["name"] == "B" and payload["value"] == "http://B:1080"
     bridge._load.assert_not_called()
+
+
+@pytest.mark.parametrize("action", ["releaseSelected", "removeSelected", "releaseQuarantineSelected", "checkProxy"])
+@pytest.mark.parametrize("shifted", [False, True])
+def test_local_proxy_actions_validate_displayed_targets_before_mutation(monkeypatch, action, shifted):
+    from app.ui.bridge import proxies
+
+    session = SimpleNamespace(enabled=False, url="", team_id="", email="")
+    monkeypatch.setattr(proxies, "get_server_session", lambda: session)
+    monkeypatch.setattr(proxies, "server_enabled", lambda: False)
+    monkeypatch.setattr(db, "db_get_accounts", Mock(return_value=[]))
+    monkeypatch.setattr(db, "db_update_account", Mock())
+    thread = Mock()
+    monkeypatch.setattr(proxies.threading, "Thread", thread)
+    cached = {"QA": {"proxies": [{"name": name, "value": f"http://{name}.example.invalid:1080",
+                                   "assigned_to": f"Synthetic {name} owner", "quarantine_until": "2099-01-01T00:00:00Z"}
+                                  for name in ["A", "B", "C"]]}}
+    current = copy.deepcopy(cached)
+    if shifted: current["QA"]["proxies"].pop(0)
+    bridge = SimpleNamespace(_cache_session=session, _pools_cache=cached, _load=lambda: current,
+                             _save=Mock(), _selected={("QA", 1)}, _ensure_allowed=lambda _: True,
+                             _server_client=lambda: None, _emit_message=Mock(), refresh=Mock(),
+                             _local_proxy_identity=proxies.ProxiesBridge._local_proxy_identity)
+    bridge._load_local_targets = lambda targets: proxies.ProxiesBridge._load_local_targets(bridge, targets)
+    args = ("QA", 1) if action == "checkProxy" else ()
+    getattr(proxies.ProxiesBridge, action)(bridge, *args)
+    if shifted:
+        bridge._save.assert_not_called()
+        thread.assert_not_called()
+        assert [entry["name"] for entry in current["QA"]["proxies"]] == ["B", "C"]
+        assert current["QA"]["proxies"][1]["assigned_to"] == "Synthetic C owner"
+        assert current["QA"]["proxies"][1]["quarantine_until"]
+    else:
+        bridge._save.assert_called_once()
+        assert current["QA"]["proxies"][-1]["name"] == "C"
+
+
+def test_local_proxy_refresh_drops_shifted_selection_but_keeps_health_only_updates():
+    from app.ui.bridge.proxies import ProxiesBridge
+
+    cached = {"QA": {"proxies": [{"name": name, "value": f"http://{name}:1080"} for name in ["A", "B", "C"]]}}
+    bridge = SimpleNamespace(_pools_cache=cached, _address_cache={}, _selected={("QA", 1)}, _render_pools=Mock())
+    updated = copy.deepcopy(cached)
+    updated["QA"]["proxies"].pop(0)
+    ProxiesBridge._apply_refresh(bridge, (SimpleNamespace(enabled=False), updated, {}))
+    assert not bridge._selected
+    bridge._selected.add(("QA", 0))
+    healthy = copy.deepcopy(updated)
+    healthy["QA"]["proxies"][0]["last_check"] = {"status": "ok", "mode": "internet"}
+    ProxiesBridge._apply_refresh(bridge, (SimpleNamespace(enabled=False), healthy, {}))
+    assert bridge._selected == {("QA", 0)}
+
+
+def test_local_target_guard_rejects_membership_change_even_for_duplicate_snapshots(monkeypatch):
+    from app.ui.bridge import proxies
+
+    session = SimpleNamespace(enabled=False, url="", team_id="", email="")
+    monkeypatch.setattr(proxies, "get_server_session", lambda: session)
+    cached = {"QA": {"proxies": [{"value": "http://same.example.invalid:1080"} for _ in range(3)]}}
+    stored = copy.deepcopy(cached)
+    stored["QA"]["proxies"].pop(0)
+    bridge = SimpleNamespace(_cache_session=session, _pools_cache=cached, _load=lambda: stored,
+                             _selected={("QA", 1)}, _emit_message=Mock(), refresh=Mock())
+    assert proxies.ProxiesBridge._load_local_targets(bridge, [("QA", 1)]) is None
+    assert len(stored["QA"]["proxies"]) == 2
+
+
+@pytest.mark.parametrize("enabled, can_manage, expected", [(False, True, True), (True, True, False), (False, False, False)])
+def test_quarantine_release_capability_is_local_and_role_scoped(monkeypatch, enabled, can_manage, expected):
+    from app.ui.bridge import proxies
+
+    monkeypatch.setattr(proxies, "server_enabled", lambda: enabled)
+    assert proxies.ProxiesBridge.canReleaseQuarantine.fget(SimpleNamespace(canManage=can_manage)) is expected
+
+
+def test_cloud_quarantine_release_explicitly_reports_unsupported_scope(monkeypatch):
+    from app.ui.bridge import proxies
+
+    monkeypatch.setattr(proxies, "server_enabled", lambda: True)
+    bridge = SimpleNamespace(_ensure_allowed=lambda _: True, _emit_message=Mock())
+    proxies.ProxiesBridge.releaseQuarantineSelected(bridge)
+    bridge._emit_message.assert_called_once_with("Quarantine release is available only in local workspaces")
 
 
 def test_proxy_workspace_switch_clears_selection_before_background_read(monkeypatch):

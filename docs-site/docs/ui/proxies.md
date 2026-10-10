@@ -93,7 +93,7 @@ Proxy lists and dashboard summaries show only the scheme, host and port, without
 credentials. The connection value is unchanged; managers can inspect/edit it in
 the proxy settings dialog. Treat that dialog and exported configuration as sensitive.
 
-Repeated failures quarantine a connection. Invalid or timezone-ambiguous quarantine
+Repeated local check failures quarantine a connection. Invalid or timezone-ambiguous quarantine
 expiry also remains blocked until manual release; the app does not guess a timezone.
 Checking one proxy manually can refresh its health while bulk checks skip quarantine.
 
@@ -117,3 +117,13 @@ rejected stale actions refresh the list before selecting again.
 Changing a local connection value clears its old check, score and check history;
 it must be checked again. Renaming keeps health evidence. Assignment and any
 quarantine remain unchanged; replacing a value does not silently release it.
+
+Local bulk remove/release/quarantine and individual check validate the displayed
+targets under the storage lock. Changed inventory rejects the whole selection
+before writing or probing; refresh and select again. Inventory changes clear
+positional selection, while health-only refreshes retain it. Quarantine release
+is local-only and is not shown in cloud workspaces.
+
+Local snapshots are not persistent record IDs: copies with identical name/value/
+assignment cannot be distinguished by those fields alone. Bulk import ignores
+repeated values; avoid identical manual duplicates when exact copy identity matters.

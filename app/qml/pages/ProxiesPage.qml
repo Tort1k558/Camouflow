@@ -138,7 +138,7 @@ Item {
                 Text { text: (root.bridge ? root.bridge.selectedCount : 0) + " selected"; color: Theme.primaryInk; font.pixelSize: 12; Layout.leftMargin: 8 }
                 Item { Layout.fillWidth: true }
                 PrimaryButton { text: "Release assignment"; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: root.bridge.releaseSelected() }
-                PrimaryButton { text: "Remove quarantine"; secondary: true; enabled: root.bridge && root.bridge.canManage; onClicked: root.bridge.releaseQuarantineSelected() }
+                PrimaryButton { objectName: "quarantineRelease"; text: "Remove quarantine"; secondary: true; visible: root.bridge && root.bridge.canReleaseQuarantine; enabled: root.bridge && root.bridge.canReleaseQuarantine; onClicked: root.bridge.releaseQuarantineSelected() }
                 PrimaryButton { text: "Delete selected"; danger: true; enabled: root.bridge && root.bridge.canAdmin; onClicked: confirmDialog.ask("Delete the selected proxies? This action cannot be undone.", function() { root.bridge.removeSelected() }) }
                 PrimaryButton { text: "Clear selection"; secondary: true; onClicked: root.bridge.clearSelection() }
             }

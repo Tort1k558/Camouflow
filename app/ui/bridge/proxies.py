@@ -30,6 +30,12 @@ def _proxy_workspace_matches(cached, current) -> bool:
                                       for key in ("enabled", "url", "team_id", "email"))
 
 
+def _local_proxy_snapshot(entry) -> tuple[str, str, str]:
+    if isinstance(entry, dict):
+        return str(entry.get("name") or ""), str(entry.get("value") or ""), str(entry.get("assigned_to") or "")
+    return "", str(entry), ""
+
+
 class ProxiesBridge(QObject):
     modelChanged = pyqtSignal()
     statsChanged = pyqtSignal()
@@ -195,6 +201,10 @@ class ProxiesBridge(QObject):
         return allows(self._app_state, "manager")
 
     @pyqtProperty(bool, notify=modelChanged)
+    def canReleaseQuarantine(self) -> bool:  # noqa: N802
+        return not server_enabled() and self.canManage
+
+    @pyqtProperty(bool, notify=modelChanged)
     def canAdmin(self) -> bool:  # noqa: N802
         return allows(self._app_state, "admin")
 
@@ -246,8 +256,30 @@ class ProxiesBridge(QObject):
 
     @staticmethod
     def _local_proxy_identity(entry: Dict[str, Any]) -> str:
-        snapshot = json.dumps([str(entry.get(field) or "") for field in ("name", "value", "assigned_to")], ensure_ascii=False)
+        snapshot = json.dumps(_local_proxy_snapshot(entry), ensure_ascii=False)
         return "local:" + hashlib.sha256(snapshot.encode("utf-8")).hexdigest()
+
+    def _load_local_targets(self, targets) -> Dict[str, Dict[str, Any]] | None:
+        # Caller holds the storage lock through persistence.
+        session = get_server_session()
+        if session.enabled or not _proxy_workspace_matches(self._cache_session, session):
+            self._emit_message("Workspace changed; select the proxies again")
+            self._selected.clear()
+            self.refresh()
+            return None
+        pools = self._load()
+        for pool_name, index in targets:
+            cached = self._pools_cache.get(pool_name)
+            current = pools.get(pool_name)
+            shown = cached.get("proxies", []) if isinstance(cached, dict) else []
+            stored = current.get("proxies", []) if isinstance(current, dict) else []
+            if (len(shown) != len(stored) or not 0 <= index < len(shown)
+                    or _local_proxy_snapshot(shown[index]) != _local_proxy_snapshot(stored[index])):
+                self._emit_message("Proxy list changed; select the proxies again")
+                self._selected.clear()
+                self.refresh()
+                return None
+        return pools
 
     def _server_proxy_entry(self, pool_name: str, index: int, expected_id: str = "") -> Dict[str, Any]:
         session = get_server_session()
@@ -295,13 +327,12 @@ class ProxiesBridge(QObject):
 
     def _apply_refresh(self, result):
         session, pools, _ = result
-        if session.enabled:
-            def identities(data):
-                return {name: [entry.get("id") if isinstance(entry, dict) else None
-                               for entry in pool.get("proxies", [])]
-                        for name, pool in data.items() if isinstance(pool, dict)}
-            if identities(pools) != identities(self._pools_cache):
-                self._selected.clear()
+        def identities(data):
+            return {name: [entry.get("id") if isinstance(entry, dict) else None for entry in pool.get("proxies", [])]
+                    if session.enabled else [_local_proxy_snapshot(entry) for entry in pool.get("proxies", [])]
+                    for name, pool in data.items() if isinstance(pool, dict)}
+        if identities(pools) != identities(self._pools_cache):
+            self._selected.clear()
         self._cache_session, self._pools_cache, self._server_pools = result
         self._address_cache.clear()
         self._render_pools()
@@ -779,18 +810,21 @@ class ProxiesBridge(QObject):
             self._emit_message(f"Released {released} server proxy(s)")
             self.refresh()
             return
-        pools = self._load()
         released = 0
         assigned_names: set[str] = set()
-        for pool_name, index in list(self._selected):
-            proxies = pools.get(pool_name, {}).get("proxies", []) if isinstance(pools.get(pool_name), dict) else []
-            if 0 <= index < len(proxies) and isinstance(proxies[index], dict):
-                assigned = str(proxies[index].get("assigned_to") or "").strip()
-                if assigned:
-                    assigned_names.add(assigned)
-                proxies[index]["assigned_to"] = ""
-                released += 1
-        self._save(pools)
+        with db._STORAGE_LOCK:
+            pools = self._load_local_targets(list(self._selected))
+            if pools is None:
+                return
+            for pool_name, index in list(self._selected):
+                proxies = pools.get(pool_name, {}).get("proxies", []) if isinstance(pools.get(pool_name), dict) else []
+                if isinstance(proxies[index], dict):
+                    assigned = str(proxies[index].get("assigned_to") or "").strip()
+                    if assigned:
+                        assigned_names.add(assigned)
+                    proxies[index]["assigned_to"] = ""
+                    released += 1
+            self._save(pools)
         if assigned_names:
             try:
                 from app.storage.db import db_get_accounts, db_update_account
@@ -833,18 +867,19 @@ class ProxiesBridge(QObject):
             self._emit_message(f"Removed {removed} server proxy(s)")
             self.refresh()
             return
-        pools = self._load()
         removed = 0
-        for pool_name in sorted({pool for pool, _ in self._selected}):
-            pool = pools.get(pool_name)
-            proxies = pool.get("proxies", []) if isinstance(pool, dict) else []
-            indices = sorted([idx for pool, idx in self._selected if pool == pool_name], reverse=True)
-            for index in indices:
-                if 0 <= index < len(proxies):
+        with db._STORAGE_LOCK:
+            pools = self._load_local_targets(list(self._selected))
+            if pools is None:
+                return
+            for pool_name in sorted({pool for pool, _ in self._selected}):
+                proxies = pools[pool_name]["proxies"]
+                indices = sorted([idx for pool, idx in self._selected if pool == pool_name], reverse=True)
+                for index in indices:
                     proxies.pop(index)
                     removed += 1
+            self._save(pools)
         self._selected.clear()
-        self._save(pools)
         self._emit_message(f"Removed {removed} proxy(s)")
         self.refresh()
 
@@ -874,18 +909,17 @@ class ProxiesBridge(QObject):
 
             threading.Thread(target=worker, daemon=True).start()
             return
-        pools = self._load()
-        pool = pools.get(pool_name)
-        if not isinstance(pool, dict):
-            self._emit_message("Proxy pool not found")
-            return
-        proxies = pool.get("proxies", [])
-        if not (0 <= index < len(proxies)) or not isinstance(proxies[index], dict):
-            self._emit_message("Proxy not found")
-            return
-        proxies[index]["last_check"] = {"status": "checking"}
-        value = str(proxies[index].get("value") or "")
-        self._save(pools)
+        with db._STORAGE_LOCK:
+            pools = self._load_local_targets([(pool_name, index)])
+            if pools is None:
+                return
+            proxies = pools[pool_name]["proxies"]
+            if not isinstance(proxies[index], dict):
+                self._emit_message("Proxy not found")
+                return
+            proxies[index]["last_check"] = {"status": "checking"}
+            value = str(proxies[index].get("value") or "")
+            self._save(pools)
         self.refresh()
 
         def worker() -> None:
@@ -978,20 +1012,26 @@ class ProxiesBridge(QObject):
     def releaseQuarantineSelected(self) -> None:  # noqa: N802
         if not self._ensure_allowed("manager"):
             return
-        pools = self._load()
-        released = 0
-        for pool_name, index in list(self._selected):
-            entries = (pools.get(pool_name) or {}).get("proxies", [])
-            if 0 <= index < len(entries) and isinstance(entries[index], dict):
-                until = entries[index].pop("quarantine_until", None)
-                explicit = entries[index].get("status") == "quarantined"
-                if explicit:
-                    entries[index]["status"] = "unchecked"
-                if until is not None or explicit:
-                    released += 1
-        if not released:
-            self._emit_message("No quarantined proxies selected")
+        if server_enabled():
+            self._emit_message("Quarantine release is available only in local workspaces")
             return
-        self._save(pools)
+        released = 0
+        with db._STORAGE_LOCK:
+            pools = self._load_local_targets(list(self._selected))
+            if pools is None:
+                return
+            for pool_name, index in list(self._selected):
+                entries = pools[pool_name]["proxies"]
+                if isinstance(entries[index], dict):
+                    until = entries[index].pop("quarantine_until", None)
+                    explicit = entries[index].get("status") == "quarantined"
+                    if explicit:
+                        entries[index]["status"] = "unchecked"
+                    if until is not None or explicit:
+                        released += 1
+            if not released:
+                self._emit_message("No quarantined proxies selected")
+                return
+            self._save(pools)
         self._emit_message(f"Released {released} proxy(s) from quarantine")
         self.refresh()
