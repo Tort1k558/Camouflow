@@ -117,3 +117,30 @@ def test_http_request_releases_response_when_result_processing_fails(runner):
         asyncio.run(runner._action_http_request({"url": "https://example.invalid/"}))
 
     response.dispose.assert_awaited_once()
+
+
+@pytest.mark.parametrize("path, expected", [
+    ("$", {"items": [{"name": "Synthetic", "active": False}], "count": 0}),
+    ("count", 0), ("$.count", 0), ("items[0].name", "Synthetic"),
+    ("$.items[0].active", False), ("$.missing", None), ("$.items[10].name", None),
+    ("$.items[-1].name", None), ("$.items.name", None), ("$.count[0]", None),
+    ("$.items[0].missing", None), ("$.items[0][0]", None),
+])
+def test_http_json_paths_follow_documented_object_and_array_syntax(runner, path, expected):
+    payload = {"items": [{"name": "Synthetic", "active": False}], "count": 0}
+    assert runner._json_path_get(payload, path) == expected
+
+
+def test_http_request_extracts_json_fields_after_releasing_response(runner):
+    payload = {"items": [{"name": "Synthetic", "active": False}], "count": 0}
+    response = SimpleNamespace(status=200, headers={}, text=AsyncMock(return_value="Synthetic JSON"),
+                               json=AsyncMock(return_value=payload), dispose=AsyncMock())
+    runner.context = SimpleNamespace(request=SimpleNamespace(fetch=AsyncMock(return_value=response)))
+
+    result = asyncio.run(runner._action_http_request({"url": "https://example.invalid/", "extract_json": {
+        "name": "$.items[0].name", "count": "$.count", "active": "$.items[0].active", "missing": "$.items[2].name"}}))
+
+    assert result.status == "next"
+    assert {key: runner.variables[key] for key in ["name", "count", "active", "missing"]} == {
+        "name": "Synthetic", "count": "0", "active": "False", "missing": ""}
+    response.dispose.assert_awaited_once()

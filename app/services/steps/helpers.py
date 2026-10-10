@@ -71,7 +71,7 @@ class TemplateSteps:
             return payload
 
         cur: object = payload
-        token_re = re.compile(r"([^[.]+)(?:\\[(\\d+)\\])?")
+        token_re = re.compile(r"([^\[\].]+)(?:\[(\d+)\])?")
         for part in path.split("."):
             part = part.strip()
             if not part:

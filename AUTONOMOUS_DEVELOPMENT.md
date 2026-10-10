@@ -1328,3 +1328,63 @@ process environment inputs, never source, documentation or report values.
   Proxy format documentation now explicitly says omitted scheme means SOCKS5.
 - This fixes false positive application state; it does not assert the supplied
   providers themselves sent malformed HTTP responses.
+
+### Iteration 50: web proxy import recovery and accurate protocol labels
+
+- Actual owned local API + browser reproduced losing a rejected middle import
+  line after two successful creates; bare SOCKS5 was mislabeled HTTP and SOCKS4
+  mislabeled SOCKS5. Credential text could also influence the old type heuristic.
+- Private console keeps only failed lines for explicit correction/retry, shows
+  partial failure, disables duplicate/pool/draft controls while pending and
+  fences import results and inventory reads across navigation/workspace changes.
+  Existing in-flight accepted mutations are not undone. No automatic retry or
+  idempotency claim for ambiguous transport failures is introduced.
+- Type labels reuse parsed masked addresses; no scheme means SOCKS5, explicit
+  SOCKS4 stays SOCKS4. Legacy bracketed IPv6 credentials display correctly.
+- Build passes. Private suite remains 138 passed. Exact new image on disposable
+  PostgreSQL passes ten TCP edit/delete races, 15 null guards and retained assets.
+  Exact-image browser against owned SQLite: injected middle 503 + successful
+  actual creates, failed-only retry (four POSTs/three rows), guarded controls,
+  matching protocol labels, masked inventory, and 375/768/1440 no-overflow layouts.
+  Delayed other-team inventory is discarded; pending workspace switch suppresses
+  two remaining old-team mutations and never restores old data/draft. Native SPA
+  unmount also stops the remaining batch. These are synthetic owned data, not
+  customer-account tests. The owned QA container and SSH tunnel were closed.
+- Frontend-only image 78d96d5, active upstream 18085, JS index-CH7K_0zI.js.
+  Python source aggregate hash matches the prior active image: no backend API,
+  schema or auth change. Backup includes validated PG dump and prior source/Caddy.
+  Rollback reloads the retained healthy 18084; no DB restore/migration needed.
+- Cutover: default 80/80, physical Ethernet 79/80 (one RemoteDisconnected);
+  independent dual-path steady state 160/160. No hidden request retries and no
+  zero-downtime claim. Original API/PG/Caddy/VPN start timestamps remain unchanged.
+  Production anonymous browser passed 21 route/width checks plus RU/EN docs and
+  secure WebLocks; no production login or customer mutation.
+- Canonical host frontend/config/handoff files synchronized with private backup
+  and byte hashes. Private source folder is still outside Git; no server push.
+
+### Iteration 51: repair actual HTTP JSON extraction failure
+
+- Further frozen desktop-worker QA reached HTTP JSON extraction and failed with
+  no such group. Reproduced in source: double-escaped bracket regex only exposed
+  one capture, while the helper requested group two; ordinary keys threw and
+  documented array indices did not match.
+- One regex correction preserves the documented simplified $.a.b[0].c syntax.
+  Thirteen regressions cover root/object/array paths, missing/wrong-type/out-of-
+  range results, zero/false values and actual HTTP result-variable extraction
+  after response disposal. No full JSONPath implementation or new dependency.
+- The previous 114801 package correctly exposed this defect and is not the final
+  delivery. Rebuild and fresh frozen-worker/extracted-ZIP verification required.
+- CLI deliberately refused the HTTP/Python test workflow; its read-only action
+  whitelist remains unchanged. HTTP/Python package QA uses the existing supervised
+  desktop worker with owned fixed scenarios, not relaxed CLI restrictions.
+
+### Independent supplied proxy path checks
+
+- Windows route lookup confirms all three default destinations use diamond/TUN,
+  ifIndex 18. Explicit physical tests use Ethernet 13 and source 192.168.16.198.
+- VPS default path independently passed all nine SOCKS5 auth + verified TLS 1.3
+  geo-IP + 256 KiB download checks. Exit IPs match endpoints; geo reports PL.
+  Credentials reached the probe through encrypted SSH stdin, never a remote file.
+- Native both-engine temporal soak continues with alternating persistent/ephemeral
+  sessions; final counts are pending. Physical-Ethernet timeouts remain unresolved
+  path-specific failures, not a claim that credentials or providers are dead.
