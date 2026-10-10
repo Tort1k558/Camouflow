@@ -8,6 +8,101 @@ from app.core.browser_interface import BrowserInterface
 from app.storage import db
 
 
+TEAM_ID = "11111111-1111-4111-8111-111111111111"
+PROFILE_ID = "22222222-2222-4222-8222-222222222222"
+
+
+def test_cloud_identity_is_canonical_and_rename_stable(workspace):
+    first = db.cloud_profile_scope("HTTPS://EXAMPLE.COM:443/", TEAM_ID.upper(), PROFILE_ID)
+    second = db.cloud_profile_scope("https://example.com", TEAM_ID, PROFILE_ID)
+    assert first == second
+    assert db.checked_profile_storage("original", first) == db.checked_profile_storage("renamed", second)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("server_url", "https://other.example"), ("server_url", "http://example.com"),
+    ("server_url", "https://example.com:8443"),
+    ("team_id", "33333333-3333-4333-8333-333333333333"),
+    ("profile_id", "44444444-4444-4444-8444-444444444444"),
+])
+def test_cloud_storage_separates_each_identity_component(workspace, field, value):
+    scope = db.cloud_profile_scope("https://example.com", TEAM_ID, PROFILE_ID)
+    changed = {**scope, field: value}
+    assert db.checked_profile_storage("same", scope) != db.checked_profile_storage("same", changed)
+    assert db.checked_profile_storage("same", scope) != db.checked_profile_storage("same")
+
+
+@pytest.mark.parametrize("url", ["", "ftp://example.com", "https://user:secret@example.com", "https://example.com/a",
+                                 "https://example.com?x=1", "https://example.com#fragment", "https://example.com:0"])
+def test_cloud_storage_rejects_invalid_origins(workspace, url):
+    with pytest.raises(ValueError):
+        db.cloud_profile_scope(url, TEAM_ID, PROFILE_ID)
+
+
+@pytest.mark.parametrize("field", ["team_id", "profile_id"])
+def test_cloud_storage_rejects_non_uuid_identity(workspace, field):
+    scope = db.cloud_profile_scope("https://example.com", TEAM_ID, PROFILE_ID)
+    scope[field] = "../shared"
+    with pytest.raises(ValueError):
+        db.checked_profile_storage("same", scope)
+
+
+def test_local_cleanup_preserves_cloud_and_legacy_sessions(workspace):
+    scope = db.cloud_profile_scope("https://example.com", TEAM_ID, PROFILE_ID)
+    cloud = db.checked_profile_storage("same", scope)
+    cloud.mkdir(parents=True)
+    (cloud / "session").write_text("cloud", encoding="utf-8")
+    db.db_add_account({"name": "same"})
+    legacy = db.checked_profile_storage("same")
+    legacy.mkdir()
+    (legacy / "session").write_text("legacy", encoding="utf-8")
+    db.cleanup_profiles(db.db_get_accounts())
+    assert (cloud / "session").read_text(encoding="utf-8") == "cloud"
+    assert (legacy / "session").read_text(encoding="utf-8") == "legacy"
+
+
+def test_local_profiles_cannot_claim_cloud_namespace(workspace):
+    with pytest.raises(ValueError):
+        db.db_add_account({"name": ".cloud"})
+
+
+def test_cloud_storage_rejects_linked_ancestor(workspace):
+    target = workspace / "outside"
+    target.mkdir()
+    try:
+        (db.PROFILES_DIR / ".cloud").symlink_to(target, target_is_directory=True)
+    except OSError:
+        pytest.skip("Directory symlinks are unavailable")
+    scope = db.cloud_profile_scope("https://example.com", TEAM_ID, PROFILE_ID)
+    with pytest.raises(ValueError):
+        db.checked_profile_storage("same", scope)
+
+
+def test_cloud_browser_rejects_external_storage_state(workspace):
+    scope = db.cloud_profile_scope("https://example.com", TEAM_ID, PROFILE_ID)
+    with pytest.raises(ValueError, match="identity-scoped"):
+        BrowserInterface("same", storage_scope=scope, browser_settings={"storage_state_path": str(workspace / "legacy.json")})
+
+
+def test_cloud_accounts_capture_client_identity_not_remote_settings(workspace):
+    from types import SimpleNamespace
+    from app.ui.bridge.profiles import ProfilesBridge
+
+    client = SimpleNamespace(session=SimpleNamespace(url="https://example.com", team_id=TEAM_ID), proxies=lambda: [],
+                             profiles=lambda: [{"id": PROFILE_ID, "name": "same", "settings": {"_storage_scope": "untrusted"}}])
+    account = ProfilesBridge._server_accounts(SimpleNamespace(), client)[0]
+    assert account["_storage_scope"] == db.cloud_profile_scope(client.session.url, TEAM_ID, PROFILE_ID)
+
+
+def test_scenario_cookie_and_variables_use_scoped_root(workspace):
+    from app.services.scenario_engine import ScenarioExecutor
+
+    scope = db.cloud_profile_scope("https://example.com", TEAM_ID, PROFILE_ID)
+    runner = ScenarioExecutor({"name": "same", "_storage_scope": scope}, "", db.Scenario("owned", []))
+    assert runner._profile_vars_path == db.checked_profile_storage("same", scope) / "scenario_vars.json"
+    assert runner._read_profile_cookies_fallback() == []
+
+
 @pytest.fixture
 def workspace(tmp_path, monkeypatch):
     profiles = tmp_path / "profiles"

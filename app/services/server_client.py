@@ -179,9 +179,11 @@ class ServerClient:
         self.session = ServerSession(enabled=True, url=normalize_server_url(url), token="", refresh_token="", team_id="", email="")
         payload = self.request("GET", "/api/v1/auth/google/url" + ("?app=true" if app_pair else ""), auth=False)
         auth_url = str(payload.get("url") or "")
-        if "accounts.google.com" not in auth_url:
+        parsed = urllib.parse.urlsplit(auth_url)
+        if parsed.scheme != "https" or parsed.hostname != "accounts.google.com" or parsed.username or parsed.password:
             raise ServerClientError("Server did not return a Google sign-in URL")
-        return auth_url
+        # The system browser, not urllib, must receive the OAuth state cookie.
+        return self._url("/api/v1/auth/google/start" + ("?app=true" if app_pair else ""))
 
     def login_with_pair_code(self, code: str) -> Dict[str, Any]:
         url = self.session.url or DEFAULT_SERVER_URL

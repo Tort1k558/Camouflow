@@ -1458,3 +1458,50 @@ process environment inputs, never source, documentation or report values.
   reviewed recovery, rather than unsafe automatic migration of existing folders.
   Customer OAuth/SMTP, full database recovery, and a signed public release were
   not tested/published. Private server changes remain outside public Git.
+
+## Follow-up: cloud storage, OAuth, and full database restore
+
+### Iteration 52 — immutable cloud browser storage
+
+- Cloud profile mappings capture the canonical server origin, team UUID, and
+  profile UUID with the account. Browser launches, queued/Python execution,
+  recording, AI replay, health checks, cookie fallback, and scenario variables
+  use that captured scope. Display-name changes do not move cloud sessions.
+- Browser directories use one full SHA-256 identity component under
+  profiles/.cloud; local storage remains name-based. Linked roots/ancestors and
+  external cloud storage-state files are rejected. Local cleanup preserves the
+  cloud namespace. Ambiguous legacy folders remain untouched and are not adopted.
+- A deeply nested first implementation lost CloakBrowser cookies on reopen in
+  the Windows QA path. Replacing it with the bounded flat identity key passes
+  the same native check: 16 actual sessions, both engines, four identities with
+  the same name, cookie persistence after rename, legacy preservation, and
+  separately scoped scenario variables. Fixture cookies have explicit expiry;
+  session-only cookies are not evidence of cross-restart persistence.
+- Public full suite: 547 passed; critical Ruff checks passed. Documentation
+  explains the new namespace and manual, reviewed legacy recovery boundary.
+
+### Iteration 53 — OAuth browser binding and database recovery proof
+
+- Private backend adds a system-browser OAuth start endpoint and validates an
+  HttpOnly, SameSite=Lax state cookie against the signed expiring callback state
+  before contacting Google. Production cookies are Secure. Terminal redirects
+  clear state and disable cache/referrer disclosure; only boolean verified email
+  is accepted. Web /url keeps its JSON contract and sets the matching cookie.
+- Desktop opens the configured origin's /api/v1/auth/google/start, not the
+  cookie-less urllib-generated provider URL. Provider host validation is exact,
+  not substring matching. Existing desktop builds need updating after the
+  backend rollout; restart any already-in-flight OAuth attempt.
+- Live Google credentials stay inside the production container. An invalid,
+  non-authenticating code returns invalid_grant rather than invalid_client;
+  authorization page responds 200. This does not prove real user consent/login.
+- Existing production PostgreSQL backup fully restored into an owned,
+  network-disabled PostgreSQL 16 instance: 17 tables, revision
+  0008_drop_commercial, enforced constraints, complete logical re-export/second
+  restore matching every table row digest and sequence. Exact candidate backend
+  additionally passed actual HTTP API health, synthetic Google callback, browser
+  mismatch/replay rejection, one-time pairing, and owned team/profile/scenario
+  writes against that restored clone. Temporary containers were removed.
+- Production database was not overwritten. SMTP setup/delivery was explicitly
+  deferred by the user; SMTP source/config changes were not retained.
+- Private backend candidate is prepared with only routes/google_auth.py changed,
+  no frontend or schema migration; production cutover remains pending here.

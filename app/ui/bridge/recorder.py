@@ -222,7 +222,8 @@ class RecorderBridge(QObject):
         if isinstance(settings, str):
             settings = json.loads(settings)
         browser = BrowserInterface(account["name"], proxy=account_proxy(account), browser_engine=engine,
-                                   browser_settings={**settings, "headless": False}, keep_browser_open=False)
+                                   browser_settings={**settings, "headless": False}, keep_browser_open=False,
+                                   storage_scope=account.get("_storage_scope"))
         recorder = ScenarioRecorder()
         recorder._on_change = lambda: self.updated.emit(*recorder.snapshot())
         try:

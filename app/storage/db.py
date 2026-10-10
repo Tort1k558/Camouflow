@@ -227,7 +227,7 @@ def _unsafe_windows_name(name: str) -> bool:
 def checked_profile_dir_for_email(name: str, *, renamed_from: Optional[str] = None) -> Path:
     """Validate dedicated browser storage before creating, moving or removing it."""
     storage_name = _safe_profile_name(name)
-    if _unsafe_windows_name(storage_name):
+    if _unsafe_windows_name(storage_name) or storage_name.casefold() == ".cloud":
         raise ValueError("Enter a profile name with a valid browser directory")
     path = profile_dir_for_email(name)
     if path.is_symlink() or path.is_junction():
@@ -245,6 +245,43 @@ def checked_profile_dir_for_email(name: str, *, renamed_from: Optional[str] = No
             matches += 1
             if other.casefold() not in allowed_names or matches > 1:
                 raise ValueError("Profile name shares another profile's browser directory; choose a distinct name")
+    return path
+
+
+def cloud_profile_scope(server_url: str, team_id: str, profile_id: str) -> Dict[str, str]:
+    from urllib.parse import urlsplit
+    from uuid import UUID
+
+    parsed = urlsplit(str(server_url).strip())
+    if (parsed.scheme not in {"http", "https"} or not parsed.hostname
+            or parsed.username or parsed.password or parsed.path not in {"", "/"}
+            or parsed.query or parsed.fragment):
+        raise ValueError("Cloud storage requires a valid server origin")
+    host = parsed.hostname.lower().encode("idna").decode("ascii")
+    if ":" in host:
+        host = f"[{host}]"
+    port = parsed.port
+    if port == 0:
+        raise ValueError("Cloud storage requires a valid server port")
+    default_port = 443 if parsed.scheme == "https" else 80
+    origin = f"{parsed.scheme}://{host}" + (f":{port}" if port and port != default_port else "")
+    return {"server_url": origin, "team_id": str(UUID(str(team_id))), "profile_id": str(UUID(str(profile_id)))}
+
+
+def checked_profile_storage(name: str, scope: Optional[Dict[str, str]] = None) -> Path:
+    """Cloud identity is immutable and never adopts a name-based local directory."""
+    if scope is None:
+        return checked_profile_dir_for_email(name)
+    import hashlib
+
+    identity = cloud_profile_scope(scope["server_url"], scope["team_id"], scope["profile_id"])
+    identity_key = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    root = PROFILES_DIR.resolve()
+    # One bounded component avoids deep Chromium paths exceeding Windows limits.
+    path = PROFILES_DIR / ".cloud" / identity_key
+    for candidate in (PROFILES_DIR, path.parent, path):
+        if candidate.is_symlink() or candidate.is_junction() or not candidate.resolve().is_relative_to(root):
+            raise ValueError("Cloud profile storage must not contain filesystem links or escape its workspace")
     return path
 
 
@@ -694,6 +731,7 @@ def db_delete_scenario(name: str) -> None:
 
 def cleanup_profiles(accounts: List[Dict[str, Any]]) -> None:
     existing = {_safe_profile_name(str(acc.get("name") or acc.get("email") or "")) for acc in accounts}
+    existing.add(".cloud")
     for item in PROFILES_DIR.iterdir():
         if item.is_dir() and item.name not in existing:
             shutil.rmtree(item, ignore_errors=True)

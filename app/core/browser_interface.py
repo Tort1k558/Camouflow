@@ -14,6 +14,7 @@ from app.storage.db import (
     db_get_camoufox_defaults,
     db_get_cloakbrowser_defaults,
     checked_profile_dir_for_email,
+    checked_profile_storage,
 )
 
 from .browser_launchers import (
@@ -68,11 +69,13 @@ class BrowserInterface:
         camoufox_settings: Optional[Dict[str, object]] = None,
         browser_engine: Optional[str] = None,
         browser_settings: Optional[Dict[str, object]] = None,
+        storage_scope: Optional[Dict[str, str]] = None,
     ) -> None:
         self.profile_name = profile_name
         self.proxy = proxy
         self.keep_browser_open = keep_browser_open
-        self.profile_root = checked_profile_dir_for_email(self.profile_name)
+        self.profile_root = (checked_profile_storage(self.profile_name, storage_scope)
+                             if storage_scope is not None else checked_profile_dir_for_email(self.profile_name))
         self.browser_engine = normalize_browser_engine(browser_engine or db_get_browser_engine())
         self.user_data_dir = self.profile_root
         if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER:
@@ -87,6 +90,10 @@ class BrowserInterface:
         self._cloakbrowser_defaults = db_get_cloakbrowser_defaults()
         defaults = self._cloakbrowser_defaults if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER else self._camoufox_defaults
         self._browser_settings = {**defaults, **{key: value for key, value in self._browser_settings.items() if value is not None}}
+        if storage_scope is not None and self._browser_settings.get("storage_state_path"):
+            state_path = Path(str(self._browser_settings["storage_state_path"]))
+            if not state_path.resolve().is_relative_to(self.profile_root.resolve()):
+                raise ValueError("Cloud storage state must remain inside its identity-scoped profile directory")
         self._camoufox_settings = self._browser_settings
 
         self.logger = logging.LoggerAdapter(logging.getLogger(__name__), {"profile": self.profile_name})

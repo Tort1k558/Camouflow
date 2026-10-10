@@ -447,6 +447,7 @@ class OperationsBridge(QObject):
                 proxy = next((p for p in proxies if p["id"] == row.get("proxy_id")), {})
                 account = CloudWorkspaceSync._profile_from_remote(row, proxy.get("value", ""))
                 account["id"] = row["id"]
+                account["_storage_scope"] = db.cloud_profile_scope(client.session.url, client.session.team_id, row["id"])
                 client.lock_profile(row["id"])
                 locked = True
                 def renew():

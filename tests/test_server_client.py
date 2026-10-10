@@ -11,6 +11,24 @@ from app.services import server_client
 from app.storage import db
 
 
+@pytest.mark.parametrize("app_pair", [False, True])
+def test_google_login_starts_in_browser_on_configured_origin(monkeypatch, app_pair):
+    client = server_client.ServerClient(server_client.ServerSession(False, "https://cloud.example", "", "", "", ""))
+    monkeypatch.setattr(client, "request", lambda *args, **kwargs: {"url": "https://accounts.google.com/o/oauth2/v2/auth?state=owned"})
+    expected = "https://cloud.example/api/v1/auth/google/start" + ("?app=true" if app_pair else "")
+    assert client.google_login_url(app_pair) == expected
+
+
+@pytest.mark.parametrize("url", ["https://accounts.google.com.evil.example/", "https://evil.example/accounts.google.com",
+                                 "https://accounts.google.com@evil.example/", "http://accounts.google.com/",
+                                 "https://user:secret@accounts.google.com/"])
+def test_google_login_rejects_spoofed_provider_urls(monkeypatch, url):
+    client = server_client.ServerClient(server_client.ServerSession(False, "https://cloud.example", "", "", "", ""))
+    monkeypatch.setattr(client, "request", lambda *args, **kwargs: {"url": url})
+    with pytest.raises(server_client.ServerClientError):
+        client.google_login_url()
+
+
 @pytest.fixture
 def session_store(monkeypatch):
     stored = [server_client.ServerSession(True, "http://example.invalid", "old-access", "old-refresh", "original-team", "qa@example.invalid")]

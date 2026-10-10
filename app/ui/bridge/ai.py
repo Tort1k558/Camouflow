@@ -696,7 +696,8 @@ class AIBridge(QObject):
         if isinstance(settings, str):
             settings = json.loads(settings)
         browser = BrowserInterface(account["name"], proxy=account_proxy(account), browser_engine=engine,
-                                   browser_settings={**settings, "headless": False}, keep_browser_open=False)
+                                   browser_settings={**settings, "headless": False}, keep_browser_open=False,
+                                   storage_scope=account.get("_storage_scope"))
         artifacts = DATA_ROOT / "outputs" / "ai-runs" / f"{datetime.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:8]}"
         try:
             await browser.start()

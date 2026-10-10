@@ -234,4 +234,24 @@ Preserve the workspace and review a verified backup before recovering those
 records; do not reset or remove shared browser files. Renames refuse an existing
 unmanaged target directory. A failed metadata save attempts to move a renamed
 directory back. These guards do not provide crash-safe multi-file transactions,
-protect against arbitrary local Python, or namespace cloud storage by team.
+protect against arbitrary local Python.
+
+Cloud browser directories are keyed by the canonical server origin, team UUID,
+and profile UUID, not the display name. The full SHA-256 identity key uses one
+bounded directory component below `profiles/.cloud`, avoiding deep Windows
+Chromium paths. Renaming a cloud profile keeps its browser session; changing
+server, team, or profile identity uses separate cookies, fingerprints, and
+scenario variables. Both browser engines, recorder, AI replay, queue workers,
+and profile health checks use the captured identity, not the current UI session.
+Cloud storage-state files must remain inside that identity's directory.
+
+Existing name-based folders are preserved but never automatically adopted by a
+cloud profile: ownership cannot be inferred safely. Sign in again in the new
+cloud directory. Review a verified backup before any manual session recovery.
+Local profiles keep their existing name-based directories; local cleanup does
+not delete the reserved cloud namespace.
+
+Google sign-in opens the configured server's `/api/v1/auth/google/start` in the
+system browser so the callback can validate its HttpOnly state cookie. Updated
+servers reject callbacks from another browser or an expired flow. After this
+OAuth hardening, use the updated desktop build and restart any in-flight login.

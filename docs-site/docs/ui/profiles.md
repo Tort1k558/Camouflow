@@ -111,4 +111,15 @@ Preserve the workspace and review a verified backup before recovering those
 records; do not reset or remove shared browser files. Renames refuse an existing
 unmanaged target directory. A failed metadata save attempts to move a renamed
 directory back. These guards do not provide crash-safe multi-file transactions,
-protect against arbitrary local Python, or namespace cloud storage by team.
+protect against arbitrary local Python.
+
+Cloud browser storage uses a SHA-256 key of the canonical server origin, team
+UUID, and profile UUID under `profiles/.cloud`. Display-name changes preserve
+the same directory; different identities never reuse its cookies, fingerprints,
+or scenario variables. Both engines and desktop execution tools use the identity
+captured with the cloud profile. Local cleanup preserves the cloud namespace.
+
+Legacy name-based cloud sessions are preserved but not automatically imported:
+their ownership is ambiguous. Sign in again in the isolated cloud directory,
+or review a verified backup before manual recovery. A cloud storage-state file
+must stay inside its identity-scoped directory. Local storage paths are unchanged.

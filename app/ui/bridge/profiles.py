@@ -25,6 +25,8 @@ from app.services.server_client import (
 )
 from app.storage.db import (
     checked_profile_dir_for_email,
+    checked_profile_storage,
+    cloud_profile_scope,
     db_add_account,
     db_delete_account,
     db_get_accounts,
@@ -192,6 +194,7 @@ class ProfilesBridge(QObject):
                 "cloakbrowser_settings": settings,
                 "extra_fields": settings.get("variables") if isinstance(settings.get("variables"), dict) else {},
                 "_server_profile": profile,
+                "_storage_scope": cloud_profile_scope(client.session.url, client.session.team_id, profile["id"]),
             }
             proxy = proxies.get(str(profile.get("proxy_id") or ""))
             if proxy:
@@ -1266,7 +1269,8 @@ class ProfilesBridge(QObject):
                 acc = next((a for a in accounts if a.get("name") == name), None)
                 if not acc:
                     raise ValueError("Profile not found")
-                issue = self._profile_storage_issue(name, engine=str(acc.get("_browser_engine") or "camoufox"))
+                issue = self._profile_storage_issue(name, engine=str(acc.get("_browser_engine") or "camoufox"),
+                                                    storage_scope=acc.get("_storage_scope"))
                 if issue:
                     raise ValueError("Profile storage is damaged: " + issue)
                 if client:
@@ -1305,6 +1309,7 @@ class ProfilesBridge(QObject):
                 keep_browser_open=True,
                 browser_engine=engine,
                 browser_settings=settings,
+                storage_scope=acc.get("_storage_scope"),
             )
         except Exception as exc:
             self._on_browser_failed(name, None, exc)
@@ -1371,8 +1376,8 @@ class ProfilesBridge(QObject):
             self._resource_render_timer.start()
 
     @staticmethod
-    def _profile_storage_issue(name: str, *, engine: str) -> str:
-        root = checked_profile_dir_for_email(name)
+    def _profile_storage_issue(name: str, *, engine: str, storage_scope=None) -> str:
+        root = checked_profile_storage(name, storage_scope)
         profile_dir = root
         if engine == "cloakbrowser":
             profile_dir = profile_dir / "cloakbrowser"
@@ -1455,7 +1460,9 @@ class ProfilesBridge(QObject):
             try:
                 engine = str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox")
                 settings = self._settings_dict(account.get("cloakbrowser_settings") if engine == "cloakbrowser" else account.get("camoufox_settings")) or {}
-                browser = BrowserInterface(profile_name=name, proxy=self._proxy_for(account), keep_browser_open=False, browser_engine=engine, browser_settings=settings)
+                browser = BrowserInterface(profile_name=name, proxy=self._proxy_for(account), keep_browser_open=False,
+                                           browser_engine=engine, browser_settings=settings,
+                                           storage_scope=account.get("_storage_scope"))
 
                 async def inspect() -> dict:
                     await browser.start()
