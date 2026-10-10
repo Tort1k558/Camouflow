@@ -220,3 +220,18 @@ Account/settings mutations refuse to overwrite malformed, wrongly shaped or unre
 ### Profile-list import and explicit proxy pools
 
 Selecting a proxy pool requires an available unassigned, non-quarantined connection for each imported profile. Exhausted pools and failed cloud reads stop affected imports; they never silently create a direct-connection profile. Malformed or timezone-naive quarantine timestamps remain blocked until explicitly released. Choose **All pools** only when no pool assignment is intended. Partial failures keep the dialog open with only failed lines, so successful rows are not resubmitted. Failed local account writes attempt to restore the pool assignment; multiple-file writes are not a crash-safe transaction. Import error logs identify line numbers, not the credential-bearing input lines.
+
+### Dedicated browser storage
+
+New/renamed profile names must map to a valid, distinct browser directory.
+Reserved Windows names, workspace-root identities and names that sanitize to
+another profile's directory are rejected. Browser launch, cookie reads/resets,
+profile-directory deletion and restore targets validate their storage boundary.
+Profile-root links and linked engine directories are not accepted.
+
+Existing ambiguous/unsafe names are not automatically migrated or deleted.
+Preserve the workspace and review a verified backup before recovering those
+records; do not reset or remove shared browser files. Renames refuse an existing
+unmanaged target directory. A failed metadata save attempts to move a renamed
+directory back. These guards do not provide crash-safe multi-file transactions,
+protect against arbitrary local Python, or namespace cloud storage by team.

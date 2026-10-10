@@ -87,3 +87,18 @@ The bottom panel runs a selected scenario for profiles matching a tag:
 ## Shared variables
 
 The **Variables** button opens the shared variables editor. Shared variables are available to all profiles and scenarios.
+
+### Dedicated browser storage
+
+New/renamed profile names must map to a valid, distinct browser directory.
+Reserved Windows names, workspace-root identities and names that sanitize to
+another profile's directory are rejected. Browser launch, cookie reads/resets,
+profile-directory deletion and restore targets validate their storage boundary.
+Profile-root links and linked engine directories are not accepted.
+
+Existing ambiguous/unsafe names are not automatically migrated or deleted.
+Preserve the workspace and review a verified backup before recovering those
+records; do not reset or remove shared browser files. Renames refuse an existing
+unmanaged target directory. A failed metadata save attempts to move a renamed
+directory back. These guards do not provide crash-safe multi-file transactions,
+protect against arbitrary local Python, or namespace cloud storage by team.

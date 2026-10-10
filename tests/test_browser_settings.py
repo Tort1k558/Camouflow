@@ -101,7 +101,7 @@ def test_disabled_humanization_does_not_add_typing_delays(clear, monkeypatch):
 def test_cloak_context_uses_native_launcher_and_inherited_defaults(tmp_path, monkeypatch, persistent):
     import cloakbrowser
 
-    monkeypatch.setattr("app.core.browser_interface.profile_dir_for_email", lambda name: tmp_path / name)
+    monkeypatch.setattr("app.core.browser_interface.checked_profile_dir_for_email", lambda name: tmp_path / name)
     monkeypatch.setattr("app.core.browser_interface.db_get_camoufox_defaults", lambda: dict(db.CAMOUFOX_DEFAULTS))
     monkeypatch.setattr("app.core.browser_interface.db_get_cloakbrowser_defaults", lambda: {
         **db.CLOAKBROWSER_DEFAULTS, "locale": "de-DE", "timezone": "Europe/Berlin",

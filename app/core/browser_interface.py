@@ -13,7 +13,7 @@ from app.storage.db import (
     db_get_browser_engine,
     db_get_camoufox_defaults,
     db_get_cloakbrowser_defaults,
-    profile_dir_for_email,
+    checked_profile_dir_for_email,
 )
 
 from .browser_launchers import (
@@ -72,11 +72,13 @@ class BrowserInterface:
         self.profile_name = profile_name
         self.proxy = proxy
         self.keep_browser_open = keep_browser_open
-        self.profile_root = profile_dir_for_email(self.profile_name)
+        self.profile_root = checked_profile_dir_for_email(self.profile_name)
         self.browser_engine = normalize_browser_engine(browser_engine or db_get_browser_engine())
         self.user_data_dir = self.profile_root
         if self.browser_engine == BROWSER_ENGINE_CLOAKBROWSER:
             self.user_data_dir = cloakbrowser_profile_dir(self.profile_root)
+        if self.user_data_dir.is_symlink() or self.user_data_dir.is_junction() or not self.user_data_dir.resolve().is_relative_to(self.profile_root.resolve()):
+            raise ValueError("Browser directory must not escape its dedicated profile storage")
         os.makedirs(self.user_data_dir, exist_ok=True)
 
         self._browser_settings = browser_settings if browser_settings is not None else (camoufox_settings or {})

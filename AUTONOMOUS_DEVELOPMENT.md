@@ -917,3 +917,31 @@ launch or cloud calls. These are local observations, not universal hardware
 thresholds. 14 focused state/capability/alias regressions and **368 full tests
 passed**. The previous 074400 package predates these two runtime changes;
 rebuild and reverify before handoff.
+
+## Iteration 39 - dedicated profile paths and rename rollback
+
+Read-only storage audit found profile identifiers `.`/`..` reaching workspace
+roots, sanitized-name aliases sharing browser data, and rename I/O failures
+silently reported as success after metadata changed. Initial 25 regressions:
+23 failed / 2 passed. No real workspace deletion was run; negative deletion
+reproductions used spies and disposable synthetic files.
+
+Added a shared checked-profile path boundary for browser creation, cookie reads,
+directory removal/reset, new/renamed accounts and archive restore. Reused the
+archive's Windows-name validator instead of duplicating it. Root/engine links,
+unsafe/reserved names, active metadata aliases and existing rename destinations
+are rejected before side effects. Renames move the dedicated directory before
+saving metadata, attempt rollback on save failure, and no longer swallow I/O
+errors. Existing ambiguous records remain untouched; no migration/data cleanup.
+GUI preflight/constructor/cookie failures use existing asynchronous error and
+cloud-lock cleanup paths rather than uncaught Qt callbacks.
+
+35 focused path/alias/rename/link/error regressions and **403 full desktop tests
+passed**. Actual two Windows
+junctions: six unsafe operations rejected, a nested-junction reset did not follow
+its target and the outside synthetic marker remained intact. Real Windows QML
+legacy-root start failed before constructor, async cookie failure arrived, a
+controlled constructor-race failure used GUI cleanup, no browser launched and
+zero warnings. Updated guides explicitly avoid crash-transaction/sandbox claims.
+Cloud browser storage is still name-based; cross-team ID-based namespacing needs
+a separate compatibility/recovery design, not an automatic ambiguous migration.

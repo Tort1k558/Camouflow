@@ -96,7 +96,6 @@ def test_empty_reservations_do_not_resolve_profile_paths(monkeypatch):
 
     bridge = SimpleNamespace(_reservation_lock=RLock(), _reserved=set())
     path = Mock(side_effect=AssertionError("Unnecessary filesystem lookup"))
-    monkeypatch.setattr(profiles, "profile_dir_for_email", path)
     from app.storage import db
     monkeypatch.setattr(db, "profile_dir_for_email", path)
     assert not OperationsBridge.isReserved(bridge, "profile1")

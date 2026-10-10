@@ -23,7 +23,7 @@ from app.storage.db import (
     db_get_setting,
     db_set_setting,
     db_update_account,
-    profile_dir_for_email,
+    checked_profile_dir_for_email,
 )
 from app.services.server_client import ServerClient, ServerClientError, server_enabled
 from app.ui.bridge.cloud_permissions import allows, deny_message
@@ -774,7 +774,7 @@ class ProfilesBridge(QObject):
         import sqlite3
         import tempfile
 
-        profile_dir = Path(profile_dir_for_email(profile_name))
+        profile_dir = Path(checked_profile_dir_for_email(profile_name))
         if not profile_dir.exists():
             return []
 
@@ -811,6 +811,8 @@ class ProfilesBridge(QObject):
             ("chromium", profile_dir / "Default" / "Network" / "Cookies"),
         ]
         for source, path in candidates:
+            if path.is_symlink() or path.is_junction() or not path.resolve().is_relative_to(profile_dir.resolve()):
+                raise ValueError("Cookie storage must remain inside its dedicated profile directory")
             if not path.exists():
                 continue
             try:
@@ -989,14 +991,14 @@ class ProfilesBridge(QObject):
                 if engine == "cloakbrowser"
                 else acc.get("camoufox_settings")
             )
-            browser = BrowserInterface(
-                profile_name=target,
-                proxy=self._proxy_for(acc),
-                keep_browser_open=False,
-                browser_engine=engine,
-                browser_settings=settings,
-            )
             try:
+                browser = BrowserInterface(
+                    profile_name=target,
+                    proxy=self._proxy_for(acc),
+                    keep_browser_open=False,
+                    browser_engine=engine,
+                    browser_settings=settings,
+                )
                 async def run() -> None:
                     await browser.start()
                     context = getattr(browser, "context", None)
@@ -1232,13 +1234,17 @@ class ProfilesBridge(QObject):
         proxy = self._proxy_for(acc)
         engine = str(acc.get("_browser_engine") or acc.get("browser_engine") or "camoufox")
         settings = self._settings_dict(acc.get("cloakbrowser_settings") if engine == "cloakbrowser" else acc.get("camoufox_settings"))
-        browser = BrowserInterface(
-            profile_name=name,
-            proxy=proxy,
-            keep_browser_open=True,
-            browser_engine=engine,
-            browser_settings=settings,
-        )
+        try:
+            browser = BrowserInterface(
+                profile_name=name,
+                proxy=proxy,
+                keep_browser_open=True,
+                browser_engine=engine,
+                browser_settings=settings,
+            )
+        except Exception as exc:
+            self._on_browser_failed(name, None, exc)
+            return
         stopped = threading.Event()
         self._browser_stops[name] = stopped
         browser.add_ready_callback(lambda: self.uiCall.emit(self._render_accounts))
@@ -1271,7 +1277,7 @@ class ProfilesBridge(QObject):
     def _proxy_for(self, acc: Dict[str, Any]) -> str:
         return account_proxy(acc)
 
-    def _on_browser_failed(self, name: str, browser: BrowserInterface, exc: Exception) -> None:
+    def _on_browser_failed(self, name: str, browser: Optional[BrowserInterface], exc: Exception) -> None:
         self._browser_stops.pop(name, None)
         if self._live_browsers.get(name) is browser:
             self._live_browsers.pop(name, None)
@@ -1302,9 +1308,12 @@ class ProfilesBridge(QObject):
 
     @staticmethod
     def _profile_storage_issue(name: str, *, engine: str) -> str:
-        profile_dir = profile_dir_for_email(name)
+        root = checked_profile_dir_for_email(name)
+        profile_dir = root
         if engine == "cloakbrowser":
             profile_dir = profile_dir / "cloakbrowser"
+        if profile_dir.is_symlink() or profile_dir.is_junction() or not profile_dir.resolve().is_relative_to(root.resolve()):
+            raise ValueError("Browser directory must not escape its dedicated profile storage")
         preferences = profile_dir / "Default" / "Preferences"
         if not preferences.exists() or not preferences.is_file():
             return ""

@@ -217,6 +217,37 @@ def profile_dir_for_email(email: str) -> Path:
     return PROFILES_DIR / _safe_profile_name(email)
 
 
+def _unsafe_windows_name(name: str) -> bool:
+    stem = name.split(".", 1)[0].upper()
+    return (name.endswith((".", " ")) or stem in {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
+            or stem in {f"{prefix}{n}" for prefix in ("COM", "LPT") for n in range(1, 10)}
+            or any(ord(c) < 32 or c in '<>"|?*' for c in name))
+
+
+def checked_profile_dir_for_email(name: str, *, renamed_from: Optional[str] = None) -> Path:
+    """Validate dedicated browser storage before creating, moving or removing it."""
+    storage_name = _safe_profile_name(name)
+    if _unsafe_windows_name(storage_name):
+        raise ValueError("Enter a profile name with a valid browser directory")
+    path = profile_dir_for_email(name)
+    if path.is_symlink() or path.is_junction():
+        raise ValueError("Profile directory must not be a filesystem link")
+    root, target = PROFILES_DIR.resolve(), path.resolve()
+    if target == root or not target.is_relative_to(root):
+        raise ValueError("Profile directory must remain inside the profiles workspace")
+    allowed_names = {name.casefold()}
+    if renamed_from is not None:
+        allowed_names.add(renamed_from.casefold())
+    matches = 0
+    for account in _load_accounts_raw(strict=True):
+        other = str(account.get("name") or "").strip()
+        if other and _safe_profile_name(other).casefold() == storage_name.casefold():
+            matches += 1
+            if other.casefold() not in allowed_names or matches > 1:
+                raise ValueError("Profile name shares another profile's browser directory; choose a distinct name")
+    return path
+
+
 def _safe_scenario_name(name: str) -> str:
     cleaned = re.sub(r"[^a-zA-Z0-9_.-]", "_", name.strip() or "scenario")
     return cleaned[:120]
@@ -347,6 +378,7 @@ def db_add_account(account: Dict[str, Any]) -> Dict[str, Any]:
     acc_id = str(normalized.get("name") or "")
     if acc_id and acc_id.lower() in ids_lower:
         raise ValueError("Duplicate account identifier")
+    checked_profile_dir_for_email(acc_id)
     accounts.append(normalized)
     _save_accounts_raw(accounts)
     return normalized
@@ -411,17 +443,23 @@ def db_update_account(account_name: str, updates: Dict[str, Any]) -> None:
             raise ValueError("Duplicate account identifier")
 
     normalized = _normalize_account(merged)
+    renamed = False
+    if str(normalized.get("name") or "") != str(current.get("name") or ""):
+        old_profile = checked_profile_dir_for_email(str(current.get("name") or ""))
+        new_profile = checked_profile_dir_for_email(str(normalized.get("name") or ""), renamed_from=str(current.get("name") or ""))
+        if old_profile != new_profile:
+            if new_profile.exists():
+                raise ValueError("Profile storage already exists; choose a new name")
+            if old_profile.exists():
+                old_profile.rename(new_profile)
+                renamed = True
     accounts[idx] = normalized
-    _save_accounts_raw(accounts)
-
-    # Rename profile directory if the identifier changed.
-    old_profile = profile_dir_for_email(str(current.get("name") or ""))
-    new_profile = profile_dir_for_email(str(normalized.get("name") or ""))
-    if old_profile != new_profile and old_profile.exists():
-        try:
-            old_profile.rename(new_profile)
-        except Exception:
-            pass
+    try:
+        _save_accounts_raw(accounts)
+    except Exception:
+        if renamed:
+            new_profile.rename(old_profile)
+        raise
 
 
 def _load_settings(*, strict: bool = False) -> Dict[str, str]:
@@ -662,7 +700,7 @@ def cleanup_profiles(accounts: List[Dict[str, Any]]) -> None:
 
 
 def delete_profile_for_account(name: str) -> None:
-    path = profile_dir_for_email(name)
+    path = checked_profile_dir_for_email(name)
     if path.exists():
         shutil.rmtree(path, ignore_errors=True)
 
@@ -671,7 +709,7 @@ def clear_profile_cookies(name: str) -> bool:
     """
     Remove the entire profile directory to reset cookies/storage without deleting the account.
     """
-    profile_path = profile_dir_for_email(name)
+    profile_path = checked_profile_dir_for_email(name)
     if not profile_path.exists():
         return False
 
