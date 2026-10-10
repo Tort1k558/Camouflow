@@ -39,7 +39,7 @@ production changes. Production updates need backups, rollback and smoke checks.
 | P2 | Run results/search/filter usability | Implemented | Collapsible scheduling, search/status filters, retained-history matching and minimum-window proof |
 | P2 | Queue/storage failure and concurrency audit | Implemented initial safeguards | Reproduced disk-write failure leaving running job with no worker; rollback, pause and visible errors added |
 | P2 | Useful server functionality | Team run history deployed | Correct terminal statuses/token lifecycle plus read-only team search/filter/pagination; isolated auth/RBAC/browser proof |
-| P2 | Current-source browser and packaging smoke | Runtime source c62a55f verified | Package 074400: both fresh engine/Python reports and actual authenticated-proxy queue/export checks; later changes are tests/docs only |
+| P2 | Current-source browser and packaging smoke | Runtime source 6a773c1 verified | Package 091311: 452 tests, both fresh engine/Python reports and actual authenticated-proxy queue/export checks; current runtime CI successful |
 
 ## Research direction
 
@@ -1009,3 +1009,58 @@ passed. This package predates iteration 41; rebuild before the final handoff.
 Full current desktop suite: **452 passed**. Fresh CI 640b579 run 38026449646,
 25d4c0a run 38023791088, d10aa28 run 38022824289 and b46bdf4 run 38022253112
 all completed successfully. Iteration 41 needs its own fresh CI after push.
+
+## Iteration 42 - complete profile/scenario null-update boundaries
+
+Nine private HTTP regressions failed before the fix; three omission/nullable
+checks passed. Owned actual local API reproduced profile settings and scenario
+definition null: PATCH 500 followed by list 500. The two synthetic rows were
+removed and lists returned 200; production was never used for this mutation.
+Align five profile/four scenario update field types with their non-nullable
+storage/public contracts, following the already-fixed proxy pattern. Fields
+omitted from PATCH remain untouched; nullable profile pool/proxy references can
+still be cleared. Admin/team/pool/run null behavior was inspected and retained,
+not broadly changed without a poisoning path. Twelve focused checks passed.
+
+Latest immutable private image passed disposable PostgreSQL: 15 total resource
+null cases, omission/nullable references, healthy lists, five edit plus five
+delete actual TCP races and retained assets. Test-only httpx stayed in its
+disposable QA container. Read-only live JSON-null profile/scenario counts were
+zero; no customer repair, deletion or production migration.
+
+Backend-only cutover at **09:26 Samara** to healthy 18084, with validated dump,
+prior Caddy/compose/source backup and retained healthy 18082 rollback. JS remains
+index-B0fSbFNz.js. Default 80/80, explicitly bound Ethernet 79/80 (one recorded
+RemoteDisconnected), independent steady-state 160/160; no hidden retry or
+zero-downtime claim. Anonymous live OpenAPI confirms all nine new guards; actual
+production browser passed 21 route/width checks, zero errors, no customer login.
+Fresh local API browser passed all five roles, real TCP check and 63 tied audit
+rows; fixed settings/definition actual HTTP checks return 422/list 200.
+
+## Iteration 43 - repair and exercise real fresh-install migration chains
+
+The stronger disposable-image check used Alembic rather than model create_all
+and found PostgreSQL rejecting an integer default on a Boolean historical column.
+After that fix, fresh SQLite exposed duplicate pool_shares creation: revision
+0001 uses current metadata, while 0007 unconditionally recreated the table.
+Use SQLAlchemy's portable [false()](https://docs.sqlalchemy.org/en/20/core/sqlelement.html#sqlalchemy.sql.expression.false)
+for upgrade/downgrade Boolean defaults; make 0007 respect an existing table,
+matching neighboring migration patterns. No historical migration rewrite beyond
+these compatibility boundaries, new revision or production migration was run.
+
+Real SQLite and exact-image disposable PostgreSQL passed empty installation,
+owned downgrade/reupgrade, Boolean default insertion, existing/absent pool-share
+creation and synthetic team preservation. These owned fixtures do not establish
+a production disaster-recovery drill or recovery of dropped commercial data.
+Full private suite **138 passed**. Private sources remain outside Git.
+
+Current desktop package **dist/release-20261010-091311/CamouFlow/CamouFlow.exe**
+contains runtime 6a773c1: clean build, compileall, **452 tests**, fresh parsed
+engine/Python reports passed. Actual packaged HTTP-authenticated proxy queue and
+export passed on both engines with target TLS certificate/hostname validation.
+Current-source MCP stdio handshake/read-only tools/startup allowlist/no execution
+arguments and real approved queue runs passed on both engines. Actual isolated
+n8n import/static-command/browser CLI/JSON export/history/parse-result passed.
+Both use existing separate integration runtimes, no desktop dependency changes.
+Fresh CI 6a773c1 run **38026742763** completed successfully. Current full 13-page
+QML recipe passed; Retype **35 pages, zero errors/warnings**, built not published.
