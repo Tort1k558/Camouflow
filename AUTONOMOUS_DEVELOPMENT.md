@@ -1094,3 +1094,132 @@ OAuth failure/history fragment removal and readable validation passed again.
 Seven canonical private host source/handoff files were byte-hash verified;
 the immutable image stayed unchanged, all prior upstreams remained healthy,
 and original API/PostgreSQL/Caddy/VPN start timestamps were preserved.
+
+## Final packaging and native archive validation
+
+Closed real Camoufox/CloakBrowser profiles were exported with sessions and
+without metadata secrets, restored under new local names and actually reopened.
+Persistent cookie values, HttpOnly/SameSite flags and origin localStorage all
+survived; original metadata was unchanged. Archives contained 71 Firefox and
+155 Chromium browser files. This is same-Windows-user/machine proof, not a claim
+that browser-encrypted sessions transfer to another machine or account.
+
+Prepared local **dist/CamouFlow-autonomous-20261010-091311-windows.zip**,
+138,448,015 bytes, SHA256
+`3e2d7995c9d99ea291a4c27525306a947180a91800df34cc2b8969866f8c62ad`.
+All bundled scenario files are tracked source assets; no untracked scenarios,
+workspace settings/profiles or private backend were packaged. ZIP CRC verified,
+extracted executable hash matched the original, and fresh runtime/import/hard-
+timeout checks passed for both engines from an independent extracted directory.
+This is a local delivery artifact, not a published release or main merge.
+
+Machine-readable receipt **outputs/autonomous-audit/final-verification.json**
+checks code-source equivalence to packaged runtime 6a773c1, fresh parsed engine
+reports, package/ZIP hashes, native cookie/archive proofs, current tests/docs/CI,
+isolated integrations, live schemas and dual-path steady-state evidence.
+Thirty-five changed Python files passed critical Ruff checks; compileall passed;
+72 changed text files passed UTF-8/no-BOM/replacement-character verification.
+Owned PowerShell-generated QA logs were normalized from their explicit UTF-16
+BOM to ordinary UTF-8 without BOM; actively written soak files were not touched.
+
+## Remaining risks and highest-value continuation
+
+- Cloud browser storage still uses human names, not server/team/profile IDs.
+  Next: propagate stable scoped identity through manual browser launch, queue,
+  recorder, AI and Python workers; provide explicit backed-up recovery of old
+  folders. Never silently assign ambiguous browser data to another team or fall
+  back to a similarly named local profile. No migration was implemented here.
+- Local identical proxy copies lack persisted UUIDs. Existing opaque snapshot
+  guards reduce stale writes, but UUID identity needs a separate compatibility
+  migration rather than claiming hashes distinguish identical rows.
+- Cookie replacement, profile rename and multi-file import rollback are attempts,
+  not crash-safe transactions. Directory guards are not a local-Python sandbox
+  or complete filesystem race protection.
+- Native browser-event forwarding remains partial; inspect traces/HTML/screenshots
+  locally. Do not disable stealth or add a fallback/instrumentation implicitly.
+  Paid-provider quality, real Google/customer authentication, different machines
+  and a production backup restoration drill were not tested.
+- HTTPS-to-proxy health/geo remains explicitly unsupported. The existing secondary
+  HTTP geo provider remains; no universal TLS or endpoint-reachability guarantee.
+- Progress logs no longer implicitly print values, but explicit logs/stdout,
+  errors, historical logs, browser files and artifacts can still contain secrets.
+  Profile archives are unencrypted, including session data when metadata secrets
+  are excluded. Retention limits metadata, not automatic artifact deletion.
+- Caddy reload cutovers recorded a bounded connection close on physical egress.
+  Long passive health sampling and successful steady state do not erase it or
+  establish zero downtime. Keep retained healthy upstreams and verified backups;
+  do not prune them or modify unrelated VPN/Caddy global settings casually.
+- Feature-branch docs are built but not published to GitHub Pages. Main stays
+  unchanged; the new local ZIP is not an official public release.
+
+## Closeout - 2026-10-10 10:00 Samara / 06:00 UTC
+
+Worked through the requested deadline. The actual timed read-only production
+soak exited successfully: **354 rounds / 638 checks / 0 failures**, complete.
+Counts were recomputed from every JSONL record and matched the final summary;
+live health/OpenAPI and source/package/ZIP/test/CI evidence were revalidated after
+06:00 UTC. This sampling does not override the recorded cutover connection close.
+
+Final verified runtime 6a773c1; desktop **452 tests**, private **138 tests**,
+runtime CI **38026742763 success**, both native engines and fresh extracted ZIP
+runtime checks passed. Current live backend remains immutable resource-guard
+image c0222877 on healthy 18084, with healthy rollback upstreams retained.
+Production dump inventory was revalidated; original service starts preserved.
+Owned localhost QA API/Vite/preview listeners 15173-15177 were stopped, owned
+browser sessions closed, and the production soak was allowed to finish naturally.
+No customer data cleanup, production migration, VPN restart, main merge, public
+release, private-backend commit or private-backend push was performed.
+
+The closing documentation commit brings the feature branch to **45 public
+commits since 37207b9**. Runtime code is unchanged by subsequent documentation
+commits. Full pre-closeout commit manifest follows; the final HEAD is recorded
+in the machine-readable verification receipt and can be verified on origin.
+
+## Public commit manifest before closeout
+
+```text
+6b07975 Preserve canceled pending runs in local history
+4a2dead Run desktop CI for test changes and smoke Tasks page
+471de99 Add saved task search while preserving run input drafts
+d49930f Keep queue and history consistent on storage write failures
+76c0735 Document timestamped builds and verified release checks
+4a4beb5 Record verified blue-green backend rollout and continuation priorities
+e797832 Reject invalid engine arguments in workflow verification
+20cea3b Make run results visible before scheduling controls
+9df2835 Add workspace-scoped search and status filters to run results
+5cf9aaa Bound artifact previews and keep run selection workspace-safe
+aef395f Unify proxy quarantine policy and stop canceled assignments
+6b5e411 Preserve proxy pool edits when asynchronous checks finish
+c1e72c2 Serialize cloud token refresh and save session fields atomically
+b7cb42c Record verified workspace-isolated console rollout
+6de697b Render untrusted QML metadata as plain text without image requests
+0254cd2 Hide proxy credentials in inventory and dashboard summaries
+4c8e6ca fix(proxies): distinguish unchecked and TCP-only health
+62b0db1 fix(proxies): bind cloud actions to displayed identities
+cbfcc57 feat(proxies): add cached inventory search and status filters
+19990a8 fix(proxies): preserve encoded auth IPv6 and CONNECT framing
+c952eba docs: record verified web data failure handling
+34ebcc9 docs: record backed-up proxy console rollout and package proof
+b71ab9a fix(proxies): require successful geo response and valid exit IP
+6c09c40 fix(proxies): isolate geo routing and support IPv6 upstreams
+cb51281 docs: record packaged proxy proof and staged web resilience
+fadc3c0 fix(scenarios): keep private values out of implicit progress logs
+e762bb8 docs: record audit rollout and verified current desktop package
+35eb4ce fix(proxies): guard local dialogs and invalidate changed endpoint health
+e5ae29e fix(proxies): clear bulk targets before workspace refresh
+f4d0e5c perf(proxies): reuse display parsing within the current inventory
+c3f8ef9 docs: record isolated reload diagnosis and probe race verification
+6928e42 fix(proxies): capture local dialogs from the displayed inventory
+856fb1d fix(proxies): validate local bulk targets before mutation or probing
+6b09173 fix: preserve invalid local storage during mutations
+593b34c fix: report settings persistence failures and save AI config atomically
+8e38cf5 fix: require explicit pool assignments and retain failed import drafts
+c62a55f fix: canonicalize cloud proxy credentials and IPv6 fields
+b46bdf4 test: cover profile archive integrity privacy and rollback
+d10aa28 perf: snapshot profile presentation state and skip empty reservations
+25d4c0a fix: guard dedicated profile storage and roll back failed renames
+640b579 fix: protect local cookie replacement and normalize engine previews
+6a773c1 fix: validate AI history before replacing workspace state
+fbb8891 docs: record verified resource guards migrations and final integration build
+55b4a19 docs: distinguish native browser diagnostics and verify cookie workers
+```
