@@ -139,3 +139,59 @@ def test_native_fixture_serves_requests_while_browser_preconnect_is_idle():
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_native_build_lock_pins_full_source_revisions():
+    import re
+    from scripts.native_build import LOCK
+
+    assert LOCK["schema"] == 1
+    for name in ("chromium_revision", "depot_tools_revision"):
+        assert re.fullmatch(r"[0-9a-f]{40}", LOCK[name])
+    assert LOCK["minimum_free_gib"] >= 100
+    assert LOCK["build_jobs"] <= 4
+
+
+def test_native_build_rejects_relative_workspace():
+    from scripts.native_build import preflight
+
+    with pytest.raises(ValueError, match="absolute"):
+        preflight(Path("relative-native-build"))
+
+
+def test_native_build_rejects_checkout_inside_application():
+    from scripts.native_build import ROOT, preflight
+
+    with pytest.raises(ValueError, match="outside"):
+        preflight(ROOT / "native-checkout")
+
+
+def test_native_build_rejects_unrelated_nonempty_checkout(tmp_path):
+    from scripts.native_build import checkout
+
+    directory = tmp_path / "source"
+    directory.mkdir()
+    customer_file = directory / "customer-data"
+    customer_file.write_text("preserve", encoding="utf-8")
+    with pytest.raises(ValueError, match="unrelated"):
+        checkout(directory, "https://example.invalid/source", "a" * 40, {})
+    assert customer_file.read_text(encoding="utf-8") == "preserve"
+
+
+def test_native_build_rejects_uncommitted_source_changes(tmp_path, monkeypatch):
+    from scripts import native_build
+
+    directory = tmp_path / "source"
+    directory.mkdir()
+    (directory / ".git").mkdir()
+    commands = []
+    repository = "https://example.invalid/source"
+    def fake_run(args, cwd, env, capture=False):
+        commands.append(args)
+        if args[1:3] == ["remote", "get-url"]:
+            return repository
+        return " M native-patch.cc" if args[1] == "status" else ""
+    monkeypatch.setattr(native_build, "run", fake_run)
+    with pytest.raises(ValueError, match="Uncommitted"):
+        native_build.checkout(directory, repository, "a" * 40, {})
+    assert not any("fetch" in args or "checkout" in args for args in commands)

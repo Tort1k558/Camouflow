@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "native_version": "0.1.0-dev",
+  "chromium_version": "148.0.7778.96",
+  "chromium_revision": "8625e066febc721e015ea99842da12901eb7ed73",
+  "chromium_repository": "https://chromium.googlesource.com/chromium/src.git",
+  "depot_tools_revision": "a03dfbf7f2d1cefa2795d81d59ca4f16c8616a8f",
+  "depot_tools_repository": "https://chromium.googlesource.com/chromium/tools/depot_tools.git",
+  "minimum_free_gib": 180,
+  "build_jobs": 4
+}
