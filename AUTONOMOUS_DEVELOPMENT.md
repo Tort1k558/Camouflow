@@ -1854,3 +1854,36 @@ green styling, keep server sources private, and verify each capability separatel
   built, but actual browser runtime gates correctly failed because clean runners
   had no installed Camoufox binary. CI now explicitly fetches both engine binaries
   before bounded worker/runtime checks. Native platform readiness remains pending.
+
+### Local selector repair UI rollout - 2026-10-11
+
+- Connected the proposal service to final local root-scenario failures, guarded by
+  the saved AI-enabled and explicit selector-repair opt-in settings. The failed
+  job stays failed, with no automatic retry. Cancellation stops proposal generation.
+- Runs now exposes a plain-text, scrollable review dialog with old/new selector,
+  frame scope and verified page. Confirmation freezes the proposal/workspace;
+  stale definitions, changed workspaces, editor drafts and active runs block saves.
+  Successful saves update the editor and artifact receipt; queued snapshots remain
+  unchanged. Scenario writes now reuse the existing atomic storage helper.
+- Actual source UI/queue checks on Camoufox and CloakBrowser used real OpenRouter
+  free calls and owned profiles/pages: selector failure, generated proposal, review,
+  cancellation without modification, confirmation, saved definition and successful
+  new queue run with zero further AI calls. API calls reported zero cost; no QML
+  warnings. The review dialog was visually checked with registered fonts in the
+  isolated offscreen Windows test. No customer sessions or production data changed.
+- Raw, unapplied editor form fields also block review/approval, rather than being
+  overwritten by the saved-selector refresh. This guard was exercised in the real
+  QML flow. Value-based CSS/XPath selectors are excluded before any provider call.
+- Local full suite after integration: **606 passed**. Cloud/hosted and nested
+  definition saving, screenshot/trace AI analysis and broader site evidence remain
+  pending; the overall mission is not complete.
+- Native CI for `5552d89` passed all three Python/QML checks and the Linux package
+  plus both actual packaged-engine/timeout gates. macOS's installer hit unauthenticated
+  GitHub API rate limits; fetch misleadingly exited zero without a binary. CI now
+  supplies its scoped built-in token and verifies the active installation before
+  building. Windows's positive import check exceeded its overly tight 3-second
+  fixture budget: it now gets 15 seconds, while the hard-loop timeout stays 3 seconds.
+  Both native fixes require fresh CI; no macOS readiness claim is made.
+- Final clean local Windows build and both packaged runtime gates passed with
+  explicit process exit zero: `dist/release-20261011-024631/CamouFlow/CamouFlow.exe`.
+  This is development verification, not publication of a new customer release.

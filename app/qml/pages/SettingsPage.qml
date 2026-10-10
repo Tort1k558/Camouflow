@@ -61,7 +61,7 @@ Flickable {
 
         SettingsSection {
             width: parent.width
-            height: 470
+            height: 546
             title: "AI Assistant"
             subtitle: "Browser agent provider (OpenAI-compatible: GLM, OpenAI, OpenRouter, Ollama…)"
             icon: "settings"
@@ -95,6 +95,16 @@ Flickable {
                     PrimaryButton { text: "Save AI settings"; secondary: true; onClicked: settingsBridge.saveAiSettings(aiEnabled.checked, aiBaseUrl.text, aiApiKey.text, aiModel.text, aiMaxSteps.text) }
                     PrimaryButton { text: "Test connection"; secondary: true; onClicked: settingsBridge.testAiDraft(aiBaseUrl.text, aiApiKey.text, aiModel.text) }
                 }
+                RowLayout {
+                    width: parent.width; spacing: 10
+                    Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "Propose selector repairs for failed local runs"; color: Theme.text; font.pixelSize: 12 }
+                    CheckBox {
+                        objectName: "aiSelectorRepairEnabled"
+                        checked: settingsBridge ? settingsBridge.aiSelectorRepairEnabled : false
+                        onToggled: settingsBridge.setAiSelectorRepairEnabled(checked)
+                    }
+                }
+                Text { width: parent.width; wrapMode: Text.WordWrap; color: Theme.muted; font.pixelSize: 11; text: "Uses saved AI settings and sends element labels to your provider. Two requests maximum per proposal. Review it in Runs; saving requires confirmation and never repeats the action." }
             }
         }
     }

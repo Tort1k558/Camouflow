@@ -11,6 +11,18 @@ Item {
     enabled: !scenariosBridge.saving
     Connections { target: scenariosBridge; function onScenarioSaved() { root.markScenarioSaved() } }
     property bool scenarioSaved: false
+    property string stepEditorBaseline: ""
+    readonly property bool editorHasDrafts: (stepEditorBaseline !== "" && stepEditorSignature() !== stepEditorBaseline)
+        || scenarioNameEdit.text !== scenariosBridge.selectedName
+        || scenarioDescEdit.text !== scenariosBridge.selectedDescription
+    onEditorHasDraftsChanged: operationsBridge.setEditorDraftsPresent(editorHasDrafts)
+    Component.onDestruction: operationsBridge.setEditorDraftsPresent(false)
+
+    function stepEditorSignature() {
+        return JSON.stringify([stepTag.text, stepAction.text, stepSelector.text,
+            stepSelectorType.text, stepValue.text, stepVariable.text, stepPattern.text,
+            stepTimeout.text, stepSeconds.text, stepNextOk.text, stepNextErr.text, stepExtra.text])
+    }
 
     function markScenarioSaved() {
         scenarioSaved = true
@@ -56,6 +68,7 @@ Item {
         var skip = {"tag":1,"action":1,"selector":1,"selector_type":1,"value":1,"url":1,"text":1,"message":1,"name":1,"to_var":1,"from_var":1,"variable":1,"pattern":1,"targets_string":1,"timeout_ms":1,"seconds":1,"next_success_step":1,"next_error_step":1,"_pos":1}
         for (var k in step) if (!skip[k]) extra[k] = step[k]
         stepExtra.text = JSON.stringify(extra, null, 2)
+        stepEditorBaseline = stepEditorSignature()
     }
 
     Connections {

@@ -17,7 +17,7 @@ from PyQt6.QtCore import QUrl, QObject, pyqtProperty, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QDesktopServices
 
 from app.core.browser_interface import BrowserInterface
-from app.services.ai_agent.llm import LLMClient, LLMConfig
+from app.services.ai_agent.llm import LLMClient, LLMConfig, configured_llm_config
 from app.services.ai_agent.loop import DOM_JS_PATH, AgentSession, check_navigation_url, save_transcript
 from app.services.run_history import RunHistory
 from app.services.ai_agent.to_steps import compile_workflow, scenario_description, session_to_scenario_steps, steps_summary
@@ -36,11 +36,7 @@ def _ai_setting(key: str, default: str = "") -> str:
 
 
 def ai_config() -> LLMConfig:
-    return LLMConfig(
-        base_url=_ai_setting("ai_base_url"),
-        api_key=_ai_setting("ai_api_key"),
-        model=_ai_setting("ai_model"),
-    )
+    return configured_llm_config()
 
 
 def ai_configured() -> bool:

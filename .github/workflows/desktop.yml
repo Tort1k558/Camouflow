@@ -234,8 +234,11 @@ jobs:
           python -m playwright install-deps chromium firefox
           sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 fonts-dejavu-core
       - name: Install the real engine binaries before bounded runtime checks
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python -m camoufox fetch
+          python -c "from camoufox.pkgman import camoufox_path; camoufox_path(download_if_missing=False)"
           python -c "from cloakbrowser import ensure_binary; ensure_binary()"
       - name: Build and verify both packaged browser engines
         shell: python

@@ -18,6 +18,32 @@ Flickable {
     property bool filtersActive: operationsBridge.runQuery.trim() !== "" || operationsBridge.runStatus !== ""
     onSchedulingSelectionChanged: if (schedulingSelection !== "") schedulingExpanded = true
     ConfirmDialog { id: confirmation; width: Math.min(460, root.width - 32) }
+    WorkspaceDialog {
+        id: selectorRepairConfirmation
+        objectName: "selectorRepairConfirmation"
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(620, root.width - 32)
+        padding: 24
+        title: "Review selector repair"
+        property string preview: ""
+        contentItem: ScrollView {
+            implicitHeight: Math.min(300, root.height - 180)
+            TextArea { text: selectorRepairConfirmation.preview; textFormat: TextEdit.PlainText; readOnly: true; wrapMode: TextEdit.Wrap; color: Theme.text; font.pixelSize: 13; background: null }
+        }
+        footer: DialogActions {
+            acceptText: "Save selector"
+            onAccepted: { operationsBridge.approveSelectorRepair(true); selectorRepairConfirmation.close() }
+            onRejected: selectorRepairConfirmation.close()
+        }
+        onClosed: operationsBridge.approveSelectorRepair(false)
+    }
+    Connections {
+        target: operationsBridge
+        function onSelectorRepairApprovalRequested(preview) {
+            selectorRepairConfirmation.preview = preview
+            selectorRepairConfirmation.open()
+        }
+    }
     ColumnLayout {
         id: body
         x: 28; y: 24; width: parent.width - 56; spacing: 16
@@ -132,6 +158,12 @@ Flickable {
                 PrimaryButton { text: "Retry from start"; secondary: true; enabled: root.selectedJob !== ""; onClicked: confirmation.ask("Repeat the entire scenario on this profile? Previously completed actions, payments or submissions may run again. Review the error and artifacts first.", function() { operationsBridge.retry(root.selectedJob) }, "Retry") }
             }
             Text { Layout.fillWidth: true; text: "Artifacts may contain signed-in pages and sensitive data. Open trace.zip with the local Playwright trace viewer; do not upload it to untrusted services."; color: Theme.muted; wrapMode: Text.WordWrap }
+            RowLayout {
+                Layout.fillWidth: true
+                visible: operationsBridge.selectorRepairAvailable
+                Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "A replacement selector was verified on the failed page. Review before saving."; textFormat: Text.PlainText; color: Theme.muted }
+                PrimaryButton { objectName: "reviewSelectorRepair"; text: "Review repair"; onClicked: operationsBridge.requestSelectorRepair(root.selectedJob) }
+            }
             RowLayout {
                 Layout.fillWidth: true
                 Text { Layout.fillWidth: true; text: "Local history"; color: Theme.text; font.pixelSize: 16; font.weight: Font.DemiBold }

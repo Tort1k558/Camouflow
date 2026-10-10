@@ -29,6 +29,7 @@ from app.ui.bridge.models import DictListModel
 
 class OperationsBridge(QObject):
     pythonApprovalRequested = pyqtSignal(str)
+    selectorRepairApprovalRequested = pyqtSignal(str)
     changed = pyqtSignal()
     message = pyqtSignal(str)
     uiCall = pyqtSignal(object)
@@ -44,6 +45,9 @@ class OperationsBridge(QObject):
         self._debug_enabled = str(db.db_get_setting("general_debug_mode") or "").lower() in {"true", "1"}
         self._busy = False
         self._pending_python = None
+        self._pending_selector_repair = None
+        self._selector_repair = None
+        self._editor_drafts_present = False
         self._preview = ""
         self._plan = None
         self._selected = ""
@@ -84,6 +88,8 @@ class OperationsBridge(QObject):
             self.clearSelection()
             self._selected = ""
             self._details = ""
+            self._pending_selector_repair = None
+            self._selector_repair = None
             self.queue.configure(self.queue.parallelism, True)
             self.refresh()
 
@@ -157,6 +163,14 @@ class OperationsBridge(QObject):
     @pyqtProperty(str, notify=changed)
     def selectedJob(self):
         return self._selected
+
+    @pyqtProperty(bool, notify=changed)
+    def selectorRepairAvailable(self):  # noqa: N802
+        return bool(self._selector_repair and not get_server_session().enabled)
+
+    @pyqtSlot(bool)
+    def setEditorDraftsPresent(self, present):  # noqa: N802
+        self._editor_drafts_present = present
 
     @pyqtProperty(str, notify=changed)
     def selectedProfiles(self):
@@ -373,6 +387,8 @@ class OperationsBridge(QObject):
             return
         self._selected = ""
         self._details = ""
+        self._selector_repair = None
+        self._pending_selector_repair = None
         self.changed.emit()
 
     @pyqtSlot()
@@ -384,6 +400,8 @@ class OperationsBridge(QObject):
             return
         self._selected = ""
         self._details = ""
+        self._selector_repair = None
+        self._pending_selector_repair = None
         self.refresh()
 
     def isReserved(self, name):
@@ -575,14 +593,115 @@ class OperationsBridge(QObject):
     @pyqtSlot(str)
     def selectJob(self, job_id):
         job = self._find_run(job_id)
+        self._selector_repair = self._read_selector_repair(job)
         self._selected = job_id if job else ""
         self._details = json.dumps({k: v for k, v in job.items() if k not in {"steps", "library"}}, ensure_ascii=False, indent=2) if job else ""
         if job and job.get("artifacts"):
-            for name, label in (("python.jsonl", "Python output"), ("error.json", "Failure details")):
+            for name, label in (("python.jsonl", "Python output"), ("error.json", "Failure details"), ("selector-repair.json", "Selector repair")):
                 preview = self._artifact_preview(Path(job["artifacts"]) / name)
                 if preview:
                     self._details += f"\n\n{label}:\n{preview}"
         self.changed.emit()
+
+    def _read_selector_repair(self, job):
+        if not job or job.get("status") != "failed":
+            return None
+        directory = self._artifact_directory(job)
+        if directory is None:
+            return None
+        try:
+            path = (directory / "selector-repair.json").resolve()
+            if path.parent != directory or not path.is_file() or path.stat().st_size > 32768:
+                return None
+            proposal = json.loads(path.read_text(encoding="utf-8-sig"))
+            if proposal.get("status") != "awaiting_confirmation" or proposal.get("scenario") != job.get("scenario") or proposal.get("verified") is not True:
+                return None
+            index = proposal.get("step_index")
+            if not isinstance(index, int) or isinstance(index, bool) or index < 0:
+                return None
+            if not all(isinstance(proposal.get(key), str) for key in ("original_selector", "replacement_selector", "verified_page", "definition_hash")):
+                return None
+            return proposal
+        except (OSError, ValueError, TypeError, AttributeError):
+            pass
+        return None
+
+    @pyqtSlot(str)
+    def requestSelectorRepair(self, job_id):  # noqa: N802
+        self._pending_selector_repair = None
+        if get_server_session().enabled or not self.scenarios._ensure_allowed("manager"):
+            self._notify("Selector repair saving is available for local scenarios only")
+            return
+        if self._editor_drafts_present:
+            self._notify("Save or discard unsaved editor fields before reviewing a repair")
+            return
+        job = self._find_run(job_id)
+        proposal = self._read_selector_repair(job)
+        if proposal is None:
+            self._notify("No verified selector proposal is available for this failed run")
+            return
+        from app.services.scenario_definition import definition_hash
+        current = db.db_get_scenario(proposal["scenario"])
+        if current is None or definition_hash(current.steps) != proposal["definition_hash"] or proposal["step_index"] >= len(current.steps):
+            self._notify("The saved scenario changed; run it again to generate a current proposal")
+            return
+        frame_scope = current.steps[proposal["step_index"]].get("frame_selector")
+        self._pending_selector_repair = (copy.deepcopy(proposal), job_id, self._workspace())
+        self.selectorRepairApprovalRequested.emit(
+            f"Scenario: {proposal['scenario']}\nStep: {int(proposal['step_index']) + 1}\n\n"
+            f"Frame: {json.dumps(frame_scope, ensure_ascii=False) if frame_scope else 'Main document'}\n\n"
+            f"Old selector:\n{proposal['original_selector']}\n\n"
+            f"New CSS selector:\n{proposal['replacement_selector']}\n\n"
+            f"Verified page: {proposal['verified_page']}\n\n"
+            "Save this selector for future launches? No action will run now. "
+            "Previously queued jobs keep their frozen definitions."
+        )
+
+    @pyqtSlot(bool)
+    def approveSelectorRepair(self, approved):  # noqa: N802
+        pending, self._pending_selector_repair = self._pending_selector_repair, None
+        if not pending or approved is not True:
+            return
+        from app.services.scenario_definition import definition_hash
+        from app.services.selector_repair import apply_selector_repair
+
+        proposal, job_id, workspace = pending
+        try:
+            if get_server_session().enabled or self._workspace() != workspace or not self._find_run(job_id):
+                raise ValueError("Workspace changed; review the proposal again")
+            if not self.scenarios._ensure_allowed("manager"):
+                return
+            if self._editor_drafts_present:
+                raise ValueError("Save or discard unsaved editor fields before applying a repair")
+            name = proposal["scenario"]
+            if self.scenarios._run_cancel_event is not None or any(job.get("status") == "running" and job.get("scenario") == name for job in self.queue.snapshot()):
+                raise ValueError("Wait for this scenario's active runs to finish before changing its selector")
+            with db._STORAGE_LOCK:
+                current = db.db_get_scenario(name)
+                if current is None:
+                    raise ValueError("The saved scenario is no longer available")
+                if self.scenarios.selectedName == name and definition_hash(self.scenarios._current_steps) != definition_hash(current.steps):
+                    raise ValueError("Save or discard unsaved editor changes before applying a repair")
+                patched = apply_selector_repair(current.steps, proposal, confirmed=True)
+                db.db_save_scenario(name, patched, current.description)
+            if self.scenarios.selectedName == name:
+                self.scenarios._set_selected(db.Scenario(name, patched, current.description))
+            self.scenarios.scenarioSaved.emit()
+            self.scenarios.refresh()
+            job = self._find_run(job_id)
+            directory = self._artifact_directory(job)
+            if directory:
+                path = (directory / "selector-repair.json").resolve()
+                if path.parent == directory:
+                    try:
+                        db._atomic_write_text(path, json.dumps({**proposal, "status": "saved", "applied": True, "saved_at": time.time()}, ensure_ascii=False, indent=2))
+                    except OSError:
+                        self._notify("Selector saved, but its artifact receipt could not be updated")
+            self._selector_repair = None
+            self.changed.emit()
+            self._notify("Selector saved. Start a new run when ready; queued snapshots and failed actions were not repeated.")
+        except Exception as exc:
+            self._notify(str(exc))
 
     @staticmethod
     def _artifact_preview(path):

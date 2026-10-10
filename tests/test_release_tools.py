@@ -30,3 +30,20 @@ def test_build_uses_native_package_executable(tmp_path, monkeypatch, platform, e
 def test_missing_build_interpreter_fails_explicitly(tmp_path):
     with pytest.raises(SystemExit, match="Missing Python interpreter"):
         verify_release.require_venv(tmp_path / "missing-python")
+
+
+def test_runtime_import_budget_does_not_weaken_hard_timeout(tmp_path, monkeypatch):
+    from app import python_runtime_check
+    from app.storage import db
+    import app.services.scenario_worker as worker
+
+    cases = []
+    monkeypatch.setattr(db, "init_db", lambda: None)
+    def run_worker(account, job, cancel):
+        cases.append((job["scenario"], job["steps"][1]["timeout_ms"]))
+        if job["scenario"] == "hard-timeout":
+            return {"status": "failed", "error": "Python timeout"}
+        return {"status": "success", "error": ""}
+    monkeypatch.setattr(worker, "run_worker", run_worker)
+    assert python_runtime_check.check_runtime("camoufox", tmp_path / "runtime.json") == 0
+    assert cases == [("browser-and-imports", 15000), ("hard-timeout", 3000)]

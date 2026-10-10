@@ -523,6 +523,7 @@ class ScenarioExecutor(
             if outcome.status == "stop":
                 reason = outcome.stop_reason or "unknown reason"
                 self.logger.error("Scenario %s stopped at step %s: %s", label, idx + 1, reason)
+                await self._maybe_propose_selector_repair(steps, label, idx)
                 return False, reason
             next_tag = step.get("next_success_step")
             if next_tag and next_tag in tags:
@@ -532,6 +533,51 @@ class ScenarioExecutor(
                 break
             idx += 1
         return True, None
+
+    async def _maybe_propose_selector_repair(self, steps, scenario_name, step_index):
+        from app.services.ai_agent.llm import LLMClient, configured_llm_config
+        from app.services.selector_repair import REPAIRABLE_ACTIONS, propose_selector_repair
+
+        if self.account_payload.get("_storage_scope"):
+            return
+        if scenario_name != self.scenario.name:
+            return
+        enabled = {"1", "true", "yes", "on"}
+        if (db_get_setting("ai_enabled") or "").lower() not in enabled or (db_get_setting("ai_selector_repair_enabled") or "").lower() not in enabled:
+            return
+        if steps[step_index].get("action") not in REPAIRABLE_ACTIONS or not self._run_artifact_dir:
+            return
+        if self._cancel_event and self._cancel_event.is_set():
+            return
+        task = asyncio.create_task(propose_selector_repair(
+            self, steps, step_index, LLMClient(configured_llm_config(timeout_s=20)),
+        ))
+        try:
+            while not task.done():
+                if self._cancel_event and self._cancel_event.is_set():
+                    task.cancel()
+                    return
+                await asyncio.wait({task}, timeout=0.1)
+            proposal = task.result()
+            proposal.update(status="awaiting_confirmation", scenario=str(scenario_name or ""))
+            payload = proposal
+        except asyncio.CancelledError:
+            task.cancel()
+            raise
+        except Exception as exc:
+            payload = {"status": "unavailable", "error_type": type(exc).__name__}
+            self.logger.warning("Selector repair unavailable for %s (%s); the failed run is unchanged", scenario_name, type(exc).__name__)
+        finally:
+            if not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        try:
+            (self._run_artifact_dir / "selector-repair.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        except OSError as exc:
+            self.logger.warning("Could not save selector proposal (%s)", type(exc).__name__)
 
     def _maybe_hot_reload(
         self,
@@ -760,6 +806,7 @@ class ScenarioExecutor(
         safe_profile = re.sub(r"[^a-zA-Z0-9_.-]", "_", str(getattr(self, "profile_name", "profile") or "profile"))[:80]
         artifact_dir = self._run_artifact_dir or (OUTPUTS_DIR / "runs" / safe_scenario / safe_profile / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
         artifact_dir.mkdir(parents=True, exist_ok=True)
+        self._run_artifact_dir = artifact_dir
         metadata = {"scenario": scenario_name or "", "profile": getattr(self, "profile_name", ""), "step": (step_index + 1) if step_index is not None else None, "action": action, "reason": reason, "failure_type": self._classify_failure(reason, action)}
         try:
             (artifact_dir / "error.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -124,3 +124,12 @@ def test_changed_label_after_model_reply_invalidates_proposal():
     frame.evaluate.side_effect = [snapshot, changed]
     with pytest.raises(ValueError, match="target changed"):
         asyncio.run(propose_selector_repair(executor, steps, 1, client))
+
+
+@pytest.mark.parametrize("selector", ['input[value="PRIVATE_INPUT"]', '//input[@value="PRIVATE_INPUT"]'])
+def test_value_based_selectors_do_not_send_embedded_field_values(selector):
+    steps, executor, client, calls, _, _ = fixture()
+    steps[1]["selector"] = selector
+    with pytest.raises(ValueError, match="field values"):
+        asyncio.run(propose_selector_repair(executor, steps, 1, client))
+    assert calls == []

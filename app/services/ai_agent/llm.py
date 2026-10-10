@@ -40,6 +40,17 @@ class LLMConfig:
 Transport = Callable[[str, str, Dict[str, str], Dict[str, Any]], Awaitable[Tuple[int, Any]]]
 
 
+def configured_llm_config(timeout_s=DEFAULT_TIMEOUT_S):
+    from app.storage.db import db_get_setting
+
+    return LLMConfig(
+        base_url=db_get_setting("ai_base_url") or "",
+        api_key=db_get_setting("ai_api_key") or "",
+        model=db_get_setting("ai_model") or "",
+        timeout_s=timeout_s,
+    )
+
+
 class LLMClient:
     def __init__(self, config: LLMConfig, transport: Optional[Transport] = None) -> None:
         self.requests = 0

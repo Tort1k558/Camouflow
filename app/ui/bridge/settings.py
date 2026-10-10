@@ -251,6 +251,15 @@ class SettingsBridge(QObject):
     def aiMaxSteps(self) -> str:  # noqa: N802
         return db_get_setting("ai_max_steps") or "25"
 
+    @pyqtProperty(bool, notify=changed)
+    def aiSelectorRepairEnabled(self):  # noqa: N802
+        return (db_get_setting("ai_selector_repair_enabled") or "").lower() in {"1", "true", "yes", "on"}
+
+    @pyqtSlot(bool)
+    def setAiSelectorRepairEnabled(self, enabled):  # noqa: N802
+        if self._persist({"ai_selector_repair_enabled": "true" if enabled else "false"}):
+            self.changed.emit()
+
     @pyqtSlot(bool, str, str, str, str)
     def saveAiSettings(self, enabled, base_url, api_key, model, max_steps):  # noqa: N802
         base_url = str(base_url or "").strip().rstrip("/")

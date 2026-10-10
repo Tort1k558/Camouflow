@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import re
 import time
 from urllib.parse import urlsplit, urlunsplit
 
@@ -60,6 +61,8 @@ async def propose_selector_repair(executor, steps, step_index, client: LLMClient
         raise ValueError("This step has no repairable selector")
     if step.get("state") in {"hidden", "detached"}:
         raise ValueError("Negative element assertions cannot be repaired automatically")
+    if re.search(r"\[\s*value\s*[*^$|~]?=|@value\b", step["selector"], re.IGNORECASE):
+        raise ValueError("Selectors based on field values are excluded from AI repair")
     if not isinstance(client, LLMClient):
         raise TypeError("Use the configured application LLM client")
 

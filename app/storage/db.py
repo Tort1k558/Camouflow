@@ -726,7 +726,7 @@ def db_save_scenario(name: str, steps: List[Dict], description: Optional[str] = 
     existing = _scenario_file_for_name(name)
     path = existing if existing.exists() else _scenario_path(name)
     payload = {"name": name, "description": description, "steps": steps or []}
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    _atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 @_serialized_write

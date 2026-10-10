@@ -98,3 +98,33 @@ The release demo was checked three times on each engine with the configured `dee
 ```
 
 For an isolated n8n check, install n8n separately, then run `integrations/verify_n8n.py --n8n <path-to-bin/n8n> --report .local/n8n-smoke.json` using the project's Python. It imports an inactive workflow into a temporary n8n database and executes only the synthetic catalog job. It does not change a running n8n deployment.
+
+## Confirmed selector repairs
+
+1. Save your AI provider settings and enable AI. In **Settings**, explicitly enable
+   **Propose selector repairs for failed local runs** (off by default).
+2. A local root-scenario selector failure can generate a proposal while the failed
+   page is still open. The failed run remains failed: no action is repeated.
+3. In **Scenarios → Runs**, open the failed job's **Details → Review repair**.
+   Review the old/new selectors, frame and verified page. **Cancel** changes nothing.
+4. **Save selector** changes only locator fields in the saved definition, after
+   verifying its original hash. Save/discard editor drafts and finish active runs
+   first. The editor is refreshed if that scenario is selected.
+5. Explicitly start a new run. Existing queued snapshots are not modified, and the
+   saved selector can be reused without AI.
+
+The proposal sends compact element labels/selectors, not input values, raw HTML,
+screenshots, traces or cookies. Each proposal allows at most two requests, 512
+completion tokens per request and 30 seconds total. This is not a monetary budget;
+the configured provider/model may charge. Canceling a run cancels its proposal.
+
+Targets must be unique, visible and compatible in the original frame. Navigation
+or target identity changes invalidate a proposal; password variables cannot target
+plain-text fields. Hidden/detached assertions and selectors embedding field values
+are excluded. Do not put credentials in element labels/selectors. Proposals and their
+saved/unavailable status are kept in local `selector-repair.json` run artifacts.
+
+Current rollout supports local root scenarios on both browser engines. Nested
+scenario definitions, cloud/hosted saving and screenshot/trace AI analysis remain
+pending. This is not a guarantee of correct recovery on arbitrary sites: review
+the proposed target and local failure artifacts before confirming.

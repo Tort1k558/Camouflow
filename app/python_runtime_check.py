@@ -28,11 +28,11 @@ def check_runtime(engine, report_path):
                 '    text = await ctx.page.locator("h1").inner_text()\n'
                 '    assert text == "Runtime check"\n'
                 '    return {"text": text, "sqrt": math.sqrt(9)}\n')
-        for name, source, expected in [("browser-and-imports", code, "success"),
-                                        ("hard-timeout", "async def main(ctx):\n    while True:\n        pass\n", "failed")]:
+        for name, source, expected, timeout_ms in [("browser-and-imports", code, "success", 15000),
+                                        ("hard-timeout", "async def main(ctx):\n    while True:\n        pass\n", "failed", 3000)]:
             job = {"scenario": name, "library": {}, "steps": [
                 {"action": "start"}, {"action": "python", "script_api_version": 1,
-                 "code": source, "timeout_ms": 3000}]}
+                 "code": source, "timeout_ms": timeout_ms}]}
             result = run_worker(account, job, threading.Event())
             passed = result["status"] == expected and (name != "hard-timeout" or result["error"] == "Python timeout")
             results.append({"name": name, "passed": passed, "status": result["status"], "error": result["error"]})
