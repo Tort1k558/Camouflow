@@ -7,6 +7,8 @@ import "../components"
 Item {
     id: root
     property var bridge: typeof proxiesBridge !== "undefined" ? proxiesBridge : null
+    property bool filtersActive: bridge && (bridge.proxyQuery.length > 0 || bridge.proxyStatus.length > 0)
+    readonly property var filterStatuses: ["", "active", "reachable", "unchecked", "checking", "failed", "quarantined"]
     ConfirmDialog { id: confirmDialog }
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 28; spacing: 14
@@ -109,6 +111,24 @@ Item {
             PrimaryButton { text: "Group actions"; secondary: true; enabled: root.bridge && root.bridge.selectedPool; onClicked: groupMenu.popup() }
             PrimaryButton { text: "Check all proxies"; icon: "refresh"; secondary: true; enabled: root.bridge && root.bridge.canRun && proxyList.count > 0; onClicked: root.bridge.checkAll() }
         }
+        RowLayout {
+            Layout.fillWidth: true; spacing: 10
+            SearchBox {
+                objectName: "proxySearch"
+                Layout.fillWidth: true; Layout.preferredHeight: 40
+                placeholder: "Search name, address or location"
+                text: root.bridge ? root.bridge.proxyQuery : ""
+                onTextChanged: if (root.bridge) root.bridge.setProxyFilters(text, root.bridge.proxyStatus)
+            }
+            ComboBox {
+                objectName: "proxyStatusFilter"
+                Layout.preferredWidth: 170; Layout.preferredHeight: 40
+                model: ["All statuses", "Active (internet)", "Reachable (TCP)", "Unchecked", "Checking", "Failed", "Quarantined"]
+                currentIndex: root.bridge ? Math.max(0, root.filterStatuses.indexOf(root.bridge.proxyStatus)) : 0
+                onActivated: if (root.bridge) root.bridge.setProxyFilters(root.bridge.proxyQuery, root.filterStatuses[currentIndex])
+            }
+            PrimaryButton { text: "Reset"; secondary: true; visible: root.filtersActive; onClicked: root.bridge.setProxyFilters("", "") }
+        }
         Rectangle {
             visible: root.bridge && root.bridge.selectedCount > 0
             Layout.fillWidth: true; Layout.preferredHeight: 52
@@ -126,7 +146,7 @@ Item {
         ListView {
                 id: proxyList
                 BusyIndicator { anchors.centerIn: parent; running: root.bridge && root.bridge.loading && proxyList.count === 0; visible: running }
-                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: proxyList.count === 0 && !root.bridge.loading; title: "No proxies in this group"; description: "Import your connections or create a proxy pool to get started."; icon: "network" }
+                EmptyState { anchors.centerIn: parent; width: Math.min(360, parent.width); visible: proxyList.count === 0 && root.bridge && !root.bridge.loading; title: root.filtersActive ? "No matching proxies" : "No proxies in this group"; description: root.filtersActive ? "Change the search or reset filters." : "Import your connections or create a proxy pool to get started."; icon: "network" }
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 model: root.bridge ? root.bridge.model : null

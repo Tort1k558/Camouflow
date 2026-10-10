@@ -38,6 +38,8 @@ class ProxiesBridge(QObject):
         self._read = BackgroundRead(self, self._apply_refresh, self._emit_message)
         self._read.busyChanged.connect(self.modelChanged.emit)
         self._selected_pool = ""
+        self._proxy_query = ""
+        self._proxy_status = ""
         self._selected: set[tuple[str, int]] = set()
         self._active = 0
         self._checking = 0
@@ -133,6 +135,25 @@ class ProxiesBridge(QObject):
     @pyqtProperty(int, notify=modelChanged)
     def selectedCount(self) -> int:  # noqa: N802
         return len(self._selected)
+
+    @pyqtProperty(str, notify=modelChanged)
+    def proxyQuery(self):  # noqa: N802
+        return self._proxy_query
+
+    @pyqtProperty(str, notify=modelChanged)
+    def proxyStatus(self):  # noqa: N802
+        return self._proxy_status
+
+    @pyqtSlot(str, str)
+    def setProxyFilters(self, query, status):  # noqa: N802
+        status = status.strip().lower()
+        if status not in {"", "active", "reachable", "unchecked", "checking", "failed", "quarantined"}:
+            return
+        if (query, status) == (self._proxy_query, self._proxy_status):
+            return
+        self._proxy_query, self._proxy_status = query, status
+        self._selected.clear()
+        self._render_pools()
 
     @pyqtProperty(int, notify=statsChanged)
     def active(self) -> int:
@@ -291,6 +312,7 @@ class ProxiesBridge(QObject):
             + pool_rows
         )
         rows: List[Dict[str, Any]] = []
+        query = self._proxy_query.strip().casefold()
         active = checking = failed = unchecked = 0
         locations = set()
         for pool_name, pool in sorted(pools.items()):
@@ -326,7 +348,7 @@ class ProxiesBridge(QObject):
                     locations.add(geo_location)
                 type_label = "SOCKS5" if "socks" in value.lower() else "HTTP"
                 latency = check.get("ms") if isinstance(check, dict) else None
-                rows.append({
+                row = {
                     "pool": pool_name,
                     "name": str(entry.get("name") or f"{pool_name}-{pool_index + 1:02d}") if isinstance(entry, dict) else f"{pool_name}-{pool_index + 1:02d}",
                     "location": location,
@@ -337,7 +359,12 @@ class ProxiesBridge(QObject):
                     "accent": "#3f714a" if status == "Active" else "#94671c" if status in {"Checking", "Quarantined"} else "#b33d47" if status == "Failed" else "#737e6b",
                     "index": pool_index,
                     "selected": (pool_name, pool_index) in self._selected,
-                })
+                }
+                if self._proxy_status and status.lower() != self._proxy_status:
+                    continue
+                if query and not any(query in str(row[key]).casefold() for key in ("name", "address", "location", "pool", "type")):
+                    continue
+                rows.append(row)
         self._active, self._checking, self._failed, self._locations = active, checking, failed, len(locations)
         self._unchecked = unchecked
         self._model.set_rows(rows)

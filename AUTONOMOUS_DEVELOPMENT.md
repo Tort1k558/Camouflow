@@ -429,3 +429,16 @@ This proves local QML loadability, not visual quality or fresh GitHub CI.
 - Seven regressions cover insertion, bulk deletion/reorder, refresh selection,
   missing IDs and local/cloud dialog switches. Full desktop **200 passed**;
   critical Ruff passed; real Windows Proxies page loads without QML warnings.
+
+## Iteration 17 — proxy inventory search and status filters
+
+- Added compact cached search and status selector using existing QML components.
+  Search covers visible name/address/location/group/type, never credentials;
+  Unicode casefold works. Original pool indices are retained for row actions.
+  No requests per keystroke, no storage/API changes or dependencies.
+- Filtering clears selection to avoid hidden bulk-action targets. Group stats
+  remain unfiltered; bulk checks still cover all pools. Empty results show a
+  filter-specific reset hint rather than claiming there are no connections.
+- Full desktop **201 passed**. Real Windows 1180x720 check exercises search,
+  status binding, reset, empty results, selection clearing and stable indices;
+  screenshots reviewed, no QML warnings. Documentation updated.

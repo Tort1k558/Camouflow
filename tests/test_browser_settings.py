@@ -262,7 +262,7 @@ def test_proxy_inventory_distinguishes_unchecked_tcp_and_internet_checks():
         {"value": "http://failed:1080", "last_check": {"status": "fail"}},
         {"value": "http://quarantined:1080", "quarantine_until": "malformed"},
     ]
-    bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": entries}}, _server_pools={}, _selected_pool="", _selected=set(),
+    bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": entries}}, _server_pools={}, _selected_pool="", _selected=set(), _proxy_query="", _proxy_status="",
                              _pools_model=DictListModel(["name"]), _model=DictListModel(["status", "address"]),
                              _is_quarantined=ProxiesBridge._is_quarantined, modelChanged=Mock(), statsChanged=Mock())
     ProxiesBridge._render_pools(bridge)
@@ -354,3 +354,32 @@ def test_proxy_dialog_action_rejects_local_cloud_switch(monkeypatch, method, ena
     args = ("QA", 0, "Name", "http://synthetic:1080", identity) if method == "saveProxy" else ("QA", 0, identity)
     getattr(proxies.ProxiesBridge, method)(bridge, *args)
     bridge._emit_message.assert_called_once()
+
+
+def test_proxy_filters_use_cached_metadata_preserve_indices_and_pool_stats():
+    from app.ui.bridge.models import DictListModel
+    from app.ui.bridge.proxies import ProxiesBridge
+
+    bridge = SimpleNamespace(_pools_cache={"QA": {"proxies": [
+        {"name": "Stra\u00dfe", "value": "http://username:secret@first:1080"},
+        {"name": "Europe", "value": "http://second:1080", "last_check": {"status": "ok", "mode": "tcp", "country": "Synthetic"}},
+    ]}}, _server_pools={}, _selected_pool="", _selected={("QA", 0)}, _proxy_query="", _proxy_status="",
+        _pools_model=DictListModel(["name"]), _model=DictListModel(["status", "address"]),
+        _is_quarantined=ProxiesBridge._is_quarantined, modelChanged=Mock(), statsChanged=Mock(), _load=Mock())
+    bridge._render_pools = lambda: ProxiesBridge._render_pools(bridge)
+    ProxiesBridge.setProxyFilters(bridge, " STRASSE ", "unchecked")
+    assert [row["index"] for row in bridge._model.rows()] == [0]
+    assert not bridge._selected
+    assert (bridge._active, bridge._unchecked, bridge._locations) == (1, 1, 1)
+    ProxiesBridge.setProxyFilters(bridge, "synthetic", "reachable")
+    assert [row["index"] for row in bridge._model.rows()] == [1]
+    ProxiesBridge.setProxyFilters(bridge, "secret", "")
+    assert bridge._model.rowCount() == 0
+    ProxiesBridge.setProxyFilters(bridge, "", "invalid")
+    assert bridge._proxy_query == "secret"
+    resets = bridge.modelChanged.call_count
+    ProxiesBridge.setProxyFilters(bridge, "secret", "")
+    assert bridge.modelChanged.call_count == resets
+    ProxiesBridge.setProxyFilters(bridge, "", "")
+    assert bridge._model.rowCount() == 2
+    bridge._load.assert_not_called()

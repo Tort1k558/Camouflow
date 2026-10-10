@@ -28,6 +28,13 @@ Duplicates are ignored during bulk import.
 
 ## Proxy list actions
 
+Search the cached inventory by name, visible address, group, type or detected
+location and combine it with a status filter. Search is case-insensitive and does
+not send requests on each keystroke or search stored credentials. Reset restores
+the list. Changing filters clears selection to avoid hidden destructive targets.
+Statistics describe the selected group before search/status filtering;
+**Check all proxies** still checks all pools.
+
 Each proxy row supports:
 
 - select / unselect
