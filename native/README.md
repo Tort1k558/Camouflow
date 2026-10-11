@@ -319,3 +319,44 @@ Windows GN/autoninja wrappers use the installed pinned CIPD Python directly, and
 its executable directory is added only to build-child PATH. This avoids missing
 `python3_bin_reldir.txt` launcher indirection and the Microsoft Store Python alias
 selected by GN child scripts, without fake bootstrap markers or global PATH edits.
+
+## Native WebRTC routing patch (not runtime-verified)
+
+`0003-native-webrtc-routing-policy.patch` adds the browser-process switch
+`--camouflow-webrtc-ip-handling-policy=disable_non_proxied_udp`. It sets real
+Chromium renderer routing preferences and clears per-origin routing overrides
+and local-IP exposure exceptions; unsupported or empty switch values fail a
+native `CHECK`. Without the switch, existing browser preference behavior is
+unchanged. It does not inject JavaScript, spoof an IP address, disable the
+PeerConnection API or promise working TURN/media connectivity.
+
+The legacy `--force-webrtc-ip-handling-policy=disable_non_proxied_udp` flag was
+tested against the pinned Chromium 148 SDK binary on Windows: both baseline and
+flagged launches produced five direct loopback STUN requests and UDP host
+candidates. Treating that flag as protection would be misleading.
+
+The new patch applies cleanly against the pinned source, but it has **not** been
+applied to the live Windows build, compiled or runtime-verified. Finish and
+verify that build before changing its source inputs. Application configuration
+continues to reject unsupported WebRTC masking/blocking options.
+
+After compiling this patch, run:
+
+```powershell
+& $python scripts/verify_native_webrtc.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative\tmp --report D:\CamouFlowNative\native-webrtc-fork.json
+```
+
+The gate first requires actual UDP traffic to an owned loopback STUN observer.
+Protected document, same-origin and cross-origin frames must then complete ICE
+gathering without direct STUN requests or UDP candidates. Empty, unsupported and
+wrong-case switch values must fail with the specific native CHECK diagnostic,
+not an unrelated launch error. No public STUN server,
+camera/microphone access or host IP addresses are collected. The upstream
+negative control passed its baseline and correctly failed the protected probe
+on Windows; matching Linux/macOS controls and all own-fork results are pending.
+
+The initial Linux source fetch terminated with Git exit 128 (`curl 56`, GnuTLS
+packet decode error and early EOF), not a successful checkout. A new fetch uses
+process-scoped HTTP/1.1 and a 300-second no-data limit; certificate verification,
+the pinned revision, source origin and global Git configuration remain unchanged.
+Linux compilation has not started.

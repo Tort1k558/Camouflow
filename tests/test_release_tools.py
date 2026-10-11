@@ -297,12 +297,15 @@ def test_native_build_rejects_unknown_source_changes(tmp_path, monkeypatch):
         native_build.source_patches(tmp_path, {})
 
 
-def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch):
+@pytest.mark.parametrize("name", ["0001-native-hardware-privacy-limits.patch",
+                                  "0002-midl-locale-name-hashes.patch",
+                                  "0003-native-webrtc-routing-policy.patch"])
+def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
     from scripts import native_build
 
-    patch = native_build.ROOT / "native/patches/0001-native-hardware-privacy-limits.patch"
+    patch = native_build.ROOT / "native/patches" / name
     expected = [line.split(" b/", 1)[1] for line in patch.read_text(encoding="utf-8").splitlines()
                 if line.startswith("diff --git ")]
     commands = []
@@ -341,6 +344,33 @@ def test_native_hardware_gate_rejects_ignored_switches():
     baseline = _hardware_observations()["document"]
     with pytest.raises(ValueError, match="ignored"):
         validate_observations(_hardware_observations(), baseline, 1, 0.25)
+
+
+def test_native_webrtc_gate_requires_a_real_positive_control():
+    from scripts.verify_native_webrtc import validate_probe
+
+    with pytest.raises(ValueError, match="positive control"):
+        validate_probe({"loopback_stun_requests": 0}, protected=False)
+    validate_probe({"loopback_stun_requests": 1}, protected=False)
+
+
+@pytest.mark.parametrize("requests,candidates,gathering,error", [
+    (1, [], "complete", "ignored or ineffective"),
+    (0, [{"protocol": "udp"}], "complete", "ignored or ineffective"),
+    (0, [], "gathering", "did not complete"),
+])
+def test_native_webrtc_gate_rejects_direct_udp_and_incomplete_observations(requests, candidates, gathering, error):
+    from scripts.verify_native_webrtc import validate_probe
+
+    with pytest.raises(ValueError, match=error):
+        validate_probe({"loopback_stun_requests": requests, "candidates": candidates,
+                        "gathering": gathering}, protected=True)
+
+
+def test_native_webrtc_gate_accepts_completed_protected_gathering_without_udp():
+    from scripts.verify_native_webrtc import validate_probe
+
+    validate_probe({"loopback_stun_requests": 0, "candidates": [], "gathering": "complete"}, protected=True)
 
 
 @pytest.mark.parametrize("context", ["same_origin_frame", "cross_origin_frame", "dedicated", "shared", "service"])
@@ -603,6 +633,7 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     patches.mkdir(parents=True)
     (patches / "0001-native-hardware-privacy-limits.patch").write_bytes(git("diff"))
     (patches / "0002-midl-locale-name-hashes.patch").write_text("", encoding="utf-8")
+    (patches / "0003-native-webrtc-routing-policy.patch").write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")

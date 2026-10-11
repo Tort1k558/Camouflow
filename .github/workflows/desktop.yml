@@ -313,6 +313,27 @@ jobs:
           if not report["checks"] or not report["checks"][0]["passed"]:
               raise SystemExit("Baseline document/frame/dedicated/shared/service worker observations failed")
           print("All baseline contexts observed; unpatched native hardware switches correctly rejected")
+      - name: Prove native WebRTC gate observes UDP and rejects an unpatched browser
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/camouflow-native-browsers
+        shell: python
+        run: |
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as driver:
+              executable = driver.chromium.executable_path
+          report_path = Path("outputs/native-runtime/webrtc-upstream-negative.json")
+          result = subprocess.run([sys.executable, "scripts/verify_native_webrtc.py", "--executable", executable, "--work-dir", str(Path(os.environ["RUNNER_TEMP"]) / "camouflow-native-checks"), "--report", str(report_path)], check=False, timeout=120)
+          report = json.loads(report_path.read_text(encoding="utf-8"))
+          if result.returncode != 1 or report["passed"] or report.get("error_type") != "ValueError" or report.get("error") != "Native WebRTC policy ignored or ineffective: direct UDP observed":
+              raise SystemExit("Unpatched browser was not rejected for observed direct UDP")
+          if len(report["checks"]) != 2 or not report["checks"][0]["passed"] or report["checks"][0]["observed"]["loopback_stun_requests"] <= 0:
+              raise SystemExit("Owned WebRTC positive control failed")
+          print("Real loopback STUN traffic observed; unpatched Native policy correctly rejected")
       - name: Build and verify both packaged browser engines
         shell: python
         run: |
