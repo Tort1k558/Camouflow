@@ -440,3 +440,19 @@ def test_native_build_records_installed_cipd_instances_without_reresolving_remot
         ["gclient", "revinfo", "-a", "--ignore-dep-type", "cipd", "--output-json", str(tmp_path / "camouflow-git-revisions.json")],
         ["cipd", "installed", "-root", str(tmp_path), "-json-output", str(tmp_path / "camouflow-cipd-installed.json")],
     ]
+
+
+def test_native_build_checks_the_chromium_dependency_layers_changed_by_the_patch(tmp_path, monkeypatch):
+    import os
+
+    from scripts import native_build
+
+    commands = []
+    monkeypatch.setattr(native_build, "run", lambda args, *a, **kw: commands.append(args))
+    native_build.check_patch_dependencies(tmp_path, {})
+    assert commands[0] == ["git", "diff", "--check"]
+    assert [command[-1] for command in commands[1:]] == [
+        os.path.normcase(str(tmp_path / "third_party/blink/renderer/core/frame")),
+        os.path.normcase(str(tmp_path / "content/browser/renderer_host")),
+    ]
+    assert all(command[-2] == os.path.normcase(str(tmp_path)) for command in commands[1:])

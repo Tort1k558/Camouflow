@@ -163,6 +163,13 @@ def snapshot_dependencies(chromium: Path, workspace: Path, env: dict[str, str]) 
                                            "-json-output", str(cipd_snapshot)], chromium, env)
 
 
+def check_patch_dependencies(source: Path, env: dict[str, str]) -> None:
+    run(["git", "diff", "--check"], source, env)
+    for directory in ("third_party/blink/renderer/core/frame", "content/browser/renderer_host"):
+        run([sys.executable, str(source / "buildtools/checkdeps/checkdeps.py"),
+             "--root", os.path.normcase(str(source)), os.path.normcase(str(source / directory))], source, env)
+
+
 def stage_path(chromium: Path, stage: str) -> Path:
     if stage not in {"sync", "hooks"}:
         raise ValueError("Unknown Native build stage")
@@ -246,6 +253,8 @@ def execute(action: str, workspace: Path) -> None:
         return
     require_stage(chromium, "hooks")
     patches = source_patches(source, env)
+    if patches:
+        check_patch_dependencies(source, env)
     output = source / "out/CamouFlowNative"
     output.mkdir(parents=True, exist_ok=True)
     output.joinpath("args.gn").write_text((ROOT / "native/args.gn").read_text(encoding="utf-8-sig"), encoding="utf-8")

@@ -127,6 +127,12 @@ The patch passes `git apply --check` against the pinned Chromium revision. It
 has **not yet passed a complete Chromium build or real patched API checks**.
 CamouFlow still rejects those fingerprint controls until that integration is
 verified; standalone parser tests cannot prove browser behavior.
+The pinned upstream dependency-layer checker is also enforced before compiling
+a patched tree. Its initial check found that the Native configuration header
+needed scoped permission to read `base/command_line.h`. The patch now follows the
+existing `navigator_language.cc` pattern in the frame's `DEPS`, granting that
+single header permission rather than relaxing Blink's general dependency rules.
+The frame dependency check then passed against the actual patched checkout.
 
 After source sync finishes successfully, apply it explicitly before building:
 
