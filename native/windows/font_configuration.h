@@ -5,22 +5,24 @@
 
 #include "base/check.h"
 #include "base/command_line.h"
+#include "base/no_destructor.h"
 #include "ui/gfx/win/camouflow_font_collection.h"
 #include "ui/gfx/win/camouflow_font_families.h"
 
 namespace camouflow::native {
 
 inline const std::optional<std::vector<std::string>>& GetFontFamilies() {
-  static const auto families = []() -> std::optional<std::vector<std::string>> {
-    const auto* command = base::CommandLine::ForCurrentProcess();
-    constexpr char kSwitch[] = "camouflow-font-families";
-    if (!command->HasSwitch(kSwitch))
-      return std::nullopt;
-    const auto parsed = ParseFontFamilies(command->GetSwitchValueASCII(kSwitch));
-    CHECK(parsed) << "Invalid CamouFlow Native font families";
-    return parsed;
-  }();
-  return families;
+  static const base::NoDestructor<std::optional<std::vector<std::string>>> families(
+      []() -> std::optional<std::vector<std::string>> {
+        const auto* command = base::CommandLine::ForCurrentProcess();
+        constexpr char kSwitch[] = "camouflow-font-families";
+        if (!command->HasSwitch(kSwitch))
+          return std::nullopt;
+        const auto parsed = ParseFontFamilies(command->GetSwitchValueASCII(kSwitch));
+        CHECK(parsed) << "Invalid CamouFlow Native font families";
+        return parsed;
+      }());
+  return *families;
 }
 
 inline Microsoft::WRL::ComPtr<IDWriteFontCollection> ApplyFontFamilies(

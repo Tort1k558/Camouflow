@@ -5,6 +5,22 @@ has been inspected. SDK successes, C++ helper tests, saved presets and upstream
 marketing tables do not change that status. Keep failed reports, not just passes.
 The running source tree must not be changed while compilation is active.
 
+### Windows compile correction, 2026-10-11
+
+The four-job build terminated with exit code 1 after 6h6m23s: 8470 actions
+completed, one failed and 21592 remained. The failing translation unit was
+`dwrite_font_proxy_impl_win.cc`; Chromium's `-Werror,-Wexit-time-destructors`
+rejected the font configuration helper's cached static optional/vector.
+After verifying the builder had exited, the public header, patch 0005 and owned
+checkout were updated to use Chromium's existing function-local
+`base::NoDestructor`. Policy parsing and native-value behavior are unchanged.
+Exact pinned-source patch validation passed. All three real affected Chromium
+translation units (`dwrite_font_proxy_impl_win`, `font_enumeration_data_source_win`
+and `font_data_service_impl`) then compiled successfully with the existing Ninja
+flags, including the failing warning-as-error policy: three steps, exit code 0.
+The local regression suite passed 980 tests. This is a compile-policy correction,
+not a font runtime pass; all own-fork gates above remain pending.
+
 ## Executable verification queue
 
 | Area | Prepared artifact | Required own-fork evidence |
