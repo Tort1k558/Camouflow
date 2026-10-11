@@ -15,6 +15,8 @@ class NativeRuntimeError(RuntimeError):
 
 
 class NativeRuntime:
+    CLOSE_TIMEOUT_SECONDS = 40
+
     def __init__(self, profile_dir: Path, executable: Path, configuration: NativeConfiguration):
         self.profile_dir = Path(profile_dir)
         self.executable = Path(executable)
@@ -26,7 +28,7 @@ class NativeRuntime:
 
     async def start(self, *, headless: bool = False, proxy: dict | None = None):
         async with self._operation_lock:
-            if self.context is not None:
+            if self.context is not None or self.playwright is not None:
                 raise NativeRuntimeError("Native profile is already running")
             options = self.configuration.context_options()
             if not self.executable.is_file():
@@ -71,16 +73,16 @@ class NativeRuntime:
             await self._close()
 
     async def _close(self):
-        context, self.context = self.context, None
-        driver, self.playwright = self.playwright, None
+        context = self.context
+        driver = self.playwright
         try:
-            try:
-                if context is not None:
-                    await asyncio.wait_for(context.close(), timeout=8)
-            finally:
-                if driver is not None:
-                    await asyncio.wait_for(driver.stop(), timeout=8)
+            if context is not None:
+                await asyncio.wait_for(context.close(), timeout=30)
         finally:
+            if driver is not None:
+                await asyncio.wait_for(driver.stop(), timeout=8)
+            self.context = None
+            self.playwright = None
             if self._profile_lock is not None:
                 self._profile_lock.unlock()
                 self._profile_lock = None

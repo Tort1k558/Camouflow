@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.core.native.configuration import NativeConfiguration  # noqa: E402
 from app.core.native.runtime import NativeRuntime, NativeRuntimeError  # noqa: E402
-from playwright.async_api import async_playwright  # noqa: E402
+from playwright.async_api import Error as PlaywrightError, async_playwright  # noqa: E402
 
 STORAGE = """async value => {
   const db = await new Promise((resolve, reject) => {
@@ -155,6 +155,31 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
             assert await page.evaluate(STORAGE, None) == {"cookie": "owned=" + value, "local": value, "indexed": value, "cached": value, "workers": 1}
             await runtime.close()
         checks.append("cookie-localstorage-indexeddb-cache-serviceworker-restart")
+        abandoned = await asyncio.to_thread(subprocess.run,
+            [sys.executable, str(Path(__file__).resolve()), "--abandon-lock", str(a.profile_dir),
+             "--executable", str(executable)], cwd=ROOT, capture_output=True, text=True, timeout=15)
+        assert abandoned.returncode == 0 and (a.profile_dir / "native-runtime.lock").is_file()
+        context = await a.start(headless=True)
+        page = context.pages[0]
+        await page.goto(origin)
+        checks.append("dead-owner-profile-lock-recovery")
+        disconnected = asyncio.Event()
+        context.browser.on("disconnected", disconnected.set)
+        session = await context.browser.new_browser_cdp_session()
+        try:
+            await asyncio.wait_for(session.send("Browser.crash"), timeout=10)
+        except (PlaywrightError, TimeoutError):
+            pass
+        await asyncio.wait_for(disconnected.wait(), timeout=10)
+        assert not context.browser.is_connected()
+        await a.close()
+        context = await a.start(headless=True)
+        page = context.pages[0]
+        await page.goto(origin)
+        assert await page.evaluate(STORAGE, None) == {"cookie": "owned=alpha", "local": "alpha",
+            "indexed": "alpha", "cached": "alpha", "workers": 1}
+        await a.close()
+        checks.append("browser-crash-restart-preserves-committed-storage")
         context = await proxied.start(headless=True, proxy={"server": f"http://127.0.0.1:{proxy_server.server_port}", "username": "owned-user", "password": "owned-pass"})
         response = await context.pages[0].goto("http://native-fixture.invalid/")
         assert response.status == 200
@@ -259,7 +284,21 @@ def main() -> int:
     parser.add_argument("--work-dir", type=Path, default=Path(tempfile.gettempdir()))
     parser.add_argument("--report", type=Path, default=ROOT / "outputs/native-runtime/source.json")
     parser.add_argument("--check-lock", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--abandon-lock", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.abandon_lock:
+        from PyQt6.QtCore import QLockFile
+        profile = args.abandon_lock
+        marker = profile / "camouflow-native.json"
+        if (not profile.is_absolute() or profile != profile.resolve()
+                or not profile.parent.name.startswith("native-owned-") or marker.is_symlink()
+                or (profile / "native-runtime.lock").is_symlink()
+                or not marker.is_file()
+                or json.loads(marker.read_text(encoding="utf-8-sig")) != {"engine": "camouflow-native", "schema": 1}):
+            parser.error("Lock abandonment requires an owned Native test profile")
+        lock = QLockFile(str(profile / "native-runtime.lock"))
+        lock.setStaleLockTime(0)
+        os._exit(0 if lock.tryLock(0) else 1)
     executable = asyncio.run(resolve_executable(args.executable))
     if args.check_lock:
         return asyncio.run(check_lock(args.check_lock, executable))

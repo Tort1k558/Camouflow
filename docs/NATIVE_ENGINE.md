@@ -125,7 +125,7 @@ Verified Windows checks:
 - HTTP proxy authentication: actual 407 challenge, credentialed proxy traffic
   and successful navigation to a fixture hostname with no direct DNS route.
 
-The updated local full suite passed **645 tests**, including negative proxy-auth
+The updated local full suite passed **647 tests**, including negative proxy-auth
 fixture checks and explicit missing-binary failure/reporting without fallback.
 
 The core adapter now dispatches `native` profiles into their own `native/`
@@ -183,14 +183,16 @@ Native cookie inspection and storage preflight now use the same dedicated
 
 Cloud Native profile creation still requires private backend schema/runtime
 support and production validation; UI availability is not proof of those steps.
-AI, binary updates and crash/resource checks remain incomplete.
+AI, binary updates, controller-crash/orphan recovery and resource checks remain
+incomplete.
 
 Pinned Chromium/depot_tools source acquisition and local build inputs are tracked
 in [`native/`](../native/README.md). The D: source transfer and compiler installer
 are separate from a successfully built/patched browser. The initial Git transfer
 failed with a TLS disconnect; the explicit OpenSSL transport retry successfully
-fetched the same pinned commit. Materializing the source checkout and bootstrap
-tool dependencies must finish before hooks/build can proceed.
+fetched the same pinned commit. Source checkout has completed and its HEAD is
+`8625e066febc721e015ea99842da12901eb7ed73`; bootstrap tool/dependency acquisition
+must finish before hooks/build can proceed.
 Visual Studio Build Tools 2026 18.10.3 installation has completed on D: with
 MSVC 14.51.36231 and ATL/MFC; installer signature was verified as Microsoft and
 the registered instance reports complete/launchable, with no reboot required.
@@ -215,6 +217,29 @@ reports and further runtime coverage. One local iframe-gate attempt hit a timeou
 under concurrent source/tool download; the next run passed. Failure reports now
 retain a traceback so future timeouts can be localized instead of losing the
 failed call's context. This is not a resolved stability claim.
+
+## Browser crash and ownership recovery
+
+The Windows source gate now deliberately crashes **only its owned browser** via
+CDP `Browser.crash`, waits for its disconnect, closes the driver and restarts the
+same profile. Previously committed cookies, localStorage, IndexedDB, CacheStorage
+and service-worker registration were all verified after restart. A separate
+short-lived child leaves an owned test-profile QLockFile without running a
+browser; Native then acquires that dead-owner lock. The helper refuses customer
+directories. These add two checks to the report, for ten passed Windows checks.
+
+The traceback from the earlier local timeout identified persistent-context close
+being cancelled at eight seconds. Native now permits 30 seconds for that close
+plus eight seconds for driver stop, inside its own 40-second adapter bound.
+Existing Camoufox/CloakBrowser teardown limits are unchanged. Failed driver stop
+retains its handles/profile lock and can be retried; launching another runtime
+over those retained handles is rejected. Unit tests cover that ownership case.
+
+This is bounded teardown and committed-storage recovery evidence, not a promise
+that in-flight writes survive a crash. It does not prove arbitrary controller
+termination/orphan cleanup or long-running resource stability. Fresh Linux/macOS
+crash-gate reports are still required. No owned Chromium processes were observed
+after the completed Windows gate.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).

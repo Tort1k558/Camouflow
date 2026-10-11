@@ -491,6 +491,8 @@ class BrowserInterface:
         from .native.configuration import NativeConfiguration
         from .native.runtime import NativeRuntime
 
+        if self._native_runtime is not None and self._native_runtime.playwright is not None:
+            raise RuntimeError("Previous Native runtime has not finished closing")
         configuration = NativeConfiguration.from_settings(self._browser_settings)
         executable = str(self._browser_settings.get("executable_path") or "").strip()
         if not executable:
@@ -526,15 +528,17 @@ class BrowserInterface:
             return
 
         self.logger.info("Closing %s resources for %s", self.browser_engine, self.profile_name)
+        teardown_timeout = (self._native_runtime.CLOSE_TIMEOUT_SECONDS if self._native_runtime is not None
+                            else self.TEARDOWN_TIMEOUT_SECONDS)
         try:
-            await asyncio.wait_for(self._teardown_browser(), timeout=self.TEARDOWN_TIMEOUT_SECONDS)
+            await asyncio.wait_for(self._teardown_browser(), timeout=teardown_timeout)
         except asyncio.TimeoutError:
             # Firefox persistent contexts occasionally hang in teardown until
             # Playwright's internal ~30s timeout; kill the process tree instead.
             self.logger.warning(
                 "Browser teardown timed out for %s after %ss; killing browser processes",
                 self.profile_name,
-                self.TEARDOWN_TIMEOUT_SECONDS,
+                teardown_timeout,
             )
             await asyncio.to_thread(self._lifecycle.kill_profile_processes)
         except Exception:
@@ -547,7 +551,8 @@ class BrowserInterface:
                     await self._native_runtime.close()
                 except Exception:
                     self.logger.warning("Native driver cleanup failed for %s", self.profile_name, exc_info=True)
-                self._native_runtime = None
+                else:
+                    self._native_runtime = None
             if self._camoufox_ctx:
                 try:
                     await asyncio.wait_for(

@@ -95,6 +95,22 @@ def test_native_gate_missing_binary_is_reported_without_fallback(tmp_path, monke
     assert list((tmp_path / "owned").iterdir()) == []
 
 
+def test_native_gate_lock_abandonment_refuses_customer_directories(tmp_path):
+    import json
+    import subprocess
+    from scripts.verify_native_runtime import ROOT
+
+    profile = tmp_path / "customer-profile"
+    profile.mkdir()
+    marker = profile / "camouflow-native.json"
+    marker.write_text(json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
+    result = subprocess.run([sys.executable, str(ROOT / "scripts/verify_native_runtime.py"),
+                             "--abandon-lock", str(profile)], capture_output=True, text=True, timeout=15)
+    assert result.returncode == 2
+    assert "owned Native test profile" in result.stderr
+    assert list(profile.iterdir()) == [marker]
+
+
 def test_native_gate_closes_only_owned_log_files(tmp_path):
     import logging
     from scripts.verify_native_runtime import close_owned_log_handlers

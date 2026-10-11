@@ -36,6 +36,29 @@ def test_native_missing_binary_does_not_touch_profile(tmp_path):
     assert not profile.exists()
 
 
+def test_native_failed_driver_stop_retains_owner_and_can_be_retried(tmp_path):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    async def check():
+        runtime = NativeRuntime(tmp_path / "owned", Path(__file__), NativeConfiguration())
+        context = SimpleNamespace(close=AsyncMock())
+        driver = SimpleNamespace(stop=AsyncMock(side_effect=RuntimeError("owned stop failure")))
+        lock = Mock()
+        runtime.context, runtime.playwright, runtime._profile_lock = context, driver, lock
+        with pytest.raises(RuntimeError, match="owned stop failure"):
+            await runtime.close()
+        assert runtime.context is context and runtime.playwright is driver
+        lock.unlock.assert_not_called()
+        with pytest.raises(NativeRuntimeError, match="already running"):
+            await runtime.start()
+        driver.stop.side_effect = None
+        await runtime.close()
+        assert runtime.context is None and runtime.playwright is None
+        lock.unlock.assert_called_once()
+    asyncio.run(check())
+
+
 def test_native_refuses_existing_unrelated_browser_data(tmp_path):
     profile = tmp_path / "profile"
     profile.mkdir()
