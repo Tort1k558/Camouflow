@@ -564,8 +564,10 @@ def test_native_binary_store_cannot_update_while_another_owner_holds_the_lock(tm
         lock.unlock()
 
 
-@pytest.mark.parametrize("version,supported", [((3, 12, 0), False), ((3, 12, 10), False), ((3, 12, 11), True),
-                                             ((3, 13, 0), False), ((3, 13, 4), True), ((3, 14, 0), True)])
+@pytest.mark.parametrize("version,supported", [((3, 12, 0), False), ((3, 12, 11), False), ((3, 12, 14), False),
+    ((3, 12, 15), True), ((3, 13, 4), False), ((3, 13, 15), False), ((3, 13, 16), True),
+    ((3, 14, 0), False), ((3, 14, 7), False), ((3, 14, 8), True), ((3, 15, 0), True),
+    ((3, 16, 0), False), ((4, 0, 0), False)])
 def test_native_binary_archive_links_require_security_fixed_python_versions(monkeypatch, version, supported):
     from app.core.native import distribution
 

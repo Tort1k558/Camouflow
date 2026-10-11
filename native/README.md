@@ -321,9 +321,13 @@ explicit executable path. No fallback occurred. Temporary browser profiles and
 the test workspace were cleaned up; this still does not verify own-fork patches.
 
 Windows bundles reject archive links. Unix bundles may preserve internal links
-only on security-fixed Python (3.12.11+, 3.13.4+ or 3.14+); older runtimes fail
-explicitly. This matters for macOS framework bundles: [Python 3.12.11 fixed
-tarfile extraction-filter bypasses involving crafted links](https://www.python.org/downloads/release/python-31211/).
+only on security-fixed Python (3.12.15+, 3.13.16+, 3.14.8+ or 3.15.x); older and
+unreviewed future minor versions fail explicitly. This matters for macOS framework
+bundles: the September 2026 releases fixed additional tarfile extraction-filter
+bypasses, so the previous 3.12.11/3.13.4/3.14.0 thresholds are no longer sufficient.
+See [Python 3.12.15](https://www.python.org/downloads/release/python-31215/),
+[3.13.16](https://www.python.org/downloads/release/python-31316/) and
+[3.14.8](https://www.python.org/downloads/release/python-3148/).
 
 Windows GN/autoninja wrappers use the installed pinned CIPD Python directly, and
 its executable directory is added only to build-child PATH. This avoids missing

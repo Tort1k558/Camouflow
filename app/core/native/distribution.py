@@ -55,9 +55,9 @@ def checked_archive_name(name: str) -> PurePosixPath:
 
 def archive_links_supported() -> bool:
     version = sys.version_info[:3]
-    return (sys.platform != "win32" and (version >= (3, 14, 0)
-            or (version[:2] == (3, 13) and version >= (3, 13, 4))
-            or (version[:2] == (3, 12) and version >= (3, 12, 11))))
+    minimum = {(3, 12): (3, 12, 15), (3, 13): (3, 13, 16),
+               (3, 14): (3, 14, 8), (3, 15): (3, 15, 0)}.get(version[:2])
+    return sys.platform != "win32" and minimum is not None and version >= minimum
 
 
 def resolve_native_executable(settings: dict) -> Path:
