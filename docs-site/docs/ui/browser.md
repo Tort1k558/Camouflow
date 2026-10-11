@@ -8,8 +8,38 @@ CamouFlow supports:
 
 - **Camoufox**
 - **CloakBrowser**
+- **Native (preview)**
 
 The selected engine is stored globally and can be overridden per profile.
+
+## Native preview
+
+Native has its own persistent Chromium runtime, profile directory and cross-process
+owner lock. It does not fall back to Camoufox/CloakBrowser or adopt their profile
+directories. Current own-engine development and CI are Windows-only; the patched
+Chromium binary is still being compiled, not available as a verified release.
+
+Native configuration supports Desktop and Mobile Web, viewport size, DPR,
+locale, timezone and browser permissions. Mobile Web is desktop Chromium with
+viewport/touch emulation, **not real Android/iOS**. Unsupported identity/masking
+options are rejected; Canvas, audio, GPU and hardware diagnostics report native
+values rather than invented fingerprints.
+
+Choose an explicit installed executable or **Managed release** with an absolute
+owned binary-store path. Maintenance can install a local `.tar.gz` bundle using
+a SHA-256 obtained from a trusted publisher, verify headless startup and select
+or roll back compatible releases. There is no signed online update catalog.
+Own-fork bundles require checksums for their complete payload, including DLLs
+and resources. Verification runs in background workers; changed settings invalidate
+earlier compatibility results. Existing sessions must be closed before changing
+their executable or configuration.
+
+The Native compatibility action checks startup, observed document/worker values
+and teardown. It does not certify CAPTCHA scores, CDP invisibility or third-party
+anti-bot acceptance. Current upstream SDK runtime checks are distinct from
+verification of our unfinished source patches. See the
+[Native implementation and evidence](https://github.com/Tort1k558/Camouflow/blob/main/docs/NATIVE_ENGINE.md)
+for that boundary.
 
 ## Main groups
 
@@ -32,7 +62,7 @@ The selected engine is stored globally and can be overridden per profile.
 
 ## Applying settings
 
-Saved defaults apply to new browser launches; a profile's explicit overrides take priority. Existing browser sessions must be closed and reopened. Context settings (headers, JavaScript, CSP, downloads, permissions and storage-state import) apply in both persistent and ephemeral modes.
+Saved defaults apply to new browser launches; a profile's explicit overrides take priority. Existing browser sessions must be closed and reopened. For Camoufox and CloakBrowser, context settings (headers, JavaScript, CSP, downloads, permissions and storage-state import) apply in both persistent and ephemeral modes. Native requires persistent profiles and supports only its explicitly validated configuration.
 
 For CloakBrowser, window dimensions control the viewport and screen dimensions control the fingerprint separately. Auto window size uses the wrapper's native default viewport, so humanized typing also works without a manually specified size. Locale and timezone use native launch flags in both context modes, rather than extra Playwright emulation.
 

@@ -12,6 +12,45 @@ All Native source is public. Server source remains private. Windows, Linux and
 macOS runtime validation are required before the first working release is complete.
 Mobile Web must remain distinct from real Android/iOS browser execution.
 
+Current development and CI are Windows-only at the user's request. Linux/macOS
+workspaces and historical results are preserved, but their downloads, builds and
+runtime checks are deferred until explicitly resumed.
+
+### Latest verified state: `927d7e5`, 2026-10-11
+
+The matching [Windows desktop CI run](https://github.com/Tort1k558/Camouflow/actions/runs/38136886408)
+completed successfully, including static checks, QML smoke, standalone C++
+policy checks and packaging/runtime checks for the existing engines. Saved
+runtime artifacts were downloaded and inspected, not inferred from the green badge.
+
+The Native adapter's upstream SDK `148.0.7778.96` passed all 18 runtime checks:
+profile/storage isolation, permissions, authenticated proxy routing, scenarios,
+Recorder, recovery, cancellation and owned-process cleanup. Its measured executable
+SHA-256 remained `290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635`.
+Three concurrent-profile restart rounds observed 47/45/48 process identities and
+zero surviving owned processes. Crash tests use committed storage checkpoints,
+not a promise that every immediately acknowledged browser write is crash-durable.
+
+Document/worker Canvas observations agreed: width `218.994140625`, pixel SHA-256
+`c59614e06a1a272bc7ea3a4eaaf307db57137fec6ca489755504915190d32e5c`.
+Rendered OfflineAudio produced 4096 mono frames at the configured 44100-Hz probe
+rate; anonymous media counts were zero on the CI host. These are native
+observations, not masking, fixed cross-host fingerprints or hardware sample rates.
+Configuration mismatches were empty and `fingerprint_patched` remained false.
+
+Hardware/WebRTC negative-control artifacts correctly rejected ignored Native
+flags on that unpatched SDK; they must not be reported as own-fork privacy passes.
+The independent Windows Chromium source build is still running with patches
+0001–0005. UA draft 0006 and V8 inspector draft 0007 remain unapplied and
+uncompiled. No own-fork binary, CAPTCHA score, general CDP invisibility or
+third-party anti-bot classification has been verified for this revision.
+
+The latest local regression run passed 958 tests. Local own-fork packaging is
+prepared; managed fork releases require full payload checksums, including DLLs
+and resources, before installation/selection/rollback. Compatibility hashing
+runs off the GUI thread and startup resolution off the async event loop.
+Synthetic packaging/selection tests are not an actual packaged own-fork runtime.
+
 ## Architecture audit: integration points
 
 - `app/core/browser_interface.py`: shared Playwright page/context API, proxy
@@ -52,7 +91,9 @@ Chromium sandboxing is enabled; launch and teardown have explicit time bounds.
 This uses the upstream Chromium-compatible distribution selected by the pinned
 Playwright version for initial runtime verification. Replacing that executable
 with a future own build does not require changing the runtime's public interface.
-Publisher-verified binary manifests/update management are not implemented yet.
+Local explicitly trusted SHA-256 bundles, immutable managed installations,
+headless activation and rollback are implemented. Authenticated publisher
+signatures and an online update catalog remain unfinished.
 
 ## Observed Windows evidence — 2026-10-11
 
