@@ -349,6 +349,33 @@ These are diagnostics, not Canvas/Audio masking or own-fork capability proof.
 References: [OffscreenCanvas](https://html.spec.whatwg.org/multipage/canvas.html#the-offscreencanvas-interface)
 and [OfflineAudioContext](https://webaudio.github.io/web-audio-api/#OfflineAudioContext).
 
+Matching Windows [CI run 38130934316](https://github.com/Tort1k558/Camouflow/actions/runs/38130934316)
+at `22fcc95` completed successfully. Downloaded reports contain eighteen passing
+upstream source-runtime checks and three restart rounds with 44/48/46 observed
+process identities and zero remaining processes. Canvas document/worker widths
+and RGBA hashes matched within that host, audio rendered real samples, and media
+enumeration correctly returned zero devices on the CI runner. The CI pixel hash
+differs from the local workstation's hash; no cross-host fixed fingerprint is
+invented or required. Hardware/WebRTC negative controls remain intentionally
+failed protected probes against the unpatched SDK, not own-fork capabilities.
+
+## Observed CDP error-preview side effects (not fixed yet)
+
+A controlled Windows Chromium 148.0.7778.96 SDK probe connected an additional
+Runtime CDP session and logged four owned Error instances. No browser API was
+replaced. Serialization invoked custom inherited `stack`, `name` and `message`
+getters 2/4/3 times respectively, but invoked an own `stack` getter zero times.
+Explicit JavaScript reads incremented every counter, proving that the zero was
+not a broken probe. Four actual `Runtime.consoleAPICalled` events were observed.
+
+The pinned `v8/src/inspector/value-mirror.cc` guards scripted own accessor
+descriptors in `getErrorProperty`, but its missing-own-descriptor branch calls
+ordinary property lookup, allowing an inherited accessor. Lazy native stack
+formatting can also read a custom name/message, so guarding only an inherited
+stack descriptor is not sufficient. This determines the next C++ investigation;
+the live Chromium source has not been changed. There is no passing own-fork CDP
+gate and no claim that CDP is generally invisible or that CAPTCHA scores improved.
+
 The first Windows probe found that context-level locale alone differed from
 worker language. Native now supplies Chromium's own `--lang` and `--accept-lang`
 flags from the central validated configuration. Their behavior was inspected in
