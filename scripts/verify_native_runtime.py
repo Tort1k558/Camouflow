@@ -64,6 +64,11 @@ STORAGE = """async value => {
 }"""
 
 
+PERMISSION_STATES = """async () => Object.fromEntries(await Promise.all(
+  ['geolocation', 'notifications'].map(async name =>
+    [name, (await navigator.permissions.query({name})).state])))"""
+
+
 class FixtureServer(ThreadingHTTPServer):
     authenticated_requests = 0
     challenges = 0
@@ -255,7 +260,8 @@ async def verify_controller_crash(profile_root: Path, executable: Path, origin: 
 async def verify(profile_root: Path, executable: Path, origin: str, proxy_server: FixtureServer) -> dict:
     desktop = NativeConfiguration()
     mobile = NativeConfiguration(environment="mobile_web", width=390, height=844, device_scale_factor=3,
-                                 locale="de-DE", timezone="Europe/Berlin")
+                                 locale="de-DE", timezone="Europe/Berlin",
+                                 permissions=("geolocation", "notifications"))
     a = NativeRuntime(profile_root / "a", executable, desktop)
     b = NativeRuntime(profile_root / "b", executable, mobile)
     proxied = NativeRuntime(profile_root / "proxy", executable, desktop)
@@ -266,6 +272,16 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         page_a, page_b = context_a.pages[0], context_b.pages[0]
         await page_a.goto(origin)
         await page_b.goto(origin)
+        default_permissions = await page_a.evaluate(PERMISSION_STATES)
+        granted_permissions = {name: "granted" for name in default_permissions}
+        assert default_permissions == {name: "denied" for name in default_permissions}, default_permissions
+        assert await page_b.evaluate(PERMISSION_STATES) == granted_permissions
+        await context_b.clear_permissions()
+        revoked_permissions = await page_b.evaluate(PERMISSION_STATES)
+        assert revoked_permissions == {name: "prompt" for name in default_permissions}, revoked_permissions
+        await context_b.grant_permissions(list(mobile.permissions), origin=origin)
+        assert await page_b.evaluate(PERMISSION_STATES) == granted_permissions
+        assert await page_a.evaluate(PERMISSION_STATES) == default_permissions
         blank = {"cookie": "", "local": None, "indexed": None, "cached": None, "workers": 0}
         assert await page_b.evaluate(STORAGE, None) == blank
         await page_a.evaluate(STORAGE, "alpha")
@@ -300,9 +316,12 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
             context = await runtime.start(headless=True)
             page = context.pages[0]
             await page.goto(origin)
+            assert await page.evaluate(PERMISSION_STATES) == (
+                granted_permissions if runtime is b else default_permissions)
             assert await page.evaluate(STORAGE, None) == {"cookie": "owned=" + value, "local": value, "indexed": value, "cached": value, "workers": 1}
             await runtime.close()
         checks.append("cookie-localstorage-indexeddb-cache-serviceworker-restart")
+        checks.append("configured-permissions-isolation-revocation-and-restart")
         abandoned = await asyncio.to_thread(subprocess.run,
             [sys.executable, str(Path(__file__).resolve()), "--abandon-lock", str(a.profile_dir),
              "--executable", str(executable)], cwd=ROOT, capture_output=True, text=True, timeout=15)
@@ -505,6 +524,9 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),
                 "version": version, "binary_sha256_measured": checksum, "checks": checks,
                 "mobile_observed": observed, "diagnostics": diagnostics, "fingerprint_patched": False,
+                "permission_states": {"configured_empty": default_permissions,
+                                      "configured_grants": granted_permissions,
+                                      "after_clear": revoked_permissions},
                 "controller_descendants_observed": controller_processes}
     finally:
         try:

@@ -416,8 +416,9 @@ and adapter preservation for each retained resource type.
 The Windows source gate passed sixteen checks: it cancels real driver startup
 without an injected delay, verifies the pending operation was not cancelled,
 checks no new owned Node/Chromium processes remain after cleanup, and successfully
-starts the same profile again. Linux/macOS results for this additional check are
-still pending. These remain upstream bootstrap-runtime checks; own-fork build
+starts the same profile again. Matching Windows, Linux x64 and macOS ARM64 CI
+reports at `110c381` each passed all sixteen checks. These remain upstream
+bootstrap-runtime checks; own-fork build
 and runtime verification are separate requirements.
 
 ### Linux process-observer correction
@@ -432,8 +433,27 @@ and observe executable identity separately through `/proc/<pid>/exe`. Inaccessib
 executables remain explicitly unknown; their thread names are not substituted as
 executable identities. Exited zombie/dead states are excluded. A direct Linux
 probe of the updated observer identified that owned Node, tracked its descendants
-and verified its exit. Full matching Linux runtime-gate results are still required;
-this observer-only probe does not prove a Linux Chromium fork build.
+and verified its exit. The matching Linux CI report at `110c381` then passed the
+full sixteen-check gate, including controller death and cancelled driver startup.
+Neither the observer probe nor that SDK-runtime gate proves a Linux Chromium fork build.
+
+### Permission verification
+
+The source-runtime gate additionally queries real Chromium geolocation and
+notification permission states on the owned loopback fixture. It checks configured
+grants, simultaneous profile isolation, revocation, origin-scoped regrant and
+reapplication of configuration after a persistent-profile restart. It does not
+request location, notifications, camera or microphone access from the host.
+
+An empty configured permission list is an explicit Playwright/CDP override:
+these permissions are `denied`, not the browser's ordinary `prompt` state.
+`clear_permissions()` resets that override, so revocation is checked against
+`prompt`; a subsequent restart reapplies the configured list. This is permission
+policy verification, not evidence of media-device emulation or WebRTC leak prevention.
+
+Two complete local Windows runs passed all seventeen checks on the pinned
+upstream bootstrap binary; the report includes measured permission states.
+Matching Linux/macOS permission-gate results remain pending.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).
