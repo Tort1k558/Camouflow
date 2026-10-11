@@ -10,12 +10,26 @@ resumed; existing Linux workspaces and verified results are preserved. Desktop
 CI now schedules only Windows jobs. Linux/macOS support remains unfinished and
 must not be represented as released own-fork runtimes.
 
-## Next patch batch (not in the running first build)
+## Current Windows source build
 
-The first Windows compilation remains on hardware/MIDL patches 0001/0002.
-Drafts are prepared separately: never change its source or generated headers
-while the compiler is running. The output directory must be retained for
-incremental compilation after the first build and its baseline runtime gates.
+The first four-job Windows compilation, with hardware/MIDL patches 0001/0002,
+stopped after 27,364 completed actions and four failed Inspector compilations.
+All four reported `LLVM ERROR: out of memory`; this was a terminal compiler
+failure, not a polling timeout. The captured session exited with code 1.
+The output directory and successful object files were preserved.
+
+After the process exited, prepared patches 0003/0004/0005 were applied together
+to the pinned source, and compilation was resumed with `--jobs 1`. The build
+helper validates the exact recognised patch set and dependency rules before
+generating/building. Existing compatible objects remain reusable; changed
+generated feature headers will legitimately invalidate some Blink objects.
+The own-fork binary and every patched runtime gate remain unverified.
+
+The read-only post-failure Windows sample showed 13.4 GiB free physical RAM,
+but only about 7.3 GiB of available committed memory under a 36.5-GiB commit
+limit. Physical RAM alone is not a sufficient build-memory check. Neither other
+applications nor the global pagefile/system settings were changed. Never hot
+edit the source or generated headers while the compiler is running.
 
 `0004-native-automation-exposure.patch` adds an opt-in Blink runtime feature,
 `CamouFlowAutomationConcealed`, disabled by default. Enable it only in an
@@ -131,8 +145,9 @@ evidence. Own-fork compilation/runtime verification remains pending.
 Chromium's pinned `DEPS` defines its own dependency revisions/CIPD instances,
 including its vendored depot_tools; the bootstrap tool is pinned separately and
 self-updates are disabled. `args.gn` sets an unbranded, local release build with
-reduced symbols and no paid remote build service. Compilation uses four jobs to
-limit pressure on the inspected 24-GiB machine.
+reduced symbols and no paid remote build service. Four jobs is the configured
+maximum/default; the current recovery uses one explicit job on this 24-GiB
+machine to reduce committed-memory pressure.
 
 ## Windows preparation
 
