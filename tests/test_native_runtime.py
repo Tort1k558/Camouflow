@@ -388,3 +388,72 @@ def test_native_binary_archive_links_require_security_fixed_python_versions(monk
     monkeypatch.setattr(distribution.sys, "platform", "darwin")
     monkeypatch.setattr(distribution.sys, "version_info", version)
     assert distribution.archive_links_supported() is supported
+
+
+def test_native_binary_activation_and_rollback_probe_before_atomic_selection(tmp_path, monkeypatch):
+    import json
+    from unittest.mock import AsyncMock
+
+    from app.core.native import distribution
+
+    store = distribution.NativeBinaryStore(tmp_path / "native-binaries")
+    first_archive, first_digest = _native_release_archive(tmp_path)
+    second_archive, second_digest = _native_release_archive(tmp_path, "0.2.0-dev")
+    store.install_archive(first_archive, first_digest)
+    store.install_archive(second_archive, second_digest)
+    probe = AsyncMock(return_value="148.0.7778.96")
+    monkeypatch.setattr(distribution, "probe_native_binary", probe)
+    asyncio.run(store.activate(first_digest))
+    asyncio.run(store.activate(second_digest))
+    assert store.resolve_active()["release_sha256"] == second_digest
+    assert json.loads((store.root / "current.json").read_text(encoding="utf-8")) == {"active": second_digest, "previous": first_digest}
+    asyncio.run(store.rollback())
+    assert store.resolve_active()["release_sha256"] == first_digest
+    assert probe.await_count == 3
+    assert not list(store.root.glob("native-current-*.tmp"))
+
+
+@pytest.mark.parametrize("failure", ["startup", "version"])
+def test_native_failed_activation_preserves_the_existing_release_and_reports_failure(tmp_path, monkeypatch, failure):
+    from unittest.mock import AsyncMock
+
+    from app.core.native import distribution
+
+    store = distribution.NativeBinaryStore(tmp_path / "native-binaries")
+    first_archive, first_digest = _native_release_archive(tmp_path)
+    second_archive, second_digest = _native_release_archive(tmp_path, "0.2.0-dev")
+    store.install_archive(first_archive, first_digest)
+    store.install_archive(second_archive, second_digest)
+    monkeypatch.setattr(distribution, "probe_native_binary", AsyncMock(return_value="148.0.7778.96"))
+    asyncio.run(store.activate(first_digest))
+    before = (store.root / "current.json").read_bytes()
+    monkeypatch.setattr(distribution, "probe_native_binary", AsyncMock(
+        side_effect=RuntimeError("owned startup failed") if failure == "startup" else None,
+        return_value="unexpected"))
+    with pytest.raises((RuntimeError, ValueError)):
+        asyncio.run(store.activate(second_digest))
+    assert (store.root / "current.json").read_bytes() == before
+    assert store.resolve_active()["release_sha256"] == first_digest
+
+
+def test_native_binary_selection_does_not_fallback_from_corrupt_state_or_allow_profile_downgrades(tmp_path, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.core.native import distribution
+
+    store = distribution.NativeBinaryStore(tmp_path / "native-binaries")
+    with pytest.raises(ValueError, match="No managed"):
+        store.resolve_active()
+    archive, first = _native_release_archive(tmp_path)
+    store.install_archive(archive, first)
+    monkeypatch.setattr(distribution, "probe_native_binary", AsyncMock(return_value="148.0.7778.96"))
+    asyncio.run(store.activate(first))
+    archive, newer = _native_release_archive(tmp_path, "0.2.0-dev", {"chromium_version": "149.0.0.0"})
+    store.install_archive(archive, newer)
+    monkeypatch.setattr(distribution, "probe_native_binary", AsyncMock(return_value="149.0.0.0"))
+    asyncio.run(store.activate(newer))
+    with pytest.raises(ValueError, match="downgrade is blocked"):
+        asyncio.run(store.rollback())
+    (store.root / "current.json").write_text('{"active":"unsafe"}', encoding="utf-8")
+    with pytest.raises(ValueError, match="Invalid"):
+        store.resolve_active()

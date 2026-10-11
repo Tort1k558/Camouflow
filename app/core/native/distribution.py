@@ -14,6 +14,9 @@ from PyQt6.QtCore import QLockFile
 
 from app.storage.db import _unsafe_windows_name
 
+from .configuration import NativeConfiguration
+from .health import probe_native_binary
+
 MAX_ARCHIVE_BYTES = 2 * 1024 ** 3
 MAX_UNPACKED_BYTES = 8 * 1024 ** 3
 MAX_FILES = 50000
@@ -120,6 +123,62 @@ class NativeBinaryStore:
         if sha256_file(executable) != checked_digest(metadata.get("executable_sha256")):
             raise ValueError("Native release executable checksum mismatch")
         return {**metadata, "release_sha256": digest, "executable_path": str(executable)}
+
+    def _current(self) -> dict:
+        path = self._child("current.json")
+        if not path.exists():
+            return {"active": None, "previous": None}
+        if not path.is_file() or path.stat().st_size > 1024:
+            raise ValueError("Invalid Native active release record")
+        current = json.loads(path.read_text(encoding="utf-8-sig"))
+        if not isinstance(current, dict) or set(current) != {"active", "previous"}:
+            raise ValueError("Invalid Native active release record")
+        for digest in current.values():
+            if digest is not None:
+                checked_digest(digest)
+        return current
+
+    def resolve_active(self) -> dict:
+        active = self._current()["active"]
+        if active is None:
+            raise ValueError("No managed Native binary is active")
+        return self.inspect(active)
+
+    async def activate(self, digest: str) -> dict:
+        with self._locked():
+            return await self._activate_locked(checked_digest(digest))
+
+    async def rollback(self) -> dict:
+        with self._locked():
+            previous = self._current()["previous"]
+            if previous is None:
+                raise ValueError("No previous Native binary is available")
+            return await self._activate_locked(previous)
+
+    async def _activate_locked(self, digest: str) -> dict:
+        release = self.inspect(digest)
+        current = self._current()
+        if current["active"] is not None:
+            active = self.inspect(current["active"])
+            if tuple(map(int, release["chromium_version"].split("."))) < tuple(map(int, active["chromium_version"].split("."))):
+                raise ValueError("Chromium downgrade is blocked; existing profile compatibility has not been established")
+        observed = await probe_native_binary(Path(release["executable_path"]), NativeConfiguration(), self._child("health"))
+        if observed != release["chromium_version"]:
+            raise ValueError("Native runtime version differs from its release manifest")
+        if current["active"] == digest:
+            return release
+        target = self._child("current.json")
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.root,
+                                             prefix="native-current-", suffix=".tmp", delete=False) as stream:
+                temporary = Path(stream.name)
+                json.dump({"active": digest, "previous": current["active"]}, stream)
+            temporary.replace(target)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+        return release
 
     def install_archive(self, archive: Path, expected_sha256: str) -> dict:
         digest = checked_digest(expected_sha256)

@@ -212,10 +212,24 @@ Use `upstream-bootstrap` instead of `chromium-fork` for an upstream development
 bundle; labels are publisher metadata, not independent proof of native patches.
 The archive checksum must come from a trusted release catalog/operator, not from
 an unchecked sidecar downloaded with the archive. Checksums are **not signatures**.
-There is no configured public release feed, activation/rollback selector or GUI
-installer yet; this store is the installation layer those operations will use.
-The schema/path/integrity/immutability checks currently have isolated local tests,
-not proof of a published own Chromium distribution.
+The store exposes asynchronous `activate(digest)` and `rollback()` operations.
+Each candidate must pass real headless startup, exact Chromium version comparison
+and teardown in a disposable profile before `current.json` is replaced atomically.
+Failed checks preserve the active selection and report an error; no alternative
+browser is selected. `resolve_active()` verifies the selected executable again.
+Old releases remain installed. Chromium downgrades, including rollback to an older
+Chromium version, are blocked because existing profile compatibility has not been
+established. Rollback between releases of the same Chromium version is supported.
+There is no configured public release feed or GUI installer/selector yet. These
+operations do not change running browsers or customer profiles, and do not prove
+a published own Chromium distribution.
+
+On Windows, two complete local upstream Chrome 148.0.7778.96 preview bundles
+were checksummed, installed and activated through this API, then rolled back to
+the first release. All three headless launches and cleanups passed; both immutable
+installations remained present and the disposable health-profile directory was
+empty. This verifies the store lifecycle, not the pending own-fork build or
+Linux/macOS archive activation.
 
 Windows bundles reject archive links. Unix bundles may preserve internal links
 only on security-fixed Python (3.12.11+, 3.13.4+ or 3.14+); older runtimes fail
