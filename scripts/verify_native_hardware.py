@@ -30,7 +30,7 @@ READ = """() => ({
 
 WORKERS = """async () => {
   const request = (port, start) => new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Hardware worker probe timed out')), 10000);
+    const timer = setTimeout(() => reject(new Error('Native worker probe timed out')), 10000);
     port.onmessage = event => { clearTimeout(timer); resolve(event.data); };
     port.onmessageerror = () => { clearTimeout(timer); reject(new Error('Invalid worker response')); };
     try { start(); } catch (error) { clearTimeout(timer); reject(error); }

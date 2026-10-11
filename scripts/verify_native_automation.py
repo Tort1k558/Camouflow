@@ -107,9 +107,9 @@ async def verify(executable: Path, root: Path, origin: str, checks: list) -> dic
                         await loaded;
                       }
                     }""", origin)
-                    frames = [("document", page), *zip(("same_origin_frame", "cross_origin_frame"), page.frames[1:])]
-                    if len(frames) != 3:
+                    if len(page.frames) != 3:
                         raise ValueError("Both owned automation frame contexts must be observed")
+                    frames = [("document", page), *zip(("same_origin_frame", "cross_origin_frame"), page.frames[1:])]
                     popup = await context.new_page()
                     await popup.goto(origin, wait_until="load", timeout=30000)
                     frames.append(("new_target", popup))

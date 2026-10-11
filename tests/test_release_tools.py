@@ -428,6 +428,65 @@ def test_native_font_patch_embeds_reviewed_and_compiled_policy(public_name, embe
     assert embedded == (ROOT / public_name).read_text(encoding="utf-8-sig")
 
 
+def _font_observation(protected=False):
+    arial = {"width": 100.0, "hash": "a" * 64, "cssWidth": 100.0}
+    excluded = dict(arial) if protected else {"width": 150.0, "hash": "b" * 64, "cssWidth": 150.0}
+    return {"arial": arial, "excluded": excluded,
+            "downloaded": {"width": 150.0, "hash": "c" * 64, "cssWidth": 150.0},
+            "excludedLocalLoaded": not protected}
+
+
+@pytest.mark.parametrize("protected", [False, True])
+def test_native_font_gate_preserves_real_metrics_and_downloaded_fonts(protected):
+    from scripts.verify_native_fonts import validate_font_probe
+
+    validate_font_probe(_font_observation(protected), _font_observation(), protected)
+    if not protected:
+        validate_font_probe(_font_observation(), None, False)
+
+
+@pytest.mark.parametrize("name,change", [
+    ("arial", {"width": float("nan")}), ("arial", {"width": True}),
+    ("arial", {"hash": "fake"}), ("arial", {"cssWidth": 105}),
+    ("arial", {"hash": "d" * 64}), ("downloaded", {"width": 100.0, "cssWidth": 100.0}),
+    ("excluded", {"width": 150.0, "cssWidth": 150.0}),
+])
+def test_native_font_gate_rejects_leaks_fake_metrics_and_broken_webfonts(name, change):
+    from scripts.verify_native_fonts import validate_font_probe
+
+    observed = _font_observation(True)
+    observed[name].update(change)
+    with pytest.raises(ValueError):
+        validate_font_probe(observed, _font_observation(), True)
+
+
+def test_native_font_gate_requires_controls_and_blocks_local_face_bypass():
+    from scripts.verify_native_fonts import validate_font_probe
+
+    with pytest.raises(ValueError):
+        validate_font_probe(_font_observation(True), None, True)
+    observed = _font_observation(True)
+    observed["excludedLocalLoaded"] = True
+    with pytest.raises(ValueError):
+        validate_font_probe(observed, _font_observation(), True)
+
+
+@pytest.mark.parametrize("fonts,protected,valid", [
+    ([{"family": "Arial"}], True, True),
+    ([{"family": "Arial"}, {"family": "Courier New"}], False, True),
+    ([{"family": "Arial"}, {"family": "Courier New"}], True, False),
+    ([{"family": "Arial"}], False, False), ([], True, False), ([{}], True, False),
+])
+def test_native_font_enumeration_gate_rejects_ignored_policy_and_missing_controls(fonts, protected, valid):
+    from scripts.verify_native_fonts import validate_enumeration
+
+    if valid:
+        validate_enumeration(fonts, protected)
+    else:
+        with pytest.raises(ValueError):
+            validate_enumeration(fonts, protected)
+
+
 def test_native_build_clean_baseline_has_no_patches(tmp_path, monkeypatch):
     from scripts import native_build
 

@@ -100,6 +100,26 @@ this draft restricts accessible collections, not the bytes inside allowed font
 files. The app's `fonts` setting remains rejected until the own-fork runtime
 gate verifies the complete selection path.
 
+`scripts/verify_native_fonts.py` prepares that Windows runtime gate. It uses
+owned loopback pages and a genuine Courier New font obtained through explicitly
+granted Local Font Access. The font bytes are served only by the temporary
+loopback fixture and are neither committed nor packaged. The downloaded font
+is a separate control: restricting installed families must not break web fonts.
+
+The gate covers the current FontDataService and explicitly selected legacy
+DirectWrite path, six document/frame/worker scopes with their actual origins,
+CSS versus canvas widths, native canvas pixel hashes, excluded `local()` faces,
+selected family enumeration and original Arial style metadata. Both protected
+paths must pass again after closing/reopening the same persistent profile.
+The real SDK control passed all 14 unrestricted checks, including the actual
+cross-origin frame, and rejected the ignored Native switch at Local Font Access.
+This is negative-control evidence, not successful own-fork masking or restart
+evidence. Own-fork compilation/runtime verification remains pending.
+
+```powershell
+& $python scripts/verify_native_fonts.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative\tmp --report D:\CamouFlowNative\fork-fonts.json
+```
+
 `build-lock.json` pins full upstream Chromium and bootstrap depot_tools commits.
 Chromium's pinned `DEPS` defines its own dependency revisions/CIPD instances,
 including its vendored depot_tools; the bootstrap tool is pinned separately and
