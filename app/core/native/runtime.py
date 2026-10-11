@@ -17,6 +17,7 @@ class NativeRuntimeError(RuntimeError):
 class NativeRuntime:
     CLOSE_TIMEOUT_SECONDS = 40
     DRIVER_STOP_TIMEOUT_SECONDS = 8
+    DRIVER_START_TIMEOUT_SECONDS = 30
 
     def __init__(self, profile_dir: Path, executable: Path, configuration: NativeConfiguration):
         self.profile_dir = Path(profile_dir)
@@ -26,11 +27,17 @@ class NativeRuntime:
         self.playwright = None
         self._profile_lock = None
         self._driver_stop_task = None
+        self._driver_start_task = None
         self._operation_lock = asyncio.Lock()
+
+    @property
+    def has_resources(self) -> bool:
+        return any(value is not None for value in (self.context, self.playwright, self._profile_lock,
+                                                   self._driver_start_task, self._driver_stop_task))
 
     async def start(self, *, headless: bool = False, proxy: dict | None = None):
         async with self._operation_lock:
-            if self.context is not None or self.playwright is not None:
+            if self.has_resources:
                 raise NativeRuntimeError("Native profile is already running")
             options = self.configuration.context_options()
             if not self.executable.is_file():
@@ -60,7 +67,9 @@ class NativeRuntime:
             try:
                 if not marker.exists():
                     marker.write_text(json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
-                self.playwright = await async_playwright().start()
+                self._driver_start_task = asyncio.create_task(async_playwright().start())
+                self.playwright = await asyncio.wait_for(asyncio.shield(self._driver_start_task),
+                                                        timeout=self.DRIVER_START_TIMEOUT_SECONDS)
                 self.context = await self.playwright.chromium.launch_persistent_context(
                     str(self.profile_dir), executable_path=str(self.executable), headless=headless,
                     chromium_sandbox=True, proxy=proxy, timeout=30000,
@@ -76,6 +85,9 @@ class NativeRuntime:
             await self._close()
 
     async def _close(self):
+        if self.playwright is None and self._driver_start_task is not None:
+            self.playwright = await asyncio.wait_for(asyncio.shield(self._driver_start_task),
+                                                    timeout=self.DRIVER_START_TIMEOUT_SECONDS)
         context = self.context
         driver = self.playwright
         try:
@@ -89,6 +101,7 @@ class NativeRuntime:
             self.context = None
             self.playwright = None
             self._driver_stop_task = None
+            self._driver_start_task = None
             if self._profile_lock is not None:
                 self._profile_lock.unlock()
                 self._profile_lock = None

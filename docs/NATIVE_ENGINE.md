@@ -367,9 +367,11 @@ The Windows upstream runtime gate now passes fourteen checks: it cancels a real
 Native close while its driver-stop task is pending, proves another process cannot
 acquire that profile, then waits for the same stop operation and verifies owner
 release. There is no simulated browser or injected stop delay in this gate.
-Linux/macOS reports for this additional check remain pending. This does not yet
-prove cancellation during driver startup, arbitrary controller termination or
-long-running process/resource stability.
+Downloaded reports from [run 38106687996](https://github.com/Tort1k558/Camouflow/actions/runs/38106687996)
+at `e81f269` now confirm all fourteen checks on Windows x64, Linux x64 and macOS
+ARM64. Each reports `fingerprint_patched: false`. This remains upstream bootstrap
+evidence; later startup/controller checks and resource soaks require their own
+matching results.
 
 ## Abrupt controller termination gate
 
@@ -395,6 +397,28 @@ latest observed eight controller descendants. The same gate is wired into the
 Linux/macOS CI jobs, but matching reports for this revision remain pending.
 This verifies the pinned upstream bootstrap runtime, not an own-fork binary,
 in-flight write durability, a packaged GUI-controller crash or a long resource soak.
+
+## Cancellation-safe driver startup
+
+Native now retains and shields its driver-start task, with a 30-second startup
+waiting deadline. Cancelling startup does not discard a driver that is still
+being created: cleanup waits for that same operation and then stops its returned
+driver. If the cleanup waiting deadline expires, the operation and profile owner
+remain retained; a later `close()` can finish cleanup. A terminal SDK startup
+error remains an error, not a successful release of unknown resources.
+
+Both Native itself and the browser adapter check all retained resources, including
+pending start/stop tasks and the profile lock. The adapter must not replace a
+partially started runtime merely because its public Playwright handle has not
+been assigned yet. Unit tests cover cancellation, deadlines, ownership exclusion
+and adapter preservation for each retained resource type.
+
+The Windows source gate passed sixteen checks: it cancels real driver startup
+without an injected delay, verifies the pending operation was not cancelled,
+checks no new owned Node/Chromium processes remain after cleanup, and successfully
+starts the same profile again. Linux/macOS results for this additional check are
+still pending. These remain upstream bootstrap-runtime checks; own-fork build
+and runtime verification are separate requirements.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).

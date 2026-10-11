@@ -142,6 +142,71 @@ def test_native_interrupted_stop_waits_for_the_same_sdk_operation_before_releasi
     asyncio.run(check())
 
 
+@pytest.mark.parametrize("interruption", ["cancel", "cancel_timeout", "deadline"])
+def test_native_cancelled_driver_start_retains_and_cleans_the_same_start_operation(tmp_path, monkeypatch, interruption):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from PyQt6.QtCore import QLockFile
+    from app.core.native import runtime as module
+
+    async def check():
+        entered, release = asyncio.Event(), asyncio.Event()
+        driver = SimpleNamespace(stop=AsyncMock(), chromium=SimpleNamespace(launch_persistent_context=AsyncMock()))
+        async def start_driver():
+            entered.set()
+            await release.wait()
+            return driver
+        manager = SimpleNamespace(start=AsyncMock(side_effect=start_driver))
+        monkeypatch.setattr(module, "async_playwright", lambda: manager)
+        runtime = NativeRuntime(tmp_path / "owned", Path(__file__), NativeConfiguration())
+        if interruption != "cancel":
+            runtime.DRIVER_START_TIMEOUT_SECONDS = .05
+        starting = asyncio.create_task(runtime.start())
+        await asyncio.wait_for(entered.wait(), timeout=1)
+        startup = runtime._driver_start_task
+        if interruption != "deadline":
+            starting.cancel()
+        await asyncio.sleep(0)
+        other = QLockFile(str(runtime.profile_dir / "native-runtime.lock"))
+        other.setStaleLockTime(0)
+        assert not other.tryLock(0)
+        if interruption != "cancel":
+            with pytest.raises(asyncio.TimeoutError):
+                await starting
+            assert runtime._driver_start_task is startup and not startup.done()
+            with pytest.raises(NativeRuntimeError, match="already running"):
+                await runtime.start()
+            release.set()
+            await runtime.close()
+        else:
+            release.set()
+            with pytest.raises(asyncio.CancelledError):
+                await starting
+        manager.start.assert_awaited_once()
+        driver.stop.assert_awaited_once()
+        driver.chromium.launch_persistent_context.assert_not_awaited()
+        assert runtime.playwright is None and runtime._driver_start_task is None and runtime._profile_lock is None
+        assert other.tryLock(0)
+        other.unlock()
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize("resource", ["_profile_lock", "_driver_start_task", "_driver_stop_task", "context", "playwright"])
+def test_native_adapter_never_replaces_a_runtime_that_still_owns_resources(tmp_path, resource):
+    from app.core.browser_interface import BrowserInterface
+
+    runtime = NativeRuntime(tmp_path / "owned", Path(__file__), NativeConfiguration())
+    assert not runtime.has_resources
+    setattr(runtime, resource, object())
+    assert runtime.has_resources
+    browser = BrowserInterface.__new__(BrowserInterface)
+    browser._native_runtime = runtime
+    with pytest.raises(RuntimeError, match="Previous Native runtime"):
+        asyncio.run(browser._start_native())
+    assert browser._native_runtime is runtime
+
+
 @pytest.mark.parametrize("values", [
     {"hardware_concurrency": 4}, {"fingerprint_noise": True}, {"platform": "android"},
     {"persistent_context": False}, {"permissions": "camera"},

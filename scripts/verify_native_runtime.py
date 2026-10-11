@@ -436,6 +436,41 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         checks.append("cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner")
         controller_processes = await verify_controller_crash(profile_root, executable, origin)
         checks.append("controller-kill-exits-observed-process-tree-and-restores-five-stores")
+        cancelled_start = NativeRuntime(profile_root / "cancelled-start", executable, desktop)
+        starting = None
+        try:
+            before = await asyncio.to_thread(process_snapshot)
+            starting = asyncio.create_task(cancelled_start.start(headless=True))
+            while cancelled_start._driver_start_task is None:
+                assert not starting.done(), "Driver start finished before cancellation could be observed"
+                await asyncio.sleep(0)
+            startup = cancelled_start._driver_start_task
+            starting.cancel()
+            try:
+                await starting
+            except asyncio.CancelledError:
+                pass
+            else:
+                raise AssertionError("Cancelled driver start unexpectedly completed")
+            assert not startup.cancelled()
+            assert cancelled_start.playwright is None and cancelled_start._driver_start_task is None
+            assert cancelled_start._profile_lock is None
+            descendants = controller_descendants(before, await asyncio.to_thread(process_snapshot), os.getpid())
+            leaked = [pid for pid, row in descendants.items()
+                      if row["name"].lower() in {"node", "node.exe", executable.name.lower()}]
+            assert not leaked, f"Cancelled startup left owned browser/driver processes: {leaked}"
+            context = await cancelled_start.start(headless=True)
+            await context.pages[0].goto(origin)
+            assert await context.pages[0].title() == "Owned Native fixture"
+        finally:
+            if starting is not None and not starting.done():
+                starting.cancel()
+                try:
+                    await starting
+                except asyncio.CancelledError:
+                    pass
+            await cancelled_start.close()
+        checks.append("cancelled-driver-start-cleans-pending-operation-and-restarts-profile")
         with executable.open("rb") as binary:
             checksum = hashlib.file_digest(binary, "sha256").hexdigest()
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),

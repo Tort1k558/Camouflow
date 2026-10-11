@@ -492,7 +492,7 @@ class BrowserInterface:
         from .native.distribution import resolve_native_executable
         from .native.runtime import NativeRuntime
 
-        if self._native_runtime is not None and self._native_runtime.playwright is not None:
+        if self._native_runtime is not None and self._native_runtime.has_resources:
             raise RuntimeError("Previous Native runtime has not finished closing")
         configuration = NativeConfiguration.from_settings(self._browser_settings)
         try:
