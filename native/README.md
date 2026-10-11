@@ -106,6 +106,9 @@ compilation. V8 must match the verified dependency snapshot; applied V8 patches
 must exactly match known diffs and receipts include their repository/revision.
 Temporary alternate indexes stay outside both source trees. Real indexes remain
 unchanged; unknown edits and mid-build V8 changes reject a successful receipt.
+Real nested-Git fixtures also verify rejection of extra edits, unknown files,
+deletions and staged extra edits while preserving both original Git indexes
+and leaving no temporary index directory in either source tree.
 The active build loaded the previous helper and still contains only 0001–0005.
 Do not apply 0006/0007 until it has terminated and the source inputs can be changed.
 

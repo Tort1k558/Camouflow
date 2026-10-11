@@ -1009,6 +1009,62 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     assert not list(tmp_path.glob("native-patch-index-*"))
 
 
+@pytest.mark.parametrize("mutation", ["extra_edit", "untracked_file", "deleted_file", "staged_extra_edit"])
+def test_native_v8_patch_validation_checks_real_nested_checkout_without_changing_indexes(tmp_path, monkeypatch, mutation):
+    import json
+    import os
+    import subprocess
+
+    from scripts import native_build
+
+    source = tmp_path / "chromium/src"
+    v8 = source / "v8"
+    v8.mkdir(parents=True)
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+    def git(directory, *args):
+        return subprocess.check_output(["git", "-c", "core.autocrlf=false", *args], cwd=directory, env=env)
+    for directory in (source, v8):
+        git(directory, "init", "--quiet")
+    (source / ".gitignore").write_text("/v8/\n", encoding="utf-8", newline="\n")
+    file = v8 / "src/inspector/value-mirror.cc"
+    file.parent.mkdir(parents=True)
+    original = "first\n" + "unchanged\n" * 20
+    file.write_text(original, encoding="utf-8", newline="\n")
+    for directory in (source, v8):
+        git(directory, "add", ".")
+        git(directory, "-c", "user.name=Native fixture", "-c", "user.email=fixture@localhost",
+            "commit", "--quiet", "-m", "baseline")
+    revision = git(v8, "rev-parse", "HEAD").decode().strip()
+    (source.parent / "camouflow-git-revisions.json").write_text(json.dumps({
+        "src/v8": {"url": "https://chromium.googlesource.com/v8/v8.git", "rev": revision}}), encoding="utf-8")
+    public = tmp_path / "public"
+    patches = public / "native/patches"
+    patches.mkdir(parents=True)
+    patch = patches / "0007-native-inspector-error-accessors.patch"
+    file.write_text(original.replace("first", "native"), encoding="utf-8", newline="\n")
+    patch.write_bytes(git(v8, "diff"))
+    monkeypatch.setattr(native_build, "ROOT", public)
+    result = native_build.v8_source_patches(source, env)
+    assert len(result) == 1
+    assert result[0]["repository"] == "v8"
+    assert result[0]["revision"] == revision
+    if mutation in {"extra_edit", "staged_extra_edit"}:
+        file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")
+        if mutation == "staged_extra_edit":
+            git(v8, "add", ".")
+    elif mutation == "untracked_file":
+        (v8 / "unreviewed.cc").write_text("unreviewed\n", encoding="utf-8")
+    else:
+        file.unlink()
+    indexes = {directory: git(directory, "ls-files", "--stage") for directory in (source, v8)}
+    with pytest.raises((ValueError, subprocess.CalledProcessError)):
+        native_build.v8_source_patches(source, env)
+    for directory, expected in indexes.items():
+        assert git(directory, "ls-files", "--stage") == expected
+    assert git(source, "status", "--porcelain") == b""
+    assert not list(source.parent.glob("native-patch-index-*"))
+
+
 def test_controller_process_identity_survives_reparenting_and_rejects_pid_reuse():
     from scripts.verify_native_runtime import same_process
 
