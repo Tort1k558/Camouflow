@@ -199,6 +199,11 @@ up. Isolated sequential/concurrent storage probes, including process-owner
 exclusion, then closed normally in approximately 1–2 seconds. The earlier
 shutdown timeouts have not been root-caused or claimed fixed; runtime teardown
 policy and timeouts were not weakened to obtain this passing result.
+The matching `aad4c7f` desktop CI run `38101918271` also passed all 12 Native
+source-runtime checks on Windows x64, Linux x64 and macOS ARM64. Downloaded
+reports confirm backup/restore isolation on each platform. All use upstream
+bootstrap Chromium 148.0.7778.96 and explicitly report `fingerprint_patched:
+false`; this is not proof that the own Chromium fork has compiled or run.
 
 The private backend's existing profile schema already accepts Native; no schema
 change was needed. Isolated local API tests verified create, update and list
