@@ -371,5 +371,30 @@ Linux/macOS reports for this additional check remain pending. This does not yet
 prove cancellation during driver startup, arbitrary controller termination or
 long-running process/resource stability.
 
+## Abrupt controller termination gate
+
+The Windows source gate now also passed an actual hard kill of its owned Python
+controller, not a graceful `close()` or a browser-only crash. Before killing it,
+the helper verifies that its startup PID is the actual interpreter PID. This is
+important on Windows: killing a venv launcher can merely close stdin and let the
+real interpreter perform graceful cleanup, which is not controller-crash proof.
+The gate launches the base interpreter with the current environment's package
+directory explicitly supplied, and checks the PID before issuing the kill.
+
+The process-tree snapshot excludes processes that existed before the helper
+started. The test observes both the owned Node driver and Chromium, then waits
+for all observed process identities to disappear after controller termination.
+Identity uses PID, creation time and name rather than parent PID alone: reparenting
+must not incorrectly count a surviving orphan as exited. Other processes are not
+killed and their command lines are not included in snapshots or reports.
+
+After that exit check, the same owned profile restarted and all five committed
+stores were verified: cookies, localStorage, IndexedDB, CacheStorage and service
+workers. Two complete Windows runs passed fifteen source-runtime checks; the
+latest observed eight controller descendants. The same gate is wired into the
+Linux/macOS CI jobs, but matching reports for this revision remain pending.
+This verifies the pinned upstream bootstrap runtime, not an own-fork binary,
+in-flight write durability, a packaged GUI-controller crash or a long resource soak.
+
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).

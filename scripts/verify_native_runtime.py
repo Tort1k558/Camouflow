@@ -12,9 +12,11 @@ import os
 import platform
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import threading
 import traceback
+from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from socketserver import TCPServer
@@ -110,6 +112,116 @@ async def resolve_executable(explicit: str) -> Path:
         return Path(explicit).resolve()
     async with async_playwright() as driver:
         return Path(driver.chromium.executable_path).resolve()
+
+
+def process_snapshot() -> dict:
+    if sys.platform == "win32":
+        command = ("[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); "
+                   "Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,CreationDate "
+                   "| ConvertTo-Json -Compress")
+        output = subprocess.check_output(["powershell.exe", "-NoProfile", "-Command", command],
+                                         encoding="utf-8", errors="replace", timeout=15)
+        rows = json.loads(output) if output.strip() else []
+        if isinstance(rows, dict):
+            rows = [rows]
+        return {row["ProcessId"]: {"parent": row["ParentProcessId"], "name": row["Name"],
+                                  "started": row["CreationDate"]} for row in rows}
+    output = subprocess.check_output(["ps", "-ww", "-axo", "pid=,ppid=,lstart=,comm="],
+                                     encoding="utf-8", errors="replace", timeout=15,
+                                     env={**os.environ, "LC_ALL": "C"})
+    rows = {}
+    for line in output.splitlines():
+        fields = line.split(None, 7)
+        if len(fields) != 8:
+            raise ValueError("Unsupported process snapshot format")
+        rows[int(fields[0])] = {"parent": int(fields[1]), "started": " ".join(fields[2:7]),
+                                "name": Path(fields[7]).name}
+    return rows
+
+
+def same_process(left: dict | None, right: dict | None) -> bool:
+    return bool(left is not None and right is not None
+                and left["started"] == right["started"] and left["name"] == right["name"])
+
+
+def controller_descendants(before: dict, current: dict, controller_pid: int) -> dict:
+    owned = {controller_pid}
+    while True:
+        children = {pid for pid, row in current.items()
+                    if row["parent"] in owned and not same_process(before.get(pid), row)}
+        if children <= owned:
+            return {pid: current[pid] for pid in owned if pid != controller_pid}
+        owned.update(children)
+
+
+async def controller_child(profile: Path, executable: Path, origin: str) -> None:
+    parsed = urlsplit(origin)
+    if (profile != profile.resolve() or profile.name != "controller-crash"
+            or not profile.parent.name.startswith("native-owned-")
+            or parsed.scheme != "http" or parsed.hostname != "127.0.0.1"
+            or parsed.username is not None or parsed.path not in {"", "/"}
+            or not parsed.port or parsed.query or parsed.fragment):
+        raise ValueError("Controller crash helper requires an owned profile and loopback fixture")
+    runtime = NativeRuntime(profile, executable, NativeConfiguration())
+    try:
+        context = await runtime.start(headless=True)
+        page = context.pages[0]
+        await page.goto(origin)
+        await page.evaluate(STORAGE, "controller")
+        assert (await page.evaluate(STORAGE, None))["cached"] == "controller"
+        print(json.dumps({"ready": True, "pid": os.getpid()}), flush=True)
+        await asyncio.to_thread(sys.stdin.read, 1)
+    finally:
+        await runtime.close()
+
+
+async def verify_controller_crash(profile_root: Path, executable: Path, origin: str) -> int:
+    before = await asyncio.to_thread(process_snapshot)
+    profile = profile_root / "controller-crash"
+    env = {**os.environ, "PYTHONPATH": sysconfig.get_path("purelib") + os.pathsep + os.environ.get("PYTHONPATH", "")}
+    stderr_path = profile_root / "controller-stderr.log"
+    with stderr_path.open("w", encoding="utf-8") as errors:
+        controller = subprocess.Popen([sys._base_executable, str(Path(__file__).resolve()),
+                                       "--controller-child", str(profile), "--fixture-origin", origin,
+                                       "--executable", str(executable)], cwd=ROOT, env=env,
+                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True)
+    try:
+        line = await asyncio.wait_for(asyncio.to_thread(controller.stdout.readline), timeout=40)
+        if not line:
+            raise RuntimeError("Controller child did not start: " + stderr_path.read_text(encoding="utf-8-sig", errors="replace")[-2000:])
+        ready = json.loads(line)
+        assert ready.get("ready") is True and ready.get("pid") == controller.pid, "Must kill the actual interpreter, not a venv launcher"
+        assert controller.poll() is None
+        owned = controller_descendants(before, await asyncio.to_thread(process_snapshot), controller.pid)
+        assert all(row["started"] is not None for row in owned.values()), "Owned process identity is unavailable"
+        assert any(row["name"].lower() in {"node", "node.exe"} for row in owned.values()), "Owned driver was not observed"
+        assert any(row["name"].lower() == executable.name.lower() for row in owned.values()), "Owned Chromium was not observed"
+        controller.kill()
+        await asyncio.to_thread(controller.wait, timeout=10)
+        deadline = asyncio.get_running_loop().time() + 30
+        while True:
+            current = await asyncio.to_thread(process_snapshot)
+            remaining = [pid for pid, row in owned.items() if same_process(current.get(pid), row)]
+            if not remaining:
+                break
+            assert asyncio.get_running_loop().time() < deadline, f"Owned processes survived controller kill: {remaining}"
+            await asyncio.sleep(.5)
+        runtime = NativeRuntime(profile, executable, NativeConfiguration())
+        try:
+            context = await runtime.start(headless=True)
+            page = context.pages[0]
+            await page.goto(origin)
+            assert await page.evaluate(STORAGE, None) == {"cookie": "owned=controller", "local": "controller",
+                "indexed": "controller", "cached": "controller", "workers": 1}
+        finally:
+            await runtime.close()
+        return len(owned)
+    finally:
+        if controller.poll() is None:
+            controller.kill()
+        controller.wait(timeout=10)
+        for stream in (controller.stdin, controller.stdout):
+            stream.close()
 
 
 async def verify(profile_root: Path, executable: Path, origin: str, proxy_server: FixtureServer) -> dict:
@@ -322,11 +434,14 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
                     pass
             await cancelled.close()
         checks.append("cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner")
+        controller_processes = await verify_controller_crash(profile_root, executable, origin)
+        checks.append("controller-kill-exits-observed-process-tree-and-restores-five-stores")
         with executable.open("rb") as binary:
             checksum = hashlib.file_digest(binary, "sha256").hexdigest()
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),
                 "version": version, "binary_sha256_measured": checksum, "checks": checks,
-                "mobile_observed": observed, "diagnostics": diagnostics, "fingerprint_patched": False}
+                "mobile_observed": observed, "diagnostics": diagnostics, "fingerprint_patched": False,
+                "controller_descendants_observed": controller_processes}
     finally:
         try:
             await proxied.close()
@@ -367,6 +482,8 @@ def main() -> int:
     parser.add_argument("--report", type=Path, default=ROOT / "outputs/native-runtime/source.json")
     parser.add_argument("--check-lock", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--abandon-lock", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--controller-child", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--fixture-origin", default="", help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.abandon_lock:
         from PyQt6.QtCore import QLockFile
@@ -382,6 +499,9 @@ def main() -> int:
         lock.setStaleLockTime(0)
         os._exit(0 if lock.tryLock(0) else 1)
     executable = asyncio.run(resolve_executable(args.executable))
+    if args.controller_child:
+        asyncio.run(controller_child(args.controller_child, executable, args.fixture_origin))
+        return 0
     if args.check_lock:
         return asyncio.run(check_lock(args.check_lock, executable))
     args.work_dir.mkdir(parents=True, exist_ok=True)

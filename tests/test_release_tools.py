@@ -610,3 +610,38 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
         native_build.source_patches(source, env)
     assert git("ls-files", "--stage") == expected_index
     assert not list(tmp_path.glob("native-patch-index-*"))
+
+
+def test_controller_process_identity_survives_reparenting_and_rejects_pid_reuse():
+    from scripts.verify_native_runtime import same_process
+
+    original = {"name": "node", "started": "first", "parent": 123}
+    assert same_process(original, {**original, "parent": 1})
+    assert not same_process(original, {**original, "started": "second"})
+    assert not same_process(original, {**original, "name": "unrelated"})
+    assert not same_process(original, None)
+
+
+def test_controller_tree_excludes_preexisting_processes_and_tracks_new_descendants_only():
+    from scripts.verify_native_runtime import controller_descendants
+
+    old = {"name": "node", "started": "old", "parent": 500}
+    before = {20: old, 30: {"name": "chrome", "started": "old", "parent": 500}}
+    current = {10: {"name": "python", "started": "new", "parent": 500},
+               20: {**old, "parent": 10},
+               30: {"name": "node", "started": "new", "parent": 10},
+               40: {"name": "chrome", "started": "new", "parent": 30},
+               50: {"name": "unrelated", "started": "new", "parent": 500}}
+    assert set(controller_descendants(before, current, 10)) == {30, 40}
+
+
+def test_controller_process_snapshot_parses_posix_start_times_and_names_with_spaces(monkeypatch):
+    from scripts import verify_native_runtime
+
+    monkeypatch.setattr(verify_native_runtime.sys, "platform", "darwin")
+    monkeypatch.setattr(verify_native_runtime.subprocess, "check_output", lambda *a, **kw:
+        " 100 90 Sun Oct 11 07:00:00 2026 /Applications/Chromium.app/Contents/MacOS/Chromium\n"
+        " 101 100 Sun Oct 11 07:00:01 2026 /Applications/Chromium Helper (Renderer)\n")
+    rows = verify_native_runtime.process_snapshot()
+    assert rows[100] == {"parent": 90, "started": "Sun Oct 11 07:00:00 2026", "name": "Chromium"}
+    assert rows[101]["name"] == "Chromium Helper (Renderer)"
