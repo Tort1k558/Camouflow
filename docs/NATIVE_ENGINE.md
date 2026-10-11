@@ -51,6 +51,28 @@ and resources, before installation/selection/rollback. Compatibility hashing
 runs off the GUI thread and startup resolution off the async event loop.
 Synthetic packaging/selection tests are not an actual packaged own-fork runtime.
 
+## Manager privacy-policy preparation
+
+The Native manager now has a separate privacy-policy tab, persisted in Native
+defaults as `privacy_policy`. It supports validated CPU/memory ceilings, real
+font-family selection, non-proxied WebRTC UDP restriction, webdriver exposure
+and native headless UA intent. Existing runtime settings, credentials and
+profile storage are not changed when applying or clearing a policy preset.
+
+`NativePrivacyPolicy` owns validation and exact prepared C++ switch mapping.
+Unknown fields, malformed booleans, invalid hardware tiers and incompatible font
+lists are rejected. Saving a draft does not activate source patches. A requested
+policy fails explicitly in runtime option construction before profile/driver
+creation until verified capability admission is implemented; there is no
+silent stock-browser fallback. The manager names pending capabilities.
+
+Actual QML controls were exercised: a privacy preset was applied, its CPU ceiling
+edited, saved/reloaded, checked for blocked unverified launch, then cleared while
+retaining the viewport. The regression suite passed 973 tests. A disposable
+Windows-native UI render retained the green theme and readable policy fields;
+offscreen Qt's missing-font rendering was not treated as production UI proof.
+This is prepared manager integration, not verified own-fork fingerprint control.
+
 ## Architecture audit: integration points
 
 - `app/core/browser_interface.py`: shared Playwright page/context API, proxy

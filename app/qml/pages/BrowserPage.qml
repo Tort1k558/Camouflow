@@ -59,6 +59,7 @@ Item {
 
     readonly property var sections: root.isNative ? [
         ["Runtime", "Native configuration", "play", "Independent persistent Chromium profiles"],
+        ["Fingerprint", "Native privacy policy", "globe", "Prepare source-level controls; activation requires verified capabilities"],
         ["Maintenance", "Engine health", "refresh", "Configuration checks and runtime limitations"]
     ] : [
         ["Runtime", "Launch & behavior", "play", "Window mode and humanization"],
@@ -155,7 +156,7 @@ Item {
             spacing: 18
             SettingsSection {
                 objectName: "nativeConfigurationSection"
-                visible: root.isNative && root.tab !== "Maintenance"
+                visible: root.isNative && root.tab === "Runtime"
                 width: parent.width; height: nativeFields.implicitHeight + 100
                 title: "CamouFlow Native"; subtitle: "Preview runtime; native fingerprint patches are not yet verified."; icon: "play"
                 Column {
@@ -188,6 +189,32 @@ Item {
                     ToggleRow { width: parent.width; label: "Headless"; checked: browserSettingsBridge.headlessMode === "headless"; onToggled: function(value) { browserSettingsBridge.setBool("headless", value) } }
                     MultiField { width: parent.width; label: "Permissions"; placeholder: "One supported permission per line"; text: browserSettingsBridge.permissionsText; onEditingFinished: browserSettingsBridge.setValue("permissions", text) }
                     Text { width: parent.width; wrapMode: Text.WordWrap; text: "Persistent storage is always enabled. Canvas, WebGL, audio, fonts and hardware retain native values. Proxy is assigned to each profile."; color: Theme.muted; font.pixelSize: 12 }
+                }
+            }
+            SettingsSection {
+                objectName: "nativePrivacySection"
+                visible: root.isNative && root.tab === "Fingerprint"
+                width: parent.width; height: nativePrivacyFields.implicitHeight + 100
+                title: "Native privacy policy"; subtitle: "Saved drafts, not JavaScript fingerprint replacements."; icon: "globe"
+                Column {
+                    id: nativePrivacyFields
+                    anchors.fill: parent; spacing: 16
+                    Flow {
+                        width: parent.width; spacing: 10
+                        PrimaryButton { text: "Native values"; secondary: true; onClicked: browserSettingsBridge.applyNativePrivacyPreset("native") }
+                        PrimaryButton { text: "Privacy draft"; secondary: true; onClicked: browserSettingsBridge.applyNativePrivacyPreset("privacy") }
+                    }
+                    Text { objectName: "nativePrivacyStatus"; width: parent.width; wrapMode: Text.WordWrap; text: browserSettingsBridge.nativePrivacyStatus; color: Theme.muted; font.pixelSize: 12 }
+                    RowLayout {
+                        width: parent.width; spacing: 12
+                        FormField { objectName: "nativeCpuLimit"; Layout.fillWidth: true; label: "CPU ceiling"; placeholder: "0 = native, 1–64"; text: String(browserSettingsBridge.nativePrivacyPolicy.cpu_limit); onEditingFinished: browserSettingsBridge.setNativePrivacyValue("cpu_limit", text) }
+                        FormField { objectName: "nativeMemoryLimit"; Layout.fillWidth: true; label: "Memory ceiling (GiB)"; placeholder: "0 = native; 0.25, 0.5, 1, 2, 4, 8, 16"; text: String(browserSettingsBridge.nativePrivacyPolicy.memory_limit); onEditingFinished: browserSettingsBridge.setNativePrivacyValue("memory_limit", text) }
+                    }
+                    MultiField { objectName: "nativeFontFamilies"; width: parent.width; label: "Installed font families"; placeholder: "Empty = native; include Arial; one family per line"; text: browserSettingsBridge.nativePrivacyPolicy.fonts.join("\n"); onEditingFinished: browserSettingsBridge.setNativePrivacyValue("fonts", text) }
+                    ToggleRow { width: parent.width; label: "Restrict non-proxied WebRTC UDP"; hint: "Routing policy, not a fake IP; some media connections may be unavailable."; checked: browserSettingsBridge.nativePrivacyPolicy.restrict_webrtc; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("restrict_webrtc", value) } }
+                    ToggleRow { width: parent.width; label: "Conceal webdriver exposure"; hint: "Native getter policy; not general CDP invisibility."; checked: browserSettingsBridge.nativePrivacyPolicy.conceal_automation; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("conceal_automation", value) } }
+                    ToggleRow { width: parent.width; label: "Native headless UA policy"; hint: "Keep the real version, OS and Client Hints; remove only the headless product prefix."; checked: browserSettingsBridge.nativePrivacyPolicy.native_user_agent; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("native_user_agent", value) } }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Ceilings never invent additional hardware. Font selection uses real installed faces; include sufficient fonts for the selected languages. Requested patches are not verified yet: saving this policy prepares it, but browser launch is blocked until verified activation is implemented. Native values leaves the existing runtime usable."; color: Theme.muted; font.pixelSize: 12 }
                 }
             }
             SettingsSection {

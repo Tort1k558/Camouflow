@@ -58,6 +58,31 @@ try:
     pump()
     assert db.db_get_native_defaults()['window_width'] == 420
     assert db.db_get_browser_engine() == 'native'
+    page.setProperty('tab', 'Fingerprint')
+    pump()
+    privacy = find(page, 'objectName', 'nativePrivacySection')
+    assert privacy.isVisible() and not section.isVisible()
+    QMetaObject.invokeMethod(find(privacy, 'text', 'Privacy draft'), 'clicked')
+    pump()
+    cpu = find(privacy, 'objectName', 'nativeCpuLimit')
+    cpu.setProperty('text', '2')
+    QMetaObject.invokeMethod(cpu, 'editingFinished')
+    QMetaObject.invokeMethod(find(page, 'text', 'Save changes'), 'clicked')
+    pump()
+    policy = db.db_get_native_defaults()['privacy_policy']
+    assert policy['cpu_limit'] == 2 and policy['restrict_webrtc']
+    assert 'Pending' in ui.browser_settings.nativePrivacyStatus
+    from app.core.native.configuration import NativeConfiguration
+    try:
+        NativeConfiguration.from_settings(db.db_get_native_defaults()).launch_arguments()
+        raise AssertionError('Unverified privacy policy was silently launched')
+    except ValueError as error:
+        assert 'verified' in str(error)
+    QMetaObject.invokeMethod(find(privacy, 'text', 'Native values'), 'clicked')
+    QMetaObject.invokeMethod(find(page, 'text', 'Save changes'), 'clicked')
+    pump()
+    assert not db.db_get_native_defaults()['privacy_policy']['cpu_limit']
+    assert db.db_get_native_defaults()['window_width'] == 420
     ui.browser_settings.setValue('fingerprint_noise', True)
     messages = []
     ui.browser_settings.message.connect(messages.append)

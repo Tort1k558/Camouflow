@@ -25,6 +25,16 @@ viewport/touch emulation, **not real Android/iOS**. Unsupported identity/masking
 options are rejected; Canvas, audio, GPU and hardware diagnostics report native
 values rather than invented fingerprints.
 
+The **Native privacy policy** tab prepares CPU/memory ceilings, installed font
+selection, WebRTC routing, webdriver exposure and the headless UA policy.
+**Privacy draft** fills a starting policy; **Native values** clears these requests
+without changing executable, locale, timezone or viewport. Use **Save changes**
+to persist the policy. This is preparation, not verified activation: a nonempty
+policy currently blocks browser startup before creating a profile or driver.
+The manager displays the capabilities still awaiting own-fork verification.
+Ceilings are not invented hardware; selected fonts must really exist and cover
+the languages you use. No preset guarantees anti-bot acceptance.
+
 Choose an explicit installed executable or **Managed release** with an absolute
 owned binary-store path. Maintenance can install a local `.tar.gz` bundle using
 a SHA-256 obtained from a trusted publisher, verify headless startup and select

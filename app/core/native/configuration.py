@@ -1,10 +1,12 @@
 """Explicit Chromium capabilities without injected JavaScript fingerprint masks."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 import re
 
 from PyQt6.QtCore import QTimeZone
+
+from .privacy import NativePrivacyPolicy
 
 
 @dataclass(frozen=True)
@@ -16,6 +18,7 @@ class NativeConfiguration:
     locale: str = "en-US"
     timezone: str = "UTC"
     permissions: tuple[str, ...] = ()
+    privacy_policy: NativePrivacyPolicy = field(default_factory=NativePrivacyPolicy)
 
     @classmethod
     def from_settings(cls, settings: dict) -> "NativeConfiguration":
@@ -40,11 +43,15 @@ class NativeConfiguration:
             device_scale_factor=settings.get("device_scale_factor", 1.0),
             locale=settings.get("locale", "en-US"), timezone=settings.get("timezone", "UTC"),
             permissions=tuple(permissions),
+            privacy_policy=NativePrivacyPolicy.from_dict(settings.get("privacy_policy", {})),
         )
         configuration.validate()
         return configuration
 
     def validate(self) -> None:
+        if not isinstance(self.privacy_policy, NativePrivacyPolicy):
+            raise ValueError("Invalid Native privacy policy")
+        self.privacy_policy.validate()
         if not isinstance(self.environment, str) or self.environment not in {"desktop", "mobile_web"}:
             raise ValueError("Native supports desktop or mobile_web, not real Android/iOS")
         if any(type(value) is not int or not 240 <= value <= 8192 for value in (self.width, self.height)):
@@ -60,6 +67,7 @@ class NativeConfiguration:
 
     def context_options(self) -> dict:
         self.validate()
+        self.privacy_policy.require_verified_runtime()
         mobile = self.environment == "mobile_web"
         return {
             "viewport": {"width": self.width, "height": self.height},
@@ -74,6 +82,7 @@ class NativeConfiguration:
 
     def launch_arguments(self) -> list[str]:
         self.validate()
+        self.privacy_policy.require_verified_runtime()
         return ["--lang=" + self.locale, "--accept-lang=" + self.locale]
 
     def limitations(self) -> list[str]:

@@ -7,6 +7,45 @@ from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime, NativeRuntimeError
 
 
+@pytest.mark.parametrize("values", [{"cpu_limit": True}, {"cpu_limit": 65}, {"cpu_limit": -1},
+                                   {"memory_limit": 3}, {"memory_limit": float("nan")}, {"memory_limit": True},
+                                   {"fonts": "Arial"}, {"fonts": ["Arial", "arial"]}, {"fonts": ["Tahoma"]},
+                                   {"fonts": ["Arial", "Bad,Font"]}, {"fonts": ["Arial", " Bad"]},
+                                   {"restrict_webrtc": "true"}, {"conceal_automation": 1}, {"unknown": True}])
+def test_native_privacy_policy_rejects_invalid_controls_without_silent_normalization(values):
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    with pytest.raises(ValueError):
+        NativePrivacyPolicy.from_dict(values)
+
+
+def test_native_privacy_policy_prepares_exact_cpp_switches_without_activating_them(tmp_path, monkeypatch):
+    from unittest.mock import Mock
+
+    from app.core.native import runtime as module
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    policy = NativePrivacyPolicy(cpu_limit=4, memory_limit=.25, fonts=("Arial", "Segoe UI"),
+        restrict_webrtc=True, conceal_automation=True, native_user_agent=True)
+    assert policy.required_capabilities() == ["hardware", "fonts", "webrtc", "automation", "identity"]
+    assert policy.prepared_arguments() == ["--camouflow-hardware-concurrency=4", "--camouflow-device-memory=0.25",
+        "--camouflow-font-families=Arial,Segoe UI", "--camouflow-webrtc-ip-handling-policy=disable_non_proxied_udp",
+        "--enable-blink-features=CamouFlowAutomationConcealed", "--camouflow-native-user-agent"]
+    configuration = NativeConfiguration(privacy_policy=policy)
+    configuration.validate()
+    with pytest.raises(ValueError, match="verified"):
+        configuration.context_options()
+    with pytest.raises(ValueError, match="verified"):
+        configuration.launch_arguments()
+    driver = Mock()
+    monkeypatch.setattr(module, "async_playwright", driver)
+    runtime = NativeRuntime(tmp_path / "not-created", Path(__file__), configuration)
+    with pytest.raises(ValueError, match="verified"):
+        asyncio.run(runtime.start())
+    driver.assert_not_called()
+    assert not runtime.has_resources and not runtime.profile_dir.exists()
+
+
 def test_native_adapter_rechecks_resource_ownership_after_async_binary_resolution(monkeypatch):
     from types import SimpleNamespace
 

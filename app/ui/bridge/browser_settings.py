@@ -126,6 +126,70 @@ class BrowserSettingsBridge(QObject):
     def nativeDeviceScaleFactor(self) -> float:  # noqa: N802
         return float(self._native.get("device_scale_factor", 1.0))
 
+    @pyqtProperty("QVariantMap", notify=changed)
+    def nativePrivacyPolicy(self) -> dict:  # noqa: N802
+        from dataclasses import asdict
+        from app.core.native.privacy import NativePrivacyPolicy
+        policy = NativePrivacyPolicy.from_dict(self._native.get("privacy_policy", {}))
+        return {**asdict(policy), "fonts": list(policy.fonts)}
+
+    @pyqtProperty(str, notify=changed)
+    def nativePrivacyStatus(self) -> str:  # noqa: N802
+        from app.core.native.privacy import NativePrivacyPolicy
+        try:
+            required = NativePrivacyPolicy.from_dict(self._native.get("privacy_policy", {})).required_capabilities()
+        except ValueError as error:
+            return "Invalid policy: " + str(error)
+        return ("Pending own-fork verification: " + ", ".join(required)
+                if required else "Native browser values; no experimental privacy policy requested")
+
+    @pyqtSlot(str, "QVariant")
+    def setNativePrivacyValue(self, key: str, value: Any) -> None:  # noqa: N802
+        if self._engine != "native":
+            return
+        from dataclasses import asdict
+        from app.core.native.privacy import NativePrivacyPolicy
+        try:
+            if key == "cpu_limit":
+                if isinstance(value, (bool, float)):
+                    raise ValueError("Native CPU ceiling must be an integer")
+                value = int(value) if str(value).strip() else 0
+            elif key == "memory_limit":
+                if isinstance(value, bool):
+                    raise ValueError("Native memory ceiling must be numeric")
+                value = float(value) if str(value).strip() else 0
+            elif key == "fonts":
+                value = self._text_list(value)
+            elif key not in {"restrict_webrtc", "conceal_automation", "native_user_agent"}:
+                raise ValueError("Unknown Native privacy field")
+            policy = NativePrivacyPolicy.from_dict({**self._native.get("privacy_policy", {}), key: value})
+        except (ValueError, TypeError) as error:
+            self._emit_message(str(error))
+            return
+        self._native["privacy_policy"] = asdict(policy)
+        self._compatibility_report = "Not checked"
+        self.changed.emit()
+
+    @pyqtSlot(str)
+    def applyNativePrivacyPreset(self, name: str) -> None:  # noqa: N802
+        if self._engine != "native":
+            return
+        from dataclasses import asdict
+        from app.core.native.privacy import NativePrivacyPolicy
+        if name == "native":
+            policy = NativePrivacyPolicy()
+        elif name == "privacy":
+            policy = NativePrivacyPolicy(cpu_limit=4, memory_limit=4, fonts=("Arial", "Segoe UI", "Tahoma"),
+                                         restrict_webrtc=True, conceal_automation=True, native_user_agent=True)
+        else:
+            self._emit_message("Unknown Native privacy preset")
+            return
+        policy.validate()
+        self._native["privacy_policy"] = asdict(policy)
+        self._compatibility_report = "Not checked"
+        self._emit_message("Native policy prepared. Save changes to persist.")
+        self.changed.emit()
+
     @pyqtProperty(bool, notify=changed)
     def nativeReleaseRunning(self) -> bool:  # noqa: N802
         return self._native_release_running
