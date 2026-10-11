@@ -157,6 +157,14 @@ temporary workspace, preserving unrelated application/customer log handlers.
 
 ## Native configuration UI
 
+Source-runtime reports from [CI run 38096559489](https://github.com/Tort1k558/Camouflow/actions/runs/38096559489)
+at `4b3b3db` were downloaded and inspected for Windows x64, Linux x64 and macOS
+ARM64. All seven runtime checks passed on each host, including the existing
+scenario executor, cross-process exclusion, persistent storage and authenticated
+local HTTP proxy. All reports explicitly retain `fingerprint_patched: false`.
+This proves that runtime scope on those platforms, not an own fork build or the
+new UI increment's packaging/production readiness.
+
 The existing Browser engine page now includes Native-specific controls for an
 explicit Chromium executable, Desktop/Mobile Web, viewport, DPR, locale,
 timezone, headless execution and supported permissions. Camoufox/CloakBrowser
@@ -182,6 +190,10 @@ in [`native/`](../native/README.md). The D: source transfer and compiler install
 are separate from a successfully built/patched browser. The initial Git transfer
 failed with a TLS disconnect; the current explicit OpenSSL transport retry must
 finish and validate the same pinned commit before hooks/build can proceed.
+Visual Studio Build Tools 2026 18.10.3 installation has completed on D: with
+MSVC 14.51.36231 and ATL/MFC; installer signature was verified as Microsoft and
+the registered instance reports complete/launchable, with no reboot required.
+Required SDK debugging tools and actual compilation remain separate checks.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).
