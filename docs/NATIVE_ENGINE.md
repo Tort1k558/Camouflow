@@ -317,6 +317,15 @@ No deadline was raised and no failure was suppressed. Context-close timeouts now
 carry an explicit message, and failed runtime reports retain `completed_checks`
 without representing them as overall success. Own-fork runtime proof remains pending.
 
+A subsequent complete Windows SDK run at `4a8f39a` passed all eighteen runtime
+checks with the unchanged close deadline, including high-entropy diagnostics,
+five-store backup/recovery, cancellation, proxy and three-profile isolation.
+Its three restart rounds observed 47/47/44 owned process identities with zero
+remaining processes. The failed report is preserved separately; a successful
+repeat does not establish that the transient timeout or host freeze is fixed.
+All 871 Python tests also passed. These results verify the application runtime
+against upstream Chromium 148.0.7778.96, not the still-compiling own fork.
+
 The first Windows probe found that context-level locale alone differed from
 worker language. Native now supplies Chromium's own `--lang` and `--accept-lang`
 flags from the central validated configuration. Their behavior was inspected in
