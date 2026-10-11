@@ -18,6 +18,7 @@ class NativeRuntime:
     CLOSE_TIMEOUT_SECONDS = 40
     DRIVER_STOP_TIMEOUT_SECONDS = 8
     DRIVER_START_TIMEOUT_SECONDS = 30
+    CONTEXT_CLOSE_TIMEOUT_SECONDS = 30
 
     def __init__(self, profile_dir: Path, executable: Path, configuration: NativeConfiguration):
         self.profile_dir = Path(profile_dir)
@@ -92,7 +93,10 @@ class NativeRuntime:
         driver = self.playwright
         try:
             if context is not None:
-                await asyncio.wait_for(context.close(), timeout=30)
+                try:
+                    await asyncio.wait_for(context.close(), timeout=self.CONTEXT_CLOSE_TIMEOUT_SECONDS)
+                except TimeoutError as error:
+                    raise TimeoutError("Native browser context close timed out") from error
         finally:
             if driver is not None:
                 if self._driver_stop_task is None:

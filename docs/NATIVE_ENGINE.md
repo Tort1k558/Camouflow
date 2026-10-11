@@ -304,6 +304,19 @@ Ordinary custom headers remain supported. This prevents HTTP-only overrides
 from contradicting the browser identity; it is not UA or platform masking.
 See the [UA Client Hints specification](https://wicg.github.io/ua-client-hints/).
 
+During recovery from the reported host freeze, a full local SDK runtime run failed
+on the final multi-profile cleanup with the existing 30-second context-close
+deadline. It is not recorded as a passing eighteen-check run. A separately timed
+repeat of the same three-profile, three-round restart/crash gate then passed:
+15 starts took 0.77–8.69 seconds and 15 closes took 1.52–20.06 seconds; all five
+stores recovered from the graceful checkpoint and each round left zero owned
+processes (45/46/49 process identities observed). The parallel source build was
+active on D:, where read-only samples observed disk queues of 46 and 7 requests;
+these observations suggest contention but do not prove the timeout's cause.
+No deadline was raised and no failure was suppressed. Context-close timeouts now
+carry an explicit message, and failed runtime reports retain `completed_checks`
+without representing them as overall success. Own-fork runtime proof remains pending.
+
 The first Windows probe found that context-level locale alone differed from
 worker language. Native now supplies Chromium's own `--lang` and `--accept-lang`
 flags from the central validated configuration. Their behavior was inspected in

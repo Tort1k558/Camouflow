@@ -131,6 +131,28 @@ def test_native_refuses_existing_unrelated_browser_data(tmp_path):
     assert list(profile.iterdir()) == [original]
 
 
+def test_native_context_close_timeout_is_explicit_and_driver_cleanup_releases_owner(tmp_path):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    async def check():
+        runtime = NativeRuntime(tmp_path / "owned", Path(__file__), NativeConfiguration())
+        async def blocked_close():
+            await asyncio.Event().wait()
+        context = SimpleNamespace(close=AsyncMock(side_effect=blocked_close))
+        driver = SimpleNamespace(stop=AsyncMock())
+        lock = Mock()
+        runtime.context, runtime.playwright, runtime._profile_lock = context, driver, lock
+        runtime.CONTEXT_CLOSE_TIMEOUT_SECONDS = .01
+        with pytest.raises(TimeoutError, match="Native browser context close timed out"):
+            await runtime.close()
+        context.close.assert_awaited_once()
+        driver.stop.assert_awaited_once()
+        lock.unlock.assert_called_once()
+        assert not runtime.has_resources
+    asyncio.run(check())
+
+
 @pytest.mark.parametrize("interruption", ["cancel", "timeout"])
 def test_native_interrupted_stop_waits_for_the_same_sdk_operation_before_releasing_owner(tmp_path, interruption):
     from types import SimpleNamespace

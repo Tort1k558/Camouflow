@@ -335,7 +335,8 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
     return observations
 
 
-async def verify(profile_root: Path, executable: Path, origin: str, proxy_server: FixtureServer) -> dict:
+async def verify(profile_root: Path, executable: Path, origin: str, proxy_server: FixtureServer,
+                 *, checks: list[str] | None = None) -> dict:
     desktop = NativeConfiguration()
     mobile = NativeConfiguration(environment="mobile_web", width=390, height=844, device_scale_factor=3,
                                  locale="de-DE", timezone="Europe/Berlin",
@@ -343,7 +344,7 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
     a = NativeRuntime(profile_root / "a", executable, desktop)
     b = NativeRuntime(profile_root / "b", executable, mobile)
     proxied = NativeRuntime(profile_root / "proxy", executable, desktop)
-    checks = []
+    checks = [] if checks is None else checks
     try:
         context_a = await a.start(headless=True)
         context_b = await b.start(headless=True)
@@ -685,12 +686,13 @@ def main() -> int:
     threads = [threading.Thread(target=item.serve_forever, daemon=True) for item in (server, proxy_server)]
     for thread in threads:
         thread.start()
+    checks = []
     try:
         with tempfile.TemporaryDirectory(prefix="native-owned-", dir=args.work_dir.resolve()) as owned:
             previous_data_dir = os.environ.get("CAMOUFLOW_DATA_DIR")
             os.environ["CAMOUFLOW_DATA_DIR"] = str(Path(owned).resolve() / "workspace")
             try:
-                report = asyncio.run(verify(Path(owned).resolve(), executable, f"http://127.0.0.1:{server.server_port}", proxy_server))
+                report = asyncio.run(verify(Path(owned).resolve(), executable, f"http://127.0.0.1:{server.server_port}", proxy_server, checks=checks))
             finally:
                 close_owned_log_handlers(Path(owned))
                 if previous_data_dir is None:
@@ -698,7 +700,7 @@ def main() -> int:
                 else:
                     os.environ["CAMOUFLOW_DATA_DIR"] = previous_data_dir
     except Exception as error:
-        report = {"passed": False, "platform": platform.system(), "error_type": type(error).__name__,
+        report = {"passed": False, "platform": platform.system(), "completed_checks": checks, "error_type": type(error).__name__,
                   "error": str(error)[:1000], "traceback": traceback.format_exc()[-6000:]}
     finally:
         for item in (server, proxy_server):
