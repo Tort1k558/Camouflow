@@ -209,6 +209,35 @@ overrides and promises of guaranteed protection bypass are not acceptable.
 Upstream Chromium and dependency license/NOTICE obligations apply to distributed
 source and binaries. Signing infrastructure has not been configured.
 
+## Local Linux source workspace
+
+An isolated WSL 2 distribution, `CamouFlowNativeBuilder`, was imported under
+`D:\CamouFlowNative\linux-builder`. Its Ubuntu 22.04 root filesystem came from
+the [official Jammy WSL image directory](https://cloud-images.ubuntu.com/wsl/jammy/current/).
+Both the archive SHA-256 and the detached signature of its checksum file were
+verified before import, using the [publisher fingerprint documented by Ubuntu](https://ubuntu.com/docs/public-images/public-images-how-to/verify-image-checksum/):
+`D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81`. The checked archive SHA-256 was
+`1483cc5c1dce13064f774834cbffdff226559fd522a67a381a8ea77d63fb4109`.
+The GPG keyring/downloads stayed in the owned D: toolchain directory.
+
+The builder has its own unprivileged `nativebuilder` account. Git, Python/venv,
+certificates and basic download tools were installed from Ubuntu's signed package
+repositories. Pinned depot_tools bootstrap completed under that user; independent
+Chromium source sync has started in `/home/nativebuilder/CamouFlowNative`, inside
+the D:-hosted ext4 virtual disk. This is not a completed Linux Chromium build.
+The Windows patched checkout is not shared with or resynced by this workspace.
+
+```powershell
+wsl.exe -d CamouFlowNativeBuilder -u nativebuilder --exec python3 /mnt/c/Users/lolod/Desktop/camouflow-app/camouflow/scripts/native_build.py sync --workspace /home/nativebuilder/CamouFlowNative
+```
+
+Existing Docker WSL data, its default-distribution setting and stopped state were
+preserved. No global `.wslconfig`, host security/VPN settings or production server
+configuration was changed. Linux compilation has not been started alongside the
+active Windows build: host available RAM was approximately 6-8 GiB. Recheck memory
+and the real D: drive's free space before further work; free space reported inside
+the virtual ext4 disk reflects its logical maximum, not actual host disk headroom.
+
 ## Binary installation foundation
 
 `app/core/native/distribution.py` installs explicitly checksummed `.tar.gz`
