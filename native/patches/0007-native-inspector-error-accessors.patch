@@ -1,0 +1,96 @@
+diff --git a/src/inspector/value-mirror.cc b/src/inspector/value-mirror.cc
+--- a/src/inspector/value-mirror.cc
++++ b/src/inspector/value-mirror.cc
+@@ -259,4 +259,22 @@
+ }
+ 
++v8::MaybeLocal<v8::Value> getErrorPropertyDescriptor(
++    v8::Local<v8::Context> context, v8::Local<v8::Object> object,
++    v8::Local<v8::String> name) {
++  v8::Isolate* isolate = v8::Isolate::GetCurrent();
++  for (int depth = 0; depth < 128; ++depth) {
++    if (object->IsProxy()) return v8::MaybeLocal<v8::Value>();
++    v8::Local<v8::Value> descriptor;
++    if (!object->GetOwnPropertyDescriptor(context, name).ToLocal(&descriptor)) {
++      return v8::MaybeLocal<v8::Value>();
++    }
++    if (descriptor->IsObject()) return descriptor;
++    v8::Local<v8::Value> prototype = object->GetPrototype();
++    if (!prototype->IsObject()) return v8::Undefined(isolate);
++    object = prototype.As<v8::Object>();
++  }
++  return v8::MaybeLocal<v8::Value>();
++}
++
+ v8::MaybeLocal<v8::Value> getErrorProperty(v8::Local<v8::Context> context,
+                                            v8::Local<v8::Object> object,
+@@ -266,32 +284,46 @@
+   v8::MicrotasksScope microtasksScope(context,
+                                       v8::MicrotasksScope::kDoNotRunMicrotasks);
++  if (name->StringEquals(toV8String(isolate, "stack"))) {
++    // Lazy stack formatting must not invoke custom name/message accessors.
++    const char* metadata_names[] = {"name", "message"};
++    for (const char* metadata_name : metadata_names) {
++      v8::Local<v8::Value> descriptor;
++      if (!getErrorPropertyDescriptor(context, object,
++                                      toV8String(isolate, metadata_name))
++               .ToLocal(&descriptor)) {
++        return v8::MaybeLocal<v8::Value>();
++      }
++      if (descriptor->IsObject() &&
++          descriptor.As<v8::Object>()
++              ->HasOwnProperty(context, toV8String(isolate, "get"))
++              .FromMaybe(true)) {
++        return v8::MaybeLocal<v8::Value>();
++      }
++    }
++  }
+   v8::Local<v8::Value> descriptor;
+-  if (!object->GetOwnPropertyDescriptor(context, name).ToLocal(&descriptor)) {
+-    tryCatch.Reset();
+-    return object->Get(context, name);
+-  }
+-  if (!descriptor->IsObject()) return object->Get(context, name);
+-
++  if (!getErrorPropertyDescriptor(context, object, name).ToLocal(&descriptor) ||
++      !descriptor->IsObject()) {
++    return v8::MaybeLocal<v8::Value>();
++  }
+   v8::Local<v8::Object> descriptorObject = descriptor.As<v8::Object>();
++  if (!descriptorObject->HasOwnProperty(context, toV8String(isolate, "get"))
++           .FromMaybe(true)) {
++    return descriptorObject->Get(context, toV8String(isolate, "value"));
++  }
+   v8::Local<v8::Value> getDescriptor;
+-  if (!descriptorObject->HasOwnProperty(context, toV8String(isolate, "get"))
+-           .FromJust()) {
+-    tryCatch.Reset();
+-    return object->Get(context, name);
+-  }
+   if (!descriptorObject->Get(context, toV8String(isolate, "get"))
+            .ToLocal(&getDescriptor)) {
+-    tryCatch.Reset();
+-    return object->Get(context, name);
+-  }
+-
+-  if (getDescriptor->IsFunction()) {
+-    v8::Local<v8::Function> function = getDescriptor.As<v8::Function>();
+-    if (deepBoundFunction(function)->ScriptId() !=
+-        v8::UnboundScript::kNoScriptId) {
+-      return v8::MaybeLocal<v8::Value>();
+-    }
+-  }
+-
++    return v8::MaybeLocal<v8::Value>();
++  }
++  if (getDescriptor->IsUndefined()) return v8::Undefined(isolate);
++  if (getDescriptor->IsProxy() || !getDescriptor->IsFunction()) {
++    return v8::MaybeLocal<v8::Value>();
++  }
++  v8::Local<v8::Function> function = getDescriptor.As<v8::Function>();
++  if (!function->GetBoundFunction()->IsUndefined() ||
++      function->ScriptId() != v8::UnboundScript::kNoScriptId) {
++    return v8::MaybeLocal<v8::Value>();
++  }
+   return object->Get(context, name);
+ }

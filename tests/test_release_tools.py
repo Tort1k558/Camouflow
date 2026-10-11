@@ -292,6 +292,7 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
     monkeypatch.setattr(native_build, "checkout", lambda *a: None)
     monkeypatch.setattr(native_build, "bootstrap_windows_git", lambda *a: None)
     monkeypatch.setattr(native_build, "require_stage", lambda *a: None)
+    monkeypatch.setattr(native_build, "v8_source_patches", lambda *a: [])
     monkeypatch.setattr(native_build, "source_patches", lambda *a: [])
     monkeypatch.setattr(native_build, "depot_command", lambda name, *a: [name])
     monkeypatch.setattr(native_build, "run", run)
@@ -302,7 +303,7 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
     assert receipt["native_patch_runtime_verified"] is False
 
 
-@pytest.mark.parametrize("changed", ["patches", "output_arguments", "input_arguments"])
+@pytest.mark.parametrize("changed", ["patches", "v8_patches", "output_arguments", "input_arguments"])
 def test_native_build_does_not_record_success_if_inputs_change_during_compilation(tmp_path, monkeypatch, changed):
     from scripts import native_build
 
@@ -333,6 +334,7 @@ def test_native_build_does_not_record_success_if_inputs_change_during_compilatio
 
     monkeypatch.setattr(native_build, "ROOT", inputs)
     monkeypatch.setattr(native_build, "checkout", lambda *a: None)
+    monkeypatch.setattr(native_build, "v8_source_patches", lambda *a: [{"name": "changed-v8"}] if compiled and changed == "v8_patches" else [])
     monkeypatch.setattr(native_build, "preflight", lambda *a, **kw: {})
     monkeypatch.setattr(native_build, "environment", lambda *a: {})
     monkeypatch.setattr(native_build, "bootstrap_windows_git", lambda *a: None)
@@ -396,6 +398,34 @@ def test_native_identity_gate_accepts_only_preserved_native_identity(protected, 
     if protected:
         observed["userAgent"] = observed["headers"]["user-agent"] = "Chrome/148.0.0.0"
     validate_observation(observed, baseline, protected=protected, worker=worker)
+
+
+@pytest.mark.parametrize("mutation", [None, "leak", "missing_control", "event_loss", "stack_loss", "fake_stack", "boolean_counter"])
+def test_native_cdp_gate_requires_side_effect_free_previews_and_real_positive_controls(mutation):
+    from scripts.verify_native_cdp import COUNTERS, validate_observation
+
+    expected = "Error: Owned normal preview\n    at ownedNativePlainError (owned:1:1)"
+    observed = {"serialization_hits": dict.fromkeys(COUNTERS, 0),
+                "explicit_read_controls": dict.fromkeys(COUNTERS, 1),
+                "console_events": 5, "native_preview": expected, "expected_native_preview": expected}
+    if mutation == "leak":
+        observed["serialization_hits"]["inheritedName"] = 1
+        observed["explicit_read_controls"]["inheritedName"] = 2
+    elif mutation == "missing_control":
+        observed["explicit_read_controls"]["ownStack"] = 0
+    elif mutation == "event_loss":
+        observed["console_events"] = 4
+    elif mutation == "stack_loss":
+        observed["native_preview"] = "Error: Owned normal preview"
+    elif mutation == "fake_stack":
+        observed["native_preview"] = observed["expected_native_preview"] = "invented"
+    elif mutation == "boolean_counter":
+        observed["serialization_hits"]["ownStack"] = False
+    if mutation is None:
+        validate_observation(observed)
+    else:
+        with pytest.raises(ValueError):
+            validate_observation(observed)
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows gclient helpers use batch launchers")
@@ -596,6 +626,31 @@ def test_native_build_rejects_unknown_source_changes(tmp_path, monkeypatch):
     monkeypatch.setattr(native_build, "run", lambda *args, **kwargs: "customer.cc")
     with pytest.raises(ValueError, match="Unrecognized"):
         native_build.source_patches(tmp_path, {})
+
+
+@pytest.mark.parametrize("changed", [False, True])
+def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tmp_path, monkeypatch, changed):
+    import json
+    from unittest.mock import Mock
+    from scripts import native_build
+
+    source = tmp_path / "chromium/src"
+    (source / "v8").mkdir(parents=True)
+    revision = "a" * 40
+    (source.parent / "camouflow-git-revisions.json").write_text(json.dumps({
+        "src/v8": {"url": "https://chromium.googlesource.com/v8/v8.git", "rev": revision}}), encoding="utf-8")
+    monkeypatch.setattr(native_build, "run", lambda *a, **kw: "b" * 40 if changed else revision)
+    validate = Mock(return_value=[{"name": "0007-native-inspector-error-accessors.patch", "sha256": "c" * 64}])
+    monkeypatch.setattr(native_build, "_source_patches", validate)
+    if changed:
+        with pytest.raises(ValueError, match="V8 revision differs"):
+            native_build.v8_source_patches(source, {})
+        validate.assert_not_called()
+    else:
+        assert native_build.v8_source_patches(source, {}) == [{
+            "name": "0007-native-inspector-error-accessors.patch", "sha256": "c" * 64,
+            "repository": "v8", "revision": revision}]
+        validate.assert_called_once_with(source / "v8", {}, ("0007-native-inspector-error-accessors.patch",), index_dir=source.parent)
 
 
 @pytest.mark.parametrize("name", ["0001-native-hardware-privacy-limits.patch",

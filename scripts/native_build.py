@@ -144,16 +144,15 @@ def bootstrap_windows_git(workspace: Path, env: dict[str, str]) -> None:
     run([sys.executable, "-c", script, str(workspace / "depot_tools/bootstrap/bootstrap.py")], workspace, env)
 
 
-def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
+def _source_patches(source: Path, env: dict[str, str], names: tuple[str, ...],
+                    *, index_dir: Path | None = None) -> list[dict[str, str]]:
     changed = set(run(["git", "diff", "HEAD", "--name-only"], source, env, capture=True).splitlines())
     changed.update(run(["git", "ls-files", "--others", "--exclude-standard"], source, env, capture=True).splitlines())
     if not changed:
         return []
     patches = []
     expected = set()
-    for name in ("0001-native-hardware-privacy-limits.patch", "0002-midl-locale-name-hashes.patch",
-                 "0003-native-webrtc-routing-policy.patch", "0004-native-automation-exposure.patch",
-                 "0005-native-windows-font-collection.patch", "0006-native-headless-user-agent.patch"):
+    for name in names:
         patch = ROOT / "native/patches" / name
         contents = patch.read_text(encoding="utf-8-sig")
         files = {line.split(" b/", 1)[1] for line in contents.splitlines() if line.startswith("diff --git ")}
@@ -162,7 +161,7 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
             patches.append(patch)
     if changed != expected:
         raise ValueError("Unrecognized Chromium source changes; refusing an unrepeatable build")
-    with tempfile.TemporaryDirectory(prefix="native-patch-index-", dir=source.parent) as owned:
+    with tempfile.TemporaryDirectory(prefix="native-patch-index-", dir=source.parent if index_dir is None else index_dir) as owned:
         index_env = {**env, "GIT_INDEX_FILE": str(Path(owned) / "index")}
         run(["git", "read-tree", "--empty"], source, index_env)
         baseline = run(["git", "ls-tree", "HEAD", "--", *sorted(expected)], source, index_env, capture=True)
@@ -176,6 +175,28 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
             run(["git", "apply", "--cached", str(patch)], source, index_env)
         run(["git", "diff", "--exit-code", "--", *sorted(expected)], source, index_env)
     return [{"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()} for patch in patches]
+
+
+def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
+    return _source_patches(source, env, (
+        "0001-native-hardware-privacy-limits.patch", "0002-midl-locale-name-hashes.patch",
+        "0003-native-webrtc-routing-policy.patch", "0004-native-automation-exposure.patch",
+        "0005-native-windows-font-collection.patch", "0006-native-headless-user-agent.patch"))
+
+
+def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
+    v8 = source / "v8"
+    if not v8.is_dir() or v8 != v8.resolve():
+        raise ValueError("Native V8 checkout must exist without links")
+    snapshot = json.loads((source.parent / "camouflow-git-revisions.json").read_text(encoding="utf-8-sig"))
+    if not isinstance(snapshot, dict):
+        raise ValueError("Native Git dependency snapshot must be an object")
+    identity = snapshot.get("src/v8")
+    if (not isinstance(identity, dict) or identity.get("url") != "https://chromium.googlesource.com/v8/v8.git"
+            or run(["git", "rev-parse", "HEAD"], v8, env, capture=True) != identity.get("rev")):
+        raise ValueError("Native V8 revision differs from the verified dependency snapshot")
+    return [{**patch, "repository": "v8", "revision": identity["rev"]}
+            for patch in _source_patches(v8, env, ("0007-native-inspector-error-accessors.patch",), index_dir=source.parent)]
 
 
 def stage_identity(chromium: Path, stage: str) -> dict:
@@ -306,7 +327,7 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
         record_stage(chromium, "hooks")
         return
     require_stage(chromium, "hooks")
-    patches = source_patches(source, env)
+    patches = source_patches(source, env) + v8_source_patches(source, env)
     if patches:
         check_patch_dependencies(source, env)
     output = source / "out/CamouFlowNative"
@@ -317,7 +338,7 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
     output.joinpath("args.gn").write_text(arguments, encoding="utf-8")
     run(depot_command("gn", workspace) + ["gen", "out/CamouFlowNative"], source, env)
     run(depot_command("autoninja", workspace) + ["-C", "out/CamouFlowNative", "-j", str(jobs), "chrome"], source, env)
-    if source_patches(source, env) != patches:
+    if source_patches(source, env) + v8_source_patches(source, env) != patches:
         raise ValueError("Native source patches changed during compilation; refusing a build receipt")
     if (output.joinpath("args.gn").read_text(encoding="utf-8-sig") != arguments
             or (ROOT / "native/args.gn").read_text(encoding="utf-8-sig") != arguments):

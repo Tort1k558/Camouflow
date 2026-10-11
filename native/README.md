@@ -85,6 +85,45 @@ After applying and compiling the draft, run:
 & $python scripts/verify_native_identity.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative\tmp --report D:\CamouFlowNative\native-identity-fork.json
 ```
 
+## V8 inspector accessor draft (0007, not applied or compiled)
+
+`0007-native-inspector-error-accessors.patch` targets V8's own repository,
+not the Chromium Git index. Its pinned base is
+`ddc9a95905de5268332a8f0216dc2bc67d26e829`, the `src/v8` revision in the
+verified gclient dependency snapshot. Pinned V8 `git apply --check` passed,
+and a live read-only check confirmed that V8 is still clean and unchanged.
+
+The draft resolves Error property descriptors along a bounded prototype chain,
+without falling back to ordinary lookup when it encounters unknown/proxy
+descriptors. Data properties retain their real values; scripted, proxy and bound
+accessors are not invoked for previews. Lazy native stack formatting is withheld
+when custom name/message accessors could execute user code. The policy is a
+C++ inspector change, not injected browser API replacements. It is not yet
+compiled or runtime-verified, and does not prove general CDP invisibility.
+
+The build helper now validates Chromium and V8 independently before/after
+compilation. V8 must match the verified dependency snapshot; applied V8 patches
+must exactly match known diffs and receipts include their repository/revision.
+Temporary alternate indexes stay outside both source trees. Real indexes remain
+unchanged; unknown edits and mid-build V8 changes reject a successful receipt.
+The active build loaded the previous helper and still contains only 0001–0005.
+Do not apply 0006/0007 until it has terminated and the source inputs can be changed.
+
+`scripts/verify_native_cdp.py` logs four owned Error accessor fixtures and a
+normal native Error through an actual Runtime CDP session. Five console events,
+an unchanged real error message/stack and working explicit-accessor-read controls
+are required before asserting zero serialization-triggered getter calls.
+The Windows SDK negative control passed those three positive checks and correctly
+failed the custom-accessor assertion (0/2/4/3 calls). Validator tests reject lost
+events, broken counters, stack changes and invented previews. Arbitrary objects,
+custom global stack formatters and other CDP detection signals are not covered.
+
+After compiling the draft, run:
+
+```powershell
+& $python scripts/verify_native_cdp.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative\tmp --report D:\CamouFlowNative\native-cdp-fork.json
+```
+
 The read-only post-failure Windows sample showed 13.4 GiB free physical RAM,
 but only about 7.3 GiB of available committed memory under a 36.5-GiB commit
 limit. Physical RAM alone is not a sufficient build-memory check. Neither other
