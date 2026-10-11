@@ -367,4 +367,3 @@ on Windows. Matching Windows x64, Linux x64 and macOS ARM64 CI artifacts at
 `8fe6bbb` each observed five STUN requests in both the baseline and unpatched
 protected launch and rejected that ineffective policy. All own-fork WebRTC
 results remain pending; a passing negative control is not a privacy capability.
-
