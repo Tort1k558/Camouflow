@@ -81,6 +81,29 @@ Run the real source-runtime gate with that executable:
 
 ## Current boundary
 
+### Native C++ policy prototype
+
+`core/hardware_limits.h` is the first compiled Native C++ policy module. It
+validates concurrency limits and supported memory buckets, rejects invalid
+configuration atomically, and applies explicit privacy ceilings without
+inventing processors or memory above the host's native values. Empty limits
+explicitly preserve native behavior. This is reported-value policy, not hardware
+virtualization or an arbitrary device identity.
+
+The standalone tests were compiled and run on Windows using MSVC 18.10.3,
+C++20 and warnings-as-errors. Reproduce with the installed toolchain:
+
+```powershell
+& $python scripts/verify_native_cpp.py --work-dir D:\CamouFlowNative\cpp-check --vs-installation D:\CamouFlowNative\toolchain\BuildTools
+```
+
+CI also compiles/runs this policy on Windows, Linux and macOS; fresh results are
+required. The verifier uses owned temporary output and no extra test framework.
+The module is **not yet wired into Chromium's document/worker Navigator APIs**.
+Integration requires reviewed source changes, a full own Chromium build and
+actual API checks. CamouFlow still rejects those fingerprint controls until that
+integration is verified; standalone parser tests cannot prove browser behavior.
+
 The first source checkout/build is an upstream baseline for the actual fork.
 No native fingerprint patch is claimed by these inputs; receipts explicitly
 record `fingerprint_patched: false`. Source acquisition, hooks, compilation and

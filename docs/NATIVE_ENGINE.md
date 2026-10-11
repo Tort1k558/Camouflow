@@ -125,7 +125,7 @@ Verified Windows checks:
 - HTTP proxy authentication: actual 407 challenge, credentialed proxy traffic
   and successful navigation to a fixture hostname with no direct DNS route.
 
-The updated local full suite passed **657 tests**, including negative proxy-auth
+The updated local full suite passed **658 tests**, including negative proxy-auth
 fixture checks and explicit missing-binary failure/reporting without fallback.
 
 The core adapter now dispatches `native` profiles into their own `native/`
@@ -285,6 +285,14 @@ The docs workflow at that revision initially failed inside Retype with negative
 capacity errors. An unmodified, debug-enabled retry of the same run/revision
 completed build and deployment successfully; it remains an observed transient,
 not a diagnosed Retype fix.
+
+The first Native C++ policy implementation is now public in `native/core/`, with
+standalone compilation/tests and a three-platform CI job. Its initial Windows
+test passed under MSVC with warnings-as-errors. This is a **compiled policy
+prototype**, not yet a Chromium patch or an exposed runtime capability. Actual
+document/worker bindings and own-browser compilation remain required. See the
+Native source-workspace README for its explicit privacy-ceiling semantics and
+verification command.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).

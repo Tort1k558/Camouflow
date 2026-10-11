@@ -8,6 +8,7 @@ on:
       - "camouflow.spec"
       - "build.bat"
       - "scripts/**"
+      - "native/**"
       - "tests/**"
       - "pytest.ini"
       - ".github/workflows/desktop.yml"
@@ -18,11 +19,39 @@ on:
       - "camouflow.spec"
       - "build.bat"
       - "scripts/**"
+      - "native/**"
       - "tests/**"
       - "pytest.ini"
       - ".github/workflows/desktop.yml"
 
 jobs:
+  native-cpp-policy:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile and run Native C++ policy tests
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          command = [sys.executable, "scripts/verify_native_cpp.py", "--work-dir", str(Path(os.environ["RUNNER_TEMP"]) / "native-cpp-check")]
+          if sys.platform == "win32":
+              locator = Path(os.environ["ProgramFiles(x86)"]) / "Microsoft Visual Studio/Installer/vswhere.exe"
+              installation = subprocess.check_output([str(locator), "-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"], text=True).strip()
+              if not installation:
+                  raise SystemExit("Required Visual Studio C++ installation was not found")
+              command += ["--vs-installation", installation]
+          subprocess.run(command, check=True)
+
   static-check:
     runs-on: ubuntu-latest
     steps:

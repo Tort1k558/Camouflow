@@ -168,6 +168,15 @@ def test_native_build_lock_pins_full_source_revisions():
     assert LOCK["build_jobs"] <= 4
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows C++ verifier requires Visual Studio")
+def test_native_cpp_verifier_requires_explicit_toolchain_and_cleans_owned_temp(tmp_path):
+    from scripts.verify_native_cpp import verify
+
+    with pytest.raises(ValueError, match="explicit Visual Studio"):
+        verify(tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_native_build_transport_is_process_scoped_and_preserves_existing_git_config(tmp_path, monkeypatch):
     import os
     from scripts.native_build import environment
