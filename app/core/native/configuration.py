@@ -22,7 +22,8 @@ class NativeConfiguration:
         headers = settings.get("extra_http_headers", {})
         if not isinstance(headers, dict):
             raise ValueError("Native HTTP headers must be an object")
-        if any(str(key).lower() in {"user-agent", "accept-language", "sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform"} for key in headers):
+        if any(str(key).lower() in {"user-agent", "accept-language"}
+               or str(key).lower().startswith("sec-ch-ua") for key in headers):
             raise ValueError("Native identity headers must not override the browser configuration")
         unsupported = {"user_agent", "platform", "platform_version", "gpu_vendor", "gpu_renderer", "webgl_vendor", "webgl_renderer", "hardware_concurrency", "device_memory", "fonts", "webrtc_ip", "fingerprint_seed", "fingerprint_noise", "screen_width", "screen_height", "launch_args", "block_webrtc", "block_webgl", "geoip", "bypass_csp", "ignore_https_errors"}
         requested = sorted(key for key in unsupported if settings.get(key))

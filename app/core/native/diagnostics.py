@@ -32,22 +32,35 @@ OBSERVE = """async () => {
         }
         return result;
     };
-    const navigatorValues = () => ({
-        userAgent: navigator.userAgent, platform: navigator.platform,
-        language: navigator.language, languages: [...navigator.languages],
-        hardwareConcurrency: navigator.hardwareConcurrency,
-        deviceMemory: navigator.deviceMemory ?? null,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        userAgentData: navigator.userAgentData?.toJSON() ?? null
-    });
-    const documentValues = {...navigatorValues(),
+    const navigatorValues = async () => {
+        let userAgentHighEntropy = null;
+        let userAgentDataError = '';
+        if (navigator.userAgentData) {
+            try {
+                userAgentHighEntropy = await navigator.userAgentData.getHighEntropyValues([
+                    'architecture', 'bitness', 'model', 'platformVersion',
+                    'fullVersionList', 'wow64', 'formFactors'
+                ]);
+            } catch (error) { userAgentDataError = String(error.message); }
+        }
+        return {
+            userAgent: navigator.userAgent, platform: navigator.platform,
+            language: navigator.language, languages: [...navigator.languages],
+            hardwareConcurrency: navigator.hardwareConcurrency,
+            deviceMemory: navigator.deviceMemory ?? null,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            userAgentData: navigator.userAgentData?.toJSON() ?? null,
+            userAgentHighEntropy, userAgentDataError
+        };
+    };
+    const documentValues = {...await navigatorValues(),
         width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
         touch: navigator.maxTouchPoints, webdriver: navigator.webdriver,
         secureContext: isSecureContext,
         screen: {width: screen.width, height: screen.height, colorDepth: screen.colorDepth},
         graphics: graphicsValues()
     };
-    const source = 'postMessage({...(' + navigatorValues.toString() + ')(),graphics:(' + graphicsValues.toString() + ')()})';
+    const source = '(async () => postMessage({...await (' + navigatorValues.toString() + ')(),graphics:(' + graphicsValues.toString() + ')()}))()';
     const url = URL.createObjectURL(new Blob([source], {type: 'text/javascript'}));
     let worker;
     try {
@@ -82,7 +95,7 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
     if worker is None:
         mismatches.append(observed.get("workerError") or "Worker values could not be observed")
     else:
-        for key in ("userAgent", "platform", "language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "userAgentData"):
+        for key in ("userAgent", "platform", "language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "userAgentData", "userAgentHighEntropy"):
             if worker.get(key) != document.get(key):
                 mismatches.append(f"Document and dedicated worker disagree on {key}")
         document_graphics, worker_graphics = document.get("graphics", {}), worker.get("graphics", {})
@@ -96,6 +109,10 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
                                 "unmaskedRenderer", "maxTextureSize", "maxViewportDimensions"):
                         if first.get(key) != second.get(key):
                             mismatches.append(f"Document and dedicated worker disagree on {kind} {key}")
+    for scope in ("document", "worker"):
+        if (observed.get(scope) or {}).get("userAgentDataError"):
+            mismatches.append(f"{scope.capitalize()} high-entropy client hints could not be observed: "
+                              + observed[scope]["userAgentDataError"])
     return mismatches
 
 

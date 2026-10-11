@@ -25,6 +25,16 @@ generating/building. Existing compatible objects remain reusable; changed
 generated feature headers will legitimately invalidate some Blink objects.
 The own-fork binary and every patched runtime gate remain unverified.
 
+After a reported host freeze, process inspection found the one-job build and
+compiler absent, with its log stopping during compilation and no terminal build
+receipt. The same cached output was resumed without cleaning, still at one job,
+using process-scoped `GOMEMLIMIT=3GiB` for Siso's Go runtime. This is a soft Go
+memory target, not a hard process/system cap or a proven cause/fix of the freeze.
+The pinned Siso binary contains Go 1.26.1 and supports this setting. New capture
+uses a UTF-8 log rather than Windows PowerShell's UTF-16 redirection. Global
+memory/pagefile settings and unrelated processes remain unchanged.
+See the [Go memory-limit documentation](https://go.dev/doc/gc-guide).
+
 The read-only post-failure Windows sample showed 13.4 GiB free physical RAM,
 but only about 7.3 GiB of available committed memory under a 36.5-GiB commit
 limit. Physical RAM alone is not a sufficient build-memory check. Neither other
@@ -568,9 +578,9 @@ tested against the pinned Chromium 148 SDK binary on Windows: both baseline and
 flagged launches produced five direct loopback STUN requests and UDP host
 candidates. Treating that flag as protection would be misleading.
 
-The new patch applies cleanly against the pinned source, but it has **not** been
-applied to the live Windows build, compiled or runtime-verified. Finish and
-verify that build before changing its source inputs. Application configuration
+The new patch has been applied to the pinned Windows source together with
+0004/0005 after the previous build terminated; compilation is in progress, but
+runtime behavior is unverified. Do not change live build inputs. Application configuration
 continues to reject unsupported WebRTC masking/blocking options.
 The build's dependency gate now also invokes the pinned upstream
 `CheckAddedCppIncludes` API on the real browser renderer-preferences file.

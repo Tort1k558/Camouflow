@@ -286,11 +286,23 @@ after the completed Windows gate.
 ## Actual configuration diagnostics
 
 `app/core/native/diagnostics.py` reads document and dedicated-worker UA, low-entropy
-Client Hints, platform, language/languages, timezone, hardware concurrency and
+and high-entropy Client Hints, platform, language/languages, timezone, hardware concurrency and
 device memory, plus document viewport, screen, DPR, touch and webdriver. It
 compares configured and observed values without replacing browser APIs. Worker
 probe failures remain explicit; its transient worker/Blob URL are cleaned up.
 Native profile health reports include these facts and mismatch warnings.
+
+High-entropy observations include the native architecture, bitness, OS version,
+full browser-version list, model, WoW64 and form factors returned by Chromium.
+Unavailable APIs stay null; denied observations retain an explicit error, not
+invented identity values. The Windows SDK control observed matching document and
+worker values on the owned secure loopback fixture and null values on about:blank.
+The runtime gate requires real high-entropy hints on its loopback fixture.
+Profile settings reject the entire case-insensitive `Sec-CH-UA*` header namespace,
+including future identity hints, as well as User-Agent and Accept-Language.
+Ordinary custom headers remain supported. This prevents HTTP-only overrides
+from contradicting the browser identity; it is not UA or platform masking.
+See the [UA Client Hints specification](https://wicg.github.io/ua-client-hints/).
 
 The first Windows probe found that context-level locale alone differed from
 worker language. Native now supplies Chromium's own `--lang` and `--accept-lang`

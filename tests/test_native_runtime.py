@@ -32,7 +32,7 @@ def test_native_locale_is_configured_for_browser_and_worker_processes():
     assert NativeConfiguration(locale="de-DE").launch_arguments() == ["--lang=de-DE", "--accept-lang=de-DE"]
 
 
-@pytest.mark.parametrize("key", ["language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "userAgentData"])
+@pytest.mark.parametrize("key", ["language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "userAgentData", "userAgentHighEntropy"])
 def test_native_diagnostics_detects_document_worker_disagreement(key):
     from app.core.native.diagnostics import compare_observed
 
@@ -50,6 +50,16 @@ def test_native_diagnostics_reports_blocked_worker_without_fake_observations():
                 "worker": None, "workerError": "Worker blocked"}
     assert compare_observed(NativeConfiguration(environment="mobile_web", width=390, height=844, device_scale_factor=3), observed) == [
         "Mobile Web touch capability is unavailable", "Worker blocked"]
+
+
+def test_native_diagnostics_reports_denied_client_hints_without_inventing_values():
+    from app.core.native.diagnostics import compare_observed
+
+    document = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC",
+                "userAgentHighEntropy": None, "userAgentDataError": "Access denied"}
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": dict(document)}) == [
+        "Document high-entropy client hints could not be observed: Access denied",
+        "Worker high-entropy client hints could not be observed: Access denied"]
 
 
 @pytest.mark.parametrize("key", ["vendor", "renderer", "version", "shadingLanguage", "unmaskedVendor",
@@ -240,6 +250,20 @@ def test_native_adapter_never_replaces_a_runtime_that_still_owns_resources(tmp_p
 def test_native_profile_settings_fail_closed_for_unsupported_identity(values):
     with pytest.raises(ValueError):
         NativeConfiguration.from_settings(values)
+
+
+@pytest.mark.parametrize("header", ["Sec-CH-UA", "Sec-CH-UA-Arch", "sec-ch-ua-bitness",
+    "SEC-CH-UA-PLATFORM-VERSION", "Sec-CH-UA-Full-Version", "Sec-CH-UA-Full-Version-List",
+    "Sec-CH-UA-Model", "Sec-CH-UA-WoW64", "Sec-CH-UA-Form-Factors", "Sec-CH-UA-Future-Hint"])
+def test_native_identity_header_namespace_cannot_override_native_values(header):
+    with pytest.raises(ValueError, match="identity headers"):
+        NativeConfiguration.from_settings({"extra_http_headers": {header: "inconsistent"}})
+
+
+def test_native_configuration_allows_non_identity_http_headers():
+    assert NativeConfiguration.from_settings({"extra_http_headers": {
+        "X-Owned-Fixture": "value", "Accept": "text/html", "Sec-Fetch-Site": "same-origin"
+    }}) == NativeConfiguration()
 
 
 def test_native_profile_settings_reach_supported_configuration():

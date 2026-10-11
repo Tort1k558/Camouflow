@@ -386,6 +386,10 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         checks.append("mobile-web-viewport-dpr-touch")
         diagnostics = await inspect_native_profile(page_b, mobile, context_b.browser.version)
         assert diagnostics["mismatches"] == [], json.dumps(diagnostics)
+        for scope in ("document", "worker"):
+            hints = diagnostics["observed"][scope]["userAgentHighEntropy"]
+            assert isinstance(hints, dict) and hints.get("fullVersionList"), json.dumps(diagnostics)
+            assert "architecture" in hints and "platformVersion" in hints, json.dumps(diagnostics)
         checks.append("native-document-worker-configuration-diagnostics")
         version = context_a.browser.version
         await a.close()
