@@ -261,6 +261,27 @@ class BrowserSettingsBridge(QObject):
                                 report += f"\n{scope.title()} {kind}: renderer={graphics['renderer']}; unmasked={graphics['unmaskedRenderer']}."
                             else:
                                 report += f"\n{scope.title()} {kind}: unavailable ({graphics['error']})."
+                        canvas = values.get("canvas")
+                        if canvas is not None:
+                            if canvas["available"]:
+                                digest = canvas["pixelSha256"]
+                                detail = digest[:12] if digest else canvas["hashError"]
+                                report += f"\n{scope.title()} Canvas: width={canvas['textWidth']:.3f}; SHA-256={detail}."
+                            else:
+                                report += f"\n{scope.title()} Canvas: unavailable ({canvas['error']})."
+                    document = observations["observed"]["document"]
+                    audio = document.get("audio")
+                    if audio is not None:
+                        if audio["available"]:
+                            report += f"\nOffline audio probe: {audio['frames']} frames at {audio['probeSampleRate']} Hz; sum={audio['absoluteSum']:.6f} (not hardware sample rate)."
+                        else:
+                            report += f"\nOffline audio: unavailable ({audio['error']})."
+                    media = document.get("media")
+                    if media is not None:
+                        if media["available"]:
+                            report += "\nMedia device counts (no IDs/labels): " + "; ".join(f"{kind}={count}" for kind, count in media["counts"].items()) + "."
+                        else:
+                            report += f"\nMedia devices: unavailable ({media['error']})."
                     if observations["mismatches"]:
                         report += "\nConfiguration mismatches: " + "; ".join(observations["mismatches"])
                     else:

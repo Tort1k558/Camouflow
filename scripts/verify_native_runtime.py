@@ -391,6 +391,12 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
             hints = diagnostics["observed"][scope]["userAgentHighEntropy"]
             assert isinstance(hints, dict) and hints.get("fullVersionList"), json.dumps(diagnostics)
             assert "architecture" in hints and "platformVersion" in hints, json.dumps(diagnostics)
+            canvas = diagnostics["observed"][scope]["canvas"]
+            assert canvas["available"] and canvas["textWidth"] > 0, json.dumps(diagnostics)
+            assert isinstance(canvas["pixelSha256"], str) and len(canvas["pixelSha256"]) == 64, json.dumps(diagnostics)
+        audio = diagnostics["observed"]["document"]["audio"]
+        assert audio["available"] and audio["frames"] == 4096 and audio["channels"] == 1, json.dumps(diagnostics)
+        assert audio["probeSampleRate"] == 44100 and audio["absoluteSum"] > 0, json.dumps(diagnostics)
         checks.append("native-document-worker-configuration-diagnostics")
         version = context_a.browser.version
         await a.close()

@@ -86,6 +86,29 @@ def test_native_graphics_diagnostics_preserves_unavailable_contexts_without_fake
         "Document and dedicated worker disagree on webgl availability"]
 
 
+@pytest.mark.parametrize("key", ["font", "textWidth", "pixelSha256"])
+def test_native_canvas_diagnostics_detects_document_worker_disagreement(key):
+    from app.core.native.diagnostics import compare_observed
+
+    document = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC",
+                "canvas": {"available": True, key: "document"}}
+    worker = {**document, "canvas": {"available": True, key: "worker"}}
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == [
+        f"Document and dedicated worker disagree on canvas {key}"]
+
+
+def test_native_canvas_diagnostics_does_not_invent_pixels_for_unavailable_contexts():
+    from app.core.native.diagnostics import compare_observed
+
+    document = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC",
+                "canvas": {"available": False, "error": "2D unavailable"}}
+    worker = {**document, "canvas": {"available": False, "error": "Worker 2D unavailable"}}
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == []
+    worker["canvas"]["available"] = True
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == [
+        "Document and dedicated worker disagree on canvas availability"]
+
+
 def test_native_missing_binary_does_not_touch_profile(tmp_path):
     profile = tmp_path / "profile"
     runtime = NativeRuntime(profile, tmp_path / "missing.exe", NativeConfiguration())
@@ -458,6 +481,42 @@ def test_native_binary_health_ui_rejects_stale_or_other_engine_results(engine, c
     assert not bridge._native_probe_running
     assert bridge._compatibility_report == ("previous" if engine != "native" else
         "Native settings or release changed during check; run it again" if changed else "verified owned startup")
+
+
+@pytest.mark.parametrize("available", [True, False])
+def test_native_health_ui_reports_actual_canvas_audio_and_anonymous_media_counts(monkeypatch, available):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from app.core.native import distribution, health
+    from app.ui.bridge import browser_settings
+
+    canvas = {"available": available, "textWidth": 123.5, "pixelSha256": "a" * 64,
+              "hashError": "", "error": "2D blocked"}
+    audio = {"available": available, "frames": 4096, "probeSampleRate": 44100,
+             "absoluteSum": 123.5, "error": "Audio blocked"}
+    media = {"available": available, "counts": {"audioinput": 1, "audiooutput": 0, "videoinput": 0},
+             "error": "Devices blocked"}
+    observed = {"document": {"canvas": canvas, "audio": audio, "media": media}, "worker": {"canvas": canvas}}
+    monkeypatch.setattr(distribution, "resolve_native_executable", lambda settings: Path(__file__))
+    monkeypatch.setattr(health, "probe_native_profile", AsyncMock(return_value={
+        "browser_version": "148.0.7778.96", "observed": observed, "mismatches": []}))
+    monkeypatch.setattr(browser_settings.threading, "Thread", lambda **kwargs: SimpleNamespace(start=kwargs["target"]))
+    emit = Mock()
+    bridge = SimpleNamespace(_engine="native", _native={}, _native_probe_running=False,
+        _native_settings_signature=lambda: "owned", changed=SimpleNamespace(emit=Mock()),
+        _emit_message=Mock(), nativeCompatibilityChecked=SimpleNamespace(emit=emit))
+    browser_settings.BrowserSettingsBridge.checkCompatibility(bridge)
+    signature, report = emit.call_args.args
+    assert signature == "owned"
+    if available:
+        assert "Canvas: width=123.500; SHA-256=aaaaaaaaaaaa" in report
+        assert "4096 frames at 44100 Hz" in report and "not hardware sample rate" in report
+        assert "Media device counts (no IDs/labels): audioinput=1" in report
+    else:
+        assert "Canvas: unavailable (2D blocked)" in report
+        assert "Offline audio: unavailable (Audio blocked)" in report
+        assert "Media devices: unavailable (Devices blocked)" in report
 
 
 def _native_release_archive(tmp_path, version="0.1.0-dev", metadata_changes=None, extra_entries=()):

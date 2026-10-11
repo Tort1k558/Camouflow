@@ -6,6 +6,65 @@ from .configuration import NativeConfiguration
 
 
 OBSERVE = """async () => {
+    const canvasValues = async () => {
+        let canvas;
+        try {
+            canvas = new OffscreenCanvas(256, 48);
+            const context = canvas.getContext('2d');
+            if (!context) throw new Error('Native 2D context unavailable');
+            context.font = '20px Arial';
+            context.fillStyle = '#246b45';
+            const text = 'CamouFlow Native 0123';
+            const width = context.measureText(text).width;
+            context.fillText(text, 4, 28);
+            const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+            let pixelSha256 = null;
+            let hashError = '';
+            if (self.crypto?.subtle) {
+                try {
+                    const digest = await crypto.subtle.digest('SHA-256', pixels);
+                    pixelSha256 = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
+                } catch (error) { hashError = String(error.message); }
+            } else { hashError = 'SHA-256 unavailable outside a secure context'; }
+            return {available: true, font: context.font, textWidth: width, pixelSha256, hashError};
+        } catch (error) { return {available: false, error: String(error.message)}; }
+        finally { if (canvas) canvas.width = 0; }
+    };
+    const audioValues = async () => {
+        let oscillator;
+        try {
+            if (typeof OfflineAudioContext === 'undefined') throw new Error('OfflineAudioContext unavailable');
+            const context = new OfflineAudioContext(1, 4096, 44100);
+            oscillator = context.createOscillator();
+            oscillator.frequency.value = 440;
+            oscillator.connect(context.destination);
+            oscillator.start();
+            oscillator.stop(4096 / 44100);
+            const buffer = await context.startRendering();
+            const samples = buffer.getChannelData(0);
+            let absoluteSum = 0;
+            for (const value of samples) absoluteSum += Math.abs(value);
+            return {available: true, probeSampleRate: buffer.sampleRate, channels: buffer.numberOfChannels,
+                frames: buffer.length, absoluteSum};
+        } catch (error) { return {available: false, error: String(error.message)}; }
+        finally { oscillator?.disconnect(); }
+    };
+    const mediaValues = async () => {
+        let timer;
+        try {
+            if (!navigator.mediaDevices?.enumerateDevices) throw new Error('Media device enumeration unavailable');
+            const devices = await Promise.race([
+                navigator.mediaDevices.enumerateDevices(),
+                new Promise((resolve, reject) => {
+                    timer = setTimeout(() => reject(new Error('Media device enumeration timed out')), 3000);
+                })
+            ]);
+            const counts = {audioinput: 0, audiooutput: 0, videoinput: 0};
+            for (const device of devices) if (device.kind in counts) counts[device.kind]++;
+            return {available: true, counts};
+        } catch (error) { return {available: false, error: String(error.message)}; }
+        finally { clearTimeout(timer); }
+    };
     const graphicsValues = () => {
         const result = {};
         for (const kind of ['webgl', 'webgl2']) {
@@ -58,9 +117,10 @@ OBSERVE = """async () => {
         touch: navigator.maxTouchPoints, webdriver: navigator.webdriver,
         secureContext: isSecureContext,
         screen: {width: screen.width, height: screen.height, colorDepth: screen.colorDepth},
-        graphics: graphicsValues()
+        graphics: graphicsValues(), canvas: await canvasValues(),
+        audio: await audioValues(), media: await mediaValues()
     };
-    const source = '(async () => postMessage({...await (' + navigatorValues.toString() + ')(),graphics:(' + graphicsValues.toString() + ')()}))()';
+    const source = '(async () => postMessage({...await (' + navigatorValues.toString() + ')(),graphics:(' + graphicsValues.toString() + ')(),canvas:await (' + canvasValues.toString() + ')()}))()';
     const url = URL.createObjectURL(new Blob([source], {type: 'text/javascript'}));
     let worker;
     try {
@@ -98,6 +158,14 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
         for key in ("userAgent", "platform", "language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "userAgentData", "userAgentHighEntropy"):
             if worker.get(key) != document.get(key):
                 mismatches.append(f"Document and dedicated worker disagree on {key}")
+        if "canvas" in document and "canvas" in worker:
+            first, second = document["canvas"], worker["canvas"]
+            if first.get("available") != second.get("available"):
+                mismatches.append("Document and dedicated worker disagree on canvas availability")
+            elif first.get("available"):
+                for key in ("font", "textWidth", "pixelSha256"):
+                    if first.get(key) != second.get(key):
+                        mismatches.append(f"Document and dedicated worker disagree on canvas {key}")
         document_graphics, worker_graphics = document.get("graphics", {}), worker.get("graphics", {})
         for kind in ("webgl", "webgl2"):
             if kind in document_graphics and kind in worker_graphics:

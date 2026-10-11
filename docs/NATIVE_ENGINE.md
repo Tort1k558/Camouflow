@@ -326,6 +326,29 @@ repeat does not establish that the transient timeout or host freeze is fixed.
 All 871 Python tests also passed. These results verify the application runtime
 against upstream Chromium 148.0.7778.96, not the still-compiling own fork.
 
+Canvas diagnostics now draw the same fixed text with native `20px Arial` in
+document/worker OffscreenCanvas contexts, reporting genuine text width and a
+SHA-256 of the returned RGBA pixels. Availability, font, width and pixels are
+compared. On about:blank the secure hashing API is unavailable: pixel hashes
+remain null with an explicit reason, while genuine text metrics remain readable.
+The secure Windows SDK fixture observed matching widths (218.994140625) and
+pixel hashes in both contexts. No font or Canvas API is replaced.
+
+The document also renders a bounded 4096-frame, mono, 440-Hz oscillator through
+OfflineAudioContext and reports its genuine absolute sample sum. The probe uses
+44100 Hz explicitly; this is not a claim about a speaker/microphone's hardware
+sample rate. It does not create a real-time audio output context. Media
+enumeration is bounded to three seconds and reports only audioinput/audiooutput/
+videoinput counts, never IDs, group IDs or labels; it requests no new permissions.
+Unavailable or denied APIs remain explicit, not invented device values.
+The secure Windows SDK control produced real audio samples and anonymous
+device counts; about:blank correctly reported media enumeration unavailable.
+The Native health GUI includes these observations and errors. The runtime gate
+requires actual Canvas pixels and rendered audio, not merely matching empty data.
+These are diagnostics, not Canvas/Audio masking or own-fork capability proof.
+References: [OffscreenCanvas](https://html.spec.whatwg.org/multipage/canvas.html#the-offscreencanvas-interface)
+and [OfflineAudioContext](https://webaudio.github.io/web-audio-api/#OfflineAudioContext).
+
 The first Windows probe found that context-level locale alone differed from
 worker language. Native now supplies Chromium's own `--lang` and `--accept-lang`
 flags from the central validated configuration. Their behavior was inspected in
