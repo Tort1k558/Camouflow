@@ -169,3 +169,62 @@ def test_native_profile_json_validates_merged_defaults_and_preserves_only_overri
     work(None)
     update.assert_called_once_with("owned", {"native_settings": {"window_width": 420}})
     bridge._emit_message.assert_not_called()
+
+
+def test_native_binary_health_uses_disposable_storage_and_verifies_teardown(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.core.native import health
+
+    executable = tmp_path / "owned.exe"
+    executable.touch()
+    work = tmp_path / "health"
+    closed = AsyncMock()
+    profiles = []
+
+    def runtime(profile, binary, configuration):
+        profiles.append(profile)
+        assert binary == executable
+        return SimpleNamespace(start=AsyncMock(return_value=SimpleNamespace(browser=SimpleNamespace(version="148.0.7778.96"))),
+                               close=closed)
+
+    monkeypatch.setattr(health, "NativeRuntime", runtime)
+    assert asyncio.run(health.probe_native_binary(executable, NativeConfiguration(), work)) == "148.0.7778.96"
+    closed.assert_awaited_once()
+    assert profiles[0].parent == work
+    assert not profiles[0].exists()
+
+
+def test_native_binary_health_does_not_call_failed_teardown_success(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.core.native import health
+
+    executable = tmp_path / "owned.exe"
+    executable.touch()
+    monkeypatch.setattr(health, "NativeRuntime", lambda *args: SimpleNamespace(
+        start=AsyncMock(return_value=SimpleNamespace(browser=SimpleNamespace(version="148.0.7778.96"))),
+        close=AsyncMock(side_effect=RuntimeError("owned close failed"))))
+    with pytest.raises(RuntimeError, match="owned close failed"):
+        asyncio.run(health.probe_native_binary(executable, NativeConfiguration(), tmp_path / "health"))
+
+
+@pytest.mark.parametrize("engine,changed", [("native", False), ("native", True), ("camoufox", False)])
+def test_native_binary_health_ui_rejects_stale_or_other_engine_results(engine, changed):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from app.ui.bridge.browser_settings import BrowserSettingsBridge
+
+    bridge = SimpleNamespace(_engine=engine, _native={"locale": "en-US"}, _native_probe_running=True,
+                             _compatibility_report="previous", _emit_message=Mock(), changed=SimpleNamespace(emit=Mock()))
+    bridge._native_settings_signature = lambda: BrowserSettingsBridge._native_settings_signature(bridge)
+    signature = bridge._native_settings_signature()
+    if changed:
+        bridge._native["locale"] = "de-DE"
+    BrowserSettingsBridge._apply_native_compatibility(bridge, signature, "verified owned startup")
+    assert not bridge._native_probe_running
+    assert bridge._compatibility_report == ("previous" if engine != "native" else
+        "Native settings changed during check; run it again" if changed else "verified owned startup")

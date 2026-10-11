@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import importlib.metadata
 import importlib.util
 import json
@@ -22,6 +24,7 @@ from app.storage.db import (
     NATIVE_DEFAULTS,
     BROWSER_ENGINES,
     PROFILES_DIR,
+    OUTPUTS_DIR,
     db_get_browser_engine,
     db_get_camoufox_defaults,
     db_get_cloakbrowser_defaults,
@@ -73,6 +76,7 @@ class BrowserSettingsBridge(QObject):
     message = pyqtSignal(str)
     engineUpdateChecked = pyqtSignal(str)
     engineUpdated = pyqtSignal(bool, str)
+    nativeCompatibilityChecked = pyqtSignal(str, str)
 
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
@@ -84,6 +88,8 @@ class BrowserSettingsBridge(QObject):
         self._compatibility_report = "Not checked"
         self._latest_engine_version = ""
         self._engine_update_running = False
+        self._native_probe_running = False
+        self.nativeCompatibilityChecked.connect(self._apply_native_compatibility)
         self.engineUpdateChecked.connect(self._apply_engine_update_check)
         self.engineUpdated.connect(self._apply_engine_update)
         if app_state is not None:
@@ -134,15 +140,38 @@ class BrowserSettingsBridge(QObject):
     def checkCompatibility(self) -> None:  # noqa: N802
         if self._engine == "native":
             from app.core.native.configuration import NativeConfiguration
+            from app.core.native.health import probe_native_binary
+
+            if self._native_probe_running:
+                return
             try:
                 configuration = NativeConfiguration.from_settings(self._native)
                 if not self.nativeExecutable or not Path(self.nativeExecutable).is_file():
                     raise ValueError("Configure an installed Native Chromium executable")
-                self._compatibility_report = "Configuration valid; binary exists. Runtime/version not yet checked. " + " ".join(configuration.limitations())
+                signature = self._native_settings_signature()
+                executable = Path(self.nativeExecutable)
             except (ValueError, OSError) as error:
                 self._compatibility_report = f"Blocked: {error}"
+                self.changed.emit()
+                self._emit_message(self._compatibility_report)
+                return
+            self._native_probe_running = True
+            self._compatibility_report = "Checking Native headless startup and teardown…"
             self.changed.emit()
-            self._emit_message(self._compatibility_report)
+
+            def worker():
+                try:
+                    version = asyncio.run(probe_native_binary(executable, configuration, OUTPUTS_DIR / "native-health"))
+                    report = f"Headless startup and teardown verified; Chromium {version}. Fingerprint patches not verified. " + " ".join(configuration.limitations())
+                except Exception as error:
+                    report = f"Blocked: Native runtime check failed ({type(error).__name__}): {error}"
+                self.nativeCompatibilityChecked.emit(signature, report)
+
+            try:
+                # GUI exit must not abandon this job's owned browser process.
+                threading.Thread(target=worker, daemon=False, name="native-compatibility").start()
+            except RuntimeError as error:
+                self._apply_native_compatibility(signature, f"Blocked: Cannot start Native check: {error}")
             return
         package = "cloakbrowser" if self._engine == "cloakbrowser" else "camoufox"
         if importlib.util.find_spec(package) is None:
@@ -163,6 +192,22 @@ class BrowserSettingsBridge(QObject):
             self._compatibility_report = f"{status}: {package} {version} ({version_state}; {stability}); {mode}; {storage_state}"
         self.changed.emit()
         self._emit_message(self._compatibility_report)
+
+    @pyqtProperty(bool, notify=changed)
+    def compatibilityRunning(self) -> bool:  # noqa: N802
+        return self._engine == "native" and self._native_probe_running
+
+    def _native_settings_signature(self) -> str:
+        return hashlib.sha256(json.dumps(self._native, sort_keys=True).encode("utf-8")).hexdigest()
+
+    @pyqtSlot(str, str)
+    def _apply_native_compatibility(self, signature: str, report: str) -> None:
+        self._native_probe_running = False
+        if self._engine == "native":
+            self._compatibility_report = (report if signature == self._native_settings_signature()
+                                          else "Native settings changed during check; run it again")
+            self._emit_message(self._compatibility_report)
+        self.changed.emit()
 
     @pyqtSlot()
     def checkEngineUpdate(self) -> None:  # noqa: N802

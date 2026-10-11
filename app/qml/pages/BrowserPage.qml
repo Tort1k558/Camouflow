@@ -196,7 +196,7 @@ Item {
                     }
                     Flow {
                         width: parent.width; spacing: 10
-                        PrimaryButton { text: "Check compatibility"; icon: "check"; secondary: true; onClicked: browserSettingsBridge.checkCompatibility() }
+                        PrimaryButton { text: browserSettingsBridge.compatibilityRunning ? "Checking…" : "Check compatibility"; icon: "check"; secondary: true; enabled: !browserSettingsBridge.compatibilityRunning; onClicked: browserSettingsBridge.checkCompatibility() }
                         PrimaryButton { text: "Check updates"; icon: "refresh"; secondary: true; onClicked: browserSettingsBridge.checkEngineUpdate() }
                         PrimaryButton { text: "Update engine"; icon: "save"; enabled: browserSettingsBridge.canUpdateEngine; onClicked: browserSettingsBridge.updateEngine() }
                     }

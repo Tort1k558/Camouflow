@@ -280,6 +280,12 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         finally:
             await source.close(force=True)
         checks.append("native-profile-backup-restore-storage-and-engine-isolation")
+        from app.core.native.health import probe_native_binary
+
+        health_work = profile_root / "binary-health"
+        assert await probe_native_binary(executable, desktop, health_work) == version
+        assert not list(health_work.iterdir())
+        checks.append("native-binary-headless-health-and-disposable-profile-cleanup")
         with executable.open("rb") as binary:
             checksum = hashlib.file_digest(binary, "sha256").hexdigest()
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),

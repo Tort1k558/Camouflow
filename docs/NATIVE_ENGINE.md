@@ -172,6 +172,14 @@ masking presets and raw launch arguments are not shown as Native capabilities.
 Saving validates Native configuration; unsupported fingerprint requests fail
 without silently persisting them. Configuration health checks distinguish file
 presence from verified runtime/version readiness.
+Native compatibility checks now perform an asynchronous, real headless startup
+and teardown in a disposable profile and display the observed Chromium version.
+The QML button reflects single-flight progress. Changed settings or a different
+selected engine cannot receive a stale result. The non-daemon probe job completes
+its owned-browser cleanup before normal application exit. This is binary health,
+not publisher authentication, scenario compatibility or fingerprint-patch proof.
+The actual QML button/worker callback/version display/temp-profile cleanup were
+verified locally on Windows using the upstream bootstrap executable.
 Per-profile JSON overrides use that same validator against merged Native
 defaults before local/cloud mutation. Unsupported UA, hardware and GPU controls
 (including legacy WebGL key names) fail at save time, not only at launch.
