@@ -44,7 +44,11 @@ Sync uses shallow, exact-commit source/dependency checkouts without hooks. Hooks
 are explicit because they require a valid local toolchain and download further
 build dependencies. Existing unrelated directories, changed Git origins,
 uncommitted source changes and incompatible gclient configurations are rejected,
-not overwritten. Tools/cache/temp are scoped to the owned workspace. Failures
+not overwritten. Tools/cache/temp are scoped to the owned workspace. Windows
+build subprocesses use Git's OpenSSL TLS backend without changing global Git
+configuration or disabling certificate validation. This transport completed the
+pinned source transfer after the system-default Schannel transfer disconnected.
+Failures
 remain failures; there is no alternate browser/toolchain fallback.
 
 After a successful build, `src/out/CamouFlowNative/camouflow-build.json` records

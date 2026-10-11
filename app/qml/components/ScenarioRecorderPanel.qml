@@ -40,7 +40,7 @@ Flickable {
         PageHeader { title: "Record a task"; subtitle: "1. Show the actions   →   2. Choose changing inputs   →   3. Save your task"; Layout.fillWidth: true }
         Text {
             Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.muted
-            text: "Camoufox / local and cloud profiles. Cloud profiles are locked while recording. Close the profile browser before starting. Records clicks, text, single-choice selects, checkboxes and Enter in one tab and its nested iframes. Frames need a unique stable id, name or test attribute. CloakBrowser, uploads and popup actions are not yet supported."
+            text: "Camoufox and Native profiles. Cloud profiles are locked while recording. Close the profile browser before starting. Records clicks, text, single-choice selects, checkboxes and Enter in one tab and its nested iframes. Frames need a unique stable id, name or test attribute. CloakBrowser, uploads and popup actions are not yet supported."
         }
         RowLayout {
             Layout.fillWidth: true; spacing: 12

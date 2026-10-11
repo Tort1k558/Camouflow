@@ -12,7 +12,7 @@ from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.core.browser_interface import BrowserInterface
 from app.services.proxy_policy import account_proxy
-from app.services.scenario_recorder import ScenarioRecorder
+from app.services.scenario_recorder import RECORDING_ENGINES, ScenarioRecorder
 from app.services.task_inputs import prepare_recording, recording_candidates
 from app.services.server_client import ServerClient, get_server_session, role_allows
 from app.storage import db
@@ -112,8 +112,8 @@ class RecorderBridge(QObject):
         if not account:
             return "Choose a loaded profile"
         engine = account.get("_browser_engine") or account.get("browser_engine") or db.db_get_browser_engine()
-        if engine != "camoufox":
-            return "This profile uses CloakBrowser; recording requires a Camoufox profile"
+        if engine not in RECORDING_ENGINES:
+            return "This engine does not support recording; choose Camoufox or Native"
         if not self.operations.profiles.actionState(profile).get("startAllowed"):
             return "Profile is unavailable or you do not have permission to start it"
         return ""
@@ -135,8 +135,8 @@ class RecorderBridge(QObject):
             if account is None:
                 raise ValueError("Select an existing profile; wait for the profile list to load")
             engine = str(account.get("_browser_engine") or account.get("browser_engine") or db.db_get_browser_engine())
-            if engine != "camoufox":
-                raise ValueError("Recording supports Camoufox only. Select Camoufox in Browser engine first.")
+            if engine not in RECORDING_ENGINES:
+                raise ValueError("Recording supports Camoufox or Native. Select a supported profile first.")
             account["browser_engine"] = engine
             self.operations._reserve([account["name"]])
         except Exception as exc:
@@ -173,8 +173,8 @@ class RecorderBridge(QObject):
                 if fresh is None or fresh["name"] != account["name"]:
                     raise ValueError("Cloud profile was removed or renamed; refresh the profile list")
                 account = fresh
-                if (account.get("_browser_engine") or account.get("browser_engine") or "camoufox") != "camoufox":
-                    raise ValueError("Recording supports Camoufox only")
+                if (account.get("_browser_engine") or account.get("browser_engine") or "camoufox") not in RECORDING_ENGINES:
+                    raise ValueError("Recording supports Camoufox or Native")
                 if self._stop.is_set():
                     return
                 client.lock_profile(profile_id)

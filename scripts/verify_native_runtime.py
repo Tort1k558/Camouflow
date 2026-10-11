@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from socketserver import TCPServer
@@ -87,6 +88,8 @@ class FixtureHandler(BaseHTTPRequestHandler):
             content_type = "application/javascript"
         else:
             body = b'<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Owned Native fixture</title><h1>Native runtime</h1><input aria-label="Value"><button onclick="document.querySelector(\'output\').textContent=document.querySelector(\'input\').value">Apply</button><output></output>'
+            if self.path == "/":
+                body += b'<iframe id="owned-frame" src="/frame"></iframe>'
             content_type = "text/html"
         self.send_response(200)
         self.send_header("Content-Type", content_type)
@@ -159,6 +162,7 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         assert proxy_server.authenticated_requests > 0 and proxy_server.challenges > 0
         checks.append("authenticated-http-proxy-no-direct-dns-route")
         from app.services.scenario_engine import ScenarioExecutor
+        from app.services.scenario_recorder import ScenarioRecorder
         from app.storage import db
 
         db.init_db()
@@ -179,9 +183,38 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
             assert runner.user_data_dir.relative_to(runner.profile_root.resolve()) == Path("native")
             assert await runner.run()
             assert runner.variables["result"] == "existing scenario"
+            recorder = ScenarioRecorder()
+            try:
+                await recorder.attach(runner.page)
+                await runner.page.goto(origin)
+                await runner.page.get_by_label("Value", exact=True).fill("recorded native")
+                await runner.page.get_by_role("button", name="Apply", exact=True).click()
+                frame = runner.page.frame_locator("#owned-frame")
+                await frame.get_by_label("Value", exact=True).fill("frame native")
+                await frame.get_by_role("button", name="Apply", exact=True).click()
+            finally:
+                await recorder.stop()
+            recorded_steps, recording_warnings = recorder.snapshot()
+            assert not recording_warnings, recording_warnings
+            assert [step["action"] for step in recorded_steps] == ["start", "goto", "type", "click", "type", "click"]
+            assert recorded_steps[-1]["frame_selector"] == ['iframe[id="owned-frame"]']
         finally:
             await runner.close(force=True)
         checks.append("existing-browser-interface-and-scenario-executor")
+        replay = ScenarioExecutor(account, "", db.Scenario("Native recorded replay", recorded_steps + [
+            {"action": "wait_element", "selector": "output", "state": "visible"},
+            {"action": "extract_text", "selector": "output", "to_var": "recorded_result"},
+            {"action": "extract_text", "selector": "output", "frame_selector": recorded_steps[-1]["frame_selector"],
+             "to_var": "recorded_frame_result"},
+        ], "Owned Native recording"), keep_browser_open=False)
+        try:
+            await replay.start()
+            assert await replay.run()
+            assert replay.variables["recorded_result"] == "recorded native"
+            assert replay.variables["recorded_frame_result"] == "frame native"
+        finally:
+            await replay.close(force=True)
+        checks.append("existing-recorder-capture-and-replay")
         with executable.open("rb") as binary:
             checksum = hashlib.file_digest(binary, "sha256").hexdigest()
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),
@@ -250,7 +283,8 @@ def main() -> int:
                 else:
                     os.environ["CAMOUFLOW_DATA_DIR"] = previous_data_dir
     except Exception as error:
-        report = {"passed": False, "platform": platform.system(), "error_type": type(error).__name__, "error": str(error)[:1000]}
+        report = {"passed": False, "platform": platform.system(), "error_type": type(error).__name__,
+                  "error": str(error)[:1000], "traceback": traceback.format_exc()[-6000:]}
     finally:
         for item in (server, proxy_server):
             item.shutdown()

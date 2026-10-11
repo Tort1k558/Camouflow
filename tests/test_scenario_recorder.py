@@ -4,6 +4,8 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
+import pytest
+
 from app.services.scenario_recorder import ScenarioRecorder
 from app.ui.bridge.recorder import RecorderBridge
 
@@ -62,10 +64,18 @@ def test_detached_frame_does_not_record_action_in_parent_document():
     assert "detached" in recorder.warnings[0]
 
 
-def test_camoufox_is_available_to_recorder_ui():
-    profiles = SimpleNamespace(_cached_account=Mock(return_value={"name": "QA", "browser_engine": "camoufox"}), actionState=Mock(return_value={"startAllowed": True}))
+@pytest.mark.parametrize("engine", ["camoufox", "native"])
+def test_supported_engine_is_available_to_recorder_ui(engine):
+    profiles = SimpleNamespace(_cached_account=Mock(return_value={"name": "QA", "browser_engine": engine}), actionState=Mock(return_value={"startAllowed": True}))
     bridge = SimpleNamespace(operations=SimpleNamespace(profiles=profiles))
     assert RecorderBridge.recordingIssue(bridge, "QA") == ""
+
+
+@pytest.mark.parametrize("engine", ["cloakbrowser", "unknown"])
+def test_unsupported_recorder_engine_is_explicit(engine):
+    profiles = SimpleNamespace(_cached_account=Mock(return_value={"name": "QA", "browser_engine": engine}))
+    bridge = SimpleNamespace(operations=SimpleNamespace(profiles=profiles))
+    assert "does not support recording" in RecorderBridge.recordingIssue(bridge, "QA")
 
 
 def test_recorder_still_requires_profile_start_permission():

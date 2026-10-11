@@ -50,6 +50,11 @@ def environment(workspace: Path) -> dict[str, str]:
                 "VPYTHON_VIRTUALENV_ROOT": str(workspace / "vpython-cache"),
                 "TEMP": str(temporary), "TMP": str(temporary), "TMPDIR": str(temporary),
                 "PATH": str(workspace / "depot_tools") + os.pathsep + env.get("PATH", "")})
+    if os.name == "nt":
+        count = int(env.get("GIT_CONFIG_COUNT", "0"))
+        env.update({"GIT_CONFIG_COUNT": str(count + 1),
+                    f"GIT_CONFIG_KEY_{count}": "http.sslBackend",
+                    f"GIT_CONFIG_VALUE_{count}": "openssl"})
     return env
 
 

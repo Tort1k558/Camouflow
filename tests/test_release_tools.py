@@ -152,6 +152,25 @@ def test_native_build_lock_pins_full_source_revisions():
     assert LOCK["build_jobs"] <= 4
 
 
+def test_native_build_transport_is_process_scoped_and_preserves_existing_git_config(tmp_path, monkeypatch):
+    import os
+    from scripts.native_build import environment
+
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "core.filemode")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", "false")
+    env = environment(tmp_path)
+    assert os.environ["GIT_CONFIG_COUNT"] == "1"
+    assert env["GIT_CONFIG_KEY_0"] == "core.filemode"
+    assert env["GIT_CONFIG_VALUE_0"] == "false"
+    if os.name == "nt":
+        assert env["GIT_CONFIG_COUNT"] == "2"
+        assert env["GIT_CONFIG_KEY_1"] == "http.sslBackend"
+        assert env["GIT_CONFIG_VALUE_1"] == "openssl"
+    assert env["DEPOT_TOOLS_UPDATE"] == "0"
+    assert env["CIPD_CACHE_DIR"] == str(tmp_path / "cipd-cache")
+
+
 def test_native_build_rejects_relative_workspace():
     from scripts.native_build import preflight
 

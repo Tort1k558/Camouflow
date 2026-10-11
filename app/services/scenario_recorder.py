@@ -7,6 +7,8 @@ import asyncio
 import time
 from urllib.parse import urlsplit
 
+RECORDING_ENGINES = frozenset({"camoufox", "native"})
+
 
 RECORDER_SCRIPT = r"""
 (() => {

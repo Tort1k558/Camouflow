@@ -125,7 +125,7 @@ Verified Windows checks:
 - HTTP proxy authentication: actual 407 challenge, credentialed proxy traffic
   and successful navigation to a fixture hostname with no direct DNS route.
 
-The updated local full suite passed **641 tests**, including negative proxy-auth
+The updated local full suite passed **645 tests**, including negative proxy-auth
 fixture checks and explicit missing-binary failure/reporting without fallback.
 
 The core adapter now dispatches `native` profiles into their own `native/`
@@ -183,17 +183,38 @@ Native cookie inspection and storage preflight now use the same dedicated
 
 Cloud Native profile creation still requires private backend schema/runtime
 support and production validation; UI availability is not proof of those steps.
-AI/Recorder, binary updates and crash/resource checks remain incomplete.
+AI, binary updates and crash/resource checks remain incomplete.
 
 Pinned Chromium/depot_tools source acquisition and local build inputs are tracked
 in [`native/`](../native/README.md). The D: source transfer and compiler installer
 are separate from a successfully built/patched browser. The initial Git transfer
-failed with a TLS disconnect; the current explicit OpenSSL transport retry must
-finish and validate the same pinned commit before hooks/build can proceed.
+failed with a TLS disconnect; the explicit OpenSSL transport retry successfully
+fetched the same pinned commit. Materializing the source checkout and bootstrap
+tool dependencies must finish before hooks/build can proceed.
 Visual Studio Build Tools 2026 18.10.3 installation has completed on D: with
 MSVC 14.51.36231 and ATL/MFC; installer signature was verified as Microsoft and
 the registered instance reports complete/launchable, with no reboot required.
 Required SDK debugging tools and actual compilation remain separate checks.
+
+## Recorder integration
+
+Recorder capability checks now allow Camoufox and Native; CloakBrowser and unknown
+engines remain explicitly unsupported. Profile start permissions, reservations,
+cloud locks, sensitive-field handling and draft review are unchanged.
+
+The real Windows Native source gate captured navigation, text and clicks in an
+owned page and its stable-ID iframe, closed that browser, then replayed the saved
+steps through the existing scenario executor in a newly started Native session.
+Both main-document and iframe output were checked. The report contains
+`existing-recorder-capture-and-replay` in addition to the previous seven checks.
+Recorder event instrumentation is not a JavaScript fingerprint mask.
+
+This does not yet prove Native recording on Linux/macOS, all nested-frame/site
+patterns, popups or production cloud profiles. Those require fresh matching CI
+reports and further runtime coverage. One local iframe-gate attempt hit a timeout
+under concurrent source/tool download; the next run passed. Failure reports now
+retain a traceback so future timeouts can be localized instead of losing the
+failed call's context. This is not a resolved stability claim.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).
