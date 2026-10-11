@@ -60,6 +60,46 @@ agreement, not random per-call noise or fabricated unsupported GPU limits.
 Canvas/audio/font/device diversity remains unfinished and must not be advertised
 as implemented. WebRTC draft 0003 still needs its own compiled runtime gate.
 
+### Windows font collection draft
+
+`0005-native-windows-font-collection.patch` prepares opt-in genuine-font
+selection with `--camouflow-font-families=Arial,Times New Roman,Segoe UI`.
+The argument is a bounded list of exact printable ASCII family names, without
+leading/trailing whitespace, duplicates, or empty entries. Arial is required
+for Blink's last-resort rendering. Every requested font must actually exist;
+an invalid/missing family produces a native CHECK, not a silent system-font
+fallback. Omitting the switch keeps upstream behavior.
+
+The patch builds a DirectWrite font collection from the original selected
+families and their original styles. It does not invent names, glyphs, canvas
+pixels, or text widths. A custom glyph fallback maps only into that collection;
+scripts without a supported glyph may render missing-glyph boxes. A useful
+profile must select sufficient real fonts for its intended languages.
+
+The selected collection is wired into all three Windows font entry points:
+
+- The current default FontDataService and its Skia font manager.
+- The legacy renderer DirectWrite broker, including unique `local()` matching
+  and glyph fallback.
+- Local Font Access enumeration, still behind normal permissions.
+
+Chromium source was not modified during the running first build. The draft
+applies to the pinned revision. Its complete C++ draft files passed upstream
+dependency rules in an isolated overlay; a forbidden Blink include was rejected
+as the negative control. Only two exact `ui/gfx/win` includes were added to
+FontDataService's DEPS; its existing GN dependency on `//ui/gfx` is reused.
+
+The standalone Windows C++ gate compiled with `/W4 /WX` and ran the real
+DirectWrite APIs: only Arial remained, every original Arial style and the
+checked genuine metrics were retained, restricted fallback construction
+succeeded, and a missing requested family failed without returning a collection.
+The pure parser also passed malformed/duplicate/count/length controls.
+These are **not** compiled Chromium, CSS/canvas/worker/local-font runtime proof
+or complete font-file isolation. A font file/TTC can contain multiple faces;
+this draft restricts accessible collections, not the bytes inside allowed font
+files. The app's `fonts` setting remains rejected until the own-fork runtime
+gate verifies the complete selection path.
+
 `build-lock.json` pins full upstream Chromium and bootstrap depot_tools commits.
 Chromium's pinned `DEPS` defines its own dependency revisions/CIPD instances,
 including its vendored depot_tools; the bootstrap tool is pinned separately and

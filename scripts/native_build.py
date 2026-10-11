@@ -152,7 +152,8 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
     patches = []
     expected = set()
     for name in ("0001-native-hardware-privacy-limits.patch", "0002-midl-locale-name-hashes.patch",
-                 "0003-native-webrtc-routing-policy.patch", "0004-native-automation-exposure.patch"):
+                 "0003-native-webrtc-routing-policy.patch", "0004-native-automation-exposure.patch",
+                 "0005-native-windows-font-collection.patch"):
         patch = ROOT / "native/patches" / name
         contents = patch.read_text(encoding="utf-8-sig")
         files = {line.split(" b/", 1)[1] for line in contents.splitlines() if line.startswith("diff --git ")}
@@ -208,8 +209,14 @@ def check_patch_dependencies(source: Path, env: dict[str, str]) -> None:
     script = ("import sys; from pathlib import Path; "
               "root=Path(sys.argv[1]); sys.path.insert(0,str(root/'buildtools/checkdeps')); "
               "from checkdeps import DepsChecker; "
-              "file=root/'chrome/browser/renderer_preferences_util.cc'; "
-              "problems=DepsChecker(str(root)).CheckAddedCppIncludes([(str(file),file.read_text(encoding='utf-8-sig').splitlines())]); "
+              "names=['chrome/browser/renderer_preferences_util.cc', "
+              "'content/browser/font_access/font_enumeration_data_source_win.cc', "
+              "'components/services/font_data/font_data_service_impl.cc', "
+              "'ui/gfx/win/camouflow_font_collection.h', "
+              "'ui/gfx/win/camouflow_font_configuration.h', "
+              "'ui/gfx/win/camouflow_font_families.h']; "
+              "files=[root/name for name in names if (root/name).is_file()]; "
+              "problems=DepsChecker(str(root)).CheckAddedCppIncludes([(str(file),file.read_text(encoding='utf-8-sig').splitlines()) for file in files]); "
               "print(problems); sys.exit(bool(problems))")
     run([sys.executable, "-c", script, os.path.normcase(str(source))], source, env)
 

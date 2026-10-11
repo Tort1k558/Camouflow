@@ -32,7 +32,7 @@ def verify(work_dir: Path, vs_installation: Path | None = None) -> None:
                         f'call "{developer}" -arch=x64 -host_arch=x64\n'
                         'if errorlevel 1 exit /b 1\n'
                         f'cl /nologo /std:c++20 /EHsc /W4 /WX /I"{include}" "{source}" '
-                        f'/Fe:"{executable}" /Fo:"{output / "native-cpp-test.obj"}"\n'
+                        f'/Fe:"{executable}" /Fo:"{output / "native-cpp-test.obj"}" /link dwrite.lib\n'
                         'if errorlevel 1 exit /b 1\n'
                         f'"{executable}"\nexit /b %errorlevel%\n')
             script = output / "check.cmd"
