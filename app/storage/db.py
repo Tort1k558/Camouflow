@@ -178,6 +178,8 @@ CLOAKBROWSER_DEFAULTS: Dict[str, Any] = {
 }
 
 NATIVE_DEFAULTS: Dict[str, Any] = {
+    "binary_source": "explicit",
+    "binary_store": "",
     "executable_path": "",
     "environment": "desktop",
     "window_width": 1366,

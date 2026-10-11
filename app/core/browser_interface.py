@@ -489,18 +489,20 @@ class BrowserInterface:
 
     async def _start_native(self) -> None:
         from .native.configuration import NativeConfiguration
+        from .native.distribution import resolve_native_executable
         from .native.runtime import NativeRuntime
 
         if self._native_runtime is not None and self._native_runtime.playwright is not None:
             raise RuntimeError("Previous Native runtime has not finished closing")
         configuration = NativeConfiguration.from_settings(self._browser_settings)
-        executable = str(self._browser_settings.get("executable_path") or "").strip()
-        if not executable:
-            raise RuntimeError("Configure an explicit Native Chromium executable before launching")
+        try:
+            executable = resolve_native_executable(self._browser_settings)
+        except ValueError as error:
+            raise RuntimeError(str(error)) from error
         headless = self._browser_settings.get("headless", False)
         if not isinstance(headless, bool):
             raise ValueError("Native headless setting must be a boolean")
-        self._native_runtime = NativeRuntime(Path(self.user_data_dir), Path(executable), configuration)
+        self._native_runtime = NativeRuntime(Path(self.user_data_dir), executable, configuration)
         self.context = await self._native_runtime.start(headless=headless, proxy=self._prepare_chromium_proxy())
         self.browser = self.context.browser
 

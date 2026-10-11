@@ -105,6 +105,14 @@ class BrowserSettingsBridge(QObject):
         return str(self._native.get("executable_path") or "")
 
     @pyqtProperty(str, notify=changed)
+    def nativeBinarySource(self) -> str:  # noqa: N802
+        return str(self._native.get("binary_source", "explicit"))
+
+    @pyqtProperty(str, notify=changed)
+    def nativeBinaryStore(self) -> str:  # noqa: N802
+        return str(self._native.get("binary_store") or "")
+
+    @pyqtProperty(str, notify=changed)
     def nativeEnvironment(self) -> str:  # noqa: N802
         return str(self._native.get("environment") or "desktop")
 
@@ -140,16 +148,15 @@ class BrowserSettingsBridge(QObject):
     def checkCompatibility(self) -> None:  # noqa: N802
         if self._engine == "native":
             from app.core.native.configuration import NativeConfiguration
+            from app.core.native.distribution import resolve_native_executable
             from app.core.native.health import probe_native_binary
 
             if self._native_probe_running:
                 return
             try:
                 configuration = NativeConfiguration.from_settings(self._native)
-                if not self.nativeExecutable or not Path(self.nativeExecutable).is_file():
-                    raise ValueError("Configure an installed Native Chromium executable")
                 signature = self._native_settings_signature()
-                executable = Path(self.nativeExecutable)
+                executable = resolve_native_executable(self._native)
             except (ValueError, OSError) as error:
                 self._compatibility_report = f"Blocked: {error}"
                 self.changed.emit()

@@ -163,13 +163,19 @@ jobs:
                   root = ui.engine.rootObjects()[0]
                   browser_page = root.findChild(QObject, "pageLoader").property("item")
                   assert browser_page.objectName() == "browserPage"
-                  for engine in ("camoufox", "cloakbrowser"):
+                  for engine in ("camoufox", "cloakbrowser", "native"):
                       ui.browser_settings.setEngine(engine)
                       for tab in ("Runtime", "Fingerprint", "Network", "Context", "Storage", "Advanced", "Maintenance"):
                           assert browser_page.setProperty("tab", tab)
                           for _ in range(10):
                               ui.app.processEvents()
                           assert browser_page.property("tab") == tab
+                      if engine == "native":
+                          for source in ("managed", "explicit"):
+                              ui.browser_settings.setValue("binary_source", source)
+                              for _ in range(10):
+                                  ui.app.processEvents()
+                              assert ui.browser_settings.nativeBinarySource == source
           assert not warnings, warnings
           from app.storage import db
           db.db_add_account({"name": "ci-profile"})
@@ -244,6 +250,9 @@ jobs:
       QT_QPA_PLATFORM: offscreen
       QT_QUICK_BACKEND: software
       QT_QUICK_CONTROLS_STYLE: Basic
+      # Keep measured binaries fixed; background updates would change test inputs.
+      CLOAKBROWSER_AUTO_UPDATE: "false"
+      PYTHONFAULTHANDLER: "1"
     strategy:
       fail-fast: false
       matrix:

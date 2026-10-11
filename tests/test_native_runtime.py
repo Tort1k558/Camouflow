@@ -457,3 +457,42 @@ def test_native_binary_selection_does_not_fallback_from_corrupt_state_or_allow_p
     (store.root / "current.json").write_text('{"active":"unsafe"}', encoding="utf-8")
     with pytest.raises(ValueError, match="Invalid"):
         store.resolve_active()
+
+
+def test_native_managed_selection_uses_verified_active_release_not_explicit_fallback(tmp_path, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.core.native import distribution
+
+    archive, digest = _native_release_archive(tmp_path)
+    store = distribution.NativeBinaryStore(tmp_path / "native-binaries")
+    store.install_archive(archive, digest)
+    monkeypatch.setattr(distribution, "probe_native_binary", AsyncMock(return_value="148.0.7778.96"))
+    asyncio.run(store.activate(digest))
+    settings = {"binary_source": "managed", "binary_store": str(store.root), "executable_path": str(archive)}
+    selected = distribution.resolve_native_executable(settings)
+    assert selected == Path(store.resolve_active()["executable_path"])
+    selected.write_bytes(b"corrupt")
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        distribution.resolve_native_executable(settings)
+    assert archive.is_file()
+
+
+@pytest.mark.parametrize("settings", [
+    {"binary_source": "unknown"}, {"binary_source": "managed"},
+    {"binary_source": "managed", "binary_store": "relative"},
+    {"executable_path": "relative.exe"}, {"executable_path": True}, {},
+])
+def test_native_binary_selection_rejects_invalid_or_missing_source(settings):
+    from app.core.native.distribution import resolve_native_executable
+
+    with pytest.raises(ValueError):
+        resolve_native_executable(settings)
+
+
+def test_native_explicit_selection_preserves_existing_absolute_executable_contract(tmp_path):
+    from app.core.native.distribution import resolve_native_executable
+
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"explicit")
+    assert resolve_native_executable({"executable_path": str(executable)}) == executable

@@ -60,6 +60,25 @@ def archive_links_supported() -> bool:
             or (version[:2] == (3, 12) and version >= (3, 12, 11))))
 
 
+def resolve_native_executable(settings: dict) -> Path:
+    source = settings.get("binary_source", "explicit")
+    if source == "managed":
+        root = settings.get("binary_store", "")
+        if not isinstance(root, str) or not root.strip():
+            raise ValueError("Configure an absolute Native binary store path")
+        release = NativeBinaryStore(Path(root.strip())).resolve_active()
+        return Path(release["executable_path"])
+    if source != "explicit":
+        raise ValueError("Native binary source must be explicit or managed")
+    value = settings.get("executable_path", "")
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("Configure an explicit Native Chromium executable before launching")
+    executable = Path(value.strip())
+    if not executable.is_absolute() or not executable.is_file():
+        raise ValueError("Native Chromium executable must be an installed absolute file")
+    return executable
+
+
 class NativeBinaryStore:
     def __init__(self, root: Path):
         self.root = Path(root)

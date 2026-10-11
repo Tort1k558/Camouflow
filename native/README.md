@@ -220,7 +220,7 @@ browser is selected. `resolve_active()` verifies the selected executable again.
 Old releases remain installed. Chromium downgrades, including rollback to an older
 Chromium version, are blocked because existing profile compatibility has not been
 established. Rollback between releases of the same Chromium version is supported.
-There is no configured public release feed or GUI installer/selector yet. These
+There is no configured public release feed or GUI installer yet. These
 operations do not change running browsers or customer profiles, and do not prove
 a published own Chromium distribution.
 
@@ -230,6 +230,28 @@ the first release. All three headless launches and cleanups passed; both immutab
 installations remained present and the disposable health-profile directory was
 empty. This verifies the store lifecycle, not the pending own-fork build or
 Linux/macOS archive activation.
+
+The Native settings page supports explicit **Local executable** and **Managed
+release** modes. Managed mode requires an absolute store path and resolves its
+verified active release for every launch and compatibility check. Invalid store
+state or a changed executable is an error; the local executable is not a fallback.
+Changing the selected release affects future launches, not already running ones.
+
+Use the CLI to install locally obtained bundles or activate/roll back a release:
+
+```powershell
+& $python scripts/native_release.py --store D:\CamouFlowNative\releases install --archive D:\CamouFlowNative\bundle.tar.gz --sha256 <trusted-archive-sha256> --activate
+& $python scripts/native_release.py --store D:\CamouFlowNative\releases current
+& $python scripts/native_release.py --store D:\CamouFlowNative\releases rollback
+```
+
+The CLI does not download an untrusted catalog or enable managed mode in existing
+profiles. Select the same store explicitly in Native settings and save settings.
+On Windows, this path was exercised with complete upstream preview bundles:
+CLI installation/activation, rollback, a real managed `BrowserInterface` launch
+and the QML compatibility button all passed with a deliberately nonexistent
+explicit executable path. No fallback occurred. Temporary browser profiles and
+the test workspace were cleaned up; this still does not verify own-fork patches.
 
 Windows bundles reject archive links. Unix bundles may preserve internal links
 only on security-fixed Python (3.12.11+, 3.13.4+ or 3.14+); older runtimes fail

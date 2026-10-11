@@ -152,7 +152,13 @@ Item {
                 Column {
                     id: nativeFields
                     anchors.fill: parent; spacing: 16
-                    FormField { width: parent.width; label: "Chromium executable"; placeholder: "Absolute path to an installed compatible build"; text: browserSettingsBridge.nativeExecutable; onEditingFinished: browserSettingsBridge.setValue("executable_path", text) }
+                    RowLayout {
+                        width: parent.width; spacing: 10
+                        ModeButton { Layout.fillWidth: true; label: "Local executable"; active: browserSettingsBridge.nativeBinarySource === "explicit"; onClicked: browserSettingsBridge.setValue("binary_source", "explicit") }
+                        ModeButton { Layout.fillWidth: true; label: "Managed release"; active: browserSettingsBridge.nativeBinarySource === "managed"; onClicked: browserSettingsBridge.setValue("binary_source", "managed") }
+                    }
+                    FormField { visible: browserSettingsBridge.nativeBinarySource === "explicit"; width: parent.width; label: "Chromium executable"; placeholder: "Absolute path to an installed compatible build"; text: browserSettingsBridge.nativeExecutable; onEditingFinished: browserSettingsBridge.setValue("executable_path", text) }
+                    FormField { visible: browserSettingsBridge.nativeBinarySource === "managed"; width: parent.width; label: "Native binary store"; placeholder: "Absolute path to the store with an activated release"; text: browserSettingsBridge.nativeBinaryStore; onEditingFinished: browserSettingsBridge.setValue("binary_store", text) }
                     RowLayout {
                         width: parent.width; spacing: 10
                         ModeButton { Layout.fillWidth: true; label: "Desktop"; active: browserSettingsBridge.nativeEnvironment === "desktop"; onClicked: browserSettingsBridge.setNativeEnvironment("desktop") }
