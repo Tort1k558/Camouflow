@@ -433,6 +433,45 @@ def test_native_cdp_gate_requires_side_effect_free_previews_and_real_positive_co
             validate_observation(observed)
 
 
+@pytest.mark.parametrize("protected,hits", [(False, 1), (True, 0), (True, 1)])
+def test_native_cdp_formatter_gate_requires_zero_preview_execution_only_in_protected_mode(protected, hits):
+    from scripts.verify_native_cdp import validate_formatter_observation
+
+    observed = {"serialization_hits": hits, "same_error_read_hits": 1, "fresh_error_read_hits": 2,
+                "console_events": 1, "same_error_stack": "Owned formatter: Owned formatted error",
+                "fresh_error_stack": "Owned formatter: Owned fresh error"}
+    if protected and hits:
+        with pytest.raises(ValueError, match="prepareStackTrace"):
+            validate_formatter_observation(observed, protected=protected)
+    else:
+        validate_formatter_observation(observed, protected=protected)
+
+
+@pytest.mark.parametrize("key,value", [("serialization_hits", False), ("serialization_hits", -1),
+                                      ("console_events", 0), ("console_events", 2),
+                                      ("same_error_read_hits", 0), ("fresh_error_read_hits", 1),
+                                      ("same_error_stack", "cached inspector error"), ("fresh_error_stack", "invented")])
+def test_native_cdp_formatter_gate_rejects_broken_controls_and_cached_failures(key, value):
+    from scripts.verify_native_cdp import validate_formatter_observation
+
+    observed = {"serialization_hits": 0, "same_error_read_hits": 1, "fresh_error_read_hits": 2,
+                "console_events": 1, "same_error_stack": "Owned formatter: Owned formatted error",
+                "fresh_error_stack": "Owned formatter: Owned fresh error"}
+    observed[key] = value
+    with pytest.raises(ValueError):
+        validate_formatter_observation(observed, protected=True)
+
+
+def test_native_inspector_patch_uses_upstream_throwing_no_javascript_scope_inside_trycatch():
+    from scripts.native_build import ROOT
+
+    patch = (ROOT / "native/patches/0007-native-inspector-error-accessors.patch").read_text(encoding="utf-8-sig")
+    assert "DisallowJavascriptExecutionScope no_javascript" in patch
+    assert "DisallowJavascriptExecutionScope::THROW_ON_FAILURE" in patch
+    assert "CRASH_ON_FAILURE" not in patch
+    assert patch.index("v8::TryCatch tryCatch(isolate)") < patch.index("DisallowJavascriptExecutionScope no_javascript")
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows gclient helpers use batch launchers")
 def test_native_build_helper_uses_the_installed_vpython_without_rebootstrapping(tmp_path):
     from scripts.native_build import environment

@@ -38,7 +38,7 @@ SETUP = """() => {
   globalThis.__ownedPlainErrors = [Error, TypeError, RangeError, SyntaxError, ReferenceError, URIError, EvalError]
     .map(Constructor => {
       const error = ownedNativePlainError(Constructor);
-      return {type: Constructor.name, error, stack: error.stack};
+      return {type: Constructor.name, error};
     });
 }"""
 
@@ -68,6 +68,47 @@ def validate_observation(observed: dict) -> None:
         raise ValueError("CDP Error serialization invoked custom JavaScript accessors")
 
 
+def validate_formatter_observation(observed: dict, *, protected: bool) -> None:
+    for key in ("serialization_hits", "same_error_read_hits", "fresh_error_read_hits", "console_events"):
+        if type(observed.get(key)) is not int:
+            raise ValueError("Invalid custom stack formatter counters")
+    if observed["console_events"] != 1 or observed["serialization_hits"] not in {0, 1}:
+        raise ValueError("The owned formatter Error must have one real console event")
+    if observed["same_error_read_hits"] != 1 or observed["fresh_error_read_hits"] != 2:
+        raise ValueError("Native stack formatting did not work for the same and fresh Errors")
+    if (observed.get("same_error_stack") != "Owned formatter: Owned formatted error"
+            or observed.get("fresh_error_stack") != "Owned formatter: Owned fresh error"):
+        raise ValueError("Custom native stack formatting was changed or cached incorrectly")
+    if protected and observed["serialization_hits"]:
+        raise ValueError("CDP Error serialization invoked Error.prepareStackTrace")
+
+
+async def observe_formatter(page, ready, events) -> dict:
+    previous_events = len(events)
+    ready.clear()
+    await page.evaluate("""() => {
+      globalThis.__ownedPrepareHits = 0;
+      Error.prepareStackTrace = error => {
+        globalThis.__ownedPrepareHits++;
+        return 'Owned formatter: ' + error.message;
+      };
+      globalThis.__ownedFormattedError = new Error('Owned formatted error');
+      console.debug(globalThis.__ownedFormattedError);
+    }""")
+    await asyncio.wait_for(ready.wait(), timeout=10)
+    return await page.evaluate("""consoleEvents => {
+      try {
+        const serialization_hits = globalThis.__ownedPrepareHits;
+        const same_error_stack = globalThis.__ownedFormattedError.stack;
+        const same_error_read_hits = globalThis.__ownedPrepareHits;
+        const fresh_error_stack = new Error('Owned fresh error').stack;
+        return {serialization_hits, same_error_stack, same_error_read_hits,
+          fresh_error_stack, fresh_error_read_hits: globalThis.__ownedPrepareHits,
+          console_events: consoleEvents};
+      } finally { delete Error.prepareStackTrace; }
+    }""", len(events) - previous_events)
+
+
 async def verify(executable: Path, work_dir: Path, checks: list) -> dict:
     async with async_playwright() as driver:
         with tempfile.TemporaryDirectory(prefix="native-cdp-", dir=work_dir) as owned:
@@ -91,7 +132,7 @@ async def verify(executable: Path, work_dir: Path, checks: list) -> dict:
                 hits = await page.evaluate("() => ({...globalThis.__ownedHits})")
                 await page.evaluate("() => { for (const {label,error} of globalThis.__ownedErrors) Reflect.get(error, label.includes('Stack') ? 'stack' : label.includes('Name') ? 'name' : 'message'); }")
                 controls = await page.evaluate("() => ({...globalThis.__ownedHits})")
-                expected = await page.evaluate("() => Object.fromEntries(globalThis.__ownedPlainErrors.map(({type,stack}) => [type,stack]))")
+                expected = await page.evaluate("() => Object.fromEntries(globalThis.__ownedPlainErrors.map(({type,error}) => [type,error.stack]))")
                 observed = {"serialization_hits": hits, "explicit_read_controls": controls,
                             "console_events": len(events), "native_previews": dict(zip(ERROR_TYPES, events[len(COUNTERS):])),
                             "expected_native_previews": expected}
@@ -101,8 +142,14 @@ async def verify(executable: Path, work_dir: Path, checks: list) -> dict:
                     {"name": "explicit-accessor-read-controls", "passed": all(controls[key] == hits[key] + 1 for key in COUNTERS)},
                     {"name": "custom-error-accessors-not-invoked", "observed": observed, "passed": False},
                 ])
-                validate_observation(observed)
+                formatter = await observe_formatter(page, ready, events)
+                checks.append({"name": "custom-stack-formatter-direct-read-controls", "observed": formatter, "passed": False})
+                validate_formatter_observation(formatter, protected=False)
                 checks[-1]["passed"] = True
+                checks.append({"name": "custom-stack-formatter-not-invoked-by-cdp", "passed": formatter["serialization_hits"] == 0})
+                validate_observation(observed)
+                checks[3]["passed"] = True
+                validate_formatter_observation(formatter, protected=True)
                 await session.detach()
             finally:
                 await context.close()

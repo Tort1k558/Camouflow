@@ -157,6 +157,13 @@ when custom name/message accessors could execute user code. The policy is a
 C++ inspector change, not injected browser API replacements. It is not yet
 compiled or runtime-verified, and does not prove general CDP invisibility.
 
+Error previews also use the pinned inspector's existing
+`DisallowJavascriptExecutionScope::THROW_ON_FAILURE` pattern inside `TryCatch`.
+This guards lazy formatting against `Error.prepareStackTrace` and other scripted
+conversion paths instead of intentionally crashing on execution. It is still a
+draft: runtime checks must prove that blocked preview formatting does not poison
+the Error's cached stack or change later explicit JavaScript reads.
+
 The build helper now validates Chromium and V8 independently before/after
 compilation. V8 must match the verified dependency snapshot; applied V8 patches
 must exactly match known diffs and receipts include their repository/revision.
@@ -169,7 +176,8 @@ The active build loaded the previous helper and still contains only 0001–0005.
 Do not apply 0006/0007 until it has terminated and the source inputs can be changed.
 
 `scripts/verify_native_cdp.py` logs six owned Error accessor fixtures (own and
-inherited stack/name/message) and all seven standard native Error types through
+inherited stack/name/message) and all seven standard native Error types with
+initially lazy stacks through
 an actual Runtime CDP session. Thirteen console events, unchanged real error
 messages/stacks for every type and working explicit-accessor-read controls are
 required before asserting zero serialization-triggered getter calls.
@@ -178,8 +186,13 @@ and correctly failed the accessor assertion: own/inherited stack 0/2,
 name 2/4 and message 1/3 calls. The own name/message cases demonstrate lazy
 stack formatting invoking accessors even where direct accessor previews are
 already skipped upstream. Validator tests reject lost events, missing or
-misidentified Error types, broken counters, stack changes and invented previews. Arbitrary objects,
-custom global stack formatters and other CDP detection signals are not covered.
+misidentified Error types, broken counters, stack changes and invented previews.
+A separate owned custom `Error.prepareStackTrace` fixture requires a genuine
+console event and successful later stack reads for both the same Error and a
+fresh Error. The unpatched Windows SDK invoked the formatter once during CDP
+serialization; both explicit-read controls passed, and the no-execution check
+correctly failed. Arbitrary object previews and other CDP detection signals are
+not covered. The active build's V8 checkout remains untouched.
 
 After compiling the draft, run:
 
