@@ -345,6 +345,59 @@ def test_native_build_does_not_record_success_if_inputs_change_during_compilatio
     assert compiled and not receipt.exists()
 
 
+@pytest.mark.parametrize("mutation", ["http_ua", "metadata", "http_hint", "getter", "own_property",
+    "illegal_invocation", "plugins", "chrome", "empty_versions", "missing_headless_control"])
+def test_native_identity_gate_rejects_incoherent_or_injected_observations(mutation):
+    from copy import deepcopy
+    from scripts.verify_native_identity import HINTS, validate_observation
+
+    baseline = {"userAgent": "HeadlessChrome/148.0.0.0",
+        "metadata": {"fullVersionList": [{"brand": "Chromium", "version": "148.0.7778.96"}]},
+        "headers": {"user-agent": "HeadlessChrome/148.0.0.0", **{name.lower(): "native" for name in HINTS}},
+        "getter": "function get userAgent() { [native code] }", "ownProperty": False,
+        "illegalInvocation": True, "plugins": ["PDF Viewer"], "chromeType": "object"}
+    observed = deepcopy(baseline)
+    observed["userAgent"] = observed["headers"]["user-agent"] = "Chrome/148.0.0.0"
+    if mutation == "http_ua":
+        observed["headers"]["user-agent"] = "HeadlessChrome/148.0.0.0"
+    elif mutation == "metadata":
+        observed["metadata"]["platform"] = "invented"
+    elif mutation == "http_hint":
+        observed["headers"]["sec-ch-ua-platform"] = "invented"
+    elif mutation == "getter":
+        observed["getter"] = "function fake() {}"
+    elif mutation == "own_property":
+        observed["ownProperty"] = True
+    elif mutation == "illegal_invocation":
+        observed["illegalInvocation"] = False
+    elif mutation == "plugins":
+        observed["plugins"] = ["invented"]
+    elif mutation == "chrome":
+        observed["chromeType"] = "undefined"
+    elif mutation == "empty_versions":
+        baseline["metadata"] = observed["metadata"] = {}
+    else:
+        baseline["userAgent"] = "Chrome/148.0.0.0"
+    with pytest.raises(ValueError):
+        validate_observation(observed, baseline, protected=True, worker=False)
+
+
+@pytest.mark.parametrize("protected,worker", [(False, False), (True, False), (False, True), (True, True)])
+def test_native_identity_gate_accepts_only_preserved_native_identity(protected, worker):
+    from copy import deepcopy
+    from scripts.verify_native_identity import HINTS, validate_observation
+
+    baseline = {"userAgent": "HeadlessChrome/148.0.0.0",
+        "metadata": {"fullVersionList": [{"brand": "Chromium", "version": "148.0.7778.96"}]},
+        "headers": {"user-agent": "HeadlessChrome/148.0.0.0", **{name.lower(): None for name in HINTS}},
+        "getter": "function get userAgent() { [native code] }", "ownProperty": False,
+        "illegalInvocation": True, "plugins": None if worker else ["PDF Viewer"], "chromeType": "undefined" if worker else "object"}
+    observed = deepcopy(baseline)
+    if protected:
+        observed["userAgent"] = observed["headers"]["user-agent"] = "Chrome/148.0.0.0"
+    validate_observation(observed, baseline, protected=protected, worker=worker)
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows gclient helpers use batch launchers")
 def test_native_build_helper_uses_the_installed_vpython_without_rebootstrapping(tmp_path):
     from scripts.native_build import environment
@@ -549,7 +602,8 @@ def test_native_build_rejects_unknown_source_changes(tmp_path, monkeypatch):
                                   "0002-midl-locale-name-hashes.patch",
                                   "0003-native-webrtc-routing-policy.patch",
                                   "0004-native-automation-exposure.patch",
-                                  "0005-native-windows-font-collection.patch"])
+                                  "0005-native-windows-font-collection.patch",
+                                  "0006-native-headless-user-agent.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
@@ -890,6 +944,7 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     (patches / "0003-native-webrtc-routing-policy.patch").write_text("", encoding="utf-8")
     (patches / "0004-native-automation-exposure.patch").write_text("", encoding="utf-8")
     (patches / "0005-native-windows-font-collection.patch").write_text("", encoding="utf-8")
+    (patches / "0006-native-headless-user-agent.patch").write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")

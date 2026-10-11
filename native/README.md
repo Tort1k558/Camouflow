@@ -44,6 +44,47 @@ uses a UTF-8 log rather than Windows PowerShell's UTF-16 redirection. Global
 memory/pagefile settings and unrelated processes remain unchanged.
 See the [Go memory-limit documentation](https://go.dev/doc/gc-guide).
 
+The user subsequently requested returning to four jobs. The one-job invocation
+was interrupted, its old Siso/compiler processes were verified absent, and the
+same cached output was resumed with `--jobs 4`. The new Siso command and four
+concurrent clang-cl processes were observed; no output directory was cleaned.
+The 3-GiB Go target remains soft and does not cap compiler memory. Additional
+patches prepared during this invocation remain drafts, not hot source edits.
+
+## Native headless UA draft (0006, not applied or runtime-verified)
+
+`0006-native-headless-user-agent.patch` adds the opt-in boolean switch
+`--camouflow-native-user-agent` to Chromium's native user-agent construction.
+It skips the headless-only product prefix while retaining the actual Chromium
+version, native platform/CPU text and unchanged low/high-entropy Client Hints.
+It does not install an arbitrary UA override, replace JavaScript getters, add
+Google-branded Client Hints or claim Chrome 152 on our Chromium 148 build.
+Nonempty flag values fail a native CHECK; the default remains upstream behavior.
+The patch includes two upstream unit-test cases but they have not been compiled
+or run. Pinned-source `git apply --check` passed on an isolated draft generated
+from original HEAD files; the active build still contains only 0001–0005.
+
+`scripts/verify_native_identity.py` observes the UA in owned HTTP echo requests
+and native document, same/cross-origin frame, new-target, dedicated/shared/service
+worker APIs. It checks real browser-version Client Hints, native getter shape,
+unchanged plugins/window.chrome, and preservation of each scope's HTTP hint policy.
+High-entropy HTTP hints are not forced into frames where upstream permissions
+omit them. Unsupported flag values, including Unicode, must fail with the actual
+native diagnostic after the protected checks pass.
+
+The Windows upstream SDK control passed all seven baseline contexts and correctly
+failed the first protected context because the unknown Native flag was ignored.
+Its genuine headless browser already exposed five PDF plugins and window.chrome
+as an object: those table entries do not justify fabricated plugin objects or
+extra patches. This gate does not verify CAPTCHA scores, production Turnstile,
+third-party bot classifications, TLS fingerprints or CDP invisibility.
+
+After applying and compiling the draft, run:
+
+```powershell
+& $python scripts/verify_native_identity.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative\tmp --report D:\CamouFlowNative\native-identity-fork.json
+```
+
 The read-only post-failure Windows sample showed 13.4 GiB free physical RAM,
 but only about 7.3 GiB of available committed memory under a 36.5-GiB commit
 limit. Physical RAM alone is not a sufficient build-memory check. Neither other

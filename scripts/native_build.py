@@ -153,7 +153,7 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
     expected = set()
     for name in ("0001-native-hardware-privacy-limits.patch", "0002-midl-locale-name-hashes.patch",
                  "0003-native-webrtc-routing-policy.patch", "0004-native-automation-exposure.patch",
-                 "0005-native-windows-font-collection.patch"):
+                 "0005-native-windows-font-collection.patch", "0006-native-headless-user-agent.patch"):
         patch = ROOT / "native/patches" / name
         contents = patch.read_text(encoding="utf-8-sig")
         files = {line.split(" b/", 1)[1] for line in contents.splitlines() if line.startswith("diff --git ")}
