@@ -28,6 +28,30 @@ def test_mobile_web_configuration_does_not_claim_android_identity():
     assert options["permissions"] == []
 
 
+def test_native_locale_is_configured_for_browser_and_worker_processes():
+    assert NativeConfiguration(locale="de-DE").launch_arguments() == ["--lang=de-DE", "--accept-lang=de-DE"]
+
+
+@pytest.mark.parametrize("key", ["language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "userAgentData"])
+def test_native_diagnostics_detects_document_worker_disagreement(key):
+    from app.core.native.diagnostics import compare_observed
+
+    document = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC"}
+    observed = {"document": document, "worker": dict(document)}
+    assert compare_observed(NativeConfiguration(), observed) == []
+    observed["worker"][key] = "inconsistent"
+    assert compare_observed(NativeConfiguration(), observed) == [f"Document and dedicated worker disagree on {key}"]
+
+
+def test_native_diagnostics_reports_blocked_worker_without_fake_observations():
+    from app.core.native.diagnostics import compare_observed
+
+    observed = {"document": {"width": 390, "height": 844, "dpr": 3, "language": "en-US", "timezone": "UTC", "touch": 0},
+                "worker": None, "workerError": "Worker blocked"}
+    assert compare_observed(NativeConfiguration(environment="mobile_web", width=390, height=844, device_scale_factor=3), observed) == [
+        "Mobile Web touch capability is unavailable", "Worker blocked"]
+
+
 def test_native_missing_binary_does_not_touch_profile(tmp_path):
     profile = tmp_path / "profile"
     runtime = NativeRuntime(profile, tmp_path / "missing.exe", NativeConfiguration())

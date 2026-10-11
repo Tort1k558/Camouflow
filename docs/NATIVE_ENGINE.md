@@ -125,7 +125,7 @@ Verified Windows checks:
 - HTTP proxy authentication: actual 407 challenge, credentialed proxy traffic
   and successful navigation to a fixture hostname with no direct DNS route.
 
-The updated local full suite passed **647 tests**, including negative proxy-auth
+The updated local full suite passed **655 tests**, including negative proxy-auth
 fixture checks and explicit missing-binary failure/reporting without fallback.
 
 The core adapter now dispatches `native` profiles into their own `native/`
@@ -198,6 +198,12 @@ MSVC 14.51.36231 and ATL/MFC; installer signature was verified as Microsoft and
 the registered instance reports complete/launchable, with no reboot required.
 Required SDK debugging tools and actual compilation remain separate checks.
 
+SDK Debugging Tools installation has since completed from a signature-verified
+Microsoft SDK 26100.7705 layout downloaded onto D:. The installed x64 `cdb.exe`
+reports 10.0.26100.7705. Source dependency sync has been launched using the pinned
+gclient/vpython, owned Git configuration and process-scoped telemetry opt-out;
+sync completion, hooks and compilation remain unproven.
+
 ## Recorder integration
 
 Recorder capability checks now allow Camoufox and Native; CloakBrowser and unknown
@@ -240,6 +246,25 @@ that in-flight writes survive a crash. It does not prove arbitrary controller
 termination/orphan cleanup or long-running resource stability. Fresh Linux/macOS
 crash-gate reports are still required. No owned Chromium processes were observed
 after the completed Windows gate.
+
+## Actual configuration diagnostics
+
+`app/core/native/diagnostics.py` reads document and dedicated-worker UA, low-entropy
+Client Hints, platform, language/languages, timezone, hardware concurrency and
+device memory, plus document viewport, screen, DPR, touch and webdriver. It
+compares configured and observed values without replacing browser APIs. Worker
+probe failures remain explicit; its transient worker/Blob URL are cleaned up.
+Native profile health reports include these facts and mismatch warnings.
+
+The first Windows probe found that context-level locale alone differed from
+worker language. Native now supplies Chromium's own `--lang` and `--accept-lang`
+flags from the central validated configuration. Their behavior was inspected in
+the pinned Chromium switch/preference source and tested in the actual runtime.
+The Windows gate passed with both default English/UTC and non-default German/
+Europe-Berlin configuration; document/worker values agreed. The latest report
+has eleven checks and retains native patch capabilities as empty. This is native
+locale configuration and factual diagnostics, **not an own fingerprint-patched
+Chromium build**, and needs fresh matching Linux/macOS reports.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).

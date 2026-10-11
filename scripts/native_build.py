@@ -45,9 +45,15 @@ def environment(workspace: Path) -> dict[str, str]:
     env = dict(os.environ)
     temporary = workspace / "tmp"
     temporary.mkdir(parents=True, exist_ok=True)
-    env.update({"DEPOT_TOOLS_UPDATE": "0", "DEPOT_TOOLS_WIN_TOOLCHAIN": "0",
+    git_config = workspace / "build.gitconfig"
+    if git_config.is_symlink() or git_config != git_config.resolve():
+        raise ValueError("Build Git configuration must remain in the owned workspace")
+    if not git_config.exists():
+        git_config.write_text("[depot-tools]\nallowGlobalGitConfig = false\n", encoding="utf-8")
+    env.update({"DEPOT_TOOLS_UPDATE": "0", "DEPOT_TOOLS_WIN_TOOLCHAIN": "0", "DEPOT_TOOLS_METRICS": "0",
                 "CIPD_CACHE_DIR": str(workspace / "cipd-cache"),
                 "VPYTHON_VIRTUALENV_ROOT": str(workspace / "vpython-cache"),
+                "GIT_CONFIG_GLOBAL": str(git_config),
                 "TEMP": str(temporary), "TMP": str(temporary), "TMPDIR": str(temporary),
                 "PATH": str(workspace / "depot_tools") + os.pathsep + env.get("PATH", "")})
     if os.name == "nt":
@@ -83,8 +89,23 @@ def checkout(path: Path, repository: str, revision: str, env: dict[str, str]) ->
 
 
 def depot_command(name: str, workspace: Path) -> list[str]:
+    if os.name == "nt" and name == "gclient":
+        vpython = workspace / "depot_tools/.cipd_bin/vpython3.exe"
+        if not vpython.is_file():
+            raise ValueError("Bootstrap the pinned depot_tools vpython package first")
+        return [str(vpython), str(workspace / "depot_tools/gclient.py")]
     tool = workspace / "depot_tools" / (name + ".bat" if os.name == "nt" else name)
     return ["cmd.exe", "/d", "/c", str(tool)] if os.name == "nt" else [str(tool)]
+
+
+def bootstrap_windows_git(workspace: Path, env: dict[str, str]) -> None:
+    script = ("import runpy,sys; m=runpy.run_path(sys.argv[1]); "
+              "i=m['search_win_git_directory'](); "
+              "assert i is not None, 'Git installation not found'; "
+              "t=m['Template'].empty()._replace(GIT_PATH_PREPEND=i.path_prepend, "
+              "GIT_BASH_EXE=i.bash_exe, GIT_BASH_LAUNCHER=i.bash_launcher); "
+              "m['git_postprocess'](t,i)")
+    run([sys.executable, "-c", script, str(workspace / "depot_tools/bootstrap/bootstrap.py")], workspace, env)
 
 
 def execute(action: str, workspace: Path) -> None:
@@ -94,6 +115,13 @@ def execute(action: str, workspace: Path) -> None:
     workspace.mkdir(parents=True, exist_ok=True)
     env = environment(workspace)
     checkout(workspace / "depot_tools", LOCK["depot_tools_repository"], LOCK["depot_tools_revision"], env)
+    if os.name == "nt":
+        bootstrap_windows_git(workspace, env)
+    if action == "bootstrap":
+        launcher = workspace / "depot_tools" / ("gclient.bat" if os.name == "nt" else "gclient")
+        command = ["cmd.exe", "/d", "/c", str(launcher)] if os.name == "nt" else [str(launcher)]
+        run(command + ["help"], workspace, env)
+        return
     chromium = workspace / "chromium"
     chromium.mkdir(exist_ok=True)
     source = chromium / "src"
@@ -138,7 +166,7 @@ def execute(action: str, workspace: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("preflight", "sync", "hooks", "build"))
+    parser.add_argument("action", choices=("preflight", "bootstrap", "sync", "hooks", "build"))
     parser.add_argument("--workspace", type=Path, required=True)
     args = parser.parse_args()
     try:

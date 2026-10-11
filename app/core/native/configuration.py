@@ -71,6 +71,10 @@ class NativeConfiguration:
             "permissions": list(self.permissions),
         }
 
+    def launch_arguments(self) -> list[str]:
+        self.validate()
+        return ["--lang=" + self.locale, "--accept-lang=" + self.locale]
+
     def limitations(self) -> list[str]:
         notes = ["Chromium fingerprint APIs retain their native values; Canvas/WebGL/Audio/fonts/hardware are not masked."]
         if self.environment == "mobile_web":

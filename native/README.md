@@ -34,6 +34,7 @@ installed compiler.
 ```powershell
 $python = '.\.venv\Scripts\python.exe'
 & $python scripts/native_build.py preflight --workspace D:\CamouFlowNative
+& $python scripts/native_build.py bootstrap --workspace D:\CamouFlowNative
 & $python scripts/native_build.py sync --workspace D:\CamouFlowNative
 $env:vs2026_install = 'D:\CamouFlowNative\toolchain\BuildTools'
 & $python scripts/native_build.py hooks --workspace D:\CamouFlowNative
@@ -50,6 +51,15 @@ configuration or disabling certificate validation. This transport completed the
 pinned source transfer after the system-default Schannel transfer disconnected.
 Failures
 remain failures; there is no alternate browser/toolchain fallback.
+
+The Windows gclient command uses the installed, pinned CIPD vpython package
+directly. Missing vpython is an explicit bootstrap error, not substitution with
+an arbitrary system Python. Windows Git stubs are generated using the pinned
+upstream bootstrap implementation. Build subprocesses use an owned
+`build.gitconfig`, keeping user-global Git configuration separate. Optional
+depot_tools metrics are disabled in those subprocesses: the upstream Google-IP
+discovery request has no timeout and blocked even a local help/version probe.
+With metrics disabled, that probe completed immediately.
 
 After a successful build, `src/out/CamouFlowNative/camouflow-build.json` records
 actual executable and build-input checksums. It is a measured local build

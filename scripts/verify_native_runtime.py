@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.core.native.configuration import NativeConfiguration  # noqa: E402
+from app.core.native.diagnostics import inspect_native_profile  # noqa: E402
 from app.core.native.runtime import NativeRuntime, NativeRuntimeError  # noqa: E402
 from playwright.async_api import Error as PlaywrightError, async_playwright  # noqa: E402
 
@@ -95,7 +96,10 @@ class FixtureHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            pass
 
     def log_message(self, *args):
         pass
@@ -110,7 +114,8 @@ async def resolve_executable(explicit: str) -> Path:
 
 async def verify(profile_root: Path, executable: Path, origin: str, proxy_server: FixtureServer) -> dict:
     desktop = NativeConfiguration()
-    mobile = NativeConfiguration(environment="mobile_web", width=390, height=844, device_scale_factor=3)
+    mobile = NativeConfiguration(environment="mobile_web", width=390, height=844, device_scale_factor=3,
+                                 locale="de-DE", timezone="Europe/Berlin")
     a = NativeRuntime(profile_root / "a", executable, desktop)
     b = NativeRuntime(profile_root / "b", executable, mobile)
     proxied = NativeRuntime(profile_root / "proxy", executable, desktop)
@@ -145,6 +150,9 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         assert observed["width"] == 390 and observed["height"] == 844
         assert observed["dpr"] == 3 and observed["touch"] > 0
         checks.append("mobile-web-viewport-dpr-touch")
+        diagnostics = await inspect_native_profile(page_b, mobile, context_b.browser.version)
+        assert diagnostics["mismatches"] == [], json.dumps(diagnostics)
+        checks.append("native-document-worker-configuration-diagnostics")
         version = context_a.browser.version
         await a.close()
         await b.close()
@@ -244,7 +252,7 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
             checksum = hashlib.file_digest(binary, "sha256").hexdigest()
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),
                 "version": version, "binary_sha256_measured": checksum, "checks": checks,
-                "mobile_observed": observed, "fingerprint_patched": False}
+                "mobile_observed": observed, "diagnostics": diagnostics, "fingerprint_patched": False}
     finally:
         try:
             await proxied.close()

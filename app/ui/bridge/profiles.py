@@ -1489,6 +1489,12 @@ class ProfilesBridge(QObject):
                             screen: { width: screen.width, height: screen.height, colorDepth: screen.colorDepth },
                             webgl: (() => { const c = document.createElement('canvas'); const gl = c.getContext('webgl'); return gl ? { vendor: gl.getParameter(gl.VENDOR), renderer: gl.getParameter(gl.RENDERER) } : null; })()
                         })""")
+                        if engine == "native":
+                            from app.core.native.configuration import NativeConfiguration
+                            from app.core.native.diagnostics import inspect_native_profile
+                            signals["native"] = await inspect_native_profile(
+                                browser.page, NativeConfiguration.from_settings(browser._browser_settings),
+                                browser.browser.version)
                         webrtc_candidates = await browser.page.evaluate("""async () => {
                             if (!window.RTCPeerConnection) return [];
                             const pc = new RTCPeerConnection({ iceServers: [] });
@@ -1535,6 +1541,8 @@ class ProfilesBridge(QObject):
                     "hardwareConcurrency": signals.get("hardwareConcurrency"), "platform": signals.get("platform"), "screen": signals.get("screen"), "webgl": signals.get("webgl"),
                 }, sort_keys=True).encode("utf-8")).hexdigest()
                 warnings = []
+                if engine == "native":
+                    warnings.extend(signals.get("native", {}).get("mismatches", []))
                 configured_locale = str(settings.get("locale") or "").lower()
                 if configured_locale and not str(signals.get("language") or "").lower().startswith(configured_locale.split("-")[0]):
                     warnings.append("Configured locale does not match browser language")

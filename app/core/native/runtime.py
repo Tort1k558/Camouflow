@@ -61,7 +61,8 @@ class NativeRuntime:
                 self.playwright = await async_playwright().start()
                 self.context = await self.playwright.chromium.launch_persistent_context(
                     str(self.profile_dir), executable_path=str(self.executable), headless=headless,
-                    chromium_sandbox=True, proxy=proxy, timeout=30000, **options,
+                    chromium_sandbox=True, proxy=proxy, timeout=30000,
+                    args=self.configuration.launch_arguments(), **options,
                 )
                 return self.context
             except BaseException:

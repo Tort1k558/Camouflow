@@ -184,6 +184,8 @@ def test_native_build_transport_is_process_scoped_and_preserves_existing_git_con
         assert env["GIT_CONFIG_KEY_1"] == "http.sslBackend"
         assert env["GIT_CONFIG_VALUE_1"] == "openssl"
     assert env["DEPOT_TOOLS_UPDATE"] == "0"
+    assert env["DEPOT_TOOLS_METRICS"] == "0"
+    assert env["GIT_CONFIG_GLOBAL"] == str(tmp_path / "build.gitconfig")
     assert env["CIPD_CACHE_DIR"] == str(tmp_path / "cipd-cache")
 
 
