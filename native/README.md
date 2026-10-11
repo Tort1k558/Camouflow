@@ -180,3 +180,49 @@ as supported controls. Device identity must remain consistent; random JS
 overrides and promises of guaranteed protection bypass are not acceptable.
 Upstream Chromium and dependency license/NOTICE obligations apply to distributed
 source and binaries. Signing infrastructure has not been configured.
+
+## Binary installation foundation
+
+`app/core/native/distribution.py` installs explicitly checksummed `.tar.gz`
+bundles into an owned store's `releases/<archive-sha256>/` directories. Existing
+versions are not overwritten or deleted, and profiles are not moved or migrated.
+Installation uses a cross-process lock, a private staged copy checked against the
+operator-provided SHA-256, bounded extraction with Python's `data` filter, path
+and case-collision checks, platform/architecture validation and executable hash
+verification before the candidate directory is published. Inspecting an existing
+installation checks its executable again. This is not protection against an
+attacker who can modify both the local manifest and executable.
+
+Every bundle has a root-level `native-release.json`, for example:
+
+```json
+{
+  "schema": 1,
+  "native_version": "0.1.0-dev",
+  "chromium_version": "148.0.7778.96",
+  "platform": "win32",
+  "architecture": "x64",
+  "build_kind": "chromium-fork",
+  "executable": "chrome.exe",
+  "executable_sha256": "<actual executable SHA-256>"
+}
+```
+
+Use `upstream-bootstrap` instead of `chromium-fork` for an upstream development
+bundle; labels are publisher metadata, not independent proof of native patches.
+The archive checksum must come from a trusted release catalog/operator, not from
+an unchecked sidecar downloaded with the archive. Checksums are **not signatures**.
+There is no configured public release feed, activation/rollback selector or GUI
+installer yet; this store is the installation layer those operations will use.
+The schema/path/integrity/immutability checks currently have isolated local tests,
+not proof of a published own Chromium distribution.
+
+Windows bundles reject archive links. Unix bundles may preserve internal links
+only on security-fixed Python (3.12.11+, 3.13.4+ or 3.14+); older runtimes fail
+explicitly. This matters for macOS framework bundles: [Python 3.12.11 fixed
+tarfile extraction-filter bypasses involving crafted links](https://www.python.org/downloads/release/python-31211/).
+
+Windows GN/autoninja wrappers use the installed pinned CIPD Python directly, and
+its executable directory is added only to build-child PATH. This avoids missing
+`python3_bin_reldir.txt` launcher indirection and the Microsoft Store Python alias
+selected by GN child scripts, without fake bootstrap markers or global PATH edits.

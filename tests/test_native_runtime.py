@@ -228,3 +228,163 @@ def test_native_binary_health_ui_rejects_stale_or_other_engine_results(engine, c
     assert not bridge._native_probe_running
     assert bridge._compatibility_report == ("previous" if engine != "native" else
         "Native settings changed during check; run it again" if changed else "verified owned startup")
+
+
+def _native_release_archive(tmp_path, version="0.1.0-dev", metadata_changes=None, extra_entries=()):
+    import hashlib
+    import io
+    import json
+    import sys
+    import tarfile
+
+    from app.core.native.distribution import host_architecture, sha256_file
+
+    binary = b"owned synthetic native binary"
+    metadata = {"schema": 1, "native_version": version, "chromium_version": "148.0.7778.96",
+                "platform": sys.platform, "architecture": host_architecture(), "build_kind": "upstream-bootstrap",
+                "executable": "owned-browser", "executable_sha256": hashlib.sha256(binary).hexdigest(),
+                **(metadata_changes or {})}
+    target = tmp_path / (version + ".tar.gz")
+    with tarfile.open(target, "w:gz") as archive:
+        for name, contents in (("owned-browser", binary), ("native-release.json", json.dumps(metadata).encode("utf-8")), *extra_entries):
+            member = tarfile.TarInfo(name)
+            member.size = len(contents)
+            member.mode = 0o755
+            archive.addfile(member, io.BytesIO(contents))
+    return target, sha256_file(target)
+
+
+def test_native_binary_installations_are_versioned_and_never_overwrite_old_releases(tmp_path):
+    from app.core.native.distribution import NativeBinaryStore
+
+    store = NativeBinaryStore(tmp_path / "native-binaries")
+    archive, digest = _native_release_archive(tmp_path)
+    first = store.install_archive(archive, digest)
+    assert first == store.inspect(digest)
+    first_binary = Path(first["executable_path"])
+    before = first_binary.read_bytes()
+    archive, second_digest = _native_release_archive(tmp_path, "0.2.0-dev")
+    second = store.install_archive(archive, second_digest)
+    assert second["executable_path"] != first["executable_path"]
+    assert first_binary.read_bytes() == before
+    assert store.install_archive(archive, second_digest) == second
+    assert not list(store.root.glob("native-install-*"))
+
+
+def test_native_binary_install_checks_archive_integrity_before_extracting(tmp_path):
+    from app.core.native.distribution import NativeBinaryStore
+
+    store = NativeBinaryStore(tmp_path / "native-binaries")
+    archive, _ = _native_release_archive(tmp_path)
+    with pytest.raises(ValueError, match="archive checksum mismatch"):
+        store.install_archive(archive, "0" * 64)
+    assert not list((store.root / "releases").iterdir())
+    assert not list(store.root.glob("native-install-*"))
+
+
+@pytest.mark.parametrize("entry", ["../outside", "/absolute", "file:stream", "back\\slash", "CON", "trailing."])
+def test_native_binary_archive_paths_cannot_escape_or_alias_windows_files(tmp_path, entry):
+    from app.core.native.distribution import NativeBinaryStore
+
+    store = NativeBinaryStore(tmp_path / "native-binaries")
+    archive, digest = _native_release_archive(tmp_path, extra_entries=[(entry, b"owned synthetic content")])
+    with pytest.raises(ValueError, match="Unsafe"):
+        store.install_archive(archive, digest)
+    assert not (store.root / "releases" / digest).exists()
+    assert not (tmp_path / "outside").exists()
+
+
+@pytest.mark.parametrize("changes", [{"platform": "unsupported"}, {"architecture": "unsupported"},
+                                   {"native_version": "../other"}, {"schema": True},
+                                   {"executable_sha256": "0" * 64}, {"executable": "../other"},
+                                   {"build_kind": "unknown"}])
+def test_native_binary_candidate_validation_precedes_publication(tmp_path, changes):
+    from app.core.native.distribution import NativeBinaryStore
+
+    store = NativeBinaryStore(tmp_path / "native-binaries")
+    archive, digest = _native_release_archive(tmp_path, metadata_changes=changes)
+    with pytest.raises(ValueError):
+        store.install_archive(archive, digest)
+    assert not (store.root / "releases" / digest).exists()
+    assert not list(store.root.glob("native-install-*"))
+
+
+def test_native_binary_store_preserves_unrelated_directories_and_detects_local_binary_changes(tmp_path):
+    from app.core.native.distribution import NativeBinaryStore
+
+    customer = tmp_path / "customer"
+    customer.mkdir()
+    (customer / "keep").write_text("customer data", encoding="utf-8")
+    archive, digest = _native_release_archive(tmp_path)
+    with pytest.raises(ValueError, match="unrelated"):
+        NativeBinaryStore(customer).install_archive(archive, digest)
+    assert (customer / "keep").read_text(encoding="utf-8") == "customer data"
+    store = NativeBinaryStore(tmp_path / "native-binaries")
+    installed = store.install_archive(archive, digest)
+    Path(installed["executable_path"]).write_bytes(b"changed binary")
+    with pytest.raises(ValueError, match="executable checksum mismatch"):
+        store.inspect(digest)
+
+
+def test_native_binary_store_rejects_case_collisions_and_extraction_limits(tmp_path, monkeypatch):
+    from app.core.native import distribution
+
+    store = distribution.NativeBinaryStore(tmp_path / "native-binaries")
+    archive, digest = _native_release_archive(tmp_path, extra_entries=[("FILE", b"one"), ("file", b"two")])
+    with pytest.raises(ValueError, match="colliding"):
+        store.install_archive(archive, digest)
+    monkeypatch.setattr(distribution, "MAX_UNPACKED_BYTES", 1)
+    archive, digest = _native_release_archive(tmp_path, "0.2.0-dev")
+    with pytest.raises(ValueError, match="extraction limits"):
+        store.install_archive(archive, digest)
+    assert not list((store.root / "releases").iterdir())
+
+
+def test_native_binary_store_rejects_archive_links_outside_its_owned_directory(tmp_path):
+    import tarfile
+
+    from app.core.native.distribution import NativeBinaryStore, sha256_file
+
+    archive, _ = _native_release_archive(tmp_path)
+    modified = tmp_path / "linked.tar.gz"
+    with tarfile.open(archive, "r:gz") as original, tarfile.open(modified, "w:gz") as output:
+        for member in original:
+            output.addfile(member, original.extractfile(member))
+        link = tarfile.TarInfo("linked")
+        link.type = tarfile.SYMTYPE
+        link.linkname = "../../outside"
+        output.addfile(link)
+    store = NativeBinaryStore(tmp_path / "native-binaries")
+    digest = sha256_file(modified)
+    with pytest.raises((ValueError, tarfile.FilterError)):
+        store.install_archive(modified, digest)
+    assert not (store.root / "releases" / digest).exists()
+
+
+def test_native_binary_store_cannot_update_while_another_owner_holds_the_lock(tmp_path):
+    from PyQt6.QtCore import QLockFile
+
+    from app.core.native.distribution import NativeBinaryStore
+
+    root = tmp_path / "native-binaries"
+    root.mkdir()
+    lock = QLockFile(str(root / "native-update.lock"))
+    lock.setStaleLockTime(0)
+    assert lock.tryLock(0)
+    try:
+        archive, digest = _native_release_archive(tmp_path)
+        with pytest.raises(ValueError, match="Another process"):
+            NativeBinaryStore(root).install_archive(archive, digest)
+        assert not (root / "releases").exists()
+    finally:
+        lock.unlock()
+
+
+@pytest.mark.parametrize("version,supported", [((3, 12, 0), False), ((3, 12, 10), False), ((3, 12, 11), True),
+                                             ((3, 13, 0), False), ((3, 13, 4), True), ((3, 14, 0), True)])
+def test_native_binary_archive_links_require_security_fixed_python_versions(monkeypatch, version, supported):
+    from app.core.native import distribution
+
+    monkeypatch.setattr(distribution.sys, "platform", "darwin")
+    monkeypatch.setattr(distribution.sys, "version_info", version)
+    assert distribution.archive_links_supported() is supported

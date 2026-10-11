@@ -456,3 +456,26 @@ def test_native_build_checks_the_chromium_dependency_layers_changed_by_the_patch
         os.path.normcase(str(tmp_path / "content/browser/renderer_host")),
     ]
     assert all(command[-2] == os.path.normcase(str(tmp_path)) for command in commands[1:])
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows depot_tools uses SDK launcher indirection")
+@pytest.mark.parametrize("name", ["gn", "autoninja"])
+def test_native_build_uses_pinned_sdk_python_for_build_wrappers(tmp_path, name):
+    from scripts.native_build import depot_command
+
+    python = tmp_path / "depot_tools/.cipd_bin/3.11/bin/python3.exe"
+    with pytest.raises(ValueError, match="Bootstrap"):
+        depot_command(name, tmp_path)
+    python.parent.mkdir(parents=True)
+    python.touch()
+    assert depot_command(name, tmp_path) == [str(python), str(tmp_path / "depot_tools" / (name + ".py"))]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows GN must not use the Microsoft Store Python alias")
+def test_native_build_makes_pinned_python_available_to_gn_child_scripts(tmp_path):
+    from scripts.native_build import environment
+
+    python = tmp_path / "depot_tools/.cipd_bin/3.11/bin/python3.exe"
+    python.parent.mkdir(parents=True)
+    python.touch()
+    assert environment(tmp_path)["PATH"].split(";")[0] == str(python.parent)

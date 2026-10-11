@@ -58,6 +58,9 @@ def environment(workspace: Path) -> dict[str, str]:
                 "TEMP": str(temporary), "TMP": str(temporary), "TMPDIR": str(temporary),
                 "PATH": str(workspace / "depot_tools") + os.pathsep + env.get("PATH", "")})
     if os.name == "nt":
+        sdk_python = workspace / "depot_tools/.cipd_bin/3.11/bin/python3.exe"
+        if sdk_python.is_file():
+            env["PATH"] = str(sdk_python.parent) + os.pathsep + env["PATH"]
         count = int(env.get("GIT_CONFIG_COUNT", "0"))
         env.update({"GIT_CONFIG_COUNT": str(count + 1),
                     f"GIT_CONFIG_KEY_{count}": "http.sslBackend",
@@ -102,6 +105,11 @@ def checkout(path: Path, repository: str, revision: str, env: dict[str, str]) ->
 
 
 def depot_command(name: str, workspace: Path) -> list[str]:
+    if os.name == "nt" and name in {"gn", "autoninja"}:
+        python = workspace / "depot_tools/.cipd_bin/3.11/bin/python3.exe"
+        if not python.is_file():
+            raise ValueError("Bootstrap the pinned depot_tools Python package first")
+        return [str(python), str(workspace / "depot_tools" / (name + ".py"))]
     if os.name == "nt" and name == "cipd":
         client = workspace / "depot_tools/.cipd_client.exe"
         if not client.is_file():
