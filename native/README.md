@@ -248,6 +248,21 @@ active Windows build: host available RAM was approximately 6-8 GiB. Recheck memo
 and the real D: drive's free space before further work; free space reported inside
 the virtual ext4 disk reflects its logical maximum, not actual host disk headroom.
 
+The pinned upstream `build/install-build-deps.py` completed successfully in this
+isolated distro, using `--no-prompt --no-arm --no-chromeos-fonts
+--no-backwards-compatible --no-syms`. It installed the official Ubuntu build/runtime
+packages and generated its required locales; Windows and other WSL distributions
+were not modified. Chromium dependency sync remains separate and still running.
+
+CamouFlow application runtime checks require Python 3.12, whereas this distro's
+system interpreter is 3.10. A separate CPython 3.12.15 build has started with one
+compiler job under `/home/nativebuilder/CamouFlowNative/toolchain/python-3.12.15`.
+The official source archive was verified against publisher SHA-256
+`c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a` before extraction.
+Its installation prefix is private to that workspace; neither system Python nor
+the existing Windows application `.venv` is replaced. This build is not yet a
+verified installed interpreter or proof of a Linux Native browser runtime.
+
 ## Binary installation foundation
 
 `app/core/native/distribution.py` installs explicitly checksummed `.tar.gz`
