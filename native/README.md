@@ -222,10 +222,20 @@ The GPG keyring/downloads stayed in the owned D: toolchain directory.
 
 The builder has its own unprivileged `nativebuilder` account. Git, Python/venv,
 certificates and basic download tools were installed from Ubuntu's signed package
-repositories. Pinned depot_tools bootstrap completed under that user; independent
-Chromium source sync has started in `/home/nativebuilder/CamouFlowNative`, inside
-the D:-hosted ext4 virtual disk. This is not a completed Linux Chromium build.
-The Windows patched checkout is not shared with or resynced by this workspace.
+repositories. Pinned depot_tools bootstrap completed under that user. An independent
+clean Chromium checkout in `/home/nativebuilder/CamouFlowNative/chromium/src` was
+verified at revision `8625e066febc721e015ea99842da12901eb7ed73`, with the official
+origin and no Git alternates. Git connectivity verification passed. Dependency
+sync has now started; this is not completed source sync, hooks or a Linux build.
+
+The initial network fetch failed with Git exit 128 (`curl 56`, GnuTLS packet decode
+error and early EOF). A bounded HTTP/1.1 retry also failed after 300 seconds without
+data (`curl 28`). Instead of repeatedly downloading the same objects, the existing
+verified Windows Git object cache was copied through local Git transport into the
+separate D:-hosted ext4 checkout. No Windows worktree changes or Native patches
+were copied; its active build was not modified. Repository ownership exceptions
+were scoped to the exact trusted cache paths in an owned, process-selected config,
+not the user's global Git configuration. Failed fetch data was preserved.
 
 ```powershell
 wsl.exe -d CamouFlowNativeBuilder -u nativebuilder --exec python3 /mnt/c/Users/lolod/Desktop/camouflow-app/camouflow/scripts/native_build.py sync --workspace /home/nativebuilder/CamouFlowNative
@@ -358,8 +368,3 @@ on Windows. Matching Windows x64, Linux x64 and macOS ARM64 CI artifacts at
 protected launch and rejected that ineffective policy. All own-fork WebRTC
 results remain pending; a passing negative control is not a privacy capability.
 
-The initial Linux source fetch terminated with Git exit 128 (`curl 56`, GnuTLS
-packet decode error and early EOF), not a successful checkout. A new fetch uses
-process-scoped HTTP/1.1 and a 300-second no-data limit; certificate verification,
-the pinned revision, source origin and global Git configuration remain unchanged.
-Linux compilation has not started.
