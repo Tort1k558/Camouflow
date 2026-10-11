@@ -21,11 +21,11 @@ def export_profile(name: str, target: Path, sessions: bool, secrets: bool) -> No
     if account is None:
         raise ValueError("Local profile not found")
     if not secrets:
-        account = {k: v for k, v in account.items() if k in {"name", "stage", "_browser_engine"}}
+        account = {k: v for k, v in account.items() if k in {"name", "stage", "_browser_engine", "browser_engine"}}
     metadata = {"profile": account, "sessions": sessions, "secrets": secrets, "scenarios": [], "settings": {}}
     if secrets:
         metadata["scenarios"] = [{"name": s.name, "steps": s.steps, "description": s.description} for s in db.db_get_scenarios()]
-        metadata["settings"] = {k: db.db_get_setting(k) for k in ("camoufox_defaults", "cloakbrowser_defaults", "browser_engine")}
+        metadata["settings"] = {k: db.db_get_setting(k) for k in (*[engine + "_defaults" for engine in sorted(db.BROWSER_ENGINES)], "browser_engine")}
     files = {}
     source_root = db.profile_dir_for_email(name)
     if source_root.is_symlink() or source_root.is_junction():
@@ -39,7 +39,7 @@ def export_profile(name: str, target: Path, sessions: bool, secrets: bool) -> No
         for path in root.rglob("*"):
             if path.is_symlink() or path.is_junction():
                 raise ValueError("Profile contains a symbolic link; close the browser and remove the link before exporting")
-            if path.is_file() and path.name not in {"parent.lock", "SingletonLock", "SingletonCookie", "SingletonSocket"}:
+            if path.is_file() and path.name not in {"parent.lock", "SingletonLock", "SingletonCookie", "SingletonSocket", "native-runtime.lock"}:
                 files["browser/" + path.relative_to(root).as_posix()] = path
     if len(files) > MAX_FILES or sum(p.stat().st_size for p in files.values()) > MAX_BYTES:
         raise ValueError("Archive safety limit: 2 GiB / 50,000 files")
@@ -119,20 +119,23 @@ def restore_profile(source: Path, new_name: str, import_scenarios: bool = False)
         account = metadata["profile"]
         if not isinstance(account, dict):
             raise ValueError("Invalid profile metadata")
+        for key in ("id", "_storage_scope", "_server_profile", "_server_proxy", "lock_user_id", "lock_user_email", "lock_expires_at"):
+            account.pop(key, None)
         account["name"] = new_name
         settings = metadata.get("settings", {})
-        for engine in ("camoufox", "cloakbrowser"):
+        for engine in sorted(db.BROWSER_ENGINES):
             defaults = json.loads(settings.get(engine + "_defaults") or "{}")
             overrides = account.get(engine + "_settings") or {}
             if not isinstance(defaults, dict) or not isinstance(overrides, dict):
                 raise ValueError("Invalid engine settings")
             if defaults or overrides:
-                account[engine + "_settings"] = {**defaults, **overrides}
+                account[db.browser_settings_key(engine)] = {**defaults, **overrides}
         scenarios = metadata.get("scenarios", []) if import_scenarios else []
         if not isinstance(scenarios, list) or any(not isinstance(s, dict) or not isinstance(s.get("steps"), list) for s in scenarios):
             raise ValueError("Invalid scenarios")
         browser = stage / "browser"
         browser.mkdir(exist_ok=True)
+        (browser / "native/native-runtime.lock").unlink(missing_ok=True)
         (browser / "camouflow-backup-settings.json").write_text(json.dumps({"settings": metadata.get("settings", {}), "scenarios": metadata.get("scenarios", [])}, ensure_ascii=False, indent=2), encoding="utf-8")
         with db._STORAGE_LOCK:
             if target.exists() or any(a["name"].casefold() == new_name.casefold() for a in db.db_get_accounts()):

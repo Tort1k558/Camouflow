@@ -183,6 +183,19 @@ controls. A Windows-platform UI screenshot was reviewed using an owned temporary
 workspace; the offscreen plugin alone does not provide reliable Windows fonts.
 Native cookie inspection and storage preflight now use the same dedicated
 `native/` directory as launch, not another engine's root directory.
+Profile backup includes Native defaults when private settings export is enabled;
+restore merges them with profile overrides without changing workspace defaults.
+Native runtime locks are excluded from new exports and discarded from older
+archives after integrity verification. Public metadata-only exports retain the
+engine identity but do not include private Native settings. Restored local
+profiles discard inherited cloud IDs, storage scopes and lock-owner metadata.
+The real runtime gate now includes restoring cookies/localStorage/IndexedDB/
+cache/service workers into a new Native profile and checking source isolation.
+Unit checks cover the archive changes. The added real backup check is not yet
+locally proven: two Windows runs timed out in the pre-existing first context
+close, before reaching backup/restore. Owned browser processes were cleaned up;
+the shutdown issue still needs diagnosis rather than a longer timeout or a
+claimed successful backup runtime result.
 
 The private backend's existing profile schema already accepts Native; no schema
 change was needed. Isolated local API tests verified create, update and list

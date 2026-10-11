@@ -196,12 +196,14 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         checks.append("authenticated-http-proxy-no-direct-dns-route")
         from app.services.scenario_engine import ScenarioExecutor
         from app.services.scenario_recorder import ScenarioRecorder
+        from app.services.profile_backup import export_profile, restore_profile
         from app.storage import db
 
         db.init_db()
         account = {"name": "Native core fixture", "browser_engine": "native", "native_settings": {
             "executable_path": str(executable), "headless": True, "humanize": False,
         }}
+        db.db_add_account(account)
         scenario = db.Scenario("Native core compatibility", [
             {"action": "start"}, {"action": "goto", "value": origin},
             {"action": "type", "selector": "input", "value": "existing scenario"},
@@ -245,9 +247,39 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
             assert await replay.run()
             assert replay.variables["recorded_result"] == "recorded native"
             assert replay.variables["recorded_frame_result"] == "frame native"
+            await replay.page.evaluate(STORAGE, "backup")
         finally:
             await replay.close(force=True)
         checks.append("existing-recorder-capture-and-replay")
+        backup = profile_root / "native-profile.zip"
+        export_profile(account["name"], backup, sessions=True, secrets=True)
+        restored_root = restore_profile(backup, "Native restored fixture")
+        restored_account = next(item for item in db.db_get_accounts() if item["name"] == "Native restored fixture")
+        assert restored_account["browser_engine"] == "native"
+        assert not (restored_root / "native/native-runtime.lock").exists()
+        restored = ScenarioExecutor(restored_account, "", db.Scenario("Native restored storage", [
+            {"action": "start"}, {"action": "goto", "value": origin},
+        ], "Owned Native backup check"), keep_browser_open=False)
+        try:
+            await restored.start()
+            assert restored.browser_engine == "native"
+            assert await restored.run()
+            assert await restored.page.evaluate(STORAGE, None) == {"cookie": "owned=backup", "local": "backup",
+                "indexed": "backup", "cached": "backup", "workers": 1}
+            await restored.page.evaluate(STORAGE, "restored")
+        finally:
+            await restored.close(force=True)
+        source = ScenarioExecutor(account, "", db.Scenario("Native original storage", [
+            {"action": "start"}, {"action": "goto", "value": origin},
+        ], "Owned Native backup isolation"), keep_browser_open=False)
+        try:
+            await source.start()
+            assert await source.run()
+            assert await source.page.evaluate(STORAGE, None) == {"cookie": "owned=backup", "local": "backup",
+                "indexed": "backup", "cached": "backup", "workers": 1}
+        finally:
+            await source.close(force=True)
+        checks.append("native-profile-backup-restore-storage-and-engine-isolation")
         with executable.open("rb") as binary:
             checksum = hashlib.file_digest(binary, "sha256").hexdigest()
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),

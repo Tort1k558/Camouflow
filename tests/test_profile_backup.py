@@ -210,3 +210,65 @@ def test_imported_scenario_references_are_rewritten_without_overwriting_existing
     assert scenarios["restored restore 1 (2)"][0]["value"] == "restored restore 2"
     assert scenarios["restored restore 2"][0]["value"] == "external"
     assert db._scenario_path("restored restore 1").read_bytes() == original
+
+
+def test_native_backup_preserves_environment_and_storage_without_runtime_lock(workspace):
+    defaults = {"environment": "mobile_web", "window_width": 390, "window_height": 844,
+                "device_scale_factor": 3, "locale": "de-DE", "timezone": "Europe/Berlin"}
+    db.db_set_setting("native_defaults", json.dumps(defaults))
+    db.db_update_account("original", {"_browser_engine": "native", "native_settings": {"window_width": 420}})
+    native = db.profile_dir_for_email("original") / "native"
+    native.mkdir()
+    (native / "camouflow-native.json").write_text(json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
+    (native / "native-runtime.lock").write_text("synthetic owner", encoding="utf-8")
+    (native / "owned-storage").write_bytes(b"owned Native session")
+    target = workspace / "native.zip"
+    profile_backup.export_profile("original", target, True, True)
+    with zipfile.ZipFile(target) as archive:
+        assert "browser/native/native-runtime.lock" not in archive.namelist()
+        metadata = json.loads(archive.read("profile.json"))
+        assert json.loads(metadata["settings"]["native_defaults"]) == defaults
+    db.db_set_setting("native_defaults", json.dumps({"environment": "desktop"}))
+    restored = profile_backup.restore_profile(target, "restored")
+    account = next(account for account in db.db_get_accounts() if account["name"] == "restored")
+    assert account["_browser_engine"] == "native"
+    assert account["native_settings"] == {**defaults, "window_width": 420}
+    assert (restored / "native/owned-storage").read_bytes() == b"owned Native session"
+    assert not (restored / "native/native-runtime.lock").exists()
+    assert (native / "native-runtime.lock").read_text(encoding="utf-8") == "synthetic owner"
+
+
+def test_restoring_older_native_backup_never_transfers_its_process_lock(workspace):
+    target = workspace / "older-native.zip"
+    archive_with(target, metadata={"profile": {"name": "old", "_browser_engine": "native"}, "settings": {}, "scenarios": []},
+                 entries={"browser/native/native-runtime.lock": b"old owner", "browser/native/session": b"owned session"})
+    restored = profile_backup.restore_profile(target, "restored")
+    assert not (restored / "native/native-runtime.lock").exists()
+    assert (restored / "native/session").read_bytes() == b"owned session"
+
+
+def test_private_engine_settings_remain_excluded_from_public_native_backup(workspace):
+    db.db_update_account("original", {"_browser_engine": "native", "browser_engine": "native",
+        "native_settings": {"extra_http_headers": {"Authorization": "synthetic secret"}}})
+    target = workspace / "public-native.zip"
+    profile_backup.export_profile("original", target, False, False)
+    with zipfile.ZipFile(target) as archive:
+        metadata = json.loads(archive.read("profile.json"))
+    assert metadata["profile"]["_browser_engine"] == "native"
+    assert metadata["profile"]["browser_engine"] == "native"
+    assert "native_settings" not in metadata["profile"]
+    assert metadata["settings"] == {}
+
+
+def test_restored_native_profile_cannot_retain_another_cloud_identity(workspace):
+    target = workspace / "cloud-native.zip"
+    cloud = {"id": "old-id", "_storage_scope": {"server": "old", "team": "old", "profile": "old"},
+             "_server_profile": {"id": "old-id"}, "_server_proxy": {"id": "old-proxy"},
+             "lock_user_id": "owner", "lock_user_email": "owner@example.invalid", "lock_expires_at": "old-lock"}
+    archive_with(target, metadata={"profile": {"name": "old", "browser_engine": "native", **cloud},
+                                  "settings": {}, "scenarios": []})
+    restored = profile_backup.restore_profile(target, "restored")
+    account = next(account for account in db.db_get_accounts() if account["name"] == "restored")
+    assert not set(cloud) & set(account)
+    assert account["browser_engine"] == "native"
+    assert restored == db.checked_profile_dir_for_email("restored")
