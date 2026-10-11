@@ -253,8 +253,10 @@ certificates and basic download tools were installed from Ubuntu's signed packag
 repositories. Pinned depot_tools bootstrap completed under that user. An independent
 clean Chromium checkout in `/home/nativebuilder/CamouFlowNative/chromium/src` was
 verified at revision `8625e066febc721e015ea99842da12901eb7ed73`, with the official
-origin and no Git alternates. Git connectivity verification passed. Dependency
-sync has now started; this is not completed source sync, hooks or a Linux build.
+origin and no Git alternates. Git connectivity verification passed. Full Linux
+dependency sync subsequently completed, including actual CIPD ensure and measured
+Git/GCS/CIPD snapshots. Its matching `camouflow-sync.json` stage record was
+written by the successful command; hooks and a Linux Chromium build are separate.
 
 The initial network fetch failed with Git exit 128 (`curl 56`, GnuTLS packet decode
 error and early EOF). A bounded HTTP/1.1 retry also failed after 300 seconds without
@@ -290,7 +292,8 @@ The pinned upstream `build/install-build-deps.py` completed successfully in this
 isolated distro, using `--no-prompt --no-arm --no-chromeos-fonts
 --no-backwards-compatible --no-syms`. It installed the official Ubuntu build/runtime
 packages and generated its required locales; Windows and other WSL distributions
-were not modified. Chromium dependency sync remains separate and still running.
+were not modified. Chromium dependency sync was independently completed; this
+installer result alone does not prove hooks or compilation.
 
 CamouFlow application runtime checks require Python 3.12, whereas this distro's
 system interpreter is 3.10. A separate CPython 3.12.15 build completed with one
@@ -317,8 +320,14 @@ was copied through local Git transport from the verified Windows object cache
 into its own Linux checkout, with no shared objects or alternates. Its exact
 HEAD, official origin, clean status and `git fsck --connectivity-only` passed.
 The failed checkout was preserved outside `src`, not deleted or left as
-untracked input. A fresh real sync is running its upstream CIPD ensure step;
-dependency sync, hooks and the Linux Chromium build remain unverified.
+untracked input. A fresh real sync completed its upstream CIPD ensure and
+dependency snapshots successfully. The actual recorded snapshot SHA-256 values
+are `156c261284384f873f9506e4de6578995a92838251e9b8ebab260c7dc08e7a29`
+for Git/GCS revisions and
+`fcd8c1ab3b4c1ee7e8cd9790ddf62e48c6fdce7c8a8b665dc36da357ced54a8a`
+for installed CIPD packages. Native hooks are now running with the verified
+application interpreter and explicit backing-volume check; hooks completion
+and the Linux Chromium build remain unverified.
 
 ## Binary installation foundation
 
@@ -425,6 +434,11 @@ The new patch applies cleanly against the pinned source, but it has **not** been
 applied to the live Windows build, compiled or runtime-verified. Finish and
 verify that build before changing its source inputs. Application configuration
 continues to reject unsupported WebRTC masking/blocking options.
+The build's dependency gate now also invokes the pinned upstream
+`CheckAddedCppIncludes` API on the real browser renderer-preferences file.
+The two added Native WebRTC headers passed that checker; an intentionally
+forbidden Blink renderer header was rejected as its negative control.
+This checks layering only, not compilation or effectiveness of the policy.
 
 After compiling this patch, run:
 

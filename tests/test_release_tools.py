@@ -580,11 +580,15 @@ def test_native_build_checks_the_chromium_dependency_layers_changed_by_the_patch
     monkeypatch.setattr(native_build, "run", lambda args, *a, **kw: commands.append(args))
     native_build.check_patch_dependencies(tmp_path, {})
     assert commands[0] == ["git", "diff", "--check"]
-    assert [command[-1] for command in commands[1:]] == [
+    assert [command[-1] for command in commands[1:3]] == [
         os.path.normcase(str(tmp_path / "third_party/blink/renderer/core/frame")),
         os.path.normcase(str(tmp_path / "content/browser/renderer_host")),
     ]
-    assert all(command[-2] == os.path.normcase(str(tmp_path)) for command in commands[1:])
+    assert all(command[-2] == os.path.normcase(str(tmp_path)) for command in commands[1:3])
+    assert commands[3][:2] == [sys.executable, "-c"]
+    assert "CheckAddedCppIncludes" in commands[3][2]
+    assert "chrome/browser/renderer_preferences_util.cc" in commands[3][2]
+    assert commands[3][-1] == os.path.normcase(str(tmp_path))
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows depot_tools uses SDK launcher indirection")

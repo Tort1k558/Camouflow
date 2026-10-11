@@ -205,6 +205,13 @@ def check_patch_dependencies(source: Path, env: dict[str, str]) -> None:
     for directory in ("third_party/blink/renderer/core/frame", "content/browser/renderer_host"):
         run([sys.executable, str(source / "buildtools/checkdeps/checkdeps.py"),
              "--root", os.path.normcase(str(source)), os.path.normcase(str(source / directory))], source, env)
+    script = ("import sys; from pathlib import Path; "
+              "root=Path(sys.argv[1]); sys.path.insert(0,str(root/'buildtools/checkdeps')); "
+              "from checkdeps import DepsChecker; "
+              "file=root/'chrome/browser/renderer_preferences_util.cc'; "
+              "problems=DepsChecker(str(root)).CheckAddedCppIncludes([(str(file),file.read_text(encoding='utf-8-sig').splitlines())]); "
+              "print(problems); sys.exit(bool(problems))")
+    run([sys.executable, "-c", script, os.path.normcase(str(source))], source, env)
 
 
 def stage_path(chromium: Path, stage: str) -> Path:
