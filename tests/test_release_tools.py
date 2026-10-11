@@ -205,6 +205,103 @@ def test_native_build_rejects_relative_workspace():
         preflight(Path("relative-native-build"))
 
 
+@pytest.mark.parametrize("workspace_free,backing_free,expected", [(1000, 300, 300), (240, 300, 240)])
+def test_native_preflight_checks_virtual_workspace_and_physical_backing_space(tmp_path, monkeypatch,
+                                                                            workspace_free, backing_free, expected):
+    from types import SimpleNamespace
+    from scripts import native_build
+
+    workspace = Path("D:/native-build-resource-test") if sys.platform == "win32" else tmp_path / "workspace"
+    backing = tmp_path / "backing"
+    backing.mkdir()
+    monkeypatch.setattr(native_build.shutil, "which", lambda name: "git")
+    monkeypatch.setattr(native_build.shutil, "disk_usage", lambda path:
+                        SimpleNamespace(free=(backing_free if path == backing else workspace_free) * 1024 ** 3))
+    report = native_build.preflight(workspace, backing_volume=backing)
+    assert report["free_gib"] == expected
+    assert report["workspace_free_gib"] == workspace_free
+    assert report["backing_free_gib"] == backing_free
+    assert report["backing_volume"] == str(backing)
+
+
+def test_native_preflight_rejects_full_backing_volume_despite_large_virtual_disk(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from scripts import native_build
+
+    workspace = Path("D:/native-build-resource-test") if sys.platform == "win32" else tmp_path / "workspace"
+    monkeypatch.setattr(native_build.shutil, "which", lambda name: "git")
+    monkeypatch.setattr(native_build.shutil, "disk_usage", lambda path:
+                        SimpleNamespace(free=(120 if path == tmp_path else 1000) * 1024 ** 3))
+    with pytest.raises(ValueError, match="found 120.0"):
+        native_build.preflight(workspace, backing_volume=tmp_path)
+
+
+@pytest.mark.parametrize("relative", [True, False])
+def test_native_preflight_rejects_invalid_backing_paths(tmp_path, monkeypatch, relative):
+    from types import SimpleNamespace
+    from scripts import native_build
+
+    workspace = Path("D:/native-build-resource-test") if sys.platform == "win32" else tmp_path / "workspace"
+    monkeypatch.setattr(native_build.shutil, "which", lambda name: "git")
+    monkeypatch.setattr(native_build.shutil, "disk_usage", lambda path: SimpleNamespace(free=1000 * 1024 ** 3))
+    backing = Path("relative-backing") if relative else tmp_path / "missing-backing"
+    with pytest.raises(ValueError, match="Backing volume must be"):
+        native_build.preflight(workspace, backing_volume=backing)
+
+
+def test_native_preflight_rejects_missing_filesystem_root_instead_of_looping(tmp_path, monkeypatch):
+    from scripts import native_build
+
+    workspace = Path("D:/native-build-resource-test") if sys.platform == "win32" else tmp_path / "workspace"
+    monkeypatch.setattr(native_build.shutil, "which", lambda name: "git")
+    monkeypatch.setattr(Path, "exists", lambda path: False)
+    with pytest.raises(ValueError, match="no existing filesystem root"):
+        native_build.preflight(workspace)
+
+
+@pytest.mark.parametrize("jobs", [0, -1, 5, True, "2"])
+def test_native_build_rejects_invalid_job_budgets_before_filesystem_changes(tmp_path, jobs):
+    from scripts.native_build import execute
+
+    with pytest.raises(ValueError, match="jobs must be between"):
+        execute("build", tmp_path / "missing", jobs=jobs)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_path, monkeypatch):
+    import json
+    from scripts import native_build
+
+    source = tmp_path / "chromium/src"
+    source.mkdir(parents=True)
+    (source.parent / ".gclient").write_text("owned", encoding="utf-8")
+    (source / "DEPS").write_text("owned", encoding="utf-8")
+    relative = {"win32": "chrome.exe", "linux": "chrome", "darwin": "Chromium.app/Contents/MacOS/Chromium"}[sys.platform]
+    commands = []
+    def run(args, *a, **kwargs):
+        commands.append(args)
+        if args[:3] == ["git", "rev-parse", "HEAD"]:
+            return native_build.LOCK["chromium_revision"]
+        if args[0] == "autoninja":
+            binary = source / "out/CamouFlowNative" / relative
+            binary.parent.mkdir(parents=True, exist_ok=True)
+            binary.write_bytes(b"owned test binary")
+        return ""
+    monkeypatch.setattr(native_build, "preflight", lambda *a, **kw: {})
+    monkeypatch.setattr(native_build, "environment", lambda *a: {})
+    monkeypatch.setattr(native_build, "checkout", lambda *a: None)
+    monkeypatch.setattr(native_build, "bootstrap_windows_git", lambda *a: None)
+    monkeypatch.setattr(native_build, "require_stage", lambda *a: None)
+    monkeypatch.setattr(native_build, "source_patches", lambda *a: [])
+    monkeypatch.setattr(native_build, "depot_command", lambda name, *a: [name])
+    monkeypatch.setattr(native_build, "run", run)
+    native_build.execute("build", tmp_path, jobs=1)
+    assert ["autoninja", "-C", "out/CamouFlowNative", "-j", "1", "chrome"] in commands
+    receipt = json.loads((source / "out/CamouFlowNative/camouflow-build.json").read_text(encoding="utf-8"))
+    assert receipt["build_jobs"] == 1
+    assert receipt["native_patch_runtime_verified"] is False
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows gclient helpers use batch launchers")
 def test_native_build_helper_uses_the_installed_vpython_without_rebootstrapping(tmp_path):
     from scripts.native_build import environment

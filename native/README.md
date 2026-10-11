@@ -266,8 +266,18 @@ were scoped to the exact trusted cache paths in an owned, process-selected confi
 not the user's global Git configuration. Failed fetch data was preserved.
 
 ```powershell
-wsl.exe -d CamouFlowNativeBuilder -u nativebuilder --exec python3 /mnt/c/Users/lolod/Desktop/camouflow-app/camouflow/scripts/native_build.py sync --workspace /home/nativebuilder/CamouFlowNative
+wsl.exe -d CamouFlowNativeBuilder -u nativebuilder --exec python3 /mnt/c/Users/lolod/Desktop/camouflow-app/camouflow/scripts/native_build.py sync --workspace /home/nativebuilder/CamouFlowNative --backing-volume /mnt/d --jobs 2
 ```
+
+Always provide `--backing-volume /mnt/d` for this D:-hosted WSL workspace.
+Preflight checks both filesystems and uses the smaller free-space value: a real
+local check reported 922.3 GiB inside ext4 but only 318.5 GiB on D:. Logical VHDX
+capacity alone must not authorize another large download or compilation.
+`--jobs` explicitly limits sync/build concurrency to 1..4 without editing the
+shared build lock; successful build receipts record the actual selected count.
+Use one Linux compile job while assessing available memory. Job count is not a
+hard RAM quota; hooks/build still require fresh resource checks and completed
+stage records. These options do not alter an already running build or sync.
 
 Existing Docker WSL data, its default-distribution setting and stopped state were
 preserved. No global `.wslconfig`, host security/VPN settings or production server

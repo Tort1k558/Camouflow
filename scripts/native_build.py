@@ -22,7 +22,7 @@ def run(args: list[str], cwd: Path, env: dict[str, str], *, capture: bool = Fals
     return result.stdout.strip() if capture else ""
 
 
-def preflight(workspace: Path) -> dict:
+def preflight(workspace: Path, *, backing_volume: Path | None = None) -> dict:
     if not workspace.is_absolute() or workspace != workspace.resolve():
         raise ValueError("Build workspace must be absolute and must not contain links")
     if workspace == ROOT or workspace.is_relative_to(ROOT):
@@ -33,13 +33,23 @@ def preflight(workspace: Path) -> dict:
         raise ValueError("Git is required")
     ancestor = workspace
     while not ancestor.exists():
+        if ancestor.parent == ancestor:
+            raise ValueError("Build workspace has no existing filesystem root")
         ancestor = ancestor.parent
     free = shutil.disk_usage(ancestor).free / (1024 ** 3)
+    backing = {}
+    if backing_volume is not None:
+        if not backing_volume.is_absolute() or backing_volume != backing_volume.resolve() or not backing_volume.is_dir():
+            raise ValueError("Backing volume must be an existing absolute directory without links")
+        backing_free = shutil.disk_usage(backing_volume).free / (1024 ** 3)
+        backing = {"backing_volume": str(backing_volume), "workspace_free_gib": round(free, 1),
+                   "backing_free_gib": round(backing_free, 1)}
+        free = min(free, backing_free)
     if free < LOCK["minimum_free_gib"]:
         raise ValueError(f"Need at least {LOCK['minimum_free_gib']} GiB free; found {free:.1f}")
     return {"workspace": str(workspace), "free_gib": round(free, 1),
             "cpu_count": os.cpu_count(), "chromium_revision": LOCK["chromium_revision"],
-            "depot_tools_revision": LOCK["depot_tools_revision"]}
+            "depot_tools_revision": LOCK["depot_tools_revision"], **backing}
 
 
 def environment(workspace: Path) -> dict[str, str]:
@@ -232,8 +242,11 @@ def require_stage(chromium: Path, stage: str) -> None:
         raise ValueError(f"Native {stage} inputs changed; rerun that stage")
 
 
-def execute(action: str, workspace: Path) -> None:
-    print(json.dumps(preflight(workspace)), flush=True)
+def execute(action: str, workspace: Path, *, backing_volume: Path | None = None, jobs: int | None = None) -> None:
+    jobs = LOCK["build_jobs"] if jobs is None else jobs
+    if type(jobs) is not int or not 1 <= jobs <= LOCK["build_jobs"]:
+        raise ValueError(f"Native jobs must be between 1 and {LOCK['build_jobs']}")
+    print(json.dumps(preflight(workspace, backing_volume=backing_volume)), flush=True)
     if action == "preflight":
         return
     workspace.mkdir(parents=True, exist_ok=True)
@@ -264,7 +277,7 @@ def execute(action: str, workspace: Path) -> None:
         if os.name == "nt":
             run([depot_command("gclient", workspace)[0], str(workspace / "depot_tools/gsutil.py"), "version"], chromium, env)
         run(depot_command("gclient", workspace) + ["sync", "--no-history", "--nohooks",
-            "--revision", "src@" + LOCK["chromium_revision"], "-j", str(LOCK["build_jobs"])], chromium, env)
+            "--revision", "src@" + LOCK["chromium_revision"], "-j", str(jobs)], chromium, env)
         snapshot_dependencies(chromium, workspace, env)
         record_stage(chromium, "sync")
         return
@@ -286,7 +299,7 @@ def execute(action: str, workspace: Path) -> None:
     output.mkdir(parents=True, exist_ok=True)
     output.joinpath("args.gn").write_text((ROOT / "native/args.gn").read_text(encoding="utf-8-sig"), encoding="utf-8")
     run(depot_command("gn", workspace) + ["gen", "out/CamouFlowNative"], source, env)
-    run(depot_command("autoninja", workspace) + ["-C", "out/CamouFlowNative", "-j", str(LOCK["build_jobs"]), "chrome"], source, env)
+    run(depot_command("autoninja", workspace) + ["-C", "out/CamouFlowNative", "-j", str(jobs), "chrome"], source, env)
     relative_binary = {"win32": "chrome.exe", "linux": "chrome",
                        "darwin": "Chromium.app/Contents/MacOS/Chromium"}[sys.platform]
     binary = output / relative_binary
@@ -295,7 +308,7 @@ def execute(action: str, workspace: Path) -> None:
     receipt = {"schema": 1, "native_version": LOCK["native_version"],
                "chromium_revision": LOCK["chromium_revision"],
                "depot_tools_revision": LOCK["depot_tools_revision"],
-               "platform": sys.platform, "binary": relative_binary,
+               "platform": sys.platform, "binary": relative_binary, "build_jobs": jobs,
                "binary_sha256_measured": checksum,
                "args_sha256": hashlib.sha256(output.joinpath("args.gn").read_bytes()).hexdigest(),
                "fingerprint_patched": False, "patches": patches,
@@ -307,9 +320,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("preflight", "bootstrap", "sync", "hooks", "build"))
     parser.add_argument("--workspace", type=Path, required=True)
+    parser.add_argument("--backing-volume", type=Path, help="Also require free space on this backing volume (WSL: /mnt/d)")
+    parser.add_argument("--jobs", type=int, choices=range(1, LOCK["build_jobs"] + 1), help="Parallel jobs for sync/build; defaults to the build lock")
     args = parser.parse_args()
     try:
-        execute(args.action, args.workspace)
+        execute(args.action, args.workspace, backing_volume=args.backing_volume, jobs=args.jobs)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f"Native build failed: {error}", file=sys.stderr)
         return 1
