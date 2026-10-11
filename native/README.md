@@ -94,6 +94,13 @@ DirectWrite APIs: only Arial remained, every original Arial style and the
 checked genuine metrics were retained, restricted fallback construction
 succeeded, and a missing requested family failed without returning a collection.
 The pure parser also passed malformed/duplicate/count/length controls.
+The standalone gate also exercises real DirectWrite glyph mapping for Latin,
+a combining mark, CJK and an emoji. Every returned font face must belong to
+the restricted collection, and the Latin positive control must map a genuine
+font at its original scale. On the local Windows host the unrestricted system
+fallback supplied two outside-collection glyph controls; the restricted route
+did not return those fonts. Hosts without such fonts report zero outside-font
+controls rather than claiming a multilingual negative control passed.
 These are **not** compiled Chromium, CSS/canvas/worker/local-font runtime proof
 or complete font-file isolation. A font file/TTC can contain multiple faces;
 this draft restricts accessible collections, not the bytes inside allowed font

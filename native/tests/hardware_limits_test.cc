@@ -5,10 +5,66 @@
 
 #ifdef _WIN32
 #include "windows/font_collection.h"
+#include <wrl/implements.h>
 #endif
 
 #include <iostream>
 #include <string_view>
+
+#ifdef _WIN32
+class GlyphAnalysisSource final
+    : public Microsoft::WRL::RuntimeClass<
+          Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
+          IDWriteTextAnalysisSource> {
+ public:
+  explicit GlyphAnalysisSource(const std::wstring& text) : text_(text) {}
+
+  HRESULT STDMETHODCALLTYPE GetTextAtPosition(
+      UINT32 position, const WCHAR** text, UINT32* length) override {
+    if (position > text_.size())
+      return E_INVALIDARG;
+    *length = static_cast<UINT32>(text_.size()) - position;
+    *text = *length ? text_.c_str() + position : nullptr;
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE GetTextBeforePosition(
+      UINT32 position, const WCHAR** text, UINT32* length) override {
+    if (position > text_.size())
+      return E_INVALIDARG;
+    *length = position;
+    *text = position ? text_.c_str() : nullptr;
+    return S_OK;
+  }
+
+  DWRITE_READING_DIRECTION STDMETHODCALLTYPE
+  GetParagraphReadingDirection() override {
+    return DWRITE_READING_DIRECTION_LEFT_TO_RIGHT;
+  }
+
+  HRESULT STDMETHODCALLTYPE GetLocaleName(
+      UINT32 position, UINT32* length, const WCHAR** locale) override {
+    if (position > text_.size())
+      return E_INVALIDARG;
+    *length = static_cast<UINT32>(text_.size()) - position;
+    *locale = L"en-US";
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE GetNumberSubstitution(
+      UINT32 position, UINT32* length,
+      IDWriteNumberSubstitution** substitution) override {
+    if (position > text_.size())
+      return E_INVALIDARG;
+    *length = static_cast<UINT32>(text_.size()) - position;
+    *substitution = nullptr;
+    return S_OK;
+  }
+
+ private:
+  const std::wstring text_;
+};
+#endif
 
 int main() {
   using camouflow::native::HardwareLimitsError;
@@ -97,6 +153,52 @@ int main() {
   hr = camouflow::native::CreateRestrictedFontFallback(factory.Get(),
       restricted.Get(), {"Arial"}, &fallback);
   check(SUCCEEDED(hr) && fallback, "restricted glyph fallback built natively");
+  if (!fallback)
+    return 1;
+  ComPtr<IDWriteFontFallback> system_fallback;
+  hr = factory->GetSystemFontFallback(&system_fallback);
+  check(SUCCEEDED(hr) && system_fallback, "actual system glyph fallback control");
+  if (!system_fallback)
+    return 1;
+  unsigned outside_font_controls = 0;
+  for (const std::wstring text : {L"Hello", L"\u0301", L"\u6f22", L"\U0001f642"}) {
+    const auto source = Microsoft::WRL::Make<GlyphAnalysisSource>(text);
+    UINT32 mapped_length = 0;
+    float scale = 0;
+    ComPtr<IDWriteFont> mapped_font;
+    hr = fallback->MapCharacters(source.Get(), 0, static_cast<UINT32>(text.size()),
+        restricted.Get(), L"Arial", DWRITE_FONT_WEIGHT_NORMAL,
+        DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+        &mapped_length, &mapped_font, &scale);
+    check(SUCCEEDED(hr) && mapped_length > 0 && mapped_length <= text.size(),
+          "restricted native glyph mapping completes");
+    if (text == L"Hello")
+      check(mapped_font && scale == 1.0f, "Latin positive control maps a genuine font");
+    if (mapped_font) {
+      ComPtr<IDWriteFontFace> face;
+      ComPtr<IDWriteFont> selected_font;
+      hr = mapped_font->CreateFontFace(&face);
+      check(SUCCEEDED(hr), "mapped glyph has a real font face");
+      if (face)
+        check(SUCCEEDED(restricted->GetFontFromFontFace(face.Get(), &selected_font)) && selected_font,
+              "glyph fallback never leaves the selected native collection");
+    }
+    ComPtr<IDWriteFont> system_font;
+    hr = system_fallback->MapCharacters(source.Get(), 0, static_cast<UINT32>(text.size()),
+        system.Get(), L"Arial", DWRITE_FONT_WEIGHT_NORMAL,
+        DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+        &mapped_length, &system_font, &scale);
+    check(SUCCEEDED(hr), "system glyph mapping positive control executes");
+    if (system_font) {
+      ComPtr<IDWriteFontFace> face;
+      ComPtr<IDWriteFont> selected_font;
+      if (SUCCEEDED(system_font->CreateFontFace(&face)) &&
+          FAILED(restricted->GetFontFromFontFace(face.Get(), &selected_font)))
+        ++outside_font_controls;
+    }
+  }
+  std::cout << "Windows glyph fallback probes completed; outside-font controls: "
+            << outside_font_controls << '\n';
   ComPtr<IDWriteFontCollection> invalid;
   hr = camouflow::native::RestrictFontCollection(factory.Get(), system.Get(),
       {"Arial", "CamouFlow Missing Fixture Font 890731"}, &invalid);
