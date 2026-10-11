@@ -2,6 +2,10 @@
 
 ## Scope and current status
 
+The [Windows verification backlog](NATIVE_VERIFICATION.md) records prepared gates,
+unverified capabilities and the sequential post-build command. Keep its pending
+items separate from completed SDK/runtime evidence below.
+
 Native is a new public engine project inside CamouFlow, not a renamed Camoufox
 or CloakBrowser. The current increment is an independent persistent Chromium
 runtime and configuration foundation. It is selectable as **Native (preview)**,

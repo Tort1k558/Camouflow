@@ -8,6 +8,78 @@ import pytest
 from scripts import verify_release
 
 
+def test_native_suite_collects_failures_and_continues_without_reusing_reports(tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+    from scripts import verify_native_suite as suite
+
+    monkeypatch.setattr(suite.sys, "platform", "win32")
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"owned-fixture-not-a-browser")
+    destination = tmp_path / "reports"
+    calls = []
+    def run(command, **kwargs):
+        gate = Path(command[1]).stem.removeprefix("verify_native_")
+        calls.append(gate)
+        report = Path(command[command.index("--report") + 1])
+        report.write_text(json.dumps({"passed": gate != "hardware", "checks": [{"passed": True}],
+            "binary_sha256_measured": suite.checksum(executable)}), encoding="utf-8")
+        return SimpleNamespace(returncode=0 if gate != "hardware" else 1)
+    monkeypatch.setattr(suite.subprocess, "run", run)
+    report = suite.verify(executable, destination, ["hardware", "webrtc"])
+    assert calls == ["hardware", "webrtc"]
+    assert not report["passed"] and not report["full_suite"]
+    assert [gate["passed"] for gate in report["gates"]] == [False, True]
+    assert report == json.loads((destination / "suite.json").read_text(encoding="utf-8"))
+    assert report["gates"][1]["report_sha256"] == suite.checksum(destination / "webrtc.json")
+    with pytest.raises(FileExistsError):
+        suite.verify(executable, destination, ["webrtc"])
+
+
+def test_native_suite_stops_on_binary_drift_and_preserves_failed_evidence(tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+    from scripts import verify_native_suite as suite
+
+    monkeypatch.setattr(suite.sys, "platform", "win32")
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"original")
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        executable.write_bytes(b"changed")
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(suite.subprocess, "run", run)
+    report = suite.verify(executable, tmp_path / "reports", ["hardware", "webrtc"])
+    assert len(calls) == 1 and not report["passed"]
+    assert "changed" in report["error"]
+    assert not report["gates"][0]["passed"]
+    assert not json.loads((tmp_path / "reports/suite.json").read_text(encoding="utf-8"))["passed"]
+
+
+@pytest.mark.parametrize("report", [
+    {"passed": True, "checks": []},
+    {"passed": True, "checks": [{"passed": False}], "binary_sha256_measured": "owned"},
+    {"passed": True, "checks": [{"passed": True}], "binary_sha256_measured": "wrong"},
+    {"passed": False, "checks": [{"passed": True}], "binary_sha256_measured": "owned"},
+])
+def test_native_suite_rejects_false_or_unbound_evidence(report):
+    from scripts.verify_native_suite import validate_report
+
+    with pytest.raises(ValueError):
+        validate_report("hardware", report, "owned")
+
+
+def test_native_suite_requires_all_runtime_lifecycle_checks():
+    from scripts.verify_native_suite import REQUIRED_RUNTIME_CHECKS, validate_report
+
+    report = {"passed": True, "binary_sha256_measured": "owned", "checks": list(REQUIRED_RUNTIME_CHECKS)}
+    validate_report("runtime", report, "owned")
+    report["checks"].pop()
+    with pytest.raises(ValueError, match="missing"):
+        validate_report("runtime", report, "owned")
+
+
 @pytest.mark.parametrize("platform,executable", [
     ("win32", "CamouFlow/CamouFlow.exe"),
     ("linux", "CamouFlow/CamouFlow"),
