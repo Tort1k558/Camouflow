@@ -106,8 +106,12 @@ verification. Running it on the bootstrap Chromium binary proves the runtime
 layer only; the own fork must independently pass it after compilation.
 The Windows bootstrap run passed all 18 checks, including all three restart
 rounds with three observed independent drivers and zero remaining observed
-owned processes after each round. Linux/macOS results for this new check still
-require fresh CI evidence; these results are not a completed own-fork build.
+owned processes after each round. Matching downloaded artifacts for
+[`706c65f` CI](https://github.com/Tort1k558/Camouflow/actions/runs/38115530154)
+independently passed these same 18 checks on Windows x64, Linux x64 and macOS
+ARM64. Each reported all three restart rounds and zero remaining observed owned
+processes. All three explicitly report `fingerprint_patched: false`; these
+results are not completed own-fork builds.
 
 **Crash durability boundary:** a successful JavaScript storage write or read
 does not prove that Chromium has flushed every store to disk. An owned Windows
@@ -287,9 +291,24 @@ Its installation prefix is private to that workspace; neither system Python nor
 the existing Windows application `.venv` is replaced. The installed interpreter
 reported 3.12.15 and imported SSL, SQLite, compression, ctypes and venv modules;
 `verified-build.json` records the measured source hash and private prefix.
-Installation of the exact public application requirements has started in a
-separate `app-env` under this workspace. Neither step proves a Linux Native
-browser runtime or completion of Chromium's dependency sync.
+The exact public application requirements were installed in a separate
+`app-env` under this workspace. `pip check`, Native core imports and timezone
+validation passed; the environment reports Python 3.12.15, Qt 6.11.0 and
+Playwright 1.60.0. Its unit run passed 809 tests with seven Windows-only skips.
+The pinned Linux bootstrap Chromium 148.0.7778.96 independently passed all 18
+runtime checks in this actual WSL environment, including three concurrent
+profiles, rotating browser crashes, committed-data restoration and zero
+remaining observed owned processes. These are application-runtime results,
+not compilation or verification of our own Linux fork.
+
+The first full Linux dependency sync failed after repeated TLS/early-EOF and
+no-data timeout errors fetching the pinned SwiftShader commit. That dependency
+was copied through local Git transport from the verified Windows object cache
+into its own Linux checkout, with no shared objects or alternates. Its exact
+HEAD, official origin, clean status and `git fsck --connectivity-only` passed.
+The failed checkout was preserved outside `src`, not deleted or left as
+untracked input. A fresh real sync is running its upstream CIPD ensure step;
+dependency sync, hooks and the Linux Chromium build remain unverified.
 
 ## Binary installation foundation
 
