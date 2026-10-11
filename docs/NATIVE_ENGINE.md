@@ -191,11 +191,14 @@ engine identity but do not include private Native settings. Restored local
 profiles discard inherited cloud IDs, storage scopes and lock-owner metadata.
 The real runtime gate now includes restoring cookies/localStorage/IndexedDB/
 cache/service workers into a new Native profile and checking source isolation.
-Unit checks cover the archive changes. The added real backup check is not yet
-locally proven: two Windows runs timed out in the pre-existing first context
-close, before reaching backup/restore. Owned browser processes were cleaned up;
-the shutdown issue still needs diagnosis rather than a longer timeout or a
-claimed successful backup runtime result.
+Unit checks cover the archive changes. The third full Windows run passed all
+12 runtime checks, including real backup/restore of all five storage types and
+source-profile isolation. Two preceding runs timed out in the pre-existing
+first context close before reaching backup/restore. Owned browsers were cleaned
+up. Isolated sequential/concurrent storage probes, including process-owner
+exclusion, then closed normally in approximately 1–2 seconds. The earlier
+shutdown timeouts have not been root-caused or claimed fixed; runtime teardown
+policy and timeouts were not weakened to obtain this passing result.
 
 The private backend's existing profile schema already accepts Native; no schema
 change was needed. Isolated local API tests verified create, update and list

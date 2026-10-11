@@ -57,6 +57,13 @@ before executing. A partial `.gclient_entries` file is not success evidence:
 upstream writes it before its final CIPD installation has finished. Older
 workspaces without stage records must successfully rerun the corresponding
 commands; records must not be manufactured to skip dependencies or hooks.
+Dependency snapshots record actual Git/GCS revisions with `gclient revinfo -a`
+and actual installed CIPD instance IDs with `cipd installed`. The first command
+explicitly excludes CIPD: otherwise `revinfo -a` re-resolves every pinned package
+tag through sequential remote `cipd describe` requests, even after successful
+installation. The local installed-package command was exercised against this
+workspace and completed immediately. This does not skip CIPD ensure/install or
+its integrity checks. Stage records also bind both snapshot checksums.
 Failures
 remain failures; there is no alternate browser/toolchain fallback.
 

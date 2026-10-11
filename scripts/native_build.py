@@ -102,6 +102,11 @@ def checkout(path: Path, repository: str, revision: str, env: dict[str, str]) ->
 
 
 def depot_command(name: str, workspace: Path) -> list[str]:
+    if os.name == "nt" and name == "cipd":
+        client = workspace / "depot_tools/.cipd_client.exe"
+        if not client.is_file():
+            raise ValueError("Bootstrap the pinned CIPD client first")
+        return [str(client)]
     if os.name == "nt" and name == "gclient":
         vpython = workspace / "depot_tools/.cipd_bin/vpython3.exe"
         if not vpython.is_file():
@@ -140,7 +145,22 @@ def stage_identity(chromium: Path, stage: str) -> dict:
             "chromium_revision": LOCK["chromium_revision"],
             "depot_tools_revision": LOCK["depot_tools_revision"],
             "deps_sha256": hashlib.sha256((chromium / "src/DEPS").read_bytes()).hexdigest(),
-            "gclient_sha256": hashlib.sha256((chromium / ".gclient").read_bytes()).hexdigest()}
+            "gclient_sha256": hashlib.sha256((chromium / ".gclient").read_bytes()).hexdigest(),
+            "dependency_snapshots_sha256": {
+                name: hashlib.sha256((chromium / name).read_bytes()).hexdigest()
+                for name in ("camouflow-git-revisions.json", "camouflow-cipd-installed.json")}}
+
+
+def snapshot_dependencies(chromium: Path, workspace: Path, env: dict[str, str]) -> None:
+    git_snapshot = chromium / "camouflow-git-revisions.json"
+    cipd_snapshot = chromium / "camouflow-cipd-installed.json"
+    for target in (git_snapshot, cipd_snapshot):
+        if target != target.resolve():
+            raise ValueError("Dependency snapshots must not contain links")
+    run(depot_command("gclient", workspace) + ["revinfo", "-a", "--ignore-dep-type", "cipd",
+                                             "--output-json", str(git_snapshot)], chromium, env)
+    run(depot_command("cipd", workspace) + ["installed", "-root", str(chromium),
+                                           "-json-output", str(cipd_snapshot)], chromium, env)
 
 
 def stage_path(chromium: Path, stage: str) -> Path:
@@ -211,7 +231,7 @@ def execute(action: str, workspace: Path) -> None:
             run([depot_command("gclient", workspace)[0], str(workspace / "depot_tools/gsutil.py"), "version"], chromium, env)
         run(depot_command("gclient", workspace) + ["sync", "--no-history", "--nohooks",
             "--revision", "src@" + LOCK["chromium_revision"], "-j", str(LOCK["build_jobs"])], chromium, env)
-        run(depot_command("gclient", workspace) + ["revinfo", "-a"], chromium, env)
+        snapshot_dependencies(chromium, workspace, env)
         record_stage(chromium, "sync")
         return
     if not (chromium / ".gclient").is_file() or not (source / "DEPS").is_file():

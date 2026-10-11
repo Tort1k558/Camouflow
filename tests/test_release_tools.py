@@ -378,6 +378,8 @@ def _native_build_stage_fixture(tmp_path):
     (tmp_path / "src").mkdir()
     (tmp_path / "src/DEPS").write_text("pinned dependency inputs", encoding="utf-8")
     (tmp_path / ".gclient").write_text("owned source configuration", encoding="utf-8")
+    for name in ("camouflow-git-revisions.json", "camouflow-cipd-installed.json"):
+        (tmp_path / name).write_text("{}", encoding="utf-8")
     return tmp_path
 
 
@@ -405,7 +407,7 @@ def test_native_build_stage_records_are_atomic_and_match_actual_inputs(tmp_path,
     assert not list(chromium.glob("*.tmp"))
 
 
-@pytest.mark.parametrize("name", ["src/DEPS", ".gclient"])
+@pytest.mark.parametrize("name", ["src/DEPS", ".gclient", "camouflow-git-revisions.json", "camouflow-cipd-installed.json"])
 def test_native_build_rejects_stage_records_after_input_changes(tmp_path, name):
     from scripts.native_build import record_stage, require_stage
 
@@ -425,3 +427,16 @@ def test_native_build_rejects_corrupt_stage_record_and_unknown_stage(tmp_path):
         require_stage(chromium, "sync")
     with pytest.raises(ValueError, match="Unknown"):
         stage_path(chromium, "other")
+
+
+def test_native_build_records_installed_cipd_instances_without_reresolving_remote_tags(tmp_path, monkeypatch):
+    from scripts import native_build
+
+    commands = []
+    monkeypatch.setattr(native_build, "depot_command", lambda name, workspace: [name])
+    monkeypatch.setattr(native_build, "run", lambda args, *a, **kw: commands.append(args))
+    native_build.snapshot_dependencies(tmp_path, tmp_path, {})
+    assert commands == [
+        ["gclient", "revinfo", "-a", "--ignore-dep-type", "cipd", "--output-json", str(tmp_path / "camouflow-git-revisions.json")],
+        ["cipd", "installed", "-root", str(tmp_path), "-json-output", str(tmp_path / "camouflow-cipd-installed.json")],
+    ]
