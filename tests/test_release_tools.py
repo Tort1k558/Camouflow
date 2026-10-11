@@ -379,6 +379,41 @@ def test_native_chromium_patch_embeds_the_tested_hardware_policy():
     assert embedded == (ROOT / "native/core/hardware_limits.h").read_text(encoding="utf-8-sig")
 
 
+def _automation_observation(value=True):
+    return {"value": value, "firstScriptValue": value, "ownProperty": False,
+            "descriptor": {"getter": "function get webdriver() { [native code] }",
+                           "setter": True, "enumerable": True, "configurable": True,
+                           "illegalInvocation": True}}
+
+
+@pytest.mark.parametrize("expected", [False, True])
+def test_native_automation_gate_preserves_native_binding(expected):
+    from scripts.verify_native_automation import validate_observation
+
+    validate_observation(_automation_observation(expected), _automation_observation(), expected, first=expected)
+
+
+@pytest.mark.parametrize("change", [
+    {"value": True}, {"value": 0}, {"firstScriptValue": True}, {"ownProperty": True},
+    {"descriptor": {"getter": "function () { return false; }"}},
+])
+def test_native_automation_gate_rejects_ignored_flags_early_script_leaks_and_js_getters(change):
+    from scripts.verify_native_automation import validate_observation
+
+    observed = {**_automation_observation(False), **change}
+    with pytest.raises(ValueError):
+        validate_observation(observed, _automation_observation(), False, first=False)
+
+
+def test_native_automation_patch_is_opt_in_and_precedes_inspector_override():
+    from scripts.native_build import ROOT
+
+    patch = (ROOT / "native/patches/0004-native-automation-exposure.patch").read_text(encoding="utf-8-sig")
+    assert '+      name: "CamouFlowAutomationConcealed",\n+    },' in patch
+    assert '+      status:' not in patch
+    assert patch.index("CamouFlowAutomationConcealedEnabled()") < patch.index("AutomationControlledEnabled()")
+
+
 def test_native_build_clean_baseline_has_no_patches(tmp_path, monkeypatch):
     from scripts import native_build
 
@@ -396,7 +431,8 @@ def test_native_build_rejects_unknown_source_changes(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("name", ["0001-native-hardware-privacy-limits.patch",
                                   "0002-midl-locale-name-hashes.patch",
-                                  "0003-native-webrtc-routing-policy.patch"])
+                                  "0003-native-webrtc-routing-policy.patch",
+                                  "0004-native-automation-exposure.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
@@ -735,6 +771,7 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     (patches / "0001-native-hardware-privacy-limits.patch").write_bytes(git("diff"))
     (patches / "0002-midl-locale-name-hashes.patch").write_text("", encoding="utf-8")
     (patches / "0003-native-webrtc-routing-policy.patch").write_text("", encoding="utf-8")
+    (patches / "0004-native-automation-exposure.patch").write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")

@@ -10,6 +10,56 @@ resumed; existing Linux workspaces and verified results are preserved. Desktop
 CI now schedules only Windows jobs. Linux/macOS support remains unfinished and
 must not be represented as released own-fork runtimes.
 
+## Next patch batch (not in the running first build)
+
+The first Windows compilation remains on hardware/MIDL patches 0001/0002.
+Drafts are prepared separately: never change its source or generated headers
+while the compiler is running. The output directory must be retained for
+incremental compilation after the first build and its baseline runtime gates.
+
+`0004-native-automation-exposure.patch` adds an opt-in Blink runtime feature,
+`CamouFlowAutomationConcealed`, disabled by default. Enable it only in an
+experimental own-fork run with
+`--enable-blink-features=CamouFlowAutomationConcealed`. The C++ Navigator getter
+returns false before either AutomationControlled or the inspector override.
+The prototype getter, descriptor and illegal-invocation behavior are unchanged;
+workers do not acquire a nonstandard `webdriver` property. Existing Chromium
+feature-switch forwarding is reused. No page scripts or synthetic getters are
+injected. The app does not expose this as a verified capability yet.
+
+The patch applies cleanly to the pinned revision. The pinned upstream feature
+generator was run in a separate D: draft directory and generated the getter
+with a false default. This is not proof of C++ compilation or runtime behavior.
+The real Windows SDK negative control passed 22 baseline/frame/worker/CDP
+checks, then correctly rejected the ignored Native feature at the first
+protected document. It must not be counted as own-fork success.
+
+After compiling the batch, run:
+
+```powershell
+& $python scripts/verify_native_automation.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative\tmp --report D:\CamouFlowNative\fork-automation.json
+```
+
+The gate checks the first page script, same/cross-origin frames, new targets,
+dedicated/shared/service workers, explicit feature disable, native getter shape,
+and CDP automation overrides. It separately disables upstream
+AutomationControlled to prove that the inspector positive control really works.
+Suppressing this one indicator is **not** CDP invisibility, coherent full-device
+fingerprinting, or proof of passing anti-bot sites.
+
+Reference direction: study the documented native configuration surfaces of
+[CloakBrowser](https://github.com/CloakHQ/CloakBrowser) and
+[Camoufox](https://github.com/daijro/camoufox), but implement our own Chromium
+changes. Cloak's wrapper MIT license does not cover its proprietary native
+patches/binary; see its
+[binary license](https://github.com/CloakHQ/CloakBrowser/blob/main/BINARY-LICENSE.md).
+Camoufox documents why invented text widths and inconsistent GPU/canvas values
+can themselves identify a modified browser. Next priorities are a coherent
+Windows-only device policy, genuine-font selection/metrics and graphics API
+agreement, not random per-call noise or fabricated unsupported GPU limits.
+Canvas/audio/font/device diversity remains unfinished and must not be advertised
+as implemented. WebRTC draft 0003 still needs its own compiled runtime gate.
+
 `build-lock.json` pins full upstream Chromium and bootstrap depot_tools commits.
 Chromium's pinned `DEPS` defines its own dependency revisions/CIPD instances,
 including its vendored depot_tools; the bootstrap tool is pinned separately and
