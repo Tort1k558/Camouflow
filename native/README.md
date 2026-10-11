@@ -4,6 +4,12 @@ This directory tracks the public CamouFlow Native build inputs. Chromium source,
 dependencies, tools and output stay **outside this repository**, on the approved
 `D:\CamouFlowNative` workspace. Backend source and credentials are not included.
 
+Current development scope is Windows only, at the user's request. Local Linux
+downloads, hooks, builds and repeated runtime tests are deferred until explicitly
+resumed; existing Linux workspaces and verified results are preserved. Desktop
+CI now schedules only Windows jobs. Linux/macOS support remains unfinished and
+must not be represented as released own-fork runtimes.
+
 `build-lock.json` pins full upstream Chromium and bootstrap depot_tools commits.
 Chromium's pinned `DEPS` defines its own dependency revisions/CIPD instances,
 including its vendored depot_tools; the bootstrap tool is pinned separately and
