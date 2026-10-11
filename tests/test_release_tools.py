@@ -314,7 +314,9 @@ def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monk
     monkeypatch.setattr(native_build, "run", fake_run)
     assert native_build.source_patches(tmp_path, {}) == [
         {"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]
-    assert commands[-1] == ["git", "apply", "--reverse", "--check", str(patch)]
+    assert ["git", "read-tree", "--empty"] in commands
+    assert ["git", "apply", "--cached", str(patch)] in commands
+    assert commands[-1] == ["git", "diff", "--exit-code", "--", *sorted(expected)]
 
 
 def _hardware_observations(cpu=12, memory=16):
@@ -479,3 +481,132 @@ def test_native_build_makes_pinned_python_available_to_gn_child_scripts(tmp_path
     python.parent.mkdir(parents=True)
     python.touch()
     assert environment(tmp_path)["PATH"].split(";")[0] == str(python.parent)
+
+
+def _midl_name_fixture():
+    import struct
+
+    names = ("SystemTraceSessionLib", "ISystemTraceSession")
+    records = bytearray()
+    for name in names:
+        encoded = name.encode("ascii")
+        records.extend(struct.pack("<III", 0xffffffff, 0xffffffff, len(encoded) | 0x3800))
+        records.extend(encoded + b"W" * (-len(encoded) % 4))
+    contents = bytearray(0x54 + 15 * 16 + 512 + len(records))
+    contents[:8] = b"MSFT\x02\x00\x01\x00"
+    struct.pack_into("<III", contents, 0x0c, 1033, 0, 67)
+    struct.pack_into("<I", contents, 0x30, len(names))
+    struct.pack_into("<II", contents, 0x54 + 6 * 16, 324, 512)
+    struct.pack_into("<II", contents, 0x54 + 7 * 16, 836, len(records))
+    contents[324:836] = b"\xff" * 512
+    contents[836:] = records
+    return bytes(contents)
+
+
+def test_midl_hash_normalization_uses_stored_locale_and_rebuilds_collision_chains():
+    import struct
+
+    from native.toolchain.midl_locale import normalize_name_hashes
+
+    observed = []
+    def hash_name(system, locale, name):
+        observed.append((system, locale, name))
+        return 0x100042
+    original = _midl_name_fixture()
+    normalized = normalize_name_hashes(original, hash_name)
+    assert observed == [(3, 1033, "SystemTraceSessionLib"), (3, 1033, "ISystemTraceSession")]
+    assert len(normalized) == len(original)
+    assert normalized[:324] == original[:324]
+    assert struct.unpack_from("<I", normalized, 324 + 0x42 * 4)[0] == 36
+    assert struct.unpack_from("<I", normalized, 836 + 36 + 4)[0] == 0
+    assert struct.unpack_from("<H", normalized, 836 + 10)[0] == 0x42
+    assert normalized[848:872] == original[848:872]
+    assert normalize_name_hashes(normalized, hash_name) == normalized
+
+
+@pytest.mark.parametrize("failure", ["signature", "directory", "overlap", "truncated", "count", "unicode", "system"])
+def test_midl_normalizer_rejects_unsupported_or_malformed_tables(failure):
+    import struct
+
+    from native.toolchain.midl_locale import normalize_name_hashes
+
+    contents = bytearray(_midl_name_fixture())
+    if failure == "signature":
+        contents[0] = 0
+    elif failure == "directory":
+        struct.pack_into("<I", contents, 0x20, 0xffffffff)
+    elif failure == "overlap":
+        struct.pack_into("<I", contents, 0x54 + 7 * 16, 400)
+    elif failure == "truncated":
+        contents.pop()
+    elif failure == "count":
+        struct.pack_into("<I", contents, 0x30, 20)
+    elif failure == "unicode":
+        contents[848] = 255
+    else:
+        struct.pack_into("<I", contents, 0x14, 68)
+    with pytest.raises(ValueError):
+        normalize_name_hashes(bytes(contents), lambda *args: 42)
+
+
+def test_midl_patch_embeds_the_tested_normalizer_without_drift():
+    from scripts.native_build import ROOT
+
+    patch = (ROOT / "native/patches/0002-midl-locale-name-hashes.patch").read_text(encoding="utf-8-sig")
+    section = patch.split("+++ b/build/toolchain/win/midl_locale.py\n", 1)[1]
+    embedded = "\n".join(line[1:] for line in section.splitlines() if line.startswith("+")) + "\n"
+    assert embedded == (ROOT / "native/toolchain/midl_locale.py").read_text(encoding="utf-8-sig")
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Actual Windows Automation hash API")
+def test_midl_normalization_uses_actual_windows_hashes_for_the_declared_locale():
+    import ctypes
+    import struct
+
+    from native.toolchain.midl_locale import normalize_windows_name_hashes
+
+    function = ctypes.WinDLL("oleaut32").LHashValOfNameSys
+    function.argtypes = [ctypes.c_int, ctypes.c_uint32, ctypes.c_wchar_p]
+    function.restype = ctypes.c_uint32
+    english = function(3, 1033, "SystemTraceSessionLib") & 0xffff
+    russian = function(3, 1049, "SystemTraceSessionLib") & 0xffff
+    assert english != russian
+    for locale, expected in ((1033, english), (1049, russian)):
+        contents = bytearray(_midl_name_fixture())
+        struct.pack_into("<I", contents, 0x0c, locale)
+        normalized = normalize_windows_name_hashes(bytes(contents))
+        assert struct.unpack_from("<H", normalized, 846)[0] == expected
+        assert normalize_windows_name_hashes(normalized) == normalized
+
+
+def test_native_patch_validation_rejects_extra_edits_in_known_files_without_changing_real_index(tmp_path, monkeypatch):
+    import os
+    import subprocess
+
+    from scripts import native_build
+
+    source = tmp_path / "source"
+    source.mkdir()
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+    def git(*args):
+        return subprocess.check_output(["git", "-c", "core.autocrlf=false", *args], cwd=source, env=env)
+    git("init", "--quiet")
+    original = "first\n" + "unchanged\n" * 20
+    file = source / "profile.cc"
+    file.write_text(original, encoding="utf-8", newline="\n")
+    git("add", ".")
+    git("-c", "user.name=Native fixture", "-c", "user.email=fixture@localhost", "commit", "--quiet", "-m", "baseline")
+    expected_index = git("ls-files", "--stage")
+    file.write_text(original.replace("first", "native"), encoding="utf-8", newline="\n")
+    public = tmp_path / "public"
+    patches = public / "native/patches"
+    patches.mkdir(parents=True)
+    (patches / "0001-native-hardware-privacy-limits.patch").write_bytes(git("diff"))
+    (patches / "0002-midl-locale-name-hashes.patch").write_text("", encoding="utf-8")
+    monkeypatch.setattr(native_build, "ROOT", public)
+    assert len(native_build.source_patches(source, env)) == 1
+    file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")
+    with pytest.raises(subprocess.CalledProcessError):
+        native_build.source_patches(source, env)
+    assert git("ls-files", "--stage") == expected_index
+    assert not list(tmp_path.glob("native-patch-index-*"))

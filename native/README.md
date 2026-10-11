@@ -139,13 +139,41 @@ After source sync finishes successfully, apply it explicitly before building:
 ```powershell
 git -C D:\CamouFlowNative\chromium\src apply --check "$PWD\native\patches\0001-native-hardware-privacy-limits.patch"
 git -C D:\CamouFlowNative\chromium\src apply "$PWD\native\patches\0001-native-hardware-privacy-limits.patch"
+git -C D:\CamouFlowNative\chromium\src apply --check "$PWD\native\patches\0002-midl-locale-name-hashes.patch"
+git -C D:\CamouFlowNative\chromium\src apply "$PWD\native\patches\0002-midl-locale-name-hashes.patch"
 ```
 
-The build accepts either a clean upstream baseline or exactly this checked
-patch; unrelated source modifications are rejected. Build receipts record the
-applied patch checksum and explicitly leave runtime verification false. The
+The build accepts a clean upstream baseline or exact combinations of these
+checked patches. A disposable Git index contains only their original files and
+the expected patched versions; actual files must match it completely. Extra edits
+inside a recognized file are also rejected, not merely edits to unknown files.
+The real checkout index is not modified. Build receipts record all applied
+patch checksums and explicitly leave runtime verification false. The
 source-sync command requires clean source, so do not rerun it over an applied
 patch. Preserve local changes rather than resetting the checkout to retry sync.
+
+### Windows MIDL locale reproducibility
+
+The initial full Windows build stopped after 4,402 completed actions because the
+generated tracing-service type library differed from its pinned baseline by ten
+bytes. Its declared locale was 1033, but the library-name hash used the host's
+Russian locale (1049); the associated hash-chain entries also differed. Using the
+exact 26100.7705 MIDL tools reproduced the mismatch, so changing the SDK alone
+was not a fix. No Windows locale or global system configuration was changed.
+
+`0002-midl-locale-name-hashes.patch` computes name hashes with the type library's
+stored locale and target system using Microsoft's
+[`LHashValOfNameSys`](https://learn.microsoft.com/en-us/windows/win32/api/oleauto/nf-oleauto-lhashvalofnamesys),
+then rebuilds its name-hash chains before the existing upstream comparison.
+It does not replace GUIDs, methods, interface definitions or baseline artifacts,
+and does not bypass comparison failures. The helper validates bounds and counts;
+unsupported layouts/non-ASCII names fail explicitly. Its tested source is
+`native/toolchain/midl_locale.py`; the Chromium patch embeds the identical module.
+
+The actual failed command passed after applying this patch, and its complete
+generated TLB matched the upstream baseline. Normalizing the baseline itself
+was idempotent. The full own-fork compilation was then resumed; that resumed
+process is not yet proof of a complete Chromium build or patched runtime.
 
 Run the hardware binding gate separately against the built executable:
 

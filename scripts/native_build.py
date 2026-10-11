@@ -139,13 +139,31 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
     changed.update(run(["git", "ls-files", "--others", "--exclude-standard"], source, env, capture=True).splitlines())
     if not changed:
         return []
-    patch = ROOT / "native/patches/0001-native-hardware-privacy-limits.patch"
-    contents = patch.read_text(encoding="utf-8-sig")
-    expected = {line.split(" b/", 1)[1] for line in contents.splitlines() if line.startswith("diff --git ")}
+    patches = []
+    expected = set()
+    for name in ("0001-native-hardware-privacy-limits.patch", "0002-midl-locale-name-hashes.patch"):
+        patch = ROOT / "native/patches" / name
+        contents = patch.read_text(encoding="utf-8-sig")
+        files = {line.split(" b/", 1)[1] for line in contents.splitlines() if line.startswith("diff --git ")}
+        if changed.intersection(files):
+            expected.update(files)
+            patches.append(patch)
     if changed != expected:
         raise ValueError("Unrecognized Chromium source changes; refusing an unrepeatable build")
-    run(["git", "apply", "--reverse", "--check", str(patch)], source, env)
-    return [{"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]
+    with tempfile.TemporaryDirectory(prefix="native-patch-index-", dir=source.parent) as owned:
+        index_env = {**env, "GIT_INDEX_FILE": str(Path(owned) / "index")}
+        run(["git", "read-tree", "--empty"], source, index_env)
+        baseline = run(["git", "ls-tree", "HEAD", "--", *sorted(expected)], source, index_env, capture=True)
+        for entry in baseline.splitlines():
+            metadata, path = entry.split("\t", 1)
+            mode, kind, blob = metadata.split()
+            if kind != "blob":
+                raise ValueError("Native patches must only change ordinary source files")
+            run(["git", "update-index", "--add", "--cacheinfo", mode + "," + blob + "," + path], source, index_env)
+        for patch in patches:
+            run(["git", "apply", "--cached", str(patch)], source, index_env)
+        run(["git", "diff", "--exit-code", "--", *sorted(expected)], source, index_env)
+    return [{"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()} for patch in patches]
 
 
 def stage_identity(chromium: Path, stage: str) -> dict:

@@ -298,9 +298,9 @@ flags from the central validated configuration. Their behavior was inspected in
 the pinned Chromium switch/preference source and tested in the actual runtime.
 The Windows gate passed with both default English/UTC and non-default German/
 Europe-Berlin configuration; document/worker values agreed. The latest report
-has eleven checks and retains native patch capabilities as empty. This is native
+had eleven checks and retained native patch capabilities as empty. This is native
 locale configuration and factual diagnostics, **not an own fingerprint-patched
-Chromium build**, and needs fresh matching Linux/macOS reports.
+Chromium build**. Matching reports are recorded below.
 
 Matching reports from [run 38098705799](https://github.com/Tort1k558/Camouflow/actions/runs/38098705799)
 at `a1506fd` have now been downloaded and inspected: all eleven checks passed on
@@ -314,8 +314,9 @@ one downloader held its cache lock beyond the other jobs' 30-second wait budget.
 The build helper now prepares the pinned gsutil once before parallel work and
 uses the already installed pinned vpython for helper commands, rather than
 rebootstrapping all LUCI CLI packages per invocation. Trace-data downloads were
-observed progressing after that correction. Full dependency sync and actual
-compilation remain incomplete. Customer/global Git configuration is not changed.
+observed progressing after that correction. Dependency sync and hooks subsequently
+completed; own-source compilation is now in progress. Customer/global Git
+configuration is not changed.
 
 The docs workflow at that revision initially failed inside Retype with negative
 capacity errors. An unmodified, debug-enabled retry of the same run/revision
@@ -325,10 +326,29 @@ not a diagnosed Retype fix.
 The first Native C++ policy implementation is now public in `native/core/`, with
 standalone compilation/tests and a three-platform CI job. Its initial Windows
 test passed under MSVC with warnings-as-errors. This is a **compiled policy
-prototype**, not yet a Chromium patch or an exposed runtime capability. Actual
-document/worker bindings and own-browser compilation remain required. See the
+prototype**, not an exposed runtime capability. Public Chromium C++ bindings now
+exist in the pinned checkout, but complete own-browser compilation and actual
+patched API checks remain required. See the
 Native source-workspace README for its explicit privacy-ceiling semantics and
 verification command.
+
+## Latest verified status
+
+Downloaded reports from [run 38105667238](https://github.com/Tort1k558/Camouflow/actions/runs/38105667238)
+at `47ea812` passed all thirteen source-runtime checks on Windows x64, Linux x64
+and macOS ARM64, including profile backup/restore and disposable headless binary
+health. All report Chromium 148.0.7778.96 and `fingerprint_patched: false`.
+QML tests now also exercise Native and its explicit/managed binary selection on
+all three platforms; both existing packaged engines passed in the same workflow.
+These are upstream bootstrap checks, not three-platform own-fork build proof.
+
+The owned Windows Chromium build reached 4,402 completed actions, then failed
+its upstream MIDL output comparison because name hashes depended on the Russian
+host locale instead of the locale stored in the type library. Exact-version SDK
+tools reproduced the failure. The public locale-normalization patch preserves
+the full comparison and made the original failed command pass against unchanged
+baseline artifacts. Full compilation has resumed; native fingerprint controls
+remain disabled until the own binary passes the dedicated hardware binding gate.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).
