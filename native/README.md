@@ -83,6 +83,21 @@ proved reproducibility, payload hashes, existing-store installation and rejectio
 of invalid reports, changed executables/DLLs/arguments, missing notices and
 mid-archive changes. These fixtures are not a compiled own-fork release.
 
+Managed `chromium-fork` releases require this complete file checksum manifest.
+Installation, inspection, selection and rollback verify the entire payload,
+not just `chrome.exe`: altered DLLs/resources, missing or unexpected files,
+links, unsafe paths and manifest collisions fail before browser startup or
+active-release replacement. Legacy `upstream-bootstrap` manifests retain their
+existing contract; if they include a file manifest, it is also enforced.
+Selection/rollback tests confirmed that a modified library neither launches a
+browser nor changes the active-release record. Hashes are checked against the
+installed trusted manifest, not a remote signature or protection against an
+attacker who can rewrite both payload and manifest. Large-bundle verification
+cost still needs measurement on the finished own binary; no unchecked hash cache
+is used. Compatibility checks resolve/hash a captured settings snapshot inside
+their existing worker; browser startup offloads resolution with `asyncio.to_thread`
+so whole-bundle reads do not block the GUI or other event-loop tasks.
+
 ```powershell
 & $python scripts/package_native_windows.py --build-output D:\CamouFlowNative\chromium\src\out\CamouFlowNative --staged D:\CamouFlowNative\chromium\src\out\CamouFlowNative\gen\chrome\installer\mini_installer\mini_installer\temp_installer_archive\Chrome-bin --runtime-report D:\CamouFlowNative\native-runtime-fork.json --archive D:\CamouFlowNative\releases\camouflow-native-windows.tar.gz
 ```

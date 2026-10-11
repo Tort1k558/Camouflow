@@ -66,6 +66,10 @@ try:
     assert 'fingerprint_noise' not in db.db_get_native_defaults()
     ui.browser_settings.reload()
     ui.browser_settings.checkCompatibility()
+    deadline = time.monotonic() + 3
+    while ui.browser_settings.compatibilityRunning and time.monotonic() < deadline:
+        pump(.05)
+    assert not ui.browser_settings.compatibilityRunning
     assert ui.browser_settings.compatibilityReport.startswith('Blocked:')
     page.setProperty('tab', 'Maintenance')
     pump()

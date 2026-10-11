@@ -496,9 +496,11 @@ class BrowserInterface:
             raise RuntimeError("Previous Native runtime has not finished closing")
         configuration = NativeConfiguration.from_settings(self._browser_settings)
         try:
-            executable = resolve_native_executable(self._browser_settings)
+            executable = await asyncio.to_thread(resolve_native_executable, dict(self._browser_settings))
         except ValueError as error:
             raise RuntimeError(str(error)) from error
+        if self._native_runtime is not None and self._native_runtime.has_resources:
+            raise RuntimeError("Previous Native runtime has not finished closing")
         headless = self._browser_settings.get("headless", False)
         if not isinstance(headless, bool):
             raise ValueError("Native headless setting must be a boolean")

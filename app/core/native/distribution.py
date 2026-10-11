@@ -141,7 +141,43 @@ class NativeBinaryStore:
             raise ValueError("Native release executable is missing or outside the release")
         if sha256_file(executable) != checked_digest(metadata.get("executable_sha256")):
             raise ValueError("Native release executable checksum mismatch")
+        if metadata["build_kind"] == "chromium-fork" or "files_sha256" in metadata:
+            self._verify_payload_files(release, metadata, relative)
         return {**metadata, "release_sha256": digest, "executable_path": str(executable)}
+
+    def _verify_payload_files(self, release: Path, metadata: dict, executable: PurePosixPath) -> None:
+        files = metadata.get("files_sha256")
+        if not isinstance(files, dict) or not files or len(files) >= MAX_FILES:
+            raise ValueError("Native fork release requires a complete file checksum manifest")
+        expected = set()
+        for name, checksum in files.items():
+            relative = checked_archive_name(name)
+            if relative.as_posix() != name or name.casefold() in expected or name.casefold() == "native-release.json":
+                raise ValueError("Unsafe or colliding Native file checksum manifest")
+            checked_digest(checksum)
+            expected.add(name.casefold())
+        if files.get(executable.as_posix()) != metadata["executable_sha256"]:
+            raise ValueError("Native file manifest must include the matching executable checksum")
+        actual = set()
+        total = 0
+        for path in release.rglob("*"):
+            if path != path.resolve():
+                raise ValueError("Native checksummed payload must not contain links")
+            if path.is_dir():
+                continue
+            name = path.relative_to(release).as_posix()
+            if name == "native-release.json":
+                continue
+            if not path.is_file() or name not in files or name.casefold() in actual:
+                raise ValueError("Unexpected Native release payload file: " + name)
+            actual.add(name.casefold())
+            total += path.stat().st_size
+            if len(actual) >= MAX_FILES or total > MAX_UNPACKED_BYTES:
+                raise ValueError("Native release payload exceeds installation limits")
+            if sha256_file(path) != files[name]:
+                raise ValueError("Native release payload checksum mismatch: " + name)
+        if actual != expected:
+            raise ValueError("Native release payload is missing checksummed files")
 
     def _current(self) -> dict:
         path = self._child("current.json")

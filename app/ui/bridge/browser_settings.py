@@ -237,7 +237,7 @@ class BrowserSettingsBridge(QObject):
             try:
                 configuration = NativeConfiguration.from_settings(self._native)
                 signature = self._native_settings_signature()
-                executable = resolve_native_executable(self._native)
+                settings = dict(self._native)
             except (ValueError, OSError) as error:
                 self._compatibility_report = f"Blocked: {error}"
                 self.changed.emit()
@@ -249,6 +249,7 @@ class BrowserSettingsBridge(QObject):
 
             def worker():
                 try:
+                    executable = resolve_native_executable(settings)
                     observations = asyncio.run(probe_native_profile(executable, configuration, OUTPUTS_DIR / "native-health"))
                     report = f"Headless startup and teardown verified; Chromium {observations['browser_version']}. Fingerprint patches not verified. " + " ".join(configuration.limitations())
                     for scope in ("document", "worker"):

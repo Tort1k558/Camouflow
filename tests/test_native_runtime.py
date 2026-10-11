@@ -7,6 +7,45 @@ from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime, NativeRuntimeError
 
 
+def test_native_adapter_rechecks_resource_ownership_after_async_binary_resolution(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.core.browser_interface import BrowserInterface
+    from app.core.native import distribution
+
+    browser = BrowserInterface.__new__(BrowserInterface)
+    browser._native_runtime = None
+    browser._browser_settings = {}
+    owner = SimpleNamespace(has_resources=True)
+    def resolve(settings):
+        browser._native_runtime = owner
+        return Path(__file__)
+    monkeypatch.setattr(distribution, "resolve_native_executable", resolve)
+    with pytest.raises(RuntimeError, match="Previous Native runtime"):
+        asyncio.run(browser._start_native())
+    assert browser._native_runtime is owner
+
+
+def test_native_adapter_resolves_and_hashes_managed_files_off_the_event_loop(monkeypatch):
+    import threading
+
+    from app.core.browser_interface import BrowserInterface
+    from app.core.native import distribution
+
+    caller = threading.get_ident()
+    browser = BrowserInterface.__new__(BrowserInterface)
+    browser._native_runtime = None
+    browser._browser_settings = {"binary_source": "managed"}
+    def resolve(settings):
+        assert threading.get_ident() != caller
+        assert settings == browser._browser_settings and settings is not browser._browser_settings
+        raise ValueError("owned fixture stops before launch")
+    monkeypatch.setattr(distribution, "resolve_native_executable", resolve)
+    with pytest.raises(RuntimeError, match="owned fixture stops before launch"):
+        asyncio.run(browser._start_native())
+    assert browser._native_runtime is None
+
+
 @pytest.mark.parametrize("values", [
     {"environment": "ios"}, {"environment": "android"}, {"width": True}, {"height": 0},
     {"device_scale_factor": float("nan")}, {"device_scale_factor": True},
@@ -519,6 +558,31 @@ def test_native_health_ui_reports_actual_canvas_audio_and_anonymous_media_counts
         assert "Media devices: unavailable (Devices blocked)" in report
 
 
+def test_native_compatibility_defers_hashing_to_worker_and_snapshots_settings(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from app.core.native import distribution
+    from app.ui.bridge import browser_settings
+
+    pending = []
+    resolver = Mock(side_effect=ValueError("owned verification fixture"))
+    monkeypatch.setattr(distribution, "resolve_native_executable", resolver)
+    monkeypatch.setattr(browser_settings.threading, "Thread", lambda **kwargs: SimpleNamespace(start=lambda: pending.append(kwargs["target"])))
+    emit = Mock()
+    bridge = SimpleNamespace(_engine="native", _native={"binary_source": "managed", "binary_store": "original"},
+        _native_probe_running=False, _native_settings_signature=lambda: "owned", changed=SimpleNamespace(emit=Mock()),
+        _emit_message=Mock(), nativeCompatibilityChecked=SimpleNamespace(emit=emit))
+    browser_settings.BrowserSettingsBridge.checkCompatibility(bridge)
+    resolver.assert_not_called()
+    assert bridge._native_probe_running and len(pending) == 1
+    bridge._native["binary_store"] = "changed"
+    pending[0]()
+    resolver.assert_called_once_with({"binary_source": "managed", "binary_store": "original"})
+    assert emit.call_args.args[0] == "owned"
+    assert "owned verification fixture" in emit.call_args.args[1]
+
+
 def _native_release_archive(tmp_path, version="0.1.0-dev", metadata_changes=None, extra_entries=()):
     import hashlib
     import io
@@ -613,6 +677,120 @@ def test_native_binary_store_preserves_unrelated_directories_and_detects_local_b
     Path(installed["executable_path"]).write_bytes(b"changed binary")
     with pytest.raises(ValueError, match="executable checksum mismatch"):
         store.inspect(digest)
+
+
+def _native_checksummed_release_archive(tmp_path, manifest_changes=None):
+    import hashlib
+
+    binary = b"owned synthetic native binary"
+    library = b"owned synthetic native library"
+    files = {"owned-browser": hashlib.sha256(binary).hexdigest(),
+             "lib/native.dll": hashlib.sha256(library).hexdigest()}
+    return _native_release_archive(tmp_path, metadata_changes={
+        "build_kind": "chromium-fork", "files_sha256": files,
+        **(manifest_changes or {})}, extra_entries=[("lib/native.dll", library)])
+
+
+@pytest.mark.parametrize("mutation", ["changed_library", "missing_library", "extra_file", "linked_file"])
+def test_native_fork_release_inspection_checks_all_payload_files_not_only_executable(tmp_path, mutation):
+    from app.core.native.distribution import NativeBinaryStore
+
+    store = NativeBinaryStore(tmp_path / "native-binaries")
+    archive, digest = _native_checksummed_release_archive(tmp_path)
+    installed = store.install_archive(archive, digest)
+    assert installed == store.inspect(digest)
+    payload = Path(installed["executable_path"]).parent
+    library = payload / "lib/native.dll"
+    if mutation == "changed_library":
+        library.write_bytes(b"changed library")
+    elif mutation == "missing_library":
+        library.unlink()
+    elif mutation == "extra_file":
+        (payload / "unexpected.dll").write_bytes(b"unexpected library")
+    else:
+        outside = tmp_path / "outside.dll"
+        outside.write_bytes(library.read_bytes())
+        library.unlink()
+        try:
+            library.symlink_to(outside)
+        except OSError:
+            pytest.skip("Creating symlinks requires Windows Developer Mode or privileges")
+    with pytest.raises(ValueError):
+        store.inspect(digest)
+
+
+@pytest.mark.parametrize("action", ["activate", "resolve", "rollback"])
+def test_changed_native_payload_blocks_selection_before_launch_and_preserves_active_release(tmp_path, monkeypatch, action):
+    import asyncio
+    import json
+
+    from app.core.native import distribution
+
+    launches = []
+    async def probe(executable, configuration, work_dir):
+        launches.append(executable)
+        return "148.0.7778.96"
+    monkeypatch.setattr(distribution, "probe_native_binary", probe)
+    store = distribution.NativeBinaryStore(tmp_path / "native-binaries")
+    archive, digest = _native_checksummed_release_archive(tmp_path)
+    installed = store.install_archive(archive, digest)
+    asyncio.run(store.activate(digest))
+    if action == "rollback":
+        archive, next_digest = _native_checksummed_release_archive(tmp_path, {"native_version": "0.2.0-dev"})
+        store.install_archive(archive, next_digest)
+        asyncio.run(store.activate(next_digest))
+    expected_launches = len(launches)
+    current = (store.root / "current.json").read_bytes()
+    (Path(installed["executable_path"]).parent / "lib/native.dll").write_bytes(b"changed library")
+    with pytest.raises(ValueError, match="payload checksum mismatch"):
+        if action == "activate":
+            asyncio.run(store.activate(digest))
+        elif action == "resolve":
+            distribution.resolve_native_executable({"binary_source": "managed", "binary_store": str(store.root)})
+        else:
+            asyncio.run(store.rollback())
+    assert len(launches) == expected_launches
+    assert (store.root / "current.json").read_bytes() == current
+    if action == "rollback":
+        assert json.loads(current)["active"] == next_digest
+        assert store.resolve_active()["release_sha256"] == next_digest
+
+
+@pytest.mark.parametrize("mutation", ["missing_manifest", "empty_manifest", "wrong_library_hash",
+                                     "omitted_library", "extra_manifest_file", "metadata_self_hash",
+                                     "noncanonical_path", "case_collision", "wrong_executable_hash"])
+def test_native_fork_file_manifest_validation_precedes_release_publication(tmp_path, mutation):
+    import hashlib
+
+    from app.core.native.distribution import NativeBinaryStore
+
+    checksum = hashlib.sha256(b"owned synthetic native binary").hexdigest()
+    files = {"owned-browser": checksum, "lib/native.dll": hashlib.sha256(b"owned synthetic native library").hexdigest()}
+    if mutation == "missing_manifest":
+        archive, digest = _native_release_archive(tmp_path, metadata_changes={"build_kind": "chromium-fork"})
+    else:
+        if mutation == "empty_manifest":
+            files = {}
+        elif mutation == "wrong_library_hash":
+            files["lib/native.dll"] = "0" * 64
+        elif mutation == "omitted_library":
+            files.pop("lib/native.dll")
+        elif mutation == "extra_manifest_file":
+            files["missing.dll"] = "a" * 64
+        elif mutation == "metadata_self_hash":
+            files["native-release.json"] = "a" * 64
+        elif mutation == "noncanonical_path":
+            files["lib//native.dll"] = files.pop("lib/native.dll")
+        elif mutation == "case_collision":
+            files["OWNED-BROWSER"] = checksum
+        else:
+            files["owned-browser"] = "0" * 64
+        archive, digest = _native_checksummed_release_archive(tmp_path, {"files_sha256": files})
+    store = NativeBinaryStore(tmp_path / "native-binaries")
+    with pytest.raises(ValueError):
+        store.install_archive(archive, digest)
+    assert not (store.root / "releases" / digest).exists()
+    assert not list(store.root.glob("native-install-*"))
 
 
 def test_native_binary_store_rejects_case_collisions_and_extraction_limits(tmp_path, monkeypatch):
