@@ -16,7 +16,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
-from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.storage.db import (
     CAMOUFOX_DEFAULTS,
@@ -77,6 +77,7 @@ class BrowserSettingsBridge(QObject):
     engineUpdateChecked = pyqtSignal(str)
     engineUpdated = pyqtSignal(bool, str)
     nativeCompatibilityChecked = pyqtSignal(str, str)
+    nativeReleaseCompleted = pyqtSignal(str, str)
 
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
@@ -89,7 +90,11 @@ class BrowserSettingsBridge(QObject):
         self._latest_engine_version = ""
         self._engine_update_running = False
         self._native_probe_running = False
+        self._native_release_running = False
+        self._native_release_report = "No local release operation performed"
+        self._native_release_generation = 0
         self.nativeCompatibilityChecked.connect(self._apply_native_compatibility)
+        self.nativeReleaseCompleted.connect(self._apply_native_release)
         self.engineUpdateChecked.connect(self._apply_engine_update_check)
         self.engineUpdated.connect(self._apply_engine_update)
         if app_state is not None:
@@ -119,6 +124,77 @@ class BrowserSettingsBridge(QObject):
     @pyqtProperty(float, notify=changed)
     def nativeDeviceScaleFactor(self) -> float:  # noqa: N802
         return float(self._native.get("device_scale_factor", 1.0))
+
+    @pyqtProperty(bool, notify=changed)
+    def nativeReleaseRunning(self) -> bool:  # noqa: N802
+        return self._native_release_running
+
+    @pyqtProperty(str, notify=changed)
+    def nativeReleaseReport(self) -> str:  # noqa: N802
+        return self._native_release_report
+
+    @pyqtSlot(str, str)
+    def installNativeRelease(self, archive: str, checksum: str) -> None:  # noqa: N802
+        self._run_native_release("install", archive, checksum)
+
+    @pyqtSlot()
+    def rollbackNativeRelease(self) -> None:  # noqa: N802
+        self._run_native_release("rollback")
+
+    def _run_native_release(self, action: str, archive: str = "", checksum: str = "") -> None:
+        from app.core.native.distribution import NativeBinaryStore, checked_digest
+
+        if self._engine != "native" or self._native_release_running:
+            return
+        signature = self._native_settings_signature()
+        try:
+            if self._native.get("binary_source") != "managed":
+                raise ValueError("Select Managed release before managing Native binaries")
+            store = NativeBinaryStore(Path(self.nativeBinaryStore))
+            archive_path = None
+            if action == "install":
+                archive_path = Path(QUrl(archive).toLocalFile() if archive.startswith("file:") else archive)
+                if not archive_path.is_absolute() or not archive_path.is_file():
+                    raise ValueError("Select an existing local Native bundle")
+                checksum = checked_digest(checksum.strip())
+        except (ValueError, OSError) as error:
+            self._apply_native_release(signature, f"Blocked: {error}")
+            return
+        self._native_release_running = True
+        self._native_release_report = "Verifying local Native release and headless startup..."
+        self.changed.emit()
+
+        def worker():
+            try:
+                if action == "install":
+                    release = store.install_archive(archive_path, checksum)
+                    release = asyncio.run(store.activate(release["release_sha256"]))
+                else:
+                    release = asyncio.run(store.rollback())
+                report = (f"Activated Native {release['native_version']}; Chromium {release['chromium_version']} "
+                          f"({release['build_kind']}) in {store.root}. Fingerprint patches not verified.")
+            except Exception as error:
+                report = f"Blocked: Native release {action} failed in {store.root} ({type(error).__name__}): {error}"
+            self.nativeReleaseCompleted.emit(signature, report)
+
+        try:
+            threading.Thread(target=worker, daemon=False, name="native-release").start()
+        except RuntimeError as error:
+            self._apply_native_release(signature, f"Blocked: Cannot start Native release operation: {error}")
+
+    @pyqtSlot(str, str)
+    def _apply_native_release(self, signature: str, report: str) -> None:
+        self._native_release_running = False
+        current = signature == self._native_settings_signature()
+        if not current:
+            report += " Settings changed during operation; it used the previously selected store."
+        if report.startswith("Activated Native "):
+            self._native_release_generation = getattr(self, "_native_release_generation", 0) + 1
+            if current and self._engine == "native":
+                self._compatibility_report = "Native release changed; run compatibility check again"
+        self._native_release_report = report
+        self.changed.emit()
+        self._emit_message(report)
 
     @pyqtSlot(str)
     def setNativeEnvironment(self, environment: str) -> None:  # noqa: N802
@@ -205,14 +281,15 @@ class BrowserSettingsBridge(QObject):
         return self._engine == "native" and self._native_probe_running
 
     def _native_settings_signature(self) -> str:
-        return hashlib.sha256(json.dumps(self._native, sort_keys=True).encode("utf-8")).hexdigest()
+        state = {"settings": self._native, "release_generation": getattr(self, "_native_release_generation", 0)}
+        return hashlib.sha256(json.dumps(state, sort_keys=True).encode("utf-8")).hexdigest()
 
     @pyqtSlot(str, str)
     def _apply_native_compatibility(self, signature: str, report: str) -> None:
         self._native_probe_running = False
         if self._engine == "native":
             self._compatibility_report = (report if signature == self._native_settings_signature()
-                                          else "Native settings changed during check; run it again")
+                                          else "Native settings or release changed during check; run it again")
             self._emit_message(self._compatibility_report)
         self.changed.emit()
 

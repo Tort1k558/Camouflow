@@ -353,7 +353,10 @@ wrong-case switch values must fail with the specific native CHECK diagnostic,
 not an unrelated launch error. No public STUN server,
 camera/microphone access or host IP addresses are collected. The upstream
 negative control passed its baseline and correctly failed the protected probe
-on Windows; matching Linux/macOS controls and all own-fork results are pending.
+on Windows. Matching Windows x64, Linux x64 and macOS ARM64 CI artifacts at
+`8fe6bbb` each observed five STUN requests in both the baseline and unpatched
+protected launch and rejected that ineffective policy. All own-fork WebRTC
+results remain pending; a passing negative control is not a privacy capability.
 
 The initial Linux source fetch terminated with Git exit 128 (`curl 56`, GnuTLS
 packet decode error and early EOF), not a successful checkout. A new fetch uses

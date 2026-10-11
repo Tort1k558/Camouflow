@@ -453,7 +453,32 @@ policy verification, not evidence of media-device emulation or WebRTC leak preve
 
 Two complete local Windows runs passed all seventeen checks on the pinned
 upstream bootstrap binary; the report includes measured permission states.
-Matching Linux/macOS permission-gate results remain pending.
+Matching reports at `8fe6bbb` passed all seventeen checks on Windows x64,
+Linux x64 and macOS ARM64, including these exact permission states. These are
+still pinned upstream SDK binaries, not independently built Chromium forks.
+
+## Local release management in the GUI
+
+Native Engine health provides a local `.tar.gz` picker, trusted SHA-256 input,
+install-and-activate and rollback actions. Select Managed release and its store
+explicitly in Native configuration; these operations do not silently change engine settings
+or migrate profiles. There is no authenticated online release catalog yet.
+
+Archive verification/extraction and real headless health checks run on an owned,
+non-daemon worker. Concurrent release actions are disabled. Activation remains
+atomic and old immutable versions remain available; failed health checks retain
+the existing active pointer. Successful GUI activation invalidates earlier
+compatibility results, including a check that was already in flight. If settings
+change during an operation, its completion identifies the previously selected
+store rather than adopting the new settings.
+
+Two local Windows GUI runs used three complete upstream browser bundles: two
+versions installed and passed real headless activation; a third deliberately
+declared the wrong Chromium version and failed without changing the exact
+active-pointer bytes; rollback selected the first release and retained all
+installed versions. Owned health profiles were cleaned up. The second run also
+verified compatibility-result invalidation and rendered the green Windows UI.
+These are bootstrap-package checks, not own-fork builds or signed publisher releases.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).

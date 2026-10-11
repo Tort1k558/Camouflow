@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import theme 1.0
 import "../components"
 
@@ -12,6 +13,14 @@ Item {
     onTabChanged: settingsScroll.contentY = 0
     readonly property bool isCamoufox: browserSettingsBridge.engine === "camoufox"
     readonly property bool isNative: browserSettingsBridge.engine === "native"
+
+    FileDialog {
+        id: nativeBundleDialog
+        title: "Select a trusted Native release bundle"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Native bundles (*.tar.gz)"]
+        onAccepted: nativeBundleArchive.text = selectedFile.toString()
+    }
 
     component ToggleRow: Rectangle {
         id: tr
@@ -203,9 +212,29 @@ Item {
                     Flow {
                         width: parent.width; spacing: 10
                         PrimaryButton { text: browserSettingsBridge.compatibilityRunning ? "Checking…" : "Check compatibility"; icon: "check"; secondary: true; enabled: !browserSettingsBridge.compatibilityRunning; onClicked: browserSettingsBridge.checkCompatibility() }
-                        PrimaryButton { text: "Check updates"; icon: "refresh"; secondary: true; onClicked: browserSettingsBridge.checkEngineUpdate() }
-                        PrimaryButton { text: "Update engine"; icon: "save"; enabled: browserSettingsBridge.canUpdateEngine; onClicked: browserSettingsBridge.updateEngine() }
+                        PrimaryButton { visible: !root.isNative; text: "Check updates"; icon: "refresh"; secondary: true; onClicked: browserSettingsBridge.checkEngineUpdate() }
+                        PrimaryButton { visible: !root.isNative; text: "Update engine"; icon: "save"; enabled: browserSettingsBridge.canUpdateEngine; onClicked: browserSettingsBridge.updateEngine() }
                     }
+                }
+            }
+            SettingsSection {
+                objectName: "nativeReleaseSection"
+                visible: root.isNative && root.tab === "Maintenance"
+                width: parent.width; height: nativeReleaseFields.implicitHeight + 100
+                title: "Local Native releases"; subtitle: "Verify before activation; existing versions remain available."; icon: "save"
+                Column {
+                    id: nativeReleaseFields
+                    anchors.fill: parent; spacing: 14
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Select Managed release and its store in Native configuration first. Obtain the bundle checksum from a trusted publisher; no online catalog is configured."; color: Theme.muted; font.pixelSize: 12 }
+                    FormField { id: nativeBundleArchive; objectName: "nativeBundleArchive"; width: parent.width; label: "Local bundle"; placeholder: "Absolute path or choose a .tar.gz bundle"; enabled: !browserSettingsBridge.nativeReleaseRunning }
+                    PrimaryButton { text: "Choose bundle"; secondary: true; enabled: !browserSettingsBridge.nativeReleaseRunning; onClicked: nativeBundleDialog.open() }
+                    FormField { id: nativeBundleChecksum; objectName: "nativeBundleChecksum"; width: parent.width; label: "Trusted SHA-256"; placeholder: "64 lowercase hexadecimal characters"; enabled: !browserSettingsBridge.nativeReleaseRunning }
+                    Flow {
+                        width: parent.width; spacing: 10
+                        PrimaryButton { objectName: "nativeInstallRelease"; text: browserSettingsBridge.nativeReleaseRunning ? "Verifying..." : "Install and activate"; icon: "save"; enabled: !browserSettingsBridge.nativeReleaseRunning && browserSettingsBridge.nativeBinarySource === "managed" && browserSettingsBridge.nativeBinaryStore !== "" && nativeBundleArchive.text !== "" && nativeBundleChecksum.text !== ""; onClicked: browserSettingsBridge.installNativeRelease(nativeBundleArchive.text, nativeBundleChecksum.text) }
+                        PrimaryButton { objectName: "nativeRollbackRelease"; text: "Rollback"; secondary: true; enabled: !browserSettingsBridge.nativeReleaseRunning && browserSettingsBridge.nativeBinarySource === "managed" && browserSettingsBridge.nativeBinaryStore !== ""; onClicked: browserSettingsBridge.rollbackNativeRelease() }
+                    }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: browserSettingsBridge.nativeReleaseReport; textFormat: Text.PlainText; color: text.indexOf("Blocked") === 0 ? Theme.danger : Theme.muted; font.pixelSize: 12 }
                 }
             }
             GridLayout {

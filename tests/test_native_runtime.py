@@ -339,7 +339,7 @@ def test_native_binary_health_ui_rejects_stale_or_other_engine_results(engine, c
     BrowserSettingsBridge._apply_native_compatibility(bridge, signature, "verified owned startup")
     assert not bridge._native_probe_running
     assert bridge._compatibility_report == ("previous" if engine != "native" else
-        "Native settings changed during check; run it again" if changed else "verified owned startup")
+        "Native settings or release changed during check; run it again" if changed else "verified owned startup")
 
 
 def _native_release_archive(tmp_path, version="0.1.0-dev", metadata_changes=None, extra_entries=()):
@@ -608,3 +608,116 @@ def test_native_explicit_selection_preserves_existing_absolute_executable_contra
     executable = tmp_path / "chrome.exe"
     executable.write_bytes(b"explicit")
     assert resolve_native_executable({"executable_path": str(executable)}) == executable
+
+
+def _native_release_bridge(tmp_path):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from app.ui.bridge.browser_settings import BrowserSettingsBridge
+
+    bridge = SimpleNamespace(_engine="native", _native={"binary_source": "managed", "binary_store": str(tmp_path / "store")},
+        nativeBinaryStore=str(tmp_path / "store"), _native_release_running=False, _native_release_report="previous",
+        changed=SimpleNamespace(emit=Mock()), _emit_message=Mock(), nativeReleaseCompleted=SimpleNamespace(emit=Mock()))
+    bridge._native_settings_signature = lambda: BrowserSettingsBridge._native_settings_signature(bridge)
+    bridge._apply_native_release = lambda signature, report: BrowserSettingsBridge._apply_native_release(bridge, signature, report)
+    bridge.nativeReleaseCompleted.emit.side_effect = bridge._apply_native_release
+    return bridge
+
+
+def test_native_release_activation_invalidates_inflight_compatibility_result(tmp_path):
+    from app.ui.bridge.browser_settings import BrowserSettingsBridge
+
+    bridge = _native_release_bridge(tmp_path)
+    bridge._native_probe_running = True
+    signature = bridge._native_settings_signature()
+    bridge._apply_native_release(signature, "Activated Native 0.1.0-preview")
+    assert bridge._compatibility_report == "Native release changed; run compatibility check again"
+    BrowserSettingsBridge._apply_native_compatibility(bridge, signature, "old release was verified")
+    assert not bridge._native_probe_running
+    assert bridge._compatibility_report == "Native settings or release changed during check; run it again"
+
+
+@pytest.mark.parametrize("engine,busy,source", [("camoufox", False, "managed"), ("native", True, "managed"), ("native", False, "explicit")])
+def test_native_release_ui_does_not_run_for_another_engine_busy_operation_or_explicit_source(tmp_path, monkeypatch, engine, busy, source):
+    from unittest.mock import Mock
+    from app.ui.bridge import browser_settings
+
+    bridge = _native_release_bridge(tmp_path)
+    bridge._engine, bridge._native_release_running = engine, busy
+    bridge._native["binary_source"] = source
+    thread = Mock()
+    monkeypatch.setattr(browser_settings.threading, "Thread", thread)
+    browser_settings.BrowserSettingsBridge._run_native_release(bridge, "rollback")
+    thread.assert_not_called()
+    if source == "explicit":
+        assert "Select Managed release" in bridge._native_release_report
+
+
+@pytest.mark.parametrize("checksum", ["", "unsafe", "A" * 64])
+def test_native_release_ui_rejects_bad_checksum_before_creating_store(tmp_path, checksum):
+    from app.ui.bridge.browser_settings import BrowserSettingsBridge
+
+    archive = tmp_path / "owned.tar.gz"
+    archive.write_bytes(b"invalid")
+    bridge = _native_release_bridge(tmp_path)
+    BrowserSettingsBridge._run_native_release(bridge, "install", str(archive), checksum)
+    assert "SHA-256" in bridge._native_release_report
+    assert not bridge._native_release_running and not (tmp_path / "store").exists()
+
+
+def test_native_release_ui_thread_start_failure_releases_busy_state_without_mutation(tmp_path, monkeypatch):
+    from unittest.mock import Mock
+    from app.ui.bridge import browser_settings
+
+    bridge = _native_release_bridge(tmp_path)
+    monkeypatch.setattr(browser_settings.threading, "Thread", Mock(side_effect=RuntimeError("owned thread limit")))
+    browser_settings.BrowserSettingsBridge._run_native_release(bridge, "rollback")
+    assert not bridge._native_release_running
+    assert "Cannot start Native release operation" in bridge._native_release_report
+    assert not (tmp_path / "store").exists()
+
+
+@pytest.mark.parametrize("action,failed,changed", [("install", False, False), ("rollback", False, False),
+                                                  ("install", True, False), ("install", False, True)])
+def test_native_release_ui_runs_verified_store_operations_and_preserves_changed_settings(tmp_path, monkeypatch, action, failed, changed):
+    from unittest.mock import AsyncMock, Mock
+    from types import SimpleNamespace
+    from PyQt6.QtCore import QUrl
+    from app.core.native import distribution
+    from app.ui.bridge import browser_settings
+
+    archive = tmp_path / "owned.tar.gz"
+    archive.write_bytes(b"owned")
+    bridge = _native_release_bridge(tmp_path)
+    release = {"native_version": "0.1.0-preview", "chromium_version": "148.0.7778.96",
+               "build_kind": "upstream-bootstrap", "release_sha256": "a" * 64}
+    async def activated(*args):
+        if failed:
+            raise ValueError("owned startup failed")
+        if changed:
+            bridge._native["binary_store"] = str(tmp_path / "other-store")
+        return release
+    store = SimpleNamespace(root=tmp_path / "store", install_archive=Mock(return_value=release),
+                            activate=AsyncMock(side_effect=activated), rollback=AsyncMock(side_effect=activated))
+    factory = Mock(return_value=store)
+    monkeypatch.setattr(distribution, "NativeBinaryStore", factory)
+    thread = Mock(side_effect=lambda **kwargs: SimpleNamespace(start=kwargs["target"]))
+    monkeypatch.setattr(browser_settings.threading, "Thread", thread)
+    browser_settings.BrowserSettingsBridge._run_native_release(bridge, action, QUrl.fromLocalFile(str(archive)).toString(), "a" * 64)
+    assert not bridge._native_release_running
+    assert thread.call_args.kwargs["daemon"] is False
+    assert bridge._native["binary_source"] == "managed"
+    if action == "install":
+        store.install_archive.assert_called_once_with(archive, "a" * 64)
+        store.activate.assert_awaited_once_with("a" * 64)
+    else:
+        store.install_archive.assert_not_called()
+        store.rollback.assert_awaited_once_with()
+    if failed:
+        assert "owned startup failed" in bridge._native_release_report
+        assert bridge._native_release_report.startswith("Blocked:")
+    else:
+        assert "upstream-bootstrap" in bridge._native_release_report
+    if changed:
+        assert "Settings changed" in bridge._native_release_report
+        assert bridge._native["binary_store"] == str(tmp_path / "other-store")
