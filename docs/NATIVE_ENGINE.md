@@ -125,7 +125,7 @@ Verified Windows checks:
 - HTTP proxy authentication: actual 407 challenge, credentialed proxy traffic
   and successful navigation to a fixture hostname with no direct DNS route.
 
-The updated local full suite passed **655 tests**, including negative proxy-auth
+The updated local full suite passed **657 tests**, including negative proxy-auth
 fixture checks and explicit missing-binary failure/reporting without fallback.
 
 The core adapter now dispatches `native` profiles into their own `native/`
@@ -265,6 +265,26 @@ Europe-Berlin configuration; document/worker values agreed. The latest report
 has eleven checks and retains native patch capabilities as empty. This is native
 locale configuration and factual diagnostics, **not an own fingerprint-patched
 Chromium build**, and needs fresh matching Linux/macOS reports.
+
+Matching reports from [run 38098705799](https://github.com/Tort1k558/Camouflow/actions/runs/38098705799)
+at `a1506fd` have now been downloaded and inspected: all eleven checks passed on
+Windows x64, Linux x64 and macOS ARM64, with German/Berlin configuration and no
+document/worker mismatches. The entire desktop workflow completed successfully,
+including both existing packaged engines. This verifies the tested upstream
+bootstrap runtime, **not an own Chromium fork build**.
+
+Windows source sync initially failed during cold parallel gsutil initialization:
+one downloader held its cache lock beyond the other jobs' 30-second wait budget.
+The build helper now prepares the pinned gsutil once before parallel work and
+uses the already installed pinned vpython for helper commands, rather than
+rebootstrapping all LUCI CLI packages per invocation. Trace-data downloads were
+observed progressing after that correction. Full dependency sync and actual
+compilation remain incomplete. Customer/global Git configuration is not changed.
+
+The docs workflow at that revision initially failed inside Retype with negative
+capacity errors. An unmodified, debug-enabled retry of the same run/revision
+completed build and deployment successfully; it remains an observed transient,
+not a diagnosed Retype fix.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).

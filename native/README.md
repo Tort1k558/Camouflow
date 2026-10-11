@@ -61,6 +61,15 @@ depot_tools metrics are disabled in those subprocesses: the upstream Google-IP
 discovery request has no timeout and blocked even a local help/version probe.
 With metrics disabled, that probe completed immediately.
 
+Helper calls use an owned `tool-launchers/vpython3.bat` pointing to the same
+installed vpython executable. It does not rerun the entire unrelated LUCI CLI
+package bootstrap for every gsutil invocation. Its path is prepended only for
+build subprocesses; unrelated launcher files are rejected, not overwritten.
+Before parallel Windows source sync, the pinned gsutil is initialized once via
+its own installer/checksum checks. Cold parallel initialization otherwise held
+its exclusive cache lock beyond the upstream 30-second contention budget.
+No fake CIPD/gsutil completion markers or disabled integrity checks are used.
+
 After a successful build, `src/out/CamouFlowNative/camouflow-build.json` records
 actual executable and build-input checksums. It is a measured local build
 receipt, **not** a publisher-signed release manifest or a complete distribution.

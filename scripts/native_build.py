@@ -61,6 +61,18 @@ def environment(workspace: Path) -> dict[str, str]:
         env.update({"GIT_CONFIG_COUNT": str(count + 1),
                     f"GIT_CONFIG_KEY_{count}": "http.sslBackend",
                     f"GIT_CONFIG_VALUE_{count}": "openssl"})
+        vpython = workspace / "depot_tools/.cipd_bin/vpython3.exe"
+        if vpython.is_file():
+            launchers = workspace / "tool-launchers"
+            if launchers != launchers.resolve():
+                raise ValueError("Build tool launchers must not contain links")
+            launchers.mkdir(exist_ok=True)
+            launcher = launchers / "vpython3.bat"
+            contents = f'@echo off\n"{vpython}" %*\n'
+            if launcher.is_symlink() or (launcher.exists() and launcher.read_text(encoding="utf-8-sig") != contents):
+                raise ValueError("Refusing to overwrite an unrelated vpython launcher")
+            launcher.write_text(contents, encoding="utf-8")
+            env["PATH"] = str(launchers) + os.pathsep + env["PATH"]
     return env
 
 
@@ -133,6 +145,8 @@ def execute(action: str, workspace: Path) -> None:
         if config_path.exists() and config_path.read_text(encoding="utf-8-sig") != config:
             raise ValueError("Refusing to overwrite an unrelated gclient configuration")
         config_path.write_text(config, encoding="utf-8")
+        if os.name == "nt":
+            run([depot_command("gclient", workspace)[0], str(workspace / "depot_tools/gsutil.py"), "version"], chromium, env)
         run(depot_command("gclient", workspace) + ["sync", "--no-history", "--nohooks",
             "--revision", "src@" + LOCK["chromium_revision"], "-j", str(LOCK["build_jobs"])], chromium, env)
         run(depot_command("gclient", workspace) + ["revinfo", "-a"], chromium, env)

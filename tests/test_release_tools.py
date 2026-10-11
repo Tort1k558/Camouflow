@@ -196,6 +196,35 @@ def test_native_build_rejects_relative_workspace():
         preflight(Path("relative-native-build"))
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows gclient helpers use batch launchers")
+def test_native_build_helper_uses_the_installed_vpython_without_rebootstrapping(tmp_path):
+    from scripts.native_build import environment
+
+    executable = tmp_path / "depot_tools/.cipd_bin/vpython3.exe"
+    executable.parent.mkdir(parents=True)
+    executable.touch()
+    env = environment(tmp_path)
+    launcher = tmp_path / "tool-launchers/vpython3.bat"
+    assert launcher.read_text(encoding="utf-8") == f'@echo off\n"{executable}" %*\n'
+    assert "cipd_bin_setup" not in launcher.read_text(encoding="utf-8")
+    assert env["PATH"].split(";")[0] == str(launcher.parent)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows gclient helpers use batch launchers")
+def test_native_build_preserves_unrelated_helper_launcher(tmp_path):
+    from scripts.native_build import environment
+
+    executable = tmp_path / "depot_tools/.cipd_bin/vpython3.exe"
+    executable.parent.mkdir(parents=True)
+    executable.touch()
+    launcher = tmp_path / "tool-launchers/vpython3.bat"
+    launcher.parent.mkdir()
+    launcher.write_text("preserve customer launcher", encoding="utf-8")
+    with pytest.raises(ValueError, match="unrelated vpython launcher"):
+        environment(tmp_path)
+    assert launcher.read_text(encoding="utf-8") == "preserve customer launcher"
+
+
 def test_native_build_rejects_checkout_inside_application():
     from scripts.native_build import ROOT, preflight
 
