@@ -99,14 +99,36 @@ C++20 and warnings-as-errors. Reproduce with the installed toolchain:
 
 CI also compiles/runs this policy on Windows, Linux and macOS; fresh results are
 required. The verifier uses owned temporary output and no extra test framework.
-The module is **not yet wired into Chromium's document/worker Navigator APIs**.
-Integration requires reviewed source changes, a full own Chromium build and
-actual API checks. CamouFlow still rejects those fingerprint controls until that
-integration is verified; standalone parser tests cannot prove browser behavior.
+`patches/0001-native-hardware-privacy-limits.patch` now connects this policy to
+Blink's shared Navigator implementations used by documents and workers. Browser
+switches are forwarded to renderer processes, rather than injected into page
+JavaScript. Explicit limits never report more CPU or memory than the native
+value. Absent switches preserve upstream behavior; invalid or empty explicit
+limits fail the renderer's configuration check rather than silently pretending
+to work. These are reporting ceilings, not resource quotas or a full device
+identity. The patch includes the exact policy exercised by standalone tests.
+
+The patch passes `git apply --check` against the pinned Chromium revision. It
+has **not yet passed a complete Chromium build or real patched API checks**.
+CamouFlow still rejects those fingerprint controls until that integration is
+verified; standalone parser tests cannot prove browser behavior.
+
+After source sync finishes successfully, apply it explicitly before building:
+
+```powershell
+git -C D:\CamouFlowNative\chromium\src apply --check "$PWD\native\patches\0001-native-hardware-privacy-limits.patch"
+git -C D:\CamouFlowNative\chromium\src apply "$PWD\native\patches\0001-native-hardware-privacy-limits.patch"
+```
+
+The build accepts either a clean upstream baseline or exactly this checked
+patch; unrelated source modifications are rejected. Build receipts record the
+applied patch checksum and explicitly leave runtime verification false. The
+source-sync command requires clean source, so do not rerun it over an applied
+patch. Preserve local changes rather than resetting the checkout to retry sync.
 
 The first source checkout/build is an upstream baseline for the actual fork.
-No native fingerprint patch is claimed by these inputs; receipts explicitly
-record `fingerprint_patched: false`. Source acquisition, hooks, compilation and
+No verified native fingerprint capability is claimed by these inputs; receipts
+explicitly record `fingerprint_patched: false`. Source acquisition, hooks, compilation and
 runtime verification are distinct stages. A running transfer or installer is
 not a completed build. Neither CI bootstrap-browser checks nor a local checksum
 prove native Chromium modifications or Linux/macOS fork readiness.

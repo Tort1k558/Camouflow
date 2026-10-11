@@ -6,10 +6,10 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = json.loads((ROOT / "native/build-lock.json").read_text(encoding="utf-8-sig"))
@@ -92,7 +92,7 @@ def checkout(path: Path, repository: str, revision: str, env: dict[str, str]) ->
     if run(["git", "status", "--porcelain"], path, env, capture=True):
         raise ValueError(f"Uncommitted source changes in {path}; refusing to overwrite")
     current = subprocess.run(["git", "rev-parse", "HEAD"], cwd=path, env=env,
-                             capture_output=True, text=True)
+                             capture_output=True, text=True, check=False)
     if current.returncode != 0 or current.stdout.strip() != revision:
         run(["git", "-c", "protocol.version=2", "fetch", "--depth=1", "--no-tags", "origin", revision], path, env)
         run(["git", "checkout", "--detach", revision], path, env)
@@ -118,6 +118,20 @@ def bootstrap_windows_git(workspace: Path, env: dict[str, str]) -> None:
               "GIT_BASH_EXE=i.bash_exe, GIT_BASH_LAUNCHER=i.bash_launcher); "
               "m['git_postprocess'](t,i)")
     run([sys.executable, "-c", script, str(workspace / "depot_tools/bootstrap/bootstrap.py")], workspace, env)
+
+
+def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
+    changed = set(run(["git", "diff", "HEAD", "--name-only"], source, env, capture=True).splitlines())
+    changed.update(run(["git", "ls-files", "--others", "--exclude-standard"], source, env, capture=True).splitlines())
+    if not changed:
+        return []
+    patch = ROOT / "native/patches/0001-native-hardware-privacy-limits.patch"
+    contents = patch.read_text(encoding="utf-8-sig")
+    expected = {line.split(" b/", 1)[1] for line in contents.splitlines() if line.startswith("diff --git ")}
+    if changed != expected:
+        raise ValueError("Unrecognized Chromium source changes; refusing an unrepeatable build")
+    run(["git", "apply", "--reverse", "--check", str(patch)], source, env)
+    return [{"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]
 
 
 def execute(action: str, workspace: Path) -> None:
@@ -158,6 +172,7 @@ def execute(action: str, workspace: Path) -> None:
     if action == "hooks":
         run(depot_command("gclient", workspace) + ["runhooks"], chromium, env)
         return
+    patches = source_patches(source, env)
     output = source / "out/CamouFlowNative"
     output.mkdir(parents=True, exist_ok=True)
     output.joinpath("args.gn").write_text((ROOT / "native/args.gn").read_text(encoding="utf-8-sig"), encoding="utf-8")
@@ -174,7 +189,8 @@ def execute(action: str, workspace: Path) -> None:
                "platform": sys.platform, "binary": relative_binary,
                "binary_sha256_measured": checksum,
                "args_sha256": hashlib.sha256(output.joinpath("args.gn").read_bytes()).hexdigest(),
-               "fingerprint_patched": False, "patches": []}
+               "fingerprint_patched": False, "patches": patches,
+               "native_patch_runtime_verified": False}
     output.joinpath("camouflow-build.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
 
 

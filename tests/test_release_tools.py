@@ -270,3 +270,48 @@ def test_native_build_rejects_uncommitted_source_changes(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="Uncommitted"):
         native_build.checkout(directory, repository, "a" * 40, {})
     assert not any("fetch" in args or "checkout" in args for args in commands)
+
+
+def test_native_chromium_patch_embeds_the_tested_hardware_policy():
+    from scripts.native_build import ROOT
+
+    contents = (ROOT / "native/patches/0001-native-hardware-privacy-limits.patch").read_text(encoding="utf-8-sig")
+    section = contents.split("+++ b/third_party/blink/renderer/core/frame/camouflow_hardware_limits.h\n", 1)[1]
+    section = section.split("diff --git ", 1)[0]
+    embedded = "\n".join(line[1:] for line in section.splitlines() if line.startswith("+")) + "\n"
+    assert embedded == (ROOT / "native/core/hardware_limits.h").read_text(encoding="utf-8-sig")
+
+
+def test_native_build_clean_baseline_has_no_patches(tmp_path, monkeypatch):
+    from scripts import native_build
+
+    monkeypatch.setattr(native_build, "run", lambda *args, **kwargs: "")
+    assert native_build.source_patches(tmp_path, {}) == []
+
+
+def test_native_build_rejects_unknown_source_changes(tmp_path, monkeypatch):
+    from scripts import native_build
+
+    monkeypatch.setattr(native_build, "run", lambda *args, **kwargs: "customer.cc")
+    with pytest.raises(ValueError, match="Unrecognized"):
+        native_build.source_patches(tmp_path, {})
+
+
+def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch):
+    import hashlib
+
+    from scripts import native_build
+
+    patch = native_build.ROOT / "native/patches/0001-native-hardware-privacy-limits.patch"
+    expected = [line.split(" b/", 1)[1] for line in patch.read_text(encoding="utf-8").splitlines()
+                if line.startswith("diff --git ")]
+    commands = []
+
+    def fake_run(args, cwd, env, capture=False):
+        commands.append(args)
+        return "\n".join(expected) if args[1] == "diff" else ""
+
+    monkeypatch.setattr(native_build, "run", fake_run)
+    assert native_build.source_patches(tmp_path, {}) == [
+        {"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]
+    assert commands[-1] == ["git", "apply", "--reverse", "--check", str(patch)]
