@@ -68,6 +68,28 @@ and negative-control handling, not own-fork policy effectiveness.
 
 ## Next implementation and regression requirements
 
+### Canvas baseline before native protection
+
+`scripts/verify_native_canvas.py` measures an unmodified browser without injecting
+API replacements. It renders an owned opaque text/gradient fixture and checks
+repeated pixel reads against PNG-decoded `OffscreenCanvas.convertToBlob`, HTML
+`toBlob` and `toDataURL`. Documents, same/cross-origin frames and dedicated/shared/
+service workers are measured, then the same persistent profile is reopened.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_canvas.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative --report D:\CamouFlowNative\canvas-native-baseline.json
+```
+
+The pinned upstream Windows SDK passed both phases on 2026-10-11; evidence is
+retained privately in `D:\CamouFlowNative\canvas-baseline-20261011.json` with the
+measured executable checksum. This proves baseline readback consistency, not
+Canvas protection, own-fork readiness, cross-profile unlinkability or anti-bot
+acceptance. The probe is deliberately outside release capability admission.
+It does not yet cover tainted canvases, transparent/color-managed images, partial
+readbacks, WebGL exports or protected-policy expectations. Future origin-scoped
+protection requires a separate validator: equal cross-origin output is an
+unmodified baseline invariant, not necessarily a protected-policy invariant.
+
 - **Capability admission:** bind reviewed gate reports to exact source patches,
   own build receipt and complete packaged payload; never accept an arbitrary
   `fingerprint_patched` settings bit. Activate only requested verified policies.
