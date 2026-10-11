@@ -618,7 +618,7 @@ def test_controller_process_identity_survives_reparenting_and_rejects_pid_reuse(
     original = {"name": "node", "started": "first", "parent": 123}
     assert same_process(original, {**original, "parent": 1})
     assert not same_process(original, {**original, "started": "second"})
-    assert not same_process(original, {**original, "name": "unrelated"})
+    assert same_process(original, {**original, "name": "renamed thread"})
     assert not same_process(original, None)
 
 
@@ -645,3 +645,27 @@ def test_controller_process_snapshot_parses_posix_start_times_and_names_with_spa
     rows = verify_native_runtime.process_snapshot()
     assert rows[100] == {"parent": 90, "started": "Sun Oct 11 07:00:00 2026", "name": "Chromium"}
     assert rows[101]["name"] == "Chromium Helper (Renderer)"
+
+
+def test_linux_process_snapshot_separates_executable_identity_from_thread_names(tmp_path, monkeypatch):
+    from pathlib import Path
+    from scripts.verify_native_runtime import executable_name, linux_process_snapshot
+
+    root = tmp_path / "proc"
+    root.mkdir()
+    for pid, state in ((100, "S"), (101, "Z"), (102, "S")):
+        directory = root / str(pid)
+        directory.mkdir()
+        fields = [state, "7", *(["0"] * 17), "12345"]
+        (directory / "stat").write_text(f"{pid} (Main Thread (Node)) " + " ".join(fields), encoding="utf-8")
+    def readlink(path):
+        if path.parent.name == "100":
+            return Path("/sdk/playwright/driver/node")
+        raise PermissionError("Unobservable sandboxed executable")
+    monkeypatch.setattr(Path, "readlink", readlink)
+    rows = linux_process_snapshot(root)
+    assert rows[100] == {"parent": 7, "started": "12345", "name": "Main Thread (Node)", "executable": "node"}
+    assert executable_name(rows[100]) == "node"
+    assert 101 not in rows
+    assert rows[102]["executable"] is None
+    assert executable_name(rows[102]) is None

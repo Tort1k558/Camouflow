@@ -386,8 +386,8 @@ directory explicitly supplied, and checks the PID before issuing the kill.
 The process-tree snapshot excludes processes that existed before the helper
 started. The test observes both the owned Node driver and Chromium, then waits
 for all observed process identities to disappear after controller termination.
-Identity uses PID, creation time and name rather than parent PID alone: reparenting
-must not incorrectly count a surviving orphan as exited. Other processes are not
+Identity uses PID and creation time rather than parent PID or mutable thread
+names: reparenting/renaming must not count a surviving orphan as exited. Other processes are not
 killed and their command lines are not included in snapshots or reports.
 
 After that exit check, the same owned profile restarted and all five committed
@@ -419,6 +419,21 @@ checks no new owned Node/Chromium processes remain after cleanup, and successful
 starts the same profile again. Linux/macOS results for this additional check are
 still pending. These remain upstream bootstrap-runtime checks; own-fork build
 and runtime verification are separate requirements.
+
+### Linux process-observer correction
+
+The first Linux controller-crash CI check failed with "Owned driver was not
+observed". A local Ubuntu 22.04 WSL probe using the Node binary from the exact
+Playwright 1.60.0 Linux wheel reproduced the cause: `ps comm` reported `MainThread`,
+while `/proc/<pid>/exe` identified the actual executable as `node`.
+
+Linux snapshots now read process birth ticks and parent IDs from `/proc/<pid>/stat`
+and observe executable identity separately through `/proc/<pid>/exe`. Inaccessible
+executables remain explicitly unknown; their thread names are not substituted as
+executable identities. Exited zombie/dead states are excluded. A direct Linux
+probe of the updated observer identified that owned Node, tracked its descendants
+and verified its exit. Full matching Linux runtime-gate results are still required;
+this observer-only probe does not prove a Linux Chromium fork build.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).

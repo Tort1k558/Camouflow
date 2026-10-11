@@ -114,7 +114,31 @@ async def resolve_executable(explicit: str) -> Path:
         return Path(driver.chromium.executable_path).resolve()
 
 
+def linux_process_snapshot(root: Path = Path("/proc")) -> dict:
+    rows = {}
+    for entry in root.iterdir():
+        if not entry.name.isdecimal():
+            continue
+        try:
+            stat = (entry / "stat").read_text(encoding="utf-8")
+            name, tail = stat.split("(", 1)[1].rsplit(")", 1)
+            fields = tail.split()
+            if fields[0] in {"Z", "X"}:
+                continue
+            row = {"parent": int(fields[1]), "started": fields[19], "name": name, "executable": None}
+            try:
+                row["executable"] = (entry / "exe").readlink().name
+            except (FileNotFoundError, ProcessLookupError, PermissionError):
+                pass
+            rows[int(entry.name)] = row
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
+            continue
+    return rows
+
+
 def process_snapshot() -> dict:
+    if sys.platform == "linux":
+        return linux_process_snapshot()
     if sys.platform == "win32":
         command = ("[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); "
                    "Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,CreationDate "
@@ -141,7 +165,11 @@ def process_snapshot() -> dict:
 
 def same_process(left: dict | None, right: dict | None) -> bool:
     return bool(left is not None and right is not None
-                and left["started"] == right["started"] and left["name"] == right["name"])
+                and left["started"] == right["started"])
+
+
+def executable_name(row: dict) -> str | None:
+    return row["executable"] if "executable" in row else row["name"]
 
 
 def controller_descendants(before: dict, current: dict, controller_pid: int) -> dict:
@@ -194,8 +222,8 @@ async def verify_controller_crash(profile_root: Path, executable: Path, origin: 
         assert controller.poll() is None
         owned = controller_descendants(before, await asyncio.to_thread(process_snapshot), controller.pid)
         assert all(row["started"] is not None for row in owned.values()), "Owned process identity is unavailable"
-        assert any(row["name"].lower() in {"node", "node.exe"} for row in owned.values()), "Owned driver was not observed"
-        assert any(row["name"].lower() == executable.name.lower() for row in owned.values()), "Owned Chromium was not observed"
+        assert any((executable_name(row) or "").lower() in {"node", "node.exe"} for row in owned.values()), "Owned driver was not observed"
+        assert any((executable_name(row) or "").lower() == executable.name.lower() for row in owned.values()), "Owned Chromium was not observed"
         controller.kill()
         await asyncio.to_thread(controller.wait, timeout=10)
         deadline = asyncio.get_running_loop().time() + 30
@@ -456,8 +484,9 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
             assert cancelled_start.playwright is None and cancelled_start._driver_start_task is None
             assert cancelled_start._profile_lock is None
             descendants = controller_descendants(before, await asyncio.to_thread(process_snapshot), os.getpid())
+            assert all(executable_name(row) is not None for row in descendants.values()), "Startup cleanup executable identity is unavailable"
             leaked = [pid for pid, row in descendants.items()
-                      if row["name"].lower() in {"node", "node.exe", executable.name.lower()}]
+                      if (executable_name(row) or "").lower() in {"node", "node.exe", executable.name.lower()}]
             assert not leaked, f"Cancelled startup left owned browser/driver processes: {leaked}"
             context = await cancelled_start.start(headless=True)
             await context.pages[0].goto(origin)
