@@ -126,6 +126,26 @@ applied patch checksum and explicitly leave runtime verification false. The
 source-sync command requires clean source, so do not rerun it over an applied
 patch. Preserve local changes rather than resetting the checkout to retry sync.
 
+Run the hardware binding gate separately against the built executable:
+
+```powershell
+& $python scripts/verify_native_hardware.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative\tmp --report D:\CamouFlowNative\fork-hardware.json
+```
+
+It observes the actual Navigator APIs in a main document, same-origin and
+cross-origin frames, dedicated workers, shared workers and service workers.
+It checks both limits together, independently, upper limits that must not invent
+host hardware, unchanged UA/platform/language and invalid configuration failures.
+All pages and profiles are owned temporary fixtures; the probe never replaces
+Navigator APIs. Success does not prove unrelated Canvas/WebGL/Audio protections.
+
+The local Windows upstream bootstrap negative control observed coherent values
+in all six contexts (`12` logical processors, `16` GiB reported memory), then
+correctly failed: requested limits `1`/`0.25` were ignored. Desktop CI repeats this
+negative control on all three platforms; a success requires the specific
+ignored-switch failure after a successful baseline, not any nonzero exit code.
+This validates the gate, **not** the unbuilt patch's browser behavior.
+
 The first source checkout/build is an upstream baseline for the actual fork.
 No verified native fingerprint capability is claimed by these inputs; receipts
 explicitly record `fingerprint_patched: false`. Source acquisition, hooks, compilation and

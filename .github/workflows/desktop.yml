@@ -283,6 +283,27 @@ jobs:
           import sys
           from pathlib import Path
           subprocess.run([sys.executable, "scripts/verify_native_runtime.py", "--work-dir", str(Path(os.environ["RUNNER_TEMP"]) / "camouflow-native-checks"), "--report", "outputs/native-runtime/source.json"], check=True)
+      - name: Prove native hardware gate rejects an unpatched upstream browser
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/camouflow-native-browsers
+        shell: python
+        run: |
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as driver:
+              executable = driver.chromium.executable_path
+          report_path = Path("outputs/native-runtime/hardware-upstream-negative.json")
+          result = subprocess.run([sys.executable, "scripts/verify_native_hardware.py", "--executable", executable, "--work-dir", str(Path(os.environ["RUNNER_TEMP"]) / "camouflow-native-checks"), "--report", str(report_path)], check=False, timeout=180)
+          report = json.loads(report_path.read_text(encoding="utf-8"))
+          if result.returncode != 1 or report["passed"] or not report.get("error", "").startswith("Native limits were ignored or inconsistent:"):
+              raise SystemExit("Unpatched upstream browser was not rejected for the expected reason")
+          if not report["checks"] or not report["checks"][0]["passed"]:
+              raise SystemExit("Baseline document/frame/dedicated/shared/service worker observations failed")
+          print("All baseline contexts observed; unpatched native hardware switches correctly rejected")
       - name: Build and verify both packaged browser engines
         shell: python
         run: |

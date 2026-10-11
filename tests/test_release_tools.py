@@ -315,3 +315,60 @@ def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monk
     assert native_build.source_patches(tmp_path, {}) == [
         {"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]
     assert commands[-1] == ["git", "apply", "--reverse", "--check", str(patch)]
+
+
+def _hardware_observations(cpu=12, memory=16):
+    values = {"hardwareConcurrency": cpu, "deviceMemory": memory, "userAgent": "owned-native",
+              "platform": "Win32", "language": "en-US"}
+    return {name: dict(values) for name in ("document", "same_origin_frame", "cross_origin_frame", "dedicated", "shared", "service")}
+
+
+@pytest.mark.parametrize("cpu,memory,reported_cpu,reported_memory", [
+    (1, 0.25, 1, 0.25), (64, 16, 12, 16), (1, None, 1, 16), (None, 0.25, 12, 0.25),
+])
+def test_native_hardware_gate_checks_ceilings_without_inventing_hardware(cpu, memory, reported_cpu, reported_memory):
+    from scripts.verify_native_hardware import validate_observations
+
+    baseline = _hardware_observations()["document"]
+    validate_observations(_hardware_observations(reported_cpu, reported_memory), baseline, cpu, memory)
+
+
+def test_native_hardware_gate_rejects_ignored_switches():
+    from scripts.verify_native_hardware import validate_observations
+
+    baseline = _hardware_observations()["document"]
+    with pytest.raises(ValueError, match="ignored"):
+        validate_observations(_hardware_observations(), baseline, 1, 0.25)
+
+
+@pytest.mark.parametrize("context", ["same_origin_frame", "cross_origin_frame", "dedicated", "shared", "service"])
+def test_native_hardware_gate_requires_coherent_values_in_every_context(context):
+    from scripts.verify_native_hardware import validate_observations
+
+    values = _hardware_observations()
+    values[context]["hardwareConcurrency"] = 3
+    with pytest.raises(ValueError, match="disagree"):
+        validate_observations(values)
+
+
+def test_native_hardware_gate_rejects_missing_workers_and_changed_identity():
+    from scripts.verify_native_hardware import validate_observations
+
+    values = _hardware_observations()
+    values.pop("service")
+    with pytest.raises(ValueError, match="every"):
+        validate_observations(values)
+    baseline = _hardware_observations()["document"]
+    values = _hardware_observations()
+    for value in values.values():
+        value["platform"] = "Invented device"
+    with pytest.raises(ValueError, match="changed platform"):
+        validate_observations(values, baseline)
+
+
+@pytest.mark.parametrize("cpu,memory", [(True, 16), (0, 16), (12, float("nan")), (12, float("inf")), (12, 0)])
+def test_native_hardware_gate_rejects_invalid_api_values(cpu, memory):
+    from scripts.verify_native_hardware import validate_observations
+
+    with pytest.raises(ValueError, match="invalid"):
+        validate_observations(_hardware_observations(cpu, memory))
