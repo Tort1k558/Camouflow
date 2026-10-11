@@ -21,6 +21,38 @@ def test_native_privacy_keys_persist_and_are_not_shared_between_profiles(tmp_pat
     assert not (first / IDENTITY_FILE).read_bytes().startswith(b"\xef\xbb\xbf")
 
 
+def test_native_privacy_derivation_is_stable_and_separated_by_profile_partition_and_surface(tmp_path):
+    from app.core.native.identity import load_or_create_identity
+
+    first, second = tmp_path / "first", tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    identity = load_or_create_identity(first)
+    key = identity.derive(b"owned-browser-partition-A", "canvas")
+    assert len(key) == 32 and key != identity.seed
+    assert load_or_create_identity(first).derive(b"owned-browser-partition-A", "canvas") == key
+    assert identity.derive(b"owned-browser-partition-B", "canvas") != key
+    assert identity.derive(b"owned-browser-partition-A", "audio") != key
+    assert load_or_create_identity(second).derive(b"owned-browser-partition-A", "canvas") != key
+
+
+def test_native_privacy_derivation_matches_independent_dotnet_hmac_vector():
+    from app.core.native.identity import NativePrivacyIdentity
+
+    assert NativePrivacyIdentity(bytes(range(32))).derive(b"owned-browser-partition-A", "canvas").hex() == (
+        "16ac09b09ddeb0bc278456d1e474d4d1fa4b6135a7529f05dc95391936c630fc")
+
+
+@pytest.mark.parametrize("partition,surface", [(b"", "canvas"), (b"a" * 8193, "canvas"),
+                                               ("https://example.test", "canvas"), (bytearray(b"a"), "canvas"),
+                                               (b"a", "unknown"), (b"a", "Canvas"), (b"a", None)])
+def test_native_privacy_derivation_rejects_untrusted_shapes(partition, surface):
+    from app.core.native.identity import NativePrivacyIdentity
+
+    with pytest.raises(ValueError):
+        NativePrivacyIdentity(bytes(range(32))).derive(partition, surface)
+
+
 @pytest.mark.parametrize("payload", ['{}', '{"schema":true,"seed":"' + 'a' * 64 + '"}',
                                    '{"schema":2,"seed":"' + 'a' * 64 + '"}',
                                    '{"schema":1,"seed":"' + 'A' * 64 + '"}',

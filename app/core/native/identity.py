@@ -1,6 +1,8 @@
 """Local profile keys for future native privacy policy; never browser switches."""
 
 from dataclasses import dataclass, field
+import hashlib
+import hmac
 import json
 from pathlib import Path
 import secrets
@@ -18,6 +20,17 @@ class NativePrivacyIdentity:
     def __post_init__(self):
         if not isinstance(self.seed, bytes) or len(self.seed) != 32:
             raise ValueError("Native privacy identity requires a 256-bit key")
+
+    def derive(self, partition_key: bytes, surface: str) -> bytes:
+        """Accept a trusted serialized browser storage partition, never a URL guess."""
+        if not isinstance(partition_key, bytes) or not 1 <= len(partition_key) <= 8192:
+            raise ValueError("Native privacy derivation requires a bounded browser partition")
+        if not isinstance(surface, str) or surface not in {"canvas", "webgl", "webgpu", "audio"}:
+            raise ValueError("Unknown Native privacy surface")
+        label = surface.encode("ascii")
+        message = (b"CamouFlowNative/privacy/v1\0" + len(label).to_bytes(4, "big") + label
+                   + len(partition_key).to_bytes(4, "big") + partition_key)
+        return hmac.digest(self.seed, message, hashlib.sha256)
 
 
 def load_or_create_identity(profile: Path) -> NativePrivacyIdentity:

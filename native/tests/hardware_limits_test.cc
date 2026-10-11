@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "core/hardware_limits.h"
 #include "core/font_families.h"
+#include "core/privacy_partition.h"
 
 #ifdef _WIN32
 #include "windows/font_collection.h"
@@ -78,6 +79,20 @@ int main() {
   };
 
   using camouflow::native::ParseFontFamilies;
+  using camouflow::native::PrivacyDerivationMessage;
+  std::string expected_message("CamouFlowNative/privacy/v1");
+  expected_message.append("\0\0\0\0\x06", 5);
+  expected_message.append("canvas");
+  expected_message.append("\0\0\0\x03", 4);
+  expected_message.append("abc");
+  check(PrivacyDerivationMessage("abc", "canvas") == expected_message,
+        "privacy derivation uses the versioned length-prefixed byte contract");
+  check(PrivacyDerivationMessage("abc", "audio") != expected_message,
+        "privacy surfaces are domain separated");
+  check(!PrivacyDerivationMessage("", "canvas") &&
+            !PrivacyDerivationMessage(std::string(8193, 'a'), "canvas") &&
+            !PrivacyDerivationMessage("abc", "Canvas"),
+        "invalid partition or surface rejected without guessing");
   const auto families = ParseFontFamilies("Arial,Times New Roman,Segoe UI");
   check(families && families->size() == 3, "exact genuine family policy");
   for (const auto value : {"", "Segoe UI", "Arial,", ",Arial", "Arial,,Segoe UI",

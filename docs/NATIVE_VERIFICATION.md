@@ -85,10 +85,23 @@ the local OS user can read the file. Browser storage itself may contain other
 secrets when sessions are exported. Raw directory copying is not a supported
 profile clone API and can still copy the key.
 
+`NativePrivacyIdentity.derive` now computes HMAC-SHA256 with separate labels for
+Canvas, WebGL, WebGPU and Audio and a bounded opaque browser partition key.
+The versioned message is the ASCII prefix `CamouFlowNative/privacy/v1`, a NUL,
+then a four-byte big-endian surface length, the ASCII surface label, a four-byte
+big-endian partition length and the exact partition bytes. It does not parse
+URLs or guess registrable domains. The native C++ message encoder in
+`native/core/privacy_partition.h` implements the same contract; the future
+browser-side signer must use pinned Chromium `crypto::hmac::SignSha256`, not
+custom cryptography. The synthetic fixed-key Python vector was independently
+matched with Windows .NET HMACSHA256. Native C++ encoding tests compile and run
+through the existing Windows policy verifier; Chromium signer/IPC integration
+is still pending.
+
 The key is not yet connected to Chromium IPC or Canvas/Audio policy. Runtime
 capabilities remain unchanged; no fingerprint masking is claimed. Before native
-activation, implement versioned domain-separated derivation with explicit
-top-level-site/origin/storage partition semantics and test worker inheritance,
+activation, connect derivation to trusted browser-owned top-level-site/origin/
+storage partition semantics and test worker inheritance,
 restart, restore and cross-profile separation against the own-fork executable.
 The updated runtime passed all 18 existing owned Windows SDK runtime checks;
 the report is retained privately at
