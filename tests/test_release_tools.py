@@ -1070,6 +1070,134 @@ def test_native_v8_patch_validation_checks_real_nested_checkout_without_changing
     assert not list(source.parent.glob("native-patch-index-*"))
 
 
+def _native_windows_packaging_fixture(tmp_path, monkeypatch):
+    import json
+
+    from app.core.native.distribution import sha256_file
+    from scripts import package_native_windows as packaging
+
+    output, staged = tmp_path / "src/out/CamouFlowNative", tmp_path / "Chrome-bin"
+    output.mkdir(parents=True)
+    (output.parent.parent / "LICENSE").write_text("Synthetic source license fixture\n", encoding="utf-8")
+    staged.mkdir()
+    monkeypatch.setattr(packaging, "RELEASE_VOLUME", tmp_path.drive.upper())
+    version = packaging.LOCK["chromium_version"]
+    for relative in ("chrome.exe", "chrome.dll", "chrome_elf.dll", "locales/en-US.pak"):
+        source = output / relative
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_bytes(b"synthetic owned packaging fixture: " + relative.encode())
+        target = staged / (relative if relative == "chrome.exe" else version + "/" + relative)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+    (output / "args.gn").write_text("is_debug=false\n", encoding="utf-8")
+    checksum = sha256_file(output / "chrome.exe")
+    receipt = {"schema": 1, "platform": "win32", "binary": "chrome.exe",
+               "native_version": packaging.LOCK["native_version"],
+               "chromium_revision": packaging.LOCK["chromium_revision"],
+               "depot_tools_revision": packaging.LOCK["depot_tools_revision"],
+               "binary_sha256_measured": checksum, "args_sha256": sha256_file(output / "args.gn"),
+               "native_patch_runtime_verified": False, "patches": []}
+    (output / "camouflow-build.json").write_text(json.dumps(receipt), encoding="utf-8")
+    report = tmp_path / "runtime.json"
+    report.write_text(json.dumps({"passed": True, "platform": "Windows", "version": version,
+                                 "binary_sha256_measured": checksum,
+                                 "checks": sorted(packaging.REQUIRED_RUNTIME_CHECKS)}), encoding="utf-8")
+    return output, staged, report, tmp_path / "native.tar.gz"
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
+def test_native_windows_package_is_reproducible_and_installable_without_claiming_patch_verification(tmp_path, monkeypatch):
+    import hashlib
+    import json
+    import tarfile
+
+    from app.core.native.distribution import NativeBinaryStore
+    from scripts.package_native_windows import package
+
+    output, staged, report, destination = _native_windows_packaging_fixture(tmp_path, monkeypatch)
+    first = package(output, staged, report, destination)
+    second = package(output, staged, report, tmp_path / "second.tar.gz")
+    assert first["sha256"] == second["sha256"]
+    assert not first["native_patch_runtime_verified"]
+    with tarfile.open(destination, "r:gz") as archive:
+        metadata = json.load(archive.extractfile("native-release.json"))
+        assert set(metadata["files_sha256"]) == set(archive.getnames()) - {"native-release.json"}
+        for name, digest in metadata["files_sha256"].items():
+            assert hashlib.sha256(archive.extractfile(name).read()).hexdigest() == digest
+        assert {"licenses/Chromium-LICENSE", "licenses/CamouFlow-LICENSE"}.issubset(metadata["files_sha256"])
+        assert not metadata["native_patch_runtime_verified"]
+    release = NativeBinaryStore(tmp_path / "store").install_archive(destination, first["sha256"])
+    assert release["build_kind"] == "chromium-fork"
+    assert not list(tmp_path.glob("native-package-*"))
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
+@pytest.mark.parametrize("mutation", ["receipt_revision", "boolean_schema", "binary_changed", "args_changed",
+                                     "report_failed", "report_other_binary", "report_partial", "report_version",
+                                     "staged_dll_changed", "missing_dll", "extra_file", "debug_symbols", "overwrite", "missing_license"])
+def test_native_windows_package_rejects_unverified_or_changed_inputs(tmp_path, monkeypatch, mutation):
+    import json
+
+    from scripts import package_native_windows as packaging
+
+    output, staged, report, destination = _native_windows_packaging_fixture(tmp_path, monkeypatch)
+    if mutation in {"receipt_revision", "boolean_schema"}:
+        record = output / "camouflow-build.json"
+        value = json.loads(record.read_text(encoding="utf-8-sig"))
+        value["chromium_revision" if mutation == "receipt_revision" else "schema"] = "a" * 40 if mutation == "receipt_revision" else True
+        record.write_text(json.dumps(value), encoding="utf-8")
+    elif mutation in {"binary_changed", "args_changed"}:
+        (output / ("chrome.exe" if mutation == "binary_changed" else "args.gn")).write_bytes(b"changed")
+    elif mutation.startswith("report_"):
+        value = json.loads(report.read_text(encoding="utf-8-sig"))
+        key, changed = {"report_failed": ("passed", False), "report_other_binary": ("binary_sha256_measured", "a" * 64),
+                        "report_partial": ("checks", ["concurrent-profile-isolation"]),
+                        "report_version": ("version", "152.0.0.0")}[mutation]
+        value[key] = changed
+        report.write_text(json.dumps(value), encoding="utf-8")
+    elif mutation in {"staged_dll_changed", "missing_dll"}:
+        path = staged / packaging.LOCK["chromium_version"] / "chrome.dll"
+        if mutation == "missing_dll":
+            path.unlink()
+        else:
+            path.write_bytes(b"changed")
+    elif mutation in {"extra_file", "debug_symbols"}:
+        name = "unknown.dat" if mutation == "extra_file" else "chrome.pdb"
+        (staged / name).write_bytes(b"unwanted")
+        if mutation == "debug_symbols":
+            (output / name).write_bytes(b"unwanted")
+    elif mutation == "missing_license":
+        (output.parent.parent / "LICENSE").unlink()
+    else:
+        destination.write_bytes(b"existing archive")
+    with pytest.raises(ValueError):
+        packaging.package(output, staged, report, destination)
+    assert not list(tmp_path.glob("native-package-*"))
+    if mutation == "overwrite":
+        assert destination.read_bytes() == b"existing archive"
+    else:
+        assert not destination.exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
+def test_native_windows_package_rejects_staged_files_changed_during_archiving(tmp_path, monkeypatch):
+    import tarfile
+
+    from scripts.package_native_windows import package
+
+    output, staged, report, destination = _native_windows_packaging_fixture(tmp_path, monkeypatch)
+    addfile = tarfile.TarFile.addfile
+    def changing_addfile(bundle, info, fileobj=None):
+        addfile(bundle, info, fileobj)
+        if info.name == "chrome.exe":
+            (staged / "chrome.exe").write_bytes(b"changed while packaging")
+    monkeypatch.setattr(tarfile.TarFile, "addfile", changing_addfile)
+    with pytest.raises(ValueError, match="changed while packaging"):
+        package(output, staged, report, destination)
+    assert not destination.exists()
+    assert not list(tmp_path.glob("native-package-*"))
+
+
 def test_controller_process_identity_survives_reparenting_and_rejects_pid_reuse():
     from scripts.verify_native_runtime import same_process
 

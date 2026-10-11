@@ -51,6 +51,47 @@ concurrent clang-cl processes were observed; no output directory was cleaned.
 The 3-GiB Go target remains soft and does not cap compiler memory. Additional
 patches prepared during this invocation remain drafts, not hot source edits.
 
+## Own-fork Windows packaging (prepared, own binary still pending)
+
+`scripts/package_native_windows.py` converts Chromium's official mini-installer
+staged `Chrome-bin` directory into the existing managed Native `.tar.gz` format.
+It does not recursively archive the build output or directly use GN's
+`runtime_deps`: a read-only query against our pinned Windows graph included
+thousands of development assets, Python helpers, PDBs and `initialexe/chrome.exe`.
+The official `chrome/installer/mini_installer/chrome.release` and
+`mini_installer_archive` target define the shipping layout instead.
+
+Only use this after compilation has terminated, the latest build helper has
+validated its receipt, the own-fork runtime gate has passed, and the official
+archive target has produced its staging tree. Do not run the generated installer
+on this machine just to obtain its files. Building the archive target is separate
+from installing Chromium; neither has been started during the current build.
+
+The packager requires matching pinned revisions, executable/GN hashes and all
+18 runtime-check names from a passing report for the exact binary. Every staged
+file must match its compiled-output counterpart; missing DLLs/locales, changed
+files, links, collisions and debug/build files fail explicitly. BSD Chromium and
+MIT CamouFlow source notices are retained. Embedded third-party notices and
+`chrome://credits` still require inspection on the completed own binary before
+public distribution.
+
+Archive timestamps/owners and gzip metadata are normalized for reproducibility.
+All payload hashes and the build/report provenance are recorded, but packaging
+does not assert successful fingerprint-patch gates. The final archive is created
+without overwriting existing files, outside source/staging on D:. Synthetic tests
+proved reproducibility, payload hashes, existing-store installation and rejection
+of invalid reports, changed executables/DLLs/arguments, missing notices and
+mid-archive changes. These fixtures are not a compiled own-fork release.
+
+```powershell
+& $python scripts/package_native_windows.py --build-output D:\CamouFlowNative\chromium\src\out\CamouFlowNative --staged D:\CamouFlowNative\chromium\src\out\CamouFlowNative\gen\chrome\installer\mini_installer\mini_installer\temp_installer_archive\Chrome-bin --runtime-report D:\CamouFlowNative\native-runtime-fork.json --archive D:\CamouFlowNative\releases\camouflow-native-windows.tar.gz
+```
+
+The existing destination directory must be created deliberately. The printed
+SHA-256 is suitable for the existing local trusted-publisher install command;
+it is not a signed online update feed. The completed bundle must still pass
+relocated-binary health/runtime checks and own-patch gates before production.
+
 ## Native headless UA draft (0006, not applied or runtime-verified)
 
 `0006-native-headless-user-agent.patch` adds the opt-in boolean switch
