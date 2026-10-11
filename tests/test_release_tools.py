@@ -1427,3 +1427,19 @@ def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
     else:
         with pytest.raises(ValueError):
             validate_observations(observed, previous)
+
+
+@pytest.mark.parametrize("failure", [None, "taintedRead", "taintedDataUrl", "taintedBlob", "taintedOffscreenRead", "taintedOffscreenBlob", "zeroWidthRead", "emptyDataUrl", "emptyBlob", "missing-frame"])
+def test_native_canvas_security_requires_unchanged_origin_checks_and_empty_behavior(failure):
+    from scripts.verify_native_canvas import SECURITY_EXPECTED, validate_security
+
+    observed = {name: dict(SECURITY_EXPECTED) for name in ("document", "same_origin_frame", "cross_origin_frame")}
+    if failure == "missing-frame":
+        del observed["cross_origin_frame"]
+    elif failure:
+        observed["cross_origin_frame"][failure] = "unexpected"
+    if failure:
+        with pytest.raises(ValueError, match="security"):
+            validate_security(observed)
+    else:
+        validate_security(observed)

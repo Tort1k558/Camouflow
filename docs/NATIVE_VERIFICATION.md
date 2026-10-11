@@ -103,6 +103,10 @@ API replacements. It renders an owned opaque text/gradient fixture and checks
 repeated pixel reads against PNG-decoded `OffscreenCanvas.convertToBlob`, HTML
 `toBlob` and `toDataURL`. Documents, same/cross-origin frames and dedicated/shared/
 service workers are measured, then the same persistent profile is reopened.
+The three document/frame contexts also check origin-tainted HTML and Offscreen
+pixel/export failures (`SecurityError`), zero-width reads (`IndexSizeError`) and
+empty HTML exports (`data:,` and null Blob). Their expected native behavior must
+remain intact under future protection. No page API is replaced by this fixture.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/verify_native_canvas.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative --report D:\CamouFlowNative\canvas-native-baseline.json
@@ -113,8 +117,10 @@ retained privately in `D:\CamouFlowNative\canvas-baseline-20261011.json` with th
 measured executable checksum. This proves baseline readback consistency, not
 Canvas protection, own-fork readiness, cross-profile unlinkability or anti-bot
 acceptance. The probe is deliberately outside release capability admission.
-It does not yet cover tainted canvases, transparent/color-managed images, partial
-readbacks, WebGL exports or protected-policy expectations. Future origin-scoped
+The expanded four-check baseline also passed the SDK on 2026-10-12, recorded in
+`D:\CamouFlowNative\canvas-security-baseline-20261012.json`. It does not yet cover
+worker-origin taint, transparent/color-managed images, partial readbacks, WebGL
+exports or protected-policy expectations. Future origin-scoped
 protection requires a separate validator: equal cross-origin output is an
 unmodified baseline invariant, not necessarily a protected-policy invariant.
 

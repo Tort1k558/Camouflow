@@ -62,9 +62,56 @@ READ = """async () => {
 
 CONTEXTS = {"document", "same_origin_frame", "cross_origin_frame", "dedicated", "shared", "service"}
 
+SECURITY_READ = """async () => {
+  const failure = action => {
+    try { action(); return 'no-error'; }
+    catch (error) { return error instanceof DOMException ? error.name : 'non-DOM-exception'; }
+  };
+  const image = new Image();
+  const url = new URL('/canvas-taint.svg', location.href);
+  url.hostname = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+  await new Promise((resolve, reject) => {
+    image.onload = resolve; image.onerror = () => reject(new Error('Owned cross-origin image failed'));
+    image.src = url.href;
+  });
+  const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 16;
+  const context = canvas.getContext('2d'); context.drawImage(image, 0, 0);
+  const taintedRead = failure(() => context.getImageData(0, 0, 16, 16));
+  const taintedDataUrl = failure(() => canvas.toDataURL());
+  const taintedBlob = failure(() => canvas.toBlob(() => {}));
+  const offscreen = new OffscreenCanvas(16, 16);
+  const target = offscreen.getContext('2d'); target.drawImage(image, 0, 0);
+  const taintedOffscreenRead = failure(() => target.getImageData(0, 0, 16, 16));
+  let taintedOffscreenBlob = 'no-error';
+  try { await offscreen.convertToBlob(); }
+  catch (error) { taintedOffscreenBlob = error instanceof DOMException ? error.name : 'non-DOM-exception'; }
+  const empty = document.createElement('canvas'); empty.width = 0;
+  const zeroWidthRead = failure(() => empty.getContext('2d').getImageData(0, 0, 0, 1));
+  const emptyDataUrl = empty.toDataURL();
+  const emptyBlob = await new Promise(resolve => empty.toBlob(blob => resolve(blob === null)));
+  return {taintedRead, taintedDataUrl, taintedBlob, taintedOffscreenRead,
+          taintedOffscreenBlob, zeroWidthRead, emptyDataUrl, emptyBlob};
+}"""
+
+SECURITY_EXPECTED = {"taintedRead": "SecurityError", "taintedDataUrl": "SecurityError",
+                     "taintedBlob": "SecurityError", "taintedOffscreenRead": "SecurityError",
+                     "taintedOffscreenBlob": "SecurityError", "zeroWidthRead": "IndexSizeError",
+                     "emptyDataUrl": "data:,", "emptyBlob": True}
+
 
 class CanvasFixtureHandler(FixtureHandler):
     def do_GET(self):
+        if self.path == "/canvas-taint.svg":
+            body = b'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="red"/></svg>'
+            self.send_response(200)
+            self.send_header("Content-Type", "image/svg+xml")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                pass
+            return
         bodies = {
             "/hardware-dedicated.js": f"self.onmessage = async () => self.postMessage(await ({READ})());",
             "/hardware-shared.js": f"self.onconnect = event => {{ const port = event.ports[0]; port.onmessage = async () => port.postMessage(await ({READ})()); port.start(); }};",
@@ -107,6 +154,12 @@ def validate_observations(observed: dict, previous: dict | None = None) -> None:
         raise ValueError("Canvas readback changed across an unmodified profile restart")
 
 
+def validate_security(observed: dict) -> None:
+    if (not isinstance(observed, dict) or set(observed) != {"document", "same_origin_frame", "cross_origin_frame"}
+            or any(values != SECURITY_EXPECTED for values in observed.values())):
+        raise ValueError("Native Canvas security or empty-image behavior changed")
+
+
 async def observe(context, origin: str) -> dict:
     page = context.pages[0]
     await page.goto(origin, wait_until="load", timeout=30000)
@@ -136,6 +189,14 @@ async def verify(executable: Path, profile: Path, origin: str, report: dict) -> 
                 validate_observations(observed, previous)
                 check["passed"] = True
                 previous = observed
+                security = {}
+                page = context.pages[0]
+                for name, frame in zip(("document", "same_origin_frame", "cross_origin_frame"), page.frames):
+                    security[name] = await asyncio.wait_for(frame.evaluate(SECURITY_READ), timeout=20)
+                check = {"name": phase + "-security-and-empty-images", "observed": security, "passed": False}
+                report["checks"].append(check)
+                validate_security(security)
+                check["passed"] = True
             finally:
                 await context.close()
 
