@@ -16,6 +16,7 @@ import sysconfig
 import tempfile
 import threading
 import traceback
+from contextlib import AsyncExitStack
 from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -255,6 +256,83 @@ async def verify_controller_crash(profile_root: Path, executable: Path, origin: 
         controller.wait(timeout=10)
         for stream in (controller.stdin, controller.stdout):
             stream.close()
+
+
+async def verify_multi_profile_restarts(profile_root: Path, executable: Path, origin: str,
+                                       *, rounds: int = 3, profiles: int = 3) -> list[dict]:
+    if type(rounds) is not int or not 1 <= rounds <= 100 or type(profiles) is not int or not 2 <= profiles <= 4:
+        raise ValueError("Native restart gate requires 1..100 rounds and 2..4 profiles")
+    def expected(value):
+        return {"cookie": "owned=" + value, "local": value, "indexed": value,
+                "cached": value, "workers": 1}
+    blank = {"cookie": "", "local": None, "indexed": None, "cached": None, "workers": 0}
+    observations = []
+    for iteration in range(rounds):
+        before = await asyncio.to_thread(process_snapshot)
+        owned = {}
+        runtimes = []
+        pages = []
+        async with AsyncExitStack() as cleanup:
+            for index in range(profiles):
+                runtime = NativeRuntime(profile_root / f"restart-{index}", executable, NativeConfiguration())
+                cleanup.push_async_callback(runtime.close)
+                context = await runtime.start(headless=True)
+                runtimes.append(runtime)
+                pages.append(context.pages[0])
+            await asyncio.gather(*(page.goto(origin) for page in pages))
+            initial = await asyncio.gather(*(page.evaluate(STORAGE, None) for page in pages))
+            assert initial == ([blank] * profiles if iteration == 0 else
+                               [expected(f"round-{iteration - 1}-profile-{index}") for index in range(profiles)]), initial
+            await asyncio.gather(*(page.evaluate(STORAGE, f"round-{iteration}-profile-{index}")
+                                   for index, page in enumerate(pages)))
+            values = [expected(f"round-{iteration}-profile-{index}") for index in range(profiles)]
+            assert await asyncio.gather(*(page.evaluate(STORAGE, None) for page in pages)) == values
+            owned = controller_descendants(before, await asyncio.to_thread(process_snapshot), os.getpid())
+            assert all(row["started"] is not None and executable_name(row) is not None for row in owned.values()), "Owned process identity is unavailable"
+            drivers = sum(executable_name(row).lower() in {"node", "node.exe"} for row in owned.values())
+            assert drivers == profiles, f"Expected {profiles} independent drivers, observed {drivers}"
+            assert any(executable_name(row).lower() == executable.name.lower() for row in owned.values()), "Owned Chromium was not observed"
+            victim = iteration % profiles
+            await runtimes[victim].close()
+            checkpoint = await runtimes[victim].start(headless=True)
+            pages[victim] = checkpoint.pages[0]
+            await pages[victim].goto(origin)
+            persisted = await pages[victim].evaluate(STORAGE, None)
+            assert persisted == values[victim], f"Graceful checkpoint lost stores: {persisted}"
+            owned.update(controller_descendants(before, await asyncio.to_thread(process_snapshot), os.getpid()))
+            browser = checkpoint.browser
+            disconnected = asyncio.Event()
+            browser.on("disconnected", disconnected.set)
+            session = await browser.new_browser_cdp_session()
+            try:
+                await asyncio.wait_for(session.send("Browser.crash"), timeout=10)
+            except (PlaywrightError, TimeoutError):
+                pass
+            await asyncio.wait_for(disconnected.wait(), timeout=10)
+            assert not browser.is_connected(), "Crash target remained connected"
+            survivors = [index for index in range(profiles) if index != victim]
+            assert await asyncio.gather(*(pages[index].evaluate(STORAGE, None) for index in survivors)) == [values[index] for index in survivors], "One browser crash affected another profile"
+            await runtimes[victim].close()
+            recovered = await runtimes[victim].start(headless=True)
+            pages[victim] = recovered.pages[0]
+            await pages[victim].goto(origin)
+            restored = await pages[victim].evaluate(STORAGE, None)
+            assert restored == values[victim], f"Crash restore lost stores: {restored}; expected {values[victim]}"
+            owned.update(controller_descendants(before, await asyncio.to_thread(process_snapshot), os.getpid()))
+        deadline = asyncio.get_running_loop().time() + 30
+        while True:
+            current = await asyncio.to_thread(process_snapshot)
+            remaining = [pid for pid, row in owned.items() if same_process(current.get(pid), row)]
+            if not remaining:
+                break
+            assert asyncio.get_running_loop().time() < deadline, f"Owned processes survived restart round: {remaining}"
+            await asyncio.sleep(.5)
+        assert all(not runtime.has_resources for runtime in runtimes)
+        observations.append({"round": iteration + 1, "concurrent_profiles": profiles,
+                             "independent_drivers": drivers, "crashed_profile": victim,
+                             "checkpoint_before_crash": True,
+                             "processes_observed": len(owned), "remaining_owned_processes": 0})
+    return observations
 
 
 async def verify(profile_root: Path, executable: Path, origin: str, proxy_server: FixtureServer) -> dict:
@@ -519,6 +597,11 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
                     pass
             await cancelled_start.close()
         checks.append("cancelled-driver-start-cleans-pending-operation-and-restarts-profile")
+        await proxied.close()
+        await a.close()
+        await b.close()
+        restart_rounds = await verify_multi_profile_restarts(profile_root, executable, origin)
+        checks.append("three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes")
         with executable.open("rb") as binary:
             checksum = hashlib.file_digest(binary, "sha256").hexdigest()
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),
@@ -527,7 +610,8 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
                 "permission_states": {"configured_empty": default_permissions,
                                       "configured_grants": granted_permissions,
                                       "after_clear": revoked_permissions},
-                "controller_descendants_observed": controller_processes}
+                "controller_descendants_observed": controller_processes,
+                "multi_profile_restart_rounds": restart_rounds}
     finally:
         try:
             await proxied.close()

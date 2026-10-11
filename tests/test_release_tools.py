@@ -653,6 +653,35 @@ def test_controller_process_identity_survives_reparenting_and_rejects_pid_reuse(
     assert not same_process(original, None)
 
 
+@pytest.mark.parametrize("rounds,profiles", [(0, 3), (101, 3), (True, 3), (3, 1), (3, 5), (3, True)])
+def test_native_multi_profile_restart_gate_rejects_unbounded_or_single_profile_runs(tmp_path, rounds, profiles):
+    import asyncio
+    from scripts.verify_native_runtime import verify_multi_profile_restarts
+
+    with pytest.raises(ValueError, match="1..100 rounds and 2..4 profiles"):
+        asyncio.run(verify_multi_profile_restarts(tmp_path, tmp_path / "missing", "http://127.0.0.1:1",
+                                                rounds=rounds, profiles=profiles))
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_native_multi_profile_restart_gate_closes_all_started_profiles_when_start_fails(tmp_path, monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from scripts import verify_native_runtime
+
+    runtimes = [SimpleNamespace(start=AsyncMock(return_value=SimpleNamespace(pages=[object()])), close=AsyncMock()),
+                SimpleNamespace(start=AsyncMock(side_effect=RuntimeError("owned startup failed")), close=AsyncMock())]
+    created = iter(runtimes)
+    monkeypatch.setattr(verify_native_runtime, "NativeRuntime", lambda *args: next(created))
+    monkeypatch.setattr(verify_native_runtime, "process_snapshot", lambda: {})
+    with pytest.raises(RuntimeError, match="owned startup failed"):
+        asyncio.run(verify_native_runtime.verify_multi_profile_restarts(tmp_path, tmp_path / "missing", "http://127.0.0.1:1"))
+    for runtime in runtimes:
+        runtime.start.assert_awaited_once()
+        runtime.close.assert_awaited_once()
+
+
 def test_controller_tree_excludes_preexisting_processes_and_tracks_new_descendants_only():
     from scripts.verify_native_runtime import controller_descendants
 

@@ -94,6 +94,30 @@ Run the real source-runtime gate with that executable:
 & $python scripts/verify_native_runtime.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative\tmp --report D:\CamouFlowNative\fork-runtime.json
 ```
 
+The runtime gate also runs three rounds with three independent concurrent
+profiles. Each round writes distinct values to all five stores, verifies
+isolation, gracefully checkpoints one rotating profile, crashes its browser,
+checks the other profiles remain usable, and restores its committed data.
+It observes independent Playwright drivers and actual descendant identities
+before and after restart, then requires every observed owned process to exit.
+Existing user processes are excluded by PID plus creation identity, not killed.
+This is a bounded restart/crash check, not a long-running soak or memory-budget
+verification. Running it on the bootstrap Chromium binary proves the runtime
+layer only; the own fork must independently pass it after compilation.
+The Windows bootstrap run passed all 18 checks, including all three restart
+rounds with three observed independent drivers and zero remaining observed
+owned processes after each round. Linux/macOS results for this new check still
+require fresh CI evidence; these results are not a completed own-fork build.
+
+**Crash durability boundary:** a successful JavaScript storage write or read
+does not prove that Chromium has flushed every store to disk. An owned Windows
+bootstrap probe that immediately invoked `Browser.crash` lost freshly written
+cookies and localStorage while IndexedDB, Cache Storage and service workers
+survived. The committed-data gate therefore verifies a graceful close/reopen
+checkpoint before crashing. Native does not currently guarantee preservation of
+pending writes during an abrupt browser crash, nor provide instant disk flush
+or automatic recovery supervision.
+
 ## Current boundary
 
 ### Native C++ policy prototype
