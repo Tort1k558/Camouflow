@@ -191,10 +191,11 @@ Item {
                 }
             }
             SettingsSection {
-                width: parent.width; height: 236
+                width: parent.width; height: diagnosticsFields.implicitHeight + 100
                 visible: root.tab === "Maintenance"
                 title: "Engine diagnostics"; subtitle: "Check the installed engine before updating it."; icon: "refresh"
                 Column {
+                    id: diagnosticsFields
                     anchors.fill: parent; spacing: 20
                     Rectangle {
                         width: parent.width; height: Math.max(58, statusText.implicitHeight + 28)

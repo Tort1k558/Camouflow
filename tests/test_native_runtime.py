@@ -52,6 +52,30 @@ def test_native_diagnostics_reports_blocked_worker_without_fake_observations():
         "Mobile Web touch capability is unavailable", "Worker blocked"]
 
 
+@pytest.mark.parametrize("key", ["vendor", "renderer", "version", "shadingLanguage", "unmaskedVendor",
+                                "unmaskedRenderer", "maxTextureSize", "maxViewportDimensions"])
+def test_native_graphics_diagnostics_detects_document_worker_disagreement(key):
+    from app.core.native.diagnostics import compare_observed
+
+    document = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC",
+                "graphics": {"webgl2": {"available": True, key: "document"}}}
+    worker = {**document, "graphics": {"webgl2": {"available": True, key: "worker"}}}
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == [
+        f"Document and dedicated worker disagree on webgl2 {key}"]
+
+
+def test_native_graphics_diagnostics_preserves_unavailable_contexts_without_fake_renderer():
+    from app.core.native.diagnostics import compare_observed
+
+    document = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC",
+                "graphics": {"webgl": {"available": False, "error": "Native graphics context unavailable"}}}
+    worker = {**document, "graphics": {"webgl": {"available": False, "error": "Worker context blocked"}}}
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == []
+    worker["graphics"]["webgl"]["available"] = True
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == [
+        "Document and dedicated worker disagree on webgl availability"]
+
+
 def test_native_missing_binary_does_not_touch_profile(tmp_path):
     profile = tmp_path / "profile"
     runtime = NativeRuntime(profile, tmp_path / "missing.exe", NativeConfiguration())
@@ -321,6 +345,54 @@ def test_native_binary_health_does_not_call_failed_teardown_success(tmp_path, mo
         close=AsyncMock(side_effect=RuntimeError("owned close failed"))))
     with pytest.raises(RuntimeError, match="owned close failed"):
         asyncio.run(health.probe_native_binary(executable, NativeConfiguration(), tmp_path / "health"))
+
+
+@pytest.mark.parametrize("failed", [False, True])
+def test_native_profile_probe_observes_owned_page_and_always_verifies_teardown(tmp_path, monkeypatch, failed):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from app.core.native import health
+
+    executable = tmp_path / "owned.exe"
+    executable.touch()
+    page = object()
+    context = SimpleNamespace(browser=SimpleNamespace(version="148.0.7778.96"), pages=[page])
+    closed = AsyncMock()
+    monkeypatch.setattr(health, "NativeRuntime", lambda *args: SimpleNamespace(start=AsyncMock(return_value=context), close=closed))
+    expected = {"browser_version": "148.0.7778.96", "mismatches": []}
+    inspect = AsyncMock(return_value=expected, side_effect=RuntimeError("owned observation failed") if failed else None)
+    monkeypatch.setattr(health, "inspect_native_profile", inspect)
+    configuration = NativeConfiguration()
+    if failed:
+        with pytest.raises(RuntimeError, match="owned observation failed"):
+            asyncio.run(health.probe_native_profile(executable, configuration, tmp_path / "health"))
+    else:
+        assert asyncio.run(health.probe_native_profile(executable, configuration, tmp_path / "health")) == expected
+    inspect.assert_awaited_once_with(page, configuration, "148.0.7778.96")
+    closed.assert_awaited_once()
+    assert not list((tmp_path / "health").iterdir())
+
+
+def test_background_read_can_finish_after_its_qt_owner_is_deleted(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from PyQt6 import sip
+    from PyQt6.QtCore import QObject
+    from app.ui.bridge import background
+
+    owner = QObject()
+    applied, reported, fetch = Mock(), Mock(), Mock(return_value="owned result")
+    reader = background.BackgroundRead(owner, applied, reported)
+    tasks = []
+    monkeypatch.setattr(background, "get_server_session", lambda: None)
+    monkeypatch.setattr(background.threading, "Thread", lambda **kwargs: SimpleNamespace(start=lambda: tasks.append(kwargs["target"])))
+    reader.submit(fetch)
+    sip.delete(owner)
+    assert sip.isdeleted(reader)
+    tasks[0]()
+    fetch.assert_called_once_with(None)
+    applied.assert_not_called()
+    reported.assert_not_called()
 
 
 @pytest.mark.parametrize("engine,changed", [("native", False), ("native", True), ("camoufox", False)])

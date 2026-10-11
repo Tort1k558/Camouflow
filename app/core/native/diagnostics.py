@@ -6,6 +6,32 @@ from .configuration import NativeConfiguration
 
 
 OBSERVE = """async () => {
+    const graphicsValues = () => {
+        const result = {};
+        for (const kind of ['webgl', 'webgl2']) {
+            let context;
+            try {
+                if (typeof OffscreenCanvas === 'undefined') throw new Error('OffscreenCanvas unavailable');
+                context = new OffscreenCanvas(16, 16).getContext(kind);
+                if (!context) throw new Error('Native graphics context unavailable');
+                const debug = context.getExtension('WEBGL_debug_renderer_info');
+                result[kind] = {
+                    available: true,
+                    vendor: context.getParameter(context.VENDOR),
+                    renderer: context.getParameter(context.RENDERER),
+                    version: context.getParameter(context.VERSION),
+                    shadingLanguage: context.getParameter(context.SHADING_LANGUAGE_VERSION),
+                    unmaskedVendor: debug ? context.getParameter(debug.UNMASKED_VENDOR_WEBGL) : null,
+                    unmaskedRenderer: debug ? context.getParameter(debug.UNMASKED_RENDERER_WEBGL) : null,
+                    maxTextureSize: context.getParameter(context.MAX_TEXTURE_SIZE),
+                    maxViewportDimensions: Array.from(context.getParameter(context.MAX_VIEWPORT_DIMS))
+                };
+            } catch (error) {
+                result[kind] = {available: false, error: String(error.message)};
+            } finally { context?.getExtension('WEBGL_lose_context')?.loseContext(); }
+        }
+        return result;
+    };
     const navigatorValues = () => ({
         userAgent: navigator.userAgent, platform: navigator.platform,
         language: navigator.language, languages: [...navigator.languages],
@@ -18,9 +44,10 @@ OBSERVE = """async () => {
         width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
         touch: navigator.maxTouchPoints, webdriver: navigator.webdriver,
         secureContext: isSecureContext,
-        screen: {width: screen.width, height: screen.height, colorDepth: screen.colorDepth}
+        screen: {width: screen.width, height: screen.height, colorDepth: screen.colorDepth},
+        graphics: graphicsValues()
     };
-    const source = 'postMessage((' + navigatorValues.toString() + ')())';
+    const source = 'postMessage({...(' + navigatorValues.toString() + ')(),graphics:(' + graphicsValues.toString() + ')()})';
     const url = URL.createObjectURL(new Blob([source], {type: 'text/javascript'}));
     let worker;
     try {
@@ -58,6 +85,17 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
         for key in ("userAgent", "platform", "language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "userAgentData"):
             if worker.get(key) != document.get(key):
                 mismatches.append(f"Document and dedicated worker disagree on {key}")
+        document_graphics, worker_graphics = document.get("graphics", {}), worker.get("graphics", {})
+        for kind in ("webgl", "webgl2"):
+            if kind in document_graphics and kind in worker_graphics:
+                first, second = document_graphics[kind], worker_graphics[kind]
+                if first.get("available") != second.get("available"):
+                    mismatches.append(f"Document and dedicated worker disagree on {kind} availability")
+                elif first.get("available"):
+                    for key in ("vendor", "renderer", "version", "shadingLanguage", "unmaskedVendor",
+                                "unmaskedRenderer", "maxTextureSize", "maxViewportDimensions"):
+                        if first.get(key) != second.get(key):
+                            mismatches.append(f"Document and dedicated worker disagree on {kind} {key}")
     return mismatches
 
 

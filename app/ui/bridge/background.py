@@ -2,6 +2,7 @@
 
 import threading
 
+from PyQt6 import sip
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.services.server_client import get_server_session
@@ -36,7 +37,11 @@ class BackgroundRead(QObject):
                 result, error = fetch(session), None
             except Exception as exc:
                 result, error = None, str(exc)
-            self.finished.emit(session, result, error)
+            try:
+                self.finished.emit(session, result, error)
+            except RuntimeError:
+                if not sip.isdeleted(self):
+                    raise
 
         threading.Thread(target=worker, daemon=True, name="workspace-read").start()
 

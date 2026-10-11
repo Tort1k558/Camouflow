@@ -16,6 +16,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
+from PyQt6 import sip
 from PyQt6.QtCore import QObject, QUrl, pyqtProperty, pyqtSignal, pyqtSlot
 
 from app.storage.db import (
@@ -175,7 +176,11 @@ class BrowserSettingsBridge(QObject):
                           f"({release['build_kind']}) in {store.root}. Fingerprint patches not verified.")
             except Exception as error:
                 report = f"Blocked: Native release {action} failed in {store.root} ({type(error).__name__}): {error}"
-            self.nativeReleaseCompleted.emit(signature, report)
+            try:
+                self.nativeReleaseCompleted.emit(signature, report)
+            except RuntimeError:
+                if not sip.isdeleted(self):
+                    raise
 
         try:
             threading.Thread(target=worker, daemon=False, name="native-release").start()
@@ -225,7 +230,7 @@ class BrowserSettingsBridge(QObject):
         if self._engine == "native":
             from app.core.native.configuration import NativeConfiguration
             from app.core.native.distribution import resolve_native_executable
-            from app.core.native.health import probe_native_binary
+            from app.core.native.health import probe_native_profile
 
             if self._native_probe_running:
                 return
@@ -244,11 +249,29 @@ class BrowserSettingsBridge(QObject):
 
             def worker():
                 try:
-                    version = asyncio.run(probe_native_binary(executable, configuration, OUTPUTS_DIR / "native-health"))
-                    report = f"Headless startup and teardown verified; Chromium {version}. Fingerprint patches not verified. " + " ".join(configuration.limitations())
+                    observations = asyncio.run(probe_native_profile(executable, configuration, OUTPUTS_DIR / "native-health"))
+                    report = f"Headless startup and teardown verified; Chromium {observations['browser_version']}. Fingerprint patches not verified. " + " ".join(configuration.limitations())
+                    for scope in ("document", "worker"):
+                        values = observations["observed"].get(scope)
+                        if values is None:
+                            report += f"\n{scope.title()}: values unavailable."
+                            continue
+                        for kind, graphics in values.get("graphics", {}).items():
+                            if graphics["available"]:
+                                report += f"\n{scope.title()} {kind}: renderer={graphics['renderer']}; unmasked={graphics['unmaskedRenderer']}."
+                            else:
+                                report += f"\n{scope.title()} {kind}: unavailable ({graphics['error']})."
+                    if observations["mismatches"]:
+                        report += "\nConfiguration mismatches: " + "; ".join(observations["mismatches"])
+                    else:
+                        report += "\nObserved document/worker configuration agrees."
                 except Exception as error:
                     report = f"Blocked: Native runtime check failed ({type(error).__name__}): {error}"
-                self.nativeCompatibilityChecked.emit(signature, report)
+                try:
+                    self.nativeCompatibilityChecked.emit(signature, report)
+                except RuntimeError:
+                    if not sip.isdeleted(self):
+                        raise
 
             try:
                 # GUI exit must not abandon this job's owned browser process.

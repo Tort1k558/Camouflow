@@ -457,6 +457,32 @@ Matching reports at `8fe6bbb` passed all seventeen checks on Windows x64,
 Linux x64 and macOS ARM64, including these exact permission states. These are
 still pinned upstream SDK binaries, not independently built Chromium forks.
 
+## Native graphics observations
+
+Diagnostics now observe native WebGL 1/2 in both the document and a disposable
+dedicated worker: standard and unmasked vendor/renderer values, API/shader
+versions, texture limits and viewport limits. Each probe uses its own small
+OffscreenCanvas and releases its graphics context. Unsupported or blocked APIs
+remain explicitly unavailable; no synthetic renderer or JavaScript override is
+installed. Available document/worker values are compared for consistency.
+
+The Native Engine health action runs these observations on an owned disposable
+profile, displays both standard and unmasked renderer values and any configuration
+mismatches, then verifies teardown. The diagnostics card grows with the report.
+Binary installation health checks retain their existing version-string API and
+do not require graphics observations.
+
+Late Native health/release and workspace-read completions now tolerate a deleted
+Qt owner without trying to update destroyed UI objects. Other signal-delivery
+errors still propagate. This prevents the observed shutdown-time worker exception;
+it does not waive owned-browser teardown or recover a failed SDK cleanup.
+
+On Windows, the seventeen-check source-runtime gate observed the same AMD/ANGLE
+renderer and limits in both contexts. A real QML health-button run also observed
+matching configured locale/timezone and graphics, rendered the green interface
+and cleaned its temporary profile. These are upstream-bootstrap observations,
+not evidence of graphics masking or an independently built Native fork.
+
 ## Local release management in the GUI
 
 Native Engine health provides a local `.tar.gz` picker, trusted SHA-256 input,
