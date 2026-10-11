@@ -11,6 +11,7 @@ Item {
     property string tab: "Runtime"
     onTabChanged: settingsScroll.contentY = 0
     readonly property bool isCamoufox: browserSettingsBridge.engine === "camoufox"
+    readonly property bool isNative: browserSettingsBridge.engine === "native"
 
     component ToggleRow: Rectangle {
         id: tr
@@ -47,7 +48,10 @@ Item {
 
     }
 
-    readonly property var sections: [
+    readonly property var sections: root.isNative ? [
+        ["Runtime", "Native configuration", "play", "Independent persistent Chromium profiles"],
+        ["Maintenance", "Engine health", "refresh", "Configuration checks and runtime limitations"]
+    ] : [
         ["Runtime", "Launch & behavior", "play", "Window mode and humanization"],
         ["Fingerprint", "Fingerprint", "globe", "Screen and browser identity"],
         ["Network", "Network", "network", "Location, proxy and protocols"],
@@ -80,9 +84,10 @@ Item {
             anchors.fill: parent; anchors.margins: 12; spacing: 10
             Text { text: "ENGINE"; color: Theme.dim; font.family: Theme.monoFamily; font.pixelSize: 10; Layout.leftMargin: 6; Layout.rightMargin: 8 }
             ModeButton { label: "Camoufox"; active: root.isCamoufox; onClicked: browserSettingsBridge.setEngine("camoufox") }
-            ModeButton { label: "CloakBrowser"; active: !root.isCamoufox; onClicked: browserSettingsBridge.setEngine("cloakbrowser") }
+            ModeButton { label: "CloakBrowser"; active: !root.isCamoufox && !root.isNative; onClicked: browserSettingsBridge.setEngine("cloakbrowser") }
+            ModeButton { label: "Native"; active: root.isNative; onClicked: { root.tab = "Runtime"; browserSettingsBridge.setEngine("native") } }
             Item { Layout.fillWidth: true }
-            Text { text: root.isCamoufox ? "Firefox / Camoufox" : "Chromium / CloakBrowser"; color: Theme.muted; font.pixelSize: 12; Layout.rightMargin: 8 }
+            Text { text: root.isNative ? "Native / preview" : root.isCamoufox ? "Firefox / Camoufox" : "Chromium / CloakBrowser"; color: Theme.muted; font.pixelSize: 12; Layout.rightMargin: 8 }
         }
     }
 
@@ -140,6 +145,37 @@ Item {
             width: settingsScroll.width - 14
             spacing: 18
             SettingsSection {
+                objectName: "nativeConfigurationSection"
+                visible: root.isNative && root.tab !== "Maintenance"
+                width: parent.width; height: nativeFields.implicitHeight + 100
+                title: "CamouFlow Native"; subtitle: "Preview runtime; native fingerprint patches are not yet verified."; icon: "play"
+                Column {
+                    id: nativeFields
+                    anchors.fill: parent; spacing: 16
+                    FormField { width: parent.width; label: "Chromium executable"; placeholder: "Absolute path to an installed compatible build"; text: browserSettingsBridge.nativeExecutable; onEditingFinished: browserSettingsBridge.setValue("executable_path", text) }
+                    RowLayout {
+                        width: parent.width; spacing: 10
+                        ModeButton { Layout.fillWidth: true; label: "Desktop"; active: browserSettingsBridge.nativeEnvironment === "desktop"; onClicked: browserSettingsBridge.setNativeEnvironment("desktop") }
+                        ModeButton { Layout.fillWidth: true; label: "Mobile Web"; active: browserSettingsBridge.nativeEnvironment === "mobile_web"; onClicked: browserSettingsBridge.setNativeEnvironment("mobile_web") }
+                    }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Mobile Web changes viewport, DPR and touch, not OS/browser identity. It is not real Android or iOS."; color: Theme.muted; font.pixelSize: 12 }
+                    RowLayout {
+                        width: parent.width; spacing: 12
+                        FormField { Layout.fillWidth: true; label: "Viewport width"; text: String(browserSettingsBridge.windowWidth); onEditingFinished: browserSettingsBridge.setValue("window_width", text) }
+                        FormField { Layout.fillWidth: true; label: "Viewport height"; text: String(browserSettingsBridge.windowHeight); onEditingFinished: browserSettingsBridge.setValue("window_height", text) }
+                        FormField { Layout.fillWidth: true; label: "DPR"; text: String(browserSettingsBridge.nativeDeviceScaleFactor); onEditingFinished: browserSettingsBridge.setValue("device_scale_factor", text) }
+                    }
+                    RowLayout {
+                        width: parent.width; spacing: 12
+                        FormField { Layout.fillWidth: true; label: "Locale"; text: browserSettingsBridge.locale; onEditingFinished: browserSettingsBridge.setValue("locale", text) }
+                        FormField { Layout.fillWidth: true; label: "Timezone"; text: browserSettingsBridge.timezone; onEditingFinished: browserSettingsBridge.setValue("timezone", text) }
+                    }
+                    ToggleRow { width: parent.width; label: "Headless"; checked: browserSettingsBridge.headlessMode === "headless"; onToggled: function(value) { browserSettingsBridge.setBool("headless", value) } }
+                    MultiField { width: parent.width; label: "Permissions"; placeholder: "One supported permission per line"; text: browserSettingsBridge.permissionsText; onEditingFinished: browserSettingsBridge.setValue("permissions", text) }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Persistent storage is always enabled. Canvas, WebGL, audio, fonts and hardware retain native values. Proxy is assigned to each profile."; color: Theme.muted; font.pixelSize: 12 }
+                }
+            }
+            SettingsSection {
                 width: parent.width; height: 236
                 visible: root.tab === "Maintenance"
                 title: "Engine diagnostics"; subtitle: "Check the installed engine before updating it."; icon: "refresh"
@@ -168,7 +204,7 @@ Item {
             }
             GridLayout {
                 width: parent.width; columns: 1; columnSpacing: 18; rowSpacing: 18
-                visible: root.tab === "Runtime"
+                visible: !root.isNative && root.tab === "Runtime"
                 SettingsSection { Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; Layout.preferredHeight: sectionBody1.implicitHeight + 100; title: "Execution"; subtitle: root.isCamoufox ? "Camoufox window/headless/humanize" : "CloakBrowser headless/humanize"; icon: "play"; accent: Theme.primary
                     Column { id: sectionBody1; anchors.fill: parent; spacing: 14
                         Text { text: "Execution mode"; color: Theme.text; font.pixelSize: 12; font.weight: Font.DemiBold }
@@ -207,7 +243,7 @@ Item {
 
             GridLayout {
                 width: parent.width; columns: 1; columnSpacing: 18; rowSpacing: 18
-                visible: root.tab === "Fingerprint"
+                visible: !root.isNative && root.tab === "Fingerprint"
                 SettingsSection { visible: root.isCamoufox; Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; Layout.preferredHeight: sectionBody2.implicitHeight + 100; title: "Operating Systems"; subtitle: "Camoufox OS fingerprint pool"; icon: "globe"; accent: Theme.success
                     Column { id: sectionBody2; anchors.fill: parent; spacing: 12
                         ToggleRow { label: "Auto"; hint: "Use automatic OS selection"; checked: browserSettingsBridge.osAuto; onToggled: function(value) { if (value) browserSettingsBridge.setOsEnabled("auto", true) } }
@@ -257,7 +293,7 @@ Item {
 
             GridLayout {
                 width: parent.width; columns: 1; columnSpacing: 18; rowSpacing: 18
-                visible: root.tab === "Network"
+                visible: !root.isNative && root.tab === "Network"
                 SettingsSection { Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; Layout.preferredHeight: sectionBody9.implicitHeight + 100; title: "Locale & Timezone"; subtitle: "Manual or proxy-derived locale signals"; icon: "globe"; accent: Theme.primary
                     Column { id: sectionBody9; anchors.fill: parent; spacing: 16
                         Row { width: parent.width; spacing: 10
@@ -288,7 +324,7 @@ Item {
 
             GridLayout {
                 width: parent.width; columns: 1; columnSpacing: 18; rowSpacing: 18
-                visible: root.tab === "Context"
+                visible: !root.isNative && root.tab === "Context"
                 SettingsSection { Layout.fillWidth: true; Layout.preferredHeight: 350; title: root.isCamoufox ? "Camoufox Navigator" : "CloakBrowser Navigator"; subtitle: root.isCamoufox ? "navigator_overrides + Accept-Language" : "Chromium context options"; icon: "user"; accent: Theme.primary
                     ColumnLayout { anchors.fill: parent; spacing: 16
                         RowLayout { Layout.fillWidth: true; spacing: 12
@@ -337,7 +373,7 @@ Item {
 
             GridLayout {
                 width: parent.width; columns: 1; columnSpacing: 18; rowSpacing: 18
-                visible: root.tab === "Storage"
+                visible: !root.isNative && root.tab === "Storage"
                 SettingsSection { visible: root.isCamoufox; Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; Layout.preferredHeight: sectionBody12.implicitHeight + 100; title: "Camoufox Addons"; subtitle: "fonts/addons/exclude_addons"; icon: "plus"; accent: Theme.primary
                     Column { id: sectionBody12; anchors.fill: parent; spacing: 16
                         MultiField { width: parent.width; label: "Fonts"; placeholder: "One font per line"; text: browserSettingsBridge.fontsText; onEditingFinished: browserSettingsBridge.setValue("fonts", text) }
@@ -354,7 +390,7 @@ Item {
 
             GridLayout {
                 width: parent.width; columns: 1; columnSpacing: 18; rowSpacing: 18
-                visible: root.tab === "Advanced"
+                visible: !root.isNative && root.tab === "Advanced"
                 SettingsSection { visible: root.isCamoufox; Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; Layout.preferredHeight: sectionBody14.implicitHeight + 100; title: "Navigator Overrides"; subtitle: "Raw Camoufox navigator_overrides JSON"; icon: "user"; accent: Theme.primary
                     Column { id: sectionBody14; anchors.fill: parent; spacing: 12
                         MultiField { width: parent.width; fieldHeight: 250; label: "navigator_overrides JSON"; placeholder: "{\n  \"platform\": \"Win32\",\n  \"languages\": [\"en-US\", \"en\"]\n}"; text: browserSettingsBridge.navigatorOverridesText; onEditingFinished: browserSettingsBridge.setValue("navigator_overrides", text) }

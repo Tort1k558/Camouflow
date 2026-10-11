@@ -19,13 +19,17 @@ from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 from app.storage.db import (
     CAMOUFOX_DEFAULTS,
     CLOAKBROWSER_DEFAULTS,
+    NATIVE_DEFAULTS,
+    BROWSER_ENGINES,
     PROFILES_DIR,
     db_get_browser_engine,
     db_get_camoufox_defaults,
     db_get_cloakbrowser_defaults,
+    db_get_native_defaults,
     db_set_browser_engine,
     db_set_camoufox_defaults,
     db_set_cloakbrowser_defaults,
+    db_set_native_defaults,
 )
 
 
@@ -42,7 +46,7 @@ _INT_KEYS = {
     "human_typing_delay_max",
     "human_scroll_intensity",
 }
-_FLOAT_KEYS = {"human_mouse_speed"}
+_FLOAT_KEYS = {"human_mouse_speed", "device_scale_factor"}
 _BOOL_KEYS = {
     "persistent_context",
     "enable_cache",
@@ -76,6 +80,7 @@ class BrowserSettingsBridge(QObject):
         self._engine = db_get_browser_engine()
         self._camoufox = db_get_camoufox_defaults()
         self._cloak = db_get_cloakbrowser_defaults()
+        self._native = db_get_native_defaults()
         self._compatibility_report = "Not checked"
         self._latest_engine_version = ""
         self._engine_update_running = False
@@ -85,7 +90,31 @@ class BrowserSettingsBridge(QObject):
             app_state.refreshRequested.connect(self.reload)
 
     def _active(self) -> Dict[str, Any]:
+        if self._engine == "native":
+            return self._native
         return self._cloak if self._engine == "cloakbrowser" else self._camoufox
+
+    @pyqtProperty(str, notify=changed)
+    def nativeExecutable(self) -> str:  # noqa: N802
+        return str(self._native.get("executable_path") or "")
+
+    @pyqtProperty(str, notify=changed)
+    def nativeEnvironment(self) -> str:  # noqa: N802
+        return str(self._native.get("environment") or "desktop")
+
+    @pyqtProperty(float, notify=changed)
+    def nativeDeviceScaleFactor(self) -> float:  # noqa: N802
+        return float(self._native.get("device_scale_factor", 1.0))
+
+    @pyqtSlot(str)
+    def setNativeEnvironment(self, environment: str) -> None:  # noqa: N802
+        if environment not in {"desktop", "mobile_web"}:
+            self._emit_message("Native supports Desktop or Mobile Web only")
+            return
+        mobile = environment == "mobile_web"
+        self._native.update({"environment": environment, "window_width": 390 if mobile else 1366,
+                             "window_height": 844 if mobile else 768, "device_scale_factor": 3.0 if mobile else 1.0})
+        self.changed.emit()
 
     @pyqtProperty(str, notify=changed)
     def compatibilityReport(self) -> str:  # noqa: N802
@@ -103,6 +132,18 @@ class BrowserSettingsBridge(QObject):
 
     @pyqtSlot()
     def checkCompatibility(self) -> None:  # noqa: N802
+        if self._engine == "native":
+            from app.core.native.configuration import NativeConfiguration
+            try:
+                configuration = NativeConfiguration.from_settings(self._native)
+                if not self.nativeExecutable or not Path(self.nativeExecutable).is_file():
+                    raise ValueError("Configure an installed Native Chromium executable")
+                self._compatibility_report = "Configuration valid; binary exists. Runtime/version not yet checked. " + " ".join(configuration.limitations())
+            except (ValueError, OSError) as error:
+                self._compatibility_report = f"Blocked: {error}"
+            self.changed.emit()
+            self._emit_message(self._compatibility_report)
+            return
         package = "cloakbrowser" if self._engine == "cloakbrowser" else "camoufox"
         if importlib.util.find_spec(package) is None:
             self._compatibility_report = f"Blocked: {package} is not installed"
@@ -663,14 +704,16 @@ class BrowserSettingsBridge(QObject):
         self._engine = db_get_browser_engine()
         self._camoufox = db_get_camoufox_defaults()
         self._cloak = db_get_cloakbrowser_defaults()
+        self._native = db_get_native_defaults()
         self.changed.emit()
 
     @pyqtSlot(str)
     def setEngine(self, engine: str) -> None:  # noqa: N802
         normalized = str(engine or "camoufox").lower()
-        if normalized not in {"camoufox", "cloakbrowser"}:
+        if normalized not in BROWSER_ENGINES:
             normalized = "camoufox"
         self._engine = normalized
+        self._compatibility_report = "Not checked"
         db_set_browser_engine(self._engine)
         self.changed.emit()
 
@@ -712,6 +755,9 @@ class BrowserSettingsBridge(QObject):
 
     @pyqtSlot(str)
     def applyPreset(self, name: str) -> None:  # noqa: N802
+        if self._engine == "native":
+            self._emit_message("Native uses Desktop/Mobile Web configuration, not masking presets")
+            return
         preset = str(name or "").strip().lower()
         data = self._active()
         if preset == "balanced":
@@ -779,6 +825,16 @@ class BrowserSettingsBridge(QObject):
 
     @pyqtSlot()
     def save(self) -> None:
+        from app.core.native.configuration import NativeConfiguration
+        if self._engine == "native":
+            try:
+                NativeConfiguration.from_settings(self._native)
+                if type(self._native.get("headless")) is not bool:
+                    raise ValueError("Native headless setting must be a boolean")
+            except ValueError as error:
+                self._emit_message(str(error))
+                return
+            db_set_native_defaults(self._native)
         db_set_browser_engine(self._engine)
         db_set_camoufox_defaults(self._camoufox)
         db_set_cloakbrowser_defaults(self._cloak)
@@ -787,7 +843,10 @@ class BrowserSettingsBridge(QObject):
 
     @pyqtSlot()
     def reset(self) -> None:
-        if self._engine == "cloakbrowser":
+        if self._engine == "native":
+            self._native = dict(NATIVE_DEFAULTS)
+            db_set_native_defaults(self._native)
+        elif self._engine == "cloakbrowser":
             self._cloak = dict(CLOAKBROWSER_DEFAULTS)
             db_set_cloakbrowser_defaults(self._cloak)
         else:

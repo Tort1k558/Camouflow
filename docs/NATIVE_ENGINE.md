@@ -4,9 +4,9 @@
 
 Native is a new public engine project inside CamouFlow, not a renamed Camoufox
 or CloakBrowser. The current increment is an independent persistent Chromium
-runtime and configuration foundation. It is **not yet selectable in the UI**,
+runtime and configuration foundation. It is selectable as **Native (preview)**,
 not a fingerprint-patched Chromium fork and not a production-ready anti-detection
-release. Existing engine selection is unchanged.
+release. Existing engines remain available.
 
 All Native source is public. Server source remains private. Windows, Linux and
 macOS runtime validation are required before the first working release is complete.
@@ -125,7 +125,7 @@ Verified Windows checks:
 - HTTP proxy authentication: actual 407 challenge, credentialed proxy traffic
   and successful navigation to a fixture hostname with no direct DNS route.
 
-The updated local full suite passed **633 tests**, including negative proxy-auth
+The updated local full suite passed **641 tests**, including negative proxy-auth
 fixture checks and explicit missing-binary failure/reporting without fallback.
 
 The core adapter now dispatches `native` profiles into their own `native/`
@@ -154,6 +154,34 @@ handles concurrent connections, including idle Chromium preconnects, with a
 regression test; the corrected Linux runtime still needs fresh CI evidence.
 The verifier closes only its own workspace log handlers before deleting its
 temporary workspace, preserving unrelated application/customer log handlers.
+
+## Native configuration UI
+
+The existing Browser engine page now includes Native-specific controls for an
+explicit Chromium executable, Desktop/Mobile Web, viewport, DPR, locale,
+timezone, headless execution and supported permissions. Camoufox/CloakBrowser
+masking presets and raw launch arguments are not shown as Native capabilities.
+Saving validates Native configuration; unsupported fingerprint requests fail
+without silently persisting them. Configuration health checks distinguish file
+presence from verified runtime/version readiness.
+
+New profile creation has an explicit engine selector. The local Native profile
+creation, Mobile Web preset, edited viewport persistence, unsupported-setting
+rejection and missing-binary diagnostics were exercised through actual QML
+controls. A Windows-platform UI screenshot was reviewed using an owned temporary
+workspace; the offscreen plugin alone does not provide reliable Windows fonts.
+Native cookie inspection and storage preflight now use the same dedicated
+`native/` directory as launch, not another engine's root directory.
+
+Cloud Native profile creation still requires private backend schema/runtime
+support and production validation; UI availability is not proof of those steps.
+AI/Recorder, binary updates and crash/resource checks remain incomplete.
+
+Pinned Chromium/depot_tools source acquisition and local build inputs are tracked
+in [`native/`](../native/README.md). The D: source transfer and compiler installer
+are separate from a successfully built/patched browser. The initial Git transfer
+failed with a TLS disconnect; the current explicit OpenSSL transport retry must
+finish and validate the same pinned commit before hooks/build can proceed.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).

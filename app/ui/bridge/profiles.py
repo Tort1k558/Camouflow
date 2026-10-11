@@ -32,6 +32,7 @@ from app.storage.db import (
     db_add_account,
     db_delete_account,
     db_get_accounts,
+    db_get_browser_engine,
     db_get_setting,
     db_set_setting,
     db_update_account,
@@ -536,8 +537,13 @@ class ProfilesBridge(QObject):
         threading.Thread(target=worker, daemon=True, name="profile-write").start()
 
     @pyqtSlot()
-    def createProfile(self) -> None:
+    @pyqtSlot(str)
+    def createProfile(self, engine: str = "") -> None:
         if not self._ensure_allowed("manager"):
+            return
+        engine = str(engine or db_get_browser_engine()).lower()
+        if engine not in BROWSER_ENGINES:
+            self._emit_message("Unsupported browser engine")
             return
         def work(client):
             existing = client.profiles() if client else db_get_accounts()
@@ -547,9 +553,9 @@ class ProfilesBridge(QObject):
                 index += 1
             name = f"profile{index}"
             if client:
-                client.create_profile({"name": name, "group_name": "Default", "browser_engine": "camoufox"})
+                client.create_profile({"name": name, "group_name": "Default", "browser_engine": engine})
             else:
-                db_add_account({"name": name, "stage": ""})
+                db_add_account({"name": name, "stage": "", "_browser_engine": engine})
             return f"Profile {name} created"
         self._mutate(work)
 
@@ -798,7 +804,7 @@ class ProfilesBridge(QObject):
             engine = str(account.get("_browser_engine") or account.get("browser_engine") or "camoufox")
         if engine not in BROWSER_ENGINES:
             raise ValueError("Unsupported cookie browser engine")
-        profile_dir = root / "cloakbrowser" if engine == "cloakbrowser" else root
+        profile_dir = root / engine if engine in {"cloakbrowser", "native"} else root
         if profile_dir.is_symlink() or profile_dir.is_junction() or not profile_dir.resolve().is_relative_to(root.resolve()):
             raise ValueError("Cookie storage must remain inside its dedicated profile directory")
         if not profile_dir.exists():
@@ -1385,8 +1391,8 @@ class ProfilesBridge(QObject):
     def _profile_storage_issue(name: str, *, engine: str, storage_scope=None) -> str:
         root = checked_profile_storage(name, storage_scope)
         profile_dir = root
-        if engine == "cloakbrowser":
-            profile_dir = profile_dir / "cloakbrowser"
+        if engine in {"cloakbrowser", "native"}:
+            profile_dir = profile_dir / engine
         if profile_dir.is_symlink() or profile_dir.is_junction() or not profile_dir.resolve().is_relative_to(root.resolve()):
             raise ValueError("Browser directory must not escape its dedicated profile storage")
         preferences = profile_dir / "Default" / "Preferences"

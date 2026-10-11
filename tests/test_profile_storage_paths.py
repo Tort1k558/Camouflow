@@ -329,7 +329,7 @@ def test_cloakbrowser_rejects_linked_engine_subdirectory_before_mkdir(workspace,
     assert not db.profile_dir_for_email("safe").exists()
 
 
-@pytest.mark.parametrize("engine", ["camoufox", "cloakbrowser"])
+@pytest.mark.parametrize("engine", ["camoufox", "cloakbrowser", "native"])
 def test_profile_preflight_rejects_root_identities(workspace, engine):
     from app.ui.bridge.profiles import ProfilesBridge
 

@@ -11,6 +11,82 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 
+def test_native_qml_configuration_and_profile_creation(tmp_path):
+    script = '''
+import time
+from PyQt6 import sip
+from PyQt6.QtCore import QCoreApplication, QEvent, QMetaObject, QUrl
+from app.storage import db
+from app.ui.qml_app import QmlApplication
+db.init_db()
+db.db_set_setting('onboarding_completed', 'true')
+ui = QmlApplication(['Owned Native UI verification'])
+warnings = []
+ui.engine.warnings.connect(lambda rows: warnings.extend(row.toString() for row in rows))
+def pump(seconds=.3):
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        ui.app.processEvents()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        time.sleep(.01)
+def find(item, key, value):
+    if item.property(key) == value: return item
+    for child in item.childItems():
+        found = find(child, key, value)
+        if found is not None: return found
+    return None
+try:
+    ui.engine.load(QUrl.fromLocalFile(str(ui.root_dir / 'Main.qml')))
+    pump()
+    ui.state.setPage('Browser')
+    pump()
+    root = ui.engine.rootObjects()[0].contentItem()
+    page = find(root, 'objectName', 'browserPage')
+    QMetaObject.invokeMethod(find(page, 'label', 'Native'), 'clicked')
+    pump()
+    section = find(page, 'objectName', 'nativeConfigurationSection')
+    assert section.isVisible()
+    QMetaObject.invokeMethod(find(section, 'label', 'Mobile Web'), 'clicked')
+    pump()
+    assert ui.browser_settings.nativeEnvironment == 'mobile_web'
+    assert ui.browser_settings.windowWidth == 390
+    assert ui.browser_settings.nativeDeviceScaleFactor == 3.0
+    width = find(section, 'label', 'Viewport width')
+    width.setProperty('text', '420')
+    QMetaObject.invokeMethod(width, 'editingFinished')
+    QMetaObject.invokeMethod(find(page, 'text', 'Save changes'), 'clicked')
+    pump()
+    assert db.db_get_native_defaults()['window_width'] == 420
+    assert db.db_get_browser_engine() == 'native'
+    ui.browser_settings.setValue('fingerprint_noise', True)
+    messages = []
+    ui.browser_settings.message.connect(messages.append)
+    ui.browser_settings.save()
+    assert 'does not support' in messages[-1]
+    assert 'fingerprint_noise' not in db.db_get_native_defaults()
+    ui.browser_settings.reload()
+    ui.browser_settings.checkCompatibility()
+    assert ui.browser_settings.compatibilityReport.startswith('Blocked:')
+    ui.state.setPage('Profiles')
+    pump()
+    combo = find(root, 'objectName', 'newProfileEngine')
+    assert combo.property('currentIndex') == 2
+    QMetaObject.invokeMethod(find(root, 'text', 'New Profile'), 'clicked')
+    pump(.8)
+    rows = db.db_get_accounts()
+    assert len(rows) == 1 and rows[0]['_browser_engine'] == 'native'
+    assert not warnings, warnings
+finally:
+    ui.recorder.shutdown(); ui.operations.shutdown(); ui.ai.shutdown()
+    sip.delete(ui.engine)
+    ui._workspace_lock.unlock()
+'''
+    result = subprocess.run([sys.executable, "-c", script], cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "CAMOUFLOW_DATA_DIR": str(tmp_path), "QT_QPA_PLATFORM": "offscreen"},
+        capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_task_search_and_rapid_page_switches_preserve_qml_contexts(tmp_path):
     script = '''
 import time

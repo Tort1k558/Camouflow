@@ -147,7 +147,16 @@ Item {
             Layout.fillWidth: true
             PageHeader { Layout.fillWidth: true; height: 72; title: "Profiles"; subtitle: "Browser sessions, identities and assigned connections" }
             PrimaryButton { id: importButton; text: "Import"; icon: "save"; secondary: true; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: profileImportMenu.open() }
-            PrimaryButton { text: "New Profile"; icon: "plus"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: profilesBridge.createProfile() }
+            PlainComboBox {
+                id: newProfileEngine
+                objectName: "newProfileEngine"
+                Layout.preferredWidth: 160
+                model: ["Camoufox", "CloakBrowser", "Native (preview)"]
+                currentIndex: ["camoufox", "cloakbrowser", "native"].indexOf(browserSettingsBridge.engine)
+                Accessible.name: "New profile engine"
+                enabled: profilesBridge.canManage && !profilesBridge.busy
+            }
+            PrimaryButton { text: "New Profile"; icon: "plus"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: profilesBridge.createProfile(["camoufox", "cloakbrowser", "native"][newProfileEngine.currentIndex]) }
         }
         RowLayout {
             Layout.fillWidth: true; spacing: 12

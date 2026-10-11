@@ -58,11 +58,12 @@ def test_cloud_cookie_save_is_explicitly_unsupported(cookie_bridge, monkeypatch)
     assert "local" in bridge._emit_message.call_args.args[0].lower()
 
 
-def test_cloak_cookie_reader_uses_its_engine_directory(tmp_path, monkeypatch):
+@pytest.mark.parametrize("engine", ["cloakbrowser", "native"])
+def test_chromium_cookie_reader_uses_its_engine_directory(tmp_path, monkeypatch, engine):
     monkeypatch.setattr(db, "PROFILES_DIR", tmp_path / "profiles")
     monkeypatch.setattr(db, "ACCOUNTS_FILE", tmp_path / "accounts.json")
-    db._save_accounts_raw([{"name": "safe", "_browser_engine": "cloakbrowser"}])
-    cookie_file = db.profile_dir_for_email("safe") / "cloakbrowser" / "Default" / "Network" / "Cookies"
+    db._save_accounts_raw([{"name": "safe", "_browser_engine": engine}])
+    cookie_file = db.profile_dir_for_email("safe") / engine / "Default" / "Network" / "Cookies"
     cookie_file.parent.mkdir(parents=True)
     with sqlite3.connect(cookie_file) as connection:
         connection.execute("CREATE TABLE cookies (host_key TEXT, name TEXT, value TEXT, encrypted_value BLOB, path TEXT, expires_utc INTEGER, is_secure INTEGER, is_httponly INTEGER)")
