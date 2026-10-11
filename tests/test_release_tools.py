@@ -302,6 +302,49 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
     assert receipt["native_patch_runtime_verified"] is False
 
 
+@pytest.mark.parametrize("changed", ["patches", "output_arguments", "input_arguments"])
+def test_native_build_does_not_record_success_if_inputs_change_during_compilation(tmp_path, monkeypatch, changed):
+    from scripts import native_build
+
+    source = tmp_path / "chromium/src"
+    output = source / "out/CamouFlowNative"
+    output.mkdir(parents=True)
+    (source.parent / ".gclient").write_text("owned", encoding="utf-8")
+    (source / "DEPS").write_text("owned", encoding="utf-8")
+    inputs = tmp_path / "inputs"
+    (inputs / "native").mkdir(parents=True)
+    arguments = inputs / "native/args.gn"
+    arguments.write_text("is_debug = false\n", encoding="utf-8")
+    receipt = output / "camouflow-build.json"
+    receipt.write_text("stale previous build", encoding="utf-8")
+    compiled = False
+
+    def run(args, *a, **kwargs):
+        nonlocal compiled
+        if args[:3] == ["git", "rev-parse", "HEAD"]:
+            return native_build.LOCK["chromium_revision"]
+        if args[0] == "autoninja":
+            compiled = True
+            if changed == "output_arguments":
+                (output / "args.gn").write_text("is_debug = true\n", encoding="utf-8")
+            elif changed == "input_arguments":
+                arguments.write_text("is_debug = true\n", encoding="utf-8")
+        return ""
+
+    monkeypatch.setattr(native_build, "ROOT", inputs)
+    monkeypatch.setattr(native_build, "checkout", lambda *a: None)
+    monkeypatch.setattr(native_build, "preflight", lambda *a, **kw: {})
+    monkeypatch.setattr(native_build, "environment", lambda *a: {})
+    monkeypatch.setattr(native_build, "bootstrap_windows_git", lambda *a: None)
+    monkeypatch.setattr(native_build, "require_stage", lambda *a: None)
+    monkeypatch.setattr(native_build, "source_patches", lambda *a: [{"name": "changed"}] if compiled and changed == "patches" else [])
+    monkeypatch.setattr(native_build, "depot_command", lambda name, *a: [name])
+    monkeypatch.setattr(native_build, "run", run)
+    with pytest.raises(ValueError, match="changed during compilation"):
+        native_build.execute("build", tmp_path, jobs=1)
+    assert compiled and not receipt.exists()
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows gclient helpers use batch launchers")
 def test_native_build_helper_uses_the_installed_vpython_without_rebootstrapping(tmp_path):
     from scripts.native_build import environment

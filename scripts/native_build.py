@@ -311,9 +311,17 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
         check_patch_dependencies(source, env)
     output = source / "out/CamouFlowNative"
     output.mkdir(parents=True, exist_ok=True)
-    output.joinpath("args.gn").write_text((ROOT / "native/args.gn").read_text(encoding="utf-8-sig"), encoding="utf-8")
+    receipt_path = output / "camouflow-build.json"
+    receipt_path.unlink(missing_ok=True)
+    arguments = (ROOT / "native/args.gn").read_text(encoding="utf-8-sig")
+    output.joinpath("args.gn").write_text(arguments, encoding="utf-8")
     run(depot_command("gn", workspace) + ["gen", "out/CamouFlowNative"], source, env)
     run(depot_command("autoninja", workspace) + ["-C", "out/CamouFlowNative", "-j", str(jobs), "chrome"], source, env)
+    if source_patches(source, env) != patches:
+        raise ValueError("Native source patches changed during compilation; refusing a build receipt")
+    if (output.joinpath("args.gn").read_text(encoding="utf-8-sig") != arguments
+            or (ROOT / "native/args.gn").read_text(encoding="utf-8-sig") != arguments):
+        raise ValueError("Native GN arguments changed during compilation; refusing a build receipt")
     relative_binary = {"win32": "chrome.exe", "linux": "chrome",
                        "darwin": "Chromium.app/Contents/MacOS/Chromium"}[sys.platform]
     binary = output / relative_binary
@@ -327,7 +335,7 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
                "args_sha256": hashlib.sha256(output.joinpath("args.gn").read_bytes()).hexdigest(),
                "fingerprint_patched": False, "patches": patches,
                "native_patch_runtime_verified": False}
-    output.joinpath("camouflow-build.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+    receipt_path.write_text(json.dumps(receipt, indent=2), encoding="utf-8")
 
 
 def main() -> int:

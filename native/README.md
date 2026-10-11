@@ -25,6 +25,15 @@ generating/building. Existing compatible objects remain reusable; changed
 generated feature headers will legitimately invalidate some Blink objects.
 The own-fork binary and every patched runtime gate remain unverified.
 
+The build helper now revalidates the exact source-patch set and GN arguments
+after successful compilation, before writing the build receipt. A source/input
+change fails explicitly, and a new build attempt removes its stale prior receipt
+before GN/build; no successful receipt is retained for that failed attempt.
+Three controlled compiler-callback tests changed the patch set, generated GN
+arguments or tracked GN inputs and confirmed rejection; the unchanged-input
+control still records success. The already-running build loaded the earlier
+helper code, so it must undergo the new post-build validation before packaging.
+
 After a reported host freeze, process inspection found the one-job build and
 compiler absent, with its log stopping during compilation and no terminal build
 receipt. The same cached output was resumed without cleaning, still at one job,
