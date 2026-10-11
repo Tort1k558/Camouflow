@@ -16,6 +16,7 @@ class NativeRuntimeError(RuntimeError):
 
 class NativeRuntime:
     CLOSE_TIMEOUT_SECONDS = 40
+    DRIVER_STOP_TIMEOUT_SECONDS = 8
 
     def __init__(self, profile_dir: Path, executable: Path, configuration: NativeConfiguration):
         self.profile_dir = Path(profile_dir)
@@ -24,6 +25,7 @@ class NativeRuntime:
         self.context = None
         self.playwright = None
         self._profile_lock = None
+        self._driver_stop_task = None
         self._operation_lock = asyncio.Lock()
 
     async def start(self, *, headless: bool = False, proxy: dict | None = None):
@@ -81,9 +83,12 @@ class NativeRuntime:
                 await asyncio.wait_for(context.close(), timeout=30)
         finally:
             if driver is not None:
-                await asyncio.wait_for(driver.stop(), timeout=8)
+                if self._driver_stop_task is None:
+                    self._driver_stop_task = asyncio.create_task(driver.stop())
+                await asyncio.wait_for(asyncio.shield(self._driver_stop_task), timeout=self.DRIVER_STOP_TIMEOUT_SECONDS)
             self.context = None
             self.playwright = None
+            self._driver_stop_task = None
             if self._profile_lock is not None:
                 self._profile_lock.unlock()
                 self._profile_lock = None

@@ -286,6 +286,42 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         assert await probe_native_binary(executable, desktop, health_work) == version
         assert not list(health_work.iterdir())
         checks.append("native-binary-headless-health-and-disposable-profile-cleanup")
+        cancelled = NativeRuntime(profile_root / "cancelled-close", executable, desktop)
+        closing = None
+        try:
+            await cancelled.start(headless=True)
+            closing = asyncio.create_task(cancelled.close())
+            deadline = asyncio.get_running_loop().time() + cancelled.CLOSE_TIMEOUT_SECONDS
+            while cancelled._driver_stop_task is None:
+                assert not closing.done(), "Close finished before its stop operation could be observed"
+                assert asyncio.get_running_loop().time() < deadline, "Driver stop was not reached"
+                await asyncio.sleep(0)
+            stop = cancelled._driver_stop_task
+            closing.cancel()
+            try:
+                await closing
+            except asyncio.CancelledError:
+                pass
+            else:
+                raise AssertionError("Cancelled close unexpectedly completed")
+            assert cancelled._driver_stop_task is stop and not stop.cancelled()
+            assert cancelled._profile_lock is not None
+            child = await asyncio.to_thread(subprocess.run,
+                [sys.executable, str(Path(__file__).resolve()), "--check-lock", str(cancelled.profile_dir),
+                 "--executable", str(executable)], cwd=ROOT, capture_output=True, text=True, timeout=15)
+            assert child.returncode == 0, "Interrupted teardown lost its profile owner: " + child.stdout + child.stderr
+            await cancelled.close()
+            assert cancelled.playwright is None and cancelled._driver_stop_task is None
+            assert cancelled._profile_lock is None
+        finally:
+            if closing is not None and not closing.done():
+                closing.cancel()
+                try:
+                    await closing
+                except asyncio.CancelledError:
+                    pass
+            await cancelled.close()
+        checks.append("cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner")
         with executable.open("rb") as binary:
             checksum = hashlib.file_digest(binary, "sha256").hexdigest()
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),

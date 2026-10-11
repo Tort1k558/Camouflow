@@ -60,7 +60,7 @@ def test_native_missing_binary_does_not_touch_profile(tmp_path):
     assert not profile.exists()
 
 
-def test_native_failed_driver_stop_retains_owner_and_can_be_retried(tmp_path):
+def test_native_failed_driver_stop_retains_owner_and_does_not_reinvoke_one_shot_sdk_stop(tmp_path):
     from types import SimpleNamespace
     from unittest.mock import AsyncMock, Mock
 
@@ -77,9 +77,11 @@ def test_native_failed_driver_stop_retains_owner_and_can_be_retried(tmp_path):
         with pytest.raises(NativeRuntimeError, match="already running"):
             await runtime.start()
         driver.stop.side_effect = None
-        await runtime.close()
-        assert runtime.context is None and runtime.playwright is None
-        lock.unlock.assert_called_once()
+        with pytest.raises(RuntimeError, match="owned stop failure"):
+            await runtime.close()
+        assert runtime.context is context and runtime.playwright is driver
+        driver.stop.assert_awaited_once()
+        lock.unlock.assert_not_called()
     asyncio.run(check())
 
 
@@ -93,6 +95,51 @@ def test_native_refuses_existing_unrelated_browser_data(tmp_path):
         asyncio.run(runtime.start())
     assert original.read_text(encoding="utf-8") == "customer data"
     assert list(profile.iterdir()) == [original]
+
+
+@pytest.mark.parametrize("interruption", ["cancel", "timeout"])
+def test_native_interrupted_stop_waits_for_the_same_sdk_operation_before_releasing_owner(tmp_path, interruption):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from playwright.async_api._context_manager import PlaywrightContextManager
+
+    async def check():
+        entered, release = asyncio.Event(), asyncio.Event()
+        async def stop_connection():
+            entered.set()
+            await release.wait()
+        manager = PlaywrightContextManager()
+        connection = SimpleNamespace(stop_async=AsyncMock(side_effect=stop_connection))
+        manager._connection = connection
+        runtime = NativeRuntime(tmp_path / "owned", Path(__file__), NativeConfiguration())
+        lock = Mock()
+        runtime.context = SimpleNamespace(close=AsyncMock())
+        runtime.playwright = SimpleNamespace(stop=manager.__aexit__)
+        runtime._profile_lock = lock
+        if interruption == "timeout":
+            runtime.DRIVER_STOP_TIMEOUT_SECONDS = .05
+        closing = asyncio.create_task(runtime.close())
+        await asyncio.wait_for(entered.wait(), timeout=1)
+        if interruption == "cancel":
+            closing.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await closing
+        else:
+            with pytest.raises(asyncio.TimeoutError):
+                await closing
+        assert manager._exit_was_called
+        assert runtime._driver_stop_task is not None and not runtime._driver_stop_task.done()
+        lock.unlock.assert_not_called()
+        with pytest.raises(NativeRuntimeError, match="already running"):
+            await runtime.start()
+        release.set()
+        await runtime.close()
+        assert runtime.context is None and runtime.playwright is None
+        assert runtime._driver_stop_task is None
+        lock.unlock.assert_called_once()
+        connection.stop_async.assert_awaited_once()
+    asyncio.run(check())
 
 
 @pytest.mark.parametrize("values", [

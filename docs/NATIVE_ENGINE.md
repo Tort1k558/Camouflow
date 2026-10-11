@@ -273,9 +273,9 @@ directories. These add two checks to the report, for ten passed Windows checks.
 The traceback from the earlier local timeout identified persistent-context close
 being cancelled at eight seconds. Native now permits 30 seconds for that close
 plus eight seconds for driver stop, inside its own 40-second adapter bound.
-Existing Camoufox/CloakBrowser teardown limits are unchanged. Failed driver stop
-retains its handles/profile lock and can be retried; launching another runtime
-over those retained handles is rejected. Unit tests cover that ownership case.
+Existing Camoufox/CloakBrowser teardown limits are unchanged. Interrupted driver
+stop retains its handles/profile lock; launching another runtime over those
+retained handles is rejected. The continuation semantics are detailed below.
 
 This is bounded teardown and committed-storage recovery evidence, not a promise
 that in-flight writes survive a crash. It does not prove arbitrary controller
@@ -349,6 +349,27 @@ tools reproduced the failure. The public locale-normalization patch preserves
 the full comparison and made the original failed command pass against unchanged
 baseline artifacts. Full compilation has resumed; native fingerprint controls
 remain disabled until the own binary passes the dedicated hardware binding gate.
+
+## Cancellation-safe driver stop
+
+The pinned Playwright context manager marks its stop callback consumed before
+awaiting connection cleanup. Cancelling that await and calling `stop()` again
+can therefore return without having waited for the original cleanup operation.
+Native now retains one driver-stop task and shields it from caller cancellation
+and its eight-second waiting deadline. A later `close()` waits for that same task
+instead of invoking the SDK's one-shot callback again. Profile ownership is
+released only after successful completion. A terminal stop error remains an
+error on subsequent attempts; it is not converted into a successful no-op.
+
+Unit tests exercise the actual pinned SDK context manager's consumed-callback
+behavior with controlled cancellation/timeouts and test retained terminal errors.
+The Windows upstream runtime gate now passes fourteen checks: it cancels a real
+Native close while its driver-stop task is pending, proves another process cannot
+acquire that profile, then waits for the same stop operation and verifies owner
+release. There is no simulated browser or injected stop delay in this gate.
+Linux/macOS reports for this additional check remain pending. This does not yet
+prove cancellation during driver startup, arbitrary controller termination or
+long-running process/resource stability.
 
 References: [Playwright persistent contexts](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context)
 and [browser emulation](https://playwright.dev/python/docs/emulation).
