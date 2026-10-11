@@ -255,13 +255,17 @@ packages and generated its required locales; Windows and other WSL distributions
 were not modified. Chromium dependency sync remains separate and still running.
 
 CamouFlow application runtime checks require Python 3.12, whereas this distro's
-system interpreter is 3.10. A separate CPython 3.12.15 build has started with one
+system interpreter is 3.10. A separate CPython 3.12.15 build completed with one
 compiler job under `/home/nativebuilder/CamouFlowNative/toolchain/python-3.12.15`.
 The official source archive was verified against publisher SHA-256
 `c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a` before extraction.
 Its installation prefix is private to that workspace; neither system Python nor
-the existing Windows application `.venv` is replaced. This build is not yet a
-verified installed interpreter or proof of a Linux Native browser runtime.
+the existing Windows application `.venv` is replaced. The installed interpreter
+reported 3.12.15 and imported SSL, SQLite, compression, ctypes and venv modules;
+`verified-build.json` records the measured source hash and private prefix.
+Installation of the exact public application requirements has started in a
+separate `app-env` under this workspace. Neither step proves a Linux Native
+browser runtime or completion of Chromium's dependency sync.
 
 ## Binary installation foundation
 
