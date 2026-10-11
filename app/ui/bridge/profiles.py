@@ -33,6 +33,7 @@ from app.storage.db import (
     db_delete_account,
     db_get_accounts,
     db_get_browser_engine,
+    db_get_native_defaults,
     db_get_setting,
     db_set_setting,
     db_update_account,
@@ -744,6 +745,14 @@ class ProfilesBridge(QObject):
             return
         engine = str(engine or "camoufox").lower()
         settings_key = browser_settings_key(engine)
+        if engine == "native":
+            from app.core.native.configuration import NativeConfiguration
+
+            try:
+                NativeConfiguration.from_settings({**db_get_native_defaults(), **payload})
+            except ValueError as exc:
+                self._emit_message(f"Native browser settings error: {exc}")
+                return
         if not self._ensure_allowed("manager"):
             return
         def work(client):

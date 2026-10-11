@@ -49,6 +49,14 @@ not overwritten. Tools/cache/temp are scoped to the owned workspace. Windows
 build subprocesses use Git's OpenSSL TLS backend without changing global Git
 configuration or disabling certificate validation. This transport completed the
 pinned source transfer after the system-default Schannel transfer disconnected.
+Successful sync and hooks write separate atomic stage records tied to the
+pinned source/depot revisions, platform and actual `DEPS`/`.gclient` checksums.
+Hooks require a completed sync record; compilation requires both. A new sync
+invalidates both records, and rerunning hooks invalidates its previous result
+before executing. A partial `.gclient_entries` file is not success evidence:
+upstream writes it before its final CIPD installation has finished. Older
+workspaces without stage records must successfully rerun the corresponding
+commands; records must not be manufactured to skip dependencies or hooks.
 Failures
 remain failures; there is no alternate browser/toolchain fallback.
 

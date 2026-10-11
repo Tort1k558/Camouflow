@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,6 +135,49 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
     return [{"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]
 
 
+def stage_identity(chromium: Path, stage: str) -> dict:
+    return {"schema": 1, "stage": stage, "platform": sys.platform,
+            "chromium_revision": LOCK["chromium_revision"],
+            "depot_tools_revision": LOCK["depot_tools_revision"],
+            "deps_sha256": hashlib.sha256((chromium / "src/DEPS").read_bytes()).hexdigest(),
+            "gclient_sha256": hashlib.sha256((chromium / ".gclient").read_bytes()).hexdigest()}
+
+
+def stage_path(chromium: Path, stage: str) -> Path:
+    if stage not in {"sync", "hooks"}:
+        raise ValueError("Unknown Native build stage")
+    target = chromium / f"camouflow-{stage}.json"
+    if chromium != chromium.resolve() or target.is_symlink() or target != target.resolve():
+        raise ValueError("Native build stage records must not contain links")
+    return target
+
+
+def record_stage(chromium: Path, stage: str) -> None:
+    target = stage_path(chromium, stage)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=chromium,
+                                         prefix=f"camouflow-{stage}-", suffix=".tmp", delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(stage_identity(chromium, stage), stream, indent=2)
+        temporary.replace(target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def require_stage(chromium: Path, stage: str) -> None:
+    target = stage_path(chromium, stage)
+    if not target.is_file():
+        raise ValueError(f"Run {stage} to successful completion before the next build stage")
+    try:
+        identity = json.loads(target.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as error:
+        raise ValueError(f"Invalid Native {stage} stage record") from error
+    if identity != stage_identity(chromium, stage):
+        raise ValueError(f"Native {stage} inputs changed; rerun that stage")
+
+
 def execute(action: str, workspace: Path) -> None:
     print(json.dumps(preflight(workspace)), flush=True)
     if action == "preflight":
@@ -151,7 +195,11 @@ def execute(action: str, workspace: Path) -> None:
     chromium = workspace / "chromium"
     chromium.mkdir(exist_ok=True)
     source = chromium / "src"
+    if chromium != chromium.resolve() or source != source.resolve():
+        raise ValueError("Chromium workspace/source must not contain links")
     if action == "sync":
+        for stage in ("sync", "hooks"):
+            stage_path(chromium, stage).unlink(missing_ok=True)
         checkout(source, LOCK["chromium_repository"], LOCK["chromium_revision"], env)
         config = ("solutions = " + repr([{"name": "src", "url": LOCK["chromium_repository"],
                    "managed": False, "custom_deps": {}, "custom_vars": {}}]) + "\n")
@@ -164,14 +212,19 @@ def execute(action: str, workspace: Path) -> None:
         run(depot_command("gclient", workspace) + ["sync", "--no-history", "--nohooks",
             "--revision", "src@" + LOCK["chromium_revision"], "-j", str(LOCK["build_jobs"])], chromium, env)
         run(depot_command("gclient", workspace) + ["revinfo", "-a"], chromium, env)
+        record_stage(chromium, "sync")
         return
     if not (chromium / ".gclient").is_file() or not (source / "DEPS").is_file():
         raise ValueError("Run sync before hooks/build")
     if run(["git", "rev-parse", "HEAD"], source, env, capture=True) != LOCK["chromium_revision"]:
         raise ValueError("Chromium revision does not match the build lock")
+    require_stage(chromium, "sync")
     if action == "hooks":
+        stage_path(chromium, "hooks").unlink(missing_ok=True)
         run(depot_command("gclient", workspace) + ["runhooks"], chromium, env)
+        record_stage(chromium, "hooks")
         return
+    require_stage(chromium, "hooks")
     patches = source_patches(source, env)
     output = source / "out/CamouFlowNative"
     output.mkdir(parents=True, exist_ok=True)

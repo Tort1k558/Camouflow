@@ -132,3 +132,40 @@ def test_native_browser_interface_uses_separate_storage_and_never_falls_back(tmp
     with pytest.raises(RuntimeError, match="explicit Native Chromium executable"):
         asyncio.run(browser.start())
     fallback.assert_not_called()
+
+
+@pytest.mark.parametrize("settings", [
+    {"hardware_concurrency": 4}, {"device_memory": 8}, {"user_agent": "Invented device"},
+    {"webgl_vendor": "Invented GPU"}, {"webgl_renderer": "Invented renderer"},
+    {"environment": "android"}, {"window_width": True}, {"extra_http_headers": {"Accept-Language": "other"}},
+])
+def test_native_profile_json_rejects_unsupported_settings_before_any_mutation(monkeypatch, settings):
+    import json
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from app.ui.bridge import profiles
+
+    monkeypatch.setattr(profiles, "db_get_native_defaults", lambda: {})
+    bridge = SimpleNamespace(_emit_message=Mock(), _ensure_allowed=Mock(return_value=True), _mutate=Mock())
+    profiles.ProfilesBridge.saveProfileBrowserSettingsJson(bridge, "owned", "native", json.dumps(settings))
+    bridge._mutate.assert_not_called()
+    assert "Native browser settings error:" in bridge._emit_message.call_args.args[0]
+
+
+def test_native_profile_json_validates_merged_defaults_and_preserves_only_overrides(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from app.ui.bridge import profiles
+
+    monkeypatch.setattr(profiles, "db_get_native_defaults", lambda: {"environment": "mobile_web", "window_height": 844})
+    update = Mock()
+    monkeypatch.setattr(profiles, "db_update_account", update)
+    bridge = SimpleNamespace(_emit_message=Mock(), _ensure_allowed=Mock(return_value=True), _mutate=Mock())
+    profiles.ProfilesBridge.saveProfileBrowserSettingsJson(bridge, "owned", "native", '{"window_width":420}')
+    work, targets = bridge._mutate.call_args.args
+    assert targets == ["owned"]
+    work(None)
+    update.assert_called_once_with("owned", {"native_settings": {"window_width": 420}})
+    bridge._emit_message.assert_not_called()

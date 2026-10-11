@@ -172,6 +172,9 @@ masking presets and raw launch arguments are not shown as Native capabilities.
 Saving validates Native configuration; unsupported fingerprint requests fail
 without silently persisting them. Configuration health checks distinguish file
 presence from verified runtime/version readiness.
+Per-profile JSON overrides use that same validator against merged Native
+defaults before local/cloud mutation. Unsupported UA, hardware and GPU controls
+(including legacy WebGL key names) fail at save time, not only at launch.
 
 New profile creation has an explicit engine selector. The local Native profile
 creation, Mobile Web preset, edited viewport persistence, unsupported-setting
@@ -181,8 +184,12 @@ workspace; the offscreen plugin alone does not provide reliable Windows fonts.
 Native cookie inspection and storage preflight now use the same dedicated
 `native/` directory as launch, not another engine's root directory.
 
-Cloud Native profile creation still requires private backend schema/runtime
-support and production validation; UI availability is not proof of those steps.
+The private backend's existing profile schema already accepts Native; no schema
+change was needed. Isolated local API tests verified create, update and list
+roundtrips for all three engine identifiers, including Native Mobile Web
+configuration and team identity (15 resource-validation tests passed). This is
+not production evidence: live cloud creation, locking, storage synchronization
+and Native launch still require end-to-end validation against the deployed API.
 AI, binary updates, controller-crash/orphan recovery and resource checks remain
 incomplete.
 

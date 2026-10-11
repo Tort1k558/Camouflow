@@ -372,3 +372,56 @@ def test_native_hardware_gate_rejects_invalid_api_values(cpu, memory):
 
     with pytest.raises(ValueError, match="invalid"):
         validate_observations(_hardware_observations(cpu, memory))
+
+
+def _native_build_stage_fixture(tmp_path):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src/DEPS").write_text("pinned dependency inputs", encoding="utf-8")
+    (tmp_path / ".gclient").write_text("owned source configuration", encoding="utf-8")
+    return tmp_path
+
+
+def test_native_build_does_not_treat_gclient_entries_as_success(tmp_path):
+    from scripts.native_build import require_stage
+
+    chromium = _native_build_stage_fixture(tmp_path)
+    (chromium / ".gclient_entries").write_text("partial sync", encoding="utf-8")
+    with pytest.raises(ValueError, match="successful completion"):
+        require_stage(chromium, "sync")
+
+
+@pytest.mark.parametrize("stage", ["sync", "hooks"])
+def test_native_build_stage_records_are_atomic_and_match_actual_inputs(tmp_path, stage):
+    import json
+
+    from scripts.native_build import record_stage, require_stage, stage_identity, stage_path
+
+    chromium = _native_build_stage_fixture(tmp_path)
+    record_stage(chromium, stage)
+    require_stage(chromium, stage)
+    target = stage_path(chromium, stage)
+    assert not target.read_bytes().startswith(b"\xef\xbb\xbf")
+    assert json.loads(target.read_text(encoding="utf-8")) == stage_identity(chromium, stage)
+    assert not list(chromium.glob("*.tmp"))
+
+
+@pytest.mark.parametrize("name", ["src/DEPS", ".gclient"])
+def test_native_build_rejects_stage_records_after_input_changes(tmp_path, name):
+    from scripts.native_build import record_stage, require_stage
+
+    chromium = _native_build_stage_fixture(tmp_path)
+    record_stage(chromium, "sync")
+    (chromium / name).write_text("different build inputs", encoding="utf-8")
+    with pytest.raises(ValueError, match="inputs changed"):
+        require_stage(chromium, "sync")
+
+
+def test_native_build_rejects_corrupt_stage_record_and_unknown_stage(tmp_path):
+    from scripts.native_build import require_stage, stage_path
+
+    chromium = _native_build_stage_fixture(tmp_path)
+    stage_path(chromium, "sync").write_text("unfinished record", encoding="utf-8")
+    with pytest.raises(ValueError, match="Invalid"):
+        require_stage(chromium, "sync")
+    with pytest.raises(ValueError, match="Unknown"):
+        stage_path(chromium, "other")
