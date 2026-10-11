@@ -68,6 +68,32 @@ def test_export_restore_roundtrip_preserves_original_and_privacy(workspace, sess
     assert not list(db.PROFILES_DIR.glob(".restore-*"))
 
 
+@pytest.mark.parametrize("include_secrets", [False, True])
+def test_native_privacy_key_is_never_exported_and_restored_profile_gets_a_new_key(workspace, include_secrets):
+    from app.core.native.identity import IDENTITY_FILE, load_or_create_identity
+
+    original = db.profile_dir_for_email("original") / "native"
+    original.mkdir()
+    identity = load_or_create_identity(original)
+    target = workspace / "profile.zip"
+    profile_backup.export_profile("original", target, True, include_secrets)
+    with zipfile.ZipFile(target) as archive:
+        assert not any(name.endswith(IDENTITY_FILE) for name in archive.namelist())
+    restored = profile_backup.restore_profile(target, "restored") / "native"
+    restored.mkdir(exist_ok=True)
+    assert load_or_create_identity(restored).seed != identity.seed
+    assert load_or_create_identity(original).seed == identity.seed
+
+
+def test_native_restore_discards_key_from_external_or_older_archive(workspace):
+    from app.core.native.identity import IDENTITY_FILE
+
+    target = workspace / "profile.zip"
+    archive_with(target, entries={"browser/native/" + IDENTITY_FILE: b"untrusted old key"})
+    restored = profile_backup.restore_profile(target, "restored")
+    assert not (restored / "native" / IDENTITY_FILE).exists()
+
+
 @pytest.mark.parametrize("name", ["../outside", "/absolute", "browser/../../outside", "browser\\outside",
                                  "browser/data:stream", "browser/CON", "browser/trailing."])
 def test_unsafe_archive_paths_leave_workspace_unchanged(workspace, name):

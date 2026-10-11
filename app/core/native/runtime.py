@@ -8,6 +8,7 @@ from PyQt6.QtCore import QLockFile
 from playwright.async_api import async_playwright
 
 from .configuration import NativeConfiguration
+from .identity import load_or_create_identity
 
 
 class NativeRuntimeError(RuntimeError):
@@ -27,6 +28,7 @@ class NativeRuntime:
         self.context = None
         self.playwright = None
         self._profile_lock = None
+        self._privacy_identity = None
         self._driver_stop_task = None
         self._driver_start_task = None
         self._operation_lock = asyncio.Lock()
@@ -68,6 +70,7 @@ class NativeRuntime:
             try:
                 if not marker.exists():
                     marker.write_text(json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
+                self._privacy_identity = load_or_create_identity(self.profile_dir)
                 self._driver_start_task = asyncio.create_task(async_playwright().start())
                 self.playwright = await asyncio.wait_for(asyncio.shield(self._driver_start_task),
                                                         timeout=self.DRIVER_START_TIMEOUT_SECONDS)
@@ -106,6 +109,7 @@ class NativeRuntime:
             self.playwright = None
             self._driver_stop_task = None
             self._driver_start_task = None
+            self._privacy_identity = None
             if self._profile_lock is not None:
                 self._profile_lock.unlock()
                 self._profile_lock = None

@@ -11,6 +11,7 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 from app.storage import db
+from app.core.native.identity import IDENTITY_FILE
 
 MAX_BYTES = 2 * 1024 ** 3
 MAX_FILES = 50000
@@ -39,7 +40,7 @@ def export_profile(name: str, target: Path, sessions: bool, secrets: bool) -> No
         for path in root.rglob("*"):
             if path.is_symlink() or path.is_junction():
                 raise ValueError("Profile contains a symbolic link; close the browser and remove the link before exporting")
-            if path.is_file() and path.name not in {"parent.lock", "SingletonLock", "SingletonCookie", "SingletonSocket", "native-runtime.lock"}:
+            if path.is_file() and path.name not in {"parent.lock", "SingletonLock", "SingletonCookie", "SingletonSocket", "native-runtime.lock", IDENTITY_FILE}:
                 files["browser/" + path.relative_to(root).as_posix()] = path
     if len(files) > MAX_FILES or sum(p.stat().st_size for p in files.values()) > MAX_BYTES:
         raise ValueError("Archive safety limit: 2 GiB / 50,000 files")
@@ -136,6 +137,8 @@ def restore_profile(source: Path, new_name: str, import_scenarios: bool = False)
         browser = stage / "browser"
         browser.mkdir(exist_ok=True)
         (browser / "native/native-runtime.lock").unlink(missing_ok=True)
+        # Restore creates a new profile, not another copy of its privacy key.
+        (browser / "native" / IDENTITY_FILE).unlink(missing_ok=True)
         (browser / "camouflow-backup-settings.json").write_text(json.dumps({"settings": metadata.get("settings", {}), "scenarios": metadata.get("scenarios", [])}, ensure_ascii=False, indent=2), encoding="utf-8")
         with db._STORAGE_LOCK:
             if target.exists() or any(a["name"].casefold() == new_name.casefold() for a in db.db_get_accounts()):

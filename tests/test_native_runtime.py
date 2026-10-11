@@ -7,6 +7,57 @@ from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime, NativeRuntimeError
 
 
+def test_native_privacy_keys_persist_and_are_not_shared_between_profiles(tmp_path):
+    from app.core.native.identity import IDENTITY_FILE, load_or_create_identity
+
+    first, second = tmp_path / "first", tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    identity = load_or_create_identity(first)
+    assert load_or_create_identity(first).seed == identity.seed
+    assert load_or_create_identity(second).seed != identity.seed
+    assert len(identity.seed) == 32
+    assert identity.seed.hex() not in repr(identity)
+    assert not (first / IDENTITY_FILE).read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+@pytest.mark.parametrize("payload", ['{}', '{"schema":true,"seed":"' + 'a' * 64 + '"}',
+                                   '{"schema":2,"seed":"' + 'a' * 64 + '"}',
+                                   '{"schema":1,"seed":"' + 'A' * 64 + '"}',
+                                   '{"schema":1,"seed":"aa"}', 'x' * 257])
+def test_native_privacy_invalid_key_never_silently_rotates(tmp_path, payload):
+    from app.core.native.identity import IDENTITY_FILE, load_or_create_identity
+
+    path = tmp_path / IDENTITY_FILE
+    path.write_text(payload, encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid"):
+        load_or_create_identity(tmp_path)
+    assert path.read_text(encoding="utf-8") == payload
+
+
+def test_native_privacy_key_failure_releases_profile_without_starting_driver(tmp_path, monkeypatch):
+    import json
+    from unittest.mock import Mock
+    from PyQt6.QtCore import QLockFile
+    from app.core.native import runtime as module
+    from app.core.native.identity import IDENTITY_FILE
+
+    profile = tmp_path / "owned"
+    profile.mkdir()
+    (profile / "camouflow-native.json").write_text(json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
+    (profile / IDENTITY_FILE).write_text("invalid", encoding="utf-8")
+    driver = Mock()
+    monkeypatch.setattr(module, "async_playwright", driver)
+    runtime = NativeRuntime(profile, Path(__file__), NativeConfiguration())
+    with pytest.raises(ValueError, match="identity is invalid"):
+        asyncio.run(runtime.start())
+    driver.assert_not_called()
+    assert not runtime.has_resources and runtime._privacy_identity is None
+    lock = QLockFile(str(profile / "native-runtime.lock"))
+    assert lock.tryLock(0)
+    lock.unlock()
+
+
 @pytest.mark.parametrize("values", [{"cpu_limit": True}, {"cpu_limit": 65}, {"cpu_limit": -1},
                                    {"memory_limit": 3}, {"memory_limit": float("nan")}, {"memory_limit": True},
                                    {"fonts": "Arial"}, {"fonts": ["Arial", "arial"]}, {"fonts": ["Tahoma"]},

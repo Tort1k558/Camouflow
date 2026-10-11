@@ -68,6 +68,34 @@ and negative-control handling, not own-fork policy effectiveness.
 
 ## Next implementation and regression requirements
 
+### Local profile privacy identity
+
+Native startup now creates or validates a 256-bit random profile key under its
+exclusive runtime lock, before starting the Playwright driver. The key is stored
+in `native/camouflow-native-privacy.json` inside that profile's browser storage.
+Writes use Qt atomic save with direct-write fallback disabled. Invalid existing
+keys fail closed rather than silently rotating. The key is excluded from object
+representations and is not passed through settings, browser arguments or page JS.
+
+Profile exports never include this key, including exports with secrets enabled.
+Restore already creates a new local identity; it discards imported privacy-key
+files and the next Native start generates a new key. The original is unchanged.
+This is local key persistence, **not encrypted storage** or a Windows ACL vault;
+the local OS user can read the file. Browser storage itself may contain other
+secrets when sessions are exported. Raw directory copying is not a supported
+profile clone API and can still copy the key.
+
+The key is not yet connected to Chromium IPC or Canvas/Audio policy. Runtime
+capabilities remain unchanged; no fingerprint masking is claimed. Before native
+activation, implement versioned domain-separated derivation with explicit
+top-level-site/origin/storage partition semantics and test worker inheritance,
+restart, restore and cross-profile separation against the own-fork executable.
+The updated runtime passed all 18 existing owned Windows SDK runtime checks;
+the report is retained privately at
+`D:\CamouFlowNative\runtime-profile-keys-20261012.json`. This includes restart,
+backup/restore, process ownership, crash recovery and three-profile isolation;
+it is compatibility evidence for key persistence, not native masking evidence.
+
 ### Canvas baseline before native protection
 
 `scripts/verify_native_canvas.py` measures an unmodified browser without injecting
