@@ -16,13 +16,15 @@ sys.path.insert(0, str(ROOT))
 
 from playwright.async_api import async_playwright  # noqa: E402
 
-COUNTERS = ("ownStack", "inheritedStack", "inheritedName", "inheritedMessage")
+COUNTERS = ("ownStack", "inheritedStack", "ownName", "inheritedName", "ownMessage", "inheritedMessage")
+ERROR_TYPES = ("Error", "TypeError", "RangeError", "SyntaxError", "ReferenceError", "URIError", "EvalError")
 SETUP = """() => {
-  globalThis.__ownedHits = {ownStack: 0, inheritedStack: 0, inheritedName: 0, inheritedMessage: 0};
+  globalThis.__ownedHits = {ownStack: 0, inheritedStack: 0, ownName: 0, inheritedName: 0, ownMessage: 0, inheritedMessage: 0};
   globalThis.__ownedErrors = [];
   for (const [label, property, inherited] of [
       ['ownStack', 'stack', false], ['inheritedStack', 'stack', true],
-      ['inheritedName', 'name', true], ['inheritedMessage', 'message', true]]) {
+      ['ownName', 'name', false], ['inheritedName', 'name', true],
+      ['ownMessage', 'message', false], ['inheritedMessage', 'message', true]]) {
     const error = new Error('Owned CDP fixture');
     if (inherited) delete error[property];
     const target = inherited ? Object.create(Error.prototype) : error;
@@ -32,25 +34,34 @@ SETUP = """() => {
     if (inherited) Object.setPrototypeOf(error, target);
     globalThis.__ownedErrors.push({label, error});
   }
-  function ownedNativePlainError() { return new Error('Owned normal preview'); }
-  globalThis.__ownedPlainError = ownedNativePlainError();
-  globalThis.__ownedPlainStack = globalThis.__ownedPlainError.stack;
+  function ownedNativePlainError(Constructor) { return new Constructor('Owned normal preview'); }
+  globalThis.__ownedPlainErrors = [Error, TypeError, RangeError, SyntaxError, ReferenceError, URIError, EvalError]
+    .map(Constructor => {
+      const error = ownedNativePlainError(Constructor);
+      return {type: Constructor.name, error, stack: error.stack};
+    });
 }"""
+
+
+def native_previews_preserved(observed: dict) -> bool:
+    previews, expected = observed["native_previews"], observed["expected_native_previews"]
+    return (set(previews) == set(ERROR_TYPES) and set(expected) == set(ERROR_TYPES)
+            and all(isinstance(expected[name], str)
+                    and expected[name].startswith(name + ": Owned normal preview\n")
+                    and "ownedNativePlainError" in expected[name]
+                    and previews[name] == expected[name] for name in ERROR_TYPES))
 
 
 def validate_observation(observed: dict) -> None:
     hits, controls = observed["serialization_hits"], observed["explicit_read_controls"]
     if set(hits) != set(COUNTERS) or set(controls) != set(COUNTERS):
-        raise ValueError("All four Error accessor fixtures must be observed")
+        raise ValueError("All six Error accessor fixtures must be observed")
     if any(type(values[key]) is not int or values[key] < 0 for values in (hits, controls) for key in COUNTERS):
         raise ValueError("Invalid Error accessor counters")
-    if observed["console_events"] != 5:
-        raise ValueError("All five native console events must be observed")
-    expected = observed["expected_native_preview"]
-    if not isinstance(expected, str) or "Owned normal preview" not in expected or "ownedNativePlainError" not in expected:
-        raise ValueError("A genuine native Error message and stack trace are required")
-    if observed["native_preview"] != expected:
-        raise ValueError("Native Error message or stack trace was changed")
+    if observed["console_events"] != len(COUNTERS) + len(ERROR_TYPES):
+        raise ValueError("All native console events must be observed")
+    if not native_previews_preserved(observed):
+        raise ValueError("Genuine native messages and stack traces of all Error types must be preserved")
     if any(controls[key] != hits[key] + 1 for key in COUNTERS):
         raise ValueError("Explicit accessor reads did not prove the counters work")
     if any(hits.values()):
@@ -71,21 +82,22 @@ async def verify(executable: Path, work_dir: Path, checks: list) -> dict:
                 ready = asyncio.Event()
                 def capture(event):
                     events.append(event["args"][0].get("description"))
-                    if len(events) >= 5:
+                    if len(events) >= len(COUNTERS) + len(ERROR_TYPES):
                         ready.set()
                 session.on("Runtime.consoleAPICalled", capture)
                 await page.evaluate(SETUP)
-                await page.evaluate("() => { for (const {error} of globalThis.__ownedErrors) console.debug(error); console.debug(globalThis.__ownedPlainError); }")
+                await page.evaluate("() => { for (const {error} of [...globalThis.__ownedErrors, ...globalThis.__ownedPlainErrors]) console.debug(error); }")
                 await asyncio.wait_for(ready.wait(), timeout=10)
                 hits = await page.evaluate("() => ({...globalThis.__ownedHits})")
                 await page.evaluate("() => { for (const {label,error} of globalThis.__ownedErrors) Reflect.get(error, label.includes('Stack') ? 'stack' : label.includes('Name') ? 'name' : 'message'); }")
                 controls = await page.evaluate("() => ({...globalThis.__ownedHits})")
-                expected = await page.evaluate("() => globalThis.__ownedPlainStack")
+                expected = await page.evaluate("() => Object.fromEntries(globalThis.__ownedPlainErrors.map(({type,stack}) => [type,stack]))")
                 observed = {"serialization_hits": hits, "explicit_read_controls": controls,
-                            "console_events": len(events), "native_preview": events[-1], "expected_native_preview": expected}
+                            "console_events": len(events), "native_previews": dict(zip(ERROR_TYPES, events[len(COUNTERS):])),
+                            "expected_native_previews": expected}
                 checks.extend([
-                    {"name": "console-events", "passed": len(events) == 5},
-                    {"name": "native-message-and-stack-preserved", "passed": events[-1] == expected},
+                    {"name": "console-events", "passed": len(events) == len(COUNTERS) + len(ERROR_TYPES)},
+                    {"name": "native-message-and-stack-preserved", "passed": native_previews_preserved(observed)},
                     {"name": "explicit-accessor-read-controls", "passed": all(controls[key] == hits[key] + 1 for key in COUNTERS)},
                     {"name": "custom-error-accessors-not-invoked", "observed": observed, "passed": False},
                 ])

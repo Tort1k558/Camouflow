@@ -400,27 +400,32 @@ def test_native_identity_gate_accepts_only_preserved_native_identity(protected, 
     validate_observation(observed, baseline, protected=protected, worker=worker)
 
 
-@pytest.mark.parametrize("mutation", [None, "leak", "missing_control", "event_loss", "stack_loss", "fake_stack", "boolean_counter"])
+@pytest.mark.parametrize("mutation", [None, "leak", "missing_control", "event_loss", "stack_loss", "fake_stack", "boolean_counter", "missing_error_type", "wrong_error_type"])
 def test_native_cdp_gate_requires_side_effect_free_previews_and_real_positive_controls(mutation):
-    from scripts.verify_native_cdp import COUNTERS, validate_observation
+    from scripts.verify_native_cdp import COUNTERS, ERROR_TYPES, validate_observation
 
-    expected = "Error: Owned normal preview\n    at ownedNativePlainError (owned:1:1)"
+    expected = {name: name + ": Owned normal preview\n    at ownedNativePlainError (owned:1:1)" for name in ERROR_TYPES}
     observed = {"serialization_hits": dict.fromkeys(COUNTERS, 0),
                 "explicit_read_controls": dict.fromkeys(COUNTERS, 1),
-                "console_events": 5, "native_preview": expected, "expected_native_preview": expected}
+                "console_events": len(COUNTERS) + len(ERROR_TYPES), "native_previews": expected.copy(),
+                "expected_native_previews": expected.copy()}
     if mutation == "leak":
         observed["serialization_hits"]["inheritedName"] = 1
         observed["explicit_read_controls"]["inheritedName"] = 2
     elif mutation == "missing_control":
         observed["explicit_read_controls"]["ownStack"] = 0
     elif mutation == "event_loss":
-        observed["console_events"] = 4
+        observed["console_events"] -= 1
     elif mutation == "stack_loss":
-        observed["native_preview"] = "Error: Owned normal preview"
+        observed["native_previews"]["Error"] = "Error: Owned normal preview"
     elif mutation == "fake_stack":
-        observed["native_preview"] = observed["expected_native_preview"] = "invented"
+        observed["native_previews"]["Error"] = observed["expected_native_previews"]["Error"] = "invented"
     elif mutation == "boolean_counter":
         observed["serialization_hits"]["ownStack"] = False
+    elif mutation == "missing_error_type":
+        observed["native_previews"].pop("TypeError")
+    elif mutation == "wrong_error_type":
+        observed["native_previews"]["TypeError"] = observed["expected_native_previews"]["TypeError"] = expected["Error"]
     if mutation is None:
         validate_observation(observed)
     else:

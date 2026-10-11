@@ -112,13 +112,17 @@ and leaving no temporary index directory in either source tree.
 The active build loaded the previous helper and still contains only 0001–0005.
 Do not apply 0006/0007 until it has terminated and the source inputs can be changed.
 
-`scripts/verify_native_cdp.py` logs four owned Error accessor fixtures and a
-normal native Error through an actual Runtime CDP session. Five console events,
-an unchanged real error message/stack and working explicit-accessor-read controls
-are required before asserting zero serialization-triggered getter calls.
-The Windows SDK negative control passed those three positive checks and correctly
-failed the custom-accessor assertion (0/2/4/3 calls). Validator tests reject lost
-events, broken counters, stack changes and invented previews. Arbitrary objects,
+`scripts/verify_native_cdp.py` logs six owned Error accessor fixtures (own and
+inherited stack/name/message) and all seven standard native Error types through
+an actual Runtime CDP session. Thirteen console events, unchanged real error
+messages/stacks for every type and working explicit-accessor-read controls are
+required before asserting zero serialization-triggered getter calls.
+The expanded Windows SDK negative control passed those three positive checks
+and correctly failed the accessor assertion: own/inherited stack 0/2,
+name 2/4 and message 1/3 calls. The own name/message cases demonstrate lazy
+stack formatting invoking accessors even where direct accessor previews are
+already skipped upstream. Validator tests reject lost events, missing or
+misidentified Error types, broken counters, stack changes and invented previews. Arbitrary objects,
 custom global stack formatters and other CDP detection signals are not covered.
 
 After compiling the draft, run:
