@@ -1,0 +1,107 @@
+diff --git a/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc b/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
+--- a/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
++++ b/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
+@@ -4,6 +4,7 @@
+ 
+ #include <vector>
+ 
++#include "base/check_op.h"
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_temp_dir.h"
+ #include "base/test/scoped_command_line.h"
+@@ -28,10 +29,12 @@
+ constexpr char kNavigationIdentity[] =
+     R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})";
+ 
++enum class NavigationVariant { kSameOrigin, kAboutBlank, kCrossSite };
++
+ class NativeDocumentNavigationTest
+     : public RenderViewHostTestHarness,
+       public WebContentsObserver,
+-      public testing::WithParamInterface<bool> {
++      public testing::WithParamInterface<NavigationVariant> {
+  public:
+   NativeDocumentNavigationTest()
+       : RenderViewHostTestHarness(
+@@ -72,7 +75,14 @@
+   }
+ 
+   GURL Target() {
+-    return GURL(GetParam() ? "about:blank" : "https://canvas.test/next");
++    if (GetParam() == NavigationVariant::kAboutBlank) {
++      return GURL("about:blank");
++    }
++    if (GetParam() == NavigationVariant::kCrossSite) {
++      return GURL("https://cross-site.test/next");
++    }
++    CHECK_EQ(GetParam(), NavigationVariant::kSameOrigin);
++    return GURL("https://canvas.test/next");
+   }
+ 
+   base::test::ScopedCommandLine command_line_;
+@@ -185,9 +195,63 @@
+   EXPECT_TRUE(committed_);
+ }
+ 
+-INSTANTIATE_TEST_SUITE_P(WithAndWithoutUrlLoader,
++TEST_P(NativeDocumentNavigationTest, ForeignFrameCannotRejectSelectedCommit) {
++  EnablePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  auto* child = RenderFrameHostTester::For(web_contents()->GetPrimaryMainFrame())
++                    ->AppendChild("foreign-rejection-sender");
++  ASSERT_TRUE(child);
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  auto* request = NavigationRequest::From(simulator->GetNavigationHandle());
++  ASSERT_TRUE(request);
++  ASSERT_NE(request->GetRenderFrameHost(), child);
++  static_cast<mojom::FrameHost*>(static_cast<RenderFrameHostImpl*>(child))
++      ->RejectGlintDocumentCanvasCommit(request->commit_params().navigation_token);
++  EXPECT_EQ(finished_, 0);
++  simulator->Commit();
++  EXPECT_EQ(finished_, 1);
++  EXPECT_TRUE(committed_);
++  EXPECT_EQ(error_, net::OK);
++}
++
++TEST_P(NativeDocumentNavigationTest, RepeatedRejectedTokenCannotCancelNextCommit) {
++  EnablePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  auto first = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  first->ReadyToCommit();
++  auto* request = NavigationRequest::From(first->GetNavigationHandle());
++  ASSERT_TRUE(request);
++  const auto rejected_token = request->commit_params().navigation_token;
++  static_cast<mojom::FrameHost*>(request->GetRenderFrameHost())
++      ->RejectGlintDocumentCanvasCommit(rejected_token);
++  task_environment()->RunUntilIdle();
++  ASSERT_EQ(finished_, 1);
++  ASSERT_FALSE(committed_);
++  ASSERT_EQ(error_, net::ERR_ABORTED);
++  first.reset();
++
++  auto next = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  next->ReadyToCommit();
++  request = NavigationRequest::From(next->GetNavigationHandle());
++  ASSERT_TRUE(request);
++  ASSERT_NE(request->commit_params().navigation_token, rejected_token);
++  static_cast<mojom::FrameHost*>(request->GetRenderFrameHost())
++      ->RejectGlintDocumentCanvasCommit(rejected_token);
++  EXPECT_EQ(finished_, 1);
++  next->Commit();
++  EXPECT_EQ(finished_, 2);
++  EXPECT_TRUE(committed_);
++  EXPECT_EQ(error_, net::OK);
++}
++
++INSTANTIATE_TEST_SUITE_P(AllNavigationKinds,
+                          NativeDocumentNavigationTest,
+-                         testing::Bool());
++                         testing::Values(NavigationVariant::kSameOrigin,
++                                         NavigationVariant::kAboutBlank,
++                                         NavigationVariant::kCrossSite));
+ 
+ }  // namespace
+ }  // namespace content

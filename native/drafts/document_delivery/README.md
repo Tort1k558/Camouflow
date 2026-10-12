@@ -48,6 +48,24 @@ delivery or prove the previous page remains usable in a real browser. Final Blin
 partition rejection after teardown remains unresolved. The last verified browser
 is still 001-027; source application and compilation are not runtime admission.
 
+### Navigation rejection follow-up (not applied)
+
+`navigation_rejection_followup.patch` extends the 0030 fixture to three explicit
+navigation kinds: same-origin HTTP, inherited about:blank and cross-site HTTP.
+It adds foreign-frame rejection and a repeated rejected token sent during a new
+pending commit. Eight definitions across three kinds intend 24 cases; none has
+executed. The current 0030 gate remains the original twelve-case set.
+
+The follow-up replays successfully in an isolated single-file overlay:
+`D:/CamouFlowNative/navigation-rejection-followup-overlay-v1/proof.json`.
+Python checks reproduce the public patch against the canonical 0030 fixture,
+verify the eight distinct definitions/three variants and preserve that canonical
+source. This is source composition only, not C++ or runtime proof. The active
+0030 build input, registered patch and GN arguments were not edited. Do not apply
+the follow-up while that build is running. Actual previous-document usability,
+final Blink-selected partition rejection and renderer lifecycle still require
+separate browser evidence.
+
 The Mojo schema belongs in `third_party/blink/public/mojom/native_privacy/`.
 The service belongs in `content/browser/camouflow_native/`. Integration requires
 the Blink Mojo GN source registration, content source/dependencies and the

@@ -1,3 +1,5 @@
+import os
+import re
 from pathlib import Path
 
 import pytest
@@ -18,6 +20,30 @@ def test_document_candidate_order_and_canonical_paths():
     assert set(drafts.CANONICAL.values()) - paths == {
         "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h",
     }
+
+
+def test_navigation_rejection_followup_replays_without_mutating_canonical_source(tmp_path):
+    canonical = drafts.DRAFTS / "privacy_navigation_integration_unittest.cc"
+    patch = drafts.DRAFTS / "navigation_rejection_followup.patch"
+    relative = "content/browser/camouflow_native/privacy_navigation_integration_unittest.cc"
+    before = canonical.read_bytes()
+    assert drafts.patch_paths(patch.read_text(encoding="utf-8-sig")) == {relative}
+    target = tmp_path / relative
+    target.parent.mkdir(parents=True)
+    target.write_text(before.decode("utf-8-sig"), encoding="utf-8", newline="\n")
+    env = dict(os.environ)
+    drafts.build.run(["git", "apply", "--check", str(patch)], tmp_path, env)
+    drafts.build.run(["git", "apply", str(patch)], tmp_path, env)
+    after = target.read_text(encoding="utf-8-sig")
+    cases = re.findall(r"TEST_P\(NativeDocumentNavigationTest, (\w+)\)", after)
+    assert len(cases) == len(set(cases)) == 8
+    assert {"ForeignFrameCannotRejectSelectedCommit", "RepeatedRejectedTokenCannotCancelNextCommit"}.issubset(cases)
+    assert "WithParamInterface<NavigationVariant>" in after
+    assert "INSTANTIATE_TEST_SUITE_P(AllNavigationKinds," in after
+    assert "testing::Bool()" not in after
+    for variant in ("kSameOrigin", "kAboutBlank", "kCrossSite"):
+        assert f"NavigationVariant::{variant}" in after
+    assert canonical.read_bytes() == before
 
 
 @pytest.mark.parametrize("path", ["../escape.cc", "/absolute.cc", "C:/escape.cc", "a\\escape.cc", "a/./b.cc"])
