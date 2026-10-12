@@ -2138,6 +2138,7 @@ def test_native_delivery_verifier_rejects_unpromoted_and_modified_sources(tmp_pa
 
 @pytest.mark.parametrize("draft,patch_name,prefix,files", [
     ("canvas", "core_helpers_integration.patch", "third_party/blink/renderer/core/html/canvas/glint", (
+        "canvas_partition_seed.cc", "canvas_partition_seed.h",
         "canvas_readback_candidate.cc", "canvas_readback_candidate.h", "canvas_readback_copy.cc",
         "canvas_readback_copy.h", "canvas_readback_image.cc", "canvas_readback_image.h")),
     ("canvas", "blink_test_integration.patch", "third_party/blink/renderer/platform/graphics/glint", (

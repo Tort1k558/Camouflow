@@ -12,10 +12,12 @@ diff --git a/third_party/blink/renderer/core/BUILD.gn b/third_party/blink/render
 diff --git a/third_party/blink/renderer/core/html/build.gni b/third_party/blink/renderer/core/html/build.gni
 --- a/third_party/blink/renderer/core/html/build.gni
 +++ b/third_party/blink/renderer/core/html/build.gni
-@@ -33,6 +33,12 @@
+@@ -33,6 +33,14 @@
    "canvas/canvas_resource_tracker.h",
    "canvas/element_image.cc",
    "canvas/element_image.h",
++  "canvas/glint/canvas_partition_seed.cc",
++  "canvas/glint/canvas_partition_seed.h",
 +  "canvas/glint/canvas_readback_candidate.cc",
 +  "canvas/glint/canvas_readback_candidate.h",
 +  "canvas/glint/canvas_readback_copy.cc",
@@ -25,6 +27,59 @@ diff --git a/third_party/blink/renderer/core/html/build.gni b/third_party/blink/
    "canvas/html_canvas_element.cc",
    "canvas/html_canvas_element.h",
    "canvas/image_data.cc",
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc
+@@ -0,0 +1,21 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "canvas_partition_seed.h"
++
++#include "third_party/blink/renderer/core/dom/document.h"
++#include "third_party/blink/renderer/core/frame/local_dom_window.h"
++#include "third_party/blink/renderer/core/workers/worker_global_scope.h"
++
++namespace glint::candidate {
++std::optional<std::array<uint8_t, 32>> CanvasPartitionSeed(
++    blink::ExecutionContext* context) {
++  if (auto* window = blink::DynamicTo<blink::LocalDOMWindow>(context)) {
++    auto* document = window->document();
++    return document ? document->GlintCanvasPartitionSeed() : std::nullopt;
++  }
++  if (auto* worker = blink::DynamicTo<blink::WorkerGlobalScope>(context)) {
++    return worker->GlintCanvasPartitionSeed();
++  }
++  return std::nullopt;
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h
+@@ -0,0 +1,22 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_CANVAS_PARTITION_SEED_H_
++#define GLINT_CANVAS_PARTITION_SEED_H_
++
++#include <array>
++#include <cstdint>
++#include <optional>
++
++#include "third_party/blink/renderer/core/core_export.h"
++
++namespace blink {
++class ExecutionContext;
++}
++
++namespace glint::candidate {
++// Only consumes the owned native bootstrap; never a page-provided seed.
++CORE_EXPORT std::optional<std::array<uint8_t, 32>> CanvasPartitionSeed(
++    blink::ExecutionContext* context);
++}
++
++#endif
 diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc
 new file mode 100644
 --- /dev/null

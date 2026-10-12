@@ -306,11 +306,47 @@ stack applies to an isolated copy with active inputs unchanged:
 Python source-consistency checks additionally compare all embedded helper files
 with their canonical sources; these do not execute C++ or Canvas APIs.
 
-Both readback hooks remain unregistered/inactive. No browser binary containing
-them has been linked or tested. HTML export/document bootstrap, shared/service
+The readback hooks remain unregistered/inactive. No browser binary containing
+them has been linked or tested. HTML export/document bootstrap runtime, shared/service
 worker startup, GPU/alpha/format/editor compatibility, combination tests and
 privacy admission remain unfinished. A shared adapter establishes an intended
 canonical path, **not proof of cross-API equality or undetectability**.
+
+## Document and HTML export candidate
+
+`canvas_partition_seed.{h,cc}` centralizes owned seed access for a LocalDOMWindow's
+Document and WorkerGlobalScope. It returns a copied native bootstrap seed, never
+reads page-supplied configuration and exposes no JavaScript API. Missing bootstrap
+retains the original unprotected upstream path; it is not privacy admission.
+The core helper registration embeds these exact canonical files.
+
+Both getImageData and OffscreenCanvas.convertToBlob now use this accessor, so their
+candidate paths can consume document as well as worker bootstrap. Existing format,
+taint, layer, bounds, memory-budget and protected-read failure checks are retained.
+
+`html_export_candidate_hook.patch` connects JavaScript HTMLCanvasElement.toDataURL
+and toBlob to the same detached full-image adapter after upstream taint/layer and
+empty-canvas checks. It does not modify Snapshot, drawing, putImageData, live canvas
+pixels or ImageSourceURL's internal front-buffer export. toDataURL explicitly
+passes its exception state; other internal calls keep upstream behavior. toBlob
+captures the protected detached image before scheduling the upstream asynchronous
+encoder. Adapter failure raises NotReadableError rather than exporting original
+pixels. Unsupported color/alpha/HDR formats remain candidate compatibility gaps.
+
+All four touched translation units passed isolated pinned Chromium-flag syntax
+checks: seed accessor, HTMLCanvasElement, OffscreenCanvas and BaseRenderingContext2D.
+Evidence: `D:/CamouFlowNative/canvas-document-exports-cpp-check-v1/proof.json`.
+The eleven public document/Canvas candidates replayed over 46 composed/canonical
+paths with active sources unchanged and exact canonical copies checked:
+`D:/CamouFlowNative/canvas-document-exports-public-replay-v1.json`.
+These are syntax/source-composition results, not linked browser or API results.
+
+Required next runtime checks: PNG bytes versus full/cropped getImageData,
+toBlob callback and capture-before-mutation behavior, repeated reads and profile
+restart, iframe/worker coverage, empty/tainted/open-layer exception precedence,
+MIME/quality handling, unsupported formats and ordinary image-editor compatibility.
+Safe final-partition rejection remains unresolved in the document candidate.
+None of these hooks is enabled in the current browser or production capabilities.
 
 ## Protected-raster crop fixtures
 

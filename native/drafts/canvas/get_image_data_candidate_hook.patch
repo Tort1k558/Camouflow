@@ -13,38 +13,36 @@ diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_c
  #include "third_party/blink/renderer/core/html/canvas/unique_font_selector.h"
  #include "third_party/blink/renderer/core/inspector/console_message.h"
  #include "third_party/blink/renderer/core/style/computed_style.h"
-+#include "third_party/blink/renderer/core/workers/worker_global_scope.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
  #include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_2d_recorder_context.h"
  #include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_rendering_context_2d_state.h"
  #include "third_party/blink/renderer/modules/canvas/htmlcanvas/canvas_context_creation_attributes_helpers.h"
-@@ -523,10 +525,41 @@
+@@ -523,10 +525,39 @@
      }
  
      SkPixmap image_data_pixmap = image_data->GetSkPixmap();
 +    bool glint_candidate_readback = false;
-+    if (auto* worker_scope = DynamicTo<WorkerGlobalScope>(GetTopExecutionContext())) {
-+      if (const auto seed = worker_scope->GlintCanvasPartitionSeed()) {
-+        const auto& info = image_data_pixmap.info();
-+        if (info.colorType() != kRGBA_8888_SkColorType ||
-+            info.alphaType() != kUnpremul_SkAlphaType || !info.colorSpace() ||
-+            !info.colorSpace()->isSRGB()) {
-+          exception_state.ThrowDOMException(
-+              DOMExceptionCode::kNotReadableError,
-+              "Glint Canvas candidate does not support this ImageData format.");
-+          return nullptr;
-+        }
-+        auto protected_image = glint::candidate::CreateProtectedCanvasImage(
-+            snapshot, *seed, glint::candidate::kCandidateAdditionalPixelBudget);
-+        if (!protected_image.has_value()) {
-+          exception_state.ThrowDOMException(
-+              DOMExceptionCode::kNotReadableError,
-+              "Glint Canvas candidate readback could not be completed.");
-+          return nullptr;
-+        }
-+        // Classify the full image once; crop only from its canonical pixels.
-+        snapshot = std::move(protected_image).value();
-+        glint_candidate_readback = true;
++    if (const auto seed = glint::candidate::CanvasPartitionSeed(GetTopExecutionContext())) {
++      const auto& info = image_data_pixmap.info();
++      if (info.colorType() != kRGBA_8888_SkColorType ||
++          info.alphaType() != kUnpremul_SkAlphaType || !info.colorSpace() ||
++          !info.colorSpace()->isSRGB()) {
++        exception_state.ThrowDOMException(
++            DOMExceptionCode::kNotReadableError,
++            "Glint Canvas candidate does not support this ImageData format.");
++        return nullptr;
 +      }
++      auto protected_image = glint::candidate::CreateProtectedCanvasImage(
++          snapshot, *seed, glint::candidate::kCandidateAdditionalPixelBudget);
++      if (!protected_image.has_value()) {
++        exception_state.ThrowDOMException(
++            DOMExceptionCode::kNotReadableError,
++            "Glint Canvas candidate readback could not be completed.");
++        return nullptr;
++      }
++      // Classify the full image once; crop only from its canonical pixels.
++      snapshot = std::move(protected_image).value();
++      glint_candidate_readback = true;
 +    }
      const bool read_pixels_successful =
          snapshot->PaintImageForCurrentFrame().readPixels(
