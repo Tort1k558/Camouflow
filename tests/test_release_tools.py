@@ -2086,6 +2086,31 @@ def test_native_delivery_verifier_rejects_unpromoted_and_modified_sources(tmp_pa
         require_delivery_sources(tmp_path)
 
 
+@pytest.mark.parametrize("patch_name,prefix,files", [
+    ("core_helpers_integration.patch", "third_party/blink/renderer/core/html/canvas/glint", (
+        "canvas_readback_candidate.cc", "canvas_readback_candidate.h", "canvas_readback_copy.cc",
+        "canvas_readback_copy.h", "canvas_readback_image.cc", "canvas_readback_image.h")),
+    ("blink_test_integration.patch", "third_party/blink/renderer/platform/graphics/glint", (
+        "canvas_readback_candidate.cc", "canvas_readback_candidate.h", "canvas_readback_copy.cc",
+        "canvas_readback_copy.h", "canvas_readback_copy_unittest.cc", "canvas_readback_image.cc",
+        "canvas_readback_image.h", "canvas_readback_image_unittest.cc")),
+    ("test_integration.patch", "content/browser/camouflow_native/canvas", (
+        "canvas_readback_candidate.cc", "canvas_readback_candidate.h", "canvas_readback_copy.cc",
+        "canvas_readback_copy.h", "canvas_readback_copy_unittest.cc")),
+])
+def test_native_canvas_registration_embeds_exact_canonical_sources(patch_name, prefix, files):
+    from scripts.native_build import ROOT
+
+    directory = ROOT / "native/drafts/canvas"
+    patch = (directory / patch_name).read_text(encoding="utf-8-sig")
+    for name in files:
+        relative = f"{prefix}/{name}"
+        section = patch.split(f"diff --git a/{relative} b/{relative}\n", 1)[1].split("\ndiff --git ", 1)[0]
+        copied = "\n".join(line[1:] for line in section.splitlines()
+                           if line.startswith("+") and not line.startswith("+++")) + "\n"
+        assert copied == (directory / name).read_text(encoding="utf-8-sig")
+
+
 def test_native_runtime_verifier_import_does_not_cache_application_database_root():
     import subprocess
     from scripts.native_build import ROOT

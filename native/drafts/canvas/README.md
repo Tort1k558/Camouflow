@@ -185,7 +185,7 @@ The image wrapper is **not linked, executed or called by Canvas APIs in the acti
 not part of the lightweight Skia-only test integration patch. Its runtime tests
 require Blink platform dependencies and must cover GPU/lazy snapshots, failure
 paths, orientation, snapshot lifetime and encoding. First-script trusted policy
-bootstrap and the four DOM readback/export call sites remain unimplemented.
+bootstrap and DOM readback/export behavior remain unimplemented in the active browser.
 
 ## Blink image tests and test-only registration
 
@@ -261,10 +261,53 @@ These are not linkage or Canvas API execution results. The complete worker/core/
 hook patch stack is still unregistered and unapplied to the active checkout;
 GN graph generation and real runtime compatibility tests remain pending.
 
-This implements **one inactive experimental export hook**, not full Canvas
-protection. getImageData/toDataURL/toBlob, document bootstrap and cross-API pixel
+This checkpoint prepared **one inactive experimental export hook**, not full Canvas
+protection. At that checkpoint getImageData/toDataURL/toBlob, document bootstrap and cross-API pixel
 agreement remain incomplete; using only this hook can itself expose an
 inconsistency with unprotected APIs. The algorithm's known-value detectability,
 GPU/lazy snapshots, alpha/conversion/encoding behavior, errors and editor round
 trips still require review. Do not advertise a protected Canvas capability or
 detector/CAPTCHA success from this draft or its syntax checks.
+
+## Experimental worker getImageData call site
+
+`get_image_data_candidate_hook.patch` connects BaseRenderingContext2D's native
+readback to the same full-image adapter and worker seed as convertToBlob. It runs
+after upstream size/taint/layer/settings validation and ImageData allocation, and
+after the wholly-out-of-bounds zero-result fast path. For the experimental seeded
+worker path, only RGBA8/unpremultiplied/sRGB output is accepted. Unsupported formats,
+adapter failures or failed protected-pixel reads return NotReadableError; no
+partially filled/uninitialized ImageData is returned on a protected read failure.
+Unseeded contexts keep the original readback behavior.
+
+The candidate transforms a detached **full snapshot before cropping**, then uses
+upstream readPixels with the normalized sx/sy and validated destination pixmap.
+It does not classify a cropped image independently, overwrite live pixels, change
+putImageData or introduce a JavaScript wrapper. Wholly out-of-bounds or lost-context
+zero results still follow the upstream path. This is source-level behavior; actual
+exception precedence, partial bounds, negative dimensions, PNG/pixel agreement,
+alpha and color conversion must still be exercised in the browser.
+
+The 64 MiB additional-pixel test budget is now one shared constant in the image
+adapter header. The adapter's declaration uses Core's existing export macro for
+the modules-to-core call. The core registration and alternative test-only patch
+were regenerated to match the canonical header; the alternative platform fixture
+adds the header-only core_export dependency and remains for the pinned Windows
+non-component configuration only. Component-build alternative-test linkage is
+not verified; do not treat it as a portable runtime gate.
+
+Current syntax proofs, with actual modules/core target flags:
+`D:/CamouFlowNative/get-image-data-fail-closed-cpp-check/proof.json` and
+`budgeted-canvas-core-cpp-check/proof.json`. GN formatting and exact-source
+registration proofs: `canvas-core-exported-helper-registration-draft/proof.json`
+and `canvas-blink-export-test-registration-draft/proof.json`. The full nine-patch
+stack applies to an isolated copy with active inputs unchanged:
+`get-image-data-fail-closed-full-stack-applicability/proof.json`.
+Python source-consistency checks additionally compare all embedded helper files
+with their canonical sources; these do not execute C++ or Canvas APIs.
+
+Both readback hooks remain unregistered/inactive. No browser binary containing
+them has been linked or tested. HTML export/document bootstrap, shared/service
+worker startup, GPU/alpha/format/editor compatibility, combination tests and
+privacy admission remain unfinished. A shared adapter establishes an intended
+canonical path, **not proof of cross-API equality or undetectability**.
