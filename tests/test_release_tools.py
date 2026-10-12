@@ -1712,3 +1712,14 @@ def test_native_runtime_rejects_release_identity_mismatch_before_browser_start(t
     with pytest.raises(ValueError, match="release identity or DLL layout"):
         asyncio.run(verify_native_runtime.verify(tmp_path / "profiles", executable, "http://127.0.0.1:1", None,
                     library_directory=libraries, release_store=tmp_path / "store", release_digest="a" * 64))
+
+
+def test_native_error_patch_covers_console_coercion_and_property_preview_paths():
+    from scripts.native_build import ROOT
+
+    patch = (ROOT / "native/patches/0007-native-inspector-error-accessors.patch").read_text(encoding="utf-8-sig")
+    assert "+++ b/src/inspector/v8-console-message.cc" in patch
+    assert "+++ b/src/inspector/value-mirror.h" in patch
+    assert "ValueMirror::getErrorDescription(" in patch
+    assert "/*includeStack=*/false" in patch
+    assert "? getErrorProperty(context, object, v8Name)" in patch

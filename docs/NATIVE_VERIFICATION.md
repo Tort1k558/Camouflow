@@ -250,6 +250,35 @@ No source inputs of the active identity/inspector build were modified.
 These are still unprotected drawing expectations: protected-policy acceptance
 needs a separate justified transformation contract, not weaker baseline checks.
 
+### First complete 0001-0007 run: inspector failure retained
+
+The build finished with exit code 0 in 13m32.12s (56 executed steps). The full
+eight-gate run returned exit code 1 and `passed: false`, retained in
+`D:\CamouFlowNative\verification-001-007-full-20261012` with its original receipt.
+Identity passed 18 checks, combined policies 5, runtime 18, hardware 9,
+WebRTC 7, automation 55 and fonts 42. Inspector/CDP failed: Error name/message
+accessors and `Error.prepareStackTrace` were still executed during console
+serialization. Ordinary seven-type native previews and explicit access controls
+passed; that is not a passing no-side-effect gate.
+
+An owned diagnostic recorded actual getter call stacks in
+`D:\CamouFlowNative\owned-error-preview-call-traces.json`. The uncovered paths
+were console text coercion through `Error.toString` and native accessor reads
+during property preview. Patch 0007 now reuses its safe descriptor-based Error
+description for console text without stack formatting, and routes native Error
+property-preview reads through the same guarded helper. Other console values
+retain their existing conversion path; explicit page reads are not replaced.
+The criteria and failed reports were not weakened or overwritten.
+
+The corrected three-file V8 patch exactly matches the pinned checkout and its
+whitespace check passed. Its incremental four-job build is running in
+`D:\CamouFlowNative\native-build-inspector-console-correction-j4.log`.
+Recompiled inspector/console units, the native side-effect gate, explicit lazy
+stack controls and the complete suite still require fresh runtime evidence.
+This correction is not yet a verified CDP capability or general invisibility.
+All 1,077 local regression tests passed; the added regression requires coverage
+of both newly identified preview paths in the public patch.
+
 | Area | Prepared artifact | Required own-fork evidence |
 | --- | --- | --- |
 | Lifecycle and storage | `verify_native_runtime.py` | All 18 checks; five stores survive committed checkpoints; independent profiles; lock exclusion; cancellation; zero owned survivors after controller death and three-profile restart rounds |
