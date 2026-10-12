@@ -532,6 +532,31 @@ After rejecting the launch change and adding the regression matrix, the local
 project suite passed 1,092 tests. Passing unit tests do not override the failing
 real storage matrix.
 
+The subsequent own-fork rebuild with `0008` succeeded (10m05.72s, 51 executed
+steps, exit zero); the measured `chrome.dll` was
+`e4aaaaf2f779989d11ee80a0acb963f601e631b1e7261914e0bbab18dca5dd73`.
+The extended-path eight-case proof in
+`D:\CamouFlowNative\owned-normalized-extended-store-proof.json` measured all three
+runtime code files before and after execution and confirmed they were unchanged.
+IndexedDB, localStorage, CacheStorage and service-worker registrations retained
+the expected values after restart; cache entry/cache deletion also succeeded in
+every case. Cookies alone were empty after restart in every case, so the matrix
+correctly remained failed rather than promoting a cache-only fix.
+
+A separate ordinary-versus-extended control in
+`D:\CamouFlowNative\owned-extended-cookie-persistence.json` confirmed cookie
+retention on the ordinary path and loss on the extended path. The extended
+profile did not contain a persistent Cookies database. Inspection of the pinned
+exclusive SQLite open found that its query-injection guard rejects the `?` in
+the Windows namespace marker before opening the database. Patch `0009` exempts
+only that initial marker, preserves URI escaping and rejects any later query
+delimiter. Native SQL tests cover reopen/exclusive locking and appended query
+rejection; their execution and the new runtime proof remain pending. A new
+four-job source rebuild has been started. The manager still uses ordinary
+canonical paths; no launch retry, profile relocation, encryption downgrade or
+sandbox bypass was introduced. The local project suite passed 1,094 tests after
+this increment; this is not a passing own-fork storage/runtime release gate.
+
 The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feature
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred

@@ -182,7 +182,7 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0001-native-hardware-privacy-limits.patch", "0002-midl-locale-name-hashes.patch",
         "0003-native-webrtc-routing-policy.patch", "0004-native-automation-exposure.patch",
         "0005-native-windows-font-collection.patch", "0006-native-headless-user-agent.patch",
-        "0008-native-leveldb-path-separators.patch"))
+        "0008-native-leveldb-path-separators.patch", "0009-native-sql-extended-paths.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:

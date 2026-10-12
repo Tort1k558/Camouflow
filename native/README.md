@@ -21,12 +21,32 @@ reproduced against an owned temporary lock file, not inferred from unit tests.
 no dependency. The exact applied source and patch checksum are checked by the
 build helper and recorded in the own-build receipt.
 
-The patch is applied to the pinned source; a four-job Windows rebuild is in
-progress. It does not remove Chromium's explicit `MAX_PATH` guards or enable
-extended launch paths in the manager. It is not yet a verified storage fix.
-After compilation, rerun the complete storage path matrix and full runtime
-suite before promoting any launch change. Original failed controls are retained
-on D; see `docs/NATIVE_VERIFICATION.md`.
+The four-job own Windows rebuild succeeded in 10m05.72s, with 51 executed build
+steps. Exact source validation and receipt generation completed with exit zero.
+The subsequent direct extended-path matrix retained correct IndexedDB, local
+storage, CacheStorage and service-worker observations across restart, and cache
+deletion succeeded in every case. However, cookies disappeared after restart
+in all eight cases, so the complete matrix still failed. The unchanged-code
+report is `D:\CamouFlowNative\owned-normalized-extended-store-proof.json`.
+This patch does not remove Chromium's explicit `MAX_PATH` guards or enable
+extended launch paths in the manager. It is not a complete storage fix.
+
+## SQLite Windows namespace handling (0009; runtime pending)
+
+An ordinary-versus-extended launch control preserved cookies on the ordinary
+path but lost them on the extended path, where no persistent Cookies database
+was created. Chromium's exclusive SQLite open rejects any `?` in a path,
+including the legitimate Windows namespace marker. `0009` excludes only the
+initial `\\?\` marker from that query-delimiter check; all later question marks
+remain rejected and the existing `EscapePath` URI encoding remains intact.
+It retains exclusive locking and does not disable cookie encryption.
+
+The patch adds native SQL tests for extended-path write/reopen and exclusive
+locking, plus rejection of an appended `?exclusive=false` query. Those Chromium
+tests and the real cookie/storage matrix still require execution; project unit
+tests or a patch application check do not establish native runtime success.
+Do not promote a manager launch change until the full storage and runtime gates
+pass. Original failed controls remain on D; see `docs/NATIVE_VERIFICATION.md`.
 
 ## Current Windows source build
 
