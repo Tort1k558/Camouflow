@@ -62,7 +62,27 @@ Important unresolved tradeoffs:
 Next gates: native vectors/idempotence/crop/padding/alpha/performance, then API
 compatibility and adversarial detection tests. No getImageData/toDataURL/toBlob/
 OffscreenCanvas hook may activate this candidate before those gates are reviewed.
-The next comparison should evaluate content-coherent canonicalization (equal
-input colours remain equal) against the coordinate candidate, including known
-fill values, putImageData round trips, gradients and alpha. Preserving a uniform
-fill alone is still not proof that a colour transformation is undetectable.
+
+## Content-coherent alternative
+
+`TransformContentCoherentReadback` is an explicitly selected second candidate,
+not a fallback. It derives three canonical output bits from HMAC over RGB values
+with the low bit removed. Equal input colours remain equal, and repeated
+transformation remains idempotent. A fixed 256-entry direct-mapped cache bounds
+memory; a colliding key is recomputed rather than incorrectly sharing a value.
+Layout validation, alpha/padding handling and output bounds are shared with the
+coordinate comparison; the original coordinate HMAC vector remains unchanged.
+
+The current sources passed Chromium-flag clang syntax checks and **27 native
+comparison checks**, including an independent Python oracle for a 4096-pixel
+diverse-colour fixture that exercises cache collisions. A local uniform 1-Mp run
+took 5 ms. Evidence:
+`D:/CamouFlowNative/canvas-candidate-palette-comparison-oracle/proof.json` and
+`tests.log`; syntax proof: `canvas-palette-candidate-cpp-check/proof.json`.
+
+The second candidate preserves one colour in the white-fill diagnostic, but
+changes that known white value in all 1,048,576 pixels. It therefore removes the
+spatial pattern, **not known-value detectability**. Neither candidate is admitted
+or hooked into Blink. A further comparison must preserve actual uniform fill
+values, quantify gradients/antialiasing/editor round trips, and use whole-canvas
+provenance rather than classify a crop independently and break crop/full equality.

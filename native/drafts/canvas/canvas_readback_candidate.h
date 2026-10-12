@@ -20,5 +20,17 @@ bool TransformCanvasReadback(std::span<uint8_t> rgba,
                              uint32_t canvas_height,
                              const std::array<uint8_t, 32>& partition_seed);
 
+// Alternative research candidate: identical quantized colours stay identical.
+// This is not an automatic fallback or an approved browser policy.
+bool TransformContentCoherentReadback(
+    std::span<uint8_t> rgba,
+    uint32_t read_width,
+    uint32_t read_height,
+    int64_t origin_x,
+    int64_t origin_y,
+    uint32_t canvas_width,
+    uint32_t canvas_height,
+    const std::array<uint8_t, 32>& partition_seed);
+
 }  // namespace glint::candidate
 #endif
