@@ -74,6 +74,13 @@ The public regressions in `tests/test_native_runtime.py` cover both terminal pat
 alongside pending-start cancellation/deadline ownership tests. No active Chromium
 build inputs or future Canvas/privacy capabilities were changed by this check.
 
+Additional manager regressions cover delayed driver failure during cleanup of a
+cancelled start: both RuntimeError and driver-task cancellation must preserve the
+caller's CancelledError, release profile ownership and permit idempotent close.
+Existing timeout/caller-cancellation cases still require ownership while startup
+is pending. These delayed-failure cases are synthetic task/lock tests, not an
+additional browser subprocess fault-injection result.
+
 ## Current boundary
 
 The 001-010 Windows development baseline has completed runtime gates and

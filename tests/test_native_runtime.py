@@ -519,6 +519,42 @@ def test_native_failed_driver_start_releases_profile_and_allows_retry(tmp_path, 
     asyncio.run(check())
 
 
+@pytest.mark.parametrize("failure", [RuntimeError, asyncio.CancelledError])
+def test_native_driver_failure_during_cancelled_start_cleanup_releases_owner(tmp_path, monkeypatch, failure):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from PyQt6.QtCore import QLockFile
+    from app.core.native import runtime as module
+
+    async def check():
+        entered, release = asyncio.Event(), asyncio.Event()
+
+        async def start_driver():
+            entered.set()
+            await release.wait()
+            raise failure("owned late startup failure")
+
+        monkeypatch.setattr(module, "async_playwright", lambda: SimpleNamespace(
+            start=AsyncMock(side_effect=start_driver)))
+        runtime = NativeRuntime(tmp_path / "owned", Path(__file__), NativeConfiguration())
+        starting = asyncio.create_task(runtime.start())
+        await asyncio.wait_for(entered.wait(), timeout=1)
+        starting.cancel()
+        await asyncio.sleep(0)
+        other = QLockFile(str(runtime.profile_dir / "native-runtime.lock"))
+        other.setStaleLockTime(0)
+        assert not other.tryLock(0)
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await starting
+        assert not runtime.has_resources
+        assert other.tryLock(0)
+        other.unlock()
+        await runtime.close()
+
+    asyncio.run(check())
+
+
 @pytest.mark.parametrize("resource", ["_profile_lock", "_driver_start_task", "_driver_stop_task", "context", "playwright"])
 def test_native_adapter_never_replaces_a_runtime_that_still_owns_resources(tmp_path, resource):
     from app.core.browser_interface import BrowserInterface

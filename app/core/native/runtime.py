@@ -94,8 +94,17 @@ class NativeRuntime:
             if startup.done() and (startup.cancelled() or startup.exception() is not None):
                 self._driver_start_task = None
             else:
-                self.playwright = await asyncio.wait_for(asyncio.shield(startup),
-                                                        timeout=self.DRIVER_START_TIMEOUT_SECONDS)
+                try:
+                    self.playwright = await asyncio.wait_for(asyncio.shield(startup),
+                                                            timeout=self.DRIVER_START_TIMEOUT_SECONDS)
+                except asyncio.CancelledError:
+                    if not startup.cancelled():
+                        raise
+                    self._driver_start_task = None
+                except Exception:
+                    if not startup.done() or startup.cancelled() or startup.exception() is None:
+                        raise
+                    self._driver_start_task = None
         context = self.context
         driver = self.playwright
         try:

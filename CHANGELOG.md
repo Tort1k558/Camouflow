@@ -9,6 +9,9 @@ build attached.
 - Fixed Glint profile-lock cleanup when Playwright driver startup fails or the
   startup task is cancelled. Terminal failed starts now allow a clean retry;
   pending startup and shutdown operations continue to retain profile ownership.
+- Extended Glint cleanup to handle a driver that fails while cancelled startup
+  teardown is waiting for it, preserving the original cancellation and releasing
+  ownership only after the driver task reaches a terminal failed state.
 
 ## 0.4.3 - 2026-10-12
 
