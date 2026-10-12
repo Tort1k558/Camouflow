@@ -7,60 +7,102 @@
 <p align="center"><b>English</b> · <a href="README.ru.md">Русский</a></p>
 
 <p align="center">
-  <b>A local-first desktop workspace for browser profiles, proxies and visual automation.</b><br/>
-  Different profiles. One workflow. On your computer — under your control.
+  <b>Browser profiles. Visual automation. Your own workspace.</b><br/>
+  Local-first desktop manager for Camoufox, CloakBrowser and the Glint engine preview.
 </p>
 
 <p align="center">
-  <img alt="release" src="https://img.shields.io/github/v/release/Tort1k558/Camouflow?label=release&color=202820&labelColor=d1f366" />
-  <img alt="platform" src="https://img.shields.io/badge/platform-Windows-202820?labelColor=d1f366" />
-  <img alt="stack" src="https://img.shields.io/badge/Python%203.12%20·%20PyQt6%20·%20QML-202820?labelColor=d1f366" />
-  <img alt="engines" src="https://img.shields.io/badge/Camoufox%20·%20CloakBrowser-202820?labelColor=d1f366" />
-  <img alt="license" src="https://img.shields.io/badge/license-MIT-202820?labelColor=d1f366" />
+  <a href="https://github.com/Tort1k558/Camouflow/releases/latest"><img alt="Latest desktop release" src="https://img.shields.io/github/v/release/Tort1k558/Camouflow?label=desktop&color=202820&labelColor=d1f366" /></a>
+  <img alt="Windows desktop" src="https://img.shields.io/badge/platform-Windows-202820?labelColor=d1f366" />
+  <img alt="Glint development preview" src="https://img.shields.io/badge/Glint-development%20preview-202820?labelColor=d1f366" />
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-202820?labelColor=d1f366" /></a>
 </p>
 
----
+<p align="center">
+  <a href="https://github.com/Tort1k558/Camouflow/releases/latest">Download</a> ·
+  <a href="https://camouflow.site/docs">Documentation</a> ·
+  <a href="docs/GLINT_TEST_MATRIX.md">Glint test results</a> ·
+  <a href="native/BUILDING.md">Build Glint</a> ·
+  <a href="CONTRIBUTING.md">Contribute</a>
+</p>
 
-📚 **Documentation (RU/EN): [camouflow.site/docs](https://camouflow.site/docs)** · API reference: [camouflow.site/api](https://camouflow.site/api)
+![CamouFlow profile workspace](images/profiles.png)
 
-## Describe once. Review. Replay without a model.
+## One workspace, three engines
 
-**Glint preview:** our own Chromium engine is in development, not a production
-anti-detect release. See [capabilities and limitations](docs/NATIVE_ENGINE.md)
-and the [Windows build guide](native/BUILDING.md).
+Manage persistent profiles, proxy pools and scenario runs locally. Describe a
+task with AI, review the recorded actions, then replay without another model
+request. Connect our optional hosted service for team assignments and shared work.
 
-**Contribute:** [Guidelines](CONTRIBUTING.md) · [Code of conduct](CODE_OF_CONDUCT.md) · [Report a bug](https://github.com/Tort1k558/Camouflow/issues/new/choose) · [Security policy](SECURITY.md).
+| Engine | Foundation | Role in CamouFlow |
+| --- | --- | --- |
+| Camoufox | Firefox-based, third-party | Configurable anti-detect profiles through the existing integration |
+| CloakBrowser | Chromium-based, third-party | Configurable anti-detect profiles through the existing integration |
+| **Glint** | **Our public Chromium/Blink fork** | Windows development runtime; native C++/Mojo policies, not a renamed third-party engine |
 
-Try the isolated catalog demo, inspect a structured table, export JSON/CSV, then turn recorded actions into a parameterized scenario. Read-only replay checks outputs using the existing automation engine, without another model request.
+Settings and capabilities differ by engine. Glint is **not a production
+anti-detect release** and does not silently substitute an unsupported setting.
+The desktop download is not proof that it contains the latest Glint development build.
 
-**[AI workflow quickstart](docs/AI_WORKFLOWS.md)** · [CLI / optional MCP / n8n example](docs/AI_WORKFLOWS.md#local-cli)
+## Glint: what is native, what is still in development
 
-**[Hosted catalog tasks](docs-site/docs/hosted-tasks.md)** — optional private-server CSV
-monitors, recurring schedules, row results, manual browser assistance and signed
-completion webhooks. Open **Tasks → Hosted tasks**; local execution is unchanged.
+| Surface | Implementation | Current boundary |
+| --- | --- | --- |
+| Profile identity | Private versioned profile key; browser-owned partition/surface derivation | Key/context tests passed; not a complete generated device passport |
+| CPU / memory | Native hardware ceilings | Limits, not arbitrary emulation of another computer |
+| Fonts | Native selection from installed Windows fonts | No fabricated font inventory or macOS/Linux font simulation |
+| WebRTC | Native routing policy | Controlled checks passed; external leak testing remains separate |
+| Automation signals | Source-level policies for selected automation/headless/CDP signals | **Not full CDP invisibility**; manager automation still uses Playwright/CDP |
+| Workers | Owned startup/seed transport behind a developer-only gate | Runtime startup checks passed; exact Blink handoff tests pending |
+| Document policy | Browser → commit IPC → renderer → Document candidates | Unregistered drafts; runtime and final-partition recovery pending |
+| Canvas | Native readback/export candidates | **Protection not activated**; baseline checks are not protection tests |
+| WebGL / WebGPU / Audio | Planned native protection | Incomplete; no arbitrary GPU identity or audio emulation |
+| TLS / HTTP | Upstream Chromium/BoringSSL network stack | No custom ClientHello spoofing; comparative measurements pending |
+| Mobile profiles | Desktop viewport/touch Web Emulation | **Not Android Chrome or iOS Safari**; full mobile identity pending |
+| Platforms | Verified Windows development runtime | Own-fork Linux/macOS runtime verification deferred |
 
-**[Team center](docs-site/docs/team-center.md)** — assigned work, linked runs,
-manager review and a shared browser-help queue. Open **Tasks → Team center**.
-Available in v0.4.2; requires the private server's `0012_team_center` revision,
-now deployed on our hosted service. Existing team roles and local execution remain.
+[Architecture](native/ARCHITECTURE.md) · [Capabilities](docs/NATIVE_ENGINE.md) ·
+[Implementation roadmap (RU)](docs/GLINT_ROADMAP.ru.md) · [Public patches](native/patches)
 
-Available in **v0.4.0**. Model-reported success is not a verified workflow. Page content goes to your chosen provider; editable field contents are excluded from snapshots, not every possible secret.
+## Glint verification snapshot
 
-![Real AI catalog extraction and verified replay](images/ai-workflow-demo.png)
+Last verified browser: **Windows · Chromium 148.0.7778.96 · patches 001–027**.
+This is a pinned development baseline, not a claim of current Chromium security updates.
 
-[Watch the recorded UI demo](images/ai-workflow-demo.gif) — synthetic catalog, real configured DeepSeek model, export and replay check. No personal browser profile was used.
+| Check | Result | Scope |
+| --- | --- | --- |
+| Existing runtime policies | **160 checks passed / 8 gates** | Controlled local checks, not external detector scores |
+| Worker startup / restart / rejection | **40 checks passed** | Diagnostic opt-in; does not prove Canvas protection |
+| Canvas API baseline | **4 phases passed** | Unprotected pixel/export/API behavior |
+| CreepJS / Pixelscan / BrowserScan / Sannysoft | **Not run for 001–027** | Earlier builds' observations do not transfer |
+| Fingerprint Playground / IPhey / BrowserLeaks | **Not run for 001–027** | Recognition, consistency and leak checks pending |
+| TLS / HTTP fingerprint comparison | **Not run for 001–027** | Same-route stock Chromium comparison required |
+| reCAPTCHA / real-key Turnstile / hCaptcha | **Not verified for 001–027** | No guaranteed scores or CAPTCHA acceptance claims |
 
-## What is CamouFlow
+The [living test matrix](docs/GLINT_TEST_MATRIX.md) retains build history, test
+destinations, evidence references and limitations. Pass counts describe their
+named check sets, not “anti-detect readiness” or guaranteed site access.
 
-CamouFlow is a desktop app for working with isolated browser profiles. Every profile has its own context: cookies, fingerprint, proxy and engine settings. Profiles come together in one workflow: visual automation scenarios, proxy pools with health checks, logging and team collaboration through an optional server.
+## Automate, review, replay
 
-- 🔒 **Local-first** — profiles, scenarios and data stay on your machine; local mode needs no server login
-- 🧬 **Anti-detect engines** — Camoufox (Firefox-based) and CloakBrowser (Chromium-based) with configurable fingerprints
-- 🕸 **Visual automation** — scenarios are assembled on a canvas from steps linked by success/error transitions
-- 🤖 **AI assistant** — describe a task in plain language and a built-in agent (a Chat Completions-compatible provider, including local Ollama) drives the profile's browser on both engines; save its actions as a replayable scenario
-- 🌐 **Teams and control center** — optional server: roles, shared pools, audit, marketplace
+![AI catalog extraction and verified replay](images/ai-workflow-demo.png)
+
+[AI quickstart](docs/AI_WORKFLOWS.md) ·
+[Recorded UI demo](images/ai-workflow-demo.gif) ·
+[CLI / MCP / n8n](docs/AI_WORKFLOWS.md#local-cli) ·
+[Hosted tasks](docs-site/docs/hosted-tasks.md) ·
+[Team center](docs-site/docs/team-center.md)
+
+The demo uses a synthetic catalog and a configured model, not a personal account.
+Model-reported success is not verified replay. Page content goes to your chosen
+provider; excluding editable field contents does not remove every possible secret.
+Local mode requires no server login. The optional backend remains private.
 
 ## Screenshots
+
+<details>
+<summary>More screenshots</summary>
+
 
 | Overview | Profiles |
 |:---:|:---:|
@@ -74,6 +116,8 @@ CamouFlow is a desktop app for working with isolated browser profiles. Every pro
 |:---:|:---:|
 | ![Browser engine](images/browser.png) | ![Logs](images/logs.png) |
 
+</details>
+
 ## Features
 
 ### 🗂 Profiles
@@ -83,7 +127,7 @@ CamouFlow is a desktop app for working with isolated browser profiles. Every pro
 - bulk import with an account parse template
 - tag groups and search by name, tag or proxy
 - assign a proxy, edit profile variables and cookies
-- per-profile browser overrides: locale, timezone, User-Agent, WebGL/GPU, CPU cores
+- engine-dependent per-profile settings: locale, timezone, User-Agent, WebGL/GPU, CPU cores; Glint restrictions are listed above
 - batch-run a scenario on profiles with a selected tag
 
 ### 🕸 Proxies
