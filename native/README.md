@@ -115,7 +115,7 @@ SHA-256 is suitable for the existing local trusted-publisher install command;
 it is not a signed online update feed. The completed bundle must still pass
 relocated-binary health/runtime checks and own-patch gates before production.
 
-## Native headless UA draft (0006, not applied or runtime-verified)
+## Native headless UA patch (0006 applied; own runtime pending)
 
 `0006-native-headless-user-agent.patch` adds the opt-in boolean switch
 `--camouflow-native-user-agent` to Chromium's native user-agent construction.
@@ -126,7 +126,7 @@ Google-branded Client Hints or claim Chrome 152 on our Chromium 148 build.
 Nonempty flag values fail a native CHECK; the default remains upstream behavior.
 The patch includes two upstream unit-test cases but they have not been compiled
 or run. Pinned-source `git apply --check` passed on an isolated draft generated
-from original HEAD files; the active build still contains only 0001–0005.
+from original HEAD files. The patch was applied after the immutable baseline passed on 2026-10-12; its translation unit compiled, but full build and own runtime checks remain pending.
 
 `scripts/verify_native_identity.py` observes the UA in owned HTTP echo requests
 and native document, same/cross-origin frame, new-target, dedicated/shared/service
@@ -149,13 +149,13 @@ After applying and compiling the draft, run:
 & $python scripts/verify_native_identity.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative\tmp --report D:\CamouFlowNative\native-identity-fork.json
 ```
 
-## V8 inspector accessor draft (0007, not applied or compiled)
+## V8 inspector accessor patch (0007 applied; own runtime pending)
 
 `0007-native-inspector-error-accessors.patch` targets V8's own repository,
 not the Chromium Git index. Its pinned base is
 `ddc9a95905de5268332a8f0216dc2bc67d26e829`, the `src/v8` revision in the
 verified gclient dependency snapshot. Pinned V8 `git apply --check` passed,
-and a live read-only check confirmed that V8 is still clean and unchanged.
+and the draft-time read-only check confirmed a clean V8 baseline. The patch was applied after the immutable Windows baseline passed on 2026-10-12; its translation unit compiled. Full build and own runtime checks remain pending.
 
 The draft resolves Error property descriptors along a bounded prototype chain,
 without falling back to ordinary lookup when it encounters unknown/proxy
@@ -180,8 +180,8 @@ unchanged; unknown edits and mid-build V8 changes reject a successful receipt.
 Real nested-Git fixtures also verify rejection of extra edits, unknown files,
 deletions and staged extra edits while preserving both original Git indexes
 and leaving no temporary index directory in either source tree.
-The active build loaded the previous helper and still contains only 0001–0005.
-Do not apply 0006/0007 until it has terminated and the source inputs can be changed.
+The current helper is now building patches 0001-0007 after the immutable baseline passed. Do not modify active compilation inputs.
+The identity/inspector runtime gates remain pending until the current build terminates.
 
 `scripts/verify_native_cdp.py` logs six owned Error accessor fixtures (own and
 inherited stack/name/message) and all seven standard native Error types with

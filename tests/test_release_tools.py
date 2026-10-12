@@ -1553,7 +1553,8 @@ def test_native_runtime_core_requires_both_dlls_and_detects_relink_without_launc
 
 
 @pytest.mark.parametrize("failure", [None, "cpu", "memory", "webdriver", "arial", "restricted",
-                                     "missing-context", "missing-native", "worker-webdriver", "canvas", "restart"])
+                                     "missing-context", "missing-native", "worker-webdriver", "canvas", "restart",
+                                     "headless-ua", "http-ua", "fake-version"])
 def test_native_combined_policies_require_all_contexts_and_stable_native_observations(failure):
     from copy import deepcopy
     from scripts.verify_native_canvas import CONTEXTS, GEOMETRY_EXPECTED
@@ -1565,6 +1566,8 @@ def test_native_combined_policies_require_all_contexts_and_stable_native_observa
                     "htmlDataUrl": None if name in {"dedicated", "shared", "service"} else digest,
                     "geometry": dict(GEOMETRY_EXPECTED)},
                     "native": {"cpu": 1, "memory": 0.25, "arial": 120.0, "restricted": 120.0,
+                               "userAgent": "Mozilla/5.0 Chrome/148.0.0.0 Safari/537.36",
+                               "userAgentHeader": "Mozilla/5.0 Chrome/148.0.0.0 Safari/537.36",
                                "webdriver": None if name in {"dedicated", "shared", "service"} else False}}
                 for name in CONTEXTS}
     previous = deepcopy(observed)
@@ -1581,11 +1584,17 @@ def test_native_combined_policies_require_all_contexts_and_stable_native_observa
         observed["dedicated"]["canvas"]["geometry"]["transparentExport"] = False
     elif failure == "restart":
         previous["document"]["native"]["arial"] = 121.0
+    elif failure == "headless-ua":
+        observed["document"]["native"]["userAgent"] = "Mozilla/5.0 HeadlessChrome/148.0.0.0"
+    elif failure == "http-ua":
+        observed["shared"]["native"]["userAgentHeader"] = "other"
+    elif failure == "fake-version":
+        observed["service"]["native"]["userAgent"] = "Mozilla/5.0 Chrome/152.0.0.0"
     if failure is None:
-        validate_observations(observed, previous)
+        validate_observations(observed, previous, browser_version="148.0.7778.96")
     else:
         with pytest.raises(ValueError):
-            validate_observations(observed, previous)
+            validate_observations(observed, previous, browser_version="148.0.7778.96")
 
 
 @pytest.mark.parametrize("failure", [None, "missing-restart", "duplicate", "arguments", "missing-dll", "invalid-hash", "other-launcher"])

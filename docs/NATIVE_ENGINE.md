@@ -44,12 +44,14 @@ Configuration mismatches were empty and `fingerprint_patched` remained false.
 
 Hardware/WebRTC negative-control artifacts correctly rejected ignored Native
 flags on that unpatched SDK; they must not be reported as own-fork privacy passes.
-The independent Windows Chromium source build is still running with patches
-0001–0005. UA draft 0006 and V8 inspector draft 0007 remain unapplied and
-uncompiled. No own-fork binary, CAPTCHA score, general CDP invisibility or
-third-party anti-bot classification has been verified for this revision.
+The SDK observations above are historical. The corrected own Windows baseline
+with patches 0001-0005 has passed relocated runtime and complete payload checks.
+Patches 0006/0007 are now applied and their affected translation units compiled;
+full build/link and own identity/inspector runtime gates remain pending.
+No CAPTCHA score, general CDP invisibility or third-party bot classification
+is established by those checks. See NATIVE_VERIFICATION.md for current evidence.
 
-The latest local regression run passed 958 tests. Local own-fork packaging is
+The latest local regression run passed 1,073 tests. Local own-fork packaging is
 prepared; managed fork releases require full payload checksums, including DLLs
 and resources, before installation/selection/rollback. Compatibility hashing
 runs off the GUI thread and startup resolution off the async event loop.

@@ -201,6 +201,42 @@ Its archive checksum and all 261 payload hashes match the installed development
 release exactly. The new real-credit package still requires its own relocated
 checks; the earlier sample-credit archive is not promoted by this result.
 
+### Real-credit baseline verified; identity/inspector compilation started
+
+Official re-staging finished in 24.75s (one executed action). The new 261-file
+development archive has checksum
+`cd5f2bbd8ebf3e440bd1647ab2574c315f68154a8e860c8241b1c6d0aed0a167`.
+It was installed alongside the preceding release in the isolated store, without
+activating either release for the user's application. Its own full-payload
+runtime passed all 18 checks and every file measurement:
+`D:\CamouFlowNative\runtime-own-packaged-real-credits-full-payload-001-005-20261012.json`.
+The packaged credits page rendered the same actual license HTML as the source
+build, retained in `D:\CamouFlowNative\own-packaged-real-credits-001-005.json`.
+This is the immutable Windows development baseline for subsequent engine work,
+not publication, authenticated update metadata or complete product readiness.
+
+After confirming all preceding builders had terminated, patches 0006 and 0007
+were applied to Chromium and its pinned V8 repository respectively. Strict
+source comparison and dependency checks passed. Both affected translation units
+(`user_agent_utils` and `value-mirror`) compiled successfully under the existing
+warning/error settings. The four-job incremental build is still running in
+`D:\CamouFlowNative\native-build-identity-inspector-j4.log`; its V8 snapshot/cache
+generators and browser link must finish before runtime verification. No own
+identity/CDP runtime pass is claimed from translation-unit compilation.
+
+The combined gate now also requests native UA and compares actual browser major,
+JavaScript UA and HTTP UA in all six contexts. Genuine Client Hints remain the
+separate identity gate's responsibility. The preceding immutable own baseline
+correctly failed the new combined probe specifically on headless UA, after its
+STUN control and four earlier policies succeeded; evidence is in
+`D:\CamouFlowNative\combined-baseline-missing-identity-owned-negative-20261012.json`.
+An initial invocation without the required versioned DLL path failed before
+browser testing and is not an admissible negative control. The explicit package
+DLL option is now supported, without automatic search. The local regression
+suite passed 1,073 tests. Rebuilt identity/CDP gates and the five-policy combined
+run are pending; profile-key transport and native Canvas protection remain
+unimplemented, and manager capability admission remains blocked.
+
 | Area | Prepared artifact | Required own-fork evidence |
 | --- | --- | --- |
 | Lifecycle and storage | `verify_native_runtime.py` | All 18 checks; five stores survive committed checkpoints; independent profiles; lock exclusion; cancellation; zero owned survivors after controller death and three-profile restart rounds |
