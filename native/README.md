@@ -1,5 +1,9 @@
 # Glint Chromium source workspace
 
+**Start here: [Windows build guide](BUILDING.md).** It separates checkout,
+patch application, compilation, verification and packaging. The sections below
+retain development history and are not a fresh-machine build recipe.
+
 This directory tracks the public Glint build inputs. Chromium source,
 dependencies, tools and output stay **outside this repository**, on the approved
 `D:\CamouFlowNative` workspace. Backend source and credentials are not included.
