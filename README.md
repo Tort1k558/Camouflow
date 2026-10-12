@@ -25,6 +25,8 @@
 
 ## Describe once. Review. Replay without a model.
 
+**Contribute:** [Guidelines](CONTRIBUTING.md) · [Code of conduct](CODE_OF_CONDUCT.md) · [Report a bug](https://github.com/Tort1k558/Camouflow/issues/new/choose) · [Security policy](SECURITY.md).
+
 Try the isolated catalog demo, inspect a structured table, export JSON/CSV, then turn recorded actions into a parameterized scenario. Read-only replay checks outputs using the existing automation engine, without another model request.
 
 **[AI workflow quickstart](docs/AI_WORKFLOWS.md)** · [CLI / optional MCP / n8n example](docs/AI_WORKFLOWS.md#local-cli)

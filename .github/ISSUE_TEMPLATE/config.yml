@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation / Документация
+    url: https://camouflow.site/docs
+    about: Setup, browser profiles, automation and integrations.
+  - name: Report a vulnerability privately
+    url: https://github.com/Tort1k558/Camouflow/security/advisories/new
+    about: Security reports must not contain exploits or secrets in public issues.

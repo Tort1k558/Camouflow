@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible problem in CamouFlow or a browser integration.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English and Russian are welcome. Search existing issues first.
+        For vulnerabilities, use **Security → Report a vulnerability**, not this form.
+        Never share keys, cookies, proxy credentials or personal browser profiles.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "Example: v0.4.2 or commit SHA; source or packaged app"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS/version, browser engine and version; local or connected workspace.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Use disposable profiles and a public/test page where possible.
+      placeholder: "1. Open…\n2. Configure…\n3. Run…"
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Remove tokens, passwords, account identifiers and personal page content.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and removed secrets and personal profile data.
+          required: true

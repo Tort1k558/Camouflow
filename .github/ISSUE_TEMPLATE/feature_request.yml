@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest a focused improvement with a concrete user problem.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: English and Russian are welcome. Describe the workflow, not just a list of features.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Who needs this and what is difficult in the current workflow?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include engine/platform needs and what success would look like.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and scope
+      description: Existing workarounds, related issues and anything explicitly out of scope.
