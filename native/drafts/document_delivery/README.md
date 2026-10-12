@@ -1,4 +1,4 @@
-# Glint document delivery candidate
+# Glint document and worker delivery candidates
 
 Unregistered, uncompiled draft outside the active Chromium checkout. No Canvas
 protection or runtime capability is enabled by these files.
@@ -53,6 +53,27 @@ Required before promotion:
   carrying version 1 here reserves a draft contract, not a released capability.
 
 No command-line seeds, renderer-supplied StorageKeys or JavaScript getters.
+
+## Worker endpoint draft
+
+The separate `NativePrivacyWorker` interface and `PrivacyWorkerService` are
+prepared for dedicated/shared/service worker hosts. The service captures a
+browser-provided StorageKey and a weak BrowserContext, and must be owned by that
+worker host's UniqueReceiverSet. Host destruction or pipe closure must destroy
+the service; late loading callbacks cannot retain it. Requests have the same
+single-use/10-second bound as document delivery. Only the Canvas subkey is sent.
+
+Shared/service worker requests fail explicitly when third-party storage
+partitioning is disabled: the service does not invent one client's top-level
+site for a worker that can serve several sites. Dedicated worker identity must
+come from its actual host's worker StorageKey, not an ancestor frame lookup.
+
+Fresh Mojo generation and isolated clang syntax checks passed for both services,
+the seven document-test definitions and generated binding translation units:
+`D:/CamouFlowNative/worker-delivery-cpp-check-message-header/proof.json`.
+Worker host receiver ownership/binders, host-lifetime tests, Blink consumers and
+real runtime delivery are **not implemented or verified**. The document
+integration patch below does not register this worker service.
 
 ## Integration draft
 

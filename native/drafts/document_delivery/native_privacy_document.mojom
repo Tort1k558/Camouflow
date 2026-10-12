@@ -19,3 +19,9 @@ interface NativePrivacyDocument {
   GetCanvasPolicy() => (NativePrivacyDeliveryStatus status,
                        NativePrivacyCanvasPolicy? policy);
 };
+
+// Bound by a browser worker host and destroyed with that host/pipe, not a frame.
+interface NativePrivacyWorker {
+  GetCanvasPolicy() => (NativePrivacyDeliveryStatus status,
+                       NativePrivacyCanvasPolicy? policy);
+};
