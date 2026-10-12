@@ -100,6 +100,10 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
             raise ValueError("Unsafe or colliding Native staged file")
         names.add(name.casefold())
         source_relative = Path(*relative.parts[1:]) if relative.parts[0] == LOCK["chromium_version"] else Path(*relative.parts)
+        # chrome.release stages these two root-output assets in VisualElements.
+        if relative.parts[0] == LOCK["chromium_version"] and source_relative.parts in {
+                ("VisualElements", "Logo.png"), ("VisualElements", "SmallLogo.png")}:
+            source_relative = Path(source_relative.name)
         source = build_output / source_relative
         checksum = sha256_file(path)
         if not source.is_file() or source != source.resolve() or checksum != sha256_file(source):

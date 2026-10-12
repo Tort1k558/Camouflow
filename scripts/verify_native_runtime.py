@@ -5,10 +5,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
+import hashlib
 import json
 import logging
 import os
 import platform
+import re
 import subprocess
 import sys
 import sysconfig
@@ -27,21 +29,29 @@ sys.path.insert(0, str(ROOT))
 from app.core.native.configuration import NativeConfiguration  # noqa: E402
 from app.core.native.diagnostics import inspect_native_profile  # noqa: E402
 from app.core.native.runtime import NativeRuntime, NativeRuntimeError  # noqa: E402
-from app.core.native.distribution import sha256_file  # noqa: E402
 from playwright.async_api import Error as PlaywrightError, async_playwright  # noqa: E402
 
-def measure_runtime_core(executable: Path) -> dict[str, str]:
+def measure_runtime_core(executable: Path, library_directory: Path | None = None) -> dict[str, str]:
     """Bind Windows evidence to executable code in DLLs, not only the launcher."""
     if not executable.is_file():
         raise NativeRuntimeError("Native browser is not installed")
+    if library_directory is not None:
+        if (sys.platform != "win32" or not library_directory.is_absolute()
+                or library_directory != library_directory.resolve() or not library_directory.is_dir()
+                or (library_directory != executable.parent and
+                    (library_directory.parent != executable.parent
+                     or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", library_directory.name) is None))):
+            raise ValueError("Windows library directory must be canonical and belong to the browser package")
     paths = [executable]
     if sys.platform == "win32":
-        paths.extend(executable.parent / name for name in ("chrome.dll", "chrome_elf.dll"))
+        directory = executable.parent if library_directory is None else library_directory
+        paths.extend(directory / name for name in ("chrome.dll", "chrome_elf.dll"))
     measured = {}
     for path in paths:
         if not path.is_absolute() or path != path.resolve() or not path.is_file():
             raise ValueError("Native runtime core is missing or linked: " + path.name)
-        measured[path.name] = sha256_file(path)
+        with path.open("rb") as content:
+            measured[path.name] = hashlib.file_digest(content, "sha256").hexdigest()
     return measured
 
 
@@ -351,8 +361,8 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
 
 
 async def verify(profile_root: Path, executable: Path, origin: str, proxy_server: FixtureServer,
-                 *, checks: list[str] | None = None) -> dict:
-    runtime_core = measure_runtime_core(executable)
+                 *, checks: list[str] | None = None, library_directory: Path | None = None) -> dict:
+    runtime_core = measure_runtime_core(executable, library_directory)
     desktop = NativeConfiguration()
     mobile = NativeConfiguration(environment="mobile_web", width=390, height=844, device_scale_factor=3,
                                  locale="de-DE", timezone="Europe/Berlin",
@@ -415,6 +425,8 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         assert audio["probeSampleRate"] == 44100 and audio["absoluteSum"] > 0, json.dumps(diagnostics)
         checks.append("native-document-worker-configuration-diagnostics")
         version = context_a.browser.version
+        if library_directory is not None and library_directory != executable.parent and library_directory.name != version:
+            raise ValueError("Versioned runtime DLL directory does not match the running browser")
         await a.close()
         await b.close()
         for runtime, value in [(a, "alpha"), (b, "beta")]:
@@ -464,6 +476,8 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         from app.storage import db
 
         db.init_db()
+        if db.DATA_ROOT.resolve() != (profile_root / "workspace").resolve():
+            raise ValueError("Native runtime fixture database is outside its owned workspace")
         account = {"name": "Native core fixture", "browser_engine": "native", "native_settings": {
             "executable_path": str(executable), "headless": True, "humanize": False,
         }}
@@ -629,7 +643,7 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         await b.close()
         restart_rounds = await verify_multi_profile_restarts(profile_root, executable, origin)
         checks.append("three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes")
-        if measure_runtime_core(executable) != runtime_core:
+        if measure_runtime_core(executable, library_directory) != runtime_core:
             raise ValueError("Native runtime core changed during verification")
         checksum = runtime_core[executable.name]
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),
@@ -679,6 +693,8 @@ def main() -> int:
     parser.add_argument("--executable", default="")
     parser.add_argument("--work-dir", type=Path, default=Path(tempfile.gettempdir()))
     parser.add_argument("--report", type=Path, default=ROOT / "outputs/native-runtime/source.json")
+    parser.add_argument("--windows-library-directory", type=Path,
+                        help="Explicit DLL directory for a versioned official Chrome-bin package; no automatic search")
     parser.add_argument("--check-lock", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--abandon-lock", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--controller-child", type=Path, help=argparse.SUPPRESS)
@@ -716,7 +732,8 @@ def main() -> int:
             previous_data_dir = os.environ.get("CAMOUFLOW_DATA_DIR")
             os.environ["CAMOUFLOW_DATA_DIR"] = str(Path(owned).resolve() / "workspace")
             try:
-                report = asyncio.run(verify(Path(owned).resolve(), executable, f"http://127.0.0.1:{server.server_port}", proxy_server, checks=checks))
+                report = asyncio.run(verify(Path(owned).resolve(), executable, f"http://127.0.0.1:{server.server_port}", proxy_server,
+                                            checks=checks, library_directory=args.windows_library_directory))
             finally:
                 close_owned_log_handlers(Path(owned))
                 if previous_data_dir is None:

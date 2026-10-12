@@ -51,7 +51,7 @@ concurrent clang-cl processes were observed; no output directory was cleaned.
 The 3-GiB Go target remains soft and does not cap compiler memory. Additional
 patches prepared during this invocation remain drafts, not hot source edits.
 
-## Own-fork Windows packaging (packager prepared, official staging pending)
+## Own-fork Windows packaging (development archive only, delivery checks pending)
 
 `scripts/package_native_windows.py` converts Chromium's official mini-installer
 staged `Chrome-bin` directory into the existing managed Native `.tar.gz` format.
@@ -66,10 +66,14 @@ validated its receipt, the own-fork runtime gate has passed, and the official
 archive target has produced its staging tree. Do not run the generated installer
 on this machine just to obtain its files. Building the archive target is separate
 from installing Chromium. After the own Windows binary and repeated runtime
-gate passed on 2026-10-12, the four-job `mini_installer_archive` build was started;
-its completion and relocated-package verification remain pending. No installer
-has been executed. The tested executable/DLL hashes, receipt, GN arguments and
-source patches must remain unchanged through archive generation.
+gate passed on 2026-10-12, the four-job `mini_installer_archive` build completed
+37 steps in 1m15s. A first development archive was installed into an isolated
+test store on D:, not activated for the application. Shipping is still blocked:
+the credits page was a sample and a relocated runtime probe exposed an early
+database-import regression. Real credits generation is enabled for the next
+build; fresh isolated runtime and full relocated-payload checks are required.
+No installer has been executed. The tested executable/DLL hashes, receipt, GN
+arguments and source patches must remain unchanged through archive generation.
 
 The packager requires matching pinned revisions, executable/GN hashes and all
 18 runtime-check names from a passing report for the exact binary. Every staged

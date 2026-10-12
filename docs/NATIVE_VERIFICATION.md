@@ -130,6 +130,47 @@ not Canvas protection, profile-key transport, concurrent protected sessions,
 identity/CDP patch verification, release capability admission or CAPTCHA proof.
 Manager policy activation remains blocked pending the complete release contract.
 
+### First official archive and delivery blockers
+
+The official `mini_installer_archive` target finished with exit code 0 in
+1m15.13s (37 executed steps). The tested executable/DLL hashes, build receipt,
+GN arguments and pinned patches remained unchanged; no installer was executed.
+The first real staging run exposed `chrome.release`'s explicit asset relocation:
+root-output `Logo.png` and `SmallLogo.png` become versioned `VisualElements`
+files. The packager now maps only those two names and still compares their
+hashes against the compiled-output assets. Missing or changed assets fail.
+
+A 261-file development archive was created on D:, checksum
+`e2f018adca64dc710b1724e1c50e2d651214f69bfa2f091ee84fcc42a5d45573`, and installed
+through the existing immutable store at `D:\CamouFlowNative\owned-release-store-001-005`.
+This isolated test store was not activated for the user's application and is
+not a customer release. Versioned package DLL measurements now require an
+explicit `--windows-library-directory`: canonical package-owned storage and a
+directory matching the actual browser version. No library search fallback was
+added.
+
+Two real delivery probes failed and their evidence is retained. Embedded
+`chrome://credits` was only Chromium's sample page, explicitly requesting
+`generate_about_credits=true`. That GN input is now enabled; rebuild, actual
+license-page inspection, re-staging and package verification are required.
+Do not distribute the preceding archive as a shipping release.
+
+The first relocated runtime probe stopped at a duplicate QA account. The new
+hash helper had imported the distribution utility, which eagerly imported the
+application database before the verifier established its temporary data root.
+The helper now hashes with the existing standard-library pattern without that
+early import. A subprocess regression proves verifier import leaves the database
+uncached; an explicit workspace guard precedes any QA account creation. The
+identified QA account was removed without altering other account records or
+removing profile directories. The earlier runtime report with this import
+regression does not establish owned-workspace isolation. A fresh isolated
+relocated runtime run is required, not reuse of its partial failure or older
+18-check result as full delivery admission.
+The local suite passed 1,064 tests with the visual-asset mapping, explicit
+versioned DLL layout, deferred database import, workspace guard and real-credit
+GN setting. The credits rebuild and isolated packaged-runtime retry remain live
+checks, not results inferred from those unit tests.
+
 | Area | Prepared artifact | Required own-fork evidence |
 | --- | --- | --- |
 | Lifecycle and storage | `verify_native_runtime.py` | All 18 checks; five stores survive committed checkpoints; independent profiles; lock exclusion; cancellation; zero owned survivors after controller death and three-profile restart rounds |

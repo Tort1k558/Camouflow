@@ -1320,6 +1320,27 @@ def test_native_windows_package_rejects_staged_files_changed_during_archiving(tm
     assert not list(tmp_path.glob("native-package-*"))
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
+@pytest.mark.parametrize("changed", [False, True])
+def test_native_windows_package_verifies_official_visual_assets_from_root_build_output(tmp_path, monkeypatch, changed):
+    from scripts import package_native_windows as packaging
+
+    output, staged, report, destination = _native_windows_packaging_fixture(tmp_path, monkeypatch)
+    for name in ("Logo.png", "SmallLogo.png"):
+        (output / name).write_bytes(b"synthetic owned visual asset " + name.encode())
+        target = staged / packaging.LOCK["chromium_version"] / "VisualElements" / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((output / name).read_bytes())
+    if changed:
+        (staged / packaging.LOCK["chromium_version"] / "VisualElements/Logo.png").write_bytes(b"changed")
+        with pytest.raises(ValueError, match="Staged file differs"):
+            packaging.package(output, staged, report, destination)
+        assert not destination.exists()
+    else:
+        result = packaging.package(output, staged, report, destination)
+        assert result["files"] == 8
+
+
 def test_controller_process_identity_survives_reparenting_and_rejects_pid_reuse():
     from scripts.verify_native_runtime import same_process
 
@@ -1594,3 +1615,52 @@ def test_native_suite_combined_gate_requires_complete_policy_and_code_evidence(f
     else:
         with pytest.raises(ValueError):
             validate_report("combined", report, digest)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows versioned package layout")
+@pytest.mark.parametrize("layout", ["versioned", "flat", "unrelated", "non-version", "missing"])
+def test_native_runtime_code_measurement_supports_only_explicit_owned_windows_layouts(tmp_path, layout):
+    from scripts.verify_native_runtime import measure_runtime_core
+
+    root = tmp_path / "browser"
+    root.mkdir()
+    executable = root / "chrome.exe"
+    executable.write_bytes(b"synthetic launcher")
+    libraries = {"versioned": root / "148.0.7778.96", "flat": root,
+                 "unrelated": tmp_path / "other", "non-version": root / "other", "missing": root / "0.0.0.0"}[layout]
+    if layout != "missing":
+        libraries.mkdir(exist_ok=True)
+        for name in ("chrome.dll", "chrome_elf.dll"):
+            (libraries / name).write_bytes(name.encode())
+    if layout in {"versioned", "flat"}:
+        assert set(measure_runtime_core(executable, libraries)) == {"chrome.exe", "chrome.dll", "chrome_elf.dll"}
+        if layout == "versioned":
+            with pytest.raises(ValueError, match="missing or linked"):
+                measure_runtime_core(executable)
+    else:
+        with pytest.raises(ValueError, match="canonical and belong"):
+            measure_runtime_core(executable, libraries)
+
+
+def test_native_runtime_verifier_import_does_not_cache_application_database_root():
+    import subprocess
+    from scripts.native_build import ROOT
+
+    result = subprocess.run([sys.executable, "-c", "import sys; import scripts.verify_native_runtime; "
+                             "assert 'app.storage.db' not in sys.modules"], cwd=ROOT,
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_native_runtime_verifier_requires_owned_database_before_account_creation():
+    from scripts.native_build import ROOT
+
+    code = (ROOT / "scripts/verify_native_runtime.py").read_text(encoding="utf-8-sig")
+    assert code.index("db.DATA_ROOT.resolve() != (profile_root / \"workspace\").resolve()") < code.index("db.db_add_account(account)")
+
+
+def test_native_windows_build_generates_real_third_party_credits():
+    from scripts.native_build import ROOT
+
+    arguments = (ROOT / "native/args.gn").read_text(encoding="utf-8-sig")
+    assert "generate_about_credits = true" in arguments.splitlines()
