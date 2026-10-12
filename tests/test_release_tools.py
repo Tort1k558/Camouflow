@@ -847,7 +847,8 @@ def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tm
                                   "0008-native-leveldb-path-separators.patch",
                                   "0009-native-sql-extended-paths.patch",
                                   "0010-native-windows-profile-namespace.patch",
-                                  "0011-native-privacy-partition-serialization.patch"])
+                                  "0011-native-privacy-partition-serialization.patch",
+                                  "0012-native-browser-privacy-key-derivation.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
@@ -868,6 +869,34 @@ def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monk
     assert ["git", "read-tree", "--empty"] in commands
     assert ["git", "apply", "--cached", str(patch)] in commands
     assert commands[-1] == ["git", "diff", "--exit-code", "--", *sorted(expected)]
+
+
+def test_native_key_derivation_patch_reuses_canonical_message_header():
+    from scripts import native_build
+
+    patch = (native_build.ROOT / "native/patches/0012-native-browser-privacy-key-derivation.patch").read_text(encoding="utf-8-sig")
+    name = "content/browser/camouflow_native/privacy_partition.h"
+    section = patch.split(f"diff --git a/{name} b/{name}\n", 1)[1].split("\ndiff --git ", 1)[0]
+    copied = "\n".join(line[1:] for line in section.splitlines()
+                       if line.startswith("+") and not line.startswith("+++")) + "\n"
+    assert copied == (native_build.ROOT / "native/core/privacy_partition.h").read_text(encoding="utf-8-sig")
+
+
+def test_native_key_derivation_cpp_vectors_match_python_profile_identity():
+    import re
+    from app.core.native.identity import NativePrivacyIdentity
+    from scripts import native_build
+
+    patch = (native_build.ROOT / "native/patches/0012-native-browser-privacy-key-derivation.patch").read_text(encoding="utf-8-sig")
+    partition = b"CamouFlowNative/partition/v1\0"
+    for host, port in ((b"sub.example.test", 8443), (b"top.test", 443)):
+        partition += (b"\0" + (5).to_bytes(4, "big") + b"https" + len(host).to_bytes(4, "big")
+                      + host + port.to_bytes(2, "big"))
+    partition += b"\1\0"
+    expected = dict(re.findall(r'Vector\{"(canvas|webgl|webgpu|audio)", "([0-9a-f]{64})"\}', patch))
+    assert set(expected) == {"canvas", "webgl", "webgpu", "audio"}
+    identity = NativePrivacyIdentity(bytes(range(32)))
+    assert expected == {surface: identity.derive(partition, surface).hex() for surface in expected}
 
 
 def _hardware_observations(cpu=12, memory=16):
@@ -1193,6 +1222,7 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     (patches / "0009-native-sql-extended-paths.patch").write_text("", encoding="utf-8")
     (patches / "0010-native-windows-profile-namespace.patch").write_text("", encoding="utf-8")
     (patches / "0011-native-privacy-partition-serialization.patch").write_text("", encoding="utf-8")
+    (patches / "0012-native-browser-privacy-key-derivation.patch").write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")

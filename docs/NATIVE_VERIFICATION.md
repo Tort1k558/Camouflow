@@ -667,6 +667,31 @@ baseline; 0011 has not yet been incorporated into a rebuilt browser receipt.
 Root-key loading/IPC, HMAC integration and Canvas readback protection are not
 implemented by this codec. No fingerprint capabilities have been activated.
 
+## Native HMAC key derivation (0012; ten native tests passed)
+
+The browser-layer function consumes a fixed 32-byte profile key and trusted
+StorageKey, calls the 0011 codec and the canonical privacy/v1 domain message,
+then uses Chromium's HMAC-SHA256 primitive. It does not read a page URL or
+accept a partition serialization supplied by script. Its result is only the
+partition/surface key; unknown surfaces or invalid partitions are rejected.
+The embedded domain-message header is exactly the public Native core header;
+project tests also recompute all four C++ fixture vectors through the existing
+Python `NativePrivacyIdentity` implementation.
+
+All ten Windows native tests passed: four Python interoperability vectors,
+repeated/copied context stability, profile separation, surface separation,
+top-level-site separation, opaque context separation/copy stability and unknown
+surface rejection. Proof on D:
+`native-privacy-key-derivation-unit-proof.json`; raw GoogleTest results:
+`native-privacy-key-derivation-unit-results.json`. Source patches, baseline code,
+GN arguments and the existing 0010 build receipt remained unchanged. The unit
+target does not create a new production browser receipt. Profile key loading,
+keyed-service lifetime, renderer/worker transport, partitioned lifecycle
+enforcement and Canvas/GPU/audio protections remain unimplemented; no privacy
+capabilities have been activated from these unit results. The complete project
+regression suite passed 1,099 tests, including the canonical-header copy and
+independent Python/C++ vector consistency checks.
+
 The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feature
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred

@@ -99,6 +99,30 @@ fingerprint capabilities from this filesystem patch.
 
 ## Current Windows source build
 
+### Browser key derivation (0012; ten native tests passed)
+
+`0012-native-browser-privacy-key-derivation.patch` adds a browser-layer source
+set and native test target. `DerivePrivacyPartitionKey()` accepts a fixed-size
+256-bit profile key, a trusted StorageKey and one supported surface; it returns
+only the HMAC-SHA256 partition/surface key or nullopt. The domain-separated
+message header is copied exactly from `native/core/privacy_partition.h`, with a
+project regression check to prevent divergence. No new dependency is introduced;
+the code uses the pinned Chromium `crypto::hmac::SignSha256` API.
+
+All ten native tests passed, including four independently constructed Python
+vectors for canvas/WebGL/WebGPU/audio, repeated/copy stability, profile and
+top-level-site separation, opaque partition separation and unknown-surface
+rejection. Exact source, baseline browser code, receipt and GN arguments were
+unchanged through this test target's build/run. Proof on D:
+`native-privacy-key-derivation-unit-proof.json`; raw output:
+`native-privacy-key-derivation-unit-results.json`.
+
+This is not profile-file loading, a browser keyed service, renderer/worker IPC
+or protected readback. The verified immutable browser/archive remain 0010.
+The new derivation source set is not yet linked into the production browser or
+used to activate fingerprint capabilities. Next integration must keep the root
+key browser-only and enforce partitioned worker lifecycle before protection.
+
 ### Trusted partition codec (0011; eight native unit tests passed)
 
 `0011-native-privacy-partition-serialization.patch` adds the bounded, versioned
