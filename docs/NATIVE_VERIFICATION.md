@@ -217,11 +217,30 @@ notification, leaving its JavaScript client without an error event.
 that notification before teardown while retaining the original host remote in
 the startup continuation. It passed source applicability and isolated Chromium
 renderer syntax checks (`shared-worker-bootstrap-failure-cpp-check/proof.json`).
-It is not registered, linked or runtime-verified yet. Active runtime code and
-the 001-026 receipt are unchanged. The probe regressions passed 34 cases and the
+It is now registered as 0027 and applied after all runtime probes terminated.
+The replacement browser is building on four jobs under
+`shared-worker-bootstrap-failure-001-027-build.json`; this fix is not yet linked
+or runtime-verified. The previous core/receipt are retained under
+`baselines/001-026-before-shared-bootstrap-failure-core` (not a packaged runtime).
+The probe requires the exact 0015-0027 chain for subsequent reports.
+The probe regressions passed 34 cases before this registration and the
 full Python suite passed 1222 cases; neither substitutes for the failed browser
 gate. The normal manager launch still uses its current Playwright defaults;
 partitioning-dependent privacy capability remains developer-only.
+
+A reordered owned probe checked the remaining service-worker rejection paths:
+`worker-startup-001-026-runtime-service-first.json` passed all 24 baseline/ready
+cases and both classic/module dedicated and service unavailable cases. It failed
+on module shared-worker rejection, again with timeout and zero body beacons.
+Together the two orders isolate the failed branch to both shared-worker variants;
+neither report is a passing complete worker gate.
+
+The unchanged 001-026 browser separately passed all eight normal runtime gates,
+160 checks, under `runtime-001-026-regression-suite/suite.json`. Child-report
+checksums, required checks, complete gate coverage and all three core hashes were
+independently revalidated after the runner exited successfully. This confirms
+existing lifecycle/storage/proxy/automation/policy behavior on owned fixtures,
+not the rejected worker gate, protected Canvas or external anti-bot performance.
 
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External

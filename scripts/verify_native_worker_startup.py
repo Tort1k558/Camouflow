@@ -218,7 +218,7 @@ def validate_receipt(executable: Path, core: dict) -> bytes:
             or receipt.get("chromium_revision") != LOCK["chromium_revision"]
             or receipt.get("binary_sha256_measured") != core[executable.name]):
         raise ValueError("Worker startup receipt does not match the pinned executable")
-    for number in range(15, 26):
+    for number in range(15, 28):
         candidates = list((ROOT / "native/patches").glob(f"{number:04d}-*.patch"))
         if len(candidates) != 1:
             raise ValueError("Worker startup requires the exact registered source chain")

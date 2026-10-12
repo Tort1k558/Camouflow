@@ -532,7 +532,8 @@ identity or page data is included in the error message.
 
 Applicability and isolated renderer syntax checks passed under
 `D:/CamouFlowNative/shared-worker-bootstrap-failure-overlay/proof.json` and
-`shared-worker-bootstrap-failure-cpp-check/proof.json`. This follow-up remains
-unregistered and unlinked. Before promotion, verify classic/module ready and
+`shared-worker-bootstrap-failure-cpp-check/proof.json`. This follow-up is now
+registered as 0027 and compiling, but remains unverified in a linked runtime.
+Before admission, verify classic/module ready and
 unavailable startup, exactly one client error, zero body executions on rejection,
 queued port release, early client termination and the complete worker gate.

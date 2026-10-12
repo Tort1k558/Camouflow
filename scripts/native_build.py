@@ -199,7 +199,8 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0023-native-shared-worker-startup-gate.patch",
         "0024-native-service-worker-canvas-thread-handoff.patch",
         "0025-native-service-worker-startup-gate.patch",
-        "0026-native-worker-canvas-handoff-tests.patch"))
+        "0026-native-worker-canvas-handoff-tests.patch",
+        "0027-native-shared-worker-bootstrap-failure.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
