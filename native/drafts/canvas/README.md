@@ -162,3 +162,27 @@ out/CamouFlowNative/glint_canvas_copy_unittests.exe --gtest_filter=GlintCanvasCo
 Use a fresh evidence path and inspect all ten named cases, not just an exit code.
 Passing this target would establish adapter behavior, not Canvas API protection,
 first-script policy delivery, cross-context compatibility or privacy admission.
+
+## Blink snapshot-image adapter draft
+
+`CreateProtectedCanvasImage` accepts the full StaticBitmapImage after the native
+caller performs taint/layer/context checks. It uses pinned ImageDataBuffer's
+PaintImage/readPixels route, creates the protected owned raster copy and wraps
+it as an UnacceleratedStaticBitmapImage with the source orientation retained.
+It is not a replacement for generic Snapshot/GetImage, drawImage or presentation.
+The explicit additional-pixel budget accounts for both temporary full raster
+copies; allocation, unsupported format/space and failed GPU/raster reads produce
+typed failures, never fabricated pixels or an unprotected fallback image.
+
+The algorithm, raster-copy adapter and image wrapper passed clang syntax checks
+using actual Blink platform target flags:
+`D:/CamouFlowNative/canvas-blink-implementation-flags-cpp-check/proof.json`.
+The ten raster-copy test definitions were checked separately with test-appropriate
+flags; production Blink global-constructor restrictions are not appropriate for
+GoogleTest registrations. No warnings were disabled to compile implementations.
+
+The image wrapper is **not linked, executed or called by Canvas APIs**, and is
+not part of the lightweight Skia-only test integration patch. Its runtime tests
+require Blink platform dependencies and must cover GPU/lazy snapshots, failure
+paths, orientation, snapshot lifetime and encoding. First-script trusted policy
+bootstrap and the four DOM readback/export call sites remain unimplemented.
