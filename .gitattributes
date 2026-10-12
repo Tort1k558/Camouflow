@@ -1,0 +1,2 @@
+# Patch context whitespace and binary block separators are significant.
+native/**/*.patch text eol=lf whitespace=-blank-at-eol,-blank-at-eof

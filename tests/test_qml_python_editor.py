@@ -42,10 +42,11 @@ try:
     pump()
     root = ui.engine.rootObjects()[0].contentItem()
     page = find(root, 'objectName', 'browserPage')
-    QMetaObject.invokeMethod(find(page, 'label', 'Native'), 'clicked')
+    QMetaObject.invokeMethod(find(page, 'label', 'Glint'), 'clicked')
     pump()
     section = find(page, 'objectName', 'nativeConfigurationSection')
     assert section.isVisible()
+    assert section.property('title') == 'Glint'
     QMetaObject.invokeMethod(find(section, 'label', 'Mobile Web'), 'clicked')
     pump()
     assert ui.browser_settings.nativeEnvironment == 'mobile_web'

@@ -884,6 +884,63 @@ def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monk
     assert commands[-1] == ["git", "diff", "--exit-code", "--", *sorted(expected)]
 
 
+def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path, monkeypatch):
+    import subprocess
+
+    from PyQt6.QtGui import QImage
+    from scripts import prepare_glint_branding as branding
+
+    source = tmp_path / "source"
+    public = tmp_path / "public"
+    for name in ("native/build-lock.json", "logo.ico", "app/qml/theme/brand.svg"):
+        target = public / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((branding.ROOT / name).read_bytes())
+    original = {
+        "chrome/app/theme/chromium/BRANDING": b"PRODUCT_FULLNAME=Chromium\nPRODUCT_SHORTNAME=Chromium\nPRODUCT_INSTALLER_FULLNAME=Chromium Installer\nPRODUCT_INSTALLER_SHORTNAME=Chromium Installer\n",
+        "chrome/browser/profiles/profile_shortcut_manager_win.cc": b"const int kCurrentProfileIconVersion = 10;\n",
+        "chrome/app/theme/chromium/product_logo.svg": b'<svg xmlns="http://www.w3.org/2000/svg"/>',
+        "chrome/app/theme/chromium/win/chromium.ico": b"\x00old-icon",
+        "chrome/app/theme/chromium/win/app_list.ico": b"\x00old-app-icon",
+    }
+    for size in (16, 24, 48, 64, 128, 256):
+        original[f"chrome/app/theme/chromium/product_logo_{size}.png"] = b"\x00old-image"
+    for name, contents in original.items():
+        path = source / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(contents)
+    real_run = subprocess.run
+
+    def run(args, **kwargs):
+        if args == ["git", "rev-parse", "HEAD"]:
+            import json
+            lock = json.loads((public / "native/build-lock.json").read_text(encoding="utf-8"))
+            return subprocess.CompletedProcess(args, 0, lock["chromium_revision"] + "\n")
+        return real_run(args, **kwargs)
+
+    monkeypatch.setattr(branding, "ROOT", public)
+    monkeypatch.setattr(branding.subprocess, "run", run)
+    patch = tmp_path / "glint.patch"
+    report = branding.prepare(source, patch)
+    assert report["applied"] is False
+    assert report["product_name"] == "Glint"
+    assert all((source / name).read_bytes() == contents for name, contents in original.items())
+    assert not patch.read_bytes().startswith(b"\xef\xbb\xbf")
+    assert b"\r\n" not in patch.read_bytes()
+    real_run(["git", "-c", "core.autocrlf=false", "apply", "--check", str(patch)], cwd=source, check=True)
+    real_run(["git", "-c", "core.autocrlf=false", "apply", str(patch)], cwd=source, check=True)
+    assert (source / "chrome/app/theme/chromium/win/chromium.ico").read_bytes() == (public / "logo.ico").read_bytes()
+    assert (source / "chrome/app/theme/chromium/product_logo.svg").read_bytes() == (public / "app/qml/theme/brand.svg").read_bytes()
+    assert "PRODUCT_FULLNAME=Glint" in (source / "chrome/app/theme/chromium/BRANDING").read_text(encoding="utf-8")
+    assert "kCurrentProfileIconVersion = 11" in (source / "chrome/browser/profiles/profile_shortcut_manager_win.cc").read_text(encoding="utf-8")
+    for size in (16, 24, 48, 64, 128, 256):
+        image = QImage(str(source / f"chrome/app/theme/chromium/product_logo_{size}.png"))
+        assert (image.width(), image.height()) == (size, size)
+        assert not image.isNull()
+    with pytest.raises(ValueError, match="overwrite"):
+        branding.prepare(source, patch)
+
+
 def test_native_key_derivation_patch_reuses_canonical_message_header():
     from scripts import native_build
 

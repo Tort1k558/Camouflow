@@ -452,7 +452,7 @@ class ProfilesBridge(QObject):
             if engine == "cloakbrowser":
                 browser_label = "CloakBrowser"
             elif engine == "native":
-                browser_label = "CamouFlow Native"
+                browser_label = "Glint"
             else:
                 browser_label = "Camoufox"
             rows.append({

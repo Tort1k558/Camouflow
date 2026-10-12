@@ -16,9 +16,9 @@ Item {
 
     FileDialog {
         id: nativeBundleDialog
-        title: "Select a trusted Native release bundle"
+        title: "Select a trusted Glint release bundle"
         fileMode: FileDialog.OpenFile
-        nameFilters: ["Native bundles (*.tar.gz)"]
+        nameFilters: ["Glint bundles (*.tar.gz)"]
         onAccepted: nativeBundleArchive.text = selectedFile.toString()
     }
 
@@ -58,8 +58,8 @@ Item {
     }
 
     readonly property var sections: root.isNative ? [
-        ["Runtime", "Native configuration", "play", "Independent persistent Chromium profiles"],
-        ["Fingerprint", "Native privacy policy", "globe", "Prepare source-level controls; activation requires verified capabilities"],
+        ["Runtime", "Glint configuration", "play", "Independent persistent Chromium profiles"],
+        ["Fingerprint", "Glint privacy policy", "globe", "Prepare source-level controls; activation requires verified capabilities"],
         ["Maintenance", "Engine health", "refresh", "Configuration checks and runtime limitations"]
     ] : [
         ["Runtime", "Launch & behavior", "play", "Window mode and humanization"],
@@ -95,9 +95,9 @@ Item {
             Text { text: "ENGINE"; color: Theme.dim; font.family: Theme.monoFamily; font.pixelSize: 10; Layout.leftMargin: 6; Layout.rightMargin: 8 }
             ModeButton { label: "Camoufox"; active: root.isCamoufox; onClicked: browserSettingsBridge.setEngine("camoufox") }
             ModeButton { label: "CloakBrowser"; active: !root.isCamoufox && !root.isNative; onClicked: browserSettingsBridge.setEngine("cloakbrowser") }
-            ModeButton { label: "Native"; active: root.isNative; onClicked: { root.tab = "Runtime"; browserSettingsBridge.setEngine("native") } }
+            ModeButton { label: "Glint"; active: root.isNative; onClicked: { root.tab = "Runtime"; browserSettingsBridge.setEngine("native") } }
             Item { Layout.fillWidth: true }
-            Text { text: root.isNative ? "Native / preview" : root.isCamoufox ? "Firefox / Camoufox" : "Chromium / CloakBrowser"; color: Theme.muted; font.pixelSize: 12; Layout.rightMargin: 8 }
+            Text { text: root.isNative ? "Glint / preview" : root.isCamoufox ? "Firefox / Camoufox" : "Chromium / CloakBrowser"; color: Theme.muted; font.pixelSize: 12; Layout.rightMargin: 8 }
         }
     }
 
@@ -158,7 +158,7 @@ Item {
                 objectName: "nativeConfigurationSection"
                 visible: root.isNative && root.tab === "Runtime"
                 width: parent.width; height: nativeFields.implicitHeight + 100
-                title: "CamouFlow Native"; subtitle: "Preview runtime; native fingerprint patches are not yet verified."; icon: "play"
+                title: "Glint"; subtitle: "Preview runtime; native fingerprint patches are not yet verified."; icon: "play"
                 Column {
                     id: nativeFields
                     anchors.fill: parent; spacing: 16
@@ -195,7 +195,7 @@ Item {
                 objectName: "nativePrivacySection"
                 visible: root.isNative && root.tab === "Fingerprint"
                 width: parent.width; height: nativePrivacyFields.implicitHeight + 100
-                title: "Native privacy policy"; subtitle: "Saved drafts, not JavaScript fingerprint replacements."; icon: "globe"
+                title: "Glint privacy policy"; subtitle: "Saved drafts, not JavaScript fingerprint replacements."; icon: "globe"
                 Column {
                     id: nativePrivacyFields
                     anchors.fill: parent; spacing: 16
@@ -249,11 +249,11 @@ Item {
                 objectName: "nativeReleaseSection"
                 visible: root.isNative && root.tab === "Maintenance"
                 width: parent.width; height: nativeReleaseFields.implicitHeight + 100
-                title: "Local Native releases"; subtitle: "Verify before activation; existing versions remain available."; icon: "save"
+                title: "Local Glint releases"; subtitle: "Verify before activation; existing versions remain available."; icon: "save"
                 Column {
                     id: nativeReleaseFields
                     anchors.fill: parent; spacing: 14
-                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Select Managed release and its store in Native configuration first. Obtain the bundle checksum from a trusted publisher; no online catalog is configured."; color: Theme.muted; font.pixelSize: 12 }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Select Managed release and its store in Glint configuration first. Obtain the bundle checksum from a trusted publisher; no online catalog is configured."; color: Theme.muted; font.pixelSize: 12 }
                     FormField { id: nativeBundleArchive; objectName: "nativeBundleArchive"; width: parent.width; label: "Local bundle"; placeholder: "Absolute path or choose a .tar.gz bundle"; enabled: !browserSettingsBridge.nativeReleaseRunning }
                     PrimaryButton { text: "Choose bundle"; secondary: true; enabled: !browserSettingsBridge.nativeReleaseRunning; onClicked: nativeBundleDialog.open() }
                     FormField { id: nativeBundleChecksum; objectName: "nativeBundleChecksum"; width: parent.width; label: "Trusted SHA-256"; placeholder: "64 lowercase hexadecimal characters"; enabled: !browserSettingsBridge.nativeReleaseRunning }

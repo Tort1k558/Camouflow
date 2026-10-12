@@ -151,7 +151,7 @@ Item {
                 id: newProfileEngine
                 objectName: "newProfileEngine"
                 Layout.preferredWidth: 160
-                model: ["Camoufox", "CloakBrowser", "Native (preview)"]
+                model: ["Camoufox", "CloakBrowser", "Glint (preview)"]
                 currentIndex: ["camoufox", "cloakbrowser", "native"].indexOf(browserSettingsBridge.engine)
                 Accessible.name: "New profile engine"
                 enabled: profilesBridge.canManage && !profilesBridge.busy
