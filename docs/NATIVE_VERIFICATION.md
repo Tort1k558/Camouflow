@@ -289,6 +289,23 @@ Neither compilation retry substitutes for the unchanged runtime acceptance gate.
 Both corrected inspector translation units subsequently compiled successfully
 in the retry; snapshot-generator and browser linking remain in progress.
 
+### Suite-wide executable-code binding
+
+The suite now snapshots all three Windows executable-code files before any
+child gate, rechecks them before/after each child and records their hashes in
+the suite report. It stops subsequent gates on code drift even if `chrome.exe`
+is unchanged. Child reports that contain a code measurement must match that
+same suite snapshot. This prevents a full-suite PASS assembled across DLL-only
+rebuilds; it does not replace complete packaged-resource verification.
+
+`--windows-library-directory` also enables an explicit versioned `Chrome-bin`
+suite. The suite measures that directory and forwards the argument only to
+runtime/combined validators, the two children that need it; other gates retain
+their existing browser launch contracts. Regressions cover unchanged-launcher
+DLL drift, mismatched child DLL evidence and supported-only argument propagation.
+There is no automatic library search or silent legacy-code measurement fallback.
+The complete local regression suite passed 1,080 tests after this change.
+
 | Area | Prepared artifact | Required own-fork evidence |
 | --- | --- | --- |
 | Lifecycle and storage | `verify_native_runtime.py` | All 18 checks; five stores survive committed checkpoints; independent profiles; lock exclusion; cancellation; zero owned survivors after controller death and three-profile restart rounds |

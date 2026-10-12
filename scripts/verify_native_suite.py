@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.package_native_windows import REQUIRED_RUNTIME_CHECKS
 from scripts.verify_native_combined import ARGUMENTS, REQUIRED_CHECKS as REQUIRED_COMBINED_CHECKS
+from scripts.verify_native_runtime import measure_runtime_core
 
 
 GATES = ("runtime", "hardware", "webrtc", "automation", "fonts", "identity", "cdp", "combined")
@@ -51,7 +52,7 @@ def validate_report(name: str, report: dict, expected_checksum: str) -> None:
             raise ValueError("Combined report is missing its runtime code measurement")
 
 
-def verify(executable: Path, destination: Path, gates: list[str]) -> dict:
+def verify(executable: Path, destination: Path, gates: list[str], *, library_directory: Path | None = None) -> dict:
     if sys.platform != "win32":
         raise ValueError("This suite currently supports Windows only")
     if (not executable.is_absolute() or executable != executable.resolve()
@@ -62,11 +63,13 @@ def verify(executable: Path, destination: Path, gates: list[str]) -> dict:
         raise ValueError("An absolute new report directory with an existing parent is required")
     if not gates or len(set(gates)) != len(gates) or any(name not in GATES for name in gates):
         raise ValueError("Select unique known Native gates")
-    measured = checksum(executable)
+    core = measure_runtime_core(executable, library_directory)
+    measured = core[executable.name]
     # A fresh directory prevents stale reports from being admitted after a failed child.
     destination.mkdir(exist_ok=False)
     report = {"schema": 1, "platform": "Windows", "executable": str(executable),
               "binary_sha256_measured": measured, "requested_gates": gates,
+              "runtime_core_sha256_measured": core,
               "full_suite": set(gates) == set(GATES), "passed": False, "gates": [],
               "scope": "Owned runtime fixtures only; not release provenance or third-party anti-bot acceptance"}
     try:
@@ -74,32 +77,37 @@ def verify(executable: Path, destination: Path, gates: list[str]) -> dict:
             entry = {"name": name, "passed": False}
             report["gates"].append(entry)
             try:
-                if checksum(executable) != measured:
-                    raise ValueError("Executable changed before gate execution")
+                if measure_runtime_core(executable, library_directory) != core:
+                    raise ValueError("Native executable code changed before gate execution")
                 child_report = destination / (name + ".json")
                 log = destination / (name + ".log")
                 command = [sys.executable, str(ROOT / "scripts" / ("verify_native_" + name + ".py")),
                            "--executable", str(executable), "--work-dir", str(destination),
                            "--report", str(child_report)]
+                if library_directory is not None and name in {"runtime", "combined"}:
+                    command.extend(["--windows-library-directory", str(library_directory)])
                 with log.open("wb") as output:
                     result = subprocess.run(command, cwd=ROOT, stdout=output, stderr=subprocess.STDOUT,
                                             check=False)
                 entry.update(returncode=result.returncode, report=child_report.name, log=log.name)
-                if checksum(executable) != measured:
-                    raise ValueError("Executable changed during gate execution")
+                if measure_runtime_core(executable, library_directory) != core:
+                    raise ValueError("Native executable code changed during gate execution")
                 if result.returncode != 0:
                     raise ValueError("Gate process failed; inspect its report and log")
                 if child_report.is_symlink() or child_report.stat().st_size > 8 * 1024 * 1024:
                     raise ValueError("Gate report is unsafe or exceeds the size limit")
                 observed = json.loads(child_report.read_text(encoding="utf-8-sig"))
                 validate_report(name, observed, measured)
+                if ("runtime_core_sha256_measured" in observed
+                        and observed["runtime_core_sha256_measured"] != core):
+                    raise ValueError("Gate report does not match the suite's measured executable code")
                 entry.update(passed=True, checks=len(observed["checks"]), report_sha256=checksum(child_report))
             except (OSError, ValueError) as error:
                 entry["error"] = str(error)
             # Persist partial evidence even if a later gate is interrupted.
             (destination / "suite.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
-            if checksum(executable) != measured:
-                raise ValueError("Executable changed; remaining gates were not run")
+            if measure_runtime_core(executable, library_directory) != core:
+                raise ValueError("Native executable code changed; remaining gates were not run")
         report["passed"] = all(entry["passed"] for entry in report["gates"])
     except (OSError, ValueError) as error:
         report["error"] = str(error)
@@ -113,9 +121,11 @@ def main() -> int:
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--report-dir", type=Path, required=True)
     parser.add_argument("--gates", nargs="+", choices=GATES, default=list(GATES))
+    parser.add_argument("--windows-library-directory", type=Path,
+                        help="Explicit package-owned DLL directory for a versioned Chrome-bin layout")
     args = parser.parse_args()
     try:
-        report = verify(args.executable, args.report_dir, args.gates)
+        report = verify(args.executable, args.report_dir, args.gates, library_directory=args.windows_library_directory)
     except (OSError, ValueError) as error:
         parser.exit(1, str(error) + "\n")
     print(json.dumps(report))

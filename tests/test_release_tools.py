@@ -16,6 +16,8 @@ def test_native_suite_collects_failures_and_continues_without_reusing_reports(tm
     monkeypatch.setattr(suite.sys, "platform", "win32")
     executable = tmp_path / "chrome.exe"
     executable.write_bytes(b"owned-fixture-not-a-browser")
+    for name in ("chrome.dll", "chrome_elf.dll"):
+        (tmp_path / name).write_bytes(name.encode())
     destination = tmp_path / "reports"
     calls = []
     def run(command, **kwargs):
@@ -44,6 +46,8 @@ def test_native_suite_stops_on_binary_drift_and_preserves_failed_evidence(tmp_pa
     monkeypatch.setattr(suite.sys, "platform", "win32")
     executable = tmp_path / "chrome.exe"
     executable.write_bytes(b"original")
+    for name in ("chrome.dll", "chrome_elf.dll"):
+        (tmp_path / name).write_bytes(name.encode())
     calls = []
     def run(command, **kwargs):
         calls.append(command)
@@ -68,6 +72,71 @@ def test_native_suite_rejects_false_or_unbound_evidence(report):
 
     with pytest.raises(ValueError):
         validate_report("hardware", report, "owned")
+
+
+@pytest.mark.parametrize("drift", ["disk-dll", "report-dll"])
+def test_native_suite_rejects_dll_drift_even_when_launcher_is_unchanged(tmp_path, monkeypatch, drift):
+    import json
+    from types import SimpleNamespace
+    from scripts import verify_native_suite as suite
+
+    monkeypatch.setattr(suite.sys, "platform", "win32")
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"launcher unchanged")
+    for name in ("chrome.dll", "chrome_elf.dll"):
+        (tmp_path / name).write_bytes(name.encode())
+    original = suite.measure_runtime_core(executable)
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        core = dict(original)
+        if drift == "disk-dll":
+            (tmp_path / "chrome.dll").write_bytes(b"new linked code")
+        else:
+            core["chrome.dll"] = "a" * 64
+        Path(command[command.index("--report") + 1]).write_text(json.dumps({
+            "passed": True, "checks": [{"passed": True}], "binary_sha256_measured": original["chrome.exe"],
+            "runtime_core_sha256_measured": core}), encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(suite.subprocess, "run", run)
+    report = suite.verify(executable, tmp_path / "reports", ["hardware", "webrtc"])
+    assert not report["passed"]
+    assert all(not gate["passed"] for gate in report["gates"])
+    assert report["runtime_core_sha256_measured"] == original
+    assert suite.checksum(executable) == original["chrome.exe"]
+    assert len(calls) == (1 if drift == "disk-dll" else 2)
+
+
+def test_native_suite_propagates_explicit_versioned_dll_layout_only_to_supported_gates(tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+    from scripts import verify_native_suite as suite
+
+    monkeypatch.setattr(suite.sys, "platform", "win32")
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"owned versioned launcher")
+    libraries = tmp_path / "148.0.7778.96"
+    libraries.mkdir()
+    for name in ("chrome.dll", "chrome_elf.dll"):
+        (libraries / name).write_bytes(name.encode())
+    core = suite.measure_runtime_core(executable, libraries)
+    def run(command, **kwargs):
+        gate = Path(command[1]).stem.removeprefix("verify_native_")
+        if gate in {"runtime", "combined"}:
+            assert command[command.index("--windows-library-directory") + 1] == str(libraries)
+        else:
+            assert "--windows-library-directory" not in command
+        checks = (sorted(suite.REQUIRED_RUNTIME_CHECKS) if gate == "runtime" else
+                  [{"name": name, "passed": True} for name in sorted(suite.REQUIRED_COMBINED_CHECKS)] if gate == "combined" else
+                  [{"passed": True}])
+        Path(command[command.index("--report") + 1]).write_text(json.dumps({
+            "passed": True, "checks": checks, "binary_sha256_measured": core["chrome.exe"],
+            "runtime_core_sha256_measured": core, "arguments": suite.ARGUMENTS}), encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(suite.subprocess, "run", run)
+    report = suite.verify(executable, tmp_path / "reports", ["runtime", "hardware", "combined"], library_directory=libraries)
+    assert report["passed"] and not report["full_suite"]
+    assert report["runtime_core_sha256_measured"] == core
 
 
 def test_native_suite_requires_all_runtime_lifecycle_checks():
