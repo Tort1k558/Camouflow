@@ -93,8 +93,8 @@ passed clang syntax checks, alongside both services, document test definitions
 and generated bindings (nine translation units):
 `D:/CamouFlowNative/worker-host-cpp-check/proof.json`.
 The patch passed applicability checks after the document integration draft;
-the active source tree remained unchanged. Host-lifetime tests, Blink consumers
-and real runtime delivery are **not implemented or verified**. The document
+the active source tree remained unchanged. At that checkpoint, host-lifetime
+tests and Blink consumers were absent; real runtime delivery remains unverified. The document
 integration patch below does not register this worker service by itself.
 
 Nine endpoint test definitions in `privacy_worker_service_unittest.cc` passed
@@ -244,3 +244,31 @@ copy without changing active inputs:
 It remains unregistered and inactive. Canvas hooks, document bootstrap,
 shared/service worker startup, data-URL origin policy and real runtime checks are
 still required; this handoff does not admit Canvas protection as a capability.
+
+## Browser-owned worker origin guard
+
+The current PrivacyWorkerService constructor requires the worker origin from the
+browser host as well as its StorageKey; it has no inferred/default origin. A
+mismatch returns unavailable without deriving or sending a seed. Dedicated
+hosts supply their immutable renderer_origin_, shared hosts their instance's
+renderer_origin(), and service hosts the origin of the running version's script
+URL. No origin supplied by renderer JavaScript or a parent frame is accepted.
+
+Pinned worker_util.cc constructs a fresh opaque renderer origin for data: workers
+while retaining the creator StorageKey when kDataUrlWorkerOpaqueOrigin is off.
+That feature is disabled by default in this pinned revision. The guard therefore
+rejects that legacy discrepancy, rather than reusing the creator's Canvas key or
+changing origin/feature defaults. When the Chromium feature is explicitly enabled,
+its own opaque worker StorageKey and renderer origin agree; that path can pass
+the guard. Full data-worker compatibility is still not a verified capability.
+
+Two additional worker endpoint cases use the real CalculateWorkerStorageKey and
+CalculateWorkerRendererOrigin helpers to specify both configurations. The fixture
+now contains eleven definitions. The updated service, fixture and all three host
+implementations passed isolated clang syntax checks:
+`D:/CamouFlowNative/worker-origin-policy-cpp-check/proof.json`.
+The updated six-patch stack still applies without active input changes:
+`D:/CamouFlowNative/worker-origin-guard-full-stack-applicability/proof.json`.
+Earlier worker-host proof hashes are historical. None of these new endpoint cases
+has been linked or executed, and actual dedicated/shared/service host lifetimes,
+opaque-origin isolation, GC and startup behavior remain mandatory runtime gates.

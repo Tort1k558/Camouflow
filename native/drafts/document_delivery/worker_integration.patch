@@ -83,7 +83,7 @@ diff --git a/content/browser/worker_host/dedicated_worker_host.cc b/content/brow
  
  #include <memory>
  #include <string>
-@@ -1213,4 +1214,17 @@
+@@ -1213,4 +1214,18 @@
        .BindNewPipeAndPassRemote();
  }
  
@@ -96,7 +96,8 @@ diff --git a/content/browser/worker_host/dedicated_worker_host.cc b/content/brow
 +  native_privacy_receivers_.Add(
 +      std::make_unique<PrivacyWorkerService>(*process->GetBrowserContext(),
 +                                              GetWorkerStorageKey(),
-+                                              PrivacyWorkerService::Kind::kDedicated),
++                                              PrivacyWorkerService::Kind::kDedicated,
++                                              renderer_origin_),
 +      std::move(receiver));
 +}
 +
@@ -141,7 +142,7 @@ diff --git a/content/browser/worker_host/shared_worker_host.cc b/content/browser
  
  #include <algorithm>
  #include <utility>
-@@ -1201,4 +1202,17 @@
+@@ -1201,4 +1202,18 @@
    Destruct();
  }
  
@@ -154,7 +155,8 @@ diff --git a/content/browser/worker_host/shared_worker_host.cc b/content/browser
 +  native_privacy_receivers_.Add(
 +      std::make_unique<PrivacyWorkerService>(*process->GetBrowserContext(),
 +                                              GetWorkerStorageKey(),
-+                                              PrivacyWorkerService::Kind::kShared),
++                                              PrivacyWorkerService::Kind::kShared,
++                                              instance().renderer_origin()),
 +      std::move(receiver));
 +}
 +
@@ -199,7 +201,7 @@ diff --git a/content/browser/service_worker/service_worker_host.cc b/content/bro
  
  #include <utility>
  
-@@ -331,4 +332,17 @@
+@@ -331,4 +332,18 @@
    }
  }
  
@@ -212,7 +214,8 @@ diff --git a/content/browser/service_worker/service_worker_host.cc b/content/bro
 +  native_privacy_receivers_.Add(
 +      std::make_unique<PrivacyWorkerService>(*process->GetBrowserContext(),
 +                                              version()->key(),
-+                                              PrivacyWorkerService::Kind::kService),
++                                              PrivacyWorkerService::Kind::kService,
++                                              url::Origin::Create(version()->script_url())),
 +      std::move(receiver));
 +}
 +

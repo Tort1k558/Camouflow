@@ -20,10 +20,12 @@ constexpr base::TimeDelta kReadinessDeadline = base::Seconds(10);
 PrivacyWorkerService::PrivacyWorkerService(
     BrowserContext& context,
     const blink::StorageKey& browser_partition,
-    Kind kind)
+    Kind kind,
+    const url::Origin& browser_worker_origin)
     : context_(context.GetWeakPtr()),
       partition_(browser_partition),
-      kind_(kind) {}
+      kind_(kind),
+      origin_matches_partition_(partition_.origin() == browser_worker_origin) {}
 
 PrivacyWorkerService::~PrivacyWorkerService() = default;
 
@@ -36,7 +38,7 @@ void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
   pending_reply_ = std::move(callback);
   // Unpartitioned shared/service workers can serve multiple top-level sites.
   // Do not invent a single client's site or silently use its document identity.
-  if (!context_ || context_->ShutdownStarted() ||
+  if (!context_ || context_->ShutdownStarted() || !origin_matches_partition_ ||
       (kind_ != Kind::kDedicated &&
        !blink::StorageKey::IsThirdPartyStoragePartitioningEnabled())) {
     Complete(Status::kUnavailable, nullptr);
@@ -54,7 +56,7 @@ void PrivacyWorkerService::OnReady(bool ready) {
   if (!pending_reply_) {
     return;
   }
-  if (!ready || !context_ || context_->ShutdownStarted() ||
+  if (!ready || !context_ || context_->ShutdownStarted() || !origin_matches_partition_ ||
       (kind_ != Kind::kDedicated &&
        !blink::StorageKey::IsThirdPartyStoragePartitioningEnabled())) {
     Complete(Status::kUnavailable, nullptr);

@@ -7,6 +7,7 @@
 #include "base/timer/timer.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
+#include "url/origin.h"
 
 namespace content {
 class BrowserContext;
@@ -17,7 +18,8 @@ class PrivacyWorkerService final : public blink::mojom::NativePrivacyWorker {
   enum class Kind { kDedicated, kShared, kService };
   PrivacyWorkerService(BrowserContext& context,
                        const blink::StorageKey& browser_partition,
-                       Kind kind);
+                       Kind kind,
+                       const url::Origin& browser_worker_origin);
   ~PrivacyWorkerService() override;
   PrivacyWorkerService(const PrivacyWorkerService&) = delete;
   PrivacyWorkerService& operator=(const PrivacyWorkerService&) = delete;
@@ -33,6 +35,7 @@ class PrivacyWorkerService final : public blink::mojom::NativePrivacyWorker {
   const base::WeakPtr<BrowserContext> context_;
   const blink::StorageKey partition_;
   const Kind kind_;
+  const bool origin_matches_partition_;
   bool requested_ = false;
   GetCanvasPolicyCallback pending_reply_;
   base::OneShotTimer timer_;
