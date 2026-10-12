@@ -44,7 +44,9 @@ passed all twenty native cases. Patches 0018-0020 register document/worker polic
 endpoints and the worker consumer; all 34 native cases passed, followed by a
 combined 54-case BrowserContext/IPC run. Worker startup/handoff patches 0021-0026
 are linked behind a developer-only switch; four Blink seed ownership unit cases
-still need execution. The unprotected Canvas baseline passed on 001-027 before
+still need a complete passing run. The first run passed two cases before a
+fixture lifetime abort; test-only patch 0028 corrects it, with retry pending.
+The unprotected Canvas baseline passed on 001-027 before
 and after restart. Canvas protection remains a candidate; branding
 still needs application and verification. No signed own-engine release or guaranteed
 anti-bot/CAPTCHA acceptance is advertised.

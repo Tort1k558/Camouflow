@@ -1,0 +1,21 @@
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test.cc b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+--- a/third_party/blink/renderer/core/workers/worker_thread_test.cc
++++ b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+@@ -259,6 +259,9 @@
+   const std::optional<std::array<uint8_t, 32>> seeds[] = {
+       first, second, std::nullopt};
+   for (const auto& seed : seeds) {
++    if (!worker_thread_) {
++      worker_thread_ = std::make_unique<WorkerThreadForTest>(*reporting_proxy_);
++    }
+     testing::InSequence sequence;
+     EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
+         .WillOnce([seed](WorkerOrWorkletGlobalScope* scope) {
+@@ -276,7 +279,6 @@
+     EXPECT_EQ(ExitCode::kGracefullyTerminated, GetExitCode());
+     worker_thread_.reset();
+     ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(reporting_proxy_.get()));
+-    worker_thread_ = std::make_unique<WorkerThreadForTest>(*reporting_proxy_);
+   }
+ }
+ 

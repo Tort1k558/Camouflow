@@ -290,9 +290,30 @@ These controlled runs use explicitly enabled partitioning and diagnostic
 | Google reCAPTCHA v3 | Not run | Not run |
 | Cloudflare Turnstile | Not run | Not run |
 
-The four Blink worker-seed handoff unit cases remain unexecuted. Document
+The four-case Blink worker-seed handoff gate has not passed. Document
 first-script bootstrap, protected Canvas/WebGL/WebGPU/audio and privacy
 admission remain incomplete. Neither build is a new verified production release.
+
+### Blink worker-handoff test target, 001-027 / fixture correction 0028
+
+The 001-027 `blink_unittests` build succeeded in **2h24m55.18s**, jobs 4.
+This builds a test executable, not a newly verified browser release.
+
+| Case | First execution |
+| --- | --- |
+| Seed arrives before evaluation | Passed |
+| Seed absent without bootstrap | Passed |
+| Sequential scopes do not reuse seed | Aborted during fixture destruction |
+| Immediate termination retains owned seed | Not executed after process abort |
+
+The sequential fixture created a never-started worker after its last iteration;
+the upstream destructor correctly rejected its `kNotTerminated` exit state.
+Patch 0028 moves recreation to the next iteration, preserving seed comparisons,
+shutdown waits, mock expectations and the destructor DCHECK. It changes only the
+test fixture; the last verified browser remains 001-027. The failed report is
+retained as `worker-handoff-001-027-j4.json` in the private build workspace.
+The full four-case incremental retry is pending under the new
+`worker-handoff-001-028-fixture-lifetime-j4.json` evidence path.
 
 ## Sources and maintenance
 

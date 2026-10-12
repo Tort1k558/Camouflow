@@ -790,6 +790,25 @@ inconsistent frame, not cancel a navigation safely. Keep the rejection guard
 until a complete pre-teardown decision or coherent failure-document protocol is
 implemented and verified; do not activate the privacy capability meanwhile.
 
+### Worker handoff fixture lifetime correction
+
+The first linked `blink_unittests` run on registered 001-027 inputs completed
+its build in 2h24m55.18s, then passed the seed-before-evaluation and absent-seed
+cases. The sequential-scope case aborted in `WorkerThread::~WorkerThread`:
+the fixture created an extra, never-started worker after its final iteration.
+No complete four-case result was produced; the immediate-termination case did
+not execute. Retain the failed report/log rather than treating compilation as
+a passing gate: `D:/CamouFlowNative/worker-handoff-001-027-j4.json`.
+
+`worker_handoff_fixture_lifetime.patch`, registered as patch 0028, creates the
+next worker only when another iteration begins. Each of the three scopes still
+starts, checks its own seed, terminates, waits for shutdown and clears mock
+expectations. The upstream destructor DCHECK and all four required test names
+remain unchanged. This is a test-only correction, not new browser protection.
+The incremental retry uses new evidence paths:
+`D:/CamouFlowNative/worker-handoff-001-028-fixture-lifetime-j4.json`.
+Execution remains pending until that report proves the complete check set.
+
 ## Reproduce the public candidate replay
 
 ```powershell

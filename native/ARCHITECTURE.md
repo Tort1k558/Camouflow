@@ -44,7 +44,9 @@ switch; normal launches retain the upstream path. Patch 0027 adds host failure
 notification before shared-worker rejection teardown. The linked 001-027 browser
 passed 40 owned startup/restart/shared-client/rejection checks, with exact receipt
 and core-code measurements. This is not proof of internal Blink seed bytes or
-cross-partition key equality; the four Blink handoff unit cases remain unexecuted.
+cross-partition key equality. The first four-case Blink handoff run passed two
+cases, then aborted on an extra never-started worker in the sequential fixture.
+Test-only patch 0028 corrects that fixture lifetime; the full retry is pending.
 Document
 bootstrap and Canvas/WebGL/WebGPU/audio protection remain incomplete.
 

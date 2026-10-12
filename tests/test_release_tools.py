@@ -863,7 +863,8 @@ def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tm
                                   "0024-native-service-worker-canvas-thread-handoff.patch",
                                   "0025-native-service-worker-startup-gate.patch",
                                   "0026-native-worker-canvas-handoff-tests.patch",
-                                  "0027-native-shared-worker-bootstrap-failure.patch"])
+                                  "0027-native-shared-worker-bootstrap-failure.patch",
+                                  "0028-native-worker-handoff-fixture-lifetime.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
@@ -1480,7 +1481,8 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     for name in ("0021-native-dedicated-worker-startup-gate.patch", "0022-native-worker-canvas-thread-handoff.patch",
                  "0023-native-shared-worker-startup-gate.patch", "0024-native-service-worker-canvas-thread-handoff.patch",
                  "0025-native-service-worker-startup-gate.patch", "0026-native-worker-canvas-handoff-tests.patch",
-                 "0027-native-shared-worker-bootstrap-failure.patch"):
+                 "0027-native-shared-worker-bootstrap-failure.patch",
+                 "0028-native-worker-handoff-fixture-lifetime.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
@@ -2176,6 +2178,7 @@ def test_native_draft_registration_embeds_exact_canonical_sources(draft, patch_n
     ("0025-native-service-worker-startup-gate.patch", "service_worker_startup_gate.patch"),
     ("0026-native-worker-canvas-handoff-tests.patch", "worker_canvas_handoff_tests.patch"),
     ("0027-native-shared-worker-bootstrap-failure.patch", "shared_worker_bootstrap_failure.patch"),
+    ("0028-native-worker-handoff-fixture-lifetime.patch", "worker_handoff_fixture_lifetime.patch"),
 ])
 def test_native_worker_startup_registered_patches_match_reviewed_candidates(registered, draft):
     from scripts.native_build import ROOT
