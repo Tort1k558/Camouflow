@@ -21,7 +21,7 @@ diff --git a/content/browser/camouflow_native/privacy_context_unittest.cc b/cont
 new file mode 100644
 --- /dev/null
 +++ b/content/browser/camouflow_native/privacy_context_unittest.cc
-@@ -0,0 +1,367 @@
+@@ -0,0 +1,373 @@
 +// Copyright 2026 CamouFlow contributors.
 +// SPDX-License-Identifier: MIT
 +#include "content/public/browser/native_privacy_context.h"
@@ -242,6 +242,9 @@ new file mode 100644
 +  auto context = NewContext("Default");
 +  ASSERT_TRUE(context);
 +  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
++  // Keep directory cleanup outside the context's ThreadPool flush.
++  base::ScopedTempDir context_directory;
++  ASSERT_TRUE(context_directory.Set(context->TakePath()));
 +  context.reset();
 +  tasks_.RunUntilIdle();
 +}
@@ -348,6 +351,9 @@ new file mode 100644
 +    ++calls;
 +    EXPECT_FALSE(ready);
 +  }));
++  // Destroy the owner before allowing its queued loader task to run.
++  base::ScopedTempDir context_directory;
++  ASSERT_TRUE(context_directory.Set(context->TakePath()));
 +  context.reset();
 +  EXPECT_EQ(calls, 1);
 +  tasks_.RunUntilIdle();

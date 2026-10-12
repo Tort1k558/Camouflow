@@ -81,6 +81,24 @@ Existing timeout/caller-cancellation cases still require ownership while startup
 is pending. These delayed-failure cases are synthetic task/lock tests, not an
 additional browser subprocess fault-injection result.
 
+## BrowserContext destruction fixture correction
+
+The context test target linked successfully after resuming with four compile
+jobs. Its first run passed ten cases, then timed out in
+`DestructionDuringLoadDoesNotUseDestroyedContext`. `TestBrowserContext` directory
+cleanup calls `RunAllTasksUntilIdle`, whose asynchronous ThreadPool flush cannot
+finish while this fixture intentionally keeps loader tasks queued. The failing
+run was stopped; `privacy-contexts-001-017-resume-j4.json` records failure, not a
+passing context gate.
+
+Both destruction cases now transfer directory ownership using `TakePath` into a
+local `ScopedTempDir` before destroying the context. BrowserContext shutdown and
+owner destruction still happen before queued loader tasks run; directory cleanup
+happens afterwards. No production lifecycle code or timeout was weakened.
+Patch 0017 and the pinned checkout contain the same corrected fixture. The new
+verification run is `privacy-contexts-001-017-teardown-fixed-j4.json`; its result
+must be checked before claiming the twenty cases passed.
+
 ## Current boundary
 
 The 001-010 Windows development baseline has completed runtime gates and
