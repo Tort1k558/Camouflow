@@ -187,7 +187,8 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0011-native-privacy-partition-serialization.patch",
         "0012-native-browser-privacy-key-derivation.patch",
         "0013-native-owned-profile-key-loader.patch",
-        "0014-native-private-key-service-lifecycle.patch"))
+        "0014-native-private-key-service-lifecycle.patch",
+        "0015-native-browser-context-key-ownership.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
@@ -244,7 +245,11 @@ def check_patch_dependencies(source: Path, env: dict[str, str]) -> None:
               "'components/services/font_data/font_data_service_impl.cc', "
               "'ui/gfx/win/camouflow_font_collection.h', "
               "'ui/gfx/win/camouflow_font_configuration.h', "
-              "'ui/gfx/win/camouflow_font_families.h']; "
+              "'ui/gfx/win/camouflow_font_families.h', "
+              "'content/public/browser/native_privacy_context.h', "
+              "'content/browser/browser_context_impl.cc', "
+              "'chrome/browser/profiles/profile_impl.cc', "
+              "'chrome/browser/profiles/off_the_record_profile_impl.cc']; "
               "files=[root/name for name in names if (root/name).is_file()]; "
               "problems=DepsChecker(str(root)).CheckAddedCppIncludes([(str(file),file.read_text(encoding='utf-8-sig').splitlines()) for file in files]); "
               "print(problems); sys.exit(bool(problems))")

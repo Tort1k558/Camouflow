@@ -850,7 +850,8 @@ def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tm
                                   "0011-native-privacy-partition-serialization.patch",
                                   "0012-native-browser-privacy-key-derivation.patch",
                                   "0013-native-owned-profile-key-loader.patch",
-                                  "0014-native-private-key-service-lifecycle.patch"])
+                                  "0014-native-private-key-service-lifecycle.patch",
+                                  "0015-native-browser-context-key-ownership.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
@@ -859,9 +860,11 @@ def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monk
     patch = native_build.ROOT / "native/patches" / name
     related = ([native_build.ROOT / "native/patches" / item for item in
                 ("0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch",
-                 "0014-native-private-key-service-lifecycle.patch")]
+                 "0014-native-private-key-service-lifecycle.patch",
+                 "0015-native-browser-context-key-ownership.patch")]
                if name in {"0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch",
-                           "0014-native-private-key-service-lifecycle.patch"}
+                           "0014-native-private-key-service-lifecycle.patch",
+                           "0015-native-browser-context-key-ownership.patch"}
                else [patch])
     expected = sorted({line.split(" b/", 1)[1] for item in related
                        for line in item.read_text(encoding="utf-8").splitlines()
@@ -1241,6 +1244,7 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     (patches / "0012-native-browser-privacy-key-derivation.patch").write_text("", encoding="utf-8")
     (patches / "0013-native-owned-profile-key-loader.patch").write_text("", encoding="utf-8")
     (patches / "0014-native-private-key-service-lifecycle.patch").write_text("", encoding="utf-8")
+    (patches / "0015-native-browser-context-key-ownership.patch").write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")

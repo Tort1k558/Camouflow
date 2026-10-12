@@ -765,3 +765,44 @@ partitioned worker lifecycle remain caller requirements. Browser-to-renderer
 and worker transport, protected readback readiness, Canvas/GPU/audio and
 authenticated capability admission remain unfinished. No privacy capability
 has been enabled from these tests. Project regression: 1,102 tests passed.
+
+## BrowserContext ownership and Chrome bootstrap (0015; owner tests passed)
+
+The private service now uses the existing `SupportsUserData::Data` ownership
+contract inherited by BrowserContext, rather than introducing a forbidden
+content-to-KeyedService dependency. Installation is single-use for each owner;
+failed or stopped instances cannot be replaced with an ephemeral fallback.
+Owner-data cloning does not clone private identity. Destruction cleans up the
+service and invalidates outstanding loading replies.
+
+The patch also adds a browser-only public bridge, regular/OTR Chrome profile
+bootstrap and an early shutdown hook in BrowserContextImpl. The explicit
+development switch `--camouflow-native-privacy-key-service=1` requests the
+bootstrap; without it Chrome initialization remains unchanged. Persistent
+profiles use the owned DIR_USER_DATA root, not the Default subdirectory.
+Off-the-record contexts require an empty root and create their own in-memory
+identity; they do not redirect to or load the original context's private key.
+The bridge checks UI-thread use and shutdown state, exposes readiness and
+partition/surface derivation, but no root-key getter. Initialization acceptance
+is not readiness: asynchronous persistent loading may still fail. No protected
+surface or managed fingerprint capability is enabled by this development switch.
+
+The 33 native tests passed (previous 27 plus six owner attachment/clone cases).
+These use real SupportsUserData ownership, not a real Chrome incognito profile;
+they are not proof of the production bridge or browser runtime. Evidence:
+`D:\CamouFlowNative\native-privacy-context-ownership-unit-proof.json` and raw
+GoogleTest output with the same prefix. Include/dependency checks passed and the
+0010 executable/DLL hashes, receipt and GN arguments remained unchanged.
+Project regression passed 1,103 tests. Exact patch replay includes the complete
+overlapping BUILD.gn/service patch chain; the production include gate also
+checks the new public header and regular/OTR profile files.
+
+A separate four-job build of the production bridge, BrowserContextImpl and
+regular/OTR profile translation units has been started. Its scope is recorded in
+`native-privacy-context-bridge-object-proof.json` only after terminal completion;
+the associated build log is `native-privacy-context-bridge-object-build-j4.log`
+on D. At this documentation update it is still in progress, so those units are
+not yet claimed compiled. Linking a new own-browser receipt, actual incognito
+runtime checks, renderer/worker IPC, protection readiness and Canvas/GPU/audio
+remain pending. The immutable 001-010 development package remains the verified
+browser baseline and has not been activated in the user app.
