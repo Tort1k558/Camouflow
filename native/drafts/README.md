@@ -1,7 +1,7 @@
 # Glint development candidates
 
 Both privacy candidates have moved to the registered patch chain. The existing
-linked browser remains 001–015; registered source is not browser runtime proof.
+linked browser is 001-027; registered source alone is not browser runtime proof.
 Do not modify or reapply patches during an active build.
 
 ## Document and worker delivery infrastructure
@@ -13,7 +13,8 @@ now registered and applied as self-contained patches 0018-0020; the first linked
 Earlier isolated parser and syntax results remain historical. Worker startup
 gates and Canvas seed handoff are now registered as 0021-0026 behind a
 developer-only switch.
-Their linked/runtime verification remains pending; document startup and Canvas
+The 001-027 browser passed 40 owned worker startup/restart/shared-client/rejection
+checks; four Blink handoff unit cases still require execution. Document startup and Canvas
 readback helpers/hooks remain unregistered. No Canvas runtime capability is enabled.
 
 ## BrowserContext privacy bridge

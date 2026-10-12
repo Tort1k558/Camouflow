@@ -4,7 +4,9 @@ The document/worker endpoints, Mojo schema and worker consumer are now registere
 as self-contained patches 0018-0020. The corrected linked 34-case verification
 passed, followed by a combined 54-case BrowserContext/IPC run. Their canonical
 source snapshots remain here. Startup gates and thread handoff below are now
-registered as 0021-0026; linked/browser verification is pending. Canvas readback
+registered as 0021-0026, with shared-worker rejection fixed by 0027. The linked
+001-027 browser passed all 40 owned startup/restart/shared-client/rejection checks;
+the four Blink handoff unit cases still require execution. Canvas readback
 patches remain unregistered. No Canvas protection or
 runtime capability is enabled by these files. Earlier isolated evidence below
 is historical and must not be mistaken for the current linked unit run.
@@ -533,7 +535,9 @@ identity or page data is included in the error message.
 Applicability and isolated renderer syntax checks passed under
 `D:/CamouFlowNative/shared-worker-bootstrap-failure-overlay/proof.json` and
 `shared-worker-bootstrap-failure-cpp-check/proof.json`. This follow-up is now
-registered as 0027 and compiling, but remains unverified in a linked runtime.
-Before admission, verify classic/module ready and
+registered as 0027. Its linked runtime passed classic/module ready and unavailable
+startup, including rejection notifications to both page clients and zero observed
+worker body beacons, in the 40-case gate. This does not prove exactly-once error
+delivery, early termination or queued-port memory release. Before admission, verify
 unavailable startup, exactly one client error, zero body executions on rejection,
 queued port release, early client termination and the complete worker gate.

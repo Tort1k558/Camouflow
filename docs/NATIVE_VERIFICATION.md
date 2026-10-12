@@ -218,9 +218,8 @@ that notification before teardown while retaining the original host remote in
 the startup continuation. It passed source applicability and isolated Chromium
 renderer syntax checks (`shared-worker-bootstrap-failure-cpp-check/proof.json`).
 It is now registered as 0027 and applied after all runtime probes terminated.
-The replacement browser is building on four jobs under
-`shared-worker-bootstrap-failure-001-027-build.json`; this fix is not yet linked
-or runtime-verified. The previous core/receipt are retained under
+The replacement browser compiled/linked successfully on four jobs in 15m28.62s:
+`shared-worker-bootstrap-failure-001-027-build.json`. The previous core/receipt are retained under
 `baselines/001-026-before-shared-bootstrap-failure-core` (not a packaged runtime).
 The probe requires the exact 0015-0027 chain for subsequent reports.
 The probe regressions passed 34 cases before this registration and the
@@ -251,6 +250,47 @@ exercise the validator and page cleanup, including duplicate execution, refetch
 and timeout rejection. Those are tool tests, not passing multi-client runtime
 evidence. The new JavaScript fixture passed Node syntax checking.
 After the extension, the full Python suite passed 1231 cases in 63.99 seconds.
+
+The linked 001-027 browser subsequently passed all **40 exact worker checks**:
+`worker-startup-001-027-runtime-40-first.json`. All eight unavailable-policy
+checks returned explicit worker/registration errors with zero execution beacons;
+both shared clients received their error. Positive multi-page cases used one
+worker body and one main-script request, and the surviving page still received
+replies after the other closed. Both installed service-worker restart variants
+executed from retained registrations without a main-script refetch.
+
+Exact check coverage, passing statuses, cleanup success, receipt checksum and
+unchanged runtime core were independently revalidated after the runner exited.
+The new `chrome.dll` SHA-256 is
+`ec1e8ad8a87bea6e448d0c5f117a561c7f1bf3b6a9db330626dc4e538124d350`.
+The executable stub and chrome_elf hashes remain unchanged. This proves the
+owned startup/rejection behavior, not actual seed-byte equality, Canvas readback,
+early startup termination or protection admission. The normal eight-gate suite
+also passed all 160 checks under `runtime-001-027-regression-suite/suite.json`.
+All child-report checksums, required cases, complete gate coverage and unchanged
+core hashes were independently revalidated after the runner exited. This is a
+fresh run on 001-027, not substitution of the previous 001-026 suite.
+
+The same 001-027 runtime also passed the unprotected Canvas baseline:
+`canvas-001-027-baseline.json`. Both initial/restart eight-context readback phases
+and both origin-security/empty-image phases completed; the four phase statuses
+and unchanged core hashes were revalidated. This checks upstream pixel/export/
+crop/error behavior, not the inactive Canvas candidate or protected readback.
+
+`verify_native_privacy_units.py --target worker-handoff` now provides the strict
+four-case Blink ownership gate. It selects exact case names rather than the
+entire `WorkerThreadTest` suite and preserves the existing keys/contexts/delivery
+targets. Sixty focused verifier regressions passed, including rejection of
+missing/duplicate/skipped/foreign/failed cases and build/source/browser changes.
+The four C++ handoff cases have not yet been linked or executed by this target.
+The full Python suite after this target extension passed 1245 cases in 61.38s.
+After all mutable-output runtime probes exited, a dry run of `blink_unittests`
+completed successfully and enumerated 1423 remaining CXX commands. D had 301.2 GiB
+free and available commit headroom exceeded 10 GiB. The separate four-case
+handoff gate is now building on four jobs under `worker-handoff-001-027-j4.json`;
+the build log is `worker-handoff-001-027-j4-build.log`. No passing native handoff
+result is claimed until its exact four cases execute. Active source/GN inputs
+remain unchanged; future Canvas drafts must stay outside that checkout.
 
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External

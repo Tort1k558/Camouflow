@@ -35,14 +35,17 @@ Current own-fork work is Windows-only. Linux/macOS support is deferred, not
 released. The manager's Mobile Web mode is desktop Chromium viewport/touch
 emulation, not Android/iOS. Only verified capabilities may be enabled.
 
-The 001-010 Windows development baseline has runtime evidence. The newer 001–015
-Windows browser has linked and passed its runtime suite. Readiness patch 0016
-passed native service tests but is not in that browser. Context-test patch 0017
+The linked 001-026 Windows browser passed all eight runtime gates (160 checks).
+The latest 001-027 browser adds a verified shared-worker rejection notification;
+all 40 owned startup/restart/shared-client/rejection checks passed. Its ordinary
+runtime regression suite also passed all eight gates / 160 checks. Readiness patch 0016
+passed 43 native key/service cases. Context-test patch 0017
 passed all twenty native cases. Patches 0018-0020 register document/worker policy
 endpoints and the worker consumer; all 34 native cases passed, followed by a
 combined 54-case BrowserContext/IPC run. Worker startup/handoff patches 0021-0026
-are now registered/applied behind a developer-only switch; their browser build
-and runtime verification are pending. Canvas protection remains a candidate; branding
+are linked behind a developer-only switch; four Blink seed ownership unit cases
+still need execution. The unprotected Canvas baseline passed on 001-027 before
+and after restart. Canvas protection remains a candidate; branding
 still needs application and verification. No signed own-engine release or guaranteed
 anti-bot/CAPTCHA acceptance is advertised.
 

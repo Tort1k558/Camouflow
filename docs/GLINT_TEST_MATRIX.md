@@ -248,6 +248,52 @@ job and a new evidence path `privacy-contexts-001-017-retry-j1.json`, preserving
 completed objects, GN arguments and source inputs. Retry success remains pending;
 do not interpret the original four-job invocation as a passing result.
 
+### Linked worker-startup builds, 001-026 and 001-027 (2026-10-12)
+
+Both Windows builds pinned Chromium 148.0.7778.96. The 001-026 build completed
+in 29m17.54s; the incremental 001-027 shared-worker rejection fix completed in
+15m28.62s, each with four jobs. No external result from 001-015 is carried forward.
+
+| Build | Measured chrome.dll SHA-256 | Local evidence |
+| --- | --- | --- |
+| 001-026 | `a055fecb73db29c0ababa0cb3da2f4d7d3942253d82453ce6b58e24f938927e2` | Eight runtime gates / 160 checks passed; full worker gate failed on unavailable shared-worker timeout |
+| 001-027 | `ec1e8ad8a87bea6e448d0c5f117a561c7f1bf3b6a9db330626dc4e538124d350` | All eight normal runtime gates / 160 checks, 40 worker startup/restart/shared-client/rejection checks and four unprotected Canvas baseline phases passed |
+
+Both executable stub hashes remain
+`61e97ba3335f64836b3abcf93d67af0d6ddd0d06c291b4592b1448643b35e222`;
+matching only chrome.exe would incorrectly identify these builds as the same code.
+Private evidence: `worker-startup-runtime-001-026-build.json`,
+`runtime-001-026-regression-suite/suite.json`,
+`worker-startup-001-026-runtime-partition-fixed-v3.json`,
+`worker-startup-001-026-runtime-service-first.json`,
+`shared-worker-bootstrap-failure-001-027-build.json` and
+`worker-startup-001-027-runtime-40-first.json`.
+The exact worker check set, receipt checksum and core hashes were revalidated.
+These controlled runs use explicitly enabled partitioning and diagnostic
+`--enable-automation`; they are not external anti-bot score observations.
+
+| Core destination | 001-026 | 001-027 |
+| --- | --- | --- |
+| CreepJS | Not run | Not run |
+| Pixelscan | Not run | Not run |
+| BrowserScan | Not run | Not run |
+| Sannysoft | Not run | Not run |
+| BrowserLeaks fingerprint surfaces | Not run | Not run |
+| IPhey | Not run | Not run |
+| Fingerprint Playground | Not run | Not run |
+| Rebrowser Bot Detector | Not run | Not run |
+| Incolumitas | Not run | Not run |
+| Device and Browser Info | Not run | Not run |
+| TLS Peet | Not run | Not run |
+| IPify browser egress | Not run externally; owned proxy fixture passed | Not run externally; owned proxy fixture passed |
+| BrowserLeaks WebRTC | Not run externally; owned WebRTC fixture passed | Not run externally; owned WebRTC fixture passed |
+| Google reCAPTCHA v3 | Not run | Not run |
+| Cloudflare Turnstile | Not run | Not run |
+
+The four Blink worker-seed handoff unit cases remain unexecuted. Document
+first-script bootstrap, protected Canvas/WebGL/WebGPU/audio and privacy
+admission remain incomplete. Neither build is a new verified production release.
+
 ## Sources and maintenance
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

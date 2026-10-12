@@ -136,15 +136,15 @@ own-fork runtime evidence. Canvas/GPU/audio protection is not complete.
 
 ### Worker startup development probe
 
-After a successful 001-026 browser build, run the separate owned fixture probe:
+After a successful 001-027 browser build, run the separate owned fixture probe:
 
 ```powershell
 & $python scripts/verify_native_worker_startup.py --executable "$output\chrome.exe" --work-dir "$workspace\worker-startup-probe" --report "$workspace\worker-startup-new.json"
 if ($LASTEXITCODE -ne 0) { throw 'Glint worker startup probe failed' }
 ```
 
-The probe requires the exact registered 0015-0025 patch hashes in the local build
-receipt and measures the executable/core DLLs before and after. It covers thirty
+The probe requires the exact registered 0015-0027 patch hashes in the local build
+receipt and measures the executable/core DLLs before and after. It covers forty
 classic/module dedicated/shared/service-worker cases: baseline and key-enabled
 startup/restart, plus unavailable-policy rejection. Ready service-worker restart
 uses the retained registration without re-registering and requires a new body
@@ -152,9 +152,30 @@ execution beacon with no main-script HTTP fetch. Explicit third-party partitioni
 is enabled in this controlled probe; this does not prove every default setting.
 Worker profiles are isolated outside the public checkout using NativeRuntime's
 existing identity/lock/lifecycle path. A timeout is inconclusive, not a rejection
-pass. This probe does not verify Canvas keys/readback, nested workers, early
+pass. Shared-client cases require one worker body/script fetch across two pages,
+continued replies after the first page closes and rejection of both clients when
+policy is unavailable. The probe measures the driver's default disabled-feature
+argument and replaces only its partitioning exclusion, preserving other features.
+Diagnostic `--enable-automation` permits effective command-line inspection;
+these are not anti-bot score runs or proof of the manager's default launch flags.
+This probe does not verify Canvas keys/readback, nested workers, early startup
 termination, network outages or capability admission. The four Blink handoff
 unit cases still require their own linked execution.
+
+The four Blink worker-scope ownership cases have a separate strict target:
+
+```powershell
+& $python scripts/verify_native_privacy_units.py --workspace $workspace --vs-installation "$workspace\toolchain\BuildTools" --jobs 4 --target worker-handoff --report "$workspace\worker-handoff-new.json"
+if ($LASTEXITCODE -ne 0) { throw 'Glint worker handoff units failed' }
+```
+
+This builds `blink_unittests` and selects exactly the four Glint `WorkerThreadTest`
+cases, not the whole upstream suite. It still compiles the target's dependencies;
+do not assume four selected tests make its initial build small. Run only after
+other builders and mutable-output browser probes finish. The report checks exact
+completed case coverage, test executable hash and unchanged browser/GN/receipt
+and registered source inputs. Success proves Blink scope ownership, not that a
+real browser host delivered the correct partition key or that Canvas is protected.
 
 ## 5. Package and deliver separately
 

@@ -972,11 +972,11 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
 
 
 @pytest.mark.parametrize("mutation", [None, "duplicate", "missing", "skip", "failure", "incomplete", "foreign", "disabled", "malformed"])
-@pytest.mark.parametrize("target", ["keys", "contexts", "delivery"])
+@pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff"])
 def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, target):
     from scripts.verify_native_privacy_units import required_tests, validate_results
 
-    report = {"tests": {"keys": 43, "contexts": 20, "delivery": 34}[target], "failures": 0, "disabled": 0, "testsuites": [
+    report = {"tests": {"keys": 43, "contexts": 20, "delivery": 34, "worker-handoff": 4}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
         for suite, cases in required_tests(target).items()]}
@@ -1020,7 +1020,7 @@ def test_native_privacy_verification_refuses_existing_compiler(monkeypatch, runn
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows owned-profile unit verifier")
 @pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure", "source_change"])
-@pytest.mark.parametrize("target", ["keys", "contexts", "delivery"])
+@pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff"])
 def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure, target):
     import json
     import subprocess
@@ -1046,7 +1046,9 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
     source_patches = [{"name": name, "sha256": "a" * 64} for name in (
         "0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch",
         "0017-native-browser-context-tests.patch", "0018-native-document-policy-delivery.patch",
-        "0019-native-worker-policy-delivery.patch", "0020-native-worker-policy-consumer.patch")]
+        "0019-native-worker-policy-delivery.patch", "0020-native-worker-policy-consumer.patch",
+        "0022-native-worker-canvas-thread-handoff.patch", "0024-native-service-worker-canvas-thread-handoff.patch",
+        "0026-native-worker-canvas-handoff-tests.patch")]
     monkeypatch.setattr(privacy.build, "source_patches", lambda *args: [dict(item) for item in source_patches])
     monkeypatch.setattr(privacy.build, "v8_source_patches", lambda *args: [])
     monkeypatch.setattr(privacy.build, "check_patch_dependencies", lambda *args: None)
@@ -1059,7 +1061,8 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
 
     monkeypatch.setattr(privacy, "measure_runtime_core", measure)
     commands = []
-    build_target = "content_unittests" if target in {"contexts", "delivery"} else "camouflow_native_privacy_unittests"
+    build_target = ("blink_unittests" if target == "worker-handoff" else
+                    "content_unittests" if target in {"contexts", "delivery"} else "camouflow_native_privacy_unittests")
 
     def run(args, **kwargs):
         commands.append(args)
@@ -1069,7 +1072,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
                 raise subprocess.CalledProcessError(1, args)
             (output / (build_target + ".exe")).write_bytes(b"owned unit executable")
         else:
-            results = {"tests": {"keys": 43, "contexts": 20, "delivery": 34}[target],
+            results = {"tests": {"keys": 43, "contexts": 20, "delivery": 34, "worker-handoff": 4}[target],
                        "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
                        "testsuites": [{"name": suite, "testsuite": [
                            {"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(cases)]}
@@ -1092,9 +1095,13 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         assert len(commands) == 1
     else:
         assert commands[1][0] == str(output / (build_target + ".exe"))
+        if target == "worker-handoff":
+            assert "*" not in commands[1][1]
+            assert set(commands[1][1].removeprefix("--gtest_filter=").split(":")) == {
+                f"{suite}.{case}" for suite, cases in privacy.required_tests(target).items() for case in cases}
     assert proof["target"] == target
     if failure is None:
-        assert proof["tests"] == {"keys": 43, "contexts": 20, "delivery": 34}[target] and proof["baseline_browser_code_unchanged"]
+        assert proof["tests"] == {"keys": 43, "contexts": 20, "delivery": 34, "worker-handoff": 4}[target] and proof["baseline_browser_code_unchanged"]
         assert len(proof["test_binary_sha256"]) == 64
         if target == "delivery":
             assert len(proof["delivery_source_sha256"]) == 10

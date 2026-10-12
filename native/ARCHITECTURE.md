@@ -31,8 +31,8 @@ the key service per BrowserContext. Off-the-record contexts have independent
 ephemeral identities; they must never redirect to the persistent original.
 
 Key loading is asynchronous on a blocking worker; derivation fails until ready.
-Readiness callbacks are registered in patch 0016 and passed 43 native cases;
-the linked 001–015 browser lacks them. Real-context tests are registered in
+Readiness callbacks are registered in patch 0016 and passed 43 native cases.
+Real-context tests are registered in
 patch 0017 and all twenty passed in the linked content unit target.
 Patches 0018-0020 register lifetime-bound document/worker endpoints using
 browser-owned partition state and an independently timed worker consumer.
@@ -40,8 +40,12 @@ Their 34 native cases passed, as did a combined 54-case context/delivery run.
 Patches 0021-0026 register dedicated/shared/service-worker startup gates and owned
 seed transport into Blink scope creation, plus four handoff unit definitions.
 Startup gates require the developer-only `glint-worker-canvas-bootstrap-test`
-switch; normal launches retain the upstream path. Source application is verified,
-but a linked browser and real startup/lifecycle runs are still pending. Document
+switch; normal launches retain the upstream path. Patch 0027 adds host failure
+notification before shared-worker rejection teardown. The linked 001-027 browser
+passed 40 owned startup/restart/shared-client/rejection checks, with exact receipt
+and core-code measurements. This is not proof of internal Blink seed bytes or
+cross-partition key equality; the four Blink handoff unit cases remain unexecuted.
+Document
 bootstrap and Canvas/WebGL/WebGPU/audio protection remain incomplete.
 
 ## Source reproducibility
