@@ -557,6 +557,21 @@ canonical paths; no launch retry, profile relocation, encryption downgrade or
 sandbox bypass was introduced. The local project suite passed 1,094 tests after
 this increment; this is not a passing own-fork storage/runtime release gate.
 
+The `0009` own-fork build subsequently finished successfully (5m02.51s, 54
+executed steps, exit zero). The new direct extended-path proof passed all eight
+desktop/mobile cases at profile lengths 90/130/150/170, including cookies after
+restart and cache entry/cache deletion. It required exact `0008` and `0009`
+patch identities in the own-build receipt and unchanged measurements of all
+three runtime code files. Report:
+`D:\CamouFlowNative\owned-sql-namespace-extended-store-proof.json`.
+This establishes direct-launch storage compatibility for those cases, not
+manager integration, arbitrary Windows path lengths, UNC availability, native
+SQL unit test completion or full runtime/anti-bot release acceptance. The native
+SQL test target is currently building; its query-rejection and exclusive-lock
+cases must pass independently. Browser-internal namespace integration remains
+an isolated D draft until that build is terminal; app lifecycle/ownership paths
+have not been modified or silently retried.
+
 The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feature
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred

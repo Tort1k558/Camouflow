@@ -31,7 +31,7 @@ report is `D:\CamouFlowNative\owned-normalized-extended-store-proof.json`.
 This patch does not remove Chromium's explicit `MAX_PATH` guards or enable
 extended launch paths in the manager. It is not a complete storage fix.
 
-## SQLite Windows namespace handling (0009; runtime pending)
+## SQLite Windows namespace handling (0009; direct storage runtime passed)
 
 An ordinary-versus-extended launch control preserved cookies on the ordinary
 path but lost them on the extended path, where no persistent Cookies database
@@ -41,12 +41,22 @@ initial `\\?\` marker from that query-delimiter check; all later question marks
 remain rejected and the existing `EscapePath` URI encoding remains intact.
 It retains exclusive locking and does not disable cookie encryption.
 
-The patch adds native SQL tests for extended-path write/reopen and exclusive
-locking, plus rejection of an appended `?exclusive=false` query. Those Chromium
-tests and the real cookie/storage matrix still require execution; project unit
-tests or a patch application check do not establish native runtime success.
-Do not promote a manager launch change until the full storage and runtime gates
-pass. Original failed controls remain on D; see `docs/NATIVE_VERIFICATION.md`.
+The own-fork four-job rebuild succeeded in 5m02.51s (54 executed build steps,
+exit zero). All eight direct extended-path desktop/mobile cases passed creation,
+replacement and restart of cookies, localStorage, IndexedDB, CacheStorage and
+service-worker registrations, plus cache entry/cache deletion. All three runtime
+code hashes were unchanged through the probe. Evidence is retained in
+`D:\CamouFlowNative\owned-sql-namespace-extended-store-proof.json`.
+
+The patch also adds native SQL tests for extended-path write/reopen and exclusive
+locking, plus rejection of an appended `?exclusive=false` query. Their Windows
+test target is now building with four jobs; those native tests are not yet
+reported as passed. The successful direct probe does not activate extended
+paths in the manager. A browser-internal namespace initialization draft is
+prepared separately on D, without modifying the active test build inputs.
+After native SQL tests, apply/build that integration and verify the unchanged
+manager lifecycle and full storage/runtime gates before promotion.
+Original failed controls remain on D; see `docs/NATIVE_VERIFICATION.md`.
 
 ## Current Windows source build
 
