@@ -74,6 +74,7 @@ REQUIRED_DELIVERY_TESTS = {
         "ShutdownSettlesLoadingOnce", "DeadlineRejectsLateReadiness", "ReceiverOwnerDestructionDropsLoadingReply",
         "PipeDisconnectDropsLoadingReply", "DestroyedContextCannotDeliverSeed", "UnpartitionedSharedAndServiceWorkersFail",
         "LegacyDataWorkerOriginMismatchIsRejected", "MatchingOpaqueDataWorkerUsesOwnedPartition",
+        "DuplicateRequestCancelsPendingDelivery",
     },
     "NativePrivacyWorkerBootstrapTest": {
         "ReadyPolicyReturnsOwnedSurfaceSeedOnce", "UnavailableDoesNotReturnSeed", "BrowserTimeoutDoesNotReturnSeed",

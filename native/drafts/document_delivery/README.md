@@ -276,8 +276,8 @@ opaque-origin isolation, GC and startup behavior remain mandatory runtime gates.
 ## Delivery verification target
 
 `scripts/verify_native_privacy_units.py --target delivery` prepares a strict
-content_unittests verification for exactly 30 cases: nine document endpoint,
-eleven worker endpoint and ten bootstrap consumer cases. It rejects missing,
+content_unittests verification for exactly 31 cases: nine document endpoint,
+twelve worker endpoint and ten bootstrap consumer cases. It rejects missing,
 duplicate, skipped, failed or foreign cases. Before building, the ten source and
 schema files must match the public drafts as decoded UTF-8 text; raw source
 checksums are recorded and rechecked after execution. Registered native patch
@@ -295,4 +295,24 @@ Use an unused report path. A successful result would cover the named Mojo/consum
 units, not real host lifetimes, first-script ordering, the two Blink thread-handoff
 cases, Canvas API behavior or privacy admission. Python tests for the verifier use
 synthetic GTest JSON and mocked subprocesses; they are not execution evidence for
-the 30 C++ cases.
+the 31 C++ cases.
+
+### Duplicate worker request cancellation
+
+A second request on the same pipe cancels the pending reply, deadline timer and
+readiness weak callbacks before reporting a bad message. Late key readiness must
+not deliver a seed after a protocol violation. The new mock-time fixture checks
+both pipe disconnection and absence of replies after readiness and the deadline.
+The service and twelve-case fixture passed isolated Clang syntax checks using
+the pinned build flags; these fixtures have not been linked or executed.
+
+### Initial-document delivery constraints
+
+The pinned renderer creates a local child immediately after the asynchronous
+`CreateChildFrame` call. A document-service response alone therefore cannot
+guarantee policy delivery before initial about:blank script execution.
+Navigation storage keys are also provisional: `DocumentLoader` adjusts the key
+to the final security origin before installing it on the window. A future
+document bootstrap must validate the final full privacy partition encoding and
+cover initial documents; commit-time delivery alone is insufficient. No document
+Canvas protection or first-script readiness guarantee is implemented here.

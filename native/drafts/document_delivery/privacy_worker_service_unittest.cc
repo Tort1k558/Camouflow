@@ -17,6 +17,7 @@
 #include "content/public/test/test_browser_context.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/bindings/unique_receiver_set.h"
+#include "mojo/public/cpp/test_support/test_utils.h"
 #include "net/base/features.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features.h"
@@ -275,5 +276,24 @@ TEST_F(NativePrivacyWorkerServiceTest, MatchingOpaqueDataWorkerUsesOwnedPartitio
   remote.FlushForTesting();
   EXPECT_EQ(replies, 1);
 }
+TEST_F(NativePrivacyWorkerServiceTest, DuplicateRequestCancelsPendingDelivery) {
+  Initialize();
+  auto remote = Connect();
+  int replies = 0;
+  remote->GetCanvasPolicy(base::BindLambdaForTesting(
+      [&](Status, Policy) { ++replies; }));
+  remote.FlushForTesting();
+  ASSERT_EQ(replies, 0);
+  mojo::test::BadMessageObserver observer;
+  remote->GetCanvasPolicy(base::BindLambdaForTesting(
+      [&](Status, Policy) { ++replies; }));
+  EXPECT_EQ(observer.WaitForBadMessage(),
+            "Glint worker policy requested twice on one pipe");
+  tasks_.RunUntilIdle();
+  tasks_.FastForwardBy(base::Seconds(11));
+  EXPECT_FALSE(remote.is_connected());
+  EXPECT_EQ(replies, 0);
+}
+
 }  // namespace
 }  // namespace content

@@ -31,6 +31,9 @@ PrivacyWorkerService::~PrivacyWorkerService() = default;
 
 void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
   if (requested_) {
+    timer_.Stop();
+    weak_factory_.InvalidateWeakPtrs();
+    pending_reply_.Reset();
     mojo::ReportBadMessage("Glint worker policy requested twice on one pipe");
     return;
   }

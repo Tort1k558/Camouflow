@@ -964,7 +964,7 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
 def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, target):
     from scripts.verify_native_privacy_units import required_tests, validate_results
 
-    report = {"tests": {"keys": 43, "contexts": 20, "delivery": 30}[target], "failures": 0, "disabled": 0, "testsuites": [
+    report = {"tests": {"keys": 43, "contexts": 20, "delivery": 31}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
         for suite, cases in required_tests(target).items()]}
@@ -1056,7 +1056,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
                 raise subprocess.CalledProcessError(1, args)
             (output / (build_target + ".exe")).write_bytes(b"owned unit executable")
         else:
-            results = {"tests": {"keys": 43, "contexts": 20, "delivery": 30}[target],
+            results = {"tests": {"keys": 43, "contexts": 20, "delivery": 31}[target],
                        "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
                        "testsuites": [{"name": suite, "testsuite": [
                            {"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(cases)]}
@@ -1081,7 +1081,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         assert commands[1][0] == str(output / (build_target + ".exe"))
     assert proof["target"] == target
     if failure is None:
-        assert proof["tests"] == {"keys": 43, "contexts": 20, "delivery": 30}[target] and proof["baseline_browser_code_unchanged"]
+        assert proof["tests"] == {"keys": 43, "contexts": 20, "delivery": 31}[target] and proof["baseline_browser_code_unchanged"]
         assert len(proof["test_binary_sha256"]) == 64
         if target == "delivery":
             assert len(proof["delivery_source_sha256"]) == 10
@@ -2062,7 +2062,7 @@ def test_native_delivery_verifier_requires_every_draft_endpoint_case():
     for path in (ROOT / "native/drafts/document_delivery").glob("*_unittest.cc"):
         for suite, case in re.findall(r"TEST_F\(\s*(\w+),\s*(\w+)\)", path.read_text(encoding="utf-8-sig")):
             observed.setdefault(suite, []).append(case)
-    assert sum(map(len, observed.values())) == 30
+    assert sum(map(len, observed.values())) == 31
     assert {suite: set(cases) for suite, cases in observed.items()} == REQUIRED_DELIVERY_TESTS
 
 
