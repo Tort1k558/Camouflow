@@ -272,3 +272,27 @@ The updated six-patch stack still applies without active input changes:
 Earlier worker-host proof hashes are historical. None of these new endpoint cases
 has been linked or executed, and actual dedicated/shared/service host lifetimes,
 opaque-origin isolation, GC and startup behavior remain mandatory runtime gates.
+
+## Delivery verification target
+
+`scripts/verify_native_privacy_units.py --target delivery` prepares a strict
+content_unittests verification for exactly 30 cases: nine document endpoint,
+eleven worker endpoint and ten bootstrap consumer cases. It rejects missing,
+duplicate, skipped, failed or foreign cases. Before building, the ten source and
+schema files must match the public drafts as decoded UTF-8 text; raw source
+checksums are recorded and rechecked after execution. Registered native patch
+verification, idle-builder enforcement, baseline browser/args/receipt preservation
+and fresh report paths remain required. This does not bypass build-lock promotion.
+The present active source tree has not been promoted and cannot pass this target.
+
+After promotion in an idle checkout, the intended command is:
+
+```text
+.venv/Scripts/python.exe scripts/verify_native_privacy_units.py --workspace D:/CamouFlowNative --report D:/CamouFlowNative/privacy-delivery-new-proof.json --vs-installation D:/CamouFlowNative/toolchain/BuildTools --jobs 1 --target delivery
+```
+
+Use an unused report path. A successful result would cover the named Mojo/consumer
+units, not real host lifetimes, first-script ordering, the two Blink thread-handoff
+cases, Canvas API behavior or privacy admission. Python tests for the verifier use
+synthetic GTest JSON and mocked subprocesses; they are not execution evidence for
+the 30 C++ cases.

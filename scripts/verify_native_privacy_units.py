@@ -62,11 +62,60 @@ REQUIRED_CONTEXT_TESTS = {
 }
 
 
+REQUIRED_DELIVERY_TESTS = {
+    "NativePrivacyDocumentServiceTest": {
+        "MissingServiceReturnsUnavailable", "ReadyContextDeliversOnlyCanvasSubkey",
+        "LoadingDoesNotReplyBeforeReadiness", "NativePartitionEncodingRetainsDisabledStoragePartitionFields",
+        "ShutdownSettlesOnceWithoutSeed", "TimeoutRejectsLateReadyReply", "PipeDisconnectDropsLoadingReply",
+        "DocumentDestructionDropsLoadingReply", "DuplicateRequestClosesLoadingPipe",
+    },
+    "NativePrivacyWorkerServiceTest": {
+        "MissingServiceReturnsUnavailable", "ReadyPolicyMatchesTrustedPartition", "LoadingDoesNotReplyBeforeReadiness",
+        "ShutdownSettlesLoadingOnce", "DeadlineRejectsLateReadiness", "ReceiverOwnerDestructionDropsLoadingReply",
+        "PipeDisconnectDropsLoadingReply", "DestroyedContextCannotDeliverSeed", "UnpartitionedSharedAndServiceWorkersFail",
+        "LegacyDataWorkerOriginMismatchIsRejected", "MatchingOpaqueDataWorkerUsesOwnedPartition",
+    },
+    "NativePrivacyWorkerBootstrapTest": {
+        "ReadyPolicyReturnsOwnedSurfaceSeedOnce", "UnavailableDoesNotReturnSeed", "BrowserTimeoutDoesNotReturnSeed",
+        "UnknownVersionIsRejected", "ReadyWithoutPolicyIsRejected", "FailureWithSeedIsRejected",
+        "PeerDisconnectSettlesOnce", "DeadlineRejectsLateReadyReply", "DestructionDropsPendingReply",
+        "MissingPipeReturnsTypedFailure",
+    },
+}
+
+DELIVERY_SOURCE_FILES = {
+    f"{name}{suffix}": f"{directory}/{name}{suffix}"
+    for name, directory in (
+        ("privacy_document_service", "content/browser/camouflow_native"),
+        ("privacy_worker_service", "content/browser/camouflow_native"),
+        ("privacy_worker_bootstrap", "content/renderer/worker"),
+    )
+    for suffix in (".h", ".cc", "_unittest.cc")
+}
+DELIVERY_SOURCE_FILES["native_privacy_document.mojom"] = (
+    "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom"
+)
+
+
+def require_delivery_sources(source: Path) -> dict[str, str]:
+    checksums = {}
+    for name, relative in DELIVERY_SOURCE_FILES.items():
+        path = source / relative
+        expected = ROOT / "native/drafts/document_delivery" / name
+        if (path.is_symlink() or path != path.resolve() or not path.is_file()
+                or path.read_text(encoding="utf-8-sig") != expected.read_text(encoding="utf-8-sig")):
+            raise ValueError(f"Promote the exact delivery draft before verification: {relative}")
+        checksums[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return checksums
+
+
 def required_tests(target: str) -> dict[str, set[str]]:
     if target == "keys":
         return REQUIRED_TESTS
     if target == "contexts":
         return REQUIRED_CONTEXT_TESTS
+    if target == "delivery":
+        return REQUIRED_DELIVERY_TESTS
     raise ValueError("Unknown native privacy test target")
 
 
@@ -138,17 +187,20 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     build.require_stage(workspace / "chromium", "hooks")
     patches = build.source_patches(source, env) + build.v8_source_patches(source, env)
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
-    if target == "contexts":
+    if target in {"contexts", "delivery"}:
         required_patches.add("0017-native-browser-context-tests.patch")
     if not required_patches.issubset(item["name"] for item in patches):
         raise ValueError("The exact context ownership and readiness patches are required")
+    delivery_sources = require_delivery_sources(source) if target == "delivery" else None
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("Actual content-layer BrowserContext bridge/lifecycle/readiness units; not Chrome ProfileImpl startup, IPC, Canvas or admission"
+    scope = ("Document/worker Mojo endpoints and bootstrap consumer units; not actual worker-host lifecycle, first-script ordering, Canvas or admission"
+             if target == "delivery" else
+             "Actual content-layer BrowserContext bridge/lifecycle/readiness units; not Chrome ProfileImpl startup, IPC, Canvas or admission"
              if target == "contexts" else
              "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission")
-    build_target = "content_unittests" if target == "contexts" else "camouflow_native_privacy_unittests"
+    build_target = "content_unittests" if target in {"contexts", "delivery"} else "camouflow_native_privacy_unittests"
     proof = {"passed": False, "scope": scope, "target": target,
              "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path)}
     with log_path.open("x", encoding="utf-8", newline="\n") as log:
@@ -162,6 +214,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                             "--single-process-tests", "--gtest_output=json:" + str(results)],
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             validate_results(json.loads(results.read_text(encoding="utf-8-sig")), target=target)
+            if delivery_sources is not None and require_delivery_sources(source) != delivery_sources:
+                raise ValueError("Delivery source inputs changed during verification")
             if (measure_runtime_core(output / "chrome.exe") != core
                     or (output / "args.gn").read_bytes() != arguments
                     or (output / "camouflow-build.json").read_bytes() != receipt
@@ -174,6 +228,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                          baseline_browser_code_unchanged=True, baseline_runtime_core_sha256_measured=core,
                          args_sha256=hashlib.sha256(arguments).hexdigest(),
                          browser_receipt_sha256=hashlib.sha256(receipt).hexdigest())
+            if delivery_sources is not None:
+                proof["delivery_source_sha256"] = delivery_sources
         except (ValueError, OSError, subprocess.SubprocessError) as error:
             proof["error"] = str(error)
             log.write(f"\nVerification failed: {error}\n")
@@ -188,7 +244,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--vs-installation", type=Path)
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
-    parser.add_argument("--target", choices=("keys", "contexts"), default="keys")
+    parser.add_argument("--target", choices=("keys", "contexts", "delivery"), default="keys")
     args = parser.parse_args()
     try:
         report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs, target=args.target)

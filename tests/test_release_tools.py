@@ -960,11 +960,11 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
 
 
 @pytest.mark.parametrize("mutation", [None, "duplicate", "missing", "skip", "failure", "incomplete", "foreign", "disabled", "malformed"])
-@pytest.mark.parametrize("target", ["keys", "contexts"])
+@pytest.mark.parametrize("target", ["keys", "contexts", "delivery"])
 def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, target):
     from scripts.verify_native_privacy_units import required_tests, validate_results
 
-    report = {"tests": 20 if target == "contexts" else 43, "failures": 0, "disabled": 0, "testsuites": [
+    report = {"tests": {"keys": 43, "contexts": 20, "delivery": 30}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
         for suite, cases in required_tests(target).items()]}
@@ -1007,8 +1007,8 @@ def test_native_privacy_verification_refuses_existing_compiler(monkeypatch, runn
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows owned-profile unit verifier")
-@pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure"])
-@pytest.mark.parametrize("target", ["keys", "contexts"])
+@pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure", "source_change"])
+@pytest.mark.parametrize("target", ["keys", "contexts", "delivery"])
 def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure, target):
     import json
     import subprocess
@@ -1018,6 +1018,11 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
     source = workspace / "chromium/src"
     output = source / "out/CamouFlowNative"
     output.mkdir(parents=True)
+    if target == "delivery":
+        for name, relative in privacy.DELIVERY_SOURCE_FILES.items():
+            destination = source / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes((privacy.ROOT / "native/drafts/document_delivery" / name).read_bytes())
     (output / "args.gn").write_text("owned args\n", encoding="utf-8")
     (output / "camouflow-build.json").write_text("owned receipt", encoding="utf-8")
     report = tmp_path / "proof.json"
@@ -1026,10 +1031,10 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
     monkeypatch.setattr(privacy.build, "environment", lambda *args: {})
     monkeypatch.setattr(privacy.build, "run", lambda *args, **kwargs: privacy.build.LOCK["chromium_revision"])
     monkeypatch.setattr(privacy.build, "require_stage", lambda *args: None)
-    monkeypatch.setattr(privacy.build, "source_patches", lambda *args:
-                        [{"name": name, "sha256": "a" * 64} for name in (
-                            "0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch",
-                            "0017-native-browser-context-tests.patch")])
+    source_patches = [{"name": name, "sha256": "a" * 64} for name in (
+        "0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch",
+        "0017-native-browser-context-tests.patch")]
+    monkeypatch.setattr(privacy.build, "source_patches", lambda *args: [dict(item) for item in source_patches])
     monkeypatch.setattr(privacy.build, "v8_source_patches", lambda *args: [])
     monkeypatch.setattr(privacy.build, "check_patch_dependencies", lambda *args: None)
     monkeypatch.setattr(privacy.build, "depot_command", lambda *args: ["autoninja"])
@@ -1041,7 +1046,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
 
     monkeypatch.setattr(privacy, "measure_runtime_core", measure)
     commands = []
-    build_target = "content_unittests" if target == "contexts" else "camouflow_native_privacy_unittests"
+    build_target = "content_unittests" if target in {"contexts", "delivery"} else "camouflow_native_privacy_unittests"
 
     def run(args, **kwargs):
         commands.append(args)
@@ -1051,11 +1056,17 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
                 raise subprocess.CalledProcessError(1, args)
             (output / (build_target + ".exe")).write_bytes(b"owned unit executable")
         else:
-            results = {"tests": 20 if target == "contexts" else 43, "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
+            results = {"tests": {"keys": 43, "contexts": 20, "delivery": 30}[target],
+                       "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
                        "testsuites": [{"name": suite, "testsuite": [
                            {"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(cases)]}
                            for suite, cases in privacy.required_tests(target).items()]}
             report.with_name("proof-tests.json").write_text(json.dumps(results), encoding="utf-8")
+            if failure == "source_change":
+                source_patches[0]["sha256"] = "b" * 64
+                if target == "delivery":
+                    (source / privacy.DELIVERY_SOURCE_FILES["privacy_document_service.cc"]).write_text(
+                        "// changed during verification\n", encoding="utf-8")
         return subprocess.CompletedProcess(args, 0)
 
     monkeypatch.setattr(privacy.subprocess, "run", run)
@@ -1070,8 +1081,10 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         assert commands[1][0] == str(output / (build_target + ".exe"))
     assert proof["target"] == target
     if failure is None:
-        assert proof["tests"] == (20 if target == "contexts" else 43) and proof["baseline_browser_code_unchanged"]
+        assert proof["tests"] == {"keys": 43, "contexts": 20, "delivery": 30}[target] and proof["baseline_browser_code_unchanged"]
         assert len(proof["test_binary_sha256"]) == 64
+        if target == "delivery":
+            assert len(proof["delivery_source_sha256"]) == 10
     else:
         assert proof.get("error") and "baseline_browser_code_unchanged" not in proof
     with pytest.raises(ValueError, match="overwrite"):
@@ -2038,6 +2051,39 @@ def test_native_context_verifier_requires_every_registered_context_case():
     names = re.findall(r"TEST_F\(NativePrivacyBrowserContextTest, (\w+)\)", patch)
     assert len(names) == 20
     assert set(names) == REQUIRED_CONTEXT_TESTS["NativePrivacyBrowserContextTest"]
+
+
+def test_native_delivery_verifier_requires_every_draft_endpoint_case():
+    import re
+
+    from scripts.verify_native_privacy_units import REQUIRED_DELIVERY_TESTS, ROOT
+
+    observed = {}
+    for path in (ROOT / "native/drafts/document_delivery").glob("*_unittest.cc"):
+        for suite, case in re.findall(r"TEST_F\(\s*(\w+),\s*(\w+)\)", path.read_text(encoding="utf-8-sig")):
+            observed.setdefault(suite, []).append(case)
+    assert sum(map(len, observed.values())) == 30
+    assert {suite: set(cases) for suite, cases in observed.items()} == REQUIRED_DELIVERY_TESTS
+
+
+def test_native_delivery_verifier_rejects_unpromoted_and_modified_sources(tmp_path):
+    from scripts.verify_native_privacy_units import (
+        DELIVERY_SOURCE_FILES,
+        ROOT,
+        require_delivery_sources,
+    )
+
+    with pytest.raises(ValueError, match="Promote the exact delivery draft"):
+        require_delivery_sources(tmp_path)
+    for name, relative in DELIVERY_SOURCE_FILES.items():
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((ROOT / "native/drafts/document_delivery" / name).read_bytes())
+    assert len(require_delivery_sources(tmp_path)) == 10
+    path = tmp_path / DELIVERY_SOURCE_FILES["privacy_worker_service.cc"]
+    path.write_text("// modified source\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="Promote the exact delivery draft"):
+        require_delivery_sources(tmp_path)
 
 
 def test_native_runtime_verifier_import_does_not_cache_application_database_root():
