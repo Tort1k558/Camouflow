@@ -1,0 +1,54 @@
+diff --git a/third_party/blink/public/mojom/BUILD.gn b/third_party/blink/public/mojom/BUILD.gn
+--- a/third_party/blink/public/mojom/BUILD.gn
++++ b/third_party/blink/public/mojom/BUILD.gn
+@@ -111,6 +111,7 @@
+     "geolocation/geolocation_service.mojom",
+     "hid/hid.mojom",
+     "hyphenation/hyphenation.mojom",
++    "native_privacy/native_privacy_document.mojom",
+     "idle/idle_manager.mojom",
+     "image_downloader/image_downloader.mojom",
+     "image_replacement/image_replacement.mojom",
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -704,6 +704,8 @@
+     "browser_context.cc",
+     "browser_context_impl.cc",
+     "camouflow_native/privacy_context.cc",
++    "camouflow_native/privacy_document_service.cc",
++    "camouflow_native/privacy_document_service.h",
+     "browser_context_impl.h",
+     "browser_interface_binders.cc",
+     "browser_interface_binders.h",
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2558,6 +2558,7 @@
+   defines = []
+   sources = [
+     "../browser/camouflow_native/privacy_context_unittest.cc",
++    "../browser/camouflow_native/privacy_document_service_unittest.cc",
+     "../browser/accessibility/browser_accessibility_manager_unittest.cc",
+     "../browser/accessibility/browser_accessibility_state_impl_unittest.cc",
+     "../browser/accessibility/browser_accessibility_unittest.cc",
+diff --git a/content/browser/browser_interface_binders.cc b/content/browser/browser_interface_binders.cc
+--- a/content/browser/browser_interface_binders.cc
++++ b/content/browser/browser_interface_binders.cc
+@@ -29,6 +29,7 @@
+ #include "content/browser/browser_context_impl.h"
+ #include "content/browser/browser_main_loop.h"
+ #include "content/browser/browsing_topics/browsing_topics_document_host.h"
++#include "content/browser/camouflow_native/privacy_document_service.h"
+ #include "content/browser/contacts/contacts_manager_impl.h"
+ #include "content/browser/content_index/content_index_service_impl.h"
+ #include "content/browser/cookie_store/cookie_store_manager.h"
+@@ -817,6 +818,8 @@
+       &BindRenderFrameHostImpl<
+           &RenderFrameHostImpl::CreateDedicatedWorkerHostFactory>);
+ 
++  map->Add<blink::mojom::NativePrivacyDocument>(&PrivacyDocumentService::Create);
++
+   map->Add<blink::mojom::DevicePostureProvider>(&BindDevicePostureProvider);
+ 
+   map->Add<blink::mojom::FeatureObserver>(
