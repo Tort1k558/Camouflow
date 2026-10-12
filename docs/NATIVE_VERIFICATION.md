@@ -638,7 +638,7 @@ root-key transport, protected Canvas/GPU/audio and other platform runtimes
 remain unfinished. Do not reinterpret this working Windows development
 baseline as completion of the full Native mission.
 
-## Trusted partition input protocol (0011; native execution pending)
+## Trusted partition input protocol (0011; native codec tests passed)
 
 The codec is a `blink::StorageKey` member, using its existing SchemefulSite
 friend access, not a script URL or testing accessor. It returns at most 8,192
@@ -656,8 +656,12 @@ Original `Serialize()` storage naming is unchanged. Retained future partition
 fields are encoded even when third-party partitioning is disabled; callers
 must still enforce partitioned worker/storage lifecycle before protection.
 A serializer alone cannot isolate one unpartitioned shared/service worker.
-Eight new native tests are compiling in the existing Blink common test target,
-including a literal vector independently constructed in Python. The 0010
+Eight new native tests passed in the existing Windows Blink common test target,
+including a literal vector independently constructed in Python. The proof
+`D:\CamouFlowNative\native-privacy-partition-unit-proof.json` records exact source
+patches and confirms baseline browser code, receipt and GN arguments were not
+changed by the test build/run; raw results are in
+`native-privacy-partition-unit-results.json`. The 0010
 browser and immutable development package are preserved as the verified
 baseline; 0011 has not yet been incorporated into a rebuilt browser receipt.
 Root-key loading/IPC, HMAC integration and Canvas readback protection are not

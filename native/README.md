@@ -99,7 +99,7 @@ fingerprint capabilities from this filesystem patch.
 
 ## Current Windows source build
 
-### Trusted partition codec (0011; native unit compilation pending)
+### Trusted partition codec (0011; eight native unit tests passed)
 
 `0011-native-privacy-partition-serialization.patch` adds the bounded, versioned
 `StorageKey::SerializeForNativePrivacy()` input for future browser-owned key
@@ -112,9 +112,13 @@ partitioning cannot silently erase the retained site from this codec.
 
 Eight native tests cover repeat/copy stability, a literal format vector,
 disabled-feature site separation, opaque origin/site/precursor separation,
-storage nonce and ancestor bits, and tuple canonicalization. Their Windows
-`blink_common_unittests` target is now building with four jobs. The verified
-browser/archive remain 0010; this test build does not issue a new own-browser
+storage nonce and ancestor bits, and tuple canonicalization. The Windows
+`blink_common_unittests` target built with four jobs and all eight tests passed.
+Exact source patches, GN arguments, baseline browser code and receipt were
+unchanged through the native test build/run. Proof on D:
+`native-privacy-partition-unit-proof.json`; raw GoogleTest output:
+`native-privacy-partition-unit-results.json`. The verified browser/archive remain
+0010; this unit target does not issue a new own-browser
 receipt or enable privacy protections. Root-key transport, partitioned worker
 lifecycle enforcement and Canvas/GPU/audio modules remain unfinished.
 
