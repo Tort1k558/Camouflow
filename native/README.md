@@ -48,15 +48,30 @@ service-worker registrations, plus cache entry/cache deletion. All three runtime
 code hashes were unchanged through the probe. Evidence is retained in
 `D:\CamouFlowNative\owned-sql-namespace-extended-store-proof.json`.
 
-The patch also adds native SQL tests for extended-path write/reopen and exclusive
-locking, plus rejection of an appended `?exclusive=false` query. Their Windows
-test target is now building with four jobs; those native tests are not yet
-reported as passed. The successful direct probe does not activate extended
-paths in the manager. A browser-internal namespace initialization draft is
-prepared separately on D, without modifying the active test build inputs.
-After native SQL tests, apply/build that integration and verify the unchanged
-manager lifecycle and full storage/runtime gates before promotion.
+The Windows native SQL target subsequently compiled and all **54 native tests
+passed**: 18 ordinary special-character opens, 18 extended-namespace write/reopen
+and exclusive-lock cases, and 18 appended-query rejection cases. Browser code,
+receipt, GN arguments and exact source patches were unchanged through that build
+and execution. Proof: `D:\CamouFlowNative\native-sql-namespace-unit-proof.json`;
+raw GoogleTest output: `native-sql-namespace-unit-results.json` on D.
+The direct probe and SQL tests do not activate extended paths in the manager.
 Original failed controls remain on D; see `docs/NATIVE_VERIFICATION.md`.
+
+## Browser-owned profile namespace (0010; compilation/runtime pending)
+
+After the native SQL target exited successfully, `0010` was applied to the
+pinned Chromium source. It initializes Windows `DIR_USER_DATA` with extended
+filesystem syntax inside the browser, preserving the same physical directory.
+Already extended and device namespace paths are not prefixed twice; UNC syntax
+is handled separately from drive paths. No profile relocation, alias, retry,
+app-side launch formatting, ownership-path change or non-Windows change is made.
+
+A four-job own-fork rebuild is now running. This integration still needs the
+ordinary-launch storage matrix and full manager/runtime suite on the rebuilt
+binary; direct-launch success on the earlier binary is not sufficient. Root
+paths above the Windows bootstrap buffer limit and actual UNC storage remain
+outside verified coverage. Do not claim arbitrary path-length support or
+activate fingerprint capabilities from this filesystem patch.
 
 ## Current Windows source build
 

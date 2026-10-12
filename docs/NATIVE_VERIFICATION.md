@@ -572,6 +572,19 @@ cases must pass independently. Browser-internal namespace integration remains
 an isolated D draft until that build is terminal; app lifecycle/ownership paths
 have not been modified or silently retried.
 
+The Windows `sql_unittests` target subsequently built and ran all 54 selected
+native tests successfully (18 each: ordinary special-character open,
+extended-namespace write/reopen with exclusive locking, and appended-query
+rejection). Proof `D:\CamouFlowNative\native-sql-namespace-unit-proof.json` binds
+the run to exact applied patches and unchanged browser code, receipt and GN
+arguments; raw native results are in `native-sql-namespace-unit-results.json`.
+Only after that process was terminal was `0010` applied. It converts Windows
+user-data path syntax inside Chromium without changing the app's canonical
+profile ownership/lock paths or introducing a second launch attempt. Its new
+four-job build and ordinary-launch storage/full runtime gates remain pending.
+The successful eight-case direct proof on `0009` must not be reused as evidence
+that `0010` manager integration works.
+
 The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feature
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred
