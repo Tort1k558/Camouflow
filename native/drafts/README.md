@@ -8,7 +8,7 @@ Do not modify or reapply patches during an active build.
 
 [`document_delivery/`](document_delivery/README.md) contains an isolated Mojo
 schema and document-scoped browser service draft. The schema passed pinned
-Chromium parser/type validation. C++ compilation, broker registration, renderer
+Chromium parser/type validation and C++ binding generation. C++ compilation, broker registration, renderer
 consumption and lifecycle tests are pending; it is not an applied patch or a
 runtime capability. It never modifies the active Chromium build inputs.
 

@@ -8,6 +8,14 @@ The service belongs in `content/browser/camouflow_native/`. Integration requires
 the Blink Mojo GN source registration, content source/dependencies and the
 document BrowserInterfaceBroker binder. None are applied during the active build.
 
+The pinned Chromium Mojo parser/type checker and both C++ generator passes
+(shared definitions and regular bindings) completed successfully outside the
+active checkout. The generated callback signature matches this service and the
+fixed-length Mojo byte array maps to `std::vector<uint8_t>` in browser bindings;
+the service explicitly copies all 32 bytes. Private evidence:
+`D:/CamouFlowNative/document-delivery-bindings-validation-complete/proof.json`.
+This does not prove C++ compilation, linkage or renderer delivery.
+
 The service follows pinned Chromium's `DocumentService`: cross-document navigation,
 frame deletion and pipe closure destroy the receiver and invalidate readiness
 callbacks. A single request per pipe and a 10-second timer bound pending work;
@@ -18,7 +26,7 @@ not. Inactive/BFCache/prerender documents cannot obtain a response seed.
 
 Required before promotion:
 
-- Generate bindings and compile the service; validate generated fixed-array types.
+- Compile the service and generated bindings, then link their real GN targets.
 - Add RenderViewHostTestHarness/Mojo tests for ready/loading/error/timeout,
   duplicate requests, disconnect, navigation, frame/context shutdown, BFCache,
   opaque partitions, same/cross-site frames and independent OTR contexts.
