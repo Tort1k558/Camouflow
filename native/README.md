@@ -81,9 +81,18 @@ hardware (9), WebRTC (7), automation (55), fonts (42), identity (18), inspector
 accessor serialization (6), and combined policies (5). The suite bound every
 child to the unchanged executable/DLL measurements; report:
 `verification-browser-owned-profile-namespace-full-20261012/suite.json` on D.
-Official shipping staging is now building with four jobs, without executing an
-installer. The new archive and relocated full-payload package have not yet been
-verified. Root paths above
+Official shipping staging completed without executing an installer. The new
+261-file development archive is
+`D:\CamouFlowNative\camouflow-native-001-010-windows-dev.tar.gz`, SHA-256
+`b1e62811e9e1ea2ee52095e329191ad4a25f49605ee0a30ad9bc90f913b8b883`.
+It was installed only into the isolated `owned-release-store-001-010` on D,
+without activation in the user app. All 18 relocated package lifecycle checks
+passed with the archive identity and every payload hash verified before/after.
+Real packaged `chrome://credits` rendered 19,465,020 bytes. Proofs on D:
+`runtime-own-packaged-full-payload-001-010-20261012.json` and
+`own-packaged-real-credits-001-010.json`.
+This is an unsigned, unactivated development baseline, not an authenticated
+customer release or fingerprint capability admission. Root paths above
 the Windows bootstrap buffer limit and actual UNC storage remain outside
 verified coverage. Do not claim arbitrary path-length support or activate
 fingerprint capabilities from this filesystem patch.

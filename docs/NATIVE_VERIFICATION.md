@@ -615,6 +615,29 @@ real credits and relocated package runtime still require verification before
 promotion. The project regression suite passed 1,095 tests after the source
 integration; the 54 native SQL tests are separate from that Python test count.
 
+Official shipping staging then completed with unchanged code, receipt, GN
+arguments and exact source patches. The new development tar.gz contains 261
+files and has SHA-256
+`b1e62811e9e1ea2ee52095e329191ad4a25f49605ee0a30ad9bc90f913b8b883`:
+`D:\CamouFlowNative\camouflow-native-001-010-windows-dev.tar.gz`.
+The installer was not executed. Installation used only the isolated D store
+`owned-release-store-001-010`; user app activation was not changed.
+
+All 18 real relocated package lifecycle checks passed in
+`runtime-own-packaged-full-payload-001-010-20261012.json` on D, including
+Recorder/replay, backup/restore, proxy/permissions, locks and three-profile
+restart/crash rounds with zero surviving owned processes. The report records
+the exact archive digest, all 261 payload hashes and the same measured runtime
+code as the own-fork source suite. Whole-payload inspection matched before and
+after execution. The packaged native `chrome://credits` page also rendered the
+real 19,465,020-byte credits document, recorded in
+`own-packaged-real-credits-001-010.json`. This is rendering evidence, not a full
+legal audit. The archive remains unsigned/unactivated and its fingerprint
+runtime verification flags remain false; authenticated capability admission,
+root-key transport, protected Canvas/GPU/audio and other platform runtimes
+remain unfinished. Do not reinterpret this working Windows development
+baseline as completion of the full Native mission.
+
 The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feature
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred
