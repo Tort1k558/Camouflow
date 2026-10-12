@@ -807,7 +807,13 @@ expectations. The upstream destructor DCHECK and all four required test names
 remain unchanged. This is a test-only correction, not new browser protection.
 The incremental retry uses new evidence paths:
 `D:/CamouFlowNative/worker-handoff-001-028-fixture-lifetime-j4.json`.
-Execution remains pending until that report proves the complete check set.
+The retry passed all four exact cases without skipped tests. Incremental build
+time was 12m19.98s (two steps); test execution took 149 ms. Test executable
+SHA-256: `c12081c58b2370f43f4f2e7ce27f9465f58205c45c298c1e71c442bb2ea273af`.
+The test executable hash, complete case set, unchanged browser core, receipt and
+GN arguments were independently rechecked against the actual files. This proves
+owned seed transport into the worker fixture before evaluation, not real browser
+partition-to-worker equality, Canvas protection or production admission.
 
 ## Reproduce the public candidate replay
 
@@ -828,6 +834,9 @@ GN, a compiler, linker or browser. Temporary replay files are removed afterwards
 
 The public checker passed on registered 001-027 inputs across all 27 candidate
 paths: `D:/CamouFlowNative/document-delivery-public-replay-001-027-v2.json`.
+The checker also passed against registered 001-028 inputs after the test-only
+fixture correction, across the same 27 candidate paths:
+`D:/CamouFlowNative/document-delivery-public-replay-001-028-v1.json`.
 Its Python checks cover path/mode validation, report safety, actual Git replay in
 a controlled fixture and canonical mismatch without publishing success. This is
 reproducible source-composition evidence only, not C++ or runtime admission.

@@ -75,7 +75,7 @@ JSON/CSV → сохранить параметризованный сценар�
 | Идентичность и контексты | Приватные ключи профилей; derivation по partition/surface на стороне браузера | Полный генератор согласованных паспортов устройств |
 | Hardware и шрифты | Нативные ограничения CPU/памяти и выбор установленных Windows-шрифтов | Кроссплатформенная эмуляция устройств |
 | WebRTC и автоматизация | Нативная маршрутизация и политики отдельных automation/headless/CDP-сигналов | Внешние проверки утечек; **полной невидимости CDP нет** |
-| Доставка в workers/document | Worker opt-in transport; черновики document C++/Mojo | Blink handoff-тесты и document runtime/recovery |
+| Доставка в workers/document | Worker opt-in transport; четыре Blink handoff-теста прошли; document-черновики | Document runtime/recovery и production admission |
 | Canvas / GPU / Audio | Canvas-кандидаты; штатное поведение GPU/audio | **Защита не завершена и не включена** |
 | TLS / HTTP | Штатный Chromium/BoringSSL | Измерения на одинаковом маршруте; подмены ClientHello нет |
 | Mobile и платформы | Viewport/touch Web Emulation; проверенный Windows runtime в разработке | Не настоящий Android/iOS; проверки Linux/macOS отложены |
@@ -92,6 +92,7 @@ JSON/CSV → сохранить параметризованный сценар�
 | --- | --- |
 | Существующие runtime-политики | **160 проверок прошли в 8 локальных gates** |
 | Запуск / перезапуск / отклонение workers | **40 проверок прошли**, диагностический opt-in |
+| Blink seed ownership / thread handoff | **4 cases прошли**, с test-only исправлением fixture 0028 |
 | Canvas API без защиты | **4 фазы прошли** — не доказательство защиты |
 | Внешние fingerprint/bot-сервисы | **Не запускались для 001–027** |
 | reCAPTCHA / Turnstile с реальными ключами / hCaptcha | **Не подтверждены для 001–027** |

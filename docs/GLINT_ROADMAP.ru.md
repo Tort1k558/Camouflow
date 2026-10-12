@@ -62,7 +62,7 @@ Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчам
 | CPU/RAM, шрифты, WebRTC, webdriver/headless, ограниченный CDP-сигнал | Нативные политики есть; включение в менеджере требует admission конкретного runtime |
 | Ключи/StorageKey/BrowserContext | 43 native readiness/key cases и 20 реальных context cases прошли; это не доказательство всех renderer/worker-путей |
 | IPC и consumers | 34 endpoint/consumer cases прошли; совместный прогон context/delivery — 54 cases, не дополнительные независимые 54 проверки |
-| Worker startup | 40 runtime-проверок startup/restart/shared-client/rejection прошли в developer-режиме. Четыре Blink handoff cases ещё не исполнены: собирается тестовый target |
+| Worker startup | 40 runtime-проверок прошли в developer-режиме; все четыре Blink handoff cases прошли после test-only исправления 0028. Browser core/receipt/GN не изменились; Canvas/admission этим не подтверждаются |
 | Document delivery до JS | Не завершена. Carrier, throttle, validator, transport и browser producer — незарегистрированные черновики. Transport/clone/DocumentInit и восемь producer translation units прошли syntax; fixtures и end-to-end first-script delivery не исполнены |
 | Canvas | Четыре фазы upstream baseline прошли без защиты; алгоритмы/hooks — черновики, capability не активирована |
 | WebGL/WebGPU, Audio | Полноценная защита не завершена |
@@ -80,7 +80,7 @@ Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчам
 
 | Приоритет | Работа | Условие завершения |
 | --- | --- | --- |
-| P0 | Завершить текущий Blink target | Четыре точных handoff cases исполнены без skipped; хеши тестового бинарника и неизменность browser core подтверждены |
+| P0 — выполнено | Blink handoff target | Четыре точных cases прошли без skipped; хеш тестового бинарника и неизменность browser core/receipt/GN подтверждены. Отчёт: worker-handoff-001-028-fixture-lifetime-j4.json |
 | P0 | Доставка до первого JS/API | Проверены browser-owned partition commitment, финальное состояние документа, владение seed, startup/shutdown всех применимых контекстов |
 | P1 | Матрица Web API и конфигурации | Для каждого API указаны support, owner, механизм применения, проверенная сборка, контексты и пробелы |
 | P1 | Сетевая диагностика | Сопоставимые stock Chromium/Glint, DNS/прокси/TLS/HTTP/заголовки; ограничения маршрута и протокола явно записаны |
@@ -204,7 +204,7 @@ Collector логирует успешные и ошибочные запросы
 
 ### P0: конкретный следующий пакет доставки
 
-1. После текущего target проверить четыре Blink cases и сохранить результат.
+1. Выполнено: четыре Blink cases прошли; результат и хеши сохранены в worker-handoff-001-028-fixture-lifetime-j4.json. Последний проверенный браузер остаётся 001–027, patch 0028 меняет только тест.
 2. Довести document carrier и bounded readiness barrier, зарегистрировать и
    исполнить их fixtures только после проверки producer/consumer-контракта.
    Подготовленный commit transport уже передаёт owned payload в DocumentLoader,
@@ -392,7 +392,7 @@ Linux/macOS отложены пользователем, а не выполне�
 прошедших тестов допустим только с явным знаменателем и не равен готовности продукта.
 Внешние детекторы/CAPTCHA — наблюдения по конкретной сборке/маршруту, не admission.
 
-Приоритет ближайшей работы: **четыре Blink handoff cases → document producer и
+Четыре Blink handoff cases прошли. Приоритет ближайшей работы: **document producer и
 startup/lifetime delivery → матрица API/сети → Canvas → GPU → Audio →
 комбинированная совместимость → release admission**.
 Критические ошибки безопасности или жизненного цикла блокируют продвижение,

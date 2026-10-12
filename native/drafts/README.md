@@ -14,7 +14,8 @@ Earlier isolated parser and syntax results remain historical. Worker startup
 gates and Canvas seed handoff are now registered as 0021-0026 behind a
 developer-only switch.
 The 001-027 browser passed 40 owned worker startup/restart/shared-client/rejection
-checks; four Blink handoff unit cases still require execution. Document startup and Canvas
+checks; all four Blink handoff unit cases passed after test-only correction 0028.
+The verified browser core is unchanged. Document startup and Canvas
 readback helpers/hooks remain unregistered. No Canvas runtime capability is enabled.
 
 ## BrowserContext privacy bridge

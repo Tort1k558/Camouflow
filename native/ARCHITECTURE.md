@@ -46,7 +46,8 @@ passed 40 owned startup/restart/shared-client/rejection checks, with exact recei
 and core-code measurements. This is not proof of internal Blink seed bytes or
 cross-partition key equality. The first four-case Blink handoff run passed two
 cases, then aborted on an extra never-started worker in the sequential fixture.
-Test-only patch 0028 corrects that fixture lifetime; the full retry is pending.
+Test-only patch 0028 corrects that fixture lifetime; all four cases passed on
+retry with the baseline browser core, receipt and GN arguments unchanged.
 Document
 bootstrap and Canvas/WebGL/WebGPU/audio protection remain incomplete.
 

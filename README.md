@@ -75,7 +75,7 @@ necessarily contain the latest Glint development build.
 | Identity & contexts | Private profile keys; browser-owned partition/surface derivation | Complete coherent device-passport generator |
 | Hardware & fonts | Native CPU/memory ceilings and installed Windows-font selection | Cross-platform device emulation |
 | WebRTC & automation | Native routing and selected automation/headless/CDP signal policies | External leak checks; **no full CDP invisibility** |
-| Worker/document delivery | Worker opt-in transport; document C++/Mojo drafts | Blink handoff tests and document runtime/recovery gates |
+| Worker/document delivery | Worker opt-in transport; four Blink handoff tests passed; document drafts | Document runtime/recovery gates and production admission |
 | Canvas / GPU / Audio | Canvas candidates; upstream GPU/audio behavior | **Protection incomplete and not activated** |
 | TLS / HTTP | Upstream Chromium/BoringSSL | Same-route measurements; no custom ClientHello spoofing |
 | Mobile & platforms | Viewport/touch Web Emulation; verified Windows development runtime | Not real Android/iOS; Linux/macOS runtime checks deferred |
@@ -92,6 +92,7 @@ baseline, not a production release or a claim of current security updates.
 | --- | --- |
 | Existing runtime policies | **160 checks passed across 8 local gates** |
 | Worker startup / restart / rejection | **40 checks passed**, diagnostic opt-in |
+| Blink seed ownership / thread handoff | **4 cases passed**, with test-only fixture correction 0028 |
 | Unprotected Canvas API baseline | **4 phases passed** — not protection evidence |
 | External fingerprint/bot services | **Not run for 001–027** |
 | reCAPTCHA / real-key Turnstile / hCaptcha | **Not verified for 001–027** |

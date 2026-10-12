@@ -290,7 +290,8 @@ These controlled runs use explicitly enabled partitioning and diagnostic
 | Google reCAPTCHA v3 | Not run | Not run |
 | Cloudflare Turnstile | Not run | Not run |
 
-The four-case Blink worker-seed handoff gate has not passed. Document
+The four-case Blink worker-seed handoff gate subsequently passed with test-only
+fixture correction 0028, as recorded below. Document
 first-script bootstrap, protected Canvas/WebGL/WebGPU/audio and privacy
 admission remain incomplete. Neither build is a new verified production release.
 
@@ -312,8 +313,15 @@ Patch 0028 moves recreation to the next iteration, preserving seed comparisons,
 shutdown waits, mock expectations and the destructor DCHECK. It changes only the
 test fixture; the last verified browser remains 001-027. The failed report is
 retained as `worker-handoff-001-027-j4.json` in the private build workspace.
-The full four-case incremental retry is pending under the new
-`worker-handoff-001-028-fixture-lifetime-j4.json` evidence path.
+The full four-case incremental retry **passed** under the new
+`worker-handoff-001-028-fixture-lifetime-j4.json` evidence path. All four exact
+cases completed, with no skipped cases. Incremental build: **12m19.98s**, two
+steps; test execution: 149 ms. Test executable SHA-256:
+`c12081c58b2370f43f4f2e7ce27f9465f58205c45c298c1e71c442bb2ea273af`.
+The exact case set, test executable checksum and unchanged browser core,
+receipt and GN arguments were independently verified. This is fixture-level
+seed ownership/timing evidence, not real browser-partition derivation,
+Canvas protection, external anti-bot acceptance or a new browser release.
 
 ## Sources and maintenance
 

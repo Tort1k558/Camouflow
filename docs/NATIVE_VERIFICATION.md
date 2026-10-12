@@ -282,15 +282,28 @@ four-case Blink ownership gate. It selects exact case names rather than the
 entire `WorkerThreadTest` suite and preserves the existing keys/contexts/delivery
 targets. Sixty focused verifier regressions passed, including rejection of
 missing/duplicate/skipped/foreign/failed cases and build/source/browser changes.
-The four C++ handoff cases have not yet been linked or executed by this target.
+At preparation time, the four C++ handoff cases had not been linked or executed.
 The full Python suite after this target extension passed 1245 cases in 61.38s.
 After all mutable-output runtime probes exited, a dry run of `blink_unittests`
 completed successfully and enumerated 1423 remaining CXX commands. D had 301.2 GiB
 free and available commit headroom exceeded 10 GiB. The separate four-case
-handoff gate is now building on four jobs under `worker-handoff-001-027-j4.json`;
-the build log is `worker-handoff-001-027-j4-build.log`. No passing native handoff
-result is claimed until its exact four cases execute. Active source/GN inputs
-remain unchanged; future Canvas drafts must stay outside that checkout.
+handoff gate was built on four jobs under `worker-handoff-001-027-j4.json`;
+the build log is `worker-handoff-001-027-j4-build.log`. That build succeeded in
+2h24m55.18s but the test process aborted after two passing cases: the sequential
+fixture created an extra worker after its last iteration and destroyed it without
+startup/shutdown. Its complete four-case gate failed, not passed.
+
+Test-only patch 0028 creates a successor only at the next iteration, retaining
+all seed comparisons, graceful shutdown waits, mock checks and upstream DCHECKs.
+The incremental retry `worker-handoff-001-028-fixture-lifetime-j4.json` passed
+all four required cases without skipped cases. Build: 12m19.98s, two steps;
+test execution: 149 ms. Test executable SHA-256:
+`c12081c58b2370f43f4f2e7ce27f9465f58205c45c298c1e71c442bb2ea273af`.
+The required case set, executable hash, baseline browser core, receipt and GN
+arguments were independently rechecked. The full Python suite passed 1265 tests.
+This is Blink fixture ownership/timing evidence, not a new browser release,
+real browser-partition seed equality or Canvas protection/admission.
+Future Canvas drafts remain outside the active checkout until their own gates.
 
 An independent unregistered `document_canvas_seed_handoff.patch` now prepares
 the immutable Blink document-side carrier. A native-only initializer owns one
