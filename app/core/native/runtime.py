@@ -90,8 +90,12 @@ class NativeRuntime:
 
     async def _close(self):
         if self.playwright is None and self._driver_start_task is not None:
-            self.playwright = await asyncio.wait_for(asyncio.shield(self._driver_start_task),
-                                                    timeout=self.DRIVER_START_TIMEOUT_SECONDS)
+            startup = self._driver_start_task
+            if startup.done() and (startup.cancelled() or startup.exception() is not None):
+                self._driver_start_task = None
+            else:
+                self.playwright = await asyncio.wait_for(asyncio.shield(startup),
+                                                        timeout=self.DRIVER_START_TIMEOUT_SECONDS)
         context = self.context
         driver = self.playwright
         try:

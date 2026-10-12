@@ -6,6 +6,10 @@ build attached.
 
 ## Unreleased
 
+- Fixed Glint profile-lock cleanup when Playwright driver startup fails or the
+  startup task is cancelled. Terminal failed starts now allow a clean retry;
+  pending startup and shutdown operations continue to retain profile ownership.
+
 ## 0.4.3 - 2026-10-12
 
 - Added the experimental **Glint** engine integration: independent persistent

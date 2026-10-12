@@ -1952,14 +1952,14 @@ def test_native_runtime_core_requires_both_dlls_and_detects_relink_without_launc
                                      "headless-ua", "http-ua", "fake-version"])
 def test_native_combined_policies_require_all_contexts_and_stable_native_observations(failure):
     from copy import deepcopy
-    from scripts.verify_native_canvas import CONTEXTS, GEOMETRY_EXPECTED
+    from scripts.verify_native_canvas import CONTEXTS, ERRORS_EXPECTED, GEOMETRY_EXPECTED
     from scripts.verify_native_combined import validate_observations
 
     digest = "a" * 64
     observed = {name: {"canvas": {"pixels": digest, "repeat": digest, "blob": digest,
                     "htmlBlob": None if name in {"dedicated", "shared", "service"} else digest,
                     "htmlDataUrl": None if name in {"dedicated", "shared", "service"} else digest,
-                    "geometry": dict(GEOMETRY_EXPECTED)},
+                    "geometry": dict(GEOMETRY_EXPECTED), "errors": dict(ERRORS_EXPECTED)},
                     "native": {"cpu": 1, "memory": 0.25, "arial": 120.0, "restricted": 120.0,
                                "userAgent": "Mozilla/5.0 Chrome/148.0.0.0 Safari/537.36",
                                "userAgentHeader": "Mozilla/5.0 Chrome/148.0.0.0 Safari/537.36",
