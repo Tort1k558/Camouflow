@@ -96,6 +96,24 @@ Pending linked binary and runtime verification. No baseline result above applies
 automatically to this candidate. Add dated results and measured hashes only after
 the actual new binary completes its checks.
 
+### Local Canvas calibration — baseline 001–010, 2026-10-12
+
+An additional run of `scripts/verify_native_canvas.py` against the preserved
+001–010 executable above completed all four checks. This tests **unmodified
+Canvas consistency**, not fingerprint masking or anti-bot acceptance.
+
+| Check | Observed scope | Result |
+| --- | --- | --- |
+| Initial readback | Document, same/cross-origin iframe, dedicated/shared/service workers; repeated reads, PNG export and crop geometry | Passed |
+| Initial security/empty images | Document and same/cross-origin iframe; expected security exceptions and empty-image behavior | Passed |
+| Persistent-profile restart | Same six contexts and readback observations compared with initial run | Passed |
+| Restart security/empty images | Same three document/frame contexts | Passed |
+
+Private report: `canvas-calibration-001-010-round2.json` in the external build
+workspace. Executable hash and browser version match the baseline header.
+This is not a same-version stock Chrome comparison, an AudioWorklet/srcdoc
+check, a transformed-Canvas acceptance gate or evidence for candidate 001–015.
+
 ## Sources and maintenance
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.
