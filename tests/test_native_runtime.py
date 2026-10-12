@@ -7,6 +7,61 @@ from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime, NativeRuntimeError
 
 
+@pytest.mark.parametrize("length", [90, 130, 150, 170])
+@pytest.mark.parametrize("name", ["desktop", "mobile"])
+def test_native_storage_matrix_uses_exact_distinct_owned_paths(length, name):
+    from pathlib import PureWindowsPath
+    from scripts.verify_native_storage_paths import profile_for_length
+
+    root = PureWindowsPath("D:/Native/np-owned")
+    profile = profile_for_length(root, length, name)
+    assert len(str(profile)) == length
+    assert profile.relative_to(root).parts[-2:] == (name, "native")
+
+
+def test_native_storage_matrix_rejects_work_directory_that_would_skip_short_cases():
+    from pathlib import PureWindowsPath
+    from scripts.verify_native_storage_paths import profile_for_length
+
+    with pytest.raises(ValueError, match="cannot accommodate"):
+        profile_for_length(PureWindowsPath("D:/" + "p" * 90), 90, "desktop")
+
+
+@pytest.mark.parametrize("failure", ["", "storage", "delete"])
+def test_native_storage_matrix_checks_every_phase_and_keeps_failures(monkeypatch, failure):
+    import asyncio
+    from pathlib import PureWindowsPath
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from scripts import verify_native_storage_paths as probe
+
+    runtimes = []
+    def runtime(profile, executable, config):
+        async def evaluate(script, *args):
+            if script == probe.STORAGE:
+                if failure == "storage":
+                    raise RuntimeError("owned storage error")
+                return probe.expected_storage(args[0] or "replacement")
+            return failure != "delete"
+        page = SimpleNamespace(goto=AsyncMock(), evaluate=AsyncMock(side_effect=evaluate))
+        instance = SimpleNamespace(start=AsyncMock(return_value=SimpleNamespace(pages=[page])), close=AsyncMock())
+        runtimes.append(instance)
+        return instance
+
+    monkeypatch.setattr(probe, "NativeRuntime", runtime)
+    report = {"checks": []}
+    asyncio.run(probe.verify(PureWindowsPath("D:/owned/chrome.exe"), PureWindowsPath("D:/np-owned"),
+                            "http://127.0.0.1:1", report))
+    assert len(report["checks"]) == 8
+    assert report["passed"] is (not failure)
+    assert {check["environment"] for check in report["checks"]} == {"desktop", "mobile_web"}
+    for check, instance in zip(report["checks"], runtimes):
+        assert check["passed"] is (not failure)
+        assert [phase["name"] for phase in check["phases"]] == (
+            [] if failure == "storage" else ["create", "replace"] if failure else ["create", "replace", "restart"])
+        assert instance.close.await_count >= 2
+
+
 def test_native_privacy_keys_persist_and_are_not_shared_between_profiles(tmp_path):
     from app.core.native.identity import IDENTITY_FILE, load_or_create_identity
 

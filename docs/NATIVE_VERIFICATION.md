@@ -480,6 +480,58 @@ native Canvas mask or partition-key transport implementation.
 - **Release maintenance:** security-update/rebase procedure, reviewed patch drift,
   authenticated release metadata, rollback and explicit platform support status.
 
+## Windows storage path regression (2026-10-12)
+
+The own-fork 0001-0007 full suite passed seven of eight gates; runtime failed
+while opening CacheStorage in a nested manager profile. A proposed launch-only
+Windows extended path prefix (`\\?\`) passed cache creation, replacement,
+restart and deletion, but the full runtime gate then failed on IndexedDB.
+An independent eight-case desktop/mobile matrix confirmed IndexedDB failure
+even at a 90-character profile path with that prefix. The launch change was
+rejected and removed; it is not a released fix.
+
+The public `scripts/verify_native_storage_paths.py` now tests exact profile path
+lengths 90, 130, 150 and 170 in both desktop and Mobile Web Emulation modes.
+Each case checks cookies, localStorage, IndexedDB, CacheStorage and service
+worker registration through creation, replacement and browser restart, then
+checks cache entry and cache deletion. It uses only owned disposable profiles
+and loopback fixtures, continues after individual failures and binds reports to
+all three Windows runtime code files. Existing reports are never overwritten.
+
+Run against the explicit own-fork output, using an existing short work root:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\verify_native_storage_paths.py `
+  --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe `
+  --work-dir D:\CamouFlowNative `
+  --report D:\CamouFlowNative\storage-path-matrix-own-normal-20261012.json
+```
+
+The recorded normal-path matrix passed the two 90-character cases and failed
+the six longer cases: at 130 characters cache writes reported `Entry already
+exists`; at 150/170 characters CacheStorage opening failed. This is a storage
+compatibility blocker, not a successful release gate. Source-level filesystem
+and storage-service handling needs correction and revalidation of the same
+matrix, full runtime suite and relocated package. Shortening the fixture path,
+skipping IndexedDB or disabling sandboxing does not resolve this requirement.
+Private negative-control reports are retained on D under
+`owned-all-store-extended-path-results.json` and
+`verification-long-path-runtime-corrected-full-20261012/`.
+
+Native logging narrowed the rejected prefix regression to LevelDB `LockFile`:
+its generated `...database/LOCK` path contains a forward slash after the Windows
+extended prefix. An owned direct `CreateFileW` control reproduced error 123
+(`ERROR_INVALID_NAME`) for that mixed-separator path; replacing the separator
+with a backslash opened the same owned lock file successfully. Evidence is in
+`owned-prefixed-indexeddb-native-log.json` and
+`owned-extended-lock-win32-path-results.json`. This identifies a concrete native
+path-normalization issue; it does not prove that normalization alone resolves
+all longer-path operations. Chromium also contains explicit `MAX_PATH` limits
+for deletion, moves and component-length checks, which need separate review.
+After rejecting the launch change and adding the regression matrix, the local
+project suite passed 1,092 tests. Passing unit tests do not override the failing
+real storage matrix.
+
 The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feature
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred
