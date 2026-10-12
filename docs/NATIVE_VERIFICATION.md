@@ -306,6 +306,23 @@ DLL drift, mismatched child DLL evidence and supported-only argument propagation
 There is no automatic library search or silent legacy-code measurement fallback.
 The complete local regression suite passed 1,080 tests after this change.
 
+### Corrected native Error serialization gate passed
+
+The retry finished with exit code 0 in 6m25.39s (55 executed steps), refreshed
+the exact-source receipt and measured `chrome.dll` as
+`d375da9b9bd93064334d4a3a1c768906b22e3b17bfe322fc0386cfccff490e56`.
+The new full eight-gate run is retained in
+`D:\CamouFlowNative\verification-inspector-console-corrected-full-20261012`.
+Its first inspector/CDP gate passed all six aggregate checks: own/inherited
+stack/name/message getter counters stayed zero during serialization, custom
+`Error.prepareStackTrace` stayed zero during preview, and explicit reads invoked
+the formatter once for the same Error and twice including a fresh Error.
+All seven ordinary native Error descriptions/stacks and explicit accessor
+controls were preserved. This proves the measured Error-preview contract, not
+general CDP invisibility, public-site classifications or CAPTCHA acceptance.
+The other seven groups are still running; a complete suite PASS is not inferred
+from the first passing gate. Shipping/capability admission remains pending.
+
 | Area | Prepared artifact | Required own-fork evidence |
 | --- | --- | --- |
 | Lifecycle and storage | `verify_native_runtime.py` | All 18 checks; five stores survive committed checkpoints; independent profiles; lock exclusion; cancellation; zero owned survivors after controller death and three-profile restart rounds |
