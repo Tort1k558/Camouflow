@@ -217,3 +217,14 @@ diff --git a/content/browser/service_worker/service_worker_host.cc b/content/bro
 +}
 +
  }  // namespace content
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2559,6 +2559,7 @@
+   sources = [
+     "../browser/camouflow_native/privacy_context_unittest.cc",
+     "../browser/camouflow_native/privacy_document_service_unittest.cc",
++    "../browser/camouflow_native/privacy_worker_service_unittest.cc",
+     "../browser/accessibility/browser_accessibility_manager_unittest.cc",
+     "../browser/accessibility/browser_accessibility_state_impl_unittest.cc",
+     "../browser/accessibility/browser_accessibility_unittest.cc",

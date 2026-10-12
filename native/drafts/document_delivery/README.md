@@ -81,6 +81,16 @@ the active source tree remained unchanged. Host-lifetime tests, Blink consumers
 and real runtime delivery are **not implemented or verified**. The document
 integration patch below does not register this worker service by itself.
 
+Nine endpoint test definitions in `privacy_worker_service_unittest.cc` passed
+clang syntax checks; `worker_integration.patch` adds them to content_unittests.
+Coverage specifies readiness/derivation for all three kinds, queued loading,
+shutdown, deadline/late callbacks, receiver-owner destruction, pipe disconnect,
+expired BrowserContext and explicit rejection of unpartitioned shared/service
+workers. Evidence: `D:/CamouFlowNative/worker-endpoint-tests-cpp-check/proof.json`.
+They have **not executed**. The owner fixture is a real UniqueReceiverSet, not an
+actual DedicatedWorkerHost/SharedWorkerHost/ServiceWorkerHost: process teardown,
+worker termination/restart and real host destruction still need separate tests.
+
 ## Integration draft
 
 `integration.patch` registers the schema, browser sources, seven unit cases and
@@ -92,7 +102,7 @@ then apply this integration patch. It passed applicability checks against the
 checks, compilation, linkage and tests remain mandatory before promotion.
 
 The worker integration draft depends on the document integration patch. Copy
-`privacy_worker_service.h` and `.cc` into `content/browser/camouflow_native/`,
+`privacy_worker_service.h`, `.cc` and `_unittest.cc` into `content/browser/camouflow_native/`,
 then apply `worker_integration.patch` only in an idle checkout. It adds host-owned
 UniqueReceiverSets and broker bindings; dedicated/shared workers use their host's
 GetWorkerStorageKey, service workers use the running version's immutable key.
