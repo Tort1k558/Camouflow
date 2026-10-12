@@ -852,7 +852,8 @@ def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tm
                                   "0013-native-owned-profile-key-loader.patch",
                                   "0014-native-private-key-service-lifecycle.patch",
                                   "0015-native-browser-context-key-ownership.patch",
-                                  "0016-native-private-key-readiness.patch"])
+                                  "0016-native-private-key-readiness.patch",
+                                  "0017-native-browser-context-tests.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
@@ -959,13 +960,14 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
 
 
 @pytest.mark.parametrize("mutation", [None, "duplicate", "missing", "skip", "failure", "incomplete", "foreign", "disabled", "malformed"])
-def test_native_privacy_unit_report_requires_exact_completed_cases(mutation):
-    from scripts.verify_native_privacy_units import REQUIRED_TESTS, validate_results
+@pytest.mark.parametrize("target", ["keys", "contexts"])
+def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, target):
+    from scripts.verify_native_privacy_units import required_tests, validate_results
 
-    report = {"tests": 43, "failures": 0, "disabled": 0, "testsuites": [
+    report = {"tests": 20 if target == "contexts" else 43, "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
-        for suite, cases in REQUIRED_TESTS.items()]}
+        for suite, cases in required_tests(target).items()]}
     case = report["testsuites"][0]["testsuite"][0]
     if mutation == "duplicate":
         report["testsuites"][0]["testsuite"][1] = dict(case)
@@ -984,10 +986,10 @@ def test_native_privacy_unit_report_requires_exact_completed_cases(mutation):
     elif mutation == "malformed":
         case["name"] = []
     if mutation is None:
-        validate_results(report)
+        validate_results(report, target=target)
     else:
         with pytest.raises(ValueError):
-            validate_results(report)
+            validate_results(report, target=target)
 
 
 @pytest.mark.parametrize("running", [False, True])
@@ -1006,7 +1008,8 @@ def test_native_privacy_verification_refuses_existing_compiler(monkeypatch, runn
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows owned-profile unit verifier")
 @pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure"])
-def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure):
+@pytest.mark.parametrize("target", ["keys", "contexts"])
+def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure, target):
     import json
     import subprocess
     from scripts import verify_native_privacy_units as privacy
@@ -1025,7 +1028,8 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
     monkeypatch.setattr(privacy.build, "require_stage", lambda *args: None)
     monkeypatch.setattr(privacy.build, "source_patches", lambda *args:
                         [{"name": name, "sha256": "a" * 64} for name in (
-                            "0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch")])
+                            "0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch",
+                            "0017-native-browser-context-tests.patch")])
     monkeypatch.setattr(privacy.build, "v8_source_patches", lambda *args: [])
     monkeypatch.setattr(privacy.build, "check_patch_dependencies", lambda *args: None)
     monkeypatch.setattr(privacy.build, "depot_command", lambda *args: ["autoninja"])
@@ -1037,6 +1041,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
 
     monkeypatch.setattr(privacy, "measure_runtime_core", measure)
     commands = []
+    build_target = "content_unittests" if target == "contexts" else "camouflow_native_privacy_unittests"
 
     def run(args, **kwargs):
         commands.append(args)
@@ -1044,28 +1049,33 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         if args[0] == "autoninja":
             if failure == "compiler_failure":
                 raise subprocess.CalledProcessError(1, args)
-            (output / "camouflow_native_privacy_unittests.exe").write_bytes(b"owned unit executable")
+            (output / (build_target + ".exe")).write_bytes(b"owned unit executable")
         else:
-            results = {"tests": 43, "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
+            results = {"tests": 20 if target == "contexts" else 43, "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
                        "testsuites": [{"name": suite, "testsuite": [
                            {"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(cases)]}
-                           for suite, cases in privacy.REQUIRED_TESTS.items()]}
+                           for suite, cases in privacy.required_tests(target).items()]}
             report.with_name("proof-tests.json").write_text(json.dumps(results), encoding="utf-8")
         return subprocess.CompletedProcess(args, 0)
 
     monkeypatch.setattr(privacy.subprocess, "run", run)
-    proof = privacy.verify(workspace, report)
+    proof = privacy.verify(workspace, report, target=target)
     assert proof["passed"] is (failure is None)
     assert json.loads(report.read_text(encoding="utf-8")) == proof
     assert "Owned subprocess output" in report.with_name("proof-build.log").read_text(encoding="utf-8")
-    assert commands[0][-3:] == ["-j", "4", "camouflow_native_privacy_unittests"]
+    assert commands[0][-3:] == ["-j", "4", build_target]
+    if failure == "compiler_failure":
+        assert len(commands) == 1
+    else:
+        assert commands[1][0] == str(output / (build_target + ".exe"))
+    assert proof["target"] == target
     if failure is None:
-        assert proof["tests"] == 43 and proof["baseline_browser_code_unchanged"]
+        assert proof["tests"] == (20 if target == "contexts" else 43) and proof["baseline_browser_code_unchanged"]
         assert len(proof["test_binary_sha256"]) == 64
     else:
         assert proof.get("error") and "baseline_browser_code_unchanged" not in proof
     with pytest.raises(ValueError, match="overwrite"):
-        privacy.verify(workspace, report)
+        privacy.verify(workspace, report, target=target)
 
 
 def test_native_key_derivation_patch_reuses_canonical_message_header():
@@ -1430,6 +1440,7 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     (patches / "0014-native-private-key-service-lifecycle.patch").write_text("", encoding="utf-8")
     (patches / "0015-native-browser-context-key-ownership.patch").write_text("", encoding="utf-8")
     (patches / "0016-native-private-key-readiness.patch").write_text("", encoding="utf-8")
+    (patches / "0017-native-browser-context-tests.patch").write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")
@@ -2009,6 +2020,24 @@ def test_native_runtime_code_measurement_supports_only_explicit_owned_windows_la
     else:
         with pytest.raises(ValueError, match="canonical and belong"):
             measure_runtime_core(executable, libraries)
+
+
+def test_native_privacy_verifier_rejects_unknown_target():
+    from scripts.verify_native_privacy_units import validate_results
+
+    with pytest.raises(ValueError, match="Unknown native privacy test target"):
+        validate_results({}, target="unknown")
+
+
+def test_native_context_verifier_requires_every_registered_context_case():
+    import re
+    from scripts.native_build import ROOT
+    from scripts.verify_native_privacy_units import REQUIRED_CONTEXT_TESTS
+
+    patch = (ROOT / "native/patches/0017-native-browser-context-tests.patch").read_text(encoding="utf-8-sig")
+    names = re.findall(r"TEST_F\(NativePrivacyBrowserContextTest, (\w+)\)", patch)
+    assert len(names) == 20
+    assert set(names) == REQUIRED_CONTEXT_TESTS["NativePrivacyBrowserContextTest"]
 
 
 def test_native_runtime_verifier_import_does_not_cache_application_database_root():

@@ -19,7 +19,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 | `windows/` | Windows font-policy source |
 | `tests/` | Native policy fixtures and tests |
 | `branding/` | Prepared Glint product/logo patch, not applied |
-| `drafts/` | Unapplied real-context tests, not passing runtime proof |
+| `drafts/` | Status notes for candidates promoted to the registered chain |
 | `build/`, `toolchain/` | Build/toolchain support source |
 | `build-lock.json` | Pinned upstream revisions and build limits |
 | `args.gn` | Development Chromium build configuration |
@@ -37,8 +37,8 @@ emulation, not Android/iOS. Only verified capabilities may be enabled.
 
 The 001-010 Windows development baseline has runtime evidence. The newer 001–015
 Windows browser has linked and passed its runtime suite. Readiness patch 0016
-passed native service tests but is not in that browser; branding/context-test
-candidates need further compilation and execution. No signed own-engine release or guaranteed
+passed native service tests but is not in that browser. Context-test patch 0017
+is compiling; branding still needs application and verification. No signed own-engine release or guaranteed
 anti-bot/CAPTCHA acceptance is advertised.
 
 Development diaries and machine-specific evidence stay outside public source.

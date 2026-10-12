@@ -46,8 +46,33 @@ REQUIRED_TESTS = {
 }
 
 
-def validate_results(report: dict) -> None:
-    expected = {(suite, case) for suite, cases in REQUIRED_TESTS.items() for case in cases}
+REQUIRED_CONTEXT_TESTS = {
+    "NativePrivacyBrowserContextTest": {
+        "PersistentLoadingGatesReadinessAndDerivation", "PersistentIdentitySurvivesActualContextRecreation",
+        "PersistentProfilesHaveIndependentKeys", "OffTheRecordContextsDoNotShareOriginalOrEachOther",
+        "OffTheRecordRejectsPersistentRootBeforeInstallation", "PersistentContextRejectsEmptyRoot",
+        "MissingIdentityFailsWithoutRegeneration", "MalformedIdentityIsNotReplaced",
+        "BrowserContextShutdownClearsReadyService", "ShutdownDuringLoadRejectsLateReply",
+        "DestructionDuringLoadDoesNotUseDestroyedContext", "BrowserBridgeSeparatesSurfacesAndTopLevelSites",
+        "NullContextIsRejected", "ContextReadinessRejectsMissingServiceAndNullContext",
+        "ContextReadinessWaitsForKeyAndAllowsDerivation", "ContextReadinessSettlesFailedIdentity",
+        "ContextShutdownSettlesQueuedReadinessOnce", "ContextDestructionNeverReportsReadinessSuccess",
+        "ContextCallbackShutdownRejectsRemainingReadiness", "OffTheRecordReadinessCompletesInlineWithoutPersistentKey",
+    },
+}
+
+
+def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "keys":
+        return REQUIRED_TESTS
+    if target == "contexts":
+        return REQUIRED_CONTEXT_TESTS
+    raise ValueError("Unknown native privacy test target")
+
+
+def validate_results(report: dict, *, target: str = "keys") -> None:
+    required = required_tests(target)
+    expected = {(suite, case) for suite, cases in required.items() for case in cases}
     if (not isinstance(report, dict)
             or any(type(report.get(key)) is not int for key in ("tests", "failures", "disabled"))
             or report.get("tests") != len(expected)
@@ -55,7 +80,7 @@ def validate_results(report: dict) -> None:
         raise ValueError("Native privacy test totals are incomplete or failed")
     observed = []
     suites = report.get("testsuites")
-    if not isinstance(suites, list) or len(suites) != len(REQUIRED_TESTS):
+    if not isinstance(suites, list) or len(suites) != len(required):
         raise ValueError("Native privacy test suites are missing")
     for suite in suites:
         if (not isinstance(suite, dict) or not isinstance(suite.get("name"), str)
@@ -81,7 +106,9 @@ def require_idle_builder() -> None:
         raise ValueError("A native compiler/build process is already running; wait for its terminal result")
 
 
-def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None, jobs: int = 4) -> dict:
+def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None, jobs: int = 4,
+           target: str = "keys") -> dict:
+    required = required_tests(target)
     if sys.platform != "win32":
         raise ValueError("The owned-profile key loader verification currently supports Windows only")
     if type(jobs) is not int or not 1 <= jobs <= min(4, build.LOCK["build_jobs"]):
@@ -111,24 +138,30 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     build.require_stage(workspace / "chromium", "hooks")
     patches = build.source_patches(source, env) + build.v8_source_patches(source, env)
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
+    if target == "contexts":
+        required_patches.add("0017-native-browser-context-tests.patch")
     if not required_patches.issubset(item["name"] for item in patches):
         raise ValueError("The exact context ownership and readiness patches are required")
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    proof = {"passed": False, "scope": "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission",
+    scope = ("Actual content-layer BrowserContext bridge/lifecycle/readiness units; not Chrome ProfileImpl startup, IPC, Canvas or admission"
+             if target == "contexts" else
+             "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission")
+    build_target = "content_unittests" if target == "contexts" else "camouflow_native_privacy_unittests"
+    proof = {"passed": False, "scope": scope, "target": target,
              "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path)}
     with log_path.open("x", encoding="utf-8", newline="\n") as log:
         try:
             build.check_patch_dependencies(source, env)
             subprocess.run(build.depot_command("autoninja", workspace) +
-                           ["-C", "out/CamouFlowNative", "-j", str(jobs), "camouflow_native_privacy_unittests"],
+                           ["-C", "out/CamouFlowNative", "-j", str(jobs), build_target],
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
-            executable = output / "camouflow_native_privacy_unittests.exe"
-            subprocess.run([str(executable), "--gtest_filter=" + ":".join(name + ".*" for name in REQUIRED_TESTS),
+            executable = output / (build_target + ".exe")
+            subprocess.run([str(executable), "--gtest_filter=" + ":".join(name + ".*" for name in required),
                             "--single-process-tests", "--gtest_output=json:" + str(results)],
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
-            validate_results(json.loads(results.read_text(encoding="utf-8-sig")))
+            validate_results(json.loads(results.read_text(encoding="utf-8-sig")), target=target)
             if (measure_runtime_core(output / "chrome.exe") != core
                     or (output / "args.gn").read_bytes() != arguments
                     or (output / "camouflow-build.json").read_bytes() != receipt
@@ -136,7 +169,7 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                 raise ValueError("Verification changed baseline browser code, receipt or source inputs")
             with executable.open("rb") as stream:
                 test_checksum = hashlib.file_digest(stream, "sha256").hexdigest()
-            proof.update(passed=True, tests=sum(map(len, REQUIRED_TESTS.values())),
+            proof.update(passed=True, tests=sum(map(len, required.values())),
                          test_binary_sha256=test_checksum,
                          baseline_browser_code_unchanged=True, baseline_runtime_core_sha256_measured=core,
                          args_sha256=hashlib.sha256(arguments).hexdigest(),
@@ -155,9 +188,10 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--vs-installation", type=Path)
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
+    parser.add_argument("--target", choices=("keys", "contexts"), default="keys")
     args = parser.parse_args()
     try:
-        report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs)
+        report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs, target=args.target)
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         print(f"Native privacy verification failed: {error}", file=sys.stderr)
         return 1

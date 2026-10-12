@@ -21,7 +21,7 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | --- | --- |
 | `scripts/verify_release.py --build --runtime` | Desktop package and packaged legacy-engine checks |
 | `scripts/verify_native_cpp.py` | Standalone native policy primitives |
-| `scripts/verify_native_privacy_units.py` | 43 exact required key/loading/owner/readiness cases for chain 001–016 |
+| `scripts/verify_native_privacy_units.py` | Default: 43 exact key/service cases; `--target contexts`: 20 real BrowserContext cases for chain 001–017 |
 | `scripts/verify_native_suite.py` | Runtime, hardware, WebRTC, automation, fonts, identity, CDP and combined gates |
 | `scripts/verify_native_storage_paths.py` | Windows path-depth/storage probes |
 | `scripts/verify_native_canvas.py` | Canvas verification tooling, not an implemented protection claim |
@@ -64,14 +64,15 @@ packaged-payload checks. Key/codec/owner native units are separate evidence.
 The newer 001–015 production context integration has linked a Windows browser;
 its eight runtime gates (160 checks) passed with independently rechecked report
 and core-code hashes. All 33 named native-unit cases also passed and were
-independently revalidated. External verification remains in progress;
+independently revalidated. Limited external observations are in the test matrix;
 this is not release admission or full key-service behavior proof.
 An opt-in actual Chrome profile/OTR startup smoke completed initial/restart
 storage-separation checks; it does not observe key-service readiness or derivation.
 Readiness patch 0016 is now registered/applied; its ten additional cases extend
 the current verifier to 43; all 43 cases compiled and passed. The linked browser
-above still contains only 001–015. The twenty real-context cases remain an
-unregistered/unexecuted draft; neither change has browser release admission.
+above still contains only 001–015. The twenty real-context cases are registered
+in patch 0017 and their content unit target is building; execution is not yet
+verified. Neither change has browser release admission.
 
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External

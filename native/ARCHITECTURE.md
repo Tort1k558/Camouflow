@@ -32,7 +32,8 @@ ephemeral identities; they must never redirect to the persistent original.
 
 Key loading is asynchronous on a blocking worker; derivation fails until ready.
 Readiness callbacks are registered in patch 0016 and passed 43 native cases;
-the linked 001–015 browser lacks them. Real-context tests remain unapplied drafts.
+the linked 001–015 browser lacks them. Real-context tests are registered in
+patch 0017 with native compilation/execution pending.
 Future renderer/worker delivery must be lifetime-bound and use browser-owned
 partition state. Canvas/WebGL/WebGPU/audio protection remains incomplete.
 

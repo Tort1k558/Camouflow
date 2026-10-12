@@ -222,12 +222,23 @@ The retry completed all **43 exact native cases**, including ten readiness cases
 with browser code/receipt unchanged. Private report:
 `privacy-readiness-001-016-bindings-fixed.json`. The linked browser remains
 001–015; these service tests do not establish readiness bridge runtime, renderer
-IPC or Canvas protection. The real-context draft remains unapplied.
+IPC or Canvas protection. Real-context tests were subsequently promoted to
+registered/applied patch 0017; their execution remains pending.
 
 The production readiness bridge translation unit also compiled successfully
 without changing the linked browser or receipt; private object proof:
 `readiness-bridge-object-001-016.json`. Object compilation is not browser linkage
-or execution of the real-context test draft.
+or execution of the real-context tests.
+
+### Source-only real-context progression, chain 001–017
+
+The public native verifier now supports a separate `--target contexts` mode,
+building `content_unittests` and requiring exactly 20 named
+`NativePrivacyBrowserContextTest` cases. Key/service mode still requires its
+original 43 cases; neither mode accepts the other mode's results as coverage.
+Patch 0017 is registered/applied and the target is building. No passing context
+execution or newly linked 001–017 browser is claimed. The preserved 001–015
+runtime remains the last linked/verified browser.
 
 ## Sources and maintenance
 

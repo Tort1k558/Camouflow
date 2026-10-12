@@ -2,8 +2,8 @@
 
 Glint is CamouFlow's own Chromium fork. This guide builds the **registered
 development patch chain**, not Camoufox/CloakBrowser and not an admitted release.
-Linux/macOS own-fork builds are deferred. Branding and context-test candidates in
-`branding/` and `drafts/` are not registered build inputs yet.
+Linux/macOS own-fork builds are deferred. The branding candidate in `branding/`
+is not a registered build input. Context tests are registered in patch 0017.
 
 ## Requirements
 
@@ -101,12 +101,16 @@ Use fresh report paths outside source/application repositories:
 if ($LASTEXITCODE -ne 0) { throw 'Glint runtime suite failed' }
 & $python scripts/verify_native_privacy_units.py --workspace $workspace --report "$workspace\privacy-units-new.json" --vs-installation $env:vs2026_install --jobs 4
 if ($LASTEXITCODE -ne 0) { throw 'Glint privacy units failed' }
+& $python scripts/verify_native_privacy_units.py --workspace $workspace --report "$workspace\privacy-contexts-new.json" --vs-installation $env:vs2026_install --jobs 4 --target contexts
+if ($LASTEXITCODE -ne 0) { throw 'Glint BrowserContext units failed' }
 ```
 
 The runtime suite covers runtime, hardware, WebRTC, automation, fonts, identity,
 CDP and combined policies. Private-key units currently require 43 named cases
 for chain 001–016, including readiness; older 001–015 reports covered 33.
-The real BrowserContext test draft remains unregistered and needs its own execution.
+Patch 0017 adds 20 required real content-layer BrowserContext cases to
+`content_unittests`, executed separately with `--target contexts`. This target
+may require substantial additional compilation; do not run concurrent builds.
 The scripts do not admit capabilities automatically or prove CAPTCHA success.
 Do not substitute a passing old report, SDK binary or Python tests for new
 own-fork runtime evidence. Canvas/GPU/audio protection is not complete.

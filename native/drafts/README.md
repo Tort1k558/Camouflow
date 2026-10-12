@@ -1,12 +1,12 @@
-# Unapplied Glint development patches
+# Promoted Glint development candidates
 
-The remaining context-test candidate is public source, not a registered build
-input or passing runtime evidence. Do not apply it during an active build.
-Its promoted readiness dependency is described separately below.
+Both privacy candidates have moved to the registered patch chain. The existing
+linked browser remains 001–015; registered source is not browser runtime proof.
+Do not modify or reapply patches during an active build.
 
 ## BrowserContext privacy bridge
 
-`browser-context-tests.patch` adds 20 cases to the pinned Chromium
+`../patches/0017-native-browser-context-tests.patch` adds 20 cases to the pinned Chromium
 `content_unittests` target, using real TestBrowserContext/BrowserTaskEnvironment
 and the production Native bridge. It is not another SupportsUserData-only test.
 
@@ -24,15 +24,15 @@ Shutdown tests inspect the underlying service state as well as bridge readiness:
 checking only ShutdownStarted would conceal a missing service shutdown hook.
 Tests use public fixed fixture identities, never real user profile secrets.
 
-The patch passes `git apply --check` against the current source and does not
-modify it. It has **not been compiled or run**. Registration in the exact source
-replay gate, compilation and execution are pending after the current build.
+The patch passed `git apply --check`, was registered in the exact source replay
+gate and applied after readiness verification completed. Its content unit target
+is now compiling; successful execution has **not** been established.
 The planned execution is the standard content unit target filtered to
 `NativePrivacyBrowserContextTest.*`, with single-process GoogleTest JSON output.
 All 20 named cases must finish successfully; a count alone is insufficient.
 Seven cases use the readiness bridge now registered in
-`../patches/0016-native-private-key-readiness.patch`. Register this context-test
-candidate only after verifying that dependency. They check absent/null contexts, queued
+`../patches/0016-native-private-key-readiness.patch`, whose 43 native service/key
+cases passed before this promotion. They check absent/null contexts, queued
 loading, identity failure, real context shutdown/destruction, reentrant shutdown
 and off-the-record inline completion without reading the persistent identity.
 
@@ -60,7 +60,7 @@ failure without identity regeneration, shutdown/late replies, destruction,
 completion-time shutdown/destruction, nested callbacks and the queue bound.
 They extend the existing native unit target, not a separate test framework.
 
-The patch was promoted from this draft directory after the 001–015 build and
+The readiness patch was promoted from this directory after the 001–015 build and
 verification processes completed. It is registered/applied in the development
 checkout; the strict verifier now requires **43** cases, including the ten new
 readiness cases. All 43 native cases compiled and passed after correcting test
