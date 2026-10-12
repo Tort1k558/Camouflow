@@ -1,6 +1,6 @@
 # Glint document and worker delivery candidates
 
-Unregistered, uncompiled draft outside the active Chromium checkout. No Canvas
+Unregistered, unlinked draft outside the active Chromium checkout. No Canvas
 protection or runtime capability is enabled by these files.
 
 The Mojo schema belongs in `third_party/blink/public/mojom/native_privacy/`.
@@ -29,6 +29,22 @@ cases specify missing/ready/loading state, shutdown, deadline, pipe disconnect
 and document destruction. They passed syntax checks but are **not registered,
 linked or executed**;
 they are not included in the existing 20 BrowserContext or 43 key/service cases.
+
+The current document draft has nine test definitions, not seven executed cases.
+Two subsequent cases specify retained partition fields when third-party storage
+partitioning is disallowed and rejection/disconnection of a duplicate request
+while loading. The document receiver now snapshots `SerializeForNativePrivacy()`
+and compares that exact encoding both before waiting and before replying.
+Ordinary `StorageKey::operator==` intentionally ignores the retained
+`*_if_third_party_enabled` fields; using it here could accept a different native
+privacy partition despite deriving distinct subkeys. Missing/oversized encodings
+reject delivery rather than treating two serialization failures as equal.
+This is still a draft fix, not a change to the verified browser binary. The new
+primitive test does not simulate mutation of a live RenderFrameHost's private
+storage key or prove first-script document/worker bootstrap.
+The updated service and nine-case fixture passed isolated Chromium-flag syntax
+checks: `D:/CamouFlowNative/document-partition-and-duplicate-cpp-check/proof.json`.
+No cases were linked or run; previous seven-case proof hashes remain historical.
 
 The service follows pinned Chromium's `DocumentService`: cross-document navigation,
 frame deletion and pipe closure destroy the receiver and invalidate readiness

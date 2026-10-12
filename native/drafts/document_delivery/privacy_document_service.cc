@@ -27,7 +27,8 @@ PrivacyDocumentService::PrivacyDocumentService(
     RenderFrameHost& frame,
     mojo::PendingReceiver<blink::mojom::NativePrivacyDocument> receiver)
     : DocumentService(frame, std::move(receiver)),
-      partition_(frame.GetStorageKey()) {}
+      partition_(frame.GetStorageKey()),
+      partition_encoding_(partition_.SerializeForNativePrivacy()) {}
 
 PrivacyDocumentService::~PrivacyDocumentService() = default;
 
@@ -38,8 +39,7 @@ void PrivacyDocumentService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
   }
   requested_ = true;
   pending_reply_ = std::move(callback);
-  if (!render_frame_host().IsActive() ||
-      render_frame_host().GetStorageKey() != partition_) {
+  if (!render_frame_host().IsActive() || !IsCurrentPartition()) {
     Complete(Status::kUnavailable, nullptr);
     return;
   }
@@ -57,8 +57,7 @@ void PrivacyDocumentService::OnReady(bool ready) {
   if (!pending_reply_) {
     return;
   }
-  if (!ready || !render_frame_host().IsActive() ||
-      render_frame_host().GetStorageKey() != partition_) {
+  if (!ready || !render_frame_host().IsActive() || !IsCurrentPartition()) {
     Complete(Status::kUnavailable, nullptr);
     return;
   }
@@ -76,6 +75,12 @@ void PrivacyDocumentService::OnReady(bool ready) {
 
 void PrivacyDocumentService::OnTimeout() {
   Complete(Status::kTimedOut, nullptr);
+}
+
+bool PrivacyDocumentService::IsCurrentPartition() const {
+  return partition_encoding_.has_value() &&
+         render_frame_host().GetStorageKey().SerializeForNativePrivacy() ==
+             partition_encoding_;
 }
 
 void PrivacyDocumentService::Complete(

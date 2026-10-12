@@ -3,6 +3,9 @@
 #ifndef CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_DOCUMENT_SERVICE_H_
 #define CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_DOCUMENT_SERVICE_H_
 
+#include <optional>
+#include <string>
+
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
 #include "content/public/browser/document_service.h"
@@ -31,10 +34,12 @@ class PrivacyDocumentService final
 
   void OnReady(bool ready);
   void OnTimeout();
+  bool IsCurrentPartition() const;
   void Complete(blink::mojom::NativePrivacyDeliveryStatus status,
                 blink::mojom::NativePrivacyCanvasPolicyPtr policy);
 
   const blink::StorageKey partition_;
+  const std::optional<std::string> partition_encoding_;
   bool requested_ = false;
   GetCanvasPolicyCallback pending_reply_;
   base::OneShotTimer timer_;

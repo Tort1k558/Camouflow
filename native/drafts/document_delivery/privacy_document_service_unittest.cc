@@ -12,6 +12,8 @@
 #include "content/public/browser/native_privacy_context.h"
 #include "content/public/test/test_renderer_host.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/test_support/test_utils.h"
+#include "net/base/schemeful_site.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 
@@ -107,6 +109,30 @@ TEST_F(NativePrivacyDocumentServiceTest, LoadingDoesNotReplyBeforeReadiness) {
   EXPECT_EQ(replies, 1);
 }
 
+TEST_F(NativePrivacyDocumentServiceTest,
+       NativePartitionEncodingRetainsDisabledStoragePartitionFields) {
+  Initialize();
+  task_environment()->RunUntilIdle();
+  const auto origin = url::Origin::Create(GURL("https://canvas.test/"));
+  const auto first = blink::StorageKey::Create(
+      origin, net::SchemefulSite(GURL("https://first.test/")),
+      blink::mojom::AncestorChainBit::kCrossSite, false);
+  const auto second = blink::StorageKey::Create(
+      origin, net::SchemefulSite(GURL("https://second.test/")),
+      blink::mojom::AncestorChainBit::kCrossSite, false);
+  ASSERT_EQ(first, second);
+  const auto first_encoding = first.SerializeForNativePrivacy();
+  const auto second_encoding = second.SerializeForNativePrivacy();
+  ASSERT_TRUE(first_encoding);
+  ASSERT_TRUE(second_encoding);
+  EXPECT_NE(first_encoding, second_encoding);
+  const auto first_seed = DeriveNativePrivacyKey(browser_context(), first, "canvas");
+  const auto second_seed = DeriveNativePrivacyKey(browser_context(), second, "canvas");
+  ASSERT_TRUE(first_seed);
+  ASSERT_TRUE(second_seed);
+  EXPECT_NE(first_seed, second_seed);
+}
+
 TEST_F(NativePrivacyDocumentServiceTest, ShutdownSettlesOnceWithoutSeed) {
   Initialize();
   auto remote = Connect();
@@ -175,6 +201,24 @@ TEST_F(NativePrivacyDocumentServiceTest, DocumentDestructionDropsLoadingReply) {
   task_environment()->RunUntilIdle();
   EXPECT_EQ(replies, 0);
   EXPECT_FALSE(remote.is_connected());
+}
+
+TEST_F(NativePrivacyDocumentServiceTest, DuplicateRequestClosesLoadingPipe) {
+  Initialize();
+  auto remote = Connect();
+  int replies = 0;
+  remote->GetCanvasPolicy(base::BindLambdaForTesting(
+      [&](Status, Policy) { ++replies; }));
+  remote.FlushForTesting();
+  ASSERT_EQ(replies, 0);
+  mojo::test::BadMessageObserver observer;
+  remote->GetCanvasPolicy(base::BindLambdaForTesting(
+      [&](Status, Policy) { ++replies; }));
+  EXPECT_EQ(observer.WaitForBadMessage(),
+            "Glint policy requested twice on one pipe");
+  task_environment()->RunUntilIdle();
+  EXPECT_FALSE(remote.is_connected());
+  EXPECT_EQ(replies, 0);
 }
 
 }  // namespace
