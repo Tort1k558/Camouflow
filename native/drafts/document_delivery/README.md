@@ -376,3 +376,29 @@ host/network disconnection, timeout, ordered Connect/Freeze/Resume and early Ter
 classic/module scripts, partitioned reuse across clients, nested workers and
 Canvas readback/export agreement. Service-worker and document startup are still
 unfinished; no Canvas capability or production admission is enabled.
+
+### Service-worker thread handoff draft
+
+`service_worker_canvas_thread_handoff.patch` adds an owned optional surface seed
+to WebEmbeddedWorkerStartData and moves it into GlobalScopeCreationParams before
+ServiceWorkerThread is constructed or started. It deliberately does not derive
+the value from main_script_load_params: that pointer is absent for installed
+scripts loaded from the service-worker script cache. One start-data field can
+therefore serve both fresh network installs and subsequent installed-script
+starts, for classic and module workers.
+
+No code currently populates the new field. Normal service workers retain an
+absent seed; this patch alone provides neither policy readiness nor protected
+Canvas. The service-worker host endpoint still needs startup wiring, termination
+handling and runtime tests with multiple clients/partitions. Document bootstrap
+also remains unfinished. Do not populate the field with a creator-document key
+or treat cached scripts as exempt from the readiness gate.
+
+The complete eleven-patch draft stack applies to an isolated copy without active
+input changes:
+`D:/CamouFlowNative/service-worker-complete-handoff-full-stack-applicability/proof.json`.
+WebEmbeddedWorkerImpl passed isolated syntax checking with the pinned modules
+flags: `service-worker-complete-handoff-cpp-check/proof.json`.
+These are not linking or service-worker lifecycle results. Required runtime cases
+include fresh install, installed-script restart, update, classic/module scripts,
+termination while policy is pending, partitioned reuse and readback agreement.
