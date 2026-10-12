@@ -181,7 +181,7 @@ The ten raster-copy test definitions were checked separately with test-appropria
 flags; production Blink global-constructor restrictions are not appropriate for
 GoogleTest registrations. No warnings were disabled to compile implementations.
 
-The image wrapper is **not linked, executed or called by Canvas APIs**, and is
+The image wrapper is **not linked, executed or called by Canvas APIs in the active browser**, and is
 not part of the lightweight Skia-only test integration patch. Its runtime tests
 require Blink platform dependencies and must cover GPU/lazy snapshots, failure
 paths, orientation, snapshot lifetime and encoding. First-script trusted policy
@@ -223,3 +223,48 @@ out/CamouFlowNative/blink_platform_unittests.exe --gtest_filter=GlintCanvasCopyT
 Inspect all 18 names and statuses in fresh output. Raster PNG equivalence does
 not prove toBlob/OffscreenCanvas.convertToBlob behavior, GPU/lazy snapshot reads,
 document/worker policy delivery or resistance to fingerprinting detectors.
+
+## Experimental OffscreenCanvas export call site
+
+`core_helpers_integration.patch` places the six candidate/adapter source files in
+`core/html/canvas/glint`, registers them in the existing HTML source list and adds
+an explicit dependency on Chromium's existing BoringSSL target. Helpers and the
+export caller belong to the same Blink core component; this avoids making core
+depend on a test-only content/browser target or requiring a new shared library.
+GN formatting and applicability checks passed without active source changes:
+`D:/CamouFlowNative/canvas-core-helper-registration-draft/proof.json`.
+Do not combine this runtime registration with either alternative test-only
+registration as though their duplicate helper definitions were one layout.
+
+`offscreen_candidate_hook.patch` adds a native call from convertToBlob after the
+existing detached/layer/taint/context/size checks and successful GetImage.
+Only a WorkerGlobalScope with an owned bootstrap seed selects the experimental
+edge-coherent image adapter. Current seed delivery is behind the explicit
+developer-only `--glint-worker-canvas-bootstrap-test` startup draft; normal
+profiles and window OffscreenCanvas exports have no seed and retain their
+original behavior. The live image is not changed: only the owned export image
+is handed to the existing CanvasAsyncBlobCreator. Unsupported formats, read or
+allocation failures reject with NotReadableError instead of exporting an
+unprotected fallback.
+
+The additional-pixel budget is an explicit fixed **64 MiB test limit**, accounting
+for both detached raster copies. It is not a total browser/encoder memory limit
+or a finalized resource policy. It can reject large/high-precision canvases in
+the experimental path. That compatibility needs measurement before admission.
+
+The helper implementations and export caller passed isolated syntax checks with
+actual Blink core flags:
+`D:/CamouFlowNative/offscreen-canvas-core-module-cpp-check/proof.json`.
+The final caller's ordered include layout has a separate syntax proof:
+`D:/CamouFlowNative/offscreen-canvas-ordered-core-hook-cpp-check/proof.json`.
+These are not linkage or Canvas API execution results. The complete worker/core/
+hook patch stack is still unregistered and unapplied to the active checkout;
+GN graph generation and real runtime compatibility tests remain pending.
+
+This implements **one inactive experimental export hook**, not full Canvas
+protection. getImageData/toDataURL/toBlob, document bootstrap and cross-API pixel
+agreement remain incomplete; using only this hook can itself expose an
+inconsistency with unprotected APIs. The algorithm's known-value detectability,
+GPU/lazy snapshots, alpha/conversion/encoding behavior, errors and editor round
+trips still require review. Do not advertise a protected Canvas capability or
+detector/CAPTCHA success from this draft or its syntax checks.

@@ -1,0 +1,48 @@
+diff --git a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+--- a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
++++ b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+@@ -28,6 +28,7 @@
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_factory.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_resource_tracker.h"
+ #include "third_party/blink/renderer/core/html/canvas/element_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
+ #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+ #include "third_party/blink/renderer/core/html/canvas/ukm_parameters.h"
+ #include "third_party/blink/renderer/core/html/canvas/unique_font_selector.h"
+@@ -35,6 +36,8 @@
+ #include "third_party/blink/renderer/core/inspector/console_message.h"
+ #include "third_party/blink/renderer/core/probe/core_probes.h"
+ #include "third_party/blink/renderer/core/workers/dedicated_worker_global_scope.h"
++#include "third_party/blink/renderer/core/workers/worker_global_scope.h"
++
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ #include "third_party/blink/renderer/platform/fonts/plain_text_painter.h"
+ #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
+@@ -423,11 +426,26 @@
+   base::TimeTicks start_time = base::TimeTicks::Now();
+   scoped_refptr<StaticBitmapImage> image_bitmap = context_->GetImage();
+   if (image_bitmap) {
++    auto* execution_context = ExecutionContext::From(script_state);
++    if (auto* worker_scope = DynamicTo<WorkerGlobalScope>(execution_context)) {
++      if (const auto seed = worker_scope->GlintCanvasPartitionSeed()) {
++        // Developer bootstrap only; this candidate is not admitted protection.
++        constexpr size_t kCandidateAdditionalPixelBudget = 64U * 1024U * 1024U;
++        auto protected_image = glint::candidate::CreateProtectedCanvasImage(
++            image_bitmap, *seed, kCandidateAdditionalPixelBudget);
++        if (!protected_image.has_value()) {
++          exception_state.ThrowDOMException(
++              DOMExceptionCode::kNotReadableError,
++              "Glint Canvas candidate readback could not be completed.");
++          return EmptyPromise();
++        }
++        image_bitmap = std::move(protected_image).value();
++      }
++    }
+     auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<Blob>>(
+         script_state, exception_state.GetContext());
+     CanvasAsyncBlobCreator::ToBlobFunctionType function_type =
+         CanvasAsyncBlobCreator::kOffscreenCanvasConvertToBlobPromise;
+-    auto* execution_context = ExecutionContext::From(script_state);
+     auto* async_creator = MakeGarbageCollected<CanvasAsyncBlobCreator>(
+         image_bitmap, options, function_type, start_time, execution_context,
+         resolver);
