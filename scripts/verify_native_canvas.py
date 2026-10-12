@@ -45,15 +45,20 @@ READ = """async () => {
   const pixels = await hash(read(context));
   const repeat = await hash(read(context));
   const blob = await decode(await canvas.convertToBlob({type: 'image/png'}));
-  let htmlBlob = null, htmlDataUrl = null;
+  let htmlBlob = null, htmlDataUrl = null, htmlCapture = null;
   if (typeof document !== 'undefined') {
     const html = document.createElement('canvas');
     html.width = width; html.height = height;
-    html.getContext('2d').drawImage(canvas, 0, 0);
-    const exported = await new Promise((resolve, reject) => html.toBlob(
+    const htmlContext = html.getContext('2d', {willReadFrequently: true});
+    htmlContext.drawImage(canvas, 0, 0);
+    const dataUrl = html.toDataURL('image/png');
+    const pendingExport = new Promise((resolve, reject) => html.toBlob(
       value => value ? resolve(value) : reject(new Error('Canvas export returned null')), 'image/png'));
+    htmlContext.fillStyle = '#000000'; htmlContext.fillRect(0, 0, width, height);
+    htmlCapture = await hash(read(htmlContext)) !== pixels;
+    const exported = await pendingExport;
     htmlBlob = await decode(exported);
-    const response = await fetch(html.toDataURL('image/png'));
+    const response = await fetch(dataUrl);
     htmlDataUrl = await decode(await response.blob());
   }
   const equal = (left, right) => left.length === right.length && left.every((value, i) => value === right[i]);
@@ -96,7 +101,7 @@ READ = """async () => {
     zeroHeightRead: await errorName(() => context.getImageData(0, 0, 1, 0)),
     emptyOffscreenExport: await errorName(() => empty.convertToBlob({type: 'image/png'}))
   };
-  return {pixels, repeat, blob, htmlBlob, htmlDataUrl, geometry, errors};
+  return {pixels, repeat, blob, htmlBlob, htmlDataUrl, htmlCapture, geometry, errors};
 }"""
 
 CONTEXTS = {"document", "same_origin_frame", "cross_origin_frame", "about_blank_frame",
@@ -186,10 +191,13 @@ class CanvasFixtureHandler(FixtureHandler):
 def validate_observations(observed: dict, previous: dict | None = None) -> None:
     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
         raise ValueError("Canvas probe must observe every document and worker context")
-    if any(not isinstance(values, dict) or set(values) != {"pixels", "repeat", "blob", "htmlBlob", "htmlDataUrl", "geometry", "errors"}
+    if any(not isinstance(values, dict) or set(values) != {"pixels", "repeat", "blob", "htmlBlob", "htmlDataUrl", "htmlCapture", "geometry", "errors"}
            for values in observed.values()):
         raise ValueError("Canvas readback paths are missing")
     for name, values in observed.items():
+        expected_capture = None if name in {"dedicated", "shared", "service"} else True
+        if values["htmlCapture"] is not expected_capture:
+            raise ValueError(f"Canvas HTML export mutation was not measured in {name}")
         if values["errors"] != ERRORS_EXPECTED:
             raise ValueError(f"Canvas zero-size API errors changed in {name}")
         if (not isinstance(values["geometry"], dict) or set(values["geometry"]) != set(GEOMETRY_EXPECTED)

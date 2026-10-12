@@ -1803,7 +1803,8 @@ def test_linux_process_snapshot_separates_executable_identity_from_thread_names(
 @pytest.mark.parametrize("failure", [None, "missing-context", "missing-about-blank", "missing-srcdoc", "missing-path", "repeat", "blob", "htmlDataUrl", "worker-html", "worker-pixels", "restart", "invalid-digest",
                                      "geometry-missing", "geometry-false", "geometry-numeric", "geometry-extra",
                                      "clipped-padding", "opaque-anchor", "transparent-anchor",
-                                     "errors-missing", "errors-extra", "errors-type", "worker-zero-width", "worker-zero-height", "worker-empty-export"])
+                                     "errors-missing", "errors-extra", "errors-type", "worker-zero-width", "worker-zero-height", "worker-empty-export",
+                                     "html-capture-missing", "html-capture-false", "html-capture-numeric", "worker-capture"])
 def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
     from copy import deepcopy
     from scripts.verify_native_canvas import CONTEXTS, ERRORS_EXPECTED, GEOMETRY_EXPECTED, validate_observations
@@ -1812,11 +1813,20 @@ def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
     observed = {name: {"pixels": digest, "repeat": digest, "blob": digest,
                       "htmlBlob": None if name in {"dedicated", "shared", "service"} else digest,
                       "htmlDataUrl": None if name in {"dedicated", "shared", "service"} else digest,
+                      "htmlCapture": None if name in {"dedicated", "shared", "service"} else True,
                       "geometry": dict(GEOMETRY_EXPECTED), "errors": dict(ERRORS_EXPECTED)}
                 for name in CONTEXTS}
     previous = deepcopy(observed)
     if failure == "missing-context":
         del observed["shared"]
+    elif failure == "html-capture-missing":
+        del observed["document"]["htmlCapture"]
+    elif failure == "html-capture-false":
+        observed["document"]["htmlCapture"] = False
+    elif failure == "html-capture-numeric":
+        observed["document"]["htmlCapture"] = 1
+    elif failure == "worker-capture":
+        observed["service"]["htmlCapture"] = True
     elif failure in {"missing-about-blank", "missing-srcdoc"}:
         del observed["about_blank_frame" if failure == "missing-about-blank" else "srcdoc_frame"]
     elif failure == "missing-path":
@@ -1992,6 +2002,7 @@ def test_native_combined_policies_require_all_contexts_and_stable_native_observa
     observed = {name: {"canvas": {"pixels": digest, "repeat": digest, "blob": digest,
                     "htmlBlob": None if name in {"dedicated", "shared", "service"} else digest,
                     "htmlDataUrl": None if name in {"dedicated", "shared", "service"} else digest,
+                    "htmlCapture": None if name in {"dedicated", "shared", "service"} else True,
                     "geometry": dict(GEOMETRY_EXPECTED), "errors": dict(ERRORS_EXPECTED)},
                     "native": {"cpu": 1, "memory": 0.25, "arial": 120.0, "restricted": 120.0,
                                "userAgent": "Mozilla/5.0 Chrome/148.0.0.0 Safari/537.36",

@@ -348,6 +348,21 @@ MIME/quality handling, unsupported formats and ordinary image-editor compatibili
 Safe final-partition rejection remains unresolved in the document candidate.
 None of these hooks is enabled in the current browser or production capabilities.
 
+### HTML export capture baseline
+
+The runtime probe now captures toDataURL and starts toBlob, immediately replaces
+the HTML canvas with an opaque black raster, then decodes both earlier exports.
+It requires that the live raster actually changed and both exports still match
+the original pixels. Capture observations must be exactly true in the five
+document/frame contexts and absent (null) in the three worker contexts. Synthetic
+checks reject missing, false, numeric and fabricated worker capture observations.
+
+This expanded probe passed on the unchanged 001-027 browser before and after a
+persistent-profile restart, including both existing origin/empty-image phases:
+`D:/CamouFlowNative/canvas-html-capture-001-027-baseline-v1.json`.
+It confirms the upstream browser's snapshot-before-mutation behavior, not the
+unlinked candidate's protected export behavior.
+
 ## Protected-raster crop fixtures
 
 The image adapter fixture now contains ten cases. Two additional cases read a
