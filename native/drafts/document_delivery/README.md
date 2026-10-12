@@ -218,6 +218,28 @@ termination and nested workers before claiming first-script ordering.
 
 ## Worker thread handoff draft
 
+### Pending shared-worker control bound candidate
+
+`shared_worker_pending_control_limit.patch` is an unregistered follow-up to 0023,
+prepared outside the active build. Connect/Freeze/Resume currently retain owned
+closures while the policy reply is pending. The candidate routes all three
+through one private enqueue method, permits at most 64 pending controls, and
+terminates the unstarted stub on the next request. Termination destroys the
+consumer and releases retained message ports; it does not silently discard one
+control and continue startup with inconsistent state. Normal already-started
+workers retain their existing direct handlers. The limit is a deliberate
+experimental resource contract, not a measured optimal threshold.
+
+Application/reversal matched the isolated two-file overlay and active source
+hashes stayed unchanged:
+`D:/CamouFlowNative/shared-worker-pending-control-limit-overlay/proof.json`.
+The actual renderer-flag syntax check passed with at least 8 GiB commit headroom:
+`shared-worker-pending-control-limit-cpp-check/proof.json`. No object, linked or
+lifecycle result is implied. Before promotion, verify 64/65-request boundaries,
+arrival order, queued-port release, overflow followed by a late ready reply,
+normal running controls and host termination/disconnect. This candidate is not
+included in the current 001-026 browser build.
+
 The first linked endpoint run reached a Mojo DCHECK in the worker duplicate
 request case: resetting the stored response before closing its receiver is not
 legal. The worker service now receives a reference to the owning

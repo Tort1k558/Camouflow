@@ -1,0 +1,55 @@
+diff --git a/content/renderer/worker/embedded_shared_worker_stub.h b/content/renderer/worker/embedded_shared_worker_stub.h
+--- a/content/renderer/worker/embedded_shared_worker_stub.h
++++ b/content/renderer/worker/embedded_shared_worker_stub.h
+@@ -110,6 +110,7 @@
+   void Terminate() override;
+   void Freeze() override;
+   void Resume() override;
++  void EnqueuePendingControl(base::OnceClosure control);
+ 
+   scoped_refptr<blink::WebWorkerFetchContext> CreateWorkerFetchContext(
+       const blink::StorageKey& constructor_key,
+diff --git a/content/renderer/worker/embedded_shared_worker_stub.cc b/content/renderer/worker/embedded_shared_worker_stub.cc
+--- a/content/renderer/worker/embedded_shared_worker_stub.cc
++++ b/content/renderer/worker/embedded_shared_worker_stub.cc
+@@ -277,10 +277,21 @@
+   return web_dedicated_or_shared_worker_global_scope_context;
+ }
+ 
++void EmbeddedSharedWorkerStub::EnqueuePendingControl(base::OnceClosure control) {
++  constexpr size_t kMaxPendingBootstrapControls = 64;
++  DCHECK(!impl_);
++  if (pending_controls_.size() >= kMaxPendingBootstrapControls) {
++    // Terminate destroys the unstarted stub, cancelling bootstrap and ports.
++    Terminate();
++    return;
++  }
++  pending_controls_.push_back(std::move(control));
++}
++
+ void EmbeddedSharedWorkerStub::Connect(int connection_request_id,
+                                        blink::MessagePortDescriptor port) {
+   if (!impl_) {
+-    pending_controls_.push_back(base::BindOnce(
++    EnqueuePendingControl(base::BindOnce(
+         &EmbeddedSharedWorkerStub::Connect, weak_factory_.GetWeakPtr(),
+         connection_request_id, std::move(port)));
+     return;
+@@ -298,7 +309,7 @@
+ 
+ void EmbeddedSharedWorkerStub::Freeze() {
+   if (!impl_) {
+-    pending_controls_.push_back(base::BindOnce(
++    EnqueuePendingControl(base::BindOnce(
+         &EmbeddedSharedWorkerStub::Freeze, weak_factory_.GetWeakPtr()));
+     return;
+   }
+@@ -307,7 +318,7 @@
+ 
+ void EmbeddedSharedWorkerStub::Resume() {
+   if (!impl_) {
+-    pending_controls_.push_back(base::BindOnce(
++    EnqueuePendingControl(base::BindOnce(
+         &EmbeddedSharedWorkerStub::Resume, weak_factory_.GetWeakPtr()));
+     return;
+   }
