@@ -186,3 +186,40 @@ not part of the lightweight Skia-only test integration patch. Its runtime tests
 require Blink platform dependencies and must cover GPU/lazy snapshots, failure
 paths, orientation, snapshot lifetime and encoding. First-script trusted policy
 bootstrap and the four DOM readback/export call sites remain unimplemented.
+
+## Blink image tests and test-only registration
+
+Eight `GlintCanvasImageTest` definitions cover missing snapshots, detached raster
+ownership, source immutability, retained pixels after source release, the two-copy
+memory budget, orientation metadata, PNG/canonical-raster equality, repeated
+exports and separation of two public fixture seeds. Their translation unit passed
+isolated syntax checks with the actual Blink platform unit-test flags. The
+unbuilt unit-test PCH was omitted, not replaced with a browser PCH; no compiler
+warnings were disabled. Evidence:
+`D:/CamouFlowNative/canvas-blink-image-tests-no-pch-cpp-check/proof.json`.
+These are test definitions, **not eight executed/passing runtime cases**.
+
+`blink_test_integration.patch` is a self-contained alternative to the lightweight
+Skia-only `test_integration.patch`. It puts the candidate, copy adapter, image
+wrapper and both fixtures in Blink's `graphics/glint` test sources and registers
+them in the existing `blink_platform_unittests_sources` target, using its normal
+Blink test initialization. It explicitly adds the BoringSSL dependency and does
+not make Blink depend on content/browser. There are 18 intended cases: ten raster
+copy cases and eight image wrapper cases. Neither patch activates production
+Canvas hooks. Choose one registration path for a given validation build; do not
+treat duplicate copies of these candidate helpers as a production layout.
+
+Pinned GN formatting and applicability checks passed without changing the active
+checkout: `D:/CamouFlowNative/canvas-blink-test-registration-draft/proof.json`.
+Graph generation, linkage and execution remain pending. Before applying this
+alternative in an idle checkout, register its checksum in the build lock and
+verify the exact sources. Intended execution after promotion:
+
+```text
+autoninja -C out/CamouFlowNative -j 1 blink_platform_unittests
+out/CamouFlowNative/blink_platform_unittests.exe --gtest_filter=GlintCanvasCopyTest.*:GlintCanvasImageTest.* --single-process-tests --gtest_output=json:D:/CamouFlowNative/canvas-blink-native-tests.json
+```
+
+Inspect all 18 names and statuses in fresh output. Raster PNG equivalence does
+not prove toBlob/OffscreenCanvas.convertToBlob behavior, GPU/lazy snapshot reads,
+document/worker policy delivery or resistance to fingerprinting detectors.
