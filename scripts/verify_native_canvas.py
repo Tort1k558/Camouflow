@@ -85,7 +85,18 @@ READ = """async () => {
     transparentRepeat: transparentPixels === await hash(read(transparentContext)),
     transparentExport: transparentPixels === await decode(await transparent.convertToBlob({type: 'image/png'}))
   };
-  return {pixels, repeat, blob, htmlBlob, htmlDataUrl, geometry};
+  const errorName = async action => {
+    try { await action(); return 'no-error'; }
+    catch (error) { return error instanceof DOMException ? error.name : 'non-DOM-exception'; }
+  };
+  const empty = new OffscreenCanvas(0, 1);
+  empty.getContext('2d');
+  const errors = {
+    zeroWidthRead: await errorName(() => context.getImageData(0, 0, 0, 1)),
+    zeroHeightRead: await errorName(() => context.getImageData(0, 0, 1, 0)),
+    emptyOffscreenExport: await errorName(() => empty.convertToBlob({type: 'image/png'}))
+  };
+  return {pixels, repeat, blob, htmlBlob, htmlDataUrl, geometry, errors};
 }"""
 
 CONTEXTS = {"document", "same_origin_frame", "cross_origin_frame", "about_blank_frame",
@@ -94,6 +105,9 @@ GEOMETRY_EXPECTED = {"partialMatchesFull": True, "negativeDimensionsMatch": True
                      "outsideRemainsTransparent": True, "transparentRepeat": True,
                      "transparentExport": True, "clippedPaddingMatches": True,
                      "opaqueCornerRendered": True, "transparentAlphaRendered": True}
+
+ERRORS_EXPECTED = {"zeroWidthRead": "IndexSizeError", "zeroHeightRead": "IndexSizeError",
+                   "emptyOffscreenExport": "IndexSizeError"}
 
 SECURITY_READ = """async () => {
   const failure = action => {
@@ -172,10 +186,12 @@ class CanvasFixtureHandler(FixtureHandler):
 def validate_observations(observed: dict, previous: dict | None = None) -> None:
     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
         raise ValueError("Canvas probe must observe every document and worker context")
-    if any(not isinstance(values, dict) or set(values) != {"pixels", "repeat", "blob", "htmlBlob", "htmlDataUrl", "geometry"}
+    if any(not isinstance(values, dict) or set(values) != {"pixels", "repeat", "blob", "htmlBlob", "htmlDataUrl", "geometry", "errors"}
            for values in observed.values()):
         raise ValueError("Canvas readback paths are missing")
     for name, values in observed.items():
+        if values["errors"] != ERRORS_EXPECTED:
+            raise ValueError(f"Canvas zero-size API errors changed in {name}")
         if (not isinstance(values["geometry"], dict) or set(values["geometry"]) != set(GEOMETRY_EXPECTED)
                 or any(value is not True for value in values["geometry"].values())):
             raise ValueError(f"Canvas partial or transparent readback disagrees in {name}")

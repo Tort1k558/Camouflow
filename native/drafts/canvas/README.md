@@ -330,3 +330,21 @@ platform-unit-test flags:
 `D:/CamouFlowNative/canvas-blink-crop-image-tests-cpp-check/proof.json`.
 No new C++ fixture has been linked or executed; browser crop/export agreement
 remains a runtime gate, not a result inferred from these checks.
+
+## Worker zero-size API baseline
+
+`scripts/verify_native_canvas.py` now requires IndexSizeError for zero-width and
+zero-height getImageData and zero-size OffscreenCanvas.convertToBlob in all
+eight document/frame/worker contexts. Missing, extra or wrong error observations
+fail verification without weakening pixel, geometry, origin-security or restart
+checks. The verifier's synthetic regression suite passed 42 Python cases.
+
+The expanded probe actually passed on the last linked Windows browser, Chromium
+148.0.7778.96 with patches 001–015, before and after a persistent-profile restart.
+Both eight-context readback phases and both three-frame security phases passed.
+Evidence: `D:/CamouFlowNative/canvas-worker-empty-api-baseline.json`, bound to the
+measured unchanged chrome.exe, chrome.dll and chrome_elf.dll hashes. The executable
+hash is `61e97ba3335f64836b3abcf93d67af0d6ddd0d06c291b4592b1448643b35e222`.
+The temporary profiles and browser processes were closed by the verifier.
+This confirms upstream API behavior in the existing binary, **not execution of
+the inactive readback hooks, policy bootstrap or fingerprinting protection**.

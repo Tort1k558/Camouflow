@@ -1769,16 +1769,17 @@ def test_linux_process_snapshot_separates_executable_identity_from_thread_names(
 
 @pytest.mark.parametrize("failure", [None, "missing-context", "missing-about-blank", "missing-srcdoc", "missing-path", "repeat", "blob", "htmlDataUrl", "worker-html", "worker-pixels", "restart", "invalid-digest",
                                      "geometry-missing", "geometry-false", "geometry-numeric", "geometry-extra",
-                                     "clipped-padding", "opaque-anchor", "transparent-anchor"])
+                                     "clipped-padding", "opaque-anchor", "transparent-anchor",
+                                     "errors-missing", "errors-extra", "errors-type", "worker-zero-width", "worker-zero-height", "worker-empty-export"])
 def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
     from copy import deepcopy
-    from scripts.verify_native_canvas import CONTEXTS, GEOMETRY_EXPECTED, validate_observations
+    from scripts.verify_native_canvas import CONTEXTS, ERRORS_EXPECTED, GEOMETRY_EXPECTED, validate_observations
 
     digest = "a" * 64
     observed = {name: {"pixels": digest, "repeat": digest, "blob": digest,
                       "htmlBlob": None if name in {"dedicated", "shared", "service"} else digest,
                       "htmlDataUrl": None if name in {"dedicated", "shared", "service"} else digest,
-                      "geometry": dict(GEOMETRY_EXPECTED)}
+                      "geometry": dict(GEOMETRY_EXPECTED), "errors": dict(ERRORS_EXPECTED)}
                 for name in CONTEXTS}
     previous = deepcopy(observed)
     if failure == "missing-context":
@@ -1805,6 +1806,16 @@ def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
         observed["dedicated"]["geometry"]["outsideRemainsTransparent"] = 1
     elif failure == "geometry-extra":
         observed["document"]["geometry"]["unmeasured"] = True
+    elif failure == "errors-missing":
+        del observed["shared"]["errors"]["zeroWidthRead"]
+    elif failure == "errors-extra":
+        observed["dedicated"]["errors"]["unmeasured"] = "IndexSizeError"
+    elif failure == "errors-type":
+        observed["service"]["errors"] = None
+    elif failure in {"worker-zero-width", "worker-zero-height", "worker-empty-export"}:
+        field = {"worker-zero-width": "zeroWidthRead", "worker-zero-height": "zeroHeightRead",
+                 "worker-empty-export": "emptyOffscreenExport"}[failure]
+        observed["service"]["errors"][field] = "no-error"
     elif failure in {"clipped-padding", "opaque-anchor", "transparent-anchor"}:
         field = {"clipped-padding": "clippedPaddingMatches", "opaque-anchor": "opaqueCornerRendered",
                  "transparent-anchor": "transparentAlphaRendered"}[failure]
