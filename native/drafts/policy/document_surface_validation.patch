@@ -1,0 +1,531 @@
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2560,6 +2560,8 @@
+     "../browser/camouflow_native/glint/surface_policy_producer_unittest.cc",
+     "../../third_party/blink/public/common/native_privacy/glint/surface_policy_validation_unittest.cc",
+     "../../third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc",
++    "../../third_party/blink/public/common/native_privacy/glint/document_surface_policy_unittest.cc",
++    "../browser/camouflow_native/glint/document_surface_commit_producer_unittest.cc",
+     "../browser/camouflow_native/privacy_context_unittest.cc",
+     "../browser/camouflow_native/privacy_document_commit_unittest.cc",
+     "../browser/camouflow_native/privacy_navigation_throttle_unittest.cc",
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -705,6 +705,8 @@
+     "browser_context_impl.cc",
+     "camouflow_native/glint/surface_policy_producer.cc",
+     "camouflow_native/glint/surface_policy_producer.h",
++    "camouflow_native/glint/document_surface_commit_producer.h",
++    "camouflow_native/glint/document_surface_commit_producer.cc",
+     "camouflow_native/privacy_context.cc",
+     "camouflow_native/privacy_document_commit.cc",
+     "camouflow_native/privacy_document_commit.h",
+diff --git a/third_party/blink/public/common/native_privacy/glint/document_surface_policy.h b/third_party/blink/public/common/native_privacy/glint/document_surface_policy.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/document_surface_policy.h
+@@ -0,0 +1,83 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_DOCUMENT_SURFACE_POLICY_H_
++#define GLINT_DOCUMENT_SURFACE_POLICY_H_
++
++#include <optional>
++#include <utility>
++
++#include "surface_policy_wire.h"
++
++namespace glint::candidate {
++enum class DocumentPrivacyBootstrapMode { kOff, kCanvas, kSurfaces, kConflict };
++
++constexpr DocumentPrivacyBootstrapMode SelectDocumentPrivacyBootstrapMode(
++    bool canvas_requested,
++    bool surfaces_requested) {
++  if (canvas_requested && surfaces_requested) {
++    return DocumentPrivacyBootstrapMode::kConflict;
++  }
++  if (surfaces_requested) {
++    return DocumentPrivacyBootstrapMode::kSurfaces;
++  }
++  return canvas_requested ? DocumentPrivacyBootstrapMode::kCanvas
++                          : DocumentPrivacyBootstrapMode::kOff;
++}
++
++constexpr bool HasExpectedDocumentPrivacyPayload(
++    DocumentPrivacyBootstrapMode mode,
++    bool has_canvas,
++    bool has_surfaces) {
++  switch (mode) {
++    case DocumentPrivacyBootstrapMode::kOff:
++      return !has_canvas && !has_surfaces;
++    case DocumentPrivacyBootstrapMode::kCanvas:
++      return has_canvas && !has_surfaces;
++    case DocumentPrivacyBootstrapMode::kSurfaces:
++      return has_surfaces && !has_canvas;
++    case DocumentPrivacyBootstrapMode::kConflict:
++      return false;
++  }
++  return false;
++}
++
++// This snapshot never owns the profile root key. Both the selected partition and
++// independently derived surface bytes must survive Mojo/commit parameter moves.
++struct DocumentSurfacePolicy {
++  blink::StorageKey partition;
++  SurfacePolicy policy;
++};
++
++inline std::optional<DocumentSurfacePolicy> DecodeOwnedDocumentSurfacePolicy(
++    const blink::mojom::GlintSurfacePolicyCommit& wire,
++    const blink::StorageKey& provisional_partition,
++    const url::Origin& browser_origin_to_commit,
++    bool legacy_canvas_present) {
++  if (legacy_canvas_present) {
++    return std::nullopt;
++  }
++  auto policy = DecodeSurfacePolicyCommit(
++      wire, provisional_partition, browser_origin_to_commit);
++  if (!policy) {
++    return std::nullopt;
++  }
++  return DocumentSurfacePolicy{wire.partition, std::move(*policy)};
++}
++
++// A second check is mandatory against Blink's final key. Passing renderer
++// preflight is not permission to install into a different final document.
++inline bool ValidateDocumentSurfacePolicy(
++    const std::optional<DocumentSurfacePolicy>& owned,
++    const blink::StorageKey& final_partition,
++    bool required,
++    bool legacy_canvas_present) {
++  if (!owned) {
++    return !required;
++  }
++  return !legacy_canvas_present &&
++         ValidateSurfacePolicy(owned->policy, owned->partition) &&
++         ValidateSurfacePolicy(owned->policy, final_partition);
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/document_surface_policy_unittest.cc b/third_party/blink/public/common/native_privacy/glint/document_surface_policy_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/document_surface_policy_unittest.cc
+@@ -0,0 +1,244 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "document_surface_policy.h"
++
++#include <array>
++#include <vector>
++
++#include "base/unguessable_token.h"
++#include "net/base/schemeful_site.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace glint::candidate {
++namespace {
++class GlintDocumentSurfacePolicyTest : public testing::Test {
++ protected:
++  const url::Origin origin_ = url::Origin::Create(GURL("https://document.test/"));
++  const blink::StorageKey partition_ = blink::StorageKey::CreateFirstParty(origin_);
++
++  blink::mojom::GlintSurfacePolicyCommitPtr Wire(const blink::StorageKey& key) {
++    SurfacePolicy policy;
++    policy.partition_encoding = *key.SerializeForNativePrivacy();
++    policy.canvas.fill(1);
++    policy.webgl.fill(2);
++    policy.webgpu.fill(3);
++    policy.audio.fill(4);
++    return EncodeSurfacePolicyCommit(policy, key);
++  }
++
++  std::optional<DocumentSurfacePolicy> Owned() {
++    auto wire = Wire(partition_);
++    return DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false);
++  }
++};
++
++TEST_F(GlintDocumentSurfacePolicyTest, OwnsEverySeedAndPartitionAfterWireDestruction) {
++  auto wire = Wire(partition_);
++  auto owned = DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false);
++  ASSERT_TRUE(owned);
++  wire->audio_seed.assign(32, 255);
++  wire->partition_encoding.clear();
++  wire.reset();
++  EXPECT_TRUE(ValidateDocumentSurfacePolicy(owned, partition_, true, false));
++  PartitionSeed expected_audio;
++  expected_audio.fill(4);
++  EXPECT_EQ(owned->policy.audio, expected_audio);
++  EXPECT_EQ(owned->partition, partition_);
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, ResolvesInheritedProvisionalOriginBeforeOwningKey) {
++  auto wire = Wire(partition_);
++  const auto provisional = blink::StorageKey::CreateFirstParty(url::Origin());
++  auto owned = DecodeOwnedDocumentSurfacePolicy(*wire, provisional, origin_, false);
++  ASSERT_TRUE(owned);
++  EXPECT_EQ(owned->partition, partition_);
++  EXPECT_TRUE(ValidateDocumentSurfacePolicy(owned, partition_, true, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, PreservesExactOpaqueOriginIdentity) {
++  const auto key = blink::StorageKey::CreateFirstParty(url::Origin());
++  auto wire = Wire(key);
++  auto owned = DecodeOwnedDocumentSurfacePolicy(*wire, key, key.origin(), false);
++  ASSERT_TRUE(owned);
++  EXPECT_TRUE(ValidateDocumentSurfacePolicy(owned, key, true, false));
++  const auto other = blink::StorageKey::CreateFirstParty(url::Origin());
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(owned, other, true, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, PreservesNoncePartitionAndRejectsReplacement) {
++  const auto key = blink::StorageKey::CreateWithNonce(
++      origin_, base::UnguessableToken::Create());
++  auto wire = Wire(key);
++  auto owned = DecodeOwnedDocumentSurfacePolicy(*wire, key, origin_, false);
++  ASSERT_TRUE(owned);
++  EXPECT_TRUE(ValidateDocumentSurfacePolicy(owned, key, true, false));
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(owned, partition_, true, false));
++  const auto other = blink::StorageKey::CreateWithNonce(
++      origin_, base::UnguessableToken::Create());
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, other, origin_, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, RejectsWrongBrowserOriginBeforeOwnership) {
++  auto wire = Wire(partition_);
++  const auto other = url::Origin::Create(GURL("https://other.test/"));
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, other, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, RejectsWireKeyAndCommitmentDisagreement) {
++  auto wire = Wire(partition_);
++  wire->partition = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test/")));
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, RejectsEveryMalformedSurfaceLength) {
++  for (unsigned index = 0; index < 4; ++index) {
++    for (unsigned size : {0u, 31u, 33u}) {
++      auto wire = Wire(partition_);
++      std::array<std::vector<uint8_t>*, 4> seeds{
++          &wire->canvas_seed, &wire->webgl_seed, &wire->webgpu_seed, &wire->audio_seed};
++      seeds[index]->resize(size);
++      EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false));
++    }
++  }
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, RejectsWrongVersionAndEncodingBounds) {
++  auto wire = Wire(partition_);
++  wire->version = 1;
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false));
++  wire = Wire(partition_);
++  wire->partition_encoding.clear();
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false));
++  wire->partition_encoding.assign(8193, 'x');
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, RejectsEveryReusedSurfacePair) {
++  for (unsigned first = 0; first < 4; ++first) {
++    for (unsigned second = first + 1; second < 4; ++second) {
++      auto wire = Wire(partition_);
++      std::array<std::vector<uint8_t>*, 4> seeds{
++          &wire->canvas_seed, &wire->webgl_seed, &wire->webgpu_seed, &wire->audio_seed};
++      *seeds[second] = *seeds[first];
++      EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false));
++    }
++  }
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, RejectsLegacyAndSurfacePayloadMix) {
++  auto wire = Wire(partition_);
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, true));
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(Owned(), partition_, true, true));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, MissingRequiredPolicyCannotInstall) {
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(std::nullopt, partition_, true, false));
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(std::nullopt, partition_, true, true));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, OffModePreservesLegacyOrUpstreamAbsence) {
++  EXPECT_TRUE(ValidateDocumentSurfacePolicy(std::nullopt, partition_, false, false));
++  EXPECT_TRUE(ValidateDocumentSurfacePolicy(std::nullopt, partition_, false, true));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, PayloadPresenceCannotSkipFinalValidation) {
++  auto owned = Owned();
++  ASSERT_TRUE(owned);
++  owned->policy.version = 1;
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(owned, partition_, false, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, FinalDifferentOriginCannotInstall) {
++  const auto other = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test/")));
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(Owned(), other, true, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, CorruptedOwnedKeyCannotInstall) {
++  auto owned = Owned();
++  ASSERT_TRUE(owned);
++  owned->partition = blink::StorageKey::CreateFirstParty(url::Origin());
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(owned, partition_, true, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, RetainedTopLevelSiteSurvivesDisabledPartitioning) {
++  const auto first = blink::StorageKey::Create(origin_,
++      net::SchemefulSite(GURL("https://one.test/")),
++      blink::mojom::AncestorChainBit::kCrossSite, false);
++  const auto second = blink::StorageKey::Create(origin_,
++      net::SchemefulSite(GURL("https://two.test/")),
++      blink::mojom::AncestorChainBit::kCrossSite, false);
++  ASSERT_EQ(first, second);
++  auto wire = Wire(first);
++  auto owned = DecodeOwnedDocumentSurfacePolicy(*wire, first, origin_, false);
++  ASSERT_TRUE(owned);
++  EXPECT_TRUE(ValidateDocumentSurfacePolicy(owned, first, true, false));
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(owned, second, true, false));
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, second, origin_, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, BinaryCommitmentCannotBeTruncatedOrExtended) {
++  auto wire = Wire(partition_);
++  const auto separator = wire->partition_encoding.find('\0');
++  ASSERT_NE(separator, std::string::npos);
++  wire->partition_encoding.resize(separator);
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false));
++  wire = Wire(partition_);
++  wire->partition_encoding.push_back('\0');
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, MutatingReturnedSnapshotDoesNotAlterOriginal) {
++  const auto original = Owned();
++  ASSERT_TRUE(original);
++  auto copy = original;
++  copy->policy.audio = copy->policy.canvas;
++  copy->policy.partition_encoding.clear();
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(copy, partition_, true, false));
++  EXPECT_TRUE(ValidateDocumentSurfacePolicy(original, partition_, true, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, UnchangedPolicyRemainsValidAcrossOwnershipMoves) {
++  auto original = Owned();
++  ASSERT_TRUE(original);
++  auto moved = std::move(original);
++  original.reset();
++  EXPECT_TRUE(ValidateDocumentSurfacePolicy(moved, partition_, true, false));
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(original, partition_, true, false));
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, SelectsFourExplicitModes) {
++  EXPECT_EQ(SelectDocumentPrivacyBootstrapMode(false, false), DocumentPrivacyBootstrapMode::kOff);
++  EXPECT_EQ(SelectDocumentPrivacyBootstrapMode(true, false), DocumentPrivacyBootstrapMode::kCanvas);
++  EXPECT_EQ(SelectDocumentPrivacyBootstrapMode(false, true), DocumentPrivacyBootstrapMode::kSurfaces);
++  EXPECT_EQ(SelectDocumentPrivacyBootstrapMode(true, true), DocumentPrivacyBootstrapMode::kConflict);
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, EveryModeRequiresOnlyItsOwnPayload) {
++  for (auto mode : {DocumentPrivacyBootstrapMode::kOff, DocumentPrivacyBootstrapMode::kCanvas,
++                    DocumentPrivacyBootstrapMode::kSurfaces, DocumentPrivacyBootstrapMode::kConflict}) {
++    for (bool canvas : {false, true}) {
++      for (bool surfaces : {false, true}) {
++        const bool expected =
++            (mode == DocumentPrivacyBootstrapMode::kOff && !canvas && !surfaces) ||
++            (mode == DocumentPrivacyBootstrapMode::kCanvas && canvas && !surfaces) ||
++            (mode == DocumentPrivacyBootstrapMode::kSurfaces && !canvas && surfaces);
++        EXPECT_EQ(HasExpectedDocumentPrivacyPayload(mode, canvas, surfaces), expected);
++      }
++    }
++  }
++}
++
++TEST_F(GlintDocumentSurfacePolicyTest, UnknownModeCannotAdmitAnyPayload) {
++  const auto mode = static_cast<DocumentPrivacyBootstrapMode>(255);
++  for (bool canvas : {false, true}) {
++    for (bool surfaces : {false, true}) {
++      EXPECT_FALSE(HasExpectedDocumentPrivacyPayload(mode, canvas, surfaces));
++    }
++  }
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/content/browser/camouflow_native/glint/document_surface_commit_producer.h b/content/browser/camouflow_native/glint/document_surface_commit_producer.h
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/document_surface_commit_producer.h
+@@ -0,0 +1,19 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_DOCUMENT_SURFACE_COMMIT_PRODUCER_H_
++#define GLINT_DOCUMENT_SURFACE_COMMIT_PRODUCER_H_
++
++#include "surface_policy_producer.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom-forward.h"
++#include "url/origin.h"
++
++namespace glint::candidate {
++// Browser UI sequence only. Both arguments come from the selected navigation,
++// never a renderer URL or a caller-selected profile identity.
++blink::mojom::GlintSurfacePolicyCommitPtr CreateDocumentSurfacePolicyCommit(
++    content::BrowserContext* context,
++    const blink::StorageKey& provisional_partition,
++    const url::Origin& browser_origin_to_commit);
++}  // namespace glint::candidate
++
++#endif
+diff --git a/content/browser/camouflow_native/glint/document_surface_commit_producer.cc b/content/browser/camouflow_native/glint/document_surface_commit_producer.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/document_surface_commit_producer.cc
+@@ -0,0 +1,17 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "document_surface_commit_producer.h"
++
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h"
++
++namespace glint::candidate {
++blink::mojom::GlintSurfacePolicyCommitPtr CreateDocumentSurfacePolicyCommit(
++    content::BrowserContext* context,
++    const blink::StorageKey& provisional_partition,
++    const url::Origin& browser_origin_to_commit) {
++  const auto partition = blink::ResolveGlintDocumentStorageKey(
++      provisional_partition, browser_origin_to_commit);
++  auto policy = CreateSurfacePolicy(context, partition);
++  return policy ? EncodeSurfacePolicyCommit(*policy, partition) : nullptr;
++}
++}  // namespace glint::candidate
+diff --git a/content/browser/camouflow_native/glint/document_surface_commit_producer_unittest.cc b/content/browser/camouflow_native/glint/document_surface_commit_producer_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/document_surface_commit_producer_unittest.cc
+@@ -0,0 +1,119 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "document_surface_commit_producer.h"
++
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/unguessable_token.h"
++#include "content/public/browser/native_privacy_context.h"
++#include "content/public/test/test_renderer_host.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
++#include "url/gurl.h"
++
++namespace glint::candidate {
++namespace {
++class GlintDocumentSurfaceProducerTest : public content::RenderViewHostTestHarness {
++ public:
++  GlintDocumentSurfaceProducerTest()
++      : RenderViewHostTestHarness(
++            base::test::TaskEnvironment::TimeSource::MOCK_TIME,
++            base::test::TaskEnvironment::ThreadPoolExecutionMode::QUEUED) {}
++
++ protected:
++  void SetUp() override {
++    RenderViewHostTestHarness::SetUp();
++    ASSERT_TRUE(owned_.CreateUniqueTempDir());
++    ASSERT_TRUE(base::WriteFile(owned_.GetPath().AppendASCII("camouflow-native-privacy.json"),
++        R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})"));
++  }
++  void TearDown() override {
++    content::ShutdownNativePrivacyContext(browser_context());
++    task_environment()->RunUntilIdle();
++    RenderViewHostTestHarness::TearDown();
++  }
++  void Initialize() {
++    ASSERT_TRUE(content::InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  }
++  const url::Origin origin_ = url::Origin::Create(GURL("https://document.test/"));
++  const blink::StorageKey partition_ = blink::StorageKey::CreateFirstParty(origin_);
++  base::ScopedTempDir owned_;
++};
++
++TEST_F(GlintDocumentSurfaceProducerTest, NullAndAbsentContextsCannotProduceCommit) {
++  EXPECT_FALSE(CreateDocumentSurfacePolicyCommit(nullptr, partition_, origin_));
++  EXPECT_FALSE(CreateDocumentSurfacePolicyCommit(browser_context(), partition_, origin_));
++}
++
++TEST_F(GlintDocumentSurfaceProducerTest, LoadingCannotProduceCommit) {
++  Initialize();
++  EXPECT_FALSE(CreateDocumentSurfacePolicyCommit(browser_context(), partition_, origin_));
++}
++
++TEST_F(GlintDocumentSurfaceProducerTest, ReadyCommitUsesExactFourDomainDerivations) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  auto wire = CreateDocumentSurfacePolicyCommit(browser_context(), partition_, origin_);
++  ASSERT_TRUE(wire);
++  auto owned = DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false);
++  ASSERT_TRUE(owned);
++  EXPECT_TRUE(ValidateDocumentSurfacePolicy(owned, partition_, true, false));
++  EXPECT_EQ(owned->policy.canvas, content::DeriveNativePrivacyKey(browser_context(), partition_, "canvas"));
++  EXPECT_EQ(owned->policy.webgl, content::DeriveNativePrivacyKey(browser_context(), partition_, "webgl"));
++  EXPECT_EQ(owned->policy.webgpu, content::DeriveNativePrivacyKey(browser_context(), partition_, "webgpu"));
++  EXPECT_EQ(owned->policy.audio, content::DeriveNativePrivacyKey(browser_context(), partition_, "audio"));
++}
++
++TEST_F(GlintDocumentSurfaceProducerTest, InheritedOriginUsesResolvedBrowserPartition) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  const auto provisional = blink::StorageKey::CreateFirstParty(url::Origin());
++  auto wire = CreateDocumentSurfacePolicyCommit(browser_context(), provisional, origin_);
++  ASSERT_TRUE(wire);
++  EXPECT_EQ(wire->partition, partition_);
++  EXPECT_TRUE(DecodeOwnedDocumentSurfacePolicy(*wire, provisional, origin_, false));
++}
++
++TEST_F(GlintDocumentSurfaceProducerTest, NonceCannotBecomeFirstParty) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  const auto key = blink::StorageKey::CreateWithNonce(origin_, base::UnguessableToken::Create());
++  auto wire = CreateDocumentSurfacePolicyCommit(browser_context(), key, origin_);
++  ASSERT_TRUE(wire);
++  EXPECT_TRUE(DecodeOwnedDocumentSurfacePolicy(*wire, key, origin_, false));
++  EXPECT_FALSE(DecodeOwnedDocumentSurfacePolicy(*wire, partition_, origin_, false));
++}
++
++TEST_F(GlintDocumentSurfaceProducerTest, ReturnedWireMutationCannotChangeNextCommit) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  auto first = CreateDocumentSurfacePolicyCommit(browser_context(), partition_, origin_);
++  ASSERT_TRUE(first);
++  const auto expected = first->audio_seed;
++  first->audio_seed.assign(32, 255);
++  first->partition_encoding.clear();
++  auto next = CreateDocumentSurfacePolicyCommit(browser_context(), partition_, origin_);
++  ASSERT_TRUE(next);
++  EXPECT_EQ(next->audio_seed, expected);
++  EXPECT_TRUE(DecodeOwnedDocumentSurfacePolicy(*next, partition_, origin_, false));
++}
++
++TEST_F(GlintDocumentSurfaceProducerTest, ShutdownCannotProduceCommit) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  content::ShutdownNativePrivacyContext(browser_context());
++  EXPECT_FALSE(CreateDocumentSurfacePolicyCommit(browser_context(), partition_, origin_));
++}
++
++TEST_F(GlintDocumentSurfaceProducerTest, MalformedIdentityCannotProduceOrRegenerateCommit) {
++  const auto identity = owned_.GetPath().AppendASCII("camouflow-native-privacy.json");
++  ASSERT_TRUE(base::WriteFile(identity, "malformed"));
++  Initialize();
++  task_environment()->RunUntilIdle();
++  EXPECT_FALSE(CreateDocumentSurfacePolicyCommit(browser_context(), partition_, origin_));
++  std::string stored;
++  ASSERT_TRUE(base::ReadFileToString(identity, &stored));
++  EXPECT_EQ(stored, "malformed");
++}
++}  // namespace
++}  // namespace glint::candidate

@@ -41,7 +41,8 @@ def test_next_batch_patch_coverage_and_canonical_sources():
         current_paths = validate_patch_paths(text)
         # Endpoint/consumer follow-ups intentionally extend the same legacy mock.
         overlap = paths & current_paths
-        assert overlap.issubset({"content/renderer/worker/privacy_worker_bootstrap_unittest.cc"})
+        assert overlap.issubset({"content/renderer/worker/privacy_worker_bootstrap_unittest.cc",
+                                 "content/test/BUILD.gn", "content/browser/BUILD.gn"})
         paths.update(current_paths)
         additions.update(added_sources(text))
     assert paths == EXISTING_PATHS | set(CANONICAL.values())
@@ -130,3 +131,31 @@ def test_all_worker_launchers_use_explicit_surface_delivery_and_forward_required
     assert "+  start_data->glint_surface_policy = std::move(surface_policy);" in text
     assert text.count("creation_params->glint_surface_policy_required") == 3
     assert "+  privacy_bootstrap_failed_ = true;" in text
+
+
+def test_document_bundle_retains_browser_partition_and_requires_final_validation():
+    text = (DRAFTS / "policy/document_surface_policy.h").read_text(encoding="utf-8-sig")
+    assert "return DocumentSurfacePolicy{wire.partition, std::move(*policy)};" in text
+    assert "ValidateSurfacePolicy(owned->policy, owned->partition) &&" in text
+    assert "ValidateSurfacePolicy(owned->policy, final_partition);" in text
+    assert "return !required;" in text
+    assert "!legacy_canvas_present" in text
+    assert "CHECK(" not in text
+    fixture = (DRAFTS / "policy/document_surface_policy_unittest.cc").read_text(encoding="utf-8-sig")
+    names = re.findall(r"TEST_F\(GlintDocumentSurfacePolicyTest, (\w+)\)", fixture)
+    assert len(names) == len(set(names)) == 22
+    assert "RetainedTopLevelSiteSurvivesDisabledPartitioning" in names
+    assert "MissingRequiredPolicyCannotInstall" in names
+    assert "UnknownModeCannotAdmitAnyPayload" in names
+
+
+def test_document_surface_producer_reuses_selected_partition_and_existing_key_service():
+    text = (DRAFTS / "policy/document_surface_commit_producer.cc").read_text(encoding="utf-8-sig")
+    assert "blink::ResolveGlintDocumentStorageKey(" in text
+    assert "CreateSurfacePolicy(context, partition);" in text
+    assert "EncodeSurfacePolicyCommit(*policy, partition) : nullptr;" in text
+    assert "InitializeNativePrivacyContext" not in text
+    fixture = (DRAFTS / "policy/document_surface_commit_producer_unittest.cc").read_text(encoding="utf-8-sig")
+    names = re.findall(r"TEST_F\(GlintDocumentSurfaceProducerTest, (\w+)\)", fixture)
+    assert len(names) == len(set(names)) == 8
+    assert "MalformedIdentityCannotProduceOrRegenerateCommit" in names

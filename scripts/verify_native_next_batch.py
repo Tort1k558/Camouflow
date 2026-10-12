@@ -19,7 +19,8 @@ DRAFTS = ROOT / "native/drafts"
 PATCHES = ("gpu/gpu_metadata_minimization.patch", "audio/audio_helpers_integration.patch",
            "policy/surface_policy_helpers_integration.patch", "policy/surface_policy_wire_schema.patch",
            "policy/surface_worker_endpoint.patch", "policy/surface_worker_bootstrap.patch",
-           "policy/worker_surface_handoff.patch", "policy/worker_surface_launchers.patch")
+           "policy/worker_surface_handoff.patch", "policy/worker_surface_launchers.patch",
+           "policy/document_surface_validation.patch")
 CANONICAL = {
     **{"audio/" + name: "third_party/blink/renderer/modules/webaudio/glint/" + name for name in (
         "offline_audio_candidate.h", "offline_audio_candidate.cc", "offline_audio_limits.h",
@@ -28,9 +29,12 @@ CANONICAL = {
     **{"policy/" + name: "third_party/blink/public/common/native_privacy/glint/" + name for name in (
         "surface_policy.h", "surface_policy_validation.h", "surface_policy_validation_unittest.cc",
         "surface_policy_preflight.h", "surface_policy_preflight_unittest.cc", "surface_policy_wire.h",
-        "worker_surface_policy.h", "worker_surface_policy_validation.h")},
+        "worker_surface_policy.h", "worker_surface_policy_validation.h",
+        "document_surface_policy.h", "document_surface_policy_unittest.cc")},
     **{"policy/" + name: "content/browser/camouflow_native/glint/" + name for name in (
-        "surface_policy_producer.h", "surface_policy_producer.cc", "surface_policy_producer_unittest.cc")},
+        "surface_policy_producer.h", "surface_policy_producer.cc", "surface_policy_producer_unittest.cc",
+        "document_surface_commit_producer.h", "document_surface_commit_producer.cc",
+        "document_surface_commit_producer_unittest.cc")},
     "policy/native_privacy_surface_policy.mojom": "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom",
 }
 EXISTING_PATHS = {

@@ -87,10 +87,20 @@ diagnostics before enabling new hooks. Their successful 001-027 baseline runs
 do not verify the drafts or claim anti-bot acceptance. Worker APIs unavailable
 in upstream remain explicit exclusions, not fabricated coverage.
 
-`verify_native_next_batch.py` replays the eight unregistered integration patches
+`verify_native_next_batch.py` replays the nine unregistered integration patches
 in an owned temporary overlay, checks exact canonical copies and rejects source,
 receipt, GN-input or browser-core drift. Run it with a new evidence path outside
 both repositories; it never runs GN, compilation or modifies active sources.
+
+The document v2 candidate owns the browser-selected partition and independent
+surface seeds, and requires validation against Blink's final StorageKey, not
+only its provisional key. The browser producer uses the existing context key
+service without regeneration or another root-key store. Its 30 content fixture
+definitions are source-only.
+Final handoff cannot use `CalculateOrigin` as a read-only pre-unload probe:
+origin privilege changes and sandbox-token consumption must retain upstream
+semantics. The current late Canvas prototype check does not prove old-document
+rollback. No document v2 policy or new readback hook is admitted by source replay.
 
 `scripts/native_build.py` pins upstream revisions, records sync/hooks dependency
 snapshots and checks applied changes by replaying registered patches into a

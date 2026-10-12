@@ -134,3 +134,44 @@ pass by ignoring an unknown flag. The actual old-binary denial report is
 Its full 001-027 regression rerun passed all forty actual startup/denial checks:
 `worker-startup-001-027-canvas-regression-v2-probe-v1.json` on D. This validates
 the existing Canvas bootstrap path, not the uncompiled v2 candidates.
+
+## Document v2 ownership and final-partition gate (unregistered)
+
+`document_surface_policy.h` owns the authenticated browser partition together
+with all four independent surface seeds. Its preflight reuses the existing
+provisional-origin resolver and validates the typed wire key against the binary
+commitment before copying. A Canvas-only payload cannot substitute for v2 or
+coexist with it. Off, Canvas-only, surfaces and conflicting modes are explicit;
+unknown modes reject every payload combination.
+
+`ValidateDocumentSurfacePolicy` checks both the owned browser partition and
+Blink's final StorageKey. Missing required data fails, and payload presence
+cannot bypass validation by clearing a required flag. The retained top-level
+site remains significant even where upstream StorageKey equality ignores it
+because third-party partitioning is disabled. Opaque identities, nonces and
+embedded NUL bytes are preserved.
+
+`document_surface_commit_producer.{h,cc}` resolves the selected navigation key
+with the same document resolver, derives through the existing BrowserContext
+service and encodes the owned typed envelope. Absent/loading/failed/shut-down
+identities cannot produce a commit; no root key is recreated or sent. Eight
+producer fixtures cover readiness, inherited origin, nonce preservation,
+independent domains, ownership, shutdown and malformed identity retention.
+
+`document_surface_validation.patch` adds these helpers, producer and **30 native
+fixture definitions** (22 ownership/mode + 8 producer) to the existing content
+unit target. They have **not compiled or executed**. The nine-patch public replay
+passed across 55 paths:
+`gpu-audio-policy-document-producer-public-replay-v1.json` on D. Active source,
+browser core, GN arguments and receipt stayed unchanged. No v2 document startup
+switch, DocumentLoader installation or Canvas/Audio/GPU hook is enabled here.
+
+Next integration must carry this owned snapshot through browser commit and
+renderer preflight, then establish a safe final-origin decision before any
+unprotected document can execute. Do not call `DocumentLoader::CalculateOrigin`
+as an early read-only probe: it mutates origin privileges and can consume a
+sandbox token. Do not move the existing late CHECK to claim rollback: upstream
+constructs the new DocumentLoader only **after** unloading/detaching the old
+document. Early malformed-payload rejection, final-partition rejection, old-page
+usability and synchronous blank/srcdoc/JavaScript/XSLT inheritance need separate
+integration evidence before admission.
