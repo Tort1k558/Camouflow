@@ -16,6 +16,12 @@ the service explicitly copies all 32 bytes. Private evidence:
 `D:/CamouFlowNative/document-delivery-bindings-validation-complete/proof.json`.
 This does not prove C++ compilation, linkage or renderer delivery.
 
+The isolated `privacy_document_service_unittest.cc` draft uses Chromium's
+RenderViewHostTestHarness, Mojo pipes, queued key loading and mock time. Seven
+cases specify missing/ready/loading state, shutdown, deadline, pipe disconnect
+and document destruction. They are **not registered, compiled or executed**;
+they are not included in the existing 20 BrowserContext or 43 key/service cases.
+
 The service follows pinned Chromium's `DocumentService`: cross-document navigation,
 frame deletion and pipe closure destroy the receiver and invalidate readiness
 callbacks. A single request per pipe and a 10-second timer bound pending work;
