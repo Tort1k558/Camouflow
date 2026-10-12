@@ -814,6 +814,35 @@ all nine completed cases, without skips or replacing failed reports.
 These tests prove the validator's accept/reject behavior, not safe navigation
 cancellation, pre-teardown final-partition calculation or first-script delivery.
 
+### Registered final-partition gate
+
+Patch 0029 now registers the same public validator header and canonical nine-case
+fixture in `camouflow_native_privacy_unittests`. The transport candidate no longer
+creates a duplicate validator header; it uses this registered predecessor.
+The public replay checker includes canonical predecessor files even when they
+are not changed by a candidate, rejecting mismatches and source drift.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_privacy_units.py `
+  --workspace D:\CamouFlowNative `
+  --vs-installation D:\CamouFlowNative\toolchain\BuildTools `
+  --jobs 4 --target document-partition `
+  --report D:\CamouFlowNative\document-partition-new-proof.json
+```
+
+Use a new evidence path. The exact nine cases passed through this registered
+target: `D:/CamouFlowNative/document-partition-001-029-registered-j4.json`.
+Incremental build: 1m22.26s, two steps. The complete case set, actual test-executable
+hash and unchanged browser core/receipt/GN arguments were independently checked.
+Test executable SHA-256:
+`104e1e37dcc52460246a50df5ab43039e9e37372e7162e56c043935113e04ae8`.
+The five updated document candidates replayed successfully over 27 composed and
+canonical paths: `document-delivery-public-replay-001-029-v1.json`.
+Neither result proves safe navigation cancellation or activates protection.
+The original 43 key/service cases also passed separately through the registered
+unit target: `privacy-keys-001-029-regression-j4.json`. They were not replaced by
+the nine validator cases.
+
 ### Worker handoff fixture lifetime correction
 
 The first linked `blink_unittests` run on registered 001-027 inputs completed

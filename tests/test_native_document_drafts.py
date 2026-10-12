@@ -11,8 +11,11 @@ def test_document_candidate_order_and_canonical_paths():
     assert drafts.PATCHES[-1] == "document_navigation_integration_tests.patch"
     paths = set().union(*(drafts.patch_paths((drafts.DRAFTS / name).read_text(encoding="utf-8-sig"))
                          for name in drafts.PATCHES))
-    assert len(paths) == 27
-    assert set(drafts.CANONICAL.values()) <= paths
+    assert len(paths) == 26
+    assert len(paths | set(drafts.CANONICAL.values())) == 27
+    assert set(drafts.CANONICAL.values()) - paths == {
+        "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h",
+    }
 
 
 @pytest.mark.parametrize("path", ["../escape.cc", "/absolute.cc", "C:/escape.cc", "a\\escape.cc", "a/./b.cc"])
@@ -87,6 +90,23 @@ def test_canonical_mismatch_does_not_publish_success(replay_fixture):
         drafts.verify(workspace, report)
     assert not report.exists()
     assert (source / "src/value.cc").read_text() == "before\n"
+
+@pytest.mark.parametrize("mismatch", [False, True])
+def test_replay_checks_registered_canonical_file_outside_patch(replay_fixture, monkeypatch, mismatch):
+    workspace, source, candidates = replay_fixture
+    (source / "src/helper.h").write_text("registered\n", encoding="utf-8")
+    (candidates / "helper.h").write_text("changed\n" if mismatch else "registered\n", encoding="utf-8")
+    monkeypatch.setattr(drafts, "CANONICAL", {"value.cc": "src/value.cc", "helper.h": "src/helper.h"})
+    report = workspace / "proof.json"
+    if mismatch:
+        with pytest.raises(ValueError, match="canonical candidate"):
+            drafts.verify(workspace, report)
+        assert not report.exists()
+    else:
+        result = drafts.verify(workspace, report)
+        assert result["passed"] and result["active_sources_unchanged"]
+        assert "src/helper.h" in result["composed_sha256"]
+    assert (source / "src/helper.h").read_text() == "registered\n"
 
 
 def test_verify_refuses_report_inside_source_before_git(tmp_path):

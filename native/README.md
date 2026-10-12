@@ -46,6 +46,10 @@ combined 54-case BrowserContext/IPC run. Worker startup/handoff patches 0021-002
 are linked behind a developer-only switch; four Blink seed ownership unit cases
 passed on retry after test-only patch 0028 corrected a fixture lifetime abort.
 The browser core, receipt and GN arguments were verified unchanged.
+Patch 0029 registers the document partition validator and its nine exact cases;
+the public `--target document-partition` native-unit gate passed. It does not
+activate document delivery or Canvas protection; the verified browser is still
+001-027.
 The unprotected Canvas baseline passed on 001-027 before
 and after restart. Canvas protection remains a candidate; branding
 still needs application and verification. No signed own-engine release or guaranteed

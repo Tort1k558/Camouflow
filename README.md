@@ -93,6 +93,7 @@ baseline, not a production release or a claim of current security updates.
 | Existing runtime policies | **160 checks passed across 8 local gates** |
 | Worker startup / restart / rejection | **40 checks passed**, diagnostic opt-in |
 | Blink seed ownership / thread handoff | **4 cases passed**, with test-only fixture correction 0028 |
+| Document partition validator | **9 cases passed**, registered unit target 0029; not navigation recovery |
 | Unprotected Canvas API baseline | **4 phases passed** — not protection evidence |
 | External fingerprint/bot services | **Not run for 001–027** |
 | reCAPTCHA / real-key Turnstile / hCaptcha | **Not verified for 001–027** |

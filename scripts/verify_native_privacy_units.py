@@ -92,6 +92,16 @@ REQUIRED_WORKER_HANDOFF_TESTS = {
     },
 }
 
+REQUIRED_DOCUMENT_PARTITION_TESTS = {
+    "GlintDocumentCanvasPolicyTest": {
+        "MatchingPartitionReturnsOwnedSeed", "UnknownVersionRejectsMatchingPartition",
+        "MissingCommitmentRejectsPolicy", "OriginChangeRejectsPreviousCommitment",
+        "RetainedTopLevelSiteMattersWithPartitioningOff", "RetainedAncestorChainMatters",
+        "StorageNonceChangeRejectsCommitment", "OpaqueOriginRequiresExactOwnedIdentity",
+        "EmbeddedNullAndTrailingDataAreNotIgnored",
+    },
+}
+
 DELIVERY_SOURCE_FILES = {
     f"{name}{suffix}": f"{directory}/{name}{suffix}"
     for name, directory in (
@@ -127,6 +137,8 @@ def required_tests(target: str) -> dict[str, set[str]]:
         return REQUIRED_DELIVERY_TESTS
     if target == "worker-handoff":
         return REQUIRED_WORKER_HANDOFF_TESTS
+    if target == "document-partition":
+        return REQUIRED_DOCUMENT_PARTITION_TESTS
     raise ValueError("Unknown native privacy test target")
 
 
@@ -208,13 +220,17 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
         required_patches.update({"0022-native-worker-canvas-thread-handoff.patch",
                                  "0024-native-service-worker-canvas-thread-handoff.patch",
                                  "0026-native-worker-canvas-handoff-tests.patch"})
+    if target == "document-partition":
+        required_patches.add("0029-native-document-partition-validator-tests.patch")
     if not required_patches.issubset(item["name"] for item in patches):
         raise ValueError("The exact context ownership and readiness patches are required")
     delivery_sources = require_delivery_sources(source) if target == "delivery" else None
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("Blink worker-scope seed ownership/thread handoff units; not browser-delivered seed bytes, Canvas or admission"
+    scope = ("Native final-partition validator units; not navigation recovery, IPC, first-script delivery or admission"
+             if target == "document-partition" else
+             "Blink worker-scope seed ownership/thread handoff units; not browser-delivered seed bytes, Canvas or admission"
              if target == "worker-handoff" else
              "Document/worker Mojo endpoints and bootstrap consumer units; not actual worker-host lifecycle, first-script ordering, Canvas or admission"
              if target == "delivery" else
@@ -233,7 +249,7 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             executable = output / (build_target + ".exe")
             test_filter = (":".join(f"{suite}.{case}" for suite, cases in required.items() for case in sorted(cases))
-                           if target == "worker-handoff" else ":".join(name + ".*" for name in required))
+                           if target in {"worker-handoff", "document-partition"} else ":".join(name + ".*" for name in required))
             subprocess.run([str(executable), "--gtest_filter=" + test_filter,
                             "--single-process-tests", "--gtest_output=json:" + str(results)],
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
@@ -268,7 +284,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--vs-installation", type=Path)
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
-    parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff"), default="keys")
+    parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff", "document-partition"), default="keys")
     args = parser.parse_args()
     try:
         report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs, target=args.target)

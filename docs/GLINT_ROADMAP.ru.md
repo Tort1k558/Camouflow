@@ -63,7 +63,7 @@ Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчам
 | Ключи/StorageKey/BrowserContext | 43 native readiness/key cases и 20 реальных context cases прошли; это не доказательство всех renderer/worker-путей |
 | IPC и consumers | 34 endpoint/consumer cases прошли; совместный прогон context/delivery — 54 cases, не дополнительные независимые 54 проверки |
 | Worker startup | 40 runtime-проверок прошли в developer-режиме; все четыре Blink handoff cases прошли после test-only исправления 0028. Browser core/receipt/GN не изменились; Canvas/admission этим не подтверждаются |
-| Document delivery до JS | Не завершена. Carrier, throttle, validator, transport и browser producer — незарегистрированные черновики. Transport/clone/DocumentInit и восемь producer translation units прошли syntax; fixtures и end-to-end first-script delivery не исполнены |
+| Document delivery до JS | Не завершена. Validator зарегистрирован как 0029, девять native cases прошли через публичный target. Carrier, throttle, transport и producer остаются черновиками; first-script delivery и безопасное восстановление при final mismatch не проверены |
 | Canvas | Четыре фазы upstream baseline прошли без защиты; алгоритмы/hooks — черновики, capability не активирована |
 | WebGL/WebGPU, Audio | Полноценная защита не завершена |
 | UA/Client Hints, Screen/Intl, storage | Часть конфигурации и диагностик есть; нужна единая карта покрытия, а не вывод «отсутствует» из краткого отчёта |

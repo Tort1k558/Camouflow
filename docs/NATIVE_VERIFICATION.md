@@ -315,6 +315,23 @@ binary partition comparison and rejection semantics, not recovery after frame
 teardown or browser-to-renderer delivery. Failed staging/launcher attempts remain
 separate; they were not converted into passing reports.
 
+Patch 0029 now registers that exact public validator and nine-case fixture in
+the existing native unit executable. The public command
+`verify_native_privacy_units.py --target document-partition` requires patch 0029,
+selects the nine exact names and retains strict no-skips/results/source/GN/core
+checks. The registered run passed all nine cases, with a 1m22.26s two-step
+incremental build: `document-partition-001-029-registered-j4.json`.
+Test executable SHA-256:
+`104e1e37dcc52460246a50df5ab43039e9e37372e7162e56c043935113e04ae8`.
+Actual executable, case set and unchanged browser core/receipt/GN hashes were
+independently rechecked. This supersedes the private standalone command for
+reproduction, not its historical results. Document transport now reuses the
+registered helper; all five remaining candidates replayed over 27 composed and
+canonical paths in `document-delivery-public-replay-001-029-v1.json`.
+The Python regression suite passed 1283 tests. No new lint findings were added;
+existing unrelated findings remain. Navigation recovery and first-script delivery
+remain distinct unexecuted runtime gates.
+
 An independent unregistered `document_canvas_seed_handoff.patch` now prepares
 the immutable Blink document-side carrier. A native-only initializer owns one
 surface-seed snapshot, construction copies it into a const Document field and

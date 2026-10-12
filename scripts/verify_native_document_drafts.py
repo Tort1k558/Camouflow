@@ -79,8 +79,8 @@ def verify(workspace: Path, report: Path) -> dict:
     inputs = {name: digest(DRAFTS / name) for name in (*PATCHES, *CANONICAL)}
     if any(value is None for value in inputs.values()):
         raise ValueError("A required public candidate file is missing")
-    paths = sorted(set().union(*(patch_paths((DRAFTS / name).read_text(encoding="utf-8-sig"))
-                               for name in PATCHES)))
+    paths = sorted(set(CANONICAL.values()).union(
+        *(patch_paths((DRAFTS / name).read_text(encoding="utf-8-sig")) for name in PATCHES)))
     for relative in paths:
         if (source / relative).resolve() != source / relative:
             raise ValueError("Candidate inputs must not follow source symlinks")

@@ -323,6 +323,22 @@ receipt and GN arguments were independently verified. This is fixture-level
 seed ownership/timing evidence, not real browser-partition derivation,
 Canvas protection, external anti-bot acceptance or a new browser release.
 
+### Registered document partition validator, source patch 0029
+
+The exact nine `GlintDocumentCanvasPolicyTest` cases passed via the public
+`verify_native_privacy_units.py --target document-partition` command.
+Build: **1m22.26s**, two incremental steps; no new browser release.
+The exact completed case set, actual unit executable checksum and unchanged
+browser core/receipt/GN hashes were independently rechecked.
+Private evidence: `document-partition-001-029-registered-j4.json`.
+The original **43 key/service cases also passed** through the same registered
+native unit target, separately: `privacy-keys-001-029-regression-j4.json`.
+
+This covers partition equality/rejection and owned seed return, including
+opaque identity, retained partition fields, nonce and binary commitment data.
+It does not prove pre-teardown cancellation, actual first-script delivery or
+Canvas protection. Those document runtime gates remain incomplete.
+
 ## Sources and maintenance
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

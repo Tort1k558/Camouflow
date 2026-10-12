@@ -51,6 +51,12 @@ retry with the baseline browser core, receipt and GN arguments unchanged.
 Document
 bootstrap and Canvas/WebGL/WebGPU/audio protection remain incomplete.
 
+Patch 0029 registers a shared final-partition validator header and nine native
+cases, all passed through the public document-partition target. Unregistered
+document commit/renderer candidates reuse that header rather than defining a
+second copy. The validator checks exact native partition encoding, not IPC
+sender authentication or safe cancellation after document teardown.
+
 ## Source reproducibility
 
 `scripts/native_build.py` pins upstream revisions, records sync/hooks dependency

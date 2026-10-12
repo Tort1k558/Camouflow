@@ -18,6 +18,11 @@ checks; all four Blink handoff unit cases passed after test-only correction 0028
 The verified browser core is unchanged. Document startup and Canvas
 readback helpers/hooks remain unregistered. No Canvas runtime capability is enabled.
 
+The final-partition validator and its nine cases are registered separately as
+0029. The public `document-partition` target passed, and the original 43 key/service
+cases passed again. Document delivery candidates reuse this helper; its rejection
+semantics are not proof of safe navigation cancellation or first-script delivery.
+
 ## BrowserContext privacy bridge
 
 `../patches/0017-native-browser-context-tests.patch` adds 20 cases to the pinned Chromium

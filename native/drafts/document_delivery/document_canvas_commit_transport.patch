@@ -211,15 +211,14 @@ diff --git a/third_party/blink/renderer/core/loader/document_loader_test.cc b/th
 diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
 --- a/third_party/blink/public/common/BUILD.gn
 +++ b/third_party/blink/public/common/BUILD.gn
-@@ -298,6 +298,8 @@
+@@ -298,6 +298,7 @@
      "shared_storage/shared_storage_utils.h",
      "sms/webotp_constants.h",
      "sms/webotp_service_outcome.h",
 +    "native_privacy/document_canvas_commit.h",
-+    "native_privacy/document_canvas_policy_validation.h",
+     "native_privacy/document_canvas_policy_validation.h",
      "storage_key/storage_key.h",
      "subresource_load_metrics.h",
-     "switches.h",
 diff --git a/third_party/blink/public/common/native_privacy/document_canvas_commit.h b/third_party/blink/public/common/native_privacy/document_canvas_commit.h
 new file mode 100644
 --- /dev/null
@@ -246,43 +245,3 @@ new file mode 100644
 +}  // namespace blink
 +
 +#endif  // THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_COMMIT_H_
-diff --git a/third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h b/third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h
-new file mode 100644
---- /dev/null
-+++ b/third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h
-@@ -0,0 +1,35 @@
-+// Copyright 2026 CamouFlow contributors.
-+// SPDX-License-Identifier: MIT
-+#ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_POLICY_VALIDATION_H_
-+#define THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_POLICY_VALIDATION_H_
-+
-+#include <array>
-+#include <cstdint>
-+#include <optional>
-+#include <string_view>
-+
-+#include "third_party/blink/public/common/storage_key/storage_key.h"
-+
-+namespace blink {
-+
-+// Inputs must come from the browser's navigation commit, not renderer requests.
-+// This checks partition consistency; it does not authenticate an IPC sender.
-+inline std::optional<std::array<uint8_t, 32>> ValidateGlintDocumentCanvasPolicy(
-+    uint32_t version,
-+    std::string_view browser_partition_encoding,
-+    const std::array<uint8_t, 32>& seed,
-+    const StorageKey& final_document_partition) {
-+  if (version != 1 || browser_partition_encoding.empty()) {
-+    return std::nullopt;
-+  }
-+  const auto final_encoding =
-+      final_document_partition.SerializeForNativePrivacy();
-+  if (!final_encoding || *final_encoding != browser_partition_encoding) {
-+    return std::nullopt;
-+  }
-+  return seed;
-+}
-+
-+}  // namespace blink
-+
-+#endif  // THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_POLICY_VALIDATION_H_
