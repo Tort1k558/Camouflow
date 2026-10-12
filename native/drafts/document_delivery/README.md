@@ -636,6 +636,51 @@ The fixture and included helper passed isolated syntax checking with pinned
 The initial attempt was refused by the eight-GiB commit-headroom guard before
 creating the check workspace; verification ran after headroom recovered. The
 active four-job Blink build was not interrupted or changed.
-The nine cases have not executed. The helper is unregistered/unapplied, not yet
-wired into navigation Mojo, final BlinkStorageKey conversion or DocumentInit;
-it does not enable Canvas or replace the required document lifecycle tests.
+The nine cases have not executed. The helper remains unregistered/unapplied;
+the separate transport candidate below wires its intended use, but does not
+enable Canvas or replace the required document lifecycle tests.
+
+### Navigation commit transport candidate
+
+`document_canvas_commit_transport.patch` and `document_canvas_commit.h` prepare
+the consumer path from CommitNavigationParams through RenderFrameImpl and owned
+WebNavigationParams into DocumentLoader and DocumentInit. The patch includes the
+two common headers and their GN source registration. Apply it together with the
+earlier immutable document carrier; neither is registered or applied today.
+
+The Mojo payload carries a version, fixed 32-byte seed and ByteString commitment:
+the native encoding contains binary bytes and must not be transported as a Mojo
+UTF-8 string. The renderer enforces the existing 8192-byte encoding bound.
+DocumentLoader owns a pointer-sized optional payload, rather than reserving the
+entire payload in every unprotected loader. It validates against the final window
+StorageKey before InstallNewDocument, transfers an owned seed to the initializer
+and releases the commit payload. An inconsistent supplied policy currently
+triggers CHECK, rejecting installation through a renderer crash; this prototype
+is not a production navigation-error mechanism or release admission.
+
+The loader clone path explicitly preserves a validated document's seed and exact
+current partition for JavaScript-URL/XSLT replacements. A subsequent ordinary
+navigation without a payload does not reuse it. One parameterized fixture
+definition prepares checks for installed ownership, cloned ownership and removal
+on a new unprotected commit. It has not executed or proved first-script timing.
+Initial empty/about:blank/srcdoc, OOPIF, BFCache/prerender and opaque-origin
+navigation still require their own integration tests.
+
+Applicability against all nine affected paths passed with active sources unchanged:
+`D:/CamouFlowNative/document-canvas-commit-transport-overlay/proof-complete-inputs.json`.
+Pinned C++ and Blink bindings generated successfully in
+`document-canvas-commit-bindings-validation-v5/proof.json` and
+`document-canvas-commit-blink-bindings-validation/proof.json`. Imported/generated
+module roots and upstream typemappings are retained; declared-type metadata is
+restricted to the single input rather than requiring the entire mojom_core target.
+
+The first C++ check caught the upstream DocumentLoader size guard, not a runtime
+test failure. The candidate now preserves that assertion, mirrors the new member
+and copies the appropriate clone state. All three corrected translation units
+(RenderFrameImpl, DocumentLoader and the loader fixture) passed isolated pinned
+syntax checks, including Chromium/Blink plugins, without a stale PCH:
+`document-canvas-commit-transport-owned-cpp-check/proof.json`. Source/header hashes
+were revalidated. There are no linked objects or executed fixture results.
+The browser producer, bounded readiness registration, required-policy failure
+semantics and capability activation are still missing. An absent payload retains
+upstream behavior; it must not be presented as active document protection.

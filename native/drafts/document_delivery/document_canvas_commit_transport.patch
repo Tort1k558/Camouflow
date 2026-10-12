@@ -1,0 +1,288 @@
+diff --git a/third_party/blink/public/mojom/navigation/navigation_params.mojom b/third_party/blink/public/mojom/navigation/navigation_params.mojom
+--- a/third_party/blink/public/mojom/navigation/navigation_params.mojom
++++ b/third_party/blink/public/mojom/navigation/navigation_params.mojom
+@@ -387,6 +387,14 @@
+ 
+ // Used by commit IPC messages. Holds the parameters needed by the renderer to
+ // commit a navigation besides those in CommonNavigationParams.
++// Internal navigation payload, never exposed through JavaScript.
++// ByteString preserves the complete binary native partition encoding.
++struct GlintDocumentCanvasCommit {
++  uint32 version;
++  mojo_base.mojom.ByteString partition_encoding;
++  array<uint8, 32> partition_seed;
++};
++
+ struct CommitNavigationParams {
+   // The origin to be used for committing the navigation, always specified.
+   url.mojom.Origin origin_to_commit;
+@@ -400,6 +408,9 @@
+   // `storage_key`. The final storage key is computed by the document loader
+   // taking into account the origin computed by the renderer.
+   blink.mojom.StorageKey storage_key;
++
++  // Absence retains the upstream path; admission requires a browser producer.
++  GlintDocumentCanvasCommit? glint_document_canvas_commit;
+ 
+   // Whether or not the user agent override string should be used.
+   bool is_overriding_user_agent = false;
+diff --git a/third_party/blink/public/web/web_navigation_params.h b/third_party/blink/public/web/web_navigation_params.h
+--- a/third_party/blink/public/web/web_navigation_params.h
++++ b/third_party/blink/public/web/web_navigation_params.h
+@@ -27,6 +27,7 @@
+ #include "third_party/blink/public/common/frame/frame_policy.h"
+ #include "third_party/blink/public/common/frame/view_transition_state.h"
+ #include "third_party/blink/public/common/navigation/impression.h"
++#include "third_party/blink/public/common/native_privacy/document_canvas_commit.h"
+ #include "third_party/blink/public/common/storage_key/storage_key.h"
+ #include "third_party/blink/public/common/tokens/tokens.h"
+ #include "third_party/blink/public/mojom/blob/blob_url_store.mojom-shared.h"
+@@ -395,6 +396,7 @@
+   // `storage_key`. The final storage key is computed by the document loader
+   // taking into account the origin computed by the renderer.
+   StorageKey storage_key;
++  std::unique_ptr<GlintDocumentCanvasCommit> glint_document_canvas_commit;
+ 
+   blink::DocumentToken document_token;
+   // The devtools token for this navigation. See DocumentLoader
+diff --git a/content/renderer/render_frame_impl.cc b/content/renderer/render_frame_impl.cc
+--- a/content/renderer/render_frame_impl.cc
++++ b/content/renderer/render_frame_impl.cc
+@@ -990,6 +990,18 @@
+ 
+   navigation_params->origin_to_commit = commit_params.origin_to_commit;
+   navigation_params->storage_key = std::move(commit_params.storage_key);
++  if (commit_params.glint_document_canvas_commit) {
++    const auto& policy = *commit_params.glint_document_canvas_commit;
++    blink::GlintDocumentCanvasCommit owned;
++    owned.version = policy.version;
++    CHECK_LE(policy.partition_encoding.size(), 8192u);
++    owned.partition_encoding = policy.partition_encoding;
++    CHECK_EQ(policy.partition_seed.size(), owned.partition_seed.size());
++    std::copy(policy.partition_seed.begin(), policy.partition_seed.end(),
++              owned.partition_seed.begin());
++    navigation_params->glint_document_canvas_commit =
++        std::make_unique<blink::GlintDocumentCanvasCommit>(std::move(owned));
++  }
+ 
+   navigation_params->frame_policy = commit_params.frame_policy;
+ 
+diff --git a/third_party/blink/renderer/core/loader/document_loader.h b/third_party/blink/renderer/core/loader/document_loader.h
+--- a/third_party/blink/renderer/core/loader/document_loader.h
++++ b/third_party/blink/renderer/core/loader/document_loader.h
+@@ -45,6 +45,7 @@
+ #include "third_party/blink/public/common/fenced_frame/redacted_fenced_frame_config.h"
+ #include "third_party/blink/public/common/frame/view_transition_state.h"
+ #include "third_party/blink/public/common/loader/loading_behavior_flag.h"
++#include "third_party/blink/public/common/native_privacy/document_canvas_commit.h"
+ #include "third_party/blink/public/common/permissions_policy/document_policy.h"
+ #include "third_party/blink/public/common/scheduler/task_attribution_id.h"
+ #include "third_party/blink/public/common/subresource_load_metrics.h"
+@@ -710,6 +711,7 @@
+   const scoped_refptr<SecurityOrigin> origin_to_commit_;
+ 
+   blink::BlinkStorageKey storage_key_;
++  std::unique_ptr<GlintDocumentCanvasCommit> glint_document_canvas_commit_;
+ 
+   WebNavigationType navigation_type_;
+ 
+diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
+--- a/third_party/blink/renderer/core/loader/document_loader.cc
++++ b/third_party/blink/renderer/core/loader/document_loader.cc
+@@ -30,6 +30,7 @@
+ #include "third_party/blink/renderer/core/loader/document_loader.h"
+ 
+ #include <algorithm>
++#include "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h"
+ #include <memory>
+ #include <optional>
+ #include <utility>
+@@ -381,6 +382,7 @@
+       content_security_notifier_;
+   scoped_refptr<SecurityOrigin> origin_to_commit;
+   BlinkStorageKey storage_key;
++  std::unique_ptr<GlintDocumentCanvasCommit> glint_document_canvas_commit;
+   WebNavigationType navigation_type;
+   DocumentLoadTiming document_load_timing;
+   base::TimeTicks time_of_last_data_received;
+@@ -576,6 +578,8 @@
+                             ? nullptr
+                             : params_->origin_to_commit.Get()->IsolatedCopy()),
+       storage_key_(std::move(params_->storage_key)),
++      glint_document_canvas_commit_(
++          std::move(params_->glint_document_canvas_commit)),
+       navigation_type_(navigation_type),
+       document_load_timing_(*this),
+       service_worker_network_provider_(
+@@ -739,6 +743,13 @@
+   // sandbox flags and various policies are copied separately during commit in
+   // CommitNavigation() and CalculateSandboxFlags().
+   params->storage_key = window->GetStorageKey();
++  if (auto seed = frame_->GetDocument()->GlintCanvasPartitionSeed()) {
++    auto encoding = params->storage_key.SerializeForNativePrivacy();
++    CHECK(encoding);
++    params->glint_document_canvas_commit =
++        std::make_unique<GlintDocumentCanvasCommit>(
++            GlintDocumentCanvasCommit{1, std::move(*encoding), *seed});
++  }
+   params->agent_cluster_key = agent_cluster_key_;
+   params->grant_load_local_resources = grant_load_local_resources_;
+   // Various attributes that relates to the last "real" navigation that is known
+@@ -3007,8 +3018,7 @@
+   WillCommitNavigation();
+ 
+   is_prerendering_ = frame_->GetPage()->IsPrerendering();
+-  Document* document = frame_->DomWindow()->InstallNewDocument(
+-      DocumentInit::Create()
++  auto document_init = DocumentInit::Create()
+           .WithWindow(frame_->DomWindow(), owner_document)
+           .WithToken(token_)
+           .ForInitialEmptyDocument(commit_reason_ ==
+@@ -3021,7 +3031,18 @@
+           .ForDiscard(commit_reason_ == CommitReason::kDiscard)
+           .WithFallbackBaseURL(fallback_base_url_)
+           .WithUkmSourceId(ukm_source_id_)
+-          .WithBaseAuctionNonce(base_auction_nonce_));
++          .WithBaseAuctionNonce(base_auction_nonce_);
++  if (glint_document_canvas_commit_) {
++    const auto& policy = *glint_document_canvas_commit_;
++    auto validated_seed = ValidateGlintDocumentCanvasPolicy(
++        policy.version, policy.partition_encoding, policy.partition_seed,
++        frame_->DomWindow()->GetStorageKey());
++    // A bad browser commit must not install an unprotected document.
++    CHECK(validated_seed);
++    document_init.WithGlintCanvasPartitionSeed(*validated_seed);
++    glint_document_canvas_commit_.reset();
++  }
++  Document* document = frame_->DomWindow()->InstallNewDocument(document_init);
+ 
+   RecordUseCountersForCommit();
+   RecordConsoleMessagesForCommit();
+diff --git a/third_party/blink/renderer/core/loader/document_loader_test.cc b/third_party/blink/renderer/core/loader/document_loader_test.cc
+--- a/third_party/blink/renderer/core/loader/document_loader_test.cc
++++ b/third_party/blink/renderer/core/loader/document_loader_test.cc
+@@ -542,6 +542,46 @@
+       network::mojom::PermissionsPolicyFeature::kPayment));
+ }
+ 
++TEST_P(DocumentLoaderTest, GlintCanvasCommitInstallsOwnedDocumentSeed) {
++  WebViewImpl* view =
++      web_view_helper_.InitializeAndLoad("https://example.com/foo.html");
++  LocalFrame* frame = To<LocalFrame>(view->GetPage()->MainFrame());
++  const KURL url(NullUrl(), "https://example.com/canvas.html");
++  auto params = WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
++  params->origin_to_commit = WebSecurityOrigin::Create(WebURL(url));
++  params->storage_key = StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://example.com/canvas.html")));
++  auto encoding = params->storage_key.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  std::array<uint8_t, 32> seed{};
++  seed.fill(61);
++  const auto expected = seed;
++  params->glint_document_canvas_commit =
++      std::make_unique<GlintDocumentCanvasCommit>(
++          GlintDocumentCanvasCommit{1, *encoding, seed});
++  frame->Loader().CommitNavigation(std::move(params), nullptr);
++  seed.fill(0);
++  EXPECT_EQ(frame->GetDocument()->GlintCanvasPartitionSeed(),
++            std::optional(expected));
++
++  auto cloned = frame->Loader().GetDocumentLoader()
++                    ->CreateWebNavigationParamsToCloneDocument();
++  ASSERT_TRUE(cloned->glint_document_canvas_commit);
++  EXPECT_EQ(cloned->glint_document_canvas_commit->version, 1u);
++  EXPECT_EQ(cloned->glint_document_canvas_commit->partition_encoding, *encoding);
++  EXPECT_EQ(cloned->glint_document_canvas_commit->partition_seed, expected);
++  cloned->glint_document_canvas_commit->partition_seed.fill(0);
++  EXPECT_EQ(frame->GetDocument()->GlintCanvasPartitionSeed(),
++            std::optional(expected));
++
++  auto next = WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
++  frame->Loader().CommitNavigation(std::move(next), nullptr);
++  EXPECT_FALSE(frame->GetDocument()->GlintCanvasPartitionSeed());
++  auto unprotected_clone = frame->Loader().GetDocumentLoader()
++                               ->CreateWebNavigationParamsToCloneDocument();
++  EXPECT_FALSE(unprotected_clone->glint_document_canvas_commit);
++}
++
+ TEST_P(DocumentLoaderTest, CommitsDeferredOnSameOriginNavigation) {
+   const KURL& requestor_url =
+       KURL(NullUrl(), "https://www.example.com/foo.html");
+diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
+--- a/third_party/blink/public/common/BUILD.gn
++++ b/third_party/blink/public/common/BUILD.gn
+@@ -298,6 +298,8 @@
+     "shared_storage/shared_storage_utils.h",
+     "sms/webotp_constants.h",
+     "sms/webotp_service_outcome.h",
++    "native_privacy/document_canvas_commit.h",
++    "native_privacy/document_canvas_policy_validation.h",
+     "storage_key/storage_key.h",
+     "subresource_load_metrics.h",
+     "switches.h",
+diff --git a/third_party/blink/public/common/native_privacy/document_canvas_commit.h b/third_party/blink/public/common/native_privacy/document_canvas_commit.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/document_canvas_commit.h
+@@ -0,0 +1,21 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_COMMIT_H_
++#define THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_COMMIT_H_
++
++#include <array>
++#include <cstdint>
++#include <string>
++
++namespace blink {
++
++// Native-only owned payload. The browser must choose the profile and partition.
++struct GlintDocumentCanvasCommit {
++  uint32_t version = 0;
++  std::string partition_encoding;
++  std::array<uint8_t, 32> partition_seed{};
++};
++
++}  // namespace blink
++
++#endif  // THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_COMMIT_H_
+diff --git a/third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h b/third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h
+@@ -0,0 +1,35 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_POLICY_VALIDATION_H_
++#define THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_POLICY_VALIDATION_H_
++
++#include <array>
++#include <cstdint>
++#include <optional>
++#include <string_view>
++
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++
++namespace blink {
++
++// Inputs must come from the browser's navigation commit, not renderer requests.
++// This checks partition consistency; it does not authenticate an IPC sender.
++inline std::optional<std::array<uint8_t, 32>> ValidateGlintDocumentCanvasPolicy(
++    uint32_t version,
++    std::string_view browser_partition_encoding,
++    const std::array<uint8_t, 32>& seed,
++    const StorageKey& final_document_partition) {
++  if (version != 1 || browser_partition_encoding.empty()) {
++    return std::nullopt;
++  }
++  const auto final_encoding =
++      final_document_partition.SerializeForNativePrivacy();
++  if (!final_encoding || *final_encoding != browser_partition_encoding) {
++    return std::nullopt;
++  }
++  return seed;
++}
++
++}  // namespace blink
++
++#endif  // THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_CANVAS_POLICY_VALIDATION_H_

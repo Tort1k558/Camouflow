@@ -63,7 +63,7 @@ Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчам
 | Ключи/StorageKey/BrowserContext | 43 native readiness/key cases и 20 реальных context cases прошли; это не доказательство всех renderer/worker-путей |
 | IPC и consumers | 34 endpoint/consumer cases прошли; совместный прогон context/delivery — 54 cases, не дополнительные независимые 54 проверки |
 | Worker startup | 40 runtime-проверок startup/restart/shared-client/rejection прошли в developer-режиме. Четыре Blink handoff cases ещё не исполнены: собирается тестовый target |
-| Document delivery до JS | Не завершена. Carrier и readiness throttle — незарегистрированные черновики, syntax/applicability не заменяют исполнение трёх и одиннадцати fixture cases |
+| Document delivery до JS | Не завершена. Carrier, readiness throttle, partition validator и commit transport — незарегистрированные черновики. Transport/clone/DocumentInit прошли syntax; browser producer отсутствует, fixtures не исполнены |
 | Canvas | Четыре фазы upstream baseline прошли без защиты; алгоритмы/hooks — черновики, capability не активирована |
 | WebGL/WebGPU, Audio | Полноценная защита не завершена |
 | UA/Client Hints, Screen/Intl, storage | Часть конфигурации и диагностик есть; нужна единая карта покрытия, а не вывод «отсутствует» из краткого отчёта |
@@ -207,6 +207,10 @@ Collector логирует успешные и ошибочные запросы
 1. После текущего target проверить четыре Blink cases и сохранить результат.
 2. Довести document carrier и bounded readiness barrier, зарегистрировать и
    исполнить их fixtures только после проверки producer/consumer-контракта.
+   Подготовленный commit transport уже передаёт owned payload в DocumentLoader,
+   проверяет окончательный partition и сохраняет clone state; три translation
+   units прошли syntax, не runtime. Следующий узел — browser producer и явный
+   отказ required-policy навигации без renderer crash как штатного механизма.
 3. Связать browser-owned partition commitment с финальным StorageKey до
    установки документа. В pinned Chromium navigation key может быть provisional:
    готовность ключевого сервиса не доказывает окончательность partition.
