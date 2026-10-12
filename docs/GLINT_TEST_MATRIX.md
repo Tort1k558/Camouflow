@@ -92,9 +92,28 @@ be substituted for this strict round.
 
 ### Windows development candidate 001–015
 
-Pending linked binary and runtime verification. No baseline result above applies
-automatically to this candidate. Add dated results and measured hashes only after
-the actual new binary completes its checks.
+Windows link completed on **2026-10-12**, build process exit code 0, jobs 4;
+the build log records **1h51m49.40s** for this incremental compiler/linker run,
+not the entire development history or a clean build. Receipt includes 15 patches.
+Full runtime/native and external verification remains in progress. Baseline
+observations above must not be transferred to this candidate.
+
+| Measured code | SHA-256 |
+| --- | --- |
+| `chrome.exe` | `61e97ba3335f64836b3abcf93d67af0d6ddd0d06c291b4592b1448643b35e222` |
+| `chrome.dll` | `2bf8b1504afec16c841b761432fd914e20fe358fc284bde4955b515774e4ad77` |
+| `chrome_elf.dll` | `3468b145cea9de7df386ad58c0daedba0d39c71bac58b0136486a36a2037b74d` |
+
+The launcher hash is unchanged from 001–010; the changed implementation is in
+`chrome.dll`. An executable-only hash cannot distinguish these two builds.
+
+An additional actual Chrome startup smoke with
+`--camouflow-native-privacy-key-service=1` passed initial/restart phases:
+persistent localStorage survived, two separate OTR contexts did not inherit it,
+and the owned identity file remained unchanged. Private report:
+`key-bootstrap-001-015/report.json`. This is limited startup/storage evidence,
+**not** observation of key loading/readiness/derivation, OTR key separation or
+fingerprint protection. The real context/readiness drafts still need execution.
 
 ### Local Canvas calibration — baseline 001–010, 2026-10-12
 

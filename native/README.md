@@ -35,9 +35,9 @@ Current own-fork work is Windows-only. Linux/macOS support is deferred, not
 released. The manager's Mobile Web mode is desktop Chromium viewport/touch
 emulation, not Android/iOS. Only verified capabilities may be enabled.
 
-The 001-010 Windows development baseline has runtime evidence; later privacy
-key/context changes and branding/readiness candidates need further native
-compilation and runtime verification. No signed own-engine release or guaranteed
+The 001-010 Windows development baseline has runtime evidence. The newer 001–015
+Windows browser has linked and is undergoing verification; branding/readiness
+candidates still need native compilation and runtime verification. No signed own-engine release or guaranteed
 anti-bot/CAPTCHA acceptance is advertised.
 
 Development diaries and machine-specific evidence stay outside public source.
