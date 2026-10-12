@@ -132,3 +132,33 @@ premultiplied baseline conversion, opaque alpha, memory limit, unsupported space
 format, absent pixels and crop/full equality. They are **not linked or executed**,
 and have not been added to the active Chromium target. These checks do not prove
 DOM exception order, HTML/OffscreenCanvas encoding, GPU handling or runtime policy.
+
+## Complete test-only integration candidate
+
+`test_integration.patch` contains the five algorithm/adapter/test source files
+and adds `glint_canvas_readback_candidate` (test-only source set) plus
+`glint_canvas_copy_unittests` to the existing content/browser GN file, following
+the private-key native test target's layout. It does not add these helpers to
+production Blink or the browser runtime. This avoids requiring another full
+content_unittests compilation just to execute the ten raster-copy cases.
+
+The complete patch passed applicability checks against the current 001-017 tree,
+and its new target definitions passed pinned GN syntax/format validation.
+Evidence: `D:/CamouFlowNative/canvas-copy-test-target-draft/proof-full.json`.
+GN dependency graph generation, compilation, linkage and test execution remain
+pending. The patch is **not registered or applied**. Do not change an active
+checkout or run concurrent builds in the same output directory. Before using
+the regular source-verifying build pipeline, promote the complete patch and its
+checksum into the build lock; never bypass exact source verification to publish
+a binary or declare a runtime capability.
+
+After promotion in an idle checkout, the intended commands are:
+
+```text
+autoninja -C out/CamouFlowNative -j 1 glint_canvas_copy_unittests
+out/CamouFlowNative/glint_canvas_copy_unittests.exe --gtest_filter=GlintCanvasCopyTest.* --single-process-tests --gtest_output=json:D:/CamouFlowNative/canvas-copy-native-tests.json
+```
+
+Use a fresh evidence path and inspect all ten named cases, not just an exit code.
+Passing this target would establish adapter behavior, not Canvas API protection,
+first-script policy delivery, cross-context compatibility or privacy admission.
