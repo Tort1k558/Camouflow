@@ -836,6 +836,47 @@ and speculative-host cleanup, and prove that the previous document remains
 usable before its teardown. The final validation CHECK remains in the draft;
 neither this normalization nor source replay activates privacy protection.
 
+### Early commit rejection candidate
+
+`document_commit_rejection.patch` is the seventh ordered candidate, unregistered
+and not enabled in the current browser. RenderFrameImpl checks the incoming
+version, bounded commitment, seed length and resolved browser-provided partition
+at entry to CommitNavigation, before WebUI state changes, body decoding,
+PrepareFrameForCommit or Blink document teardown. An invalid payload sends an
+associated FrameHost rejection carrying the exact navigation token, then uses
+the existing renderer abort cleanup. The callback is not reported as a successful
+commit, and no fallback unprotected document is installed.
+
+The browser handler looks only in the receiving RenderFrameHost's owned pending
+requests. It requires a matching token, waiting-to-commit state, that exact
+selected frame and a browser-owned policy payload. Unknown, late, duplicate,
+foreign-frame and policy-absent requests do not select a cancellation target.
+The matched request receives ERR_ABORTED and the upstream cancellation/unused
+speculative-host cleanup. Cleanup may destroy both request and frame; the handler
+does not use either afterward. NavigationClient disconnects are not relied upon
+to select the cancellation target.
+
+Three additional NavigationSimulator definitions intend six cases: exact-token
+rejection, unknown-token preservation and policy-absent preservation. The existing
+producer expectation now uses the shared resolved StorageKey, rather than the
+provisional key. These definitions have not executed. Token matching in source
+does not yet prove cross-site cancellation, late-message behavior, callback
+lifecycle, previous-document usability or renderer abort cleanup at runtime.
+
+Pinned Mojo parsing and C++ generation passed:
+`D:/CamouFlowNative/document-commit-rejection-bindings-v1/proof.json`.
+Isolated Chromium-flag C++ syntax checks passed for RenderFrameHostImpl,
+RenderFrameImpl and the six-definition NavigationSimulator fixture:
+`D:/CamouFlowNative/document-commit-rejection-cpp-check-v1/proof.json`.
+Seven-candidate replay passed over 32 composed/canonical paths:
+`D:/CamouFlowNative/document-delivery-public-replay-001-029-rejection-v1.json`.
+These results are not browser protection or runtime admission.
+
+The early check uses the browser's supplied origin. It does **not** prove the
+final Blink-selected partition before teardown. The final DocumentLoader CHECK
+therefore remains in the candidate; safely rejecting a mismatch discovered only
+there is still unresolved. This draft must not be enabled as production privacy.
+
 ### Linked final-partition validator evidence
 
 All nine `GlintDocumentCanvasPolicyTest` cases executed and passed in an isolated
@@ -924,7 +965,7 @@ partition-to-worker equality, Canvas protection or production admission.
 
 Use a new absolute report path outside both repositories. The checker verifies
 the pinned revision and registered source/V8 patch replay with the existing build
-utilities, then applies the six document candidates in order inside an owned
+utilities, then applies the seven document candidates in order inside an owned
 temporary Git overlay. It checks canonical helper/fixture copies, records their
 hashes and its own source hash, and rejects source/input drift, unsafe paths,
 non-source modes, binary patches and evidence overwrites. Active Chromium/GN

@@ -22,6 +22,7 @@ PATCHES = (
     "document_canvas_first_script_tests.patch",
     "document_navigation_integration_tests.patch",
     "document_storage_key_resolution.patch",
+    "document_commit_rejection.patch",
 )
 CANONICAL = {
     **{name: "third_party/blink/public/common/native_privacy/" + name for name in (

@@ -8,6 +8,8 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/test/scoped_command_line.h"
 #include "content/browser/renderer_host/navigation_request.h"
+#include "content/browser/renderer_host/render_frame_host_impl.h"
+#include "content/common/frame.mojom.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/native_privacy_context.h"
 #include "content/public/browser/web_contents.h"
@@ -16,6 +18,7 @@
 #include "content/public/test/test_renderer_host.h"
 #include "net/base/net_errors.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/common/native_privacy/document_storage_key_resolution.h"
 #include "third_party/blink/public/mojom/navigation/navigation_params.mojom.h"
 #include "url/gurl.h"
 
@@ -115,9 +118,11 @@ TEST_P(NativeDocumentNavigationTest, ReadyRequestCarriesItsSelectedPartitionPoli
   ASSERT_TRUE(request);
   const auto& params = request->commit_params();
   ASSERT_TRUE(params.glint_document_canvas_commit);
-  const auto expected_encoding = params.storage_key.SerializeForNativePrivacy();
+  const auto resolved = blink::ResolveGlintDocumentStorageKey(
+      params.storage_key, params.origin_to_commit);
+  const auto expected_encoding = resolved.SerializeForNativePrivacy();
   const auto expected_seed =
-      DeriveNativePrivacyKey(browser_context(), params.storage_key, "canvas");
+      DeriveNativePrivacyKey(browser_context(), resolved, "canvas");
   ASSERT_TRUE(expected_encoding);
   ASSERT_TRUE(expected_seed);
   EXPECT_EQ(params.glint_document_canvas_commit->version, 1u);
@@ -130,6 +135,54 @@ TEST_P(NativeDocumentNavigationTest, ReadyRequestCarriesItsSelectedPartitionPoli
   EXPECT_EQ(finished_, 1);
   EXPECT_TRUE(committed_);
   EXPECT_EQ(error_, net::OK);
+}
+
+TEST_P(NativeDocumentNavigationTest, SelectedFrameRejectsExactPendingCommit) {
+  EnablePolicy();
+  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
+  task_environment()->RunUntilIdle();
+  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+  simulator->ReadyToCommit();
+  auto* request = NavigationRequest::From(simulator->GetNavigationHandle());
+  ASSERT_TRUE(request);
+  ASSERT_TRUE(request->commit_params().glint_document_canvas_commit);
+  auto* selected = request->GetRenderFrameHost();
+  const auto token = request->commit_params().navigation_token;
+  static_cast<mojom::FrameHost*>(selected)->RejectGlintDocumentCanvasCommit(token);
+  task_environment()->RunUntilIdle();
+  EXPECT_EQ(finished_, 1);
+  EXPECT_FALSE(committed_);
+  EXPECT_EQ(error_, net::ERR_ABORTED);
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(),
+            GURL("https://canvas.test/baseline"));
+}
+
+TEST_P(NativeDocumentNavigationTest, UnknownTokenDoesNotCancelPendingCommit) {
+  EnablePolicy();
+  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
+  task_environment()->RunUntilIdle();
+  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+  simulator->ReadyToCommit();
+  auto* request = NavigationRequest::From(simulator->GetNavigationHandle());
+  ASSERT_TRUE(request);
+  static_cast<mojom::FrameHost*>(request->GetRenderFrameHost())
+      ->RejectGlintDocumentCanvasCommit(base::UnguessableToken::Create());
+  EXPECT_EQ(finished_, 0);
+  simulator->Commit();
+  EXPECT_TRUE(committed_);
+}
+
+TEST_P(NativeDocumentNavigationTest, PolicyAbsentCannotUseRejectionProtocol) {
+  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+  simulator->ReadyToCommit();
+  auto* request = NavigationRequest::From(simulator->GetNavigationHandle());
+  ASSERT_TRUE(request);
+  ASSERT_FALSE(request->commit_params().glint_document_canvas_commit);
+  static_cast<mojom::FrameHost*>(request->GetRenderFrameHost())
+      ->RejectGlintDocumentCanvasCommit(request->commit_params().navigation_token);
+  EXPECT_EQ(finished_, 0);
+  simulator->Commit();
+  EXPECT_TRUE(committed_);
 }
 
 INSTANTIATE_TEST_SUITE_P(WithAndWithoutUrlLoader,

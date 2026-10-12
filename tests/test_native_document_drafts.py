@@ -6,14 +6,15 @@ from scripts import verify_native_document_drafts as drafts
 
 
 def test_document_candidate_order_and_canonical_paths():
-    assert len(drafts.PATCHES) == 6
+    assert len(drafts.PATCHES) == 7
     assert drafts.PATCHES[0] == "document_canvas_seed_handoff.patch"
-    assert drafts.PATCHES[-2] == "document_navigation_integration_tests.patch"
-    assert drafts.PATCHES[-1] == "document_storage_key_resolution.patch"
+    assert drafts.PATCHES[-3] == "document_navigation_integration_tests.patch"
+    assert drafts.PATCHES[-2] == "document_storage_key_resolution.patch"
+    assert drafts.PATCHES[-1] == "document_commit_rejection.patch"
     paths = set().union(*(drafts.patch_paths((drafts.DRAFTS / name).read_text(encoding="utf-8-sig"))
                          for name in drafts.PATCHES))
-    assert len(paths) == 28
-    assert len(paths | set(drafts.CANONICAL.values())) == 29
+    assert len(paths) == 31
+    assert len(paths | set(drafts.CANONICAL.values())) == 32
     assert set(drafts.CANONICAL.values()) - paths == {
         "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h",
     }
