@@ -151,7 +151,11 @@ pass the same owning set explicitly; the duplicate test additionally requires
 that the set is empty. No DCHECK, bad-message observation or zero-reply assertion
 was disabled. Patch 0019 and canonical snapshots were updated together after the
 failed runner terminated. The new full gate uses
-`privacy-delivery-001-020-duplicate-pipe-fixed-j4.json`; its result is pending.
+`privacy-delivery-001-020-duplicate-pipe-fixed-j4.json` failed compilation because
+Chromium's raw-reference checker requires `raw_ref` for the stored receiver-set
+reference. The member now uses `const raw_ref`, without suppressing the checker.
+The corrected full gate is `privacy-delivery-001-020-raw-ref-fixed-j4.json`; its
+result is pending.
 Startup gates, Canvas seed thread handoff, Canvas readback hooks and branding
 remain unregistered; no protected first-script execution or Canvas capability is
 implied by these endpoint registrations.

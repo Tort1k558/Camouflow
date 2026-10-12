@@ -3,6 +3,7 @@
 #ifndef CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_WORKER_SERVICE_H_
 #define CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_WORKER_SERVICE_H_
 
+#include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
 #include "mojo/public/cpp/bindings/unique_receiver_set.h"
@@ -35,7 +36,7 @@ class PrivacyWorkerService final : public blink::mojom::NativePrivacyWorker {
   void Complete(blink::mojom::NativePrivacyDeliveryStatus status,
                 blink::mojom::NativePrivacyCanvasPolicyPtr policy);
 
-  mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>& receivers_;
+  const raw_ref<mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>> receivers_;
   const base::WeakPtr<BrowserContext> context_;
   const blink::StorageKey partition_;
   const Kind kind_;

@@ -33,7 +33,7 @@ PrivacyWorkerService::~PrivacyWorkerService() = default;
 void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
   if (requested_) {
     // Removes the receiver before destroying this service and its replies.
-    receivers_.ReportBadMessage("Glint worker policy requested twice on one pipe");
+    receivers_->ReportBadMessage("Glint worker policy requested twice on one pipe");
     return;
   }
   requested_ = true;
