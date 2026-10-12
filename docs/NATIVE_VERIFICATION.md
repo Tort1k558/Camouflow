@@ -1,7 +1,8 @@
 # Native Windows verification backlog
 
-Every item below remains **pending on the own-fork executable** until its report
-has been inspected. SDK successes, C++ helper tests, saved presets and upstream
+An item is **pending on the own-fork executable** until its matching report
+has been inspected. Observed own-fork results are recorded below; SDK successes,
+C++ helper tests, saved presets and upstream
 marketing tables do not change that status. Keep failed reports, not just passes.
 The running source tree must not be changed while compilation is active.
 
@@ -19,7 +20,44 @@ translation units (`dwrite_font_proxy_impl_win`, `font_enumeration_data_source_w
 and `font_data_service_impl`) then compiled successfully with the existing Ninja
 flags, including the failing warning-as-error policy: three steps, exit code 0.
 The local regression suite passed 980 tests. This is a compile-policy correction,
-not a font runtime pass; all own-fork gates above remain pending.
+not a font runtime pass; own-fork gates were still pending at that point.
+
+## First own Windows build and partial runtime results, 2026-10-12
+
+The resumed four-job build completed with terminal exit code 0 after 7h29m53s
+(17,486 executed actions; 63,579 skipped cached actions). This was not a new
+from-scratch build. The existing post-build gate revalidated pinned sources,
+patches 0001–0005 and GN inputs before writing `camouflow-build.json`.
+The measured `chrome.exe` checksum matches its receipt:
+`61e97ba3335f64836b3abcf93d67af0d6ddd0d06c291b4592b1448643b35e222`.
+The executable and DLL are in
+`D:\CamouFlowNative\chromium\src\out\CamouFlowNative`.
+
+The first own-fork suite is retained privately in
+`D:\CamouFlowNative\verification-001-005-20261012`:
+
+| Gate | Own-fork result | Scope |
+| --- | --- | --- |
+| Runtime | PASS, 18 checks | Lifecycle, isolated persistent stores, owned process cleanup, crash recovery checkpoints, proxy, permissions, scenarios and Recorder |
+| WebRTC | PASS, 7 checks | Owned STUN positive control, protected document/frames and rejected malformed native policy |
+| Automation | PASS, 55 checks | Native webdriver binding, initial scripts, frames/targets/workers and CDP override interactions; not general bot resistance |
+| Windows fonts | PASS, 42 checks | Genuine collection/styles, CSS/local(), canvas rendering, downloaded fonts, workers, enumeration and restart |
+| Hardware | FAIL / interrupted | The malformed renderer-configuration case stalled during teardown; only its identified test browser/driver were stopped. This run is not admissible as a passing hardware gate. |
+
+The suite returned exit code 1 and `passed: false`; it also has `full_suite: false`
+because draft identity/CDP patches 0006/0007 were not compiled. Hardware API reads
+and context closing now have explicit deadlines; a timeout remains a failure.
+The bounded retry (`D:\CamouFlowNative\hardware-bounded-retry-20261012.json`)
+completed without manual termination and retained five passing positive hardware
+checks, but failed with `TimeoutError` while reading an invalid configuration.
+No matching hardware fixture processes remained afterward. This reproduces the
+negative-case problem instead of treating a manually induced crash as a pass.
+Browser-side validation before renderer creation and a fresh full hardware gate
+are still required; the five positive cases alone do not admit the capability.
+No capability is enabled merely because its setting is saved. The first receipt
+still records `fingerprint_patched: false` and
+`native_patch_runtime_verified: false`. Packaged-payload verification, combined
+policy admission, public-site observations and a shipping release remain pending.
 
 ## Executable verification queue
 

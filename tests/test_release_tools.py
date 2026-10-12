@@ -1443,3 +1443,25 @@ def test_native_canvas_security_requires_unchanged_origin_checks_and_empty_behav
             validate_security(observed)
     else:
         validate_security(observed)
+
+
+@pytest.mark.parametrize("stuck", [False, True])
+def test_native_hardware_context_close_has_a_deadline_and_never_hides_timeout(monkeypatch, stuck):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from scripts import verify_native_hardware
+
+    async def check():
+        async def close():
+            if stuck:
+                await asyncio.Event().wait()
+        context = SimpleNamespace(close=AsyncMock(side_effect=close))
+        monkeypatch.setattr(verify_native_hardware, "CONTEXT_CLOSE_TIMEOUT_SECONDS", .01)
+        if stuck:
+            with pytest.raises(TimeoutError):
+                await verify_native_hardware.close_context(context)
+        else:
+            await verify_native_hardware.close_context(context)
+        context.close.assert_awaited_once()
+    asyncio.run(check())

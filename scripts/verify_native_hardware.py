@@ -20,6 +20,16 @@ sys.path.insert(0, str(ROOT))
 from playwright.async_api import Error as PlaywrightError, async_playwright  # noqa: E402
 from scripts.verify_native_runtime import FixtureHandler, FixtureServer  # noqa: E402
 
+PROBE_TIMEOUT_SECONDS = 10
+CONTEXT_CLOSE_TIMEOUT_SECONDS = 10
+
+
+async def close_context(context) -> None:
+    try:
+        await asyncio.wait_for(context.close(), timeout=CONTEXT_CLOSE_TIMEOUT_SECONDS)
+    except TimeoutError:
+        raise TimeoutError("Native hardware test context close exceeded its deadline") from None
+
 READ = """() => ({
   hardwareConcurrency: navigator.hardwareConcurrency,
   deviceMemory: navigator.deviceMemory,
@@ -108,10 +118,10 @@ async def observe(context, origin: str) -> dict:
     await page.evaluate("url => { const frame = document.createElement('iframe'); frame.id = 'cross-origin'; frame.src = url; document.body.append(frame); }",
                         origin.replace("127.0.0.1", "localhost") + "/cross-frame")
     await page.locator("#cross-origin").content_frame.locator("h1").wait_for(timeout=15000)
-    observed = {"document": await page.evaluate(READ)}
+    observed = {"document": await asyncio.wait_for(page.evaluate(READ), timeout=PROBE_TIMEOUT_SECONDS)}
     for name, frame_id in (("same_origin_frame", "owned-frame"), ("cross_origin_frame", "cross-origin")):
         frame = await page.locator("#" + frame_id).element_handle()
-        observed[name] = await (await frame.content_frame()).evaluate(READ)
+        observed[name] = await asyncio.wait_for((await frame.content_frame()).evaluate(READ), timeout=PROBE_TIMEOUT_SECONDS)
     observed.update(await asyncio.wait_for(page.evaluate(WORKERS), timeout=40))
     return observed
 
@@ -141,7 +151,7 @@ async def verify(executable: Path, profiles: Path, origin: str, report: dict) ->
                     if baseline["hardwareConcurrency"] == 1 and baseline["deviceMemory"] <= 0.25:
                         raise ValueError("Host values cannot distinguish ignored switches from functioning limits")
             finally:
-                await context.close()
+                await close_context(context)
         for index, argument in enumerate(("--camouflow-hardware-concurrency=0", "--camouflow-hardware-concurrency=invalid",
                                            "--camouflow-device-memory=0.3", "--camouflow-device-memory=")):
             context = await driver.chromium.launch_persistent_context(str(profiles / f"invalid-{index}"),
@@ -152,14 +162,14 @@ async def verify(executable: Path, profiles: Path, origin: str, report: dict) ->
                 page.on("crash", lambda _: crashed.set())
                 await page.goto(origin, timeout=30000)
                 try:
-                    await page.evaluate(READ)
+                    await asyncio.wait_for(page.evaluate(READ), timeout=PROBE_TIMEOUT_SECONDS)
                 except PlaywrightError:
                     await asyncio.wait_for(crashed.wait(), timeout=10)
                 else:
                     raise ValueError("Invalid native hardware configuration was silently accepted")
                 report["checks"].append({"name": "invalid-configuration-fails-renderer", "argument": argument, "passed": True})
             finally:
-                await context.close()
+                await close_context(context)
 
 
 def main() -> int:
@@ -186,7 +196,7 @@ def main() -> int:
             asyncio.run(verify(executable, Path(owned), origin, report))
         report["passed"] = True
     except Exception as error:
-        report["error"] = str(error)
+        report["error"] = str(error) or type(error).__name__
         report["traceback"] = traceback.format_exc()
     finally:
         if server is not None:
