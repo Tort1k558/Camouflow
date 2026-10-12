@@ -1,8 +1,16 @@
-# Promoted Glint development candidates
+# Glint development candidates
 
 Both privacy candidates have moved to the registered patch chain. The existing
 linked browser remains 001–015; registered source is not browser runtime proof.
 Do not modify or reapply patches during an active build.
+
+## Unregistered document delivery candidate
+
+[`document_delivery/`](document_delivery/README.md) contains an isolated Mojo
+schema and document-scoped browser service draft. The schema passed pinned
+Chromium parser/type validation. C++ compilation, broker registration, renderer
+consumption and lifecycle tests are pending; it is not an applied patch or a
+runtime capability. It never modifies the active Chromium build inputs.
 
 ## BrowserContext privacy bridge
 

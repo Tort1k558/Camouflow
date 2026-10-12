@@ -1,0 +1,33 @@
+# Glint document delivery candidate
+
+Unregistered, uncompiled draft outside the active Chromium checkout. No Canvas
+protection or runtime capability is enabled by these files.
+
+The Mojo schema belongs in `third_party/blink/public/mojom/native_privacy/`.
+The service belongs in `content/browser/camouflow_native/`. Integration requires
+the Blink Mojo GN source registration, content source/dependencies and the
+document BrowserInterfaceBroker binder. None are applied during the active build.
+
+The service follows pinned Chromium's `DocumentService`: cross-document navigation,
+frame deletion and pipe closure destroy the receiver and invalidate readiness
+callbacks. A single request per pipe and a 10-second timer bound pending work;
+the existing key service additionally bounds its readiness queue. Partition and
+BrowserContext come exclusively from the browser-owned RenderFrameHost. Only
+the Canvas subkey crosses IPC; the root key, paths and other surface subkeys do
+not. Inactive/BFCache/prerender documents cannot obtain a response seed.
+
+Required before promotion:
+
+- Generate bindings and compile the service; validate generated fixed-array types.
+- Add RenderViewHostTestHarness/Mojo tests for ready/loading/error/timeout,
+  duplicate requests, disconnect, navigation, frame/context shutdown, BFCache,
+  opaque partitions, same/cross-site frames and independent OTR contexts.
+- Verify actual renderer IPC in a linked browser with no JavaScript exposure.
+- Provide policy before synchronous pixel readback: no blocking synchronous IPC,
+  late unprotected first read or default identity on failure.
+- Define worker transport independently from trusted browser worker hosts;
+  shared/service worker partition semantics are not solved by this document pipe.
+- Finalize version-1 Canvas algorithm before activating this policy. A response
+  carrying version 1 here reserves a draft contract, not a released capability.
+
+No command-line seeds, renderer-supplied StorageKeys or JavaScript getters.

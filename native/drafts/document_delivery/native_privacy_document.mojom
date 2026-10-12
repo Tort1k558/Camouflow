@@ -1,0 +1,21 @@
+// Copyright 2026 CamouFlow contributors.
+// SPDX-License-Identifier: MIT
+module blink.mojom;
+
+enum NativePrivacyDeliveryStatus {
+  kReady,
+  kUnavailable,
+  kTimedOut,
+};
+
+struct NativePrivacyCanvasPolicy {
+  uint32 version;
+  array<uint8, 32> partition_seed;
+};
+
+// Internal browser-to-Blink transport, never exposed through JavaScript.
+// No caller-provided origin, StorageKey, profile path or derivation domain.
+interface NativePrivacyDocument {
+  GetCanvasPolicy() => (NativePrivacyDeliveryStatus status,
+                       NativePrivacyCanvasPolicy? policy);
+};

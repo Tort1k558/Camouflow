@@ -240,6 +240,14 @@ Patch 0017 is registered/applied and the target is building. No passing context
 execution or newly linked 001–017 browser is claimed. The preserved 001–015
 runtime remains the last linked/verified browser.
 
+The first context-target build stopped at 380/2361 with LLVM `out of memory`
+and Windows error `0x5AF` (insufficient paging file). No context cases executed.
+Its log is retained as `privacy-contexts-001-017-build.log`; the interrupted
+verifier did not produce a terminal JSON proof. An incremental retry uses one
+job and a new evidence path `privacy-contexts-001-017-retry-j1.json`, preserving
+completed objects, GN arguments and source inputs. Retry success remains pending;
+do not interpret the original four-job invocation as a passing result.
+
 ## Sources and maintenance
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.
