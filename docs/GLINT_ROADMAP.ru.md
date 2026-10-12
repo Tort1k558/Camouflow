@@ -213,6 +213,9 @@ Collector логирует успешные и ошибочные запросы
    подготовлены; при недоступной browser policy запрос отменяется до commit.
    Следующие узлы — исполнение fixtures, end-to-end first-script delivery и
    нормальный отказ при несовпадении финального partition вместо renderer CHECK.
+   Renderer-first-script fixtures подготовлены: оба pre-script callback, inline
+   Canvas smoke и контроль без политики. Они прошли syntax с GC plugin, но не
+   исполнение и не проверку полного browser → renderer пути.
 3. Связать browser-owned partition commitment с финальным StorageKey до
    установки документа. В pinned Chromium navigation key может быть provisional:
    готовность ключевого сервиса не доказывает окончательность partition.

@@ -729,3 +729,31 @@ Next gates are native fixture execution and end-to-end delivery before first JS,
 initial empty/about:blank/srcdoc, redirect/OOPIF/opaque documents, BFCache/prerender,
 normal cancellation of final-state mismatches and combined document/worker tests.
 Canvas readback protection and production capability activation remain absent.
+
+### Renderer pre-script fixture candidate
+
+`document_canvas_first_script_tests.patch` adds two parameterized loader fixture
+definitions after the carrier/transport/producer candidates. They observe the
+actual target document through both main-world DidCreateScriptContext and
+DidClearWindowObject notifications, requiring neither callback to be missing.
+They check native seed snapshots while the document title is still empty, then
+require the first authored inline script to finish and set its success title.
+The protected-input fixture also executes ordinary Canvas drawing/getImageData;
+the negative control has no payload and requires seed absence before and after
+its script. No seed property or fingerprint replacement is installed in JS.
+
+The observer filters the exact document URL so initial-empty callbacks cannot
+substitute for the target document. Its frame reference is WeakPersistent;
+the first syntax check caught an invalid raw Oilpan pointer, which was replaced
+rather than bypassing Blink's GC plugin. The corrected translation unit passed
+isolated syntax checking with pinned core unit flags, Chromium/Blink plugins and
+no stale PCH:
+`D:/CamouFlowNative/document-canvas-first-script-lifetime-cpp-check/proof.json`.
+
+Ordered application of all four candidates passed against the same 26 paths:
+`document-canvas-delivery-composed-overlay-v3/proof.json`. Active Chromium source
+hashes were unchanged. The two definitions are intended for the fixture's four
+existing storage/link partition modes; none of these cases has executed yet.
+This is a renderer-side timing fixture with supplied WebNavigationParams, not
+proof of real browser-process production, iframe/worker timing or Canvas privacy
+protection. Those remain separate mandatory runtime gates.

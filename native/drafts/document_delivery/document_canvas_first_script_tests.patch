@@ -1,0 +1,142 @@
+diff --git a/third_party/blink/renderer/core/loader/document_loader_test.cc b/third_party/blink/renderer/core/loader/document_loader_test.cc
+--- a/third_party/blink/renderer/core/loader/document_loader_test.cc
++++ b/third_party/blink/renderer/core/loader/document_loader_test.cc
+@@ -4,7 +4,9 @@
+ 
+ #include "third_party/blink/renderer/core/loader/document_loader.h"
+ 
++#include <array>
+ #include <string_view>
++#include <vector>
+ #include <utility>
+ 
+ #include "base/auto_reset.h"
+@@ -32,6 +34,8 @@
+ #include "third_party/blink/renderer/core/testing/scoped_fake_plugin_registry.h"
+ #include "third_party/blink/renderer/core/testing/sim/sim_request.h"
+ #include "third_party/blink/renderer/core/testing/sim/sim_test.h"
++#include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
++#include "third_party/blink/renderer/platform/heap/persistent.h"
+ #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_client.h"
+ #include "third_party/blink/renderer/platform/loader/static_data_navigation_body_loader.h"
+ #include "third_party/blink/renderer/platform/network/blink_schemeful_site.h"
+@@ -542,6 +546,119 @@
+       network::mojom::PermissionsPolicyFeature::kPayment));
+ }
+ 
++class GlintSeedBeforeScriptClient final
++    : public frame_test_helpers::TestWebFrameClient {
++ public:
++  void Observe(WebLocalFrameImpl* frame, const KURL& expected_url) {
++    frame_ = frame;
++    expected_url_ = expected_url;
++  }
++
++  void DidCreateScriptContext(v8::Local<v8::Context>, int32_t world_id) override {
++    if (world_id == DOMWrapperWorld::kMainWorldId && RecordDocumentBeforeScript()) {
++      ++created_main_worlds;
++    }
++  }
++
++  void DidClearWindowObject() override {
++    if (RecordDocumentBeforeScript()) {
++      ++cleared_windows;
++    }
++  }
++
++  std::vector<std::optional<std::array<uint8_t, 32>>> seeds;
++  std::vector<String> titles_before_script;
++  size_t created_main_worlds = 0;
++  size_t cleared_windows = 0;
++
++ private:
++  bool RecordDocumentBeforeScript() {
++    if (!frame_ || !frame_->GetFrame()) {
++      return false;
++    }
++    Document* document = frame_->GetFrame()->GetDocument();
++    if (document->Url() != expected_url_) {
++      return false;
++    }
++    seeds.push_back(document->GlintCanvasPartitionSeed());
++    titles_before_script.push_back(document->title());
++    return true;
++  }
++
++  WeakPersistent<WebLocalFrameImpl> frame_;
++  KURL expected_url_;
++};
++
++TEST_P(DocumentLoaderTest, GlintSeedIsInstalledBeforeFirstInlineScript) {
++  GlintSeedBeforeScriptClient client;
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize(&client);
++  WebLocalFrameImpl* frame = helper.LocalMainFrame();
++  const KURL url(NullUrl(), "https://canvas.test/first-script");
++  client.Observe(frame, url);
++  constexpr std::string_view html = R"HTML(
++    <script>
++      const canvas = document.createElement('canvas');
++      canvas.width = canvas.height = 2;
++      const context = canvas.getContext('2d');
++      context.fillRect(0, 0, 2, 2);
++      document.title = context.getImageData(0, 0, 1, 1).data.length === 4
++          ? 'glint-inline-ok' : 'glint-inline-failed';
++    </script>
++  )HTML";
++  auto params = WebNavigationParams::CreateWithHTMLStringForTesting(
++      base::span(html), WebURL(url));
++  params->origin_to_commit = WebSecurityOrigin::Create(WebURL(url));
++  params->storage_key = StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://canvas.test/first-script")));
++  auto encoding = params->storage_key.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  std::array<uint8_t, 32> seed{};
++  seed.fill(61);
++  params->glint_document_canvas_commit =
++      std::make_unique<GlintDocumentCanvasCommit>(
++          GlintDocumentCanvasCommit{1, *encoding, seed});
++  frame->GetFrame()->Loader().CommitNavigation(std::move(params), nullptr);
++  frame_test_helpers::PumpPendingRequestsForFrameToLoad(frame);
++  EXPECT_GT(client.created_main_worlds, 0u);
++  EXPECT_GT(client.cleared_windows, 0u);
++  ASSERT_FALSE(client.seeds.empty());
++  ASSERT_EQ(client.seeds.size(), client.titles_before_script.size());
++  for (size_t i = 0; i < client.seeds.size(); ++i) {
++    EXPECT_EQ(client.seeds[i], std::optional(seed));
++    EXPECT_TRUE(client.titles_before_script[i].empty());
++  }
++  EXPECT_EQ(frame->GetFrame()->GetDocument()->title(), "glint-inline-ok");
++  client.Observe(nullptr, KURL());
++}
++
++TEST_P(DocumentLoaderTest, GlintFirstInlineScriptKeepsAbsentPolicyAbsent) {
++  GlintSeedBeforeScriptClient client;
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize(&client);
++  WebLocalFrameImpl* frame = helper.LocalMainFrame();
++  const KURL url(NullUrl(), "https://canvas.test/unprotected-script");
++  client.Observe(frame, url);
++  constexpr std::string_view html =
++      "<script>document.title = 'glint-unprotected-inline-ok';</script>";
++  auto params = WebNavigationParams::CreateWithHTMLStringForTesting(
++      base::span(html), WebURL(url));
++  frame->GetFrame()->Loader().CommitNavigation(std::move(params), nullptr);
++  frame_test_helpers::PumpPendingRequestsForFrameToLoad(frame);
++  EXPECT_GT(client.created_main_worlds, 0u);
++  EXPECT_GT(client.cleared_windows, 0u);
++  ASSERT_FALSE(client.seeds.empty());
++  ASSERT_EQ(client.seeds.size(), client.titles_before_script.size());
++  for (size_t i = 0; i < client.seeds.size(); ++i) {
++    EXPECT_FALSE(client.seeds[i]);
++    EXPECT_TRUE(client.titles_before_script[i].empty());
++  }
++  EXPECT_FALSE(frame->GetFrame()->GetDocument()->GlintCanvasPartitionSeed());
++  EXPECT_EQ(frame->GetFrame()->GetDocument()->title(),
++            "glint-unprotected-inline-ok");
++  client.Observe(nullptr, KURL());
++}
++
+ TEST_P(DocumentLoaderTest, GlintCanvasCommitInstallsOwnedDocumentSeed) {
+   WebViewImpl* view =
+       web_view_helper_.InitializeAndLoad("https://example.com/foo.html");
