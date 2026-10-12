@@ -58,7 +58,9 @@ future renderer key delivery require their own lifecycle evidence.
 The 001-010 Windows development baseline has completed runtime gates and
 packaged-payload checks. Key/codec/owner native units are separate evidence.
 The newer 001–015 production context integration has linked a Windows browser;
-its full runtime/native verification is still in progress, not release admission.
+its eight runtime gates (160 checks) passed with independently rechecked report
+and core-code hashes. New native-unit/external verification remains in progress;
+this is not release admission or full key-service behavior proof.
 An opt-in actual Chrome profile/OTR startup smoke completed initial/restart
 storage-separation checks; it does not observe key-service readiness or derivation.
 Prepared drafts add ten service-readiness and twenty real-context cases;

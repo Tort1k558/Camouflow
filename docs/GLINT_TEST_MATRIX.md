@@ -95,7 +95,8 @@ be substituted for this strict round.
 Windows link completed on **2026-10-12**, build process exit code 0, jobs 4;
 the build log records **1h51m49.40s** for this incremental compiler/linker run,
 not the entire development history or a clean build. Receipt includes 15 patches.
-Full runtime/native and external verification remains in progress. Baseline
+The eight runtime gates completed successfully; native-unit and external
+verification remains in progress. Baseline
 observations above must not be transferred to this candidate.
 
 | Measured code | SHA-256 |
@@ -114,6 +115,23 @@ and the owned identity file remained unchanged. Private report:
 `key-bootstrap-001-015/report.json`. This is limited startup/storage evidence,
 **not** observation of key loading/readiness/derivation, OTR key separation or
 fingerprint protection. The real context/readiness drafts still need execution.
+
+| Candidate 001–015 runtime gate | Completed checks | Result |
+| --- | --- | --- |
+| Runtime/lifecycle/storage | 18 | Passed |
+| Hardware | 9 | Passed |
+| WebRTC | 7 | Passed |
+| Automation | 55 | Passed |
+| Windows fonts | 42 | Passed |
+| Identity consistency | 18 | Passed |
+| CDP Error-serialization scope | 6 | Passed |
+| Combined policies | 5 | Passed |
+| **Total** | **160** | **8 gates passed** |
+
+Private report set: `verification-context-chrome-001-015-user-j4/runtime/`.
+An independent recheck validated all child report hashes, gate coverage/counts
+and the current three runtime code hashes. This is owned-fixture evidence, not
+real CAPTCHA acceptance, prepared-draft coverage or production release admission.
 
 ### Local Canvas calibration — baseline 001–010, 2026-10-12
 
