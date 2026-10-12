@@ -856,24 +856,32 @@ def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tm
                                   "0017-native-browser-context-tests.patch",
                                   "0018-native-document-policy-delivery.patch",
                                   "0019-native-worker-policy-delivery.patch",
-                                  "0020-native-worker-policy-consumer.patch"])
+                                  "0020-native-worker-policy-consumer.patch",
+                                  "0021-native-dedicated-worker-startup-gate.patch",
+                                  "0022-native-worker-canvas-thread-handoff.patch",
+                                  "0023-native-shared-worker-startup-gate.patch",
+                                  "0024-native-service-worker-canvas-thread-handoff.patch",
+                                  "0025-native-service-worker-startup-gate.patch",
+                                  "0026-native-worker-canvas-handoff-tests.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
     from scripts import native_build
 
     patch = native_build.ROOT / "native/patches" / name
-    privacy_chain = ("0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch",
-                     "0014-native-private-key-service-lifecycle.patch",
-                     "0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch",
-                     "0017-native-browser-context-tests.patch", "0018-native-document-policy-delivery.patch",
-                     "0019-native-worker-policy-delivery.patch", "0020-native-worker-policy-consumer.patch")
-    related = ([native_build.ROOT / "native/patches" / item for item in privacy_chain]
-               if name in privacy_chain
-               else [patch])
-    expected = sorted({line.split(" b/", 1)[1] for item in related
-                       for line in item.read_text(encoding="utf-8").splitlines()
-                       if line.startswith("diff --git ")})
+    patch_files = {
+        item: {line.split(" b/", 1)[1] for line in item.read_text(encoding="utf-8-sig").splitlines()
+               if line.startswith("diff --git ")}
+        for item in sorted(patch.parent.glob("*.patch"))
+    }
+    expected_files = set(patch_files[patch])
+    while True:
+        related = [item for item, files in patch_files.items() if files & expected_files]
+        expanded = set().union(*(patch_files[item] for item in related))
+        if expanded == expected_files:
+            break
+        expected_files = expanded
+    expected = sorted(expected_files)
     commands = []
 
     def fake_run(args, cwd, env, capture=False):
@@ -1461,6 +1469,10 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     (patches / "0018-native-document-policy-delivery.patch").write_text("", encoding="utf-8")
     (patches / "0019-native-worker-policy-delivery.patch").write_text("", encoding="utf-8")
     (patches / "0020-native-worker-policy-consumer.patch").write_text("", encoding="utf-8")
+    for name in ("0021-native-dedicated-worker-startup-gate.patch", "0022-native-worker-canvas-thread-handoff.patch",
+                 "0023-native-shared-worker-startup-gate.patch", "0024-native-service-worker-canvas-thread-handoff.patch",
+                 "0025-native-service-worker-startup-gate.patch", "0026-native-worker-canvas-handoff-tests.patch"):
+        (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")
@@ -2139,6 +2151,22 @@ def test_native_draft_registration_embeds_exact_canonical_sources(draft, patch_n
         copied = "\n".join(line[1:] for line in section.splitlines()
                            if line.startswith("+") and not line.startswith("+++")) + "\n"
         assert copied == (directory / name).read_text(encoding="utf-8-sig")
+
+
+@pytest.mark.parametrize("registered,draft", [
+    ("0021-native-dedicated-worker-startup-gate.patch", "dedicated_worker_startup_gate.patch"),
+    ("0022-native-worker-canvas-thread-handoff.patch", "worker_canvas_thread_handoff.patch"),
+    ("0023-native-shared-worker-startup-gate.patch", "shared_worker_startup_gate.patch"),
+    ("0024-native-service-worker-canvas-thread-handoff.patch", "service_worker_canvas_thread_handoff.patch"),
+    ("0025-native-service-worker-startup-gate.patch", "service_worker_startup_gate.patch"),
+    ("0026-native-worker-canvas-handoff-tests.patch", "worker_canvas_handoff_tests.patch"),
+])
+def test_native_worker_startup_registered_patches_match_reviewed_candidates(registered, draft):
+    from scripts.native_build import ROOT
+
+    assert (ROOT / "native/patches" / registered).read_text(encoding="utf-8-sig") == (
+        ROOT / "native/drafts/document_delivery" / draft
+    ).read_text(encoding="utf-8-sig")
 
 
 def test_native_runtime_verifier_import_does_not_cache_application_database_root():

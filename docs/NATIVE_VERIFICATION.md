@@ -167,9 +167,16 @@ Its four suites, global totals, exact per-target names and successful statuses
 were independently checked, and the test/browser code hashes remained unchanged.
 This is combined native-unit evidence, not a real worker-host startup,
 document-first-script, protected Canvas or browser capability admission result.
-Startup gates, Canvas seed thread handoff, Canvas readback hooks and branding
-remain unregistered; no protected first-script execution or Canvas capability is
-implied by these endpoint registrations.
+The next source batch registers worker startup and seed thread handoff as
+0021-0026. All six patches applied in an idle checkout while preserving baseline
+browser code hashes: `worker-startup-001-026-promotion.json`. They include four
+unexecuted Blink WorkerThread handoff cases; they are not part of the 54-case
+content result above. The Windows `chrome` target is building on four jobs under
+`worker-startup-runtime-001-026-build.json`. A copy of the previous 001-015 core
+code, GN arguments and receipt is retained outside the mutable output; this core
+backup is not a separately verified packaged runtime. No new build/runtime pass
+is claimed yet. Canvas readback hooks, document bootstrap and branding remain
+unregistered; no protected first-script or Canvas capability is admitted.
 
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External

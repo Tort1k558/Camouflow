@@ -40,7 +40,9 @@ Windows browser has linked and passed its runtime suite. Readiness patch 0016
 passed native service tests but is not in that browser. Context-test patch 0017
 passed all twenty native cases. Patches 0018-0020 register document/worker policy
 endpoints and the worker consumer; all 34 native cases passed, followed by a
-combined 54-case BrowserContext/IPC run. Canvas and worker startup integration remain candidates; branding
+combined 54-case BrowserContext/IPC run. Worker startup/handoff patches 0021-0026
+are now registered/applied behind a developer-only switch; their browser build
+and runtime verification are pending. Canvas protection remains a candidate; branding
 still needs application and verification. No signed own-engine release or guaranteed
 anti-bot/CAPTCHA acceptance is advertised.
 

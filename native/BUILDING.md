@@ -5,6 +5,8 @@ development patch chain**, not Camoufox/CloakBrowser and not an admitted release
 Linux/macOS own-fork builds are deferred. The branding candidate in `branding/`
 is not a registered build input. Context tests are registered in patch 0017;
 document/worker IPC unit infrastructure is registered in patches 0018-0020.
+Worker startup gates and thread handoff are registered in patches 0021-0026,
+including four unexecuted Blink handoff cases. They do not enable Canvas privacy.
 
 ## Requirements
 
@@ -120,9 +122,14 @@ Patches 0018-0020 register the document/worker endpoints, worker consumer and
 if ($LASTEXITCODE -ne 0) { throw 'Glint delivery units failed' }
 ```
 
-These patches do not connect the consumer to worker startup or enable Canvas.
-Startup gates, Canvas helpers/readback hooks and branding are still outside the
-registered chain. Registration alone is not successful compilation or execution.
+Patches 0018-0020 alone do not connect the consumer to worker startup. The separate
+0021-0026 stack wires dedicated/shared/service workers and owned Blink seed
+transport behind `--glint-worker-canvas-bootstrap-test`; it additionally needs
+the existing browser-owned key-service opt-in for a successful response. The flag
+is not a manager privacy capability. Canvas helpers/readback hooks, document
+bootstrap and branding are still outside the registered chain. Registration
+alone is not successful compilation or execution. The four `WorkerThreadTest`
+handoff cases belong to `blink_unittests`, not this 34-case content gate.
 The scripts do not admit capabilities automatically or prove CAPTCHA success.
 Do not substitute a passing old report, SDK binary or Python tests for new
 own-fork runtime evidence. Canvas/GPU/audio protection is not complete.

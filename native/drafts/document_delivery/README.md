@@ -2,8 +2,10 @@
 
 The document/worker endpoints, Mojo schema and worker consumer are now registered
 as self-contained patches 0018-0020. The corrected linked 34-case verification
-passed, followed by a combined 54-case BrowserContext/IPC run. Their canonical source snapshots remain here; startup gates and Canvas
-handoff/readback patches below remain unregistered. No Canvas protection or
+passed, followed by a combined 54-case BrowserContext/IPC run. Their canonical
+source snapshots remain here. Startup gates and thread handoff below are now
+registered as 0021-0026; linked/browser verification is pending. Canvas readback
+patches remain unregistered. No Canvas protection or
 runtime capability is enabled by these files. Earlier isolated evidence below
 is historical and must not be mistaken for the current linked unit run.
 
@@ -278,7 +280,8 @@ This is still syntax-only evidence, not object compilation, linking or execution
 The complete six-patch stack, including these ordered tests, applied to a private
 copy without changing active inputs:
 `D:/CamouFlowNative/worker-handoff-ordered-full-stack-applicability/proof.json`.
-It remains unregistered and inactive. Canvas hooks, document bootstrap,
+It is now registered as 0021-0022 and 0026; browser/link/runtime proof remains
+pending. Canvas hooks, document bootstrap,
 shared/service worker startup, data-URL origin policy and real runtime checks are
 still required; this handoff does not admit Canvas protection as a capability.
 
@@ -407,7 +410,8 @@ pinned renderer flags:
 The complete ten-patch draft stack applies in an isolated copy with active inputs
 unchanged: `shared-worker-immediate-teardown-full-stack-applicability/proof.json`.
 
-The gate remains unregistered and inactive in every linked browser. No shared
+The gate is now registered as 0023 but remains absent from every verified linked
+browser. No shared
 startup/lifecycle test has executed against it. Required next tests include early
 host/network disconnection, timeout, ordered Connect/Freeze/Resume and early Terminate,
 classic/module scripts, partitioned reuse across clients, nested workers and
@@ -464,7 +468,8 @@ unchanged: `D:/CamouFlowNative/service-worker-startup-full-stack-applicability/p
 The instance client passed isolated syntax checking with pinned renderer flags:
 `service-worker-startup-gate-cpp-check/proof.json`. These do not prove actual
 ThreadPool/initiator sequencing, browser Detach notification, event delivery or
-worker lifecycle. The draft is not registered, linked or enabled in the browser.
+worker lifecycle. The draft is now registered as 0025, but is not in a verified
+linked browser. It remains developer-only, not a manager capability.
 
 Before admission, execute early StopWorker/host disconnect, delayed/failed readiness,
 fresh install, installed-script restart/update, classic/module worker startup and

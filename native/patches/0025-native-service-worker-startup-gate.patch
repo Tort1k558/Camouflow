@@ -1,0 +1,127 @@
+diff --git a/content/renderer/service_worker/embedded_worker_instance_client_impl.h b/content/renderer/service_worker/embedded_worker_instance_client_impl.h
+--- a/content/renderer/service_worker/embedded_worker_instance_client_impl.h
++++ b/content/renderer/service_worker/embedded_worker_instance_client_impl.h
+@@ -5,10 +5,15 @@
+ #ifndef CONTENT_RENDERER_SERVICE_WORKER_EMBEDDED_WORKER_INSTANCE_CLIENT_IMPL_H_
+ #define CONTENT_RENDERER_SERVICE_WORKER_EMBEDDED_WORKER_INSTANCE_CLIENT_IMPL_H_
+ 
++#include <array>
+ #include <memory>
++#include <optional>
+ 
++#include "base/memory/weak_ptr.h"
+ #include "base/task/single_thread_task_runner.h"
++#include "base/time/time.h"
+ #include "content/child/child_thread_impl.h"
++#include "content/renderer/worker/privacy_worker_bootstrap.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ #include "mojo/public/cpp/bindings/receiver.h"
+ #include "third_party/blink/public/mojom/service_worker/embedded_worker.mojom.h"
+@@ -66,6 +71,11 @@
+ 
+   // blink::mojom::EmbeddedWorkerInstanceClient implementation
+   void StartWorker(blink::mojom::EmbeddedWorkerStartParamsPtr params) override;
++  void ContinueStartWorker(
++      blink::mojom::EmbeddedWorkerStartParamsPtr params,
++      std::optional<std::array<uint8_t, 32>> canvas_partition_seed);
++  void OnPrivacyBootstrap(blink::mojom::EmbeddedWorkerStartParamsPtr params,
++                          PrivacyWorkerBootstrap::Result result);
+ 
+   // Handler of connection error bound to |receiver_|.
+   void OnError();
+@@ -83,6 +93,9 @@
+ 
+   // nullptr means worker is not running.
+   std::unique_ptr<ServiceWorkerContextClient> service_worker_context_client_;
++  base::TimeTicks start_worker_received_time_;
++  std::unique_ptr<PrivacyWorkerBootstrap> privacy_bootstrap_;
++  base::WeakPtrFactory<EmbeddedWorkerInstanceClientImpl> weak_factory_{this};
+ };
+ 
+ }  // namespace content
+diff --git a/content/renderer/service_worker/embedded_worker_instance_client_impl.cc b/content/renderer/service_worker/embedded_worker_instance_client_impl.cc
+--- a/content/renderer/service_worker/embedded_worker_instance_client_impl.cc
++++ b/content/renderer/service_worker/embedded_worker_instance_client_impl.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <memory>
+ 
++#include "base/command_line.h"
+ #include "base/containers/to_vector.h"
+ #include "base/debug/crash_logging.h"
+ #include "base/debug/dump_without_crashing.h"
+@@ -23,6 +24,8 @@
+ #include "content/renderer/service_worker/service_worker_context_client.h"
+ #include "content/renderer/worker/fetch_client_settings_object_helpers.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "third_party/blink/public/mojom/browser_interface_broker.mojom.h"
+ #include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/public/common/loader/worker_main_script_load_parameters.h"
+ #include "third_party/blink/public/platform/web_content_settings_client.h"
+@@ -61,11 +64,45 @@
+ void EmbeddedWorkerInstanceClientImpl::StartWorker(
+     blink::mojom::EmbeddedWorkerStartParamsPtr params) {
+   DCHECK(initiator_thread_task_runner_->BelongsToCurrentThread());
++  CHECK(!service_worker_context_client_ && !privacy_bootstrap_);
++  start_worker_received_time_ = base::TimeTicks::Now();
++  if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
++          "glint-worker-canvas-bootstrap-test")) {
++    ContinueStartWorker(std::move(params), std::nullopt);
++    return;
++  }
++  mojo::Remote<blink::mojom::BrowserInterfaceBroker> broker(
++      std::move(params->provider_info->browser_interface_broker));
++  mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint;
++  broker->GetInterface(endpoint.InitWithNewPipeAndPassReceiver());
++  params->provider_info->browser_interface_broker = broker.Unbind();
++  privacy_bootstrap_ = std::make_unique<PrivacyWorkerBootstrap>(std::move(endpoint));
++  privacy_bootstrap_->Start(base::BindOnce(
++      &EmbeddedWorkerInstanceClientImpl::OnPrivacyBootstrap,
++      weak_factory_.GetWeakPtr(), std::move(params)));
++}
++
++void EmbeddedWorkerInstanceClientImpl::OnPrivacyBootstrap(
++    blink::mojom::EmbeddedWorkerStartParamsPtr params,
++    PrivacyWorkerBootstrap::Result result) {
++  DCHECK(initiator_thread_task_runner_->BelongsToCurrentThread());
++  privacy_bootstrap_.reset();
++  if (!result.has_value()) {
++    OnError();
++    return;
++  }
++  ContinueStartWorker(std::move(params), std::move(result).value());
++}
++
++void EmbeddedWorkerInstanceClientImpl::ContinueStartWorker(
++    blink::mojom::EmbeddedWorkerStartParamsPtr params,
++    std::optional<std::array<uint8_t, 32>> canvas_partition_seed) {
++  DCHECK(initiator_thread_task_runner_->BelongsToCurrentThread());
+   DCHECK(!service_worker_context_client_);
+   TRACE_EVENT0("ServiceWorker",
+                "EmbeddedWorkerInstanceClientImpl::StartWorker");
+   auto start_timing = blink::mojom::EmbeddedWorkerStartTiming::New();
+-  start_timing->start_worker_received_time = base::TimeTicks::Now();
++  start_timing->start_worker_received_time = start_worker_received_time_;
+ 
+   if (base::FeatureList::IsEnabled(
+           features::kServiceWorkerAvoidMainThreadForInitialization)) {
+@@ -77,6 +114,7 @@
+ 
+   std::unique_ptr<blink::WebEmbeddedWorkerStartData> start_data =
+       BuildStartData(*params);
++  start_data->glint_canvas_partition_seed = std::move(canvas_partition_seed);
+   if (params->main_script_load_params) {
+     start_data->main_script_load_params =
+         std::make_unique<blink::WorkerMainScriptLoadParameters>();
+@@ -150,6 +188,10 @@
+ void EmbeddedWorkerInstanceClientImpl::StopWorker() {
+   DCHECK(initiator_thread_task_runner_->BelongsToCurrentThread());
+   TRACE_EVENT0("ServiceWorker", "EmbeddedWorkerInstanceClientImpl::StopWorker");
++  if (!service_worker_context_client_) {
++    OnError();
++    return;
++  }
+   // StopWorker must be called after StartWorker is called.
+   service_worker_context_client_->worker().TerminateWorkerContext();
+   // We continue in WorkerContextDestroyed() after the worker thread is stopped.

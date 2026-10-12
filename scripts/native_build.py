@@ -193,7 +193,13 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0017-native-browser-context-tests.patch",
         "0018-native-document-policy-delivery.patch",
         "0019-native-worker-policy-delivery.patch",
-        "0020-native-worker-policy-consumer.patch"))
+        "0020-native-worker-policy-consumer.patch",
+        "0021-native-dedicated-worker-startup-gate.patch",
+        "0022-native-worker-canvas-thread-handoff.patch",
+        "0023-native-shared-worker-startup-gate.patch",
+        "0024-native-service-worker-canvas-thread-handoff.patch",
+        "0025-native-service-worker-startup-gate.patch",
+        "0026-native-worker-canvas-handoff-tests.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:

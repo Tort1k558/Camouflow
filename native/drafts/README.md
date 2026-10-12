@@ -10,8 +10,11 @@ Do not modify or reapply patches during an active build.
 schema, document/worker services and worker consumer. These base components are
 now registered and applied as self-contained patches 0018-0020; the first linked
 34-case verification passed, followed by a combined 54-case context/IPC run.
-Earlier isolated parser and syntax results remain historical. Document startup and worker startup/Canvas handoff
-candidates remain unregistered; no Canvas runtime capability is enabled.
+Earlier isolated parser and syntax results remain historical. Worker startup
+gates and Canvas seed handoff are now registered as 0021-0026 behind a
+developer-only switch.
+Their linked/runtime verification remains pending; document startup and Canvas
+readback helpers/hooks remain unregistered. No Canvas runtime capability is enabled.
 
 ## BrowserContext privacy bridge
 
