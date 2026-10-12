@@ -57,10 +57,34 @@ READ = """async () => {
     const response = await fetch(html.toDataURL('image/png'));
     htmlDataUrl = await decode(await response.blob());
   }
-  return {pixels, repeat, blob, htmlBlob, htmlDataUrl};
+  const equal = (left, right) => left.length === right.length && left.every((value, i) => value === right[i]);
+  const full = read(context);
+  const expected = new Uint8ClampedArray(8 * 7 * 4);
+  for (let y = 0; y < 7; y++) {
+    expected.set(full.subarray(((y + 5) * width + 3) * 4, ((y + 5) * width + 11) * 4), y * 8 * 4);
+  }
+  const partial = context.getImageData(3, 5, 8, 7).data;
+  const negative = context.getImageData(11, 12, -8, -7).data;
+  const outside = context.getImageData(-2, -3, 1, 1).data;
+  const transparent = new OffscreenCanvas(width, height);
+  const transparentContext = transparent.getContext('2d', {willReadFrequently: true});
+  transparentContext.fillStyle = 'rgba(255, 0, 0, 0.5)';
+  transparentContext.fillRect(3, 5, 8, 7);
+  const transparentPixels = await hash(read(transparentContext));
+  const geometry = {
+    partialMatchesFull: equal(partial, expected),
+    negativeDimensionsMatch: equal(negative, expected),
+    outsideRemainsTransparent: equal(outside, new Uint8ClampedArray(4)),
+    transparentRepeat: transparentPixels === await hash(read(transparentContext)),
+    transparentExport: transparentPixels === await decode(await transparent.convertToBlob({type: 'image/png'}))
+  };
+  return {pixels, repeat, blob, htmlBlob, htmlDataUrl, geometry};
 }"""
 
 CONTEXTS = {"document", "same_origin_frame", "cross_origin_frame", "dedicated", "shared", "service"}
+GEOMETRY_EXPECTED = {"partialMatchesFull": True, "negativeDimensionsMatch": True,
+                     "outsideRemainsTransparent": True, "transparentRepeat": True,
+                     "transparentExport": True}
 
 SECURITY_READ = """async () => {
   const failure = action => {
@@ -137,10 +161,13 @@ class CanvasFixtureHandler(FixtureHandler):
 def validate_observations(observed: dict, previous: dict | None = None) -> None:
     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
         raise ValueError("Canvas probe must observe every document and worker context")
-    if any(not isinstance(values, dict) or set(values) != {"pixels", "repeat", "blob", "htmlBlob", "htmlDataUrl"}
+    if any(not isinstance(values, dict) or set(values) != {"pixels", "repeat", "blob", "htmlBlob", "htmlDataUrl", "geometry"}
            for values in observed.values()):
         raise ValueError("Canvas readback paths are missing")
     for name, values in observed.items():
+        if (not isinstance(values["geometry"], dict) or set(values["geometry"]) != set(GEOMETRY_EXPECTED)
+                or any(value is not True for value in values["geometry"].values())):
+            raise ValueError(f"Canvas partial or transparent readback disagrees in {name}")
         digest = values["pixels"]
         if not isinstance(digest, str) or len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
             raise ValueError("Canvas pixels were not measured")

@@ -187,6 +187,19 @@ exports or protected-policy expectations. Future origin-scoped
 protection requires a separate validator: equal cross-origin output is an
 unmodified baseline invariant, not necessarily a protected-policy invariant.
 
+The later geometry baseline adds five checks in every document/frame/worker
+context and repeats them after restart: subrectangle bytes agree with the full
+read, negative dimensions select the same rectangle, fully out-of-bounds reads
+remain transparent, semitransparent reads repeat and their decoded PNG exports
+agree. All observations and the existing security checks passed on the pinned
+upstream Windows SDK, retained in
+`D:\CamouFlowNative\canvas-geometry-sdk-baseline-20261012.json`.
+This is not own-fork or protected-policy evidence. Color-managed/float images,
+partially clipped rectangles, worker taint, WebGL exports and editor round trips
+remain uncovered. Validator regressions reject missing, false, numeric and extra
+geometry results instead of accepting truthy or incomplete observations.
+The complete local regression suite passed 1,030 tests after this increment.
+
 - **Capability admission:** bind reviewed gate reports to exact source patches,
   own build receipt and complete packaged payload; never accept an arbitrary
   `fingerprint_patched` settings bit. Activate only requested verified policies.

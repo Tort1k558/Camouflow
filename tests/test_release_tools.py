@@ -1397,15 +1397,17 @@ def test_linux_process_snapshot_separates_executable_identity_from_thread_names(
     assert executable_name(rows[102]) is None
 
 
-@pytest.mark.parametrize("failure", [None, "missing-context", "missing-path", "repeat", "blob", "htmlDataUrl", "worker-html", "worker-pixels", "restart", "invalid-digest"])
+@pytest.mark.parametrize("failure", [None, "missing-context", "missing-path", "repeat", "blob", "htmlDataUrl", "worker-html", "worker-pixels", "restart", "invalid-digest",
+                                     "geometry-missing", "geometry-false", "geometry-numeric", "geometry-extra"])
 def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
     from copy import deepcopy
-    from scripts.verify_native_canvas import CONTEXTS, validate_observations
+    from scripts.verify_native_canvas import CONTEXTS, GEOMETRY_EXPECTED, validate_observations
 
     digest = "a" * 64
     observed = {name: {"pixels": digest, "repeat": digest, "blob": digest,
                       "htmlBlob": None if name in {"dedicated", "shared", "service"} else digest,
-                      "htmlDataUrl": None if name in {"dedicated", "shared", "service"} else digest}
+                      "htmlDataUrl": None if name in {"dedicated", "shared", "service"} else digest,
+                      "geometry": dict(GEOMETRY_EXPECTED)}
                 for name in CONTEXTS}
     previous = deepcopy(observed)
     if failure == "missing-context":
@@ -1422,6 +1424,14 @@ def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
         previous["document"]["pixels"] = "b" * 64
     elif failure == "invalid-digest":
         observed["document"]["pixels"] = "z" * 64
+    elif failure == "geometry-missing":
+        del observed["shared"]["geometry"]["partialMatchesFull"]
+    elif failure == "geometry-false":
+        observed["service"]["geometry"]["transparentExport"] = False
+    elif failure == "geometry-numeric":
+        observed["dedicated"]["geometry"]["outsideRemainsTransparent"] = 1
+    elif failure == "geometry-extra":
+        observed["document"]["geometry"]["unmeasured"] = True
     if failure is None:
         validate_observations(observed, previous)
     else:
