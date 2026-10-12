@@ -2098,7 +2098,13 @@ def test_native_delivery_verifier_requires_every_draft_endpoint_case():
     from scripts.verify_native_privacy_units import REQUIRED_DELIVERY_TESTS, ROOT
 
     observed = {}
-    for path in (ROOT / "native/drafts/document_delivery").glob("*_unittest.cc"):
+    endpoint_fixtures = (
+        "privacy_document_service_unittest.cc",
+        "privacy_worker_service_unittest.cc",
+        "privacy_worker_bootstrap_unittest.cc",
+    )
+    for name in endpoint_fixtures:
+        path = ROOT / "native/drafts/document_delivery" / name
         for suite, case in re.findall(r"TEST_F\(\s*(\w+),\s*(\w+)\)", path.read_text(encoding="utf-8-sig")):
             observed.setdefault(suite, []).append(case)
     assert sum(map(len, observed.values())) == 34

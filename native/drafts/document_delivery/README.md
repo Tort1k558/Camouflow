@@ -789,3 +789,26 @@ the final partition. Replacing the later CHECK with a bare return would leave an
 inconsistent frame, not cancel a navigation safely. Keep the rejection guard
 until a complete pre-teardown decision or coherent failure-document protocol is
 implemented and verified; do not activate the privacy capability meanwhile.
+
+## Reproduce the public candidate replay
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_document_drafts.py `
+  --workspace D:\CamouFlowNative `
+  --report D:\CamouFlowNative\document-delivery-public-replay.json
+```
+
+Use a new absolute report path outside both repositories. The checker verifies
+the pinned revision and registered source/V8 patch replay with the existing build
+utilities, then applies the five document candidates in order inside an owned
+temporary Git overlay. It checks canonical helper/fixture copies, records their
+hashes and its own source hash, and rejects source/input drift, unsafe paths,
+non-source modes, binary patches and evidence overwrites. Active Chromium/GN
+files are never patched. It may run during the existing build: it does not invoke
+GN, a compiler, linker or browser. Temporary replay files are removed afterwards.
+
+The public checker passed on registered 001-027 inputs across all 27 candidate
+paths: `D:/CamouFlowNative/document-delivery-public-replay-001-027-v2.json`.
+Its Python checks cover path/mode validation, report safety, actual Git replay in
+a controlled fixture and canonical mismatch without publishing success. This is
+reproducible source-composition evidence only, not C++ or runtime admission.
