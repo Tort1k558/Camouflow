@@ -57,7 +57,39 @@ document commit/renderer candidates reuse that header rather than defining a
 second copy. The validator checks exact native partition encoding, not IPC
 sender authentication or safe cancellation after document teardown.
 
+Patch 0030 registers the developer-only document commit prototype: shared
+StorageKey resolution, early payload preflight and token-bound rejection of the
+selected pending navigation. The public `--target document-navigation` gate
+requires twelve exact NavigationSimulator cases. That gate uses real browser
+navigation machinery with simulated renderer/network behavior; first-script
+Blink execution, previous-page usability and candidate Canvas hooks require
+separate checks. Source registration is not browser linkage or privacy admission.
+
 ## Source reproducibility
+
+### Next-batch candidates (not enabled)
+
+| Candidate | Prepared behavior | Evidence boundary |
+| --- | --- | --- |
+| Surface policy v2 | One owned partition snapshot with independent Canvas/WebGL/WebGPU/Audio seeds; bounded preflight, binary Mojo schema and owned codec | Source replay and generated bindings; 21 native fixture definitions, not compiled |
+| GPU metadata minimization | Disabled-by-default native feature; remove WebGL debug extension and identifying WebGPU info without fabricating hardware | Source replay; candidate runtime not verified |
+| Offline Audio | Deterministic scalar prototype and bounded detached AudioBuffer copy; no live processing or JS method replacement | Source replay; 15 native fixture definitions, not compiled or integrated |
+
+Canonical public source and unregistered integration patches live under
+`drafts/policy`, `drafts/gpu` and `drafts/audio`. These candidates do not edit
+the active 0030 build. Surface transport v2, Audio API admission and GPU readback
+protection remain unfinished. Existing profile-key derivation domains must stay
+stable across a transport-version change.
+
+`verify_native_gpu.py` and `verify_native_audio.py` provide local compatibility
+diagnostics before enabling new hooks. Their successful 001-027 baseline runs
+do not verify the drafts or claim anti-bot acceptance. Worker APIs unavailable
+in upstream remain explicit exclusions, not fabricated coverage.
+
+`verify_native_next_batch.py` replays the four unregistered integration patches
+in an owned temporary overlay, checks exact canonical copies and rejects source,
+receipt, GN-input or browser-core drift. Run it with a new evidence path outside
+both repositories; it never runs GN, compilation or modifies active sources.
 
 `scripts/native_build.py` pins upstream revisions, records sync/hooks dependency
 snapshots and checks applied changes by replaying registered patches into a

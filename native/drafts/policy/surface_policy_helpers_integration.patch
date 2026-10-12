@@ -1,0 +1,540 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -703,6 +703,8 @@
+     "browser_child_process_host_impl_receiver_bindings.cc",
+     "browser_context.cc",
+     "browser_context_impl.cc",
++    "camouflow_native/glint/surface_policy_producer.cc",
++    "camouflow_native/glint/surface_policy_producer.h",
+     "camouflow_native/privacy_context.cc",
+     "camouflow_native/privacy_document_commit.cc",
+     "camouflow_native/privacy_document_commit.h",
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2557,6 +2557,9 @@
+ 
+   defines = []
+   sources = [
++    "../browser/camouflow_native/glint/surface_policy_producer_unittest.cc",
++    "../../third_party/blink/public/common/native_privacy/glint/surface_policy_validation_unittest.cc",
++    "../../third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc",
+     "../browser/camouflow_native/privacy_context_unittest.cc",
+     "../browser/camouflow_native/privacy_document_commit_unittest.cc",
+     "../browser/camouflow_native/privacy_navigation_throttle_unittest.cc",
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy.h b/third_party/blink/public/common/native_privacy/glint/surface_policy.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy.h
+@@ -0,0 +1,31 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_SURFACE_POLICY_H_
++#define GLINT_SURFACE_POLICY_H_
++
++#include <array>
++#include <cstdint>
++#include <string>
++
++namespace glint::candidate {
++using PartitionSeed = std::array<uint8_t, 32>;
++constexpr uint32_t kSurfacePolicyVersion = 2;
++
++// Browser-owned snapshot for one exact trusted StorageKey. No profile root key.
++struct SurfacePolicy {
++  uint32_t version = kSurfacePolicyVersion;
++  std::string partition_encoding;
++  PartitionSeed canvas{};
++  PartitionSeed webgl{};
++  PartitionSeed webgpu{};
++  PartitionSeed audio{};
++};
++
++inline bool HasIndependentSurfaceSeeds(const SurfacePolicy& policy) {
++  return policy.canvas != policy.webgl && policy.canvas != policy.webgpu &&
++         policy.canvas != policy.audio && policy.webgl != policy.webgpu &&
++         policy.webgl != policy.audio && policy.webgpu != policy.audio;
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h b/third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_SURFACE_POLICY_VALIDATION_H_
++#define GLINT_SURFACE_POLICY_VALIDATION_H_
++
++#include "surface_policy.h"
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++
++namespace glint::candidate {
++// Must be checked against the final Blink-selected partition before installation.
++// IPC sender authentication and safe pre-teardown cancellation are separate gates.
++inline bool ValidateSurfacePolicy(const SurfacePolicy& policy,
++                                  const blink::StorageKey& selected_partition) {
++  if (policy.version != kSurfacePolicyVersion || policy.partition_encoding.empty() ||
++      policy.partition_encoding.size() > 8192 || !HasIndependentSurfaceSeeds(policy)) {
++    return false;
++  }
++  const auto encoding = selected_partition.SerializeForNativePrivacy();
++  return encoding && *encoding == policy.partition_encoding;
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_validation_unittest.cc b/third_party/blink/public/common/native_privacy/glint/surface_policy_validation_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_validation_unittest.cc
+@@ -0,0 +1,101 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "surface_policy_validation.h"
++
++#include "base/unguessable_token.h"
++#include "net/base/schemeful_site.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace glint::candidate {
++namespace {
++blink::StorageKey Partition() {
++  return blink::StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://policy.test/")));
++}
++SurfacePolicy Policy() {
++  SurfacePolicy policy;
++  policy.partition_encoding = *Partition().SerializeForNativePrivacy();
++  policy.canvas.fill(1);
++  policy.webgl.fill(2);
++  policy.webgpu.fill(3);
++  policy.audio.fill(4);
++  return policy;
++}
++
++TEST(GlintSurfacePolicyTest, ValidIndependentSnapshot) {
++  EXPECT_TRUE(ValidateSurfacePolicy(Policy(), Partition()));
++}
++TEST(GlintSurfacePolicyTest, RejectsUnsupportedVersion) {
++  auto policy = Policy();
++  policy.version = 1;
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++  policy.version = 3;
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++}
++TEST(GlintSurfacePolicyTest, RejectsEmptyAndOversizedEncoding) {
++  auto policy = Policy();
++  policy.partition_encoding.clear();
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++  policy.partition_encoding.assign(8193, 'x');
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++}
++TEST(GlintSurfacePolicyTest, RejectsAnotherOrigin) {
++  EXPECT_FALSE(ValidateSurfacePolicy(Policy(), blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test/")))));
++}
++TEST(GlintSurfacePolicyTest, RejectsEveryPairOfReusedSeeds) {
++  for (unsigned left = 0; left < 4; ++left) {
++    for (unsigned right = left + 1; right < 4; ++right) {
++      auto policy = Policy();
++      std::array<PartitionSeed*, 4> seeds{
++          &policy.canvas, &policy.webgl, &policy.webgpu, &policy.audio};
++      *seeds[right] = *seeds[left];
++      EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++    }
++  }
++}
++TEST(GlintSurfacePolicyTest, SnapshotOwnsSeedsAndEncoding) {
++  auto original = Policy();
++  auto copy = original;
++  original.audio.fill(1);
++  original.partition_encoding.clear();
++  EXPECT_TRUE(ValidateSurfacePolicy(copy, Partition()));
++  EXPECT_FALSE(ValidateSurfacePolicy(original, Partition()));
++}
++TEST(GlintSurfacePolicyTest, RejectsDifferentOpaquePartition) {
++  EXPECT_FALSE(ValidateSurfacePolicy(Policy(), blink::StorageKey::CreateFirstParty(url::Origin())));
++}
++TEST(GlintSurfacePolicyTest, NonceIdentityIsExact) {
++  const auto origin = url::Origin::Create(GURL("https://policy.test/"));
++  const auto first = blink::StorageKey::CreateWithNonce(origin, base::UnguessableToken::Create());
++  const auto second = blink::StorageKey::CreateWithNonce(origin, base::UnguessableToken::Create());
++  auto policy = Policy();
++  policy.partition_encoding = *first.SerializeForNativePrivacy();
++  EXPECT_TRUE(ValidateSurfacePolicy(policy, first));
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, second));
++}
++TEST(GlintSurfacePolicyTest, RetainedTopLevelSiteCannotBeDropped) {
++  const auto origin = url::Origin::Create(GURL("https://policy.test/"));
++  const auto first = blink::StorageKey::Create(origin, net::SchemefulSite(GURL("https://one.test/")),
++      blink::mojom::AncestorChainBit::kCrossSite, false);
++  const auto second = blink::StorageKey::Create(origin, net::SchemefulSite(GURL("https://two.test/")),
++      blink::mojom::AncestorChainBit::kCrossSite, false);
++  ASSERT_EQ(first, second);
++  auto policy = Policy();
++  policy.partition_encoding = *first.SerializeForNativePrivacy();
++  EXPECT_TRUE(ValidateSurfacePolicy(policy, first));
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, second));
++}
++TEST(GlintSurfacePolicyTest, RejectsEmbeddedNullTruncationAndTrailingData) {
++  auto policy = Policy();
++  const auto null_position = policy.partition_encoding.find('\0');
++  ASSERT_NE(null_position, std::string::npos);
++  policy.partition_encoding.resize(null_position);
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++  policy = Policy();
++  policy.partition_encoding.push_back('\0');
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight.h b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight.h
+@@ -0,0 +1,50 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_SURFACE_POLICY_PREFLIGHT_H_
++#define GLINT_SURFACE_POLICY_PREFLIGHT_H_
++
++#include <algorithm>
++#include <optional>
++#include <span>
++#include <string_view>
++
++#include "surface_policy_validation.h"
++#include "third_party/blink/public/common/native_privacy/document_storage_key_resolution.h"
++
++namespace glint::candidate {
++struct SurfacePolicyView {
++  uint32_t version;
++  std::string_view partition_encoding;
++  std::span<const uint8_t> canvas;
++  std::span<const uint8_t> webgl;
++  std::span<const uint8_t> webgpu;
++  std::span<const uint8_t> audio;
++};
++
++// Validate all lengths before allocation/copy. The returned snapshot owns bytes.
++// Final Blink partition validation must still occur before installation.
++inline std::optional<SurfacePolicy> PreflightSurfacePolicyCommit(
++    const SurfacePolicyView& incoming,
++    const blink::StorageKey& provisional_partition,
++    const url::Origin& browser_origin_to_commit) {
++  if (incoming.version != kSurfacePolicyVersion ||
++      incoming.partition_encoding.empty() || incoming.partition_encoding.size() > 8192 ||
++      incoming.canvas.size() != 32 || incoming.webgl.size() != 32 ||
++      incoming.webgpu.size() != 32 || incoming.audio.size() != 32) {
++    return std::nullopt;
++  }
++  SurfacePolicy owned;
++  owned.partition_encoding = incoming.partition_encoding;
++  std::ranges::copy(incoming.canvas, owned.canvas.begin());
++  std::ranges::copy(incoming.webgl, owned.webgl.begin());
++  std::ranges::copy(incoming.webgpu, owned.webgpu.begin());
++  std::ranges::copy(incoming.audio, owned.audio.begin());
++  if (!ValidateSurfacePolicy(owned, blink::ResolveGlintDocumentStorageKey(
++                                        provisional_partition, browser_origin_to_commit))) {
++    return std::nullopt;
++  }
++  return owned;
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc
+@@ -0,0 +1,87 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "surface_policy_preflight.h"
++#include "surface_policy_wire.h"
++
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace glint::candidate {
++namespace {
++class GlintSurfacePolicyPreflightTest : public testing::Test {
++ protected:
++  const url::Origin origin_ = url::Origin::Create(GURL("https://preflight.test/"));
++  const blink::StorageKey partition_ = blink::StorageKey::CreateFirstParty(origin_);
++  std::string encoding_ = *partition_.SerializeForNativePrivacy();
++  PartitionSeed canvas_{1}, webgl_{2}, webgpu_{3}, audio_{4};
++
++  SurfacePolicyView Incoming() {
++    return {kSurfacePolicyVersion, encoding_, canvas_, webgl_, webgpu_, audio_};
++  }
++};
++
++TEST_F(GlintSurfacePolicyPreflightTest, ReturnsOwnedSnapshot) {
++  auto result = PreflightSurfacePolicyCommit(Incoming(), partition_, origin_);
++  ASSERT_TRUE(result);
++  encoding_.clear();
++  audio_.fill(1);
++  EXPECT_TRUE(ValidateSurfacePolicy(*result, partition_));
++  EXPECT_EQ(result->audio[0], 4u);
++}
++TEST_F(GlintSurfacePolicyPreflightTest, RejectsEveryShortAndLongSeedBeforeCopy) {
++  std::array<uint8_t, 33> oversized{};
++  for (unsigned index = 0; index < 4; ++index) {
++    for (unsigned size : {0u, 31u, 33u}) {
++      auto incoming = Incoming();
++      std::array<std::span<const uint8_t>*, 4> seeds{
++          &incoming.canvas, &incoming.webgl, &incoming.webgpu, &incoming.audio};
++      *seeds[index] = std::span<const uint8_t>(oversized).first(size);
++      EXPECT_FALSE(PreflightSurfacePolicyCommit(incoming, partition_, origin_));
++    }
++  }
++}
++TEST_F(GlintSurfacePolicyPreflightTest, RejectsWrongVersionAndHugeEncoding) {
++  auto incoming = Incoming();
++  incoming.version = 1;
++  EXPECT_FALSE(PreflightSurfacePolicyCommit(incoming, partition_, origin_));
++  encoding_.assign(8193, 'x');
++  EXPECT_FALSE(PreflightSurfacePolicyCommit(Incoming(), partition_, origin_));
++}
++TEST_F(GlintSurfacePolicyPreflightTest, ResolvesInheritedProvisionalOrigin) {
++  const auto provisional = blink::StorageKey::CreateFirstParty(url::Origin());
++  EXPECT_TRUE(PreflightSurfacePolicyCommit(Incoming(), provisional, origin_));
++}
++TEST_F(GlintSurfacePolicyPreflightTest, RejectsWrongBrowserOriginAndReusedSurface) {
++  const auto wrong = url::Origin::Create(GURL("https://wrong.test/"));
++  EXPECT_FALSE(PreflightSurfacePolicyCommit(Incoming(), partition_, wrong));
++  auto incoming = Incoming();
++  incoming.audio = incoming.canvas;
++  EXPECT_FALSE(PreflightSurfacePolicyCommit(incoming, partition_, origin_));
++}
++TEST_F(GlintSurfacePolicyPreflightTest, WireRoundtripRetainsBinaryEncodingAndOwnedSeeds) {
++  auto policy = PreflightSurfacePolicyCommit(Incoming(), partition_, origin_);
++  ASSERT_TRUE(policy);
++  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
++  ASSERT_TRUE(wire);
++  auto decoded = DecodeSurfacePolicyCommit(*wire, partition_, origin_);
++  ASSERT_TRUE(decoded);
++  EXPECT_EQ(decoded->partition_encoding, encoding_);
++  EXPECT_NE(decoded->partition_encoding.find('\0'), std::string::npos);
++  EXPECT_EQ(decoded->audio, audio_);
++  wire->audio_seed.assign(32, 0);
++  EXPECT_EQ(decoded->audio, audio_);
++}
++TEST_F(GlintSurfacePolicyPreflightTest, WireRejectsMalformedSeedAndWrongPartition) {
++  auto policy = PreflightSurfacePolicyCommit(Incoming(), partition_, origin_);
++  ASSERT_TRUE(policy);
++  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
++  ASSERT_TRUE(wire);
++  wire->audio_seed.pop_back();
++  EXPECT_FALSE(DecodeSurfacePolicyCommit(*wire, partition_, origin_));
++  const auto other = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test/")));
++  EXPECT_FALSE(EncodeSurfacePolicyCommit(*policy, other));
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h b/third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h
+@@ -0,0 +1,37 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_SURFACE_POLICY_WIRE_H_
++#define GLINT_SURFACE_POLICY_WIRE_H_
++
++#include "surface_policy_preflight.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom.h"
++
++namespace glint::candidate {
++inline blink::mojom::GlintSurfacePolicyCommitPtr EncodeSurfacePolicyCommit(
++    const SurfacePolicy& policy,
++    const blink::StorageKey& trusted_partition) {
++  if (!ValidateSurfacePolicy(policy, trusted_partition)) {
++    return nullptr;
++  }
++  auto wire = blink::mojom::GlintSurfacePolicyCommit::New();
++  wire->version = policy.version;
++  wire->partition_encoding = policy.partition_encoding;
++  wire->canvas_seed.assign(policy.canvas.begin(), policy.canvas.end());
++  wire->webgl_seed.assign(policy.webgl.begin(), policy.webgl.end());
++  wire->webgpu_seed.assign(policy.webgpu.begin(), policy.webgpu.end());
++  wire->audio_seed.assign(policy.audio.begin(), policy.audio.end());
++  return wire;
++}
++
++inline std::optional<SurfacePolicy> DecodeSurfacePolicyCommit(
++    const blink::mojom::GlintSurfacePolicyCommit& wire,
++    const blink::StorageKey& provisional_partition,
++    const url::Origin& browser_origin_to_commit) {
++  return PreflightSurfacePolicyCommit(
++      {wire.version, wire.partition_encoding, wire.canvas_seed, wire.webgl_seed,
++       wire.webgpu_seed, wire.audio_seed},
++      provisional_partition, browser_origin_to_commit);
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/content/browser/camouflow_native/glint/surface_policy_producer.h b/content/browser/camouflow_native/glint/surface_policy_producer.h
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/surface_policy_producer.h
+@@ -0,0 +1,24 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_SURFACE_POLICY_PRODUCER_H_
++#define GLINT_SURFACE_POLICY_PRODUCER_H_
++
++#include <optional>
++
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy.h"
++
++namespace blink {
++class StorageKey;
++}
++namespace content {
++class BrowserContext;
++}
++
++namespace glint::candidate {
++// UI-sequence only. Unready, failed and shutting-down contexts produce nothing.
++std::optional<SurfacePolicy> CreateSurfacePolicy(
++    content::BrowserContext* context,
++    const blink::StorageKey& trusted_partition);
++}  // namespace glint::candidate
++
++#endif
+diff --git a/content/browser/camouflow_native/glint/surface_policy_producer.cc b/content/browser/camouflow_native/glint/surface_policy_producer.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/surface_policy_producer.cc
+@@ -0,0 +1,38 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "surface_policy_producer.h"
++
++#include <utility>
++
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/native_privacy_context.h"
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++
++namespace glint::candidate {
++std::optional<SurfacePolicy> CreateSurfacePolicy(
++    content::BrowserContext* context,
++    const blink::StorageKey& trusted_partition) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!context || context->ShutdownStarted()) {
++    return std::nullopt;
++  }
++  auto encoding = trusted_partition.SerializeForNativePrivacy();
++  if (!encoding || encoding->empty() || encoding->size() > 8192) {
++    return std::nullopt;
++  }
++  auto canvas = content::DeriveNativePrivacyKey(context, trusted_partition, "canvas");
++  auto webgl = content::DeriveNativePrivacyKey(context, trusted_partition, "webgl");
++  auto webgpu = content::DeriveNativePrivacyKey(context, trusted_partition, "webgpu");
++  auto audio = content::DeriveNativePrivacyKey(context, trusted_partition, "audio");
++  if (!canvas || !webgl || !webgpu || !audio) {
++    return std::nullopt;
++  }
++  SurfacePolicy policy{kSurfacePolicyVersion, std::move(*encoding),
++                       *canvas, *webgl, *webgpu, *audio};
++  if (!HasIndependentSurfaceSeeds(policy)) {
++    return std::nullopt;
++  }
++  return policy;
++}
++}  // namespace glint::candidate
+diff --git a/content/browser/camouflow_native/glint/surface_policy_producer_unittest.cc b/content/browser/camouflow_native/glint/surface_policy_producer_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/surface_policy_producer_unittest.cc
+@@ -0,0 +1,79 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "surface_policy_producer.h"
++
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "content/public/browser/native_privacy_context.h"
++#include "content/public/test/test_renderer_host.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace glint::candidate {
++namespace {
++class GlintSurfacePolicyProducerTest : public content::RenderViewHostTestHarness {
++ public:
++  GlintSurfacePolicyProducerTest()
++      : RenderViewHostTestHarness(
++            base::test::TaskEnvironment::TimeSource::MOCK_TIME,
++            base::test::TaskEnvironment::ThreadPoolExecutionMode::QUEUED) {}
++
++ protected:
++  void SetUp() override {
++    RenderViewHostTestHarness::SetUp();
++    ASSERT_TRUE(owned_.CreateUniqueTempDir());
++    ASSERT_TRUE(base::WriteFile(owned_.GetPath().AppendASCII("camouflow-native-privacy.json"),
++        R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})"));
++  }
++  void TearDown() override {
++    content::ShutdownNativePrivacyContext(browser_context());
++    task_environment()->RunUntilIdle();
++    RenderViewHostTestHarness::TearDown();
++  }
++  void Initialize() {
++    ASSERT_TRUE(content::InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  }
++  blink::StorageKey Partition() {
++    return blink::StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://policy.test/")));
++  }
++  base::ScopedTempDir owned_;
++};
++
++TEST_F(GlintSurfacePolicyProducerTest, MissingAndUnreadyContextRejectsSnapshot) {
++  EXPECT_FALSE(CreateSurfacePolicy(nullptr, Partition()));
++  EXPECT_FALSE(CreateSurfacePolicy(browser_context(), Partition()));
++  Initialize();
++  EXPECT_FALSE(CreateSurfacePolicy(browser_context(), Partition()));
++}
++TEST_F(GlintSurfacePolicyProducerTest, ReadySnapshotUsesFourIndependentDomains) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  auto policy = CreateSurfacePolicy(browser_context(), Partition());
++  ASSERT_TRUE(policy);
++  EXPECT_TRUE(ValidateSurfacePolicy(*policy, Partition()));
++  EXPECT_EQ(policy->canvas, content::DeriveNativePrivacyKey(browser_context(), Partition(), "canvas"));
++  EXPECT_EQ(policy->webgl, content::DeriveNativePrivacyKey(browser_context(), Partition(), "webgl"));
++  EXPECT_EQ(policy->webgpu, content::DeriveNativePrivacyKey(browser_context(), Partition(), "webgpu"));
++  EXPECT_EQ(policy->audio, content::DeriveNativePrivacyKey(browser_context(), Partition(), "audio"));
++}
++TEST_F(GlintSurfacePolicyProducerTest, ChangingReturnedSnapshotDoesNotChangeIdentity) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  auto first = CreateSurfacePolicy(browser_context(), Partition());
++  ASSERT_TRUE(first);
++  const auto expected = first->audio;
++  first->audio.fill(0);
++  auto second = CreateSurfacePolicy(browser_context(), Partition());
++  ASSERT_TRUE(second);
++  EXPECT_EQ(second->audio, expected);
++}
++TEST_F(GlintSurfacePolicyProducerTest, ShutdownRejectsSnapshot) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  content::ShutdownNativePrivacyContext(browser_context());
++  EXPECT_FALSE(CreateSurfacePolicy(browser_context(), Partition()));
++}
++}  // namespace
++}  // namespace glint::candidate

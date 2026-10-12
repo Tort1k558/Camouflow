@@ -1,0 +1,33 @@
+diff --git a/third_party/blink/public/mojom/BUILD.gn b/third_party/blink/public/mojom/BUILD.gn
+--- a/third_party/blink/public/mojom/BUILD.gn
++++ b/third_party/blink/public/mojom/BUILD.gn
+@@ -112,6 +112,7 @@
+     "hid/hid.mojom",
+     "hyphenation/hyphenation.mojom",
+     "native_privacy/native_privacy_document.mojom",
++    "native_privacy/native_privacy_surface_policy.mojom",
+     "idle/idle_manager.mojom",
+     "image_downloader/image_downloader.mojom",
+     "image_replacement/image_replacement.mojom",
+diff --git a/third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom b/third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom
+@@ -0,0 +1,17 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++module blink.mojom;
++
++import "mojo/public/mojom/base/byte_string.mojom";
++
++// One browser-owned partition snapshot; never reachable through a Web API.
++// ByteString retains embedded nulls in native StorageKey serialization.
++// This schema is not yet connected to document commits or worker endpoints.
++struct GlintSurfacePolicyCommit {
++  uint32 version;
++  mojo_base.mojom.ByteString partition_encoding;
++  array<uint8, 32> canvas_seed;
++  array<uint8, 32> webgl_seed;
++  array<uint8, 32> webgpu_seed;
++  array<uint8, 32> audio_seed;
++};

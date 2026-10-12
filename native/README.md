@@ -19,7 +19,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 | `windows/` | Windows font-policy source |
 | `tests/` | Native policy fixtures and tests |
 | `branding/` | Prepared Glint product/logo patch, not applied |
-| `drafts/` | Status notes for candidates promoted to the registered chain |
+| `drafts/` | Canonical candidates, unregistered integration patches and explicit proof boundaries |
 | `build/`, `toolchain/` | Build/toolchain support source |
 | `build-lock.json` | Pinned upstream revisions and build limits |
 | `args.gn` | Development Chromium build configuration |
@@ -56,5 +56,12 @@ still needs application and verification. No signed own-engine release or guaran
 anti-bot/CAPTCHA acceptance is advertised.
 
 Development diaries and machine-specific evidence stay outside public source.
+
+The next cohesive development batch is documented in
+[GPU metadata](drafts/gpu/README.md), [offline Audio](drafts/audio/README.md) and
+[surface policy v2](drafts/policy/README.md). These are unregistered candidates,
+not enabled protections. Their local diagnostic runners test real GPU operations
+and AudioBuffer semantics independently of fingerprint-masking claims.
+
 Durable contracts live in architecture docs; released changes belong in the
 [changelog](../CHANGELOG.md).

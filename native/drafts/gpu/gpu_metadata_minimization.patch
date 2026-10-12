@@ -1,0 +1,75 @@
+diff --git a/third_party/blink/public/common/features.h b/third_party/blink/public/common/features.h
+--- a/third_party/blink/public/common/features.h
++++ b/third_party/blink/public/common/features.h
+@@ -705,6 +705,9 @@
+ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
+     kGetDisplayMediaIgnoreAudioPermissionFailures);
+ 
++// Developer opt-in only; this minimizes metadata, not GPU capabilities.
++BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGlintGpuMetadataMinimization);
++
+ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
+     std::string,
+     kHTMLParserYieldEventNameForPause);
+diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
+--- a/third_party/blink/common/features.cc
++++ b/third_party/blink/common/features.cc
+@@ -1006,6 +1006,8 @@
+ BASE_FEATURE(kGetDisplayMediaIgnoreAudioPermissionFailures,
+              base::FEATURE_ENABLED_BY_DEFAULT);
+ 
++BASE_FEATURE(kGlintGpuMetadataMinimization, base::FEATURE_DISABLED_BY_DEFAULT);
++
+ BASE_FEATURE_PARAM(std::string,
+                    kHTMLParserYieldEventNameForPause,
+                    &kHTMLParserYieldByUserTiming,
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc b/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
+--- a/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
+@@ -25,6 +25,9 @@
+ 
+ #include "third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.h"
+ 
++#include "base/feature_list.h"
++#include "third_party/blink/public/common/features.h"
++
+ namespace blink {
+ 
+ WebGLDebugRendererInfo::WebGLDebugRendererInfo(
+@@ -37,7 +40,7 @@
+ }
+ 
+ bool WebGLDebugRendererInfo::Supported(WebGLRenderingContextBase*) {
+-  return true;
++  return !base::FeatureList::IsEnabled(features::kGlintGpuMetadataMinimization);
+ }
+ 
+ const char* WebGLDebugRendererInfo::ExtensionName() {
+diff --git a/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc b/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
+--- a/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
++++ b/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/modules/webgpu/gpu_adapter.h"
++
++#include "base/feature_list.h"
++#include "third_party/blink/public/common/features.h"
+ 
+ #include "services/metrics/public/cpp/ukm_builders.h"
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+@@ -126,7 +129,13 @@
+   bool is_fallback_adapter = adapter_type_ == wgpu::AdapterType::CPU;
+ 
+   GPUAdapterInfo* info;
+-  if (RuntimeEnabledFeatures::WebGPUDeveloperFeaturesEnabled()) {
++  if (base::FeatureList::IsEnabled(features::kGlintGpuMetadataMinimization)) {
++    // Retain real subgroup and fallback facts. Do not invent a different GPU or
++    // change the backend, device features, limits or rendering behavior.
++    info = MakeGarbageCollected<GPUAdapterInfo>(
++        String(), String(), subgroup_min_size_, subgroup_max_size_,
++        is_fallback_adapter);
++  } else if (RuntimeEnabledFeatures::WebGPUDeveloperFeaturesEnabled()) {
+     // If WebGPU developer features have been enabled then provide all available
+     // adapter info values.
+     info = MakeGarbageCollected<GPUAdapterInfo>(
