@@ -2207,6 +2207,36 @@ def test_native_worker_startup_configuration_uses_only_explicit_probe_flags(mode
         StartupConfiguration(probe_mode="unknown").launch_arguments()
 
 
+@pytest.mark.parametrize("feature", ["ThirdPartyStoragePartitioning", "ThirdPartyStoragePartitioning<Trial", "ThirdPartyStoragePartitioning:param/value"])
+def test_native_worker_startup_preserves_unrelated_driver_exclusions(feature):
+    from scripts.verify_native_worker_startup import StartupConfiguration, partitioning_argument
+
+    measured = ["chrome.exe", "--disable-features=Translate," + feature + ",MediaRouter", "--headless"]
+    replacement = partitioning_argument(measured)
+    assert replacement == "--disable-features=Translate,MediaRouter"
+    assert partitioning_argument([replacement]) == replacement
+    assert replacement in StartupConfiguration(disabled_features_argument=replacement).launch_arguments()
+    configuration = StartupConfiguration(disabled_features_argument=replacement, ignored_driver_argument=measured[1])
+    assert configuration.context_options()["ignore_default_args"] == [measured[1]]
+    with pytest.raises(ValueError):
+        StartupConfiguration(disabled_features_argument=replacement).context_options()
+    with pytest.raises(ValueError):
+        StartupConfiguration(ignored_driver_argument=measured[1]).context_options()
+    with pytest.raises(ValueError):
+        StartupConfiguration(disabled_features_argument=measured[1]).launch_arguments()
+
+
+@pytest.mark.parametrize("arguments", [None, [1], [], ["--disable-features="],
+    ["--disable-features=ThirdPartyStoragePartitioning"],
+    ["--disable-features=Translate", "--disable-features=MediaRouter"],
+    ["--disable-features=Translate,,MediaRouter"]])
+def test_native_worker_startup_rejects_ambiguous_driver_exclusions(arguments):
+    from scripts.verify_native_worker_startup import partitioning_argument
+
+    with pytest.raises(ValueError):
+        partitioning_argument(arguments)
+
+
 @pytest.mark.parametrize("failure", [None, "patch", "hash", "binary", "revision", "shape"])
 def test_native_worker_startup_receipt_requires_matching_registered_chain(tmp_path, failure):
     import hashlib

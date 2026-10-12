@@ -139,16 +139,59 @@ class WorkerStartupHandler(FixtureHandler):
 @dataclass(frozen=True)
 class StartupConfiguration(NativeConfiguration):
     probe_mode: str = "baseline"
+    disabled_features_argument: str | None = None
+    ignored_driver_argument: str | None = None
+
+    def context_options(self) -> dict:
+        options = super().context_options()
+        if self.disabled_features_argument is not None:
+            if (self.ignored_driver_argument is None
+                    or partitioning_argument([self.ignored_driver_argument]) != self.disabled_features_argument):
+                raise ValueError("Worker probe requires the exact measured driver exclusion")
+            options["ignore_default_args"] = [self.ignored_driver_argument]
+        elif self.ignored_driver_argument is not None:
+            raise ValueError("Worker probe cannot discard feature exclusions without replacement")
+        return options
 
     def launch_arguments(self) -> list[str]:
         if self.probe_mode not in PHASES:
             raise ValueError("Unknown worker startup probe mode")
-        arguments = super().launch_arguments() + [FEATURE_ARGUMENT]
+        arguments = super().launch_arguments() + [FEATURE_ARGUMENT, "--enable-automation"]
+        if self.disabled_features_argument is not None:
+            if partitioning_argument([self.disabled_features_argument]) != self.disabled_features_argument:
+                raise ValueError("Worker probe still disables storage partitioning")
+            arguments.append(self.disabled_features_argument)
         if self.probe_mode != "baseline":
             arguments.append(BOOTSTRAP_ARGUMENT)
         if self.probe_mode == "ready":
             arguments.append(KEY_ARGUMENT)
         return arguments
+
+
+def partitioning_argument(arguments: list[str]) -> str:
+    if not isinstance(arguments, list) or any(not isinstance(argument, str) for argument in arguments):
+        raise ValueError("Browser launch arguments are missing")
+    disabled = [argument for argument in arguments if argument.startswith("--disable-features=")]
+    if len(disabled) != 1:
+        raise ValueError("Worker probe requires one measured disabled-feature argument")
+    features = disabled[0].partition("=")[2].split(",")
+    if any(not feature for feature in features):
+        raise ValueError("Browser disabled-feature argument is malformed")
+    retained = [feature for feature in features
+                if feature.split("<", 1)[0].split(":", 1)[0] != "ThirdPartyStoragePartitioning"]
+    if not retained:
+        raise ValueError("Worker probe requires unrelated Playwright feature exclusions")
+    return "--disable-features=" + ",".join(retained)
+
+
+async def browser_arguments(context) -> list[str]:
+    page = context.pages[0] if context.pages else await context.new_page()
+    session = await context.new_cdp_session(page)
+    try:
+        result = await session.send("Browser.getBrowserCommandLine")
+        return result["arguments"]
+    finally:
+        await session.detach()
 
 
 def validate_observation(observed: dict, *, mode: str, kind: str, identifier: str) -> None:
@@ -189,8 +232,21 @@ def validate_receipt(executable: Path, core: dict) -> bytes:
 async def verify(executable: Path, owned: Path, server: WorkerStartupServer, report: dict,
                  runtimes: list[NativeRuntime]) -> None:
     origin = f"http://127.0.0.1:{server.server_port}"
+    discovery = NativeRuntime(profile_dir=owned / "driver-arguments", executable=executable,
+                              configuration=StartupConfiguration())
+    runtimes.append(discovery)
+    try:
+        context = await discovery.start(headless=True)
+        original_arguments = await browser_arguments(context)
+        disabled_features_argument = partitioning_argument(original_arguments)
+        report["driver_disabled_features_original"] = [argument for argument in original_arguments
+                                                        if argument.startswith("--disable-features=")][0]
+        report["probe_disabled_features_replacement"] = disabled_features_argument
+    finally:
+        await discovery.close()
     for mode, phases in PHASES.items():
-        configuration = StartupConfiguration(probe_mode=mode)
+        configuration = StartupConfiguration(probe_mode=mode, disabled_features_argument=disabled_features_argument,
+                                             ignored_driver_argument=report["driver_disabled_features_original"])
         report["arguments"][mode] = configuration.launch_arguments()
         runtime = NativeRuntime(profile_dir=owned / mode, executable=executable, configuration=configuration)
         runtimes.append(runtime)
@@ -198,6 +254,13 @@ async def verify(executable: Path, owned: Path, server: WorkerStartupServer, rep
         for phase in phases:
             try:
                 context = await runtime.start(headless=True)
+                effective = await browser_arguments(context)
+                if (partitioning_argument(effective) != disabled_features_argument
+                        or disabled_features_argument not in effective or FEATURE_ARGUMENT not in effective):
+                    raise ValueError("Effective browser arguments still conflict with worker partitioning")
+                report.setdefault("effective_partitioning_arguments", {})[f"{mode}-{phase}"] = [
+                    argument for argument in effective
+                    if argument.startswith(("--disable-features=", "--enable-features="))]
                 page = context.pages[0] if context.pages else await context.new_page()
                 await page.goto(origin, timeout=20000)
                 for kind, script_type in CASES:

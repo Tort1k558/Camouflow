@@ -516,3 +516,23 @@ passed applicability and GN formatting-delta checks without active input changes
 The strict delivery target now requires all 34 cases; all were linked and
 executed successfully, including these three cases. Python checks compare the embedded consumer/fixture sources
 against the canonical files to prevent stale test copies during later promotion.
+
+### Shared-worker bootstrap failure notification
+
+The 001-026 compiled browser passes shared-worker startup with ready policy, but
+unavailable policy destroys the unstarted stub without the script-load-failure
+notification expected by its clients. The owned runtime probe records a timeout,
+not an error event. This is a failed gate, even though no body beacon was observed.
+
+`shared_worker_bootstrap_failure.patch` is a follow-up to applied 0023. It keeps
+the original host remote in the startup continuation and calls the existing
+`OnScriptLoadFailed` before unstarted-stub teardown when required policy is
+missing. Flag-off startup and ready policy retain their existing paths. No seed,
+identity or page data is included in the error message.
+
+Applicability and isolated renderer syntax checks passed under
+`D:/CamouFlowNative/shared-worker-bootstrap-failure-overlay/proof.json` and
+`shared-worker-bootstrap-failure-cpp-check/proof.json`. This follow-up remains
+unregistered and unlinked. Before promotion, verify classic/module ready and
+unavailable startup, exactly one client error, zero body executions on rejection,
+queued port release, early client termination and the complete worker gate.

@@ -172,11 +172,14 @@ The next source batch registers worker startup and seed thread handoff as
 0021-0026. All six patches applied in an idle checkout while preserving baseline
 browser code hashes: `worker-startup-001-026-promotion.json`. They include four
 unexecuted Blink WorkerThread handoff cases; they are not part of the 54-case
-content result above. The Windows `chrome` target is building on four jobs under
+content result above. The Windows `chrome` target completed on four jobs under
 `worker-startup-runtime-001-026-build.json`. A copy of the previous 001-015 core
 code, GN arguments and receipt is retained outside the mutable output; this core
-backup is not a separately verified packaged runtime. No new build/runtime pass
-is claimed yet. Canvas readback hooks, document bootstrap and branding remain
+backup is not a separately verified packaged runtime. Compilation/linkage succeeded
+in 29m17.54s. The new `chrome.dll` SHA-256 is
+`a055fecb73db29c0ababa0cb3da2f4d7d3942253d82453ce6b58e24f938927e2`.
+The executable stub hash alone did not change; it cannot identify the new code.
+Canvas readback hooks, document bootstrap and branding remain
 unregistered; no protected first-script or Canvas capability is admitted.
 
 The worker startup probe is prepared while this browser build runs. Its fixture
@@ -190,6 +193,35 @@ The previous 001-015 core backup was actually rejected by the CLI before launch
 because its receipt lacks the required chain:
 `worker-startup-old-baseline-rejection.json`. No new browser startup pass is
 claimed until the compiled runtime completes this probe.
+
+The first compiled-browser run passed twelve ordinary baseline cases and two
+ready dedicated-worker cases, then timed out on the ready shared worker with
+zero execution beacons (`worker-startup-001-026-runtime-first.json`). Measured
+launch logging exposed Playwright's default `--disable-features` entry for
+`ThirdPartyStoragePartitioning`, conflicting with the requested enable switch.
+The probe now measures that exact default argument through CDP, ignores only that
+argument and supplies a replacement preserving every unrelated exclusion. It
+checks the effective browser arguments after each launch. `--enable-automation`
+is explicit only in this diagnostic probe to permit command-line inspection;
+these runs are not anti-bot score or ordinary manager-launch evidence.
+
+With the conflict removed, all 24 baseline/ready cases passed, including retained
+classic/module service-worker restart without main-script refetch. Both dedicated
+unavailable-policy cases passed. The unavailable shared-worker case timed out
+with zero beacons (`worker-startup-001-026-runtime-partition-fixed-v3.json`):
+the full 30-case gate is still failed, not admitted. The shared startup rejection
+deletes the unstarted stub without calling the existing host script-load-failure
+notification, leaving its JavaScript client without an error event.
+
+`native/drafts/document_delivery/shared_worker_bootstrap_failure.patch` prepares
+that notification before teardown while retaining the original host remote in
+the startup continuation. It passed source applicability and isolated Chromium
+renderer syntax checks (`shared-worker-bootstrap-failure-cpp-check/proof.json`).
+It is not registered, linked or runtime-verified yet. Active runtime code and
+the 001-026 receipt are unchanged. The probe regressions passed 34 cases and the
+full Python suite passed 1222 cases; neither substitutes for the failed browser
+gate. The normal manager launch still uses its current Playwright defaults;
+partitioning-dependent privacy capability remains developer-only.
 
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External
