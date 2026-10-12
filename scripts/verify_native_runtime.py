@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
-import hashlib
 import json
 import logging
 import os
@@ -28,7 +27,23 @@ sys.path.insert(0, str(ROOT))
 from app.core.native.configuration import NativeConfiguration  # noqa: E402
 from app.core.native.diagnostics import inspect_native_profile  # noqa: E402
 from app.core.native.runtime import NativeRuntime, NativeRuntimeError  # noqa: E402
+from app.core.native.distribution import sha256_file  # noqa: E402
 from playwright.async_api import Error as PlaywrightError, async_playwright  # noqa: E402
+
+def measure_runtime_core(executable: Path) -> dict[str, str]:
+    """Bind Windows evidence to executable code in DLLs, not only the launcher."""
+    if not executable.is_file():
+        raise NativeRuntimeError("Native browser is not installed")
+    paths = [executable]
+    if sys.platform == "win32":
+        paths.extend(executable.parent / name for name in ("chrome.dll", "chrome_elf.dll"))
+    measured = {}
+    for path in paths:
+        if not path.is_absolute() or path != path.resolve() or not path.is_file():
+            raise ValueError("Native runtime core is missing or linked: " + path.name)
+        measured[path.name] = sha256_file(path)
+    return measured
+
 
 STORAGE = """async value => {
   const db = await new Promise((resolve, reject) => {
@@ -337,6 +352,7 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
 
 async def verify(profile_root: Path, executable: Path, origin: str, proxy_server: FixtureServer,
                  *, checks: list[str] | None = None) -> dict:
+    runtime_core = measure_runtime_core(executable)
     desktop = NativeConfiguration()
     mobile = NativeConfiguration(environment="mobile_web", width=390, height=844, device_scale_factor=3,
                                  locale="de-DE", timezone="Europe/Berlin",
@@ -613,10 +629,12 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         await b.close()
         restart_rounds = await verify_multi_profile_restarts(profile_root, executable, origin)
         checks.append("three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes")
-        with executable.open("rb") as binary:
-            checksum = hashlib.file_digest(binary, "sha256").hexdigest()
+        if measure_runtime_core(executable) != runtime_core:
+            raise ValueError("Native runtime core changed during verification")
+        checksum = runtime_core[executable.name]
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),
                 "version": version, "binary_sha256_measured": checksum, "checks": checks,
+                "runtime_core_sha256_measured": runtime_core,
                 "mobile_observed": observed, "diagnostics": diagnostics, "fingerprint_patched": False,
                 "permission_states": {"configured_empty": default_permissions,
                                       "configured_grants": granted_permissions,

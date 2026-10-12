@@ -71,6 +71,32 @@ still records `fingerprint_patched: false` and
 `native_patch_runtime_verified: false`. Packaged-payload verification, combined
 policy admission, public-site observations and a shipping release remain pending.
 
+### Browser-side hardware correction: own runtime passed
+
+The incremental four-job build completed with exit code 0: four executed steps
+in 5m49.98s after GN generation. The affected browser translation unit and
+`chrome.dll` linked successfully; pinned-source checks refreshed the receipt.
+The standalone hardware gate then passed all nine cases on Chromium
+148.0.7778.96, recorded in
+`D:\CamouFlowNative\hardware-browser-validation-own-20261012.json`.
+Five positive cases cover native values, independent overrides and ceilings in
+documents, frames and workers. Four malformed values are rejected at browser
+startup with the expected native validation diagnostic, not a renderer timeout.
+This supersedes the failed hardware result for the preceding build, not the
+unfinished full-suite, combined-policy or release-admission work.
+
+The launcher checksum stayed unchanged after relinking, while `chrome.dll` is
+now `01c34e325fbc7c8f3ae53a235c4d39e0a8aebbbb75dad21a0ff0190c7f5a0174`.
+Runtime reports now measure Windows `chrome.exe`, `chrome.dll` and
+`chrome_elf.dll` before and after the checks; changed or missing code fails.
+The Windows packager requires the matching three-file measurement and rejects
+old launcher-only reports. This closes stale runtime admission after a DLL-only
+rebuild; it is not a signature or proof of every resource file's runtime behavior.
+The existing archive verifier still measures every packaged file separately.
+Regression coverage rejects missing/mismatched core hashes and a changed DLL
+even when staging matches it and the launcher is unchanged. The full local suite
+passed 1,036 tests after this correction.
+
 ## Executable verification queue
 
 | Area | Prepared artifact | Required own-fork evidence |
@@ -199,6 +225,11 @@ partially clipped rectangles, worker taint, WebGL exports and editor round trips
 remain uncovered. Validator regressions reject missing, false, numeric and extra
 geometry results instead of accepting truthy or incomplete observations.
 The complete local regression suite passed 1,030 tests after this increment.
+The rebuilt own-fork Chromium 148.0.7778.96 subsequently passed all four baseline
+checks too, including all geometry observations in six contexts across restart,
+at `D:\CamouFlowNative\canvas-geometry-own-baseline-20261012.json`.
+This establishes an own-fork compatibility baseline before protection, not a
+native Canvas mask or partition-key transport implementation.
 
 - **Capability admission:** bind reviewed gate reports to exact source patches,
   own build receipt and complete packaged payload; never accept an arbitrary

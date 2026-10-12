@@ -1186,6 +1186,7 @@ def _native_windows_packaging_fixture(tmp_path, monkeypatch):
 
     from app.core.native.distribution import sha256_file
     from scripts import package_native_windows as packaging
+    from scripts.verify_native_runtime import measure_runtime_core
 
     output, staged = tmp_path / "src/out/CamouFlowNative", tmp_path / "Chrome-bin"
     output.mkdir(parents=True)
@@ -1212,6 +1213,7 @@ def _native_windows_packaging_fixture(tmp_path, monkeypatch):
     report = tmp_path / "runtime.json"
     report.write_text(json.dumps({"passed": True, "platform": "Windows", "version": version,
                                  "binary_sha256_measured": checksum,
+                                 "runtime_core_sha256_measured": measure_runtime_core(output / "chrome.exe"),
                                  "checks": sorted(packaging.REQUIRED_RUNTIME_CHECKS)}), encoding="utf-8")
     return output, staged, report, tmp_path / "native.tar.gz"
 
@@ -1245,6 +1247,7 @@ def test_native_windows_package_is_reproducible_and_installable_without_claiming
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
 @pytest.mark.parametrize("mutation", ["receipt_revision", "boolean_schema", "binary_changed", "args_changed",
                                      "report_failed", "report_other_binary", "report_partial", "report_version",
+                                     "report_missing_core", "report_changed_core", "compiled_dll_changed",
                                      "staged_dll_changed", "missing_dll", "extra_file", "debug_symbols", "overwrite", "missing_license"])
 def test_native_windows_package_rejects_unverified_or_changed_inputs(tmp_path, monkeypatch, mutation):
     import json
@@ -1257,14 +1260,22 @@ def test_native_windows_package_rejects_unverified_or_changed_inputs(tmp_path, m
         value = json.loads(record.read_text(encoding="utf-8-sig"))
         value["chromium_revision" if mutation == "receipt_revision" else "schema"] = "a" * 40 if mutation == "receipt_revision" else True
         record.write_text(json.dumps(value), encoding="utf-8")
+    elif mutation == "compiled_dll_changed":
+        (output / "chrome.dll").write_bytes(b"new linked code with the same launcher")
+        (staged / packaging.LOCK["chromium_version"] / "chrome.dll").write_bytes((output / "chrome.dll").read_bytes())
     elif mutation in {"binary_changed", "args_changed"}:
         (output / ("chrome.exe" if mutation == "binary_changed" else "args.gn")).write_bytes(b"changed")
     elif mutation.startswith("report_"):
         value = json.loads(report.read_text(encoding="utf-8-sig"))
-        key, changed = {"report_failed": ("passed", False), "report_other_binary": ("binary_sha256_measured", "a" * 64),
-                        "report_partial": ("checks", ["concurrent-profile-isolation"]),
-                        "report_version": ("version", "152.0.0.0")}[mutation]
-        value[key] = changed
+        if mutation == "report_missing_core":
+            del value["runtime_core_sha256_measured"]
+        elif mutation == "report_changed_core":
+            value["runtime_core_sha256_measured"]["chrome.dll"] = "a" * 64
+        else:
+            key, changed = {"report_failed": ("passed", False), "report_other_binary": ("binary_sha256_measured", "a" * 64),
+                            "report_partial": ("checks", ["concurrent-profile-isolation"]),
+                            "report_version": ("version", "152.0.0.0")}[mutation]
+            value[key] = changed
         report.write_text(json.dumps(value), encoding="utf-8")
     elif mutation in {"staged_dll_changed", "missing_dll"}:
         path = staged / packaging.LOCK["chromium_version"] / "chrome.dll"
@@ -1497,3 +1508,24 @@ def test_native_hardware_rejection_requires_specific_native_diagnostic(diagnosti
     else:
         with pytest.raises(ValueError, match="expected native CHECK"):
             validate_rejection(Error(diagnostic))
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows runtime core layout")
+@pytest.mark.parametrize("missing", [None, "chrome.dll", "chrome_elf.dll"])
+def test_native_runtime_core_requires_both_dlls_and_detects_relink_without_launcher_change(tmp_path, missing):
+    from scripts.verify_native_runtime import measure_runtime_core
+
+    for name in ("chrome.exe", "chrome.dll", "chrome_elf.dll"):
+        (tmp_path / name).write_bytes(name.encode())
+    executable = tmp_path / "chrome.exe"
+    before = measure_runtime_core(executable)
+    if missing:
+        (tmp_path / missing).unlink()
+        with pytest.raises(ValueError, match="missing or linked"):
+            measure_runtime_core(executable)
+    else:
+        (tmp_path / "chrome.dll").write_bytes(b"new native policy code")
+        after = measure_runtime_core(executable)
+        assert before["chrome.exe"] == after["chrome.exe"]
+        assert before["chrome.dll"] != after["chrome.dll"]
+        assert set(after) == {"chrome.exe", "chrome.dll", "chrome_elf.dll"}

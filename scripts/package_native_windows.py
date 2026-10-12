@@ -20,6 +20,7 @@ from app.core.native.distribution import (  # noqa: E402
     host_architecture, sha256_file,
 )
 from scripts.native_build import LOCK  # noqa: E402
+from scripts.verify_native_runtime import measure_runtime_core  # noqa: E402
 
 RELEASE_VOLUME = "D:"
 REQUIRED_RUNTIME_CHECKS = frozenset({
@@ -79,6 +80,7 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
     if (report.get("passed") is not True or report.get("platform") != "Windows"
             or report.get("version") != LOCK["chromium_version"]
             or report.get("binary_sha256_measured") != binary_hash
+            or report.get("runtime_core_sha256_measured") != measure_runtime_core(build_output / "chrome.exe")
             or not isinstance(report.get("checks"), list)
             or any(not isinstance(check, str) for check in report["checks"])
             or not REQUIRED_RUNTIME_CHECKS.issubset(report["checks"])):
