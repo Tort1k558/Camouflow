@@ -1,0 +1,219 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -706,6 +706,8 @@
+     "camouflow_native/privacy_context.cc",
+     "camouflow_native/privacy_document_service.cc",
+     "camouflow_native/privacy_document_service.h",
++    "camouflow_native/privacy_worker_service.cc",
++    "camouflow_native/privacy_worker_service.h",
+     "browser_context_impl.h",
+     "browser_interface_binders.cc",
+     "browser_interface_binders.h",
+diff --git a/content/browser/browser_interface_binders.cc b/content/browser/browser_interface_binders.cc
+--- a/content/browser/browser_interface_binders.cc
++++ b/content/browser/browser_interface_binders.cc
+@@ -1307,6 +1307,9 @@
+ 
+ void PopulateDedicatedWorkerBinders(DedicatedWorkerHost* host,
+                                     mojo::BinderMap* map) {
++  map->Add<blink::mojom::NativePrivacyWorker>(base::BindRepeating(
++      &DedicatedWorkerHost::BindNativePrivacyPolicy, base::Unretained(host)));
++
+   // Do nothing for interfaces that the renderer might request, but doesn't
+   // always expect to be bound.
+   map->Add<blink::mojom::FeatureObserver>(base::DoNothing());
+@@ -1475,6 +1478,9 @@
+ }
+ 
+ void PopulateSharedWorkerBinders(SharedWorkerHost* host, mojo::BinderMap* map) {
++  map->Add<blink::mojom::NativePrivacyWorker>(base::BindRepeating(
++      &SharedWorkerHost::BindNativePrivacyPolicy, base::Unretained(host)));
++
+   // Do nothing for interfaces that the renderer might request, but doesn't
+   // always expect to be bound.
+   map->Add<blink::mojom::FeatureObserver>(base::DoNothing());
+@@ -1647,6 +1653,9 @@
+ 
+ void PopulateServiceWorkerBinders(ServiceWorkerHost* host,
+                                   mojo::BinderMap* map) {
++  map->Add<blink::mojom::NativePrivacyWorker>(base::BindRepeating(
++      &ServiceWorkerHost::BindNativePrivacyPolicy, base::Unretained(host)));
++
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+ 
+   // Do nothing for interfaces that the renderer might request, but doesn't
+diff --git a/content/browser/worker_host/dedicated_worker_host.h b/content/browser/worker_host/dedicated_worker_host.h
+--- a/content/browser/worker_host/dedicated_worker_host.h
++++ b/content/browser/worker_host/dedicated_worker_host.h
+@@ -20,6 +20,7 @@
+ #include "content/browser/security/dip/document_isolation_policy_reporter.h"
+ #include "content/browser/worker_host/worker_script_fetcher.h"
+ #include "content/common/content_export.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
+ #include "content/public/browser/dedicated_worker_creator.h"
+ #include "content/public/browser/global_routing_id.h"
+ #include "content/public/browser/render_process_host.h"
+@@ -135,6 +136,8 @@
+ 
+   const blink::DedicatedWorkerToken& GetToken() const { return token_; }
+   RenderProcessHost* GetProcessHost() const { return worker_process_host_; }
++  void BindNativePrivacyPolicy(
++      mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver);
+   const blink::StorageKey& GetWorkerStorageKey() const {
+     return worker_storage_key_;
+   }
+@@ -475,6 +478,8 @@
+   // The policies of the creator context. Used for inheritance.
+   const PolicyContainerPolicies creator_policies_;
+ 
++  mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>
++      native_privacy_receivers_;
+   base::WeakPtrFactory<DedicatedWorkerHost> weak_factory_{this};
+ };
+ 
+diff --git a/content/browser/worker_host/dedicated_worker_host.cc b/content/browser/worker_host/dedicated_worker_host.cc
+--- a/content/browser/worker_host/dedicated_worker_host.cc
++++ b/content/browser/worker_host/dedicated_worker_host.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/worker_host/dedicated_worker_host.h"
++#include "content/browser/camouflow_native/privacy_worker_service.h"
+ 
+ #include <memory>
+ #include <string>
+@@ -1213,4 +1214,17 @@
+       .BindNewPipeAndPassRemote();
+ }
+ 
++void DedicatedWorkerHost::BindNativePrivacyPolicy(
++    mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver) {
++  auto* process = GetProcessHost();
++  if (!process) {
++    return;
++  }
++  native_privacy_receivers_.Add(
++      std::make_unique<PrivacyWorkerService>(*process->GetBrowserContext(),
++                                              GetWorkerStorageKey(),
++                                              PrivacyWorkerService::Kind::kDedicated),
++      std::move(receiver));
++}
++
+ }  // namespace content
+diff --git a/content/browser/worker_host/shared_worker_host.h b/content/browser/worker_host/shared_worker_host.h
+--- a/content/browser/worker_host/shared_worker_host.h
++++ b/content/browser/worker_host/shared_worker_host.h
+@@ -23,6 +23,7 @@
+ #include "content/browser/renderer_host/code_cache_host_impl.h"
+ #include "content/browser/renderer_host/policy_container_host.h"
+ #include "content/common/content_export.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
+ #include "content/public/browser/global_routing_id.h"
+ #include "content/public/browser/render_process_host.h"
+ #include "content/public/browser/render_process_host_observer.h"
+@@ -105,6 +106,8 @@
+   // Returns the RenderProcessHost where this shared worker lives.
+   // SharedWorkerHost can't outlive the RenderProcessHost so this can't be null.
+   RenderProcessHost* GetProcessHost() const;
++  void BindNativePrivacyPolicy(
++      mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver);
+ 
+   // Starts the SharedWorker in the renderer process.
+   //
+@@ -415,6 +418,8 @@
+ 
+   const base::UnguessableToken network_restrictions_id_;
+ 
++  mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>
++      native_privacy_receivers_;
+   base::WeakPtrFactory<SharedWorkerHost> weak_factory_{this};
+ };
+ 
+diff --git a/content/browser/worker_host/shared_worker_host.cc b/content/browser/worker_host/shared_worker_host.cc
+--- a/content/browser/worker_host/shared_worker_host.cc
++++ b/content/browser/worker_host/shared_worker_host.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/worker_host/shared_worker_host.h"
++#include "content/browser/camouflow_native/privacy_worker_service.h"
+ 
+ #include <algorithm>
+ #include <utility>
+@@ -1201,4 +1202,17 @@
+   Destruct();
+ }
+ 
++void SharedWorkerHost::BindNativePrivacyPolicy(
++    mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver) {
++  auto* process = GetProcessHost();
++  if (!process) {
++    return;
++  }
++  native_privacy_receivers_.Add(
++      std::make_unique<PrivacyWorkerService>(*process->GetBrowserContext(),
++                                              GetWorkerStorageKey(),
++                                              PrivacyWorkerService::Kind::kShared),
++      std::move(receiver));
++}
++
+ }  // namespace content
+diff --git a/content/browser/service_worker/service_worker_host.h b/content/browser/service_worker/service_worker_host.h
+--- a/content/browser/service_worker/service_worker_host.h
++++ b/content/browser/service_worker/service_worker_host.h
+@@ -16,6 +16,7 @@
+ #include "content/browser/buckets/bucket_context.h"
+ #include "content/browser/renderer_host/code_cache_host_impl.h"
+ #include "content/common/content_export.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
+ #include "content/public/browser/render_process_host.h"
+ #include "content/public/common/child_process_id.h"
+ #include "mojo/public/cpp/bindings/associated_receiver.h"
+@@ -145,6 +146,8 @@
+   void BindAIManager(mojo::PendingReceiver<blink::mojom::AIManager> receiver);
+ 
+   RenderProcessHost* GetProcessHost() const;
++  void BindNativePrivacyPolicy(
++      mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver);
+ 
+  private:
+   ChildProcessId worker_process_id_;
+@@ -185,6 +188,8 @@
+   mojo::AssociatedReceiver<blink::mojom::ServiceWorkerContainerHost>
+       host_receiver_;
+ 
++  mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>
++      native_privacy_receivers_;
+   base::WeakPtrFactory<ServiceWorkerHost> weak_factory_{this};
+ };
+ 
+diff --git a/content/browser/service_worker/service_worker_host.cc b/content/browser/service_worker/service_worker_host.cc
+--- a/content/browser/service_worker/service_worker_host.cc
++++ b/content/browser/service_worker/service_worker_host.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/service_worker/service_worker_host.h"
++#include "content/browser/camouflow_native/privacy_worker_service.h"
+ 
+ #include <utility>
+ 
+@@ -331,4 +332,17 @@
+   }
+ }
+ 
++void ServiceWorkerHost::BindNativePrivacyPolicy(
++    mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver) {
++  auto* process = GetProcessHost();
++  if (!process) {
++    return;
++  }
++  native_privacy_receivers_.Add(
++      std::make_unique<PrivacyWorkerService>(*process->GetBrowserContext(),
++                                              version()->key(),
++                                              PrivacyWorkerService::Kind::kService),
++      std::move(receiver));
++}
++
+ }  // namespace content

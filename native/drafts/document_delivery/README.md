@@ -71,9 +71,15 @@ come from its actual host's worker StorageKey, not an ancestor frame lookup.
 Fresh Mojo generation and isolated clang syntax checks passed for both services,
 the seven document-test definitions and generated binding translation units:
 `D:/CamouFlowNative/worker-delivery-cpp-check-message-header/proof.json`.
-Worker host receiver ownership/binders, host-lifetime tests, Blink consumers and
-real runtime delivery are **not implemented or verified**. The document
-integration patch below does not register this worker service.
+Worker host ownership/binders are prepared separately in `worker_integration.patch`.
+An isolated copy of all three host implementations and BrowserInterfaceBroker
+passed clang syntax checks, alongside both services, document test definitions
+and generated bindings (nine translation units):
+`D:/CamouFlowNative/worker-host-cpp-check/proof.json`.
+The patch passed applicability checks after the document integration draft;
+the active source tree remained unchanged. Host-lifetime tests, Blink consumers
+and real runtime delivery are **not implemented or verified**. The document
+integration patch below does not register this worker service by itself.
 
 ## Integration draft
 
@@ -84,3 +90,11 @@ directory above and the three service C++ files to the content directory above;
 then apply this integration patch. It passed applicability checks against the
 001-017 source tree with input hashes unchanged. Real GN generation, dependency
 checks, compilation, linkage and tests remain mandatory before promotion.
+
+The worker integration draft depends on the document integration patch. Copy
+`privacy_worker_service.h` and `.cc` into `content/browser/camouflow_native/`,
+then apply `worker_integration.patch` only in an idle checkout. It adds host-owned
+UniqueReceiverSets and broker bindings; dedicated/shared workers use their host's
+GetWorkerStorageKey, service workers use the running version's immutable key.
+Missing process hosts close the new pipe rather than selecting another context.
+No renderer consumer, Canvas readback hook or advertised capability is enabled.
