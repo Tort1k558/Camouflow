@@ -5,7 +5,7 @@ runtime evidence. They must not be applied during an active Chromium build.
 
 ## BrowserContext privacy bridge
 
-`browser-context-tests.patch` adds 13 cases to the pinned Chromium
+`browser-context-tests.patch` adds 20 cases to the pinned Chromium
 `content_unittests` target, using real TestBrowserContext/BrowserTaskEnvironment
 and the production Native bridge. It is not another SupportsUserData-only test.
 
@@ -28,7 +28,11 @@ modify it. It has **not been compiled or run**. Registration in the exact source
 replay gate, compilation and execution are pending after the current build.
 The planned execution is the standard content unit target filtered to
 `NativePrivacyBrowserContextTest.*`, with single-process GoogleTest JSON output.
-All 13 named cases must finish successfully; a count alone is insufficient.
+All 20 named cases must finish successfully; a count alone is insufficient.
+Seven cases use the readiness bridge added by `key-readiness.patch`, so register
+and compile both candidates together. They check absent/null contexts, queued
+loading, identity failure, real context shutdown/destruction, reentrant shutdown
+and off-the-record inline completion without reading the persistent identity.
 
 These tests cover real content-layer BrowserContext behavior, not the actual
 Chrome ProfileImpl/incognito bootstrap, renderer/worker IPC, Canvas protection,
@@ -38,7 +42,8 @@ require separate compilation/runtime evidence.
 ## Asynchronous privacy key readiness
 
 `key-readiness.patch` adds a UI-sequence `PrivacyKeyService::WhenReady` callback
-API, prerequisite to browser-owned renderer key delivery. It does not expose the
+API and public `WhenNativePrivacyContextReady` bridge, prerequisites to
+browser-owned renderer key delivery. It does not expose the
 root key or activate fingerprint surfaces. Callers must start initialization
 before waiting; an uninitialized service fails immediately, without fallback.
 

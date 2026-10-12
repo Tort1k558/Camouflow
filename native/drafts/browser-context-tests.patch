@@ -21,7 +21,7 @@ diff --git a/content/browser/camouflow_native/privacy_context_unittest.cc b/cont
 new file mode 100644
 --- /dev/null
 +++ b/content/browser/camouflow_native/privacy_context_unittest.cc
-@@ -0,0 +1,253 @@
+@@ -0,0 +1,367 @@
 +// Copyright 2026 CamouFlow contributors.
 +// SPDX-License-Identifier: MIT
 +#include "content/public/browser/native_privacy_context.h"
@@ -30,6 +30,7 @@ new file mode 100644
 +#include <optional>
 +#include <string>
 +
++#include "base/functional/bind.h"
 +#include "base/files/file_util.h"
 +#include "base/files/scoped_temp_dir.h"
 +#include "content/browser/camouflow_native/privacy_key_service.h"
@@ -271,6 +272,119 @@ new file mode 100644
 +  EXPECT_FALSE(IsNativePrivacyContextReady(nullptr));
 +  EXPECT_FALSE(DeriveNativePrivacyKey(nullptr, Partition(), "canvas"));
 +  ShutdownNativePrivacyContext(nullptr);
++}
++
++TEST_F(NativePrivacyBrowserContextTest, ContextReadinessRejectsMissingServiceAndNullContext) {
++  auto context = NewContext("Default");
++  ASSERT_TRUE(context);
++  int calls = 0;
++  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_FALSE(ready);
++  }));
++  WhenNativePrivacyContextReady(nullptr, base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_FALSE(ready);
++  }));
++  EXPECT_EQ(calls, 2);
++}
++
++TEST_F(NativePrivacyBrowserContextTest, ContextReadinessWaitsForKeyAndAllowsDerivation) {
++  auto context = NewContext("Default");
++  ASSERT_TRUE(context);
++  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
++  int calls = 0;
++  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_TRUE(ready);
++    EXPECT_TRUE(DeriveNativePrivacyKey(context.get(), Partition(), "canvas"));
++  }));
++  EXPECT_EQ(calls, 0);
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(NativePrivacyBrowserContextTest, ContextReadinessSettlesFailedIdentity) {
++  ASSERT_TRUE(base::DeleteFile(IdentityPath()));
++  auto context = NewContext("Default");
++  ASSERT_TRUE(context);
++  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
++  int calls = 0;
++  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_FALSE(ready);
++  }));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 1);
++  EXPECT_FALSE(base::PathExists(IdentityPath()));
++}
++
++TEST_F(NativePrivacyBrowserContextTest, ContextShutdownSettlesQueuedReadinessOnce) {
++  auto context = NewContext("Default");
++  ASSERT_TRUE(context);
++  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
++  int calls = 0;
++  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_FALSE(ready);
++  }));
++  context->NotifyWillBeDestroyed();
++  EXPECT_EQ(calls, 1);
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 1);
++  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_FALSE(ready);
++  }));
++  EXPECT_EQ(calls, 2);
++}
++
++TEST_F(NativePrivacyBrowserContextTest, ContextDestructionNeverReportsReadinessSuccess) {
++  auto context = NewContext("Default");
++  ASSERT_TRUE(context);
++  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
++  int calls = 0;
++  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_FALSE(ready);
++  }));
++  context.reset();
++  EXPECT_EQ(calls, 1);
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(NativePrivacyBrowserContextTest, ContextCallbackShutdownRejectsRemainingReadiness) {
++  auto context = NewContext("Default");
++  ASSERT_TRUE(context);
++  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
++  int calls = 0;
++  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_TRUE(ready);
++    context->NotifyWillBeDestroyed();
++  }));
++  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_FALSE(ready);
++  }));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 2);
++}
++
++TEST_F(NativePrivacyBrowserContextTest, OffTheRecordReadinessCompletesInlineWithoutPersistentKey) {
++  auto context = NewContext("Incognito");
++  ASSERT_TRUE(context);
++  context->set_is_off_the_record(true);
++  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), base::FilePath()));
++  int calls = 0;
++  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_TRUE(ready);
++    EXPECT_TRUE(DeriveNativePrivacyKey(context.get(), Partition(), "canvas"));
++  }));
++  EXPECT_EQ(calls, 1);
++  EXPECT_FALSE(base::PathExists(context->GetPath().AppendASCII("camouflow-native-privacy.json")));
 +}
 +
 +}  // namespace
