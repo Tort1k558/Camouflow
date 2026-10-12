@@ -13,9 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from scripts.package_native_windows import REQUIRED_RUNTIME_CHECKS
+from scripts.verify_native_combined import ARGUMENTS, REQUIRED_CHECKS as REQUIRED_COMBINED_CHECKS
 
 
-GATES = ("runtime", "hardware", "webrtc", "automation", "fonts", "identity", "cdp")
+GATES = ("runtime", "hardware", "webrtc", "automation", "fonts", "identity", "cdp", "combined")
 
 
 def checksum(path: Path) -> str:
@@ -36,6 +37,18 @@ def validate_report(name: str, report: dict, expected_checksum: str) -> None:
             raise ValueError("Runtime report is missing required lifecycle checks")
     elif any(not isinstance(check, dict) or check.get("passed") is not True for check in checks):
         raise ValueError("Gate contains incomplete or failed checks")
+    if name == "combined":
+        names = [check.get("name") for check in checks]
+        if (any(not isinstance(value, str) for value in names)
+                or len(names) != len(REQUIRED_COMBINED_CHECKS) or set(names) != REQUIRED_COMBINED_CHECKS
+                or report.get("arguments") != ARGUMENTS):
+            raise ValueError("Combined report is missing required policy checks")
+        core = report.get("runtime_core_sha256_measured")
+        if (not isinstance(core, dict) or set(core) != {"chrome.exe", "chrome.dll", "chrome_elf.dll"}
+                or core["chrome.exe"] != expected_checksum
+                or any(not isinstance(value, str) or len(value) != 64
+                       or any(c not in "0123456789abcdef" for c in value) for value in core.values())):
+            raise ValueError("Combined report is missing its runtime code measurement")
 
 
 def verify(executable: Path, destination: Path, gates: list[str]) -> dict:

@@ -51,7 +51,7 @@ concurrent clang-cl processes were observed; no output directory was cleaned.
 The 3-GiB Go target remains soft and does not cap compiler memory. Additional
 patches prepared during this invocation remain drafts, not hot source edits.
 
-## Own-fork Windows packaging (prepared, own binary still pending)
+## Own-fork Windows packaging (packager prepared, official staging pending)
 
 `scripts/package_native_windows.py` converts Chromium's official mini-installer
 staged `Chrome-bin` directory into the existing managed Native `.tar.gz` format.
@@ -65,7 +65,11 @@ Only use this after compilation has terminated, the latest build helper has
 validated its receipt, the own-fork runtime gate has passed, and the official
 archive target has produced its staging tree. Do not run the generated installer
 on this machine just to obtain its files. Building the archive target is separate
-from installing Chromium; neither has been started during the current build.
+from installing Chromium. After the own Windows binary and repeated runtime
+gate passed on 2026-10-12, the four-job `mini_installer_archive` build was started;
+its completion and relocated-package verification remain pending. No installer
+has been executed. The tested executable/DLL hashes, receipt, GN arguments and
+source patches must remain unchanged through archive generation.
 
 The packager requires matching pinned revisions, executable/GN hashes and all
 18 runtime-check names from a passing report for the exact binary. Every staged

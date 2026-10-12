@@ -1529,3 +1529,68 @@ def test_native_runtime_core_requires_both_dlls_and_detects_relink_without_launc
         assert before["chrome.exe"] == after["chrome.exe"]
         assert before["chrome.dll"] != after["chrome.dll"]
         assert set(after) == {"chrome.exe", "chrome.dll", "chrome_elf.dll"}
+
+
+@pytest.mark.parametrize("failure", [None, "cpu", "memory", "webdriver", "arial", "restricted",
+                                     "missing-context", "missing-native", "worker-webdriver", "canvas", "restart"])
+def test_native_combined_policies_require_all_contexts_and_stable_native_observations(failure):
+    from copy import deepcopy
+    from scripts.verify_native_canvas import CONTEXTS, GEOMETRY_EXPECTED
+    from scripts.verify_native_combined import validate_observations
+
+    digest = "a" * 64
+    observed = {name: {"canvas": {"pixels": digest, "repeat": digest, "blob": digest,
+                    "htmlBlob": None if name in {"dedicated", "shared", "service"} else digest,
+                    "htmlDataUrl": None if name in {"dedicated", "shared", "service"} else digest,
+                    "geometry": dict(GEOMETRY_EXPECTED)},
+                    "native": {"cpu": 1, "memory": 0.25, "arial": 120.0, "restricted": 120.0,
+                               "webdriver": None if name in {"dedicated", "shared", "service"} else False}}
+                for name in CONTEXTS}
+    previous = deepcopy(observed)
+    if failure in {"cpu", "memory", "webdriver", "arial", "restricted"}:
+        observed["document"]["native"][failure] = {"cpu": 12, "memory": 16, "webdriver": True,
+                                                     "arial": float("nan"), "restricted": 130}[failure]
+    elif failure == "missing-context":
+        del observed["shared"]
+    elif failure == "missing-native":
+        del observed["document"]["native"]
+    elif failure == "worker-webdriver":
+        observed["service"]["native"]["webdriver"] = False
+    elif failure == "canvas":
+        observed["dedicated"]["canvas"]["geometry"]["transparentExport"] = False
+    elif failure == "restart":
+        previous["document"]["native"]["arial"] = 121.0
+    if failure is None:
+        validate_observations(observed, previous)
+    else:
+        with pytest.raises(ValueError):
+            validate_observations(observed, previous)
+
+
+@pytest.mark.parametrize("failure", [None, "missing-restart", "duplicate", "arguments", "missing-dll", "invalid-hash", "other-launcher"])
+def test_native_suite_combined_gate_requires_complete_policy_and_code_evidence(failure):
+    from scripts.verify_native_combined import ARGUMENTS, REQUIRED_CHECKS
+    from scripts.verify_native_suite import GATES, validate_report
+
+    digest = "a" * 64
+    report = {"passed": True, "binary_sha256_measured": digest, "arguments": list(ARGUMENTS),
+              "checks": [{"name": name, "passed": True} for name in sorted(REQUIRED_CHECKS)],
+              "runtime_core_sha256_measured": {name: digest for name in ("chrome.exe", "chrome.dll", "chrome_elf.dll")}}
+    assert "combined" in GATES
+    if failure == "missing-restart":
+        report["checks"].pop()
+    elif failure == "duplicate":
+        report["checks"][-1] = dict(report["checks"][0])
+    elif failure == "arguments":
+        report["arguments"].pop()
+    elif failure == "missing-dll":
+        del report["runtime_core_sha256_measured"]["chrome.dll"]
+    elif failure == "invalid-hash":
+        report["runtime_core_sha256_measured"]["chrome.dll"] = "z" * 64
+    elif failure == "other-launcher":
+        report["runtime_core_sha256_measured"]["chrome.exe"] = "b" * 64
+    if failure is None:
+        validate_report("combined", report, digest)
+    else:
+        with pytest.raises(ValueError):
+            validate_report("combined", report, digest)

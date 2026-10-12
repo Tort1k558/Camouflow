@@ -99,6 +99,37 @@ passed 1,036 tests after this correction.
 
 ## Executable verification queue
 
+### Combined compiled-policy gate, 2026-10-12
+
+The corrected own build passed the repeated five-gate suite: runtime 18,
+hardware 9, WebRTC 7, automation 55 and Windows fonts 42 checks. Reports are in
+`D:\CamouFlowNative\verification-browser-hardware-validation-20261012`.
+The suite is deliberately partial: draft identity/CDP patches remain unapplied.
+
+`scripts/verify_native_combined.py` now runs the compiled hardware, font,
+WebRTC and automation policies together. Two distinct persistent profiles are
+checked sequentially, then each is reopened. Every phase measures documents,
+same/cross-origin frames and dedicated/shared/service workers, compares Canvas
+reads/exports/geometry, checks frame security behavior and tests protected WebRTC
+against an owned loopback observer. A separate unprotected STUN positive control
+must emit packets. Local storage markers must remain profile-specific on restart.
+Windows executable/DLL hashes are measured before and after the complete run.
+
+The own build passed all five aggregate checks in
+`D:\CamouFlowNative\combined-own-001-005-20261012.json`: all six contexts reported
+CPU 1 and memory 0.25; document/frame webdriver was false; Courier New resolved
+to the genuine allowed Arial metrics. Protected WebRTC completed without direct
+UDP packets, and Canvas compatibility checks stayed intact. The upstream SDK
+failed the identical probe with CPU 12, memory 16, webdriver true and distinct
+Courier metrics, retained in `D:\CamouFlowNative\combined-sdk-negative-20261012.json`.
+
+The suite includes a `combined` gate and rejects missing/duplicate phases,
+altered policy arguments and incomplete runtime code measurements. All 1,054
+local regression tests passed. This is compiled-policy combination evidence,
+not Canvas protection, profile-key transport, concurrent protected sessions,
+identity/CDP patch verification, release capability admission or CAPTCHA proof.
+Manager policy activation remains blocked pending the complete release contract.
+
 | Area | Prepared artifact | Required own-fork evidence |
 | --- | --- | --- |
 | Lifecycle and storage | `verify_native_runtime.py` | All 18 checks; five stores survive committed checkpoints; independent profiles; lock exclusion; cancellation; zero owned survivors after controller death and three-profile restart rounds |

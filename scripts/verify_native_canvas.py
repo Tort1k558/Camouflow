@@ -124,6 +124,8 @@ SECURITY_EXPECTED = {"taintedRead": "SecurityError", "taintedDataUrl": "Security
 
 
 class CanvasFixtureHandler(FixtureHandler):
+    worker_read = READ
+
     def do_GET(self):
         if self.path == "/canvas-taint.svg":
             body = b'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="red"/></svg>'
@@ -137,12 +139,12 @@ class CanvasFixtureHandler(FixtureHandler):
                 pass
             return
         bodies = {
-            "/hardware-dedicated.js": f"self.onmessage = async () => self.postMessage(await ({READ})());",
-            "/hardware-shared.js": f"self.onconnect = event => {{ const port = event.ports[0]; port.onmessage = async () => port.postMessage(await ({READ})()); port.start(); }};",
+            "/hardware-dedicated.js": f"self.onmessage = async () => self.postMessage(await ({self.worker_read})());",
+            "/hardware-shared.js": f"self.onconnect = event => {{ const port = event.ports[0]; port.onmessage = async () => port.postMessage(await ({self.worker_read})()); port.start(); }};",
             "/hardware-service.js": (
                 "self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));"
                 "self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));"
-                f"self.addEventListener('message', event => event.waitUntil(({READ})().then(value => event.ports[0].postMessage(value))));"
+                f"self.addEventListener('message', event => event.waitUntil(({self.worker_read})().then(value => event.ports[0].postMessage(value))));"
             ),
         }
         if self.path not in bodies:
@@ -187,16 +189,16 @@ def validate_security(observed: dict) -> None:
         raise ValueError("Native Canvas security or empty-image behavior changed")
 
 
-async def observe(context, origin: str) -> dict:
+async def observe(context, origin: str, read: str = READ) -> dict:
     page = context.pages[0]
     await page.goto(origin, wait_until="load", timeout=30000)
     await page.evaluate("url => { const frame = document.createElement('iframe'); frame.id = 'cross-origin'; frame.src = url; document.body.append(frame); }",
                         origin.replace("127.0.0.1", "localhost") + "/cross-frame")
     await page.locator("#cross-origin").content_frame.locator("h1").wait_for(timeout=15000)
-    observed = {"document": await page.evaluate(READ)}
+    observed = {"document": await asyncio.wait_for(page.evaluate(read), timeout=30)}
     for name, frame_id in (("same_origin_frame", "owned-frame"), ("cross_origin_frame", "cross-origin")):
         element = await page.locator("#" + frame_id).element_handle()
-        observed[name] = await (await element.content_frame()).evaluate(READ)
+        observed[name] = await asyncio.wait_for((await element.content_frame()).evaluate(read), timeout=30)
     observed.update(await asyncio.wait_for(page.evaluate(WORKERS), timeout=40))
     return observed
 
