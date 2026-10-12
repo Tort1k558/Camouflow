@@ -2270,6 +2270,60 @@ def test_native_worker_startup_receipt_requires_matching_registered_chain(tmp_pa
             validate_receipt(executable, {"chrome.exe": "a" * 64})
 
 
+@pytest.mark.parametrize("mode,fault", [("baseline", None), ("ready", None), ("unavailable", None),
+    ("ready", "execution"), ("ready", "requests"), ("ready", "timeout"), ("unavailable", "execution")])
+def test_native_shared_worker_clients_require_reuse_and_close_owned_pages(mode, fault):
+    import asyncio
+    from scripts.verify_native_worker_startup import verify_shared_clients
+
+    class Page:
+        closed = False
+
+        async def goto(self, origin, timeout):
+            assert origin == "http://owned" and timeout == 20000
+
+        async def evaluate(self, probe, arguments):
+            if arguments.get("reuse"):
+                assert context.pages[-2].closed
+            if fault == "timeout":
+                return {"status": "timeout"}
+            if mode == "unavailable":
+                return {"status": "worker-error"}
+            return {"status": "reply", "id": arguments["id"]}
+
+        async def close(self):
+            self.closed = True
+
+    class Context:
+        def __init__(self):
+            self.pages = []
+
+        async def new_page(self):
+            page = Page()
+            self.pages.append(page)
+            return page
+
+    class Server:
+        def count(self, identifier):
+            return 2 if fault == "execution" else (0 if mode == "unavailable" else 1)
+
+        def script_count(self, identifier):
+            return 2 if fault == "requests" else 1
+
+    context = Context()
+    report = {"checks": []}
+    if fault:
+        with pytest.raises(ValueError):
+            asyncio.run(verify_shared_clients(context, "http://owned", Server(), mode, "initial", report))
+        assert report["checks"][-1]["passed"] is False
+    else:
+        asyncio.run(verify_shared_clients(context, "http://owned", Server(), mode, "initial", report))
+        assert len(report["checks"]) == 2
+        assert all(check["passed"] for check in report["checks"])
+        assert all(len(check["observed"]) == (2 if mode == "unavailable" else 3) for check in report["checks"])
+    assert context.pages and all(page.closed for page in context.pages)
+
+
 def test_native_runtime_verifier_import_does_not_cache_application_database_root():
     import subprocess
     from scripts.native_build import ROOT

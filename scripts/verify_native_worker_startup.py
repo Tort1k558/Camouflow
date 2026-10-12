@@ -77,6 +77,19 @@ PROBE = """async ({kind, scriptType, id, cached, retain}) => {
   }
 }"""
 
+SHARED_CLIENT_PROBE = """async ({scriptType, id, reuse}) => {
+  const worker = reuse ? window.ownedSharedWorker :
+    new SharedWorker(`/startup-shared.js?id=${id}&type=${scriptType}`, {type: scriptType, name: id});
+  window.ownedSharedWorker = worker;
+  return await new Promise(resolve => {
+    const timer = setTimeout(() => resolve({status: 'timeout'}), 15000);
+    const finish = value => { clearTimeout(timer); resolve(value); };
+    worker.onerror = () => finish({status: 'worker-error'});
+    worker.port.onmessage = event => finish({status: 'reply', id: event.data.id});
+    worker.port.start(); worker.port.postMessage('probe');
+  });
+}"""
+
 
 class WorkerStartupServer(FixtureServer):
     def __init__(self, address):
@@ -194,6 +207,44 @@ async def browser_arguments(context) -> list[str]:
         await session.detach()
 
 
+async def verify_shared_clients(context, origin: str, server: WorkerStartupServer,
+                                mode: str, phase: str, report: dict) -> None:
+    for script_type in ("classic", "module"):
+        identifier = uuid.uuid4().hex
+        check = {"name": f"{mode}-{phase}-shared-clients-{script_type}", "passed": False, "observed": []}
+        report["checks"].append(check)
+        pages = []
+        try:
+            for _ in range(2):
+                page = await context.new_page()
+                pages.append(page)
+                await page.goto(origin, timeout=20000)
+            arguments = {"scriptType": script_type, "id": identifier, "reuse": False}
+            if mode == "unavailable":
+                observations = await asyncio.wait_for(asyncio.gather(*[
+                    page.evaluate(PROBE, {**arguments, "kind": "shared", "cached": False, "retain": False})
+                    for page in pages]), timeout=25)
+            else:
+                observations = []
+                for page in pages:
+                    observations.append(await asyncio.wait_for(page.evaluate(SHARED_CLIENT_PROBE, arguments), timeout=25))
+                await pages[0].close()
+                observations.append(await asyncio.wait_for(
+                    pages[1].evaluate(SHARED_CLIENT_PROBE, {**arguments, "reuse": True}), timeout=25))
+            executions = server.count(identifier)
+            for observed in observations:
+                observed["executions"] = executions
+            check.update(observed=observations, script_requests=server.script_count(identifier))
+            for observed in observations:
+                validate_observation(observed, mode=mode, kind="shared", identifier=identifier)
+            if mode != "unavailable" and check["script_requests"] != 1:
+                raise ValueError("Shared clients did not reuse one worker script instance")
+            check["passed"] = True
+        finally:
+            for page in pages:
+                await page.close()
+
+
 def validate_observation(observed: dict, *, mode: str, kind: str, identifier: str) -> None:
     if mode not in PHASES or kind not in {item[0] for item in CASES} or not isinstance(observed, dict):
         raise ValueError("Unknown or incomplete worker observation")
@@ -283,6 +334,7 @@ async def verify(executable: Path, owned: Path, server: WorkerStartupServer, rep
                     if cached and check["script_requests"] != 0:
                         raise ValueError("Installed service-worker restart fetched the main script instead of using retained installation")
                     check["passed"] = True
+                await verify_shared_clients(context, origin, server, mode, phase, report)
             finally:
                 await runtime.close()
 
@@ -296,7 +348,7 @@ def main() -> int:
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite worker startup evidence")
     report = {"schema": 1, "passed": False, "checks": [], "arguments": {}, "platform": platform.platform(),
-              "scope": "Owned classic/module worker startup, restart and unavailable-policy rejection; not Canvas, nested workers, early termination or admission"}
+              "scope": "Owned classic/module worker startup, restart, shared multi-page clients and unavailable-policy rejection; not Canvas, nested workers, early startup termination or admission"}
     server = thread = owned = None
     runtimes = []
     try:
@@ -317,6 +369,8 @@ def main() -> int:
             raise ValueError("Worker runtime code or receipt changed during verification")
         expected = {f"{mode}-{phase}-{kind}-{script_type}" for mode, phases in PHASES.items()
                     for phase in phases for kind, script_type in CASES}
+        expected.update(f"{mode}-{phase}-shared-clients-{script_type}" for mode, phases in PHASES.items()
+                        for phase in phases for script_type in ("classic", "module"))
         if {check["name"] for check in report["checks"]} != expected or len(report["checks"]) != len(expected):
             raise ValueError("Worker startup phases are incomplete")
         report["passed"] = True

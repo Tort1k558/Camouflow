@@ -242,6 +242,16 @@ independently revalidated after the runner exited successfully. This confirms
 existing lifecycle/storage/proxy/automation/policy behavior on owned fixtures,
 not the rejected worker gate, protected Canvas or external anti-bot performance.
 
+While 0027 links, the probe is extended with ten owned shared-worker client checks
+for the next run (40 total): two pages must reuse one classic/module worker and
+one script fetch; after the first page closes, the remaining page must still
+receive its owned response without executing the worker body again. Unavailable
+policy must reject both pages without body beacons. Seven Python regressions
+exercise the validator and page cleanup, including duplicate execution, refetch
+and timeout rejection. Those are tool tests, not passing multi-client runtime
+evidence. The new JavaScript fixture passed Node syntax checking.
+After the extension, the full Python suite passed 1231 cases in 63.99 seconds.
+
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External
 anti-bot scores may be observations, never guaranteed release capabilities.
