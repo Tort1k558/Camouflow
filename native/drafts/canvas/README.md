@@ -86,3 +86,27 @@ spatial pattern, **not known-value detectability**. Neither candidate is admitte
 or hooked into Blink. A further comparison must preserve actual uniform fill
 values, quantify gradients/antialiasing/editor round trips, and use whole-canvas
 provenance rather than classify a crop independently and break crop/full equality.
+
+## Edge-coherent full-canvas alternative
+
+`TransformEdgeCoherentCanvas` explicitly accepts an entire detached canvas.
+Only fully opaque pixels adjacent to a different quantized opaque colour are
+eligible. Classification uses the upper seven RGB bits, so changing a low bit
+does not change eligibility on a second pass. Uniform fill values and flat
+interiors stay exact, nonopaque pixels remain unchanged, and transformed edge
+colours use a separate HMAC domain. The same bounded palette cache is reused.
+
+Current sources passed Chromium-flag syntax checks and a **37-check native
+comparison** across all three candidates. The edge variant matched an independent
+Python neighbour/HMAC oracle, retained 256 known uniform fills exactly, preserved
+flat interior/nonopaque rows, was idempotent and separated fixture seeds. A white
+1-Mp run retained every byte and took 11 ms in one local run. Evidence:
+`D:/CamouFlowNative/canvas-candidate-edge-comparison-oracle/proof.json`, `tests.log`
+and `canvas-edge-candidate-cpp-check/proof.json`.
+
+Partial API reads must be cropped **after** transformation of the full canonical
+canvas, not passed to this helper as if they were a complete canvas. Actual
+getImageData/export integration, colour conversion, memory limits, gradients,
+antialiasing, drawImage/putImageData and editor compatibility are unverified.
+Known nonuniform geometry can still expose altered edge values. This candidate
+is not admitted and does not make a browser or a Canvas readback undetectable.

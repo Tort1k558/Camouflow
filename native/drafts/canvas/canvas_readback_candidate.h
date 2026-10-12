@@ -32,5 +32,13 @@ bool TransformContentCoherentReadback(
     uint32_t canvas_height,
     const std::array<uint8_t, 32>& partition_seed);
 
+// Requires the entire detached canvas, never an independently classified crop.
+// Uniform fills retain their exact values; this does not imply undetectability.
+bool TransformEdgeCoherentCanvas(
+    std::span<uint8_t> rgba,
+    uint32_t width,
+    uint32_t height,
+    const std::array<uint8_t, 32>& partition_seed);
+
 }  // namespace glint::candidate
 #endif

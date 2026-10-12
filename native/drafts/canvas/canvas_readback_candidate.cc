@@ -11,8 +11,9 @@ namespace glint::candidate {
 namespace {
 constexpr char kDomain[] = "glint.canvas.rgba8.candidate.v1";
 constexpr char kColourDomain[] = "glint.canvas.palette.candidate.v1";
+constexpr char kEdgeDomain[] = "glint.canvas.edge.candidate.v1";
 constexpr uint32_t kPixelsPerBlock = 85;
-enum class Strategy { kCoordinate, kColour };
+enum class Strategy { kCoordinate, kColour, kEdgeColour };
 struct PaletteEntry {
   uint32_t key = std::numeric_limits<uint32_t>::max();
   uint8_t bits = 0;
@@ -22,6 +23,20 @@ void EncodeUint32(uint32_t value, uint8_t* output) {
   for (unsigned i = 0; i < 4; ++i) {
     output[i] = static_cast<uint8_t>(value >> (24 - i * 8));
   }
+}
+
+bool DifferentOpaqueColour(std::span<const uint8_t> rgba,
+                           size_t pixel,
+                           size_t neighbour) {
+  if (rgba[neighbour + 3] != 255) {
+    return false;
+  }
+  for (size_t channel = 0; channel < 3; ++channel) {
+    if ((rgba[pixel + channel] >> 1) != (rgba[neighbour + channel] >> 1)) {
+      return true;
+    }
+  }
+  return false;
 }
 bool TransformReadback(
     std::span<uint8_t> rgba,
@@ -41,13 +56,16 @@ bool TransformReadback(
     return false;
   }
   constexpr size_t kMessageCapacity =
-      std::max(sizeof(kDomain), sizeof(kColourDomain)) - 1 + 8;
+      std::max({sizeof(kDomain), sizeof(kColourDomain), sizeof(kEdgeDomain)}) - 1 + 8;
   std::array<uint8_t, kMessageCapacity> message{};
-  const auto* domain =
-      strategy == Strategy::kCoordinate ? kDomain : kColourDomain;
+  const auto* domain = strategy == Strategy::kCoordinate ? kDomain
+                       : strategy == Strategy::kColour ? kColourDomain
+                                                      : kEdgeDomain;
   const size_t domain_size = strategy == Strategy::kCoordinate
                                  ? sizeof(kDomain) - 1
-                                 : sizeof(kColourDomain) - 1;
+                                 : strategy == Strategy::kColour
+                                       ? sizeof(kColourDomain) - 1
+                                       : sizeof(kEdgeDomain) - 1;
   const size_t message_size =
       domain_size + (strategy == Strategy::kCoordinate ? 8 : 3);
   std::copy_n(reinterpret_cast<const uint8_t*>(domain), domain_size,
@@ -69,8 +87,21 @@ bool TransformReadback(
       if (absolute_x < 0 || absolute_x >= canvas_width || rgba[offset + 3] != 255) {
         continue;
       }
+      if (strategy == Strategy::kEdgeColour) {
+        const size_t row_bytes = static_cast<size_t>(read_width) * 4;
+        const bool edge =
+            (x > 0 && DifferentOpaqueColour(rgba, offset, offset - 4)) ||
+            (x + 1 < read_width &&
+             DifferentOpaqueColour(rgba, offset, offset + 4)) ||
+            (y > 0 && DifferentOpaqueColour(rgba, offset, offset - row_bytes)) ||
+            (y + 1 < read_height &&
+             DifferentOpaqueColour(rgba, offset, offset + row_bytes));
+        if (!edge) {
+          continue;
+        }
+      }
       uint8_t selected_bits = 0;
-      if (strategy == Strategy::kColour) {
+      if (strategy != Strategy::kCoordinate) {
         const uint32_t colour = (static_cast<uint32_t>(rgba[offset] >> 1) << 14) |
                                 (static_cast<uint32_t>(rgba[offset + 1] >> 1) << 7) |
                                 static_cast<uint32_t>(rgba[offset + 2] >> 1);
@@ -146,5 +177,14 @@ bool TransformContentCoherentReadback(
   return TransformReadback(rgba, read_width, read_height, origin_x, origin_y,
                            canvas_width, canvas_height, partition_seed,
                            Strategy::kColour);
+}
+
+bool TransformEdgeCoherentCanvas(
+    std::span<uint8_t> rgba,
+    uint32_t width,
+    uint32_t height,
+    const std::array<uint8_t, 32>& partition_seed) {
+  return TransformReadback(rgba, width, height, 0, 0, width, height,
+                           partition_seed, Strategy::kEdgeColour);
 }
 }  // namespace glint::candidate
