@@ -209,7 +209,7 @@ has occurred. After promotion in an idle source tree, real tests must exercise
 both event orders, absent/failed policy, timeout/disconnect, owner destruction,
 termination and nested workers before claiming first-script ordering.
 
-## Dedicated-worker thread handoff draft
+## Worker thread handoff draft
 
 `worker_canvas_thread_handoff.patch` continues the startup-gate stack into Blink.
 DedicatedWorker::ContinueStartInternal first creates GlobalScopeCreationParams,
@@ -316,3 +316,25 @@ to the final security origin before installing it on the window. A future
 document bootstrap must validate the final full privacy partition encoding and
 cover initial documents; commit-time delivery alone is insufficient. No document
 Canvas protection or first-script readiness guarantee is implemented here.
+
+### Shared-worker thread handoff
+
+`worker_canvas_thread_handoff.patch` also moves an optional owned surface seed
+from WorkerMainScriptLoadParameters to WebSharedWorkerImpl's creation parameters
+before WorkerThread::Start. Both classic and module script paths subsequently
+move the load parameters, so this transfer precedes either script evaluation.
+The existing immutable WorkerGlobalScope field receives the value on its own
+thread. No creator-document seed, JavaScript property or inferred partition is
+introduced; an absent value remains absent.
+
+This is transport only: EmbeddedSharedWorkerStub does not yet wait for the
+browser-owned policy, and ordinary shared workers therefore still receive no
+seed. Startup failure, host disconnect, pending Connect/Freeze/Resume requests,
+partitioned reuse and service-worker startup remain separate gates. Do not enable
+the experimental capability from this handoff alone.
+
+The updated nine-patch stack applies to an isolated copy with active inputs
+unchanged: `D:/CamouFlowNative/shared-worker-canvas-full-stack-applicability/proof.json`.
+WebSharedWorkerImpl passed isolated syntax checking with the pinned Blink core
+flags: `D:/CamouFlowNative/shared-worker-canvas-handoff-cpp-check/proof.json`.
+These checks are not GN generation, linking or shared-worker runtime evidence.

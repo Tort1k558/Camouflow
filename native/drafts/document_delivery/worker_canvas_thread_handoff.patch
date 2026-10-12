@@ -93,3 +93,18 @@ diff --git a/third_party/blink/renderer/core/workers/worker_global_scope.cc b/th
    // Workers should always maintain the default world of an isolate.
    CHECK(creation_params->is_default_world_of_isolate);
    TRACE_EVENT("blink.worker", "WorkerGlobalScope::WorkerGlobalScope");
+diff --git a/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc b/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
+--- a/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
++++ b/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
+@@ -305,6 +305,11 @@
+       blink::SecurityOrigin::CreateFromUrlOrigin(
+           url::Origin(origin_from_browser)),
+       std::move(coep_reporting_observer), std::move(dip_reporting_observer));
++
++  if (worker_main_script_load_params) {
++    creation_params->glint_canvas_partition_seed =
++        std::move(worker_main_script_load_params->glint_canvas_partition_seed);
++  }
+ 
+   auto thread_startup_data = WorkerBackingThreadStartupData::CreateDefault();
+   thread_startup_data.atomics_wait_mode =
