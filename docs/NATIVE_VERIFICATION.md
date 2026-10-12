@@ -54,6 +54,18 @@ No matching hardware fixture processes remained afterward. This reproduces the
 negative-case problem instead of treating a manually induced crash as a pass.
 Browser-side validation before renderer creation and a fresh full hardware gate
 are still required; the five positive cases alone do not admit the capability.
+The updated patch 0001 now validates both hardware switches in the browser
+process before forwarding them to a renderer, using the same bounded parser as
+Blink. Empty explicitly supplied values are rejected too. Exact pinned-source
+patch comparison and Chromium dependency checks passed; 217 release-tool tests
+passed. The negative runtime probe now requires the specific native validation
+diagnostic at startup: unrelated launch failures and timeouts cannot count as
+successful rejection. The complete local Python/QML suite passed 1,026 tests.
+The incremental four-job Windows rebuild is recorded in
+`D:\CamouFlowNative\native-build-browser-hardware-validation-j4.log`.
+This is a source correction awaiting rebuilt runtime evidence, not a hardware
+capability pass. The preceding binary and receipt are retained separately as
+core evidence, not as a complete runnable rollback package.
 No capability is enabled merely because its setting is saved. The first receipt
 still records `fingerprint_patched: false` and
 `native_patch_runtime_verified: false`. Packaged-payload verification, combined

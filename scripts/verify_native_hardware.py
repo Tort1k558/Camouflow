@@ -30,6 +30,11 @@ async def close_context(context) -> None:
     except TimeoutError:
         raise TimeoutError("Native hardware test context close exceeded its deadline") from None
 
+
+def validate_rejection(error: PlaywrightError) -> None:
+    if "Invalid CamouFlow Native hardware limits" not in str(error):
+        raise ValueError("Invalid hardware launch failed without the expected native CHECK") from error
+
 READ = """() => ({
   hardwareConcurrency: navigator.hardwareConcurrency,
   deviceMemory: navigator.deviceMemory,
@@ -154,22 +159,17 @@ async def verify(executable: Path, profiles: Path, origin: str, report: dict) ->
                 await close_context(context)
         for index, argument in enumerate(("--camouflow-hardware-concurrency=0", "--camouflow-hardware-concurrency=invalid",
                                            "--camouflow-device-memory=0.3", "--camouflow-device-memory=")):
-            context = await driver.chromium.launch_persistent_context(str(profiles / f"invalid-{index}"),
-                executable_path=str(executable), headless=True, chromium_sandbox=True, timeout=30000, args=[argument])
             try:
-                page = context.pages[0]
-                crashed = asyncio.Event()
-                page.on("crash", lambda _: crashed.set())
-                await page.goto(origin, timeout=30000)
+                context = await driver.chromium.launch_persistent_context(str(profiles / f"invalid-{index}"),
+                    executable_path=str(executable), headless=True, chromium_sandbox=True, timeout=30000, args=[argument])
+            except PlaywrightError as error:
+                validate_rejection(error)
+                report["checks"].append({"name": "invalid-configuration-rejected-before-renderer", "argument": argument, "passed": True})
+            else:
                 try:
-                    await asyncio.wait_for(page.evaluate(READ), timeout=PROBE_TIMEOUT_SECONDS)
-                except PlaywrightError:
-                    await asyncio.wait_for(crashed.wait(), timeout=10)
-                else:
-                    raise ValueError("Invalid native hardware configuration was silently accepted")
-                report["checks"].append({"name": "invalid-configuration-fails-renderer", "argument": argument, "passed": True})
-            finally:
-                await close_context(context)
+                    raise ValueError("Invalid native hardware configuration was accepted at browser startup")
+                finally:
+                    await close_context(context)
 
 
 def main() -> int:
