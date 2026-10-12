@@ -10,6 +10,24 @@ resumed; existing Linux workspaces and verified results are preserved. Desktop
 CI now schedules only Windows jobs. Linux/macOS support remains unfinished and
 must not be represented as released own-fork runtimes.
 
+## Windows storage path normalization (0008; runtime pending)
+
+`patches/0008-native-leveldb-path-separators.patch` normalizes the 17 LevelDB
+environment UTF-8-to-native path conversions before filesystem operations.
+LevelDB appends `/LOCK`; with Windows extended path syntax that forward slash
+is not normalized by the OS and causes `CreateFileW` error 123. This was
+reproduced against an owned temporary lock file, not inferred from unit tests.
+`FilePath::NormalizePathSeparators()` preserves POSIX path semantics and adds
+no dependency. The exact applied source and patch checksum are checked by the
+build helper and recorded in the own-build receipt.
+
+The patch is applied to the pinned source; a four-job Windows rebuild is in
+progress. It does not remove Chromium's explicit `MAX_PATH` guards or enable
+extended launch paths in the manager. It is not yet a verified storage fix.
+After compilation, rerun the complete storage path matrix and full runtime
+suite before promoting any launch change. Original failed controls are retained
+on D; see `docs/NATIVE_VERIFICATION.md`.
+
 ## Current Windows source build
 
 The first four-job Windows compilation, with hardware/MIDL patches 0001/0002,

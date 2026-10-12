@@ -1,0 +1,148 @@
+diff --git a/third_party/leveldatabase/env_chromium.cc b/third_party/leveldatabase/env_chromium.cc
+--- a/third_party/leveldatabase/env_chromium.cc
++++ b/third_party/leveldatabase/env_chromium.cc
+@@ -322,20 +322,20 @@
+       filesystem_(filesystem),
+ #endif
+       file_type_(kOther) {
+-  FilePath path = FilePath::FromUTF8Unsafe(fname);
++  FilePath path = FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators();
+   if (path.BaseName().AsUTF8Unsafe().find("MANIFEST") == 0) {
+     file_type_ = kManifest;
+   } else if (base::EqualsCaseInsensitiveASCII(path.Extension().c_str(),
+                                               table_extension)) {
+     file_type_ = kTable;
+   }
+-  parent_dir_ = FilePath::FromUTF8Unsafe(fname).DirName().AsUTF8Unsafe();
++  parent_dir_ = FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators().DirName().AsUTF8Unsafe();
+ }
+ 
+ Status ChromiumWritableFile::SyncParent() {
+   TRACE_EVENT0("leveldb", "SyncParent");
+ #if defined(OS_POSIX) || defined(OS_FUCHSIA)
+-  FilePath path = FilePath::FromUTF8Unsafe(parent_dir_);
++  FilePath path = FilePath::FromUTF8Unsafe(parent_dir_).NormalizePathSeparators();
+   FileErrorOr<base::File> result = filesystem_->OpenFile(
+       path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+   if (!result.has_value()) {
+@@ -732,7 +732,7 @@
+ }
+ 
+ bool ChromiumEnv::FileExists(const std::string& fname) {
+-  return filesystem_->PathExists(FilePath::FromUTF8Unsafe(fname));
++  return filesystem_->PathExists(FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators());
+ }
+ 
+ const char* ChromiumEnv::FileErrorString(base::File::Error error) {
+@@ -806,7 +806,7 @@
+ 
+ Status ChromiumEnv::GetChildren(const std::string& dir,
+                                 std::vector<std::string>* result) {
+-  FilePath dir_path = FilePath::FromUTF8Unsafe(dir);
++  FilePath dir_path = FilePath::FromUTF8Unsafe(dir).NormalizePathSeparators();
+   RemoveBackupFiles(dir_path);
+ 
+   ASSIGN_OR_RETURN(
+@@ -826,7 +826,7 @@
+ 
+ Status ChromiumEnv::RemoveFile(const std::string& fname) {
+   Status result;
+-  FilePath fname_filepath = FilePath::FromUTF8Unsafe(fname);
++  FilePath fname_filepath = FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators();
+   if (!filesystem_->DeleteFile(fname_filepath)) {
+     result = MakeIOError(fname, "Could not delete file.", kRemoveFile);
+   }
+@@ -838,7 +838,7 @@
+   base::File::Error error = base::File::FILE_OK;
+   Retrier retrier;
+   do {
+-    error = filesystem_->CreateDirectory(base::FilePath::FromUTF8Unsafe(name));
++    error = filesystem_->CreateDirectory(base::FilePath::FromUTF8Unsafe(name).NormalizePathSeparators());
+     if (error == base::File::FILE_OK)
+       return result;
+   } while (retrier.ShouldKeepTrying());
+@@ -847,7 +847,7 @@
+ 
+ Status ChromiumEnv::RemoveDir(const std::string& name) {
+   Status result;
+-  if (!filesystem_->DeleteFile(FilePath::FromUTF8Unsafe(name))) {
++  if (!filesystem_->DeleteFile(FilePath::FromUTF8Unsafe(name).NormalizePathSeparators())) {
+     result = MakeIOError(name, "Could not delete directory.", kRemoveDir);
+   }
+   return result;
+@@ -856,7 +856,7 @@
+ Status ChromiumEnv::GetFileSize(const std::string& fname, uint64_t* size) {
+   Status s;
+   std::optional<base::File::Info> info =
+-      filesystem_->GetFileInfo(base::FilePath::FromUTF8Unsafe(fname));
++      filesystem_->GetFileInfo(base::FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators());
+   if (!info) {
+     *size = 0;
+     s = MakeIOError(fname, "Could not determine file size.", kGetFileSize);
+@@ -868,10 +868,10 @@
+ 
+ Status ChromiumEnv::RenameFile(const std::string& src, const std::string& dst) {
+   Status result;
+-  FilePath src_file_path = FilePath::FromUTF8Unsafe(src);
++  FilePath src_file_path = FilePath::FromUTF8Unsafe(src).NormalizePathSeparators();
+   if (!filesystem_->PathExists(src_file_path))
+     return result;
+-  FilePath destination = FilePath::FromUTF8Unsafe(dst);
++  FilePath destination = FilePath::FromUTF8Unsafe(dst).NormalizePathSeparators();
+ 
+   Retrier retrier;
+   base::File::Error error = base::File::FILE_OK;
+@@ -893,7 +893,7 @@
+ Status ChromiumEnv::LockFile(const std::string& fname, FileLock** lock) {
+   *lock = nullptr;
+   Status result;
+-  const base::FilePath path = base::FilePath::FromUTF8Unsafe(fname);
++  const base::FilePath path = base::FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators();
+   Retrier retrier;
+   FileErrorOr<std::unique_ptr<storage::FilesystemProxy::FileLock>> lock_result;
+   size_t tries = 0;
+@@ -942,7 +942,7 @@
+ Status ChromiumEnv::NewLogger(const std::string& fname,
+                               leveldb::Logger** result) {
+   *result = nullptr;
+-  FilePath path = FilePath::FromUTF8Unsafe(fname);
++  FilePath path = FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators();
+   ASSIGN_OR_RETURN(base::File open_result,
+                    filesystem_->OpenFile(path, base::File::FLAG_CREATE_ALWAYS |
+                                                    base::File::FLAG_WRITE),
+@@ -954,7 +954,7 @@
+ Status ChromiumEnv::NewSequentialFile(const std::string& fname,
+                                       leveldb::SequentialFile** result) {
+   *result = nullptr;
+-  FilePath path = FilePath::FromUTF8Unsafe(fname);
++  FilePath path = FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators();
+   ASSIGN_OR_RETURN(base::File open_result,
+                    filesystem_->OpenFile(
+                        path, base::File::FLAG_OPEN | base::File::FLAG_READ),
+@@ -967,7 +967,7 @@
+ Status ChromiumEnv::NewRandomAccessFile(const std::string& fname,
+                                         leveldb::RandomAccessFile** result) {
+   *result = nullptr;
+-  base::FilePath file_path = FilePath::FromUTF8Unsafe(fname);
++  base::FilePath file_path = FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators();
+   ASSIGN_OR_RETURN(base::File file,
+                    filesystem_->OpenFile(file_path, base::File::FLAG_READ |
+                                                         base::File::FLAG_OPEN),
+@@ -988,7 +988,7 @@
+ 
+ Status ChromiumEnv::NewWritableFile(const std::string& fname,
+                                     leveldb::WritableFile** result) {
+-  FilePath path = FilePath::FromUTF8Unsafe(fname);
++  FilePath path = FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators();
+   FileErrorOr<base::File> open_result = filesystem_->OpenFile(
+       path, base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+   if (!open_result.has_value()) {
+@@ -1004,7 +1004,7 @@
+ Status ChromiumEnv::NewAppendableFile(const std::string& fname,
+                                       leveldb::WritableFile** result) {
+   *result = nullptr;
+-  FilePath path = FilePath::FromUTF8Unsafe(fname);
++  FilePath path = FilePath::FromUTF8Unsafe(fname).NormalizePathSeparators();
+   ASSIGN_OR_RETURN(base::File open_result,
+                    filesystem_->OpenFile(path, base::File::FLAG_OPEN_ALWAYS |
+                                                    base::File::FLAG_APPEND),

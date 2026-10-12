@@ -843,7 +843,8 @@ def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tm
                                   "0003-native-webrtc-routing-policy.patch",
                                   "0004-native-automation-exposure.patch",
                                   "0005-native-windows-font-collection.patch",
-                                  "0006-native-headless-user-agent.patch"])
+                                  "0006-native-headless-user-agent.patch",
+                                  "0008-native-leveldb-path-separators.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
@@ -1185,6 +1186,7 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     (patches / "0004-native-automation-exposure.patch").write_text("", encoding="utf-8")
     (patches / "0005-native-windows-font-collection.patch").write_text("", encoding="utf-8")
     (patches / "0006-native-headless-user-agent.patch").write_text("", encoding="utf-8")
+    (patches / "0008-native-leveldb-path-separators.patch").write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")
