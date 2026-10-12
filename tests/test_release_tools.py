@@ -1430,7 +1430,8 @@ def test_linux_process_snapshot_separates_executable_identity_from_thread_names(
 
 
 @pytest.mark.parametrize("failure", [None, "missing-context", "missing-path", "repeat", "blob", "htmlDataUrl", "worker-html", "worker-pixels", "restart", "invalid-digest",
-                                     "geometry-missing", "geometry-false", "geometry-numeric", "geometry-extra"])
+                                     "geometry-missing", "geometry-false", "geometry-numeric", "geometry-extra",
+                                     "clipped-padding", "opaque-anchor", "transparent-anchor"])
 def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
     from copy import deepcopy
     from scripts.verify_native_canvas import CONTEXTS, GEOMETRY_EXPECTED, validate_observations
@@ -1464,6 +1465,10 @@ def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
         observed["dedicated"]["geometry"]["outsideRemainsTransparent"] = 1
     elif failure == "geometry-extra":
         observed["document"]["geometry"]["unmeasured"] = True
+    elif failure in {"clipped-padding", "opaque-anchor", "transparent-anchor"}:
+        field = {"clipped-padding": "clippedPaddingMatches", "opaque-anchor": "opaqueCornerRendered",
+                 "transparent-anchor": "transparentAlphaRendered"}[failure]
+        observed["service"]["geometry"][field] = False
     if failure is None:
         validate_observations(observed, previous)
     else:

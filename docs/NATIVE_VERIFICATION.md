@@ -237,6 +237,19 @@ suite passed 1,073 tests. Rebuilt identity/CDP gates and the five-policy combine
 run are pending; profile-key transport and native Canvas protection remain
 unimplemented, and manager capability admission remains blocked.
 
+### Canvas baseline rendering anchors
+
+The Canvas probe now also measures a partially clipped rectangle's transparent
+padding, a literal opaque RGBA corner and a literal semitransparent RGBA sample.
+An implementation returning empty/constant images can no longer pass merely
+because repeated and exported hashes agree. These baseline invariants passed
+in six contexts and after restart on the immutable own real-credit package;
+the four aggregate reports are retained in
+`D:\CamouFlowNative\canvas-rendering-anchor-owned-baseline-20261012.json`.
+No source inputs of the active identity/inspector build were modified.
+These are still unprotected drawing expectations: protected-policy acceptance
+needs a separate justified transformation contract, not weaker baseline checks.
+
 | Area | Prepared artifact | Required own-fork evidence |
 | --- | --- | --- |
 | Lifecycle and storage | `verify_native_runtime.py` | All 18 checks; five stores survive committed checkpoints; independent profiles; lock exclusion; cancellation; zero owned survivors after controller death and three-profile restart rounds |

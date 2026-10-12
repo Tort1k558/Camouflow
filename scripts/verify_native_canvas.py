@@ -66,15 +66,23 @@ READ = """async () => {
   const partial = context.getImageData(3, 5, 8, 7).data;
   const negative = context.getImageData(11, 12, -8, -7).data;
   const outside = context.getImageData(-2, -3, 1, 1).data;
+  const clipped = context.getImageData(-1, -1, 2, 2).data;
+  const expectedClipped = new Uint8ClampedArray(16);
+  expectedClipped.set(full.subarray(0, 4), 12);
   const transparent = new OffscreenCanvas(width, height);
   const transparentContext = transparent.getContext('2d', {willReadFrequently: true});
   transparentContext.fillStyle = 'rgba(255, 0, 0, 0.5)';
   transparentContext.fillRect(3, 5, 8, 7);
   const transparentPixels = await hash(read(transparentContext));
+  const transparentData = read(transparentContext);
   const geometry = {
     partialMatchesFull: equal(partial, expected),
     negativeDimensionsMatch: equal(negative, expected),
     outsideRemainsTransparent: equal(outside, new Uint8ClampedArray(4)),
+    clippedPaddingMatches: equal(clipped, expectedClipped),
+    opaqueCornerRendered: equal(full.subarray((width * height - 1) * 4), new Uint8ClampedArray([52, 86, 120, 255])),
+    transparentAlphaRendered: equal(transparentData.subarray((5 * width + 3) * 4, (5 * width + 3) * 4 + 4),
+                                    new Uint8ClampedArray([255, 0, 0, 128])),
     transparentRepeat: transparentPixels === await hash(read(transparentContext)),
     transparentExport: transparentPixels === await decode(await transparent.convertToBlob({type: 'image/png'}))
   };
@@ -84,7 +92,8 @@ READ = """async () => {
 CONTEXTS = {"document", "same_origin_frame", "cross_origin_frame", "dedicated", "shared", "service"}
 GEOMETRY_EXPECTED = {"partialMatchesFull": True, "negativeDimensionsMatch": True,
                      "outsideRemainsTransparent": True, "transparentRepeat": True,
-                     "transparentExport": True}
+                     "transparentExport": True, "clippedPaddingMatches": True,
+                     "opaqueCornerRendered": True, "transparentAlphaRendered": True}
 
 SECURITY_READ = """async () => {
   const failure = action => {
