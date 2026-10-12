@@ -572,3 +572,43 @@ Do not infer a policy from a DOM owner's URL, copy a previous page's seed across
 navigation or fill missing policy asynchronously after a synchronous Canvas read.
 Canvas hooks must resolve the actual executing window's current document policy,
 not let script-created DOM documents introduce an unprotected fallback path.
+
+### Navigation readiness barrier candidate
+
+`privacy_navigation_throttle.h/.cc` prepares the browser-side readiness barrier
+for ordinary response commits and commits without a URL loader. It is gated by
+`glint-document-canvas-bootstrap-test`, is not registered in the throttle registry
+or GN and does not derive or transport a Canvas seed. Flag-off behavior proceeds
+without consulting privacy state. Ready contexts proceed synchronously; other
+states defer with weak ownership and a ten-second deadline. Failure cancels only
+the deferred navigation with `CANCEL_AND_IGNORE`, which the pinned no-URL-loader
+hook explicitly supports, rather than stopping unrelated WebContents navigations.
+
+Readiness registration is posted after returning DEFER because terminal key
+readiness may invoke inline. Completion stops the timer and invalidates pending
+callbacks before Resume/Cancel, either of which may destroy the throttle.
+Eleven unregistered fixture definitions cover ready/loading/terminal states,
+deadline and late reply, both hooks, shutdown, destruction before/after registration
+and deletion from resume/cancel callbacks. They have not executed.
+The production source passed isolated syntax checking with pinned browser flags.
+The first fixture check used those production flags and rejected upstream legacy
+mock-header override declarations; the fixture subsequently passed with the
+actual `content_unittests` flags, without changing those headers or suppressing
+diagnostics manually. Evidence: the production entry in
+`D:/CamouFlowNative/privacy-navigation-throttle-cpp-check/proof.json` and
+`privacy-navigation-throttle-test-flags-cpp-check/proof.json`. Source and copied
+header hashes were revalidated. Neither result proves execution or navigation
+registry integration. Extra syntax work was deferred when the commit-headroom
+guard rejected it, without stopping or restarting the active four-job builder.
+
+The pinned `navigation_params.mojom` describes its StorageKey as provisional.
+`DocumentLoader` can replace an opaque nonce-less key, recompute its origin and
+set the final window key before `InstallNewDocument`. Therefore readiness alone
+cannot justify passing a seed derived from provisional state into every document.
+The producer must bind a seed to the exact browser-owned native partition encoding
+and the consumer must validate that commitment against final document state before
+installation. A mismatch must not silently reuse a previous seed or run protected
+readback with missing policy. Navigation deferring conditions run before the
+normal `CommitNavigation` storage-key calculation; their ordering is not a proof
+that a provisional partition is final. Initial empty, renderer-only replacement,
+BFCache/prerender and opaque documents remain separate required integration gates.

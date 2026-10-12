@@ -304,6 +304,19 @@ fixture passed, and the five active source hashes remained unchanged:
 or first-script readiness: the trusted committed-partition producer is still
 missing. No Canvas hook or policy capability was enabled by this draft.
 
+The independent `privacy_navigation_throttle` candidate now implements a bounded
+readiness barrier before normal response/no-URL-loader commits, behind an explicit
+developer switch. Registration is posted after DEFER to handle inline terminal
+readiness safely. Failure/shutdown/deadline cancel only the deferred navigation;
+resume/cancel may delete the owner. Eleven fixture definitions cover these
+lifecycles. Production source and fixture syntax passed separately with their
+actual pinned browser/content-unit flags; no native case executed and neither
+registry/GN registration nor policy derivation is present. The earlier fixture
+syntax failure with production flags is retained, not represented as a pass.
+The current Chromium commit StorageKey is provisional and DocumentLoader can
+adjust it: first-script delivery therefore also needs an exact trusted-partition
+commitment check against final document state, not just a ready profile root.
+
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External
 anti-bot scores may be observations, never guaranteed release capabilities.
