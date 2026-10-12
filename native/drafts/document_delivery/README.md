@@ -243,6 +243,26 @@ unit-test flags, omitting its unbuilt PCH:
 **Neither of the two new cases has been executed.** They use FakeWorkerGlobalScope
 and do not prove real broker/GC/nested-worker startup or OffscreenCanvas API use.
 
+The current handoff fixture additionally defines two lifecycle cases (four in
+total). `GlintSequentialScopesDoNotReusePreviousCanvasSeed` starts and destroys
+three thread/scope instances in sequence with seed A, seed B and no seed, checks
+each scope independently, and verifies orderly termination before reuse of the
+reporting fixture. `GlintImmediateTerminationRetainsOwnedCanvasSeed` mutates the
+caller's copy after startup, terminates immediately and verifies that the scope
+still receives the original value. Like upstream's immediate-termination test,
+script evaluation may occur zero or one times; it is not a deterministic proof
+that termination always precedes evaluation or that actual worker hosts derive
+independent seeds. All four remain unexecuted. The old two-case syntax result
+does not cover these additions.
+
+The updated two-file patch applied and reversed in an isolated D: copy, and the
+result matched the prepared overlay exactly; active source hashes were unchanged:
+`D:/CamouFlowNative/worker-handoff-lifecycle-patch-applicability/proof.json`.
+Its new isolated syntax check passed using the actual Blink unit-test flags and
+private overlay after verifying at least 8 GiB available commit headroom:
+`D:/CamouFlowNative/worker-handoff-lifecycle-tests-cpp-check/proof.json`.
+This is still syntax-only evidence, not object compilation, linking or execution.
+
 The complete six-patch stack, including these ordered tests, applied to a private
 copy without changing active inputs:
 `D:/CamouFlowNative/worker-handoff-ordered-full-stack-applicability/proof.json`.
