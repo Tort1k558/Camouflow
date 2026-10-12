@@ -601,6 +601,20 @@ each round. Report:
 The remaining eight-gate suite execution, new shipping archive and relocated
 package verification remain pending; this is not full release admission.
 
+The complete eight-gate own-fork suite then passed on the same measured `0010`
+code: runtime 18, hardware 9, WebRTC 7, automation 55, fonts 42, identity 18,
+inspector accessor serialization 6, and combined policies 5. Terminal suite exit
+was zero, with `passed=true` and `full_suite=true` in
+`verification-browser-owned-profile-namespace-full-20261012/suite.json` on D.
+Together with the ordinary-launch eight-case storage matrix, this closes the
+reproduced Windows storage/lifecycle regressions in the source runtime. It does
+not admit fingerprint capabilities, prove general CDP invisibility or validate
+CAPTCHA scores. Official shipping staging has now started with four jobs using
+the matching runtime report; no installer is executed. New archive integrity,
+real credits and relocated package runtime still require verification before
+promotion. The project regression suite passed 1,095 tests after the source
+integration; the 54 native SQL tests are separate from that Python test count.
+
 The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feature
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred

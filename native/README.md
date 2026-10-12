@@ -76,8 +76,14 @@ three restart/crash rounds with no surviving owned processes. Evidence:
 `D:\CamouFlowNative\storage-path-matrix-browser-owned-namespace-20261012.json` and
 `verification-browser-owned-profile-namespace-full-20261012/runtime.json` on D.
 
-The remaining full-suite gates are still running; packaging and relocated
-package verification have not yet been repeated on this build. Root paths above
+The full eight-gate own-fork suite subsequently passed: runtime (18 checks),
+hardware (9), WebRTC (7), automation (55), fonts (42), identity (18), inspector
+accessor serialization (6), and combined policies (5). The suite bound every
+child to the unchanged executable/DLL measurements; report:
+`verification-browser-owned-profile-namespace-full-20261012/suite.json` on D.
+Official shipping staging is now building with four jobs, without executing an
+installer. The new archive and relocated full-payload package have not yet been
+verified. Root paths above
 the Windows bootstrap buffer limit and actual UNC storage remain outside
 verified coverage. Do not claim arbitrary path-length support or activate
 fingerprint capabilities from this filesystem patch.
