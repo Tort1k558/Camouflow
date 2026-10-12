@@ -155,5 +155,52 @@ TEST_F(GlintCanvasImageTest, DistinctFixtureSeedsProduceDifferentPixels) {
   ASSERT_EQ(a.size(), b.size());
   EXPECT_FALSE(std::equal(a.begin(), a.end(), b.begin()));
 }
+
+TEST_F(GlintCanvasImageTest, CroppedReadUsesFullProtectedRaster) {
+  auto result = CreateProtectedCanvasImage(FixtureImage(), kFixtureSeed, kPeakCopyBudget);
+  ASSERT_TRUE(result.has_value());
+  auto full = blink::ImageDataBuffer::Create(result.value());
+  ASSERT_TRUE(full);
+  const auto pixels = full->PixelData();
+  ASSERT_EQ(pixels.size(), kPixelBytes);
+  std::array<uint8_t, 2 * 2 * 4> cropped{};
+  const auto info = SkImageInfo::Make(2, 2, kRGBA_8888_SkColorType,
+                                     kUnpremul_SkAlphaType,
+                                     SkColorSpace::MakeSRGB());
+  ASSERT_TRUE(result.value()->PaintImageForCurrentFrame().readPixels(
+      info, cropped.data(), 2 * 4, 1, 1));
+  for (size_t y = 0; y < 2; ++y) {
+    for (size_t x = 0; x < 2; ++x) {
+      for (size_t channel = 0; channel < 4; ++channel) {
+        EXPECT_EQ(cropped[(y * 2 + x) * 4 + channel],
+                  pixels[((y + 1) * 4 + x + 1) * 4 + channel]);
+      }
+    }
+  }
+}
+
+TEST_F(GlintCanvasImageTest, PartialReadPreservesTransparentPadding) {
+  auto result = CreateProtectedCanvasImage(FixtureImage(), kFixtureSeed, kPeakCopyBudget);
+  ASSERT_TRUE(result.has_value());
+  auto full = blink::ImageDataBuffer::Create(result.value());
+  ASSERT_TRUE(full);
+  const auto pixels = full->PixelData();
+  ASSERT_EQ(pixels.size(), kPixelBytes);
+  std::array<uint8_t, 3 * 3 * 4> cropped{};
+  const auto info = SkImageInfo::Make(3, 3, kRGBA_8888_SkColorType,
+                                     kUnpremul_SkAlphaType,
+                                     SkColorSpace::MakeSRGB());
+  ASSERT_TRUE(result.value()->PaintImageForCurrentFrame().readPixels(
+      info, cropped.data(), 3 * 4, -1, -1));
+  for (size_t y = 0; y < 3; ++y) {
+    for (size_t x = 0; x < 3; ++x) {
+      for (size_t channel = 0; channel < 4; ++channel) {
+        const uint8_t expected = x == 0 || y == 0
+            ? 0 : pixels[((y - 1) * 4 + x - 1) * 4 + channel];
+        EXPECT_EQ(cropped[(y * 3 + x) * 4 + channel], expected);
+      }
+    }
+  }
+}
 }  // namespace
 }  // namespace glint::candidate

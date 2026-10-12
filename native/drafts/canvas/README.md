@@ -311,3 +311,22 @@ them has been linked or tested. HTML export/document bootstrap, shared/service
 worker startup, GPU/alpha/format/editor compatibility, combination tests and
 privacy admission remain unfinished. A shared adapter establishes an intended
 canonical path, **not proof of cross-API equality or undetectability**.
+
+## Protected-raster crop fixtures
+
+The image adapter fixture now contains ten cases. Two additional cases read a
+2x2 interior crop from the full protected image and a 3x3 rectangle starting at
+(-1, -1). They compare every in-bounds RGBA byte against the full canonical
+raster and require the pre-zeroed destination's out-of-bounds padding to remain
+transparent. These exercise the intended PaintImage readback boundary, not the
+JavaScript getImageData entry point or its allocation/exception behavior.
+
+The alternative Blink test patch embeds the updated canonical fixture (twenty
+copy/image cases in total). GN format and applicability checks passed with active
+build inputs unchanged:
+`D:/CamouFlowNative/canvas-blink-crop-test-registration-draft/proof.json`.
+The ten-case image fixture passed isolated syntax verification using the pinned
+platform-unit-test flags:
+`D:/CamouFlowNative/canvas-blink-crop-image-tests-cpp-check/proof.json`.
+No new C++ fixture has been linked or executed; browser crop/export agreement
+remains a runtime gate, not a result inferred from these checks.
