@@ -88,7 +88,8 @@ READ = """async () => {
   return {pixels, repeat, blob, htmlBlob, htmlDataUrl, geometry};
 }"""
 
-CONTEXTS = {"document", "same_origin_frame", "cross_origin_frame", "dedicated", "shared", "service"}
+CONTEXTS = {"document", "same_origin_frame", "cross_origin_frame", "about_blank_frame",
+            "srcdoc_frame", "dedicated", "shared", "service"}
 GEOMETRY_EXPECTED = {"partialMatchesFull": True, "negativeDimensionsMatch": True,
                      "outsideRemainsTransparent": True, "transparentRepeat": True,
                      "transparentExport": True, "clippedPaddingMatches": True,
@@ -203,12 +204,40 @@ async def observe(context, origin: str, read: str = READ) -> dict:
     await page.evaluate("url => { const frame = document.createElement('iframe'); frame.id = 'cross-origin'; frame.src = url; document.body.append(frame); }",
                         origin.replace("127.0.0.1", "localhost") + "/cross-frame")
     await page.locator("#cross-origin").content_frame.locator("h1").wait_for(timeout=15000)
+    await page.evaluate("""() => {
+      const blank = document.createElement('iframe');
+      blank.id = 'owned-about-blank'; blank.src = 'about:blank';
+      document.body.append(blank);
+      const srcdoc = document.createElement('iframe');
+      srcdoc.id = 'owned-srcdoc'; srcdoc.srcdoc = '<h1>Owned srcdoc context</h1>';
+      document.body.append(srcdoc);
+    }""")
+    await page.locator("#owned-srcdoc").content_frame.locator("h1").wait_for(timeout=15000)
     observed = {"document": await asyncio.wait_for(page.evaluate(read), timeout=30)}
-    for name, frame_id in (("same_origin_frame", "owned-frame"), ("cross_origin_frame", "cross-origin")):
+    for name, frame_id in (("same_origin_frame", "owned-frame"), ("cross_origin_frame", "cross-origin"),
+                           ("about_blank_frame", "owned-about-blank"), ("srcdoc_frame", "owned-srcdoc")):
         element = await page.locator("#" + frame_id).element_handle()
-        observed[name] = await asyncio.wait_for((await element.content_frame()).evaluate(read), timeout=30)
+        if element is None:
+            raise ValueError("Owned Canvas frame element is missing: " + name)
+        frame = await element.content_frame()
+        if frame is None:
+            raise ValueError("Owned Canvas frame is missing: " + name)
+        observed[name] = await asyncio.wait_for(frame.evaluate(read), timeout=30)
     observed.update(await asyncio.wait_for(page.evaluate(WORKERS), timeout=40))
     return observed
+
+
+async def security_frames(page) -> dict:
+    frames = {"document": page.main_frame}
+    for name, frame_id in (("same_origin_frame", "owned-frame"), ("cross_origin_frame", "cross-origin")):
+        element = await page.locator("#" + frame_id).element_handle()
+        if element is None:
+            raise ValueError("Owned security frame element is missing: " + name)
+        frame = await element.content_frame()
+        if frame is None:
+            raise ValueError("Owned security frame is missing: " + name)
+        frames[name] = frame
+    return frames
 
 
 async def verify(executable: Path, profile: Path, origin: str, report: dict) -> None:
@@ -228,7 +257,7 @@ async def verify(executable: Path, profile: Path, origin: str, report: dict) -> 
                 previous = observed
                 security = {}
                 page = context.pages[0]
-                for name, frame in zip(("document", "same_origin_frame", "cross_origin_frame"), page.frames):
+                for name, frame in (await security_frames(page)).items():
                     security[name] = await asyncio.wait_for(frame.evaluate(SECURITY_READ), timeout=20)
                 check = {"name": phase + "-security-and-empty-images", "observed": security, "passed": False}
                 report["checks"].append(check)
@@ -249,6 +278,7 @@ def main() -> int:
     if args.report.exists():
         parser.error("Refusing to overwrite existing Canvas evidence")
     report = {"schema": 1, "platform": platform.platform(), "passed": False, "checks": [],
+              "readback_contexts": sorted(CONTEXTS),
               "scope": "Unmodified Canvas consistency baseline only; no masking or anti-bot claim"}
     server = None
     thread = None

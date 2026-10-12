@@ -125,7 +125,7 @@ async def verify(executable: Path, root: Path, origin: str, report: dict, librar
                     if stored != (None if phase == "initial" else profile):
                         raise ValueError("Combined profiles lost or shared their persistent marker")
                     await page.evaluate("value => localStorage.setItem('combined-profile', value)", profile)
-                    for name, frame in zip(("document", "same_origin_frame", "cross_origin_frame"), page.frames):
+                    for name, frame in (await canvas.security_frames(page)).items():
                         measured = await asyncio.wait_for(webrtc.observe(frame), timeout=15)
                         check["webrtc"][name] = measured
                         webrtc.validate_probe(measured, protected=True)
@@ -147,6 +147,7 @@ def main() -> int:
                         help="Explicit package-owned DLL directory for a versioned Chrome-bin layout")
     args = parser.parse_args()
     report = {"schema": 1, "passed": False, "checks": [], "arguments": ARGUMENTS,
+              "readback_contexts": sorted(canvas.CONTEXTS),
               "scope": "Combined hardware/fonts/WebRTC/automation/UA; Canvas compatibility baseline, not Canvas protection or release admission"}
     server = None
     thread = None

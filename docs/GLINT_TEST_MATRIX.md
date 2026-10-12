@@ -95,8 +95,8 @@ be substituted for this strict round.
 Windows link completed on **2026-10-12**, build process exit code 0, jobs 4;
 the build log records **1h51m49.40s** for this incremental compiler/linker run,
 not the entire development history or a clean build. Receipt includes 15 patches.
-The eight runtime gates completed successfully; native-unit and external
-verification remains in progress. Baseline
+The eight runtime gates and 33 named native-unit cases completed successfully;
+external verification remains in progress. Baseline
 observations above must not be transferred to this candidate.
 
 | Measured code | SHA-256 |
@@ -132,6 +132,13 @@ Private report set: `verification-context-chrome-001-015-user-j4/runtime/`.
 An independent recheck validated all child report hashes, gate coverage/counts
 and the current three runtime code hashes. This is owned-fixture evidence, not
 real CAPTCHA acceptance, prepared-draft coverage or production release admission.
+
+The public `verify_native_privacy_units.py` also rebuilt/executed the native target
+and passed all **33 exact required cases**, independently revalidated from its
+GoogleTest JSON. Browser code remained unchanged. Private evidence:
+`verification-context-chrome-001-015-user-j4/privacy-units.json` and
+`privacy-units-tests.json`. This covers key primitives/loading/service ownership,
+not the unapplied real-BrowserContext/readiness drafts or renderer IPC.
 
 ### Local Canvas calibration — baseline 001–010, 2026-10-12
 
@@ -169,6 +176,23 @@ Reports retain all three measured code hashes. The control is SDK Chromium,
 not a branded consumer Chrome installation or a commercial-engine benchmark.
 Coverage remains limited to the tested Canvas paths and contexts; it does not
 validate other surfaces or certify the new 001–015 build.
+
+### Eight-context calibration and combined-policy run — 2026-10-12
+
+The probes now include `about:blank` and `srcdoc` frames in addition to the
+previous six readback contexts. Security/WebRTC frame observations are resolved
+by owned frame IDs rather than relying on frame enumeration order.
+
+| Run | Coverage | Result | Private report |
+| --- | --- | --- | --- |
+| Unpatched SDK Chromium 148.0.7778.96 | Four Canvas baseline groups; eight readback contexts; original three security contexts | Passed | `canvas-stock-eight-contexts.json` |
+| Glint 001–015, all existing policy arguments combined | STUN positive control plus two profiles before/after restart; eight readback/identity contexts per profile phase | Five named checks passed | `combined-eight-contexts-001-015.json` |
+
+The Glint run's code hashes match the linked candidate above. Native Canvas
+protection is still absent. This does not test AudioWorklet, prove renderer
+process separation for the cross-origin frame, or validate future key IPC.
+The original 160-check suite was captured before this extension; these are
+additional results, not retroactively expanded coverage of older reports.
 
 ## Sources and maintenance
 

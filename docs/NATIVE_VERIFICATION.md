@@ -35,6 +35,10 @@ The standalone Canvas baseline also measures the executable and Windows core
 DLLs before and after observation, and refuses to overwrite an existing report.
 For a relocated Windows payload, pass `--windows-library-directory` with its
 canonical versioned DLL directory. Canvas consistency is not masking acceptance.
+Canvas/combined readback probes cover document, same/cross-origin iframe,
+about:blank/srcdoc and dedicated/shared/service workers. Security checks retain
+their explicit three document/frame contexts; AudioWorklet and measured OOPIF
+process separation are not implied by this coverage.
 
 ## Required release checks
 
@@ -59,7 +63,8 @@ The 001-010 Windows development baseline has completed runtime gates and
 packaged-payload checks. Key/codec/owner native units are separate evidence.
 The newer 001–015 production context integration has linked a Windows browser;
 its eight runtime gates (160 checks) passed with independently rechecked report
-and core-code hashes. New native-unit/external verification remains in progress;
+and core-code hashes. All 33 named native-unit cases also passed and were
+independently revalidated. External verification remains in progress;
 this is not release admission or full key-service behavior proof.
 An opt-in actual Chrome profile/OTR startup smoke completed initial/restart
 storage-separation checks; it does not observe key-service readiness or derivation.

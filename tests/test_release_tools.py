@@ -1740,7 +1740,7 @@ def test_linux_process_snapshot_separates_executable_identity_from_thread_names(
     assert executable_name(rows[102]) is None
 
 
-@pytest.mark.parametrize("failure", [None, "missing-context", "missing-path", "repeat", "blob", "htmlDataUrl", "worker-html", "worker-pixels", "restart", "invalid-digest",
+@pytest.mark.parametrize("failure", [None, "missing-context", "missing-about-blank", "missing-srcdoc", "missing-path", "repeat", "blob", "htmlDataUrl", "worker-html", "worker-pixels", "restart", "invalid-digest",
                                      "geometry-missing", "geometry-false", "geometry-numeric", "geometry-extra",
                                      "clipped-padding", "opaque-anchor", "transparent-anchor"])
 def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
@@ -1756,6 +1756,8 @@ def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
     previous = deepcopy(observed)
     if failure == "missing-context":
         del observed["shared"]
+    elif failure in {"missing-about-blank", "missing-srcdoc"}:
+        del observed["about_blank_frame" if failure == "missing-about-blank" else "srcdoc_frame"]
     elif failure == "missing-path":
         del observed["document"]["pixels"]
     elif failure in {"repeat", "blob", "htmlDataUrl"}:
