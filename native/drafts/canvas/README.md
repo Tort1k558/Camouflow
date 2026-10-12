@@ -110,3 +110,25 @@ getImageData/export integration, colour conversion, memory limits, gradients,
 antialiasing, drawImage/putImageData and editor compatibility are unverified.
 Known nonuniform geometry can still expose altered edge values. This candidate
 is not admitted and does not make a browser or a Canvas readback undetectable.
+
+## Full raster-copy adapter draft
+
+`CreateProtectedCanvasCopy` takes a full SkPixmap after native access checks and
+returns an owned immutable SkBitmap. RGBA/BGRA 8-bit sRGB sources are converted
+explicitly to RGBA/unpremultiplied/sRGB before the edge candidate runs; opaque
+metadata yields canonical alpha 255. It never writes the source backing store.
+The caller supplies an explicit additional-copy memory limit. Invalid layout,
+unsupported format/space, allocation/read/transform failures return typed errors,
+not an original unprotected image or a replacement browser identity.
+
+Crop reads and async encoders must retain this same full protected result. Float16,
+HDR, untagged and non-sRGB sources remain unsupported. GPU snapshots still need
+the pinned Blink snapshot-to-raster path; this adapter does not invent one.
+
+The algorithm, adapter and ten Skia test definitions passed Chromium-flag clang
+syntax checks: `D:/CamouFlowNative/canvas-copy-adapter-opaque-alpha-cpp-check/proof.json`.
+The tests specify source ownership/immutability, exact fills, BGRA conversion,
+premultiplied baseline conversion, opaque alpha, memory limit, unsupported space/
+format, absent pixels and crop/full equality. They are **not linked or executed**,
+and have not been added to the active Chromium target. These checks do not prove
+DOM exception order, HTML/OffscreenCanvas encoding, GPU handling or runtime policy.
