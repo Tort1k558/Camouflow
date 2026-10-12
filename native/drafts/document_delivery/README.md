@@ -790,6 +790,30 @@ inconsistent frame, not cancel a navigation safely. Keep the rejection guard
 until a complete pre-teardown decision or coherent failure-document protocol is
 implemented and verified; do not activate the privacy capability meanwhile.
 
+### Linked final-partition validator evidence
+
+All nine `GlintDocumentCanvasPolicyTest` cases executed and passed in an isolated
+standalone Windows executable against registered 001-028 dependencies. The
+actual public header and fixture were compiled with the generated native-unit
+flags and linked using that target's existing dependencies; an identical ICU
+data file was staged beside the isolated executable. Active source, GN, browser
+core and receipt were not changed. This was not a registered document-delivery
+target or a patched browser run.
+
+Evidence: `D:/CamouFlowNative/document-partition-validator-001-028-linked-v4/`
+contains compile/link logs, exact JSON cases and `proof.json`. Input hashes,
+the executable hash and the unchanged browser core were independently rechecked.
+Coverage includes owned seed copying, unsupported versions, missing commitment,
+changed origin, retained top-level site/ancestor fields with partitioning off,
+storage nonce, opaque identity and binary/trailing commitment data.
+
+The first isolated attempts retain their failed evidence: linker-path resolution,
+missing adjacent ICU data, then the upstream launcher emitting XML despite the
+JSON output option. The successful run uses `--single-process-tests` and validates
+all nine completed cases, without skips or replacing failed reports.
+These tests prove the validator's accept/reject behavior, not safe navigation
+cancellation, pre-teardown final-partition calculation or first-script delivery.
+
 ### Worker handoff fixture lifetime correction
 
 The first linked `blink_unittests` run on registered 001-027 inputs completed

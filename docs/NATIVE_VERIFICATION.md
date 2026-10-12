@@ -305,6 +305,16 @@ This is Blink fixture ownership/timing evidence, not a new browser release,
 real browser-partition seed equality or Canvas protection/admission.
 Future Canvas drafts remain outside the active checkout until their own gates.
 
+The nine final-partition validator cases also passed in an isolated standalone
+native executable, using the generated native-unit flags and existing linked
+dependencies on registered 001-028 inputs. Raw evidence lives under
+`document-partition-validator-001-028-linked-v4/`; source/fixture hashes, exact
+JSON cases, executable hash and unchanged browser core were independently
+rechecked. This is not the actual DocumentLoader/navigation target. It proves
+binary partition comparison and rejection semantics, not recovery after frame
+teardown or browser-to-renderer delivery. Failed staging/launcher attempts remain
+separate; they were not converted into passing reports.
+
 An independent unregistered `document_canvas_seed_handoff.patch` now prepares
 the immutable Blink document-side carrier. A native-only initializer owns one
 surface-seed snapshot, construction copies it into a const Document field and
