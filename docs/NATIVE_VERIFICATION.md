@@ -31,6 +31,11 @@ report paths outside source/application repositories. Keep raw outputs and
 measured executable/core-DLL hashes; a count without exact names and successful
 completion is insufficient. Failed or skipped cases are not a passing gate.
 
+The standalone Canvas baseline also measures the executable and Windows core
+DLLs before and after observation, and refuses to overwrite an existing report.
+For a relocated Windows payload, pass `--windows-library-directory` with its
+canonical versioned DLL directory. Canvas consistency is not masking acceptance.
+
 ## Required release checks
 
 - Profile separation and persistence for cookies, localStorage, IndexedDB,

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import hashlib
 import json
 import platform
 import sys
@@ -18,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 from playwright.async_api import async_playwright
 from scripts.verify_native_hardware import WORKERS
-from scripts.verify_native_runtime import FixtureHandler, FixtureServer
+from scripts.verify_native_runtime import FixtureHandler, FixtureServer, measure_runtime_core
 
 
 READ = """async () => {
@@ -244,7 +243,11 @@ def main() -> int:
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--windows-library-directory", type=Path,
+                        help="Canonical DLL directory inside a relocated Windows browser package")
     args = parser.parse_args()
+    if args.report.exists():
+        parser.error("Refusing to overwrite existing Canvas evidence")
     report = {"schema": 1, "platform": platform.platform(), "passed": False, "checks": [],
               "scope": "Unmodified Canvas consistency baseline only; no masking or anti-bot claim"}
     server = None
@@ -253,17 +256,17 @@ def main() -> int:
         executable = args.executable.resolve(strict=True)
         if not executable.is_file():
             raise ValueError("An explicit Chromium executable is required")
-        with executable.open("rb") as stream:
-            report["binary_sha256_measured"] = hashlib.file_digest(stream, "sha256").hexdigest()
+        core = measure_runtime_core(executable, args.windows_library_directory)
+        report["runtime_core_sha256_measured"] = core
+        report["binary_sha256_measured"] = core[executable.name]
         args.work_dir.mkdir(parents=True, exist_ok=True)
         server = FixtureServer(("127.0.0.1", 0), CanvasFixtureHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         with tempfile.TemporaryDirectory(prefix="native-canvas-owned-", dir=args.work_dir.resolve()) as owned:
             asyncio.run(verify(executable, Path(owned), f"http://127.0.0.1:{server.server_port}", report))
-        with executable.open("rb") as stream:
-            if hashlib.file_digest(stream, "sha256").hexdigest() != report["binary_sha256_measured"]:
-                raise ValueError("Chromium executable changed during Canvas verification")
+        if measure_runtime_core(executable, args.windows_library_directory) != core:
+            raise ValueError("Chromium runtime core changed during Canvas verification")
         report["passed"] = True
     except Exception as error:
         report.update(error=str(error), traceback=traceback.format_exc())
@@ -275,7 +278,8 @@ def main() -> int:
         if thread is not None:
             thread.join(timeout=5)
         args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        with args.report.open("x", encoding="utf-8") as output:
+            output.write(json.dumps(report, indent=2))
     print(json.dumps({"passed": report["passed"], "report": str(args.report), "error": report.get("error")}))
     return 0 if report["passed"] else 1
 

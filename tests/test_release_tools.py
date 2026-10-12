@@ -1848,6 +1848,45 @@ def test_native_hardware_rejection_requires_specific_native_diagnostic(diagnosti
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows runtime core layout")
+@pytest.mark.parametrize("changed", [None, "chrome.dll", "chrome_elf.dll"])
+def test_native_canvas_cli_binds_evidence_to_core_dlls(tmp_path, monkeypatch, changed):
+    import json
+    from scripts import verify_native_canvas as canvas
+
+    for name in ("chrome.exe", "chrome.dll", "chrome_elf.dll"):
+        (tmp_path / name).write_bytes(name.encode())
+    report_path = tmp_path / "canvas.json"
+    monkeypatch.setattr(sys, "argv", ["verify_native_canvas", "--executable", str(tmp_path / "chrome.exe"),
+                                     "--work-dir", str(tmp_path / "work"), "--report", str(report_path)])
+
+    async def simulated_observation(executable, profile, origin, report):
+        if changed:
+            (executable.parent / changed).write_bytes(b"changed native implementation")
+
+    monkeypatch.setattr(canvas, "verify", simulated_observation)
+    assert canvas.main() == (1 if changed else 0)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert set(report["runtime_core_sha256_measured"]) == {"chrome.exe", "chrome.dll", "chrome_elf.dll"}
+    assert report["binary_sha256_measured"] == report["runtime_core_sha256_measured"]["chrome.exe"]
+    assert report["passed"] is (changed is None)
+    if changed:
+        assert "runtime core changed" in report["error"]
+
+
+def test_native_canvas_cli_refuses_to_overwrite_evidence(tmp_path, monkeypatch):
+    from scripts import verify_native_canvas as canvas
+
+    report = tmp_path / "existing.json"
+    report.write_text('{"original": true}', encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["verify_native_canvas", "--executable", str(tmp_path / "chrome.exe"),
+                                     "--work-dir", str(tmp_path / "work"), "--report", str(report)])
+    with pytest.raises(SystemExit) as error:
+        canvas.main()
+    assert error.value.code == 2
+    assert report.read_text(encoding="utf-8") == '{"original": true}'
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows runtime core layout")
 @pytest.mark.parametrize("missing", [None, "chrome.dll", "chrome_elf.dll"])
 def test_native_runtime_core_requires_both_dlls_and_detects_relink_without_launcher_change(tmp_path, missing):
     from scripts.verify_native_runtime import measure_runtime_core

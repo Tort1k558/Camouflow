@@ -114,6 +114,25 @@ workspace. Executable hash and browser version match the baseline header.
 This is not a same-version stock Chrome comparison, an AudioWorklet/srcdoc
 check, a transformed-Canvas acceptance gate or evidence for candidate 001–015.
 
+### Code-bound Canvas control comparison — 2026-10-12
+
+A subsequent run used the strengthened verifier measuring `chrome.exe`,
+`chrome.dll` and `chrome_elf.dll` before/after capture. Both the preserved
+001–010 runtime and unpatched Playwright SDK Chromium reported version
+**148.0.7778.96**; each completed the four Canvas checks above successfully.
+Their captured Canvas/security observations were equal, as expected for this
+unmodified-Canvas baseline. This does **not** demonstrate profile unlinkability.
+
+| Runtime | Executable SHA-256 | Private report |
+| --- | --- | --- |
+| Glint 001–010 baseline | `61e97ba3335f64836b3abcf93d67af0d6ddd0d06c291b4592b1448643b35e222` | `canvas-core-calibration-001-010.json` |
+| Unpatched SDK control | `290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635` | `canvas-stock-calibration-20261012.json` |
+
+Reports retain all three measured code hashes. The control is SDK Chromium,
+not a branded consumer Chrome installation or a commercial-engine benchmark.
+Coverage remains limited to the tested Canvas paths and contexts; it does not
+validate other surfaces or certify the new 001–015 build.
+
 ## Sources and maintenance
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.
