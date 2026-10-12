@@ -21,16 +21,19 @@ PATCHES = (
     "document_canvas_browser_producer.patch",
     "document_canvas_first_script_tests.patch",
     "document_navigation_integration_tests.patch",
+    "document_storage_key_resolution.patch",
 )
 CANONICAL = {
     **{name: "third_party/blink/public/common/native_privacy/" + name for name in (
         "document_canvas_commit.h", "document_canvas_policy_validation.h",
+        "document_storage_key_resolution.h",
     )},
     **{name: "content/browser/camouflow_native/" + name for name in (
         "privacy_document_commit.h", "privacy_document_commit.cc",
         "privacy_document_commit_unittest.cc", "privacy_navigation_throttle.h",
         "privacy_navigation_throttle.cc", "privacy_navigation_throttle_unittest.cc",
         "privacy_navigation_integration_unittest.cc",
+        "document_storage_key_resolution_unittest.cc",
     )},
 }
 

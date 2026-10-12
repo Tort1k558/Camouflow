@@ -1,0 +1,288 @@
+diff --git a/third_party/blink/public/common/native_privacy/document_storage_key_resolution.h b/third_party/blink/public/common/native_privacy/document_storage_key_resolution.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/document_storage_key_resolution.h
+@@ -0,0 +1,26 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_STORAGE_KEY_RESOLUTION_H_
++#define THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_STORAGE_KEY_RESOLUTION_H_
++
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++#include "url/origin.h"
++
++namespace blink {
++
++// Mirrors the pinned DocumentLoader normalization after origin selection.
++// The browser caller must use its trusted origin-to-commit, never a URL guess.
++// This does not select the origin or make a navigation safe to cancel.
++inline StorageKey ResolveGlintDocumentStorageKey(
++    const StorageKey& provisional_partition,
++    const url::Origin& final_origin) {
++  if (provisional_partition.origin().opaque() &&
++      !provisional_partition.nonce()) {
++    return StorageKey::CreateFirstParty(final_origin);
++  }
++  return provisional_partition.WithOrigin(final_origin);
++}
++
++}  // namespace blink
++
++#endif  // THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_STORAGE_KEY_RESOLUTION_H_
+diff --git a/content/browser/camouflow_native/document_storage_key_resolution_unittest.cc b/content/browser/camouflow_native/document_storage_key_resolution_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/document_storage_key_resolution_unittest.cc
+@@ -0,0 +1,113 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "third_party/blink/public/common/native_privacy/document_storage_key_resolution.h"
++
++#include <array>
++
++#include "base/unguessable_token.h"
++#include "net/base/schemeful_site.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h"
++#include "url/gurl.h"
++
++namespace blink {
++namespace {
++
++url::Origin Origin() {
++  return url::Origin::Create(GURL("https://canvas.test/"));
++}
++
++TEST(GlintDocumentStorageKeyTest, FirstPartyPartitionRemainsStable) {
++  const auto origin = Origin();
++  const auto key = StorageKey::CreateFirstParty(origin);
++  EXPECT_EQ(ResolveGlintDocumentStorageKey(key, origin).SerializeForNativePrivacy(),
++            key.SerializeForNativePrivacy());
++}
++
++TEST(GlintDocumentStorageKeyTest, NonOpaqueOriginChangeRetainsTopLevelSite) {
++  const auto key = StorageKey::CreateFirstParty(Origin());
++  const auto next = url::Origin::Create(GURL("https://next.test/"));
++  const auto resolved = ResolveGlintDocumentStorageKey(key, next);
++  EXPECT_EQ(resolved.origin(), next);
++  EXPECT_EQ(resolved.top_level_site(), key.top_level_site());
++  EXPECT_NE(resolved.SerializeForNativePrivacy(), key.SerializeForNativePrivacy());
++}
++
++TEST(GlintDocumentStorageKeyTest, DisabledPartitioningRetainsNativeSiteEncoding) {
++  const auto origin = Origin();
++  const auto first = StorageKey::Create(
++      origin, net::SchemefulSite(GURL("https://first.test/")),
++      mojom::AncestorChainBit::kCrossSite, false);
++  const auto second = StorageKey::Create(
++      origin, net::SchemefulSite(GURL("https://second.test/")),
++      mojom::AncestorChainBit::kCrossSite, false);
++  const auto resolved = ResolveGlintDocumentStorageKey(first, origin);
++  EXPECT_EQ(resolved.SerializeForNativePrivacy(), first.SerializeForNativePrivacy());
++  EXPECT_NE(resolved.SerializeForNativePrivacy(), second.SerializeForNativePrivacy());
++}
++
++TEST(GlintDocumentStorageKeyTest, EnabledPartitioningRetainsCrossSitePartition) {
++  const auto origin = Origin();
++  const auto key = StorageKey::Create(
++      origin, net::SchemefulSite(GURL("https://top.test/")),
++      mojom::AncestorChainBit::kCrossSite, true);
++  const auto resolved = ResolveGlintDocumentStorageKey(key, origin);
++  EXPECT_EQ(resolved.top_level_site(), key.top_level_site());
++  EXPECT_EQ(resolved.ancestor_chain_bit(), mojom::AncestorChainBit::kCrossSite);
++  EXPECT_EQ(resolved.SerializeForNativePrivacy(), key.SerializeForNativePrivacy());
++}
++
++TEST(GlintDocumentStorageKeyTest, OpaqueWithoutStorageNonceUsesFinalFirstPartyKey) {
++  const auto provisional = StorageKey::CreateFirstParty(url::Origin());
++  const auto final_origin = Origin();
++  const auto resolved = ResolveGlintDocumentStorageKey(provisional, final_origin);
++  const auto expected = StorageKey::CreateFirstParty(final_origin);
++  EXPECT_EQ(resolved.SerializeForNativePrivacy(), expected.SerializeForNativePrivacy());
++  EXPECT_FALSE(resolved.nonce());
++}
++
++TEST(GlintDocumentStorageKeyTest, OpaqueWithStorageNoncePreservesNonce) {
++  const auto nonce = base::UnguessableToken::Create();
++  const auto provisional = StorageKey::CreateWithNonce(url::Origin(), nonce);
++  const auto final_origin = Origin();
++  const auto resolved = ResolveGlintDocumentStorageKey(provisional, final_origin);
++  ASSERT_TRUE(resolved.nonce());
++  EXPECT_EQ(*resolved.nonce(), nonce);
++  EXPECT_EQ(resolved.SerializeForNativePrivacy(),
++            StorageKey::CreateWithNonce(final_origin, nonce).SerializeForNativePrivacy());
++}
++
++TEST(GlintDocumentStorageKeyTest, FinalOpaqueIdentityIsNotRegenerated) {
++  const auto provisional = StorageKey::CreateFirstParty(url::Origin());
++  const url::Origin final_origin;
++  const auto resolved = ResolveGlintDocumentStorageKey(provisional, final_origin);
++  EXPECT_EQ(resolved.origin(), final_origin);
++  EXPECT_EQ(resolved.SerializeForNativePrivacy(),
++            StorageKey::CreateFirstParty(final_origin).SerializeForNativePrivacy());
++  EXPECT_NE(resolved.SerializeForNativePrivacy(), provisional.SerializeForNativePrivacy());
++}
++
++TEST(GlintDocumentStorageKeyTest, ResolutionDoesNotMutateProvisionalPartition) {
++  const auto provisional = StorageKey::CreateFirstParty(url::Origin());
++  const auto before = provisional.SerializeForNativePrivacy();
++  const auto final_origin = Origin();
++  const auto first = ResolveGlintDocumentStorageKey(provisional, final_origin);
++  const auto second = ResolveGlintDocumentStorageKey(provisional, final_origin);
++  EXPECT_EQ(first.SerializeForNativePrivacy(), second.SerializeForNativePrivacy());
++  EXPECT_EQ(provisional.SerializeForNativePrivacy(), before);
++}
++
++TEST(GlintDocumentStorageKeyTest, ValidatorRejectsUnresolvedCommitment) {
++  const auto provisional = StorageKey::CreateFirstParty(url::Origin());
++  const auto resolved = ResolveGlintDocumentStorageKey(provisional, Origin());
++  const auto before = provisional.SerializeForNativePrivacy();
++  const auto after = resolved.SerializeForNativePrivacy();
++  ASSERT_TRUE(before);
++  ASSERT_TRUE(after);
++  std::array<uint8_t, 32> seed{};
++  EXPECT_FALSE(ValidateGlintDocumentCanvasPolicy(1, *before, seed, resolved));
++  EXPECT_TRUE(ValidateGlintDocumentCanvasPolicy(1, *after, seed, resolved));
++}
++
++}  // namespace
++}  // namespace blink
+diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
+--- a/third_party/blink/public/common/BUILD.gn
++++ b/third_party/blink/public/common/BUILD.gn
+@@ -300,6 +300,7 @@
+     "sms/webotp_service_outcome.h",
+     "native_privacy/document_canvas_commit.h",
+     "native_privacy/document_canvas_policy_validation.h",
++    "native_privacy/document_storage_key_resolution.h",
+     "storage_key/storage_key.h",
+     "subresource_load_metrics.h",
+     "switches.h",
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -3892,6 +3892,7 @@
+   sources = [
+     "//base/test/run_all_unittests.cc",
+     "camouflow_native/document_canvas_policy_validation_unittest.cc",
++    "camouflow_native/document_storage_key_resolution_unittest.cc",
+     "camouflow_native/privacy_key_derivation_unittest.cc",
+     "camouflow_native/privacy_profile_key_unittest.cc",
+     "camouflow_native/privacy_key_service_unittest.cc",
+diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
+--- a/content/browser/renderer_host/navigation_request.cc
++++ b/content/browser/renderer_host/navigation_request.cc
+@@ -203,6 +203,7 @@
+ #include "third_party/blink/public/common/fenced_frame/redacted_fenced_frame_config.h"
+ #include "third_party/blink/public/common/frame/fenced_frame_sandbox_flags.h"
+ #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
++#include "third_party/blink/public/common/native_privacy/document_storage_key_resolution.h"
+ #include "third_party/blink/public/common/navigation/navigation_params.h"
+ #include "third_party/blink/public/common/navigation/navigation_params_mojom_traits.h"
+ #include "third_party/blink/public/common/navigation/navigation_policy.h"
+@@ -6731,7 +6732,9 @@
+   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+           kGlintDocumentPrivacyBootstrapSwitch)) {
+     auto policy = CreatePrivacyDocumentCanvasCommit(
+-        GetRenderFrameHost()->GetBrowserContext(), commit_params_->storage_key);
++        GetRenderFrameHost()->GetBrowserContext(),
++        blink::ResolveGlintDocumentStorageKey(commit_params_->storage_key,
++                                              origin_to_commit));
+     if (!policy) {
+       // Failure destroys this request; do not send an unprotected commit.
+       OnRequestFailedInternal(
+diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
+--- a/third_party/blink/renderer/core/loader/document_loader.cc
++++ b/third_party/blink/renderer/core/loader/document_loader.cc
+@@ -31,6 +31,7 @@
+ 
+ #include <algorithm>
+ #include "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h"
++#include "third_party/blink/public/common/native_privacy/document_storage_key_resolution.h"
+ #include <memory>
+ #include <optional>
+ #include <utility>
+@@ -2856,16 +2857,8 @@
+   frame_->DomWindow()->SetPolicyContainer(std::move(policy_container_));
+   frame_->DomWindow()->SetContentSecurityPolicy(csp);
+ 
+-  BlinkStorageKey storage_key(storage_key_);
+-  // TODO(crbug.com/1199077): For some reason `storage_key_` is occasionally
+-  // null. If that's the case this will create one based on the
+-  // `security_origin`.
+-  // TODO(crbug.com/1199077): Some tests (potentially other code?) rely on an
+-  // opaque origin + nonce. Investigate whether this combination should be
+-  // disallowed.
+-  if (storage_key.GetSecurityOrigin()->IsOpaque() && !storage_key.GetNonce()) {
+-    storage_key = BlinkStorageKey::CreateFirstParty(security_origin);
+-  }
++  BlinkStorageKey storage_key(ResolveGlintDocumentStorageKey(
++      storage_key_, security_origin->ToUrlOrigin()));
+ 
+   // Now that we have the final window and Agent, ensure the security origin has
+   // the appropriate agent cluster id. This may derive a new security origin.
+diff --git a/third_party/blink/renderer/core/loader/document_loader_test.cc b/third_party/blink/renderer/core/loader/document_loader_test.cc
+--- a/third_party/blink/renderer/core/loader/document_loader_test.cc
++++ b/third_party/blink/renderer/core/loader/document_loader_test.cc
+@@ -16,9 +16,11 @@
+ #include "base/test/scoped_feature_list.h"
+ #include "base/unguessable_token.h"
+ #include "net/base/features.h"
++#include "net/base/schemeful_site.h"
+ #include "net/storage_access_api/status.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ #include "third_party/blink/public/common/features.h"
++#include "third_party/blink/public/common/native_privacy/document_storage_key_resolution.h"
+ #include "third_party/blink/public/platform/platform.h"
+ #include "third_party/blink/public/platform/web_encoding_data.h"
+ #include "third_party/blink/public/platform/web_navigation_body_loader.h"
+@@ -343,6 +345,49 @@
+                     TestMode::kUnpartitionedStorageParttionedWithSelfLinks,
+                     TestMode::kPartitionedStorageUnpartitionedLinks,
+                     TestMode::kPartitionedStorageAndLinksWithSelfLinks));
++
++TEST_P(DocumentLoaderTest, GlintStorageKeyResolutionMatchesBlinkNormalization) {
++  const auto origin = url::Origin::Create(GURL("https://canvas.test/"));
++  const std::array<StorageKey, 5> keys = {
++      StorageKey::CreateFirstParty(origin),
++      StorageKey::Create(origin, net::SchemefulSite(GURL("https://top.test/")),
++                         mojom::AncestorChainBit::kCrossSite, false),
++      StorageKey::Create(origin, net::SchemefulSite(GURL("https://top.test/")),
++                         mojom::AncestorChainBit::kCrossSite, true),
++      StorageKey::CreateFirstParty(url::Origin()),
++      StorageKey::CreateWithNonce(url::Origin(), base::UnguessableToken::Create())};
++  const auto final_origin = SecurityOrigin::Create(KURL("https://next.test/"));
++  for (const auto& key : keys) {
++    BlinkStorageKey expected(key);
++    if (expected.GetSecurityOrigin()->IsOpaque() && !expected.GetNonce()) {
++      expected = BlinkStorageKey::CreateFirstParty(final_origin);
++    }
++    expected = expected.WithOrigin(final_origin);
++    BlinkStorageKey resolved(
++        ResolveGlintDocumentStorageKey(key, final_origin->ToUrlOrigin()));
++    resolved = resolved.WithOrigin(final_origin);
++    EXPECT_EQ(static_cast<StorageKey>(resolved).SerializeForNativePrivacy(),
++              static_cast<StorageKey>(expected).SerializeForNativePrivacy());
++    EXPECT_EQ(resolved.GetSecurityOrigin(), final_origin);
++  }
++}
++
++TEST_P(DocumentLoaderTest, GlintStorageKeyResolutionRetainsOwnedSecurityOrigin) {
++  auto final_origin = SecurityOrigin::CreateUniqueOpaque();
++  final_origin->SetOpaqueOriginIsPotentiallyTrustworthy(true);
++  final_origin->GrantLoadLocalResources();
++  const auto key = StorageKey::CreateWithNonce(
++      url::Origin(), base::UnguessableToken::Create());
++  BlinkStorageKey resolved(
++      ResolveGlintDocumentStorageKey(key, final_origin->ToUrlOrigin()));
++  resolved = resolved.WithOrigin(final_origin);
++  EXPECT_EQ(resolved.GetSecurityOrigin(), final_origin);
++  EXPECT_TRUE(resolved.GetSecurityOrigin()->IsPotentiallyTrustworthy());
++  EXPECT_TRUE(resolved.GetSecurityOrigin()->CanLoadLocalResources());
++  EXPECT_EQ(static_cast<StorageKey>(resolved).SerializeForNativePrivacy(),
++            static_cast<StorageKey>(BlinkStorageKey::CreateWithNonce(
++                final_origin, *key.nonce())).SerializeForNativePrivacy());
++}
+ 
+ TEST_P(DocumentLoaderTest, SingleChunk) {
+   class TestDelegate : public URLLoaderTestDelegate {

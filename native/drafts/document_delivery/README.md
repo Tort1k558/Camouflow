@@ -6,7 +6,8 @@ passed, followed by a combined 54-case BrowserContext/IPC run. Their canonical
 source snapshots remain here. Startup gates and thread handoff below are now
 registered as 0021-0026, with shared-worker rejection fixed by 0027. The linked
 001-027 browser passed all 40 owned startup/restart/shared-client/rejection checks;
-the four Blink handoff unit cases still require execution. Canvas readback
+all four Blink handoff cases passed after test-only correction 0028. The nine
+final-partition validator cases passed through registered target 0029. Canvas readback
 patches remain unregistered. No Canvas protection or
 runtime capability is enabled by these files. Earlier isolated evidence below
 is historical and must not be mistaken for the current linked unit run.
@@ -790,6 +791,51 @@ inconsistent frame, not cancel a navigation safely. Keep the rejection guard
 until a complete pre-teardown decision or coherent failure-document protocol is
 implemented and verified; do not activate the privacy capability meanwhile.
 
+### Shared storage-key resolution candidate
+
+`document_storage_key_resolution.patch` is the sixth ordered document candidate,
+not a registered Chromium patch. Its shared helper mirrors the pinned
+DocumentLoader normalization: an opaque provisional origin without a storage
+nonce becomes a first-party key for the selected final origin; all other keys
+retain their partition state through WithOrigin. The browser producer derives
+the seed from this resolved key using its trusted `origin_to_commit`. It does
+not change the provisional commit storage key or accept a renderer-supplied
+partition. The DocumentLoader candidate uses the same normalization and retains
+its final WithOrigin with the owned SecurityOrigin after agent-cluster tagging.
+
+Nine standalone `GlintDocumentStorageKeyTest` cases executed and passed:
+`D:/CamouFlowNative/document-storage-key-resolution-001-029-linked-v1/proof.json`.
+They cover retained partition fields with partitioning on/off, opaque origin,
+nonce preservation, copied/non-mutated inputs and resolved validator commitment.
+These are common StorageKey unit checks, not proof of Blink equivalence.
+
+Two additional DocumentLoaderTest definitions prepare comparison against actual
+BlinkStorageKey normalization and preservation of the owned SecurityOrigin and
+its trust/local-resource flags. The fixture's four existing partition/link modes
+intend eight cases; none has executed. Six-candidate public replay passed over
+29 composed/canonical paths:
+`document-delivery-public-replay-001-029-resolution-v3.json`.
+
+The first syntax check of the new Blink definitions failed because native
+serialization belongs to common StorageKey, not BlinkStorageKey. The corrected
+comparisons explicitly convert both actual and expected keys to StorageKey;
+the existing serialization checks are retained. Failed evidence remains at
+`D:/CamouFlowNative/document-storage-key-resolution-cpp-check-v3/proof.json`.
+The corrected candidate passed all four isolated translation-unit checks:
+NavigationRequest, production DocumentLoader, DocumentLoaderTest (including the
+existing Blink GC plugin) and the common nine-case fixture. Evidence:
+`D:/CamouFlowNative/document-storage-key-resolution-cpp-check-v4/proof.json`.
+This is C++ syntax evidence only; the eight Blink runtime cases remain unexecuted.
+
+Cancellation remains a separate blocker. In the pinned NavigationRequest,
+ReuseRequestNavigationClientForCommitIfNeeded may ignore disconnects for a
+cross-RenderFrameHost commit. Therefore ResetForAbort alone does not prove
+cancellation of the selected pending commit. A rejection path must bind the
+committing frame and exact owned navigation token, handle late/duplicate replies
+and speculative-host cleanup, and prove that the previous document remains
+usable before its teardown. The final validation CHECK remains in the draft;
+neither this normalization nor source replay activates privacy protection.
+
 ### Linked final-partition validator evidence
 
 All nine `GlintDocumentCanvasPolicyTest` cases executed and passed in an isolated
@@ -878,7 +924,7 @@ partition-to-worker equality, Canvas protection or production admission.
 
 Use a new absolute report path outside both repositories. The checker verifies
 the pinned revision and registered source/V8 patch replay with the existing build
-utilities, then applies the five document candidates in order inside an owned
+utilities, then applies the six document candidates in order inside an owned
 temporary Git overlay. It checks canonical helper/fixture copies, records their
 hashes and its own source hash, and rejects source/input drift, unsafe paths,
 non-source modes, binary patches and evidence overwrites. Active Chromium/GN
