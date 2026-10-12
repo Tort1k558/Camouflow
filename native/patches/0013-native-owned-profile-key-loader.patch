@@ -1,0 +1,292 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -3866,6 +3866,8 @@
+     "camouflow_native/privacy_key_derivation.cc",
+     "camouflow_native/privacy_key_derivation.h",
+     "camouflow_native/privacy_partition.h",
++    "camouflow_native/privacy_profile_key.cc",
++    "camouflow_native/privacy_profile_key.h",
+   ]
+   deps = [
+     "//base",
+@@ -3878,6 +3880,7 @@
+   sources = [
+     "//base/test/run_all_unittests.cc",
+     "camouflow_native/privacy_key_derivation_unittest.cc",
++    "camouflow_native/privacy_profile_key_unittest.cc",
+   ]
+   deps = [
+     ":camouflow_native_privacy",
+diff --git a/content/browser/camouflow_native/privacy_profile_key.h b/content/browser/camouflow_native/privacy_profile_key.h
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_profile_key.h
+@@ -0,0 +1,38 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_PROFILE_KEY_H_
++#define CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_PROFILE_KEY_H_
++
++#include <array>
++#include <memory>
++#include <optional>
++#include <string>
++#include <string_view>
++
++#include "base/files/file_path.h"
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++
++namespace camouflow::native {
++
++class PrivacyProfileKey {
++ public:
++  // Takes ownership of the JSON buffer so it can be cleared after parsing.
++  static std::unique_ptr<PrivacyProfileKey> Parse(std::string identity_json);
++  // Caller must own the canonical profile directory and its process lock.
++  // Windows only; does not create or regenerate missing/invalid identity files.
++  static std::unique_ptr<PrivacyProfileKey> LoadOwnedProfile(const base::FilePath& profile);
++  ~PrivacyProfileKey();
++  PrivacyProfileKey(const PrivacyProfileKey&) = delete;
++  PrivacyProfileKey& operator=(const PrivacyProfileKey&) = delete;
++
++  std::optional<std::array<uint8_t, 32>> Derive(
++      const blink::StorageKey& storage_key, std::string_view surface) const;
++
++ private:
++  explicit PrivacyProfileKey(const std::array<uint8_t, 32>& key);
++  std::array<uint8_t, 32> key_;
++};
++
++}  // namespace camouflow::native
++
++#endif  // CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_PROFILE_KEY_H_
+diff --git a/content/browser/camouflow_native/privacy_profile_key.cc b/content/browser/camouflow_native/privacy_profile_key.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_profile_key.cc
+@@ -0,0 +1,105 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/camouflow_native/privacy_profile_key.h"
++
++#include <algorithm>
++
++#include "base/json/json_reader.h"
++#include "base/memory/raw_ptr.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/threading/scoped_blocking_call.h"
++#include "build/build_config.h"
++#include "content/browser/camouflow_native/privacy_key_derivation.h"
++#include "third_party/boringssl/src/include/openssl/mem.h"
++
++#if BUILDFLAG(IS_WIN)
++#include <windows.h>
++#include "base/win/scoped_handle.h"
++#endif
++
++namespace camouflow::native {
++namespace {
++constexpr size_t kMaximumIdentityBytes = 256;
++
++struct StringWiper {
++  raw_ptr<std::string> value;
++  ~StringWiper() {
++    if (value) {
++      OPENSSL_cleanse(value->data(), value->size());
++    }
++  }
++};
++
++struct DecodedKey {
++  std::array<uint8_t, 32> bytes{};
++  ~DecodedKey() { OPENSSL_cleanse(bytes.data(), bytes.size()); }
++};
++}  // namespace
++
++PrivacyProfileKey::PrivacyProfileKey(const std::array<uint8_t, 32>& key) : key_(key) {}
++PrivacyProfileKey::~PrivacyProfileKey() { OPENSSL_cleanse(key_.data(), key_.size()); }
++
++std::unique_ptr<PrivacyProfileKey> PrivacyProfileKey::Parse(std::string identity_json) {
++  StringWiper json_wiper{&identity_json};
++  if (identity_json.empty() || identity_json.size() > kMaximumIdentityBytes ||
++      identity_json.starts_with("\xef\xbb\xbf")) {
++    return nullptr;
++  }
++  auto dict = base::JSONReader::ReadDict(identity_json, base::JSON_PARSE_RFC);
++  if (!dict) {
++    return nullptr;
++  }
++  std::string* seed = dict->FindString("seed");
++  StringWiper seed_wiper{seed};
++  if (dict->size() != 2 || dict->FindInt("schema") != 1 || !seed || seed->size() != 64 ||
++      !std::ranges::all_of(*seed, [](char c) {
++        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++      })) {
++    return nullptr;
++  }
++  DecodedKey decoded;
++  if (!base::HexStringToSpan(*seed, decoded.bytes)) {
++    return nullptr;
++  }
++  return std::unique_ptr<PrivacyProfileKey>(new PrivacyProfileKey(decoded.bytes));
++}
++
++std::optional<std::array<uint8_t, 32>> PrivacyProfileKey::Derive(
++    const blink::StorageKey& storage_key, std::string_view surface) const {
++  return DerivePrivacyPartitionKey(key_, storage_key, surface);
++}
++
++std::unique_ptr<PrivacyProfileKey> PrivacyProfileKey::LoadOwnedProfile(const base::FilePath& profile) {
++#if BUILDFLAG(IS_WIN)
++  base::ScopedBlockingCall blocking(FROM_HERE, base::BlockingType::MAY_BLOCK);
++  if (!profile.IsAbsolute() || profile.ReferencesParent()) {
++    return nullptr;
++  }
++  const auto path = profile.AppendASCII("camouflow-native-privacy.json").NormalizePathSeparators();
++  base::win::ScopedHandle file(CreateFileW(path.value().c_str(), GENERIC_READ,
++      FILE_SHARE_READ, nullptr, OPEN_EXISTING,
++      FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_SEQUENTIAL_SCAN, nullptr));
++  if (!file.is_valid() || GetFileType(file.get()) != FILE_TYPE_DISK) {
++    return nullptr;
++  }
++  BY_HANDLE_FILE_INFORMATION info{};
++  if (!GetFileInformationByHandle(file.get(), &info) ||
++      (info.dwFileAttributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY)) ||
++      info.nNumberOfLinks != 1 || info.nFileSizeHigh != 0 || info.nFileSizeLow == 0 ||
++      info.nFileSizeLow > kMaximumIdentityBytes) {
++    return nullptr;
++  }
++  std::string payload(info.nFileSizeLow, '\0');
++  StringWiper payload_wiper{&payload};
++  DWORD read = 0;
++  if (!ReadFile(file.get(), payload.data(), info.nFileSizeLow, &read, nullptr) ||
++      read != info.nFileSizeLow) {
++    return nullptr;
++  }
++  return Parse(std::move(payload));
++#else
++  return nullptr;
++#endif
++}
++
++}  // namespace camouflow::native
+diff --git a/content/browser/camouflow_native/privacy_profile_key_unittest.cc b/content/browser/camouflow_native/privacy_profile_key_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_profile_key_unittest.cc
+@@ -0,0 +1,114 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/camouflow_native/privacy_profile_key.h"
++
++#include <type_traits>
++
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/strings/string_number_conversions.h"
++#include "build/build_config.h"
++#include "net/base/schemeful_site.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++#if BUILDFLAG(IS_WIN)
++#include <windows.h>
++#endif
++
++namespace camouflow::native {
++namespace {
++
++constexpr char kIdentity[] = R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})";
++static_assert(!std::is_copy_constructible_v<PrivacyProfileKey>);
++static_assert(!std::is_move_constructible_v<PrivacyProfileKey>);
++
++blink::StorageKey TrustedProfilePartition() {
++  return blink::StorageKey::Create(url::Origin::Create(GURL("https://sub.example.test:8443/a")),
++      net::SchemefulSite(GURL("https://top.test")), blink::mojom::AncestorChainBit::kCrossSite);
++}
++
++TEST(NativePrivacyProfileKeyTest, ParsesExistingPythonIdentityAndDerivesKnownKey) {
++  auto key = PrivacyProfileKey::Parse(kIdentity);
++  ASSERT_TRUE(key);
++  const auto derived = key->Derive(TrustedProfilePartition(), "canvas");
++  ASSERT_TRUE(derived);
++  EXPECT_EQ(base::HexEncodeLower(*derived), "9f23acffa6e82a360ff7e073aeffd8d3db27c4117957f31c1c90bab4ea445f6a");
++  EXPECT_FALSE(key->Derive(TrustedProfilePartition(), "unknown"));
++}
++
++TEST(NativePrivacyProfileKeyTest, RejectsMalformedSchemaWithoutFallback) {
++  for (const std::string invalid : {
++      "", "[]", "{}", "invalid", R"({"schema":true,"seed":"x"})",
++      R"({"schema":1.0,"seed":"x"})", R"({"schema":2,"seed":"x"})",
++      R"({"schema":1,"seed":null})", R"({"schema":1,"seed":"x"})"}) {
++    EXPECT_FALSE(PrivacyProfileKey::Parse(invalid));
++  }
++  std::string extra = kIdentity;
++  for (const std::string schema : {"true", "1.0", "2"}) {
++    std::string valid_seed_wrong_schema = kIdentity;
++    valid_seed_wrong_schema.replace(valid_seed_wrong_schema.find(":1"), 2, ":" + schema);
++    EXPECT_FALSE(PrivacyProfileKey::Parse(valid_seed_wrong_schema));
++  }
++  extra.insert(extra.size() - 1, ",\"extra\":1");
++  EXPECT_FALSE(PrivacyProfileKey::Parse(extra));
++  EXPECT_FALSE(PrivacyProfileKey::Parse(std::string(257, ' ')));
++}
++
++TEST(NativePrivacyProfileKeyTest, RejectsUppercaseAndBom) {
++  std::string upper = kIdentity;
++  upper[upper.find("0a")] = 'A';
++  EXPECT_FALSE(PrivacyProfileKey::Parse(upper));
++  EXPECT_FALSE(PrivacyProfileKey::Parse(std::string("\xef\xbb\xbf") + kIdentity));
++}
++
++#if BUILDFLAG(IS_WIN)
++TEST(NativePrivacyProfileKeyTest, LoadsOwnedFileAndKeepsPrivateSnapshot) {
++  base::ScopedTempDir owned;
++  ASSERT_TRUE(owned.CreateUniqueTempDir());
++  const auto path = owned.GetPath().AppendASCII("camouflow-native-privacy.json");
++  ASSERT_TRUE(base::WriteFile(path, kIdentity));
++  auto key = PrivacyProfileKey::LoadOwnedProfile(owned.GetPath());
++  ASSERT_TRUE(key);
++  const auto before = key->Derive(TrustedProfilePartition(), "canvas");
++  ASSERT_TRUE(base::WriteFile(path, "invalid"));
++  EXPECT_EQ(before, key->Derive(TrustedProfilePartition(), "canvas"));
++  EXPECT_FALSE(PrivacyProfileKey::LoadOwnedProfile(owned.GetPath()));
++  std::string unchanged;
++  ASSERT_TRUE(base::ReadFileToString(path, &unchanged));
++  EXPECT_EQ(unchanged, "invalid");
++}
++
++TEST(NativePrivacyProfileKeyTest, MissingFileIsNotGenerated) {
++  base::ScopedTempDir owned;
++  ASSERT_TRUE(owned.CreateUniqueTempDir());
++  EXPECT_FALSE(PrivacyProfileKey::LoadOwnedProfile(owned.GetPath()));
++  EXPECT_FALSE(base::PathExists(owned.GetPath().AppendASCII("camouflow-native-privacy.json")));
++  EXPECT_FALSE(PrivacyProfileKey::LoadOwnedProfile(base::FilePath(FILE_PATH_LITERAL("relative"))));
++}
++
++TEST(NativePrivacyProfileKeyTest, RejectsDirectoryAndOversizedFile) {
++  base::ScopedTempDir owned;
++  ASSERT_TRUE(owned.CreateUniqueTempDir());
++  const auto path = owned.GetPath().AppendASCII("camouflow-native-privacy.json");
++  ASSERT_TRUE(base::CreateDirectory(path));
++  EXPECT_FALSE(PrivacyProfileKey::LoadOwnedProfile(owned.GetPath()));
++  ASSERT_TRUE(base::DeletePathRecursively(path));
++  ASSERT_TRUE(base::WriteFile(path, std::string(257, ' ')));
++  EXPECT_FALSE(PrivacyProfileKey::LoadOwnedProfile(owned.GetPath()));
++}
++
++TEST(NativePrivacyProfileKeyTest, RejectsHardLinkedIdentity) {
++  base::ScopedTempDir owned;
++  ASSERT_TRUE(owned.CreateUniqueTempDir());
++  const auto source = owned.GetPath().AppendASCII("source.json");
++  const auto identity = owned.GetPath().AppendASCII("camouflow-native-privacy.json");
++  ASSERT_TRUE(base::WriteFile(source, kIdentity));
++  ASSERT_TRUE(CreateHardLinkW(identity.value().c_str(), source.value().c_str(), nullptr));
++  EXPECT_FALSE(PrivacyProfileKey::LoadOwnedProfile(owned.GetPath()));
++}
++#endif
++
++}  // namespace
++}  // namespace camouflow::native

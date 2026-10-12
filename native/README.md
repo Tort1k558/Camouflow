@@ -99,6 +99,35 @@ fingerprint capabilities from this filesystem patch.
 
 ## Current Windows source build
 
+### Owned profile key loader (0013; 17 native tests passed)
+
+`0013-native-owned-profile-key-loader.patch` adds a noncopyable browser-only
+key container. It parses the existing bounded schema-1 Python identity JSON,
+rejects invalid schema/type/shape, uppercase or malformed seed and BOM, and
+returns only derived surface keys. Owned JSON/decoded buffers and retained key
+bytes are cleared with the existing BoringSSL primitive; no root-key getter or
+logging path is exposed. This is not at-rest encryption or a guarantee that
+every allocator/parser temporary is securely erased.
+
+The Windows loader opens only the fixed identity filename from a caller-owned
+absolute profile directory. It opens the leaf reparse point itself and rejects
+reparse/directory handles, non-disk files, multiple hard links and invalid size.
+It does not share write/delete access while reading and does not create or
+regenerate missing/invalid identities. Parent-directory ownership and process
+locking are caller preconditions, not a new protection against arbitrary
+ancestor-directory replacement. Other-platform file loading is unsupported.
+
+The first compiler attempt rejected a raw pointer member; it was corrected to
+Chromium's existing `raw_ptr` pattern only after the failed build was terminal.
+All 17 corrected native tests passed: the ten derivation/vector tests plus seven
+profile-container/loading cases, including snapshot retention, missing/invalid
+file behavior, schema rejection and real Windows hard-link rejection. Proof on
+D: `native-privacy-profile-key-loader-corrected-unit-proof.json`; raw results:
+`native-privacy-profile-key-loader-corrected-unit-results.json`. The 0010 browser
+baseline, receipt and GN arguments were unchanged. The browser keyed service,
+off-the-record lifetime, renderer/worker IPC and readback protection still need
+integration; this source set is not active in the production browser.
+
 ### Browser key derivation (0012; ten native tests passed)
 
 `0012-native-browser-privacy-key-derivation.patch` adds a browser-layer source

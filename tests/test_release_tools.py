@@ -848,15 +848,21 @@ def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tm
                                   "0009-native-sql-extended-paths.patch",
                                   "0010-native-windows-profile-namespace.patch",
                                   "0011-native-privacy-partition-serialization.patch",
-                                  "0012-native-browser-privacy-key-derivation.patch"])
+                                  "0012-native-browser-privacy-key-derivation.patch",
+                                  "0013-native-owned-profile-key-loader.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
     from scripts import native_build
 
     patch = native_build.ROOT / "native/patches" / name
-    expected = [line.split(" b/", 1)[1] for line in patch.read_text(encoding="utf-8").splitlines()
-                if line.startswith("diff --git ")]
+    related = ([native_build.ROOT / "native/patches" / item for item in
+                ("0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch")]
+               if name in {"0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch"}
+               else [patch])
+    expected = sorted({line.split(" b/", 1)[1] for item in related
+                       for line in item.read_text(encoding="utf-8").splitlines()
+                       if line.startswith("diff --git ")})
     commands = []
 
     def fake_run(args, cwd, env, capture=False):
@@ -865,9 +871,10 @@ def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monk
 
     monkeypatch.setattr(native_build, "run", fake_run)
     assert native_build.source_patches(tmp_path, {}) == [
-        {"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]
+        {"name": item.name, "sha256": hashlib.sha256(item.read_bytes()).hexdigest()} for item in related]
     assert ["git", "read-tree", "--empty"] in commands
-    assert ["git", "apply", "--cached", str(patch)] in commands
+    for item in related:
+        assert ["git", "apply", "--cached", str(item)] in commands
     assert commands[-1] == ["git", "diff", "--exit-code", "--", *sorted(expected)]
 
 
@@ -1223,6 +1230,7 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     (patches / "0010-native-windows-profile-namespace.patch").write_text("", encoding="utf-8")
     (patches / "0011-native-privacy-partition-serialization.patch").write_text("", encoding="utf-8")
     (patches / "0012-native-browser-privacy-key-derivation.patch").write_text("", encoding="utf-8")
+    (patches / "0013-native-owned-profile-key-loader.patch").write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")

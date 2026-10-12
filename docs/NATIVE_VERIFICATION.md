@@ -692,6 +692,42 @@ capabilities have been activated from these unit results. The complete project
 regression suite passed 1,099 tests, including the canonical-header copy and
 independent Python/C++ vector consistency checks.
 
+## Owned profile key container/loading (0013; 17 native tests passed)
+
+The container accepts the existing schema-1 identity, with at most 256 JSON
+bytes and exactly the schema/seed fields. Schema must be integer 1 and seed must
+be 64 lowercase hexadecimal characters; unknown fields/types, BOM and malformed
+payloads are rejected without generating a replacement. The container is neither
+copyable nor movable and exposes derivation, not the root key. Owned JSON/decoded
+buffers and stored key bytes are cleansed; this is not full parser-heap erasure,
+memory-extraction resistance or at-rest encryption.
+
+The Windows leaf is opened with `FILE_FLAG_OPEN_REPARSE_POINT`, read-only sharing
+and `OPEN_EXISTING`; information from that same handle rejects reparse points,
+directories, non-disk handles, multiple hard links and size outside 1..256 bytes.
+The parent directory must already be trusted/owned and process-locked by the
+caller. No arbitrary ancestor TOCTOU or directory-permission isolation is
+claimed. API behavior follows [Microsoft's CreateFileW contract](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew).
+File loading on other platforms remains explicitly unsupported.
+
+After a terminal compiler failure for a raw member pointer, the member was
+corrected to Chromium `raw_ptr` and a fresh test run passed all 17 cases. The
+seven added cases exercise parser/schema checks with valid seed controls,
+Python identity compatibility, retained key snapshot after file mutation,
+missing-file noncreation, invalid-file nonregeneration, directory/oversize
+rejection and real Windows hard-link rejection; the other ten are the previous
+HMAC/vector cases. Proof:
+`D:\CamouFlowNative\native-privacy-profile-key-loader-corrected-unit-proof.json`;
+raw results: `native-privacy-profile-key-loader-corrected-unit-results.json`.
+The failed first-run evidence was retained separately. Existing 0010 browser
+code/receipt and GN arguments remained unchanged through the corrected native
+unit run. This is not keyed-service integration, incognito lifetime handling,
+renderer/worker transport or Canvas/GPU/audio protection; no capabilities were
+activated and no new production browser receipt was issued. The corrected
+project regression suite passed 1,100 tests; its patch fixture now models the
+shared BUILD.gn patch dependency instead of pretending each overlapping patch
+can be validated alone. Exact source replay was not weakened.
+
 The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feature
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred
