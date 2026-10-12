@@ -21,6 +21,7 @@ Column {
         height: 40
         TextField {
             id: input
+            Accessible.name: root.label
             anchors.fill: parent
             anchors.leftMargin: 0
             anchors.rightMargin: 0

@@ -139,6 +139,109 @@ finally:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_browser_settings_keyboard_navigation_and_scroll(tmp_path):
+    script = '''
+import time
+from PyQt6 import sip
+from PyQt6.QtCore import QPointF, Qt, QUrl
+from PyQt6.QtTest import QTest
+from app.storage import db
+from app.ui.qml_app import QmlApplication
+
+db.init_db()
+db.db_set_setting('onboarding_completed', 'true')
+ui = QmlApplication(['Browser keyboard regression'])
+warnings = []
+ui.engine.warnings.connect(lambda rows: warnings.extend(row.toString() for row in rows))
+def pump():
+    for _ in range(10):
+        ui.app.processEvents()
+        time.sleep(.005)
+def find(item, key, value):
+    if item.property(key) == value: return item
+    for child in item.childItems():
+        found = find(child, key, value)
+        if found is not None: return found
+    return None
+def press(key, modifiers=Qt.KeyboardModifier.NoModifier):
+    QTest.keyClick(window, key, modifiers)
+    pump()
+try:
+    ui.engine.load(QUrl.fromLocalFile(str(ui.root_dir / 'Main.qml')))
+    pump()
+    ui.state.setPage('Browser')
+    pump()
+    window = ui.engine.rootObjects()[0]
+    page = find(window.contentItem(), 'objectName', 'browserPage')
+    glint = find(page, 'label', 'Glint')
+    glint.forceActiveFocus()
+    press(Qt.Key.Key_Return)
+    assert ui.browser_settings.engine == 'native'
+    scroll = find(page, 'objectName', 'browserSettingsScroll')
+    permissions = None
+    for _ in range(35):
+        press(Qt.Key.Key_Tab)
+        item = window.activeFocusItem()
+        if item.property('placeholderText') == 'One supported permission per line':
+            permissions = item
+            break
+    assert permissions is not None, 'Permissions field is unreachable by Tab'
+    top = permissions.mapToItem(scroll, QPointF(0, 0)).y()
+    assert top >= 0 and top + permissions.height() <= scroll.height()
+    before = permissions.property('text')
+    press(Qt.Key.Key_Tab)
+    assert window.activeFocusItem() is not permissions
+    assert permissions.property('text') == before, 'Tab must not insert whitespace'
+    press(Qt.Key.Key_Tab, Qt.KeyboardModifier.ShiftModifier)
+    assert window.activeFocusItem() is permissions
+    press(Qt.Key.Key_Tab, Qt.KeyboardModifier.ShiftModifier)
+    toggle = window.activeFocusItem()
+    assert toggle.property('label') == 'Headless', (toggle.metaObject().className(), toggle.property('text'), toggle.property('label'))
+    headless = ui.browser_settings.headlessMode
+    press(Qt.Key.Key_Space)
+    assert ui.browser_settings.headlessMode != headless
+    page.setProperty('tab', 'Fingerprint')
+    pump()
+    glint.forceActiveFocus()
+    found_fonts = False
+    for _ in range(35):
+        press(Qt.Key.Key_Tab)
+        item = window.activeFocusItem()
+        if item.property('placeholderText') == 'Empty = native; include Arial; one family per line':
+            found_fonts = True
+            before = item.property('text')
+            press(Qt.Key.Key_Tab)
+            assert window.activeFocusItem() is not item
+            assert item.property('text') == before
+            break
+    assert found_fonts
+    page.setProperty('tab', 'Runtime')
+    pump()
+    glint.forceActiveFocus()
+    for _ in range(3): press(Qt.Key.Key_Tab)
+    assert window.activeFocusItem().property('text') == 'Engine health'
+    press(Qt.Key.Key_Space)
+    assert page.property('tab') == 'Maintenance'
+    press(Qt.Key.Key_Tab)
+    assert window.activeFocusItem().property('text') == 'Check compatibility'
+    press(Qt.Key.Key_Space)
+    deadline = time.monotonic() + 10
+    while ui.browser_settings.compatibilityRunning and time.monotonic() < deadline:
+        pump()
+    assert not ui.browser_settings.compatibilityRunning
+    assert ui.browser_settings.compatibilityReport != 'Not checked'
+    assert not warnings, warnings
+finally:
+    ui.recorder.shutdown(); ui.operations.shutdown(); ui.ai.shutdown()
+    sip.delete(ui.engine)
+    ui._workspace_lock.unlock()
+'''
+    result = subprocess.run([sys.executable, "-c", script], cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "CAMOUFLOW_DATA_DIR": str(tmp_path), "QT_QPA_PLATFORM": "offscreen"},
+        capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_task_search_and_rapid_page_switches_preserve_qml_contexts(tmp_path):
     script = '''
 import time

@@ -15,6 +15,16 @@ Column {
         ScrollView { anchors.fill: parent; anchors.bottomMargin: 8; clip: true
             TextArea {
                 id: input
+                Accessible.name: mf.label
+                Keys.onTabPressed: function(event) {
+                    var backwards = (event.modifiers & Qt.ShiftModifier) !== 0
+                    input.nextItemInFocusChain(!backwards).forceActiveFocus(backwards ? Qt.BacktabFocusReason : Qt.TabFocusReason)
+                    event.accepted = true
+                }
+                Keys.onBacktabPressed: function(event) {
+                    input.nextItemInFocusChain(false).forceActiveFocus(Qt.BacktabFocusReason)
+                    event.accepted = true
+                }
                 color: Theme.text
                 placeholderText: mf.placeholder
                 placeholderTextColor: Theme.dim

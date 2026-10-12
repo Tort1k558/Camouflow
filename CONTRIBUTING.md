@@ -1,5 +1,7 @@
 # Contributing to CamouFlow
 
+[Русская инструкция](CONTRIBUTING.ru.md)
+
 Contributions are welcome: reproducible bug reports, documentation, accessible
 UI improvements, automation integrations and tested browser-engine changes.
 English and Russian reports are accepted. Follow our [Code of Conduct](CODE_OF_CONDUCT.md).

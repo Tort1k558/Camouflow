@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
@@ -13,6 +14,29 @@ Item {
     onTabChanged: settingsScroll.contentY = 0
     readonly property bool isCamoufox: browserSettingsBridge.engine === "camoufox"
     readonly property bool isNative: browserSettingsBridge.engine === "native"
+
+    function ensureFocusedControlVisible() {
+        var window = root.Window.window
+        var item = window ? window.activeFocusItem : null
+        var ancestor = item
+        while (ancestor && ancestor !== content)
+            ancestor = ancestor.parent
+        if (!item || ancestor !== content)
+            return
+        var top = item.mapToItem(content, 0, 0).y
+        var bottom = top + item.height
+        var position = settingsScroll.contentY
+        if (top < position + 12)
+            position = top - 12
+        else if (bottom > position + settingsScroll.height - 12)
+            position = bottom - settingsScroll.height + 12
+        settingsScroll.contentY = Math.max(0, Math.min(position, Math.max(0, settingsScroll.contentHeight - settingsScroll.height)))
+    }
+
+    Connections {
+        target: root.Window.window
+        function onActiveFocusItemChanged() { root.ensureFocusedControlVisible() }
+    }
 
     FileDialog {
         id: nativeBundleDialog
@@ -35,7 +59,7 @@ Item {
             Text { width: parent.width; wrapMode: Text.WordWrap; text: tr.label; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
             Text { visible: tr.hint !== ""; width: parent.width; wrapMode: Text.WordWrap; text: tr.hint; color: Theme.dim; font.pixelSize: 11 }
         }
-        Rectangle { id: sw; width: 40; height: 22; radius: Theme.radiusSm; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; color: tr.checked ? Theme.primary : "transparent"; border.color: tr.checked ? Theme.primaryLight : Theme.border
+        Rectangle { id: sw; width: 40; height: 22; radius: Theme.radiusSm; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; color: tr.checked ? Theme.primary : "transparent"; border.color: tr.activeFocus ? Theme.primaryInk : tr.checked ? Theme.primaryLight : Theme.border; border.width: tr.activeFocus ? 2 : 1
             Rectangle { width: 18; height: 18; radius: 9; y: 2; x: tr.checked ? 20 : 2; color: tr.checked ? Theme.primaryText : Theme.muted; Behavior on x { NumberAnimation { duration: 120 } } }
         }
         activeFocusOnTab: true

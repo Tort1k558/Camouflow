@@ -133,6 +133,24 @@ development archives are unsigned. No production release is implied here.
 
 ## Verification boundary
 
+See the [clean-workspace audit](../docs/GLINT_WINDOWS_BUILD_AUDIT.md) for observed
+steps and the unresolved first-download transport limitation.
+
+### Troubleshooting
+
+- Bootstrap requires HTTPS access to `chrome-infra-packages.appspot.com` and its
+  download redirects. A successful Git clone is not sufficient. The pinned
+  upstream PowerShell downloader has no explicit request timeout; if it stalls,
+  inspect the owned process tree and test that endpoint with a bounded request.
+  Do not disable TLS/security, run overlapping bootstrap processes or replace a
+  failed fresh download with cached files and call it a clean build.
+- depot_tools global-Git recommendations are warnings. Keep the project's
+  workspace-local configuration instead of applying suggested global changes.
+- On `LLVM ERROR: out of memory`, retain the output and retry the build command
+  with `--jobs 2` (or `--jobs 1` for a single large object). Four jobs are a
+  concurrency maximum, not a total-memory cap. Do not rerun sync or erase cached
+  objects to recover from an OOM.
+
 Individual preparation, build and runtime stages have been exercised in the
 development workspace. This consolidated fresh-machine sequence has **not yet
 been replayed end to end on a new machine**. Existing runtime proof covers the
