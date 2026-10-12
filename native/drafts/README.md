@@ -9,8 +9,8 @@ Do not modify or reapply patches during an active build.
 [`document_delivery/`](document_delivery/README.md) contains an isolated Mojo
 schema, document/worker services and worker consumer. These base components are
 now registered and applied as self-contained patches 0018-0020; the first linked
-34-case verification is pending. Earlier isolated parser and syntax results do
-not prove this linked gate. Document startup and worker startup/Canvas handoff
+34-case verification passed, followed by a combined 54-case context/IPC run.
+Earlier isolated parser and syntax results remain historical. Document startup and worker startup/Canvas handoff
 candidates remain unregistered; no Canvas runtime capability is enabled.
 
 ## BrowserContext privacy bridge

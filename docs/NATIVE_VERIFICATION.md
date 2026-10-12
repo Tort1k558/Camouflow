@@ -155,7 +155,18 @@ failed runner terminated. The new full gate uses
 Chromium's raw-reference checker requires `raw_ref` for the stored receiver-set
 reference. The member now uses `const raw_ref`, without suppressing the checker.
 The corrected full gate is `privacy-delivery-001-020-raw-ref-fixed-j4.json`; its
-result is pending.
+result passed all 34 exact cases. Saved GTest output, canonical source hashes,
+test binary and baseline browser core hashes were independently revalidated.
+The linked test binary SHA-256 is
+`c5d7b6b8e41abc035dbfd6eb26d274eb80d3d0c59e7d427980fde675a6305a19`.
+Incremental linkage completed at 8m35.30s; the full delivery run took 5253 ms.
+
+A subsequent same-process combined run also passed all 54 exact BrowserContext
+and delivery cases: `privacy-context-delivery-combined-001-020-tests.json`.
+Its four suites, global totals, exact per-target names and successful statuses
+were independently checked, and the test/browser code hashes remained unchanged.
+This is combined native-unit evidence, not a real worker-host startup,
+document-first-script, protected Canvas or browser capability admission result.
 Startup gates, Canvas seed thread handoff, Canvas readback hooks and branding
 remain unregistered; no protected first-script execution or Canvas capability is
 implied by these endpoint registrations.

@@ -39,8 +39,8 @@ The 001-010 Windows development baseline has runtime evidence. The newer 001–0
 Windows browser has linked and passed its runtime suite. Readiness patch 0016
 passed native service tests but is not in that browser. Context-test patch 0017
 passed all twenty native cases. Patches 0018-0020 register document/worker policy
-endpoints and the worker consumer; their 34 native cases are awaiting linked
-verification. Canvas and worker startup integration remain candidates; branding
+endpoints and the worker consumer; all 34 native cases passed, followed by a
+combined 54-case BrowserContext/IPC run. Canvas and worker startup integration remain candidates; branding
 still needs application and verification. No signed own-engine release or guaranteed
 anti-bot/CAPTCHA acceptance is advertised.
 

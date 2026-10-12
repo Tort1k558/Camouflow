@@ -1,8 +1,8 @@
 # Glint document and worker delivery candidates
 
 The document/worker endpoints, Mojo schema and worker consumer are now registered
-as self-contained patches 0018-0020. The first linked 34-case verification is
-pending. Their canonical source snapshots remain here; startup gates and Canvas
+as self-contained patches 0018-0020. The corrected linked 34-case verification
+passed, followed by a combined 54-case BrowserContext/IPC run. Their canonical source snapshots remain here; startup gates and Canvas
 handoff/readback patches below remain unregistered. No Canvas protection or
 runtime capability is enabled by these files. Earlier isolated evidence below
 is historical and must not be mistaken for the current linked unit run.
@@ -225,7 +225,8 @@ This closes the binding before dropping replies and cancels pending timers and
 weak callbacks through normal destruction. The three host binders and test
 fixture pass their owning set; the regression also requires that it becomes
 empty. The old syntax-only duplicate-cancellation evidence is historical. The
-corrected linked 34-case run has not passed yet.
+corrected linked 34-case run passed; measured results and hashes are recorded in
+`docs/NATIVE_VERIFICATION.md`. This does not prove the startup-gate drafts.
 
 `worker_canvas_thread_handoff.patch` continues the startup-gate stack into Blink.
 DedicatedWorker::ContinueStartInternal first creates GlobalScopeCreationParams,
@@ -485,6 +486,6 @@ The consumer and thirteen-case fixture passed isolated syntax verification:
 The embedded registration patch was regenerated from the canonical sources and
 passed applicability and GN formatting-delta checks without active input changes:
 `worker-bootstrap-owner-tests-registration-format-delta/proof.json`.
-The strict delivery target now requires all 34 cases; no new C++ case has been
-linked or executed. Python checks compare the embedded consumer/fixture sources
+The strict delivery target now requires all 34 cases; all were linked and
+executed successfully, including these three cases. Python checks compare the embedded consumer/fixture sources
 against the canonical files to prevent stale test copies during later promotion.

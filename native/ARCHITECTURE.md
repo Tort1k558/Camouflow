@@ -36,7 +36,7 @@ the linked 001–015 browser lacks them. Real-context tests are registered in
 patch 0017 and all twenty passed in the linked content unit target.
 Patches 0018-0020 register lifetime-bound document/worker endpoints using
 browser-owned partition state and an independently timed worker consumer.
-Their 34 native cases still require linked execution; consumer registration
+Their 34 native cases passed, as did a combined 54-case context/delivery run; consumer registration
 does not wire it into document/worker startup. Canvas/WebGL/WebGPU/audio
 protection remains incomplete.
 
