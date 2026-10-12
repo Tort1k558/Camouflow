@@ -155,7 +155,7 @@ rather than rewriting unrelated live-build inputs or claiming whole-file format
 success. The first failed formatting check remains in the separate
 `worker-bootstrap-registration-draft/proof.json` evidence directory.
 
-This client is **not called by worker startup yet**. Before enabling protection,
+This client is **not called by the active runtime's worker startup yet**. Before enabling protection,
 the DedicatedWorkerHostFactoryClient path must hold script startup and preserve
 owner lifetime until a successful reply; shared/service and nested workers need
 their own startup wiring and thread handoff, not a creator-document pipe. The
@@ -170,3 +170,41 @@ Promote exact source checksums into the build lock in an idle checkout, then
 generate/link and inspect all ten named `NativePrivacyWorkerBootstrapTest.*`
 cases in fresh JSON. That would validate the consumer, not demonstrate first-script
 startup ordering or complete worker fingerprint protection.
+
+## Dedicated-worker caller and startup gate draft
+
+`dedicated_worker_startup_gate.patch` connects that consumer to the actual pinned
+DedicatedWorkerHostFactoryClient path, behind the explicit developer-only
+`--glint-worker-canvas-bootstrap-test` switch. The browser forwards this test
+switch to renderer processes; it is not enabled by CamouFlow settings or admitted
+as a runtime capability. The key-service opt-in is separately required for a
+successful browser reply. Normal launches retain their original startup path.
+
+The caller requests the policy from the newly created worker's own broker before
+handing the broker to Blink. It retains the original script-load parameters,
+loader factories and reporting pipes until a successful validated reply; either
+reply/script-load ordering is handled. Failure drops the pending continuation and
+uses the existing script-load-failure path, rather than running without policy.
+Weak callbacks and owned pipe parameters follow factory-client lifetime. Pinned
+DedicatedWorkerMessagingProxy::HasPendingActivity retains the worker while it has
+not been asked to terminate; its existing StartWorkerGlobalScope termination check
+still precedes thread creation. These are source-level observations, not runtime
+tests of GC, termination or race ordering.
+
+The owned surface seed is copied into WorkerMainScriptLoadParameters. **Global
+scope/thread handoff and Canvas use are not implemented by this patch.** Holding
+startup and retaining a seed does not itself protect OffscreenCanvas. The data-URL
+origin discrepancy above must also be resolved/rejected before admission.
+Shared/service worker startup and document bootstrap remain separate work.
+
+The actual renderer factory-client implementation and browser renderer-switch
+implementation passed isolated clang syntax checks with their respective pinned
+target flags:
+`D:/CamouFlowNative/dedicated-worker-startup-gate-cpp-check/proof.json` and
+`dedicated-worker-startup-switch-cpp-check/proof.json`. The full four-patch stack
+applied successfully to a private copy, with active source inputs unchanged:
+`D:/CamouFlowNative/worker-startup-full-stack-applicability/proof.json`.
+No active patch application, graph generation, linking or worker runtime execution
+has occurred. After promotion in an idle source tree, real tests must exercise
+both event orders, absent/failed policy, timeout/disconnect, owner destruction,
+termination and nested workers before claiming first-script ordering.
