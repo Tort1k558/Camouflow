@@ -806,3 +806,22 @@ not yet claimed compiled. Linking a new own-browser receipt, actual incognito
 runtime checks, renderer/worker IPC, protection readiness and Canvas/GPU/audio
 remain pending. The immutable 001-010 development package remains the verified
 browser baseline and has not been activated in the user app.
+
+## Public privacy verification tooling
+
+`scripts/verify_native_privacy_units.py` replaces the machine-specific 33-case
+rerun wrapper for future executions. It uses the pinned workspace/dependency
+stages and exact source replay, checks all required case names (not only totals),
+rejects skipped/incomplete/duplicated/foreign/failed coverage, and preserves
+compiler/test output and raw GoogleTest JSON under fresh report names. A passing
+proof binds the actual unit executable hash, baseline browser core, receipt and
+GN arguments. Negative compiler/test results and changed baseline code produce
+failed proofs, not capability admission. Existing evidence is never overwritten.
+
+The saved actual 33-case native output passed this new coverage validator. The
+live active-builder guard was exercised while the object build was running: it
+refused to launch a second compiler and created no report artifacts. A fresh
+native build/run through this public tool remains pending until that build
+terminates. Project tests cover result rejection, builder detection, subprocess
+log preservation, success/failure proofs, baseline-code changes and nonoverwrite;
+they are not new native execution or real BrowserContext runtime evidence.

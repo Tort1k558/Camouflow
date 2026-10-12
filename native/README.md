@@ -10,6 +10,25 @@ resumed; existing Linux workspaces and verified results are preserved. Desktop
 CI now schedules only Windows jobs. Linux/macOS support remains unfinished and
 must not be represented as released own-fork runtimes.
 
+## Public privacy unit rerun
+
+The current 33-case key/container/owner verification is available in the public
+repository, without machine-specific D: wrapper scripts:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_privacy_units.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\privacy-units-new.json --vs-installation D:\CamouFlowNative\toolchain\BuildTools --jobs 4
+```
+
+Use a fresh report name. The verifier preserves raw GoogleTest output and
+compiler/test logs, checks exact required case names and successful completion,
+binds the unit executable hash and source patches, and requires baseline browser
+code/receipt/GN arguments to remain unchanged. It refuses a detected active
+compiler/build process instead of launching another build. This is not a global
+mutex shared with legacy build wrappers: run one build command at a time.
+Current support is Windows only, with at most four jobs; GOMEMLIMIT is a soft Go
+heap limit, not a cap on the total build process memory. These unit results do
+not admit fingerprint capabilities or prove real Chrome/incognito/worker runtime.
+
 ## Windows storage path normalization (0008; intermediate failure resolved by 0009/0010)
 
 `patches/0008-native-leveldb-path-separators.patch` normalizes the 17 LevelDB

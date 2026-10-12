@@ -941,6 +941,115 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
         branding.prepare(source, patch)
 
 
+@pytest.mark.parametrize("mutation", [None, "duplicate", "missing", "skip", "failure", "incomplete", "foreign", "disabled", "malformed"])
+def test_native_privacy_unit_report_requires_exact_completed_cases(mutation):
+    from scripts.verify_native_privacy_units import REQUIRED_TESTS, validate_results
+
+    report = {"tests": 33, "failures": 0, "disabled": 0, "testsuites": [
+        {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
+                                      for name in sorted(cases)]}
+        for suite, cases in REQUIRED_TESTS.items()]}
+    case = report["testsuites"][0]["testsuite"][0]
+    if mutation == "duplicate":
+        report["testsuites"][0]["testsuite"][1] = dict(case)
+    elif mutation == "missing":
+        report["testsuites"][0]["testsuite"].pop()
+    elif mutation == "skip":
+        case["status"] = "NOTRUN"
+    elif mutation == "failure":
+        case["failures"] = [{"failure": "owned negative control"}]
+    elif mutation == "incomplete":
+        case["result"] = "SKIPPED"
+    elif mutation == "foreign":
+        report["testsuites"][0]["name"] = "OtherTests"
+    elif mutation == "disabled":
+        report["disabled"] = 1
+    elif mutation == "malformed":
+        case["name"] = []
+    if mutation is None:
+        validate_results(report)
+    else:
+        with pytest.raises(ValueError):
+            validate_results(report)
+
+
+@pytest.mark.parametrize("running", [False, True])
+def test_native_privacy_verification_refuses_existing_compiler(monkeypatch, running):
+    import subprocess
+    from scripts import verify_native_privacy_units as privacy
+
+    monkeypatch.setattr(privacy.subprocess, "run", lambda *args, **kwargs:
+                        subprocess.CompletedProcess(args[0], 0, "23096\n" if running else ""))
+    if running:
+        with pytest.raises(ValueError, match="already running"):
+            privacy.require_idle_builder()
+    else:
+        privacy.require_idle_builder()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows owned-profile unit verifier")
+@pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure"])
+def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure):
+    import json
+    import subprocess
+    from scripts import verify_native_privacy_units as privacy
+
+    workspace = tmp_path / "work"
+    source = workspace / "chromium/src"
+    output = source / "out/CamouFlowNative"
+    output.mkdir(parents=True)
+    (output / "args.gn").write_text("owned args\n", encoding="utf-8")
+    (output / "camouflow-build.json").write_text("owned receipt", encoding="utf-8")
+    report = tmp_path / "proof.json"
+    monkeypatch.setattr(privacy.build, "preflight", lambda *args, **kwargs: None)
+    monkeypatch.setattr(privacy, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(privacy.build, "environment", lambda *args: {})
+    monkeypatch.setattr(privacy.build, "run", lambda *args, **kwargs: privacy.build.LOCK["chromium_revision"])
+    monkeypatch.setattr(privacy.build, "require_stage", lambda *args: None)
+    monkeypatch.setattr(privacy.build, "source_patches", lambda *args:
+                        [{"name": "0015-native-browser-context-key-ownership.patch", "sha256": "a" * 64}])
+    monkeypatch.setattr(privacy.build, "v8_source_patches", lambda *args: [])
+    monkeypatch.setattr(privacy.build, "check_patch_dependencies", lambda *args: None)
+    monkeypatch.setattr(privacy.build, "depot_command", lambda *args: ["autoninja"])
+    measurements = []
+
+    def measure(*args):
+        measurements.append(True)
+        return {"chrome.exe": "b" * 64 if failure == "browser_change" and len(measurements) > 1 else "a" * 64}
+
+    monkeypatch.setattr(privacy, "measure_runtime_core", measure)
+    commands = []
+
+    def run(args, **kwargs):
+        commands.append(args)
+        kwargs["stdout"].write("Owned subprocess output\n")
+        if args[0] == "autoninja":
+            if failure == "compiler_failure":
+                raise subprocess.CalledProcessError(1, args)
+            (output / "camouflow_native_privacy_unittests.exe").write_bytes(b"owned unit executable")
+        else:
+            results = {"tests": 33, "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
+                       "testsuites": [{"name": suite, "testsuite": [
+                           {"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(cases)]}
+                           for suite, cases in privacy.REQUIRED_TESTS.items()]}
+            report.with_name("proof-tests.json").write_text(json.dumps(results), encoding="utf-8")
+        return subprocess.CompletedProcess(args, 0)
+
+    monkeypatch.setattr(privacy.subprocess, "run", run)
+    proof = privacy.verify(workspace, report)
+    assert proof["passed"] is (failure is None)
+    assert json.loads(report.read_text(encoding="utf-8")) == proof
+    assert "Owned subprocess output" in report.with_name("proof-build.log").read_text(encoding="utf-8")
+    assert commands[0][-3:] == ["-j", "4", "camouflow_native_privacy_unittests"]
+    if failure is None:
+        assert proof["tests"] == 33 and proof["baseline_browser_code_unchanged"]
+        assert len(proof["test_binary_sha256"]) == 64
+    else:
+        assert proof.get("error") and "baseline_browser_code_unchanged" not in proof
+    with pytest.raises(ValueError, match="overwrite"):
+        privacy.verify(workspace, report)
+
+
 def test_native_key_derivation_patch_reuses_canonical_message_header():
     from scripts import native_build
 
