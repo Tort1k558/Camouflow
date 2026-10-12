@@ -4,13 +4,14 @@ Both privacy candidates have moved to the registered patch chain. The existing
 linked browser remains 001–015; registered source is not browser runtime proof.
 Do not modify or reapply patches during an active build.
 
-## Unregistered document delivery candidate
+## Document and worker delivery infrastructure
 
 [`document_delivery/`](document_delivery/README.md) contains an isolated Mojo
-schema and document-scoped browser service draft. The schema passed pinned
-Chromium parser/type validation and C++ binding generation. C++ compilation, broker registration, renderer
-consumption and lifecycle tests are pending; it is not an applied patch or a
-runtime capability. It never modifies the active Chromium build inputs.
+schema, document/worker services and worker consumer. These base components are
+now registered and applied as self-contained patches 0018-0020; the first linked
+34-case verification is pending. Earlier isolated parser and syntax results do
+not prove this linked gate. Document startup and worker startup/Canvas handoff
+candidates remain unregistered; no Canvas runtime capability is enabled.
 
 ## BrowserContext privacy bridge
 

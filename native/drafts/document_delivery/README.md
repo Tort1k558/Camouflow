@@ -1,12 +1,17 @@
 # Glint document and worker delivery candidates
 
-Unregistered, unlinked draft outside the active Chromium checkout. No Canvas
-protection or runtime capability is enabled by these files.
+The document/worker endpoints, Mojo schema and worker consumer are now registered
+as self-contained patches 0018-0020. The first linked 34-case verification is
+pending. Their canonical source snapshots remain here; startup gates and Canvas
+handoff/readback patches below remain unregistered. No Canvas protection or
+runtime capability is enabled by these files. Earlier isolated evidence below
+is historical and must not be mistaken for the current linked unit run.
 
 The Mojo schema belongs in `third_party/blink/public/mojom/native_privacy/`.
 The service belongs in `content/browser/camouflow_native/`. Integration requires
 the Blink Mojo GN source registration, content source/dependencies and the
-document BrowserInterfaceBroker binder. None are applied during the active build.
+document BrowserInterfaceBroker binder. These base registrations are included in
+0018-0020; do not modify or reapply them during an active build.
 
 The pinned Chromium Mojo parser/type checker and both C++ generator passes
 (shared definitions and regular bindings) completed successfully outside the

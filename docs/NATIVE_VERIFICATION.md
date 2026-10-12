@@ -21,7 +21,7 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | --- | --- |
 | `scripts/verify_release.py --build --runtime` | Desktop package and packaged legacy-engine checks |
 | `scripts/verify_native_cpp.py` | Standalone native policy primitives |
-| `scripts/verify_native_privacy_units.py` | Default: 43 exact key/service cases; `--target contexts`: 20 real BrowserContext cases for chain 001–017 |
+| `scripts/verify_native_privacy_units.py` | Default: 43 exact key/service cases; `--target contexts`: 20 BrowserContext cases; `--target delivery`: 34 document/worker IPC and consumer cases |
 | `scripts/verify_native_suite.py` | Runtime, hardware, WebRTC, automation, fonts, identity, CDP and combined gates |
 | `scripts/verify_native_storage_paths.py` | Windows path-depth/storage probes |
 | `scripts/verify_native_canvas.py` | Canvas verification tooling, not an implemented protection claim |
@@ -123,6 +123,15 @@ the current verifier to 43; all 43 cases compiled and passed. The linked browser
 above still contains only 001–015. The twenty real-context cases registered in
 patch 0017 have now compiled, linked and passed, with independently checked
 result names and binary/core hashes. Neither change has browser release admission.
+
+The base delivery infrastructure is registered/applied as self-contained patches
+0018-0020. It includes the Mojo schema, document-scoped endpoint, worker endpoints
+bound to browser-owned partition/origin state, and the separately bounded worker
+consumer. `privacy-delivery-001-020-first-j4.json` is the first linked verification
+attempt; all 34 required cases must pass before this unit gate is claimed.
+Startup gates, Canvas seed thread handoff, Canvas readback hooks and branding
+remain unregistered; no protected first-script execution or Canvas capability is
+implied by these endpoint registrations.
 
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External

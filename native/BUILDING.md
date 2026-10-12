@@ -3,7 +3,8 @@
 Glint is CamouFlow's own Chromium fork. This guide builds the **registered
 development patch chain**, not Camoufox/CloakBrowser and not an admitted release.
 Linux/macOS own-fork builds are deferred. The branding candidate in `branding/`
-is not a registered build input. Context tests are registered in patch 0017.
+is not a registered build input. Context tests are registered in patch 0017;
+document/worker IPC unit infrastructure is registered in patches 0018-0020.
 
 ## Requirements
 
@@ -111,6 +112,17 @@ for chain 001–016, including readiness; older 001–015 reports covered 33.
 Patch 0017 adds 20 required real content-layer BrowserContext cases to
 `content_unittests`, executed separately with `--target contexts`. This target
 may require substantial additional compilation; do not run concurrent builds.
+Patches 0018-0020 register the document/worker endpoints, worker consumer and
+34 required native cases. To verify this separate gate after context units:
+
+```powershell
+& $python scripts/verify_native_privacy_units.py --workspace $workspace --report "$workspace\privacy-delivery-new.json" --vs-installation $env:vs2026_install --jobs 4 --target delivery
+if ($LASTEXITCODE -ne 0) { throw 'Glint delivery units failed' }
+```
+
+These patches do not connect the consumer to worker startup or enable Canvas.
+Startup gates, Canvas helpers/readback hooks and branding are still outside the
+registered chain. Registration alone is not successful compilation or execution.
 The scripts do not admit capabilities automatically or prove CAPTCHA success.
 Do not substitute a passing old report, SDK binary or Python tests for new
 own-fork runtime evidence. Canvas/GPU/audio protection is not complete.

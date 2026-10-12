@@ -191,6 +191,10 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
     if target in {"contexts", "delivery"}:
         required_patches.add("0017-native-browser-context-tests.patch")
+    if target == "delivery":
+        required_patches.update({"0018-native-document-policy-delivery.patch",
+                                 "0019-native-worker-policy-delivery.patch",
+                                 "0020-native-worker-policy-consumer.patch"})
     if not required_patches.issubset(item["name"] for item in patches):
         raise ValueError("The exact context ownership and readiness patches are required")
     delivery_sources = require_delivery_sources(source) if target == "delivery" else None

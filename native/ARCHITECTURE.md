@@ -33,9 +33,12 @@ ephemeral identities; they must never redirect to the persistent original.
 Key loading is asynchronous on a blocking worker; derivation fails until ready.
 Readiness callbacks are registered in patch 0016 and passed 43 native cases;
 the linked 001–015 browser lacks them. Real-context tests are registered in
-patch 0017 with native compilation/execution pending.
-Future renderer/worker delivery must be lifetime-bound and use browser-owned
-partition state. Canvas/WebGL/WebGPU/audio protection remains incomplete.
+patch 0017 and all twenty passed in the linked content unit target.
+Patches 0018-0020 register lifetime-bound document/worker endpoints using
+browser-owned partition state and an independently timed worker consumer.
+Their 34 native cases still require linked execution; consumer registration
+does not wire it into document/worker startup. Canvas/WebGL/WebGPU/audio
+protection remains incomplete.
 
 ## Source reproducibility
 
