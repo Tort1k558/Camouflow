@@ -681,6 +681,51 @@ and copies the appropriate clone state. All three corrected translation units
 syntax checks, including Chromium/Blink plugins, without a stale PCH:
 `document-canvas-commit-transport-owned-cpp-check/proof.json`. Source/header hashes
 were revalidated. There are no linked objects or executed fixture results.
-The browser producer, bounded readiness registration, required-policy failure
-semantics and capability activation are still missing. An absent payload retains
-upstream behavior; it must not be presented as active document protection.
+The browser producer/readiness registration candidate below supplies the other
+side of this transport. Neither candidate is applied or capability-admitted.
+An absent payload retains upstream behavior; it must not be presented as active
+document protection.
+
+### Browser producer and navigation registration candidate
+
+`privacy_document_commit.h/.cc` selects only the Canvas subkey of the supplied
+browser-owned BrowserContext/StorageKey and packages its exact native encoding.
+It rejects null, loading, failed and shutdown contexts synchronously; it does not
+load keys, manufacture replacements or accept a renderer-supplied partition.
+Six fixture definitions prepare checks for those states, owned payload copying,
+the fixed schema and retained partition fields with storage partitioning disabled.
+They have not executed.
+
+`document_canvas_browser_producer.patch` includes that helper and the earlier
+bounded readiness throttle, adds both to GN and registers the throttle for
+ordinary responses and commits without URL loaders. The existing developer-only
+`glint-document-canvas-bootstrap-test` switch gates registration and production.
+After NavigationRequest calculates its selected RenderFrameHost's StorageKey,
+the producer derives the payload or cancels through ERR_ABORTED before sending
+commit IPC. Cancellation returns immediately because it destroys the request.
+This avoids a renderer crash for missing browser policy; a final renderer
+partition mismatch still uses the earlier CHECK guard and is not solved here.
+The upstream state machine explicitly permits WILL_FAIL_REQUEST from both
+response-processing and no-URL-loader states.
+
+All four positional CommitNavigationParams factories in content/renderer_host
+receive an explicit null policy slot, including history/controller construction.
+The producer clears any previous payload before selecting the current policy;
+flag-off launches retain upstream behavior. No root key is sent or logged.
+
+All eight affected production/test translation units passed isolated syntax
+checks with their actual pinned browser/content_unittests flags and no stale PCH:
+`D:/CamouFlowNative/document-canvas-browser-producer-all-constructors-cpp-check/proof.json`.
+Earlier checks exposed the added Mojo constructor argument and were not reported
+as success; all discovered positional call sites were corrected. The helper's six
+cases and the throttle's eleven cases remain unexecuted, not seventeen passes.
+
+Apply candidates in this order: immutable document carrier, commit transport,
+browser producer. Their combined 26-path replay passed in an isolated overlay:
+`document-canvas-delivery-composed-overlay-v2/proof.json`. Public patch/header and
+source hashes were revalidated; active Chromium inputs and four-job Blink builder
+were unchanged. Nothing is registered in the main patch chain yet.
+Next gates are native fixture execution and end-to-end delivery before first JS,
+initial empty/about:blank/srcdoc, redirect/OOPIF/opaque documents, BFCache/prerender,
+normal cancellation of final-state mismatches and combined document/worker tests.
+Canvas readback protection and production capability activation remain absent.

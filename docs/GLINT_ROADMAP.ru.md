@@ -63,7 +63,7 @@ Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчам
 | Ключи/StorageKey/BrowserContext | 43 native readiness/key cases и 20 реальных context cases прошли; это не доказательство всех renderer/worker-путей |
 | IPC и consumers | 34 endpoint/consumer cases прошли; совместный прогон context/delivery — 54 cases, не дополнительные независимые 54 проверки |
 | Worker startup | 40 runtime-проверок startup/restart/shared-client/rejection прошли в developer-режиме. Четыре Blink handoff cases ещё не исполнены: собирается тестовый target |
-| Document delivery до JS | Не завершена. Carrier, readiness throttle, partition validator и commit transport — незарегистрированные черновики. Transport/clone/DocumentInit прошли syntax; browser producer отсутствует, fixtures не исполнены |
+| Document delivery до JS | Не завершена. Carrier, throttle, validator, transport и browser producer — незарегистрированные черновики. Transport/clone/DocumentInit и восемь producer translation units прошли syntax; fixtures и end-to-end first-script delivery не исполнены |
 | Canvas | Четыре фазы upstream baseline прошли без защиты; алгоритмы/hooks — черновики, capability не активирована |
 | WebGL/WebGPU, Audio | Полноценная защита не завершена |
 | UA/Client Hints, Screen/Intl, storage | Часть конфигурации и диагностик есть; нужна единая карта покрытия, а не вывод «отсутствует» из краткого отчёта |
@@ -209,8 +209,10 @@ Collector логирует успешные и ошибочные запросы
    исполнить их fixtures только после проверки producer/consumer-контракта.
    Подготовленный commit transport уже передаёт owned payload в DocumentLoader,
    проверяет окончательный partition и сохраняет clone state; три translation
-   units прошли syntax, не runtime. Следующий узел — browser producer и явный
-   отказ required-policy навигации без renderer crash как штатного механизма.
+   units прошли syntax, не runtime. Browser producer/регистрация throttle тоже
+   подготовлены; при недоступной browser policy запрос отменяется до commit.
+   Следующие узлы — исполнение fixtures, end-to-end first-script delivery и
+   нормальный отказ при несовпадении финального partition вместо renderer CHECK.
 3. Связать browser-owned partition commitment с финальным StorageKey до
    установки документа. В pinned Chromium navigation key может быть provisional:
    готовность ключевого сервиса не доказывает окончательность partition.
