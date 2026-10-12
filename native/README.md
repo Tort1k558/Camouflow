@@ -99,6 +99,25 @@ fingerprint capabilities from this filesystem patch.
 
 ## Current Windows source build
 
+### Trusted partition codec (0011; native unit compilation pending)
+
+`0011-native-privacy-partition-serialization.patch` adds the bounded, versioned
+`StorageKey::SerializeForNativePrivacy()` input for future browser-owned key
+derivation. It reuses StorageKey's existing friendship with SchemefulSite;
+no new public Net accessor or testing-only hook is used. Original disk storage
+serialization is unchanged. Origin/site tuples, opaque precursor tuples and
+trusted 128-bit nonces are encoded separately, along with retained top-level
+site/ancestor fields and the optional storage nonce. Disabling storage
+partitioning cannot silently erase the retained site from this codec.
+
+Eight native tests cover repeat/copy stability, a literal format vector,
+disabled-feature site separation, opaque origin/site/precursor separation,
+storage nonce and ancestor bits, and tuple canonicalization. Their Windows
+`blink_common_unittests` target is now building with four jobs. The verified
+browser/archive remain 0010; this test build does not issue a new own-browser
+receipt or enable privacy protections. Root-key transport, partitioned worker
+lifecycle enforcement and Canvas/GPU/audio modules remain unfinished.
+
 The first four-job Windows compilation, with hardware/MIDL patches 0001/0002,
 stopped after 27,364 completed actions and four failed Inspector compilations.
 All four reported `LLVM ERROR: out of memory`; this was a terminal compiler

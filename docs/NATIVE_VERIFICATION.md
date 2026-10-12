@@ -638,6 +638,31 @@ root-key transport, protected Canvas/GPU/audio and other platform runtimes
 remain unfinished. Do not reinterpret this working Windows development
 baseline as completion of the full Native mission.
 
+## Trusted partition input protocol (0011; native execution pending)
+
+The codec is a `blink::StorageKey` member, using its existing SchemefulSite
+friend access, not a script URL or testing accessor. It returns at most 8,192
+bytes or nullopt, with prefix `CamouFlowNative/partition/v1` followed by NUL.
+Two origin entries follow (document origin, retained top-level-site origin):
+an opaque flag, big-endian uint32 UTF-8 scheme length and scheme, big-endian
+uint32 host length and host, and big-endian uint16 port. An opaque entry adds
+the trusted nonce's high and low uint64 halves in big-endian order. Using the
+tuple/precursor preserves file-host and opaque-precursor distinctions that a
+`null` string or generic URL serialization would discard. The final fields are
+retained ancestor-chain bit (same-site 0, cross-site 1), optional storage-nonce
+presence byte and, when present, its two big-endian uint64 halves.
+
+Original `Serialize()` storage naming is unchanged. Retained future partition
+fields are encoded even when third-party partitioning is disabled; callers
+must still enforce partitioned worker/storage lifecycle before protection.
+A serializer alone cannot isolate one unpartitioned shared/service worker.
+Eight new native tests are compiling in the existing Blink common test target,
+including a literal vector independently constructed in Python. The 0010
+browser and immutable development package are preserved as the verified
+baseline; 0011 has not yet been incorporated into a rebuilt browser receipt.
+Root-key loading/IPC, HMAC integration and Canvas readback protection are not
+implemented by this codec. No fingerprint capabilities have been activated.
+
 The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feature
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred
