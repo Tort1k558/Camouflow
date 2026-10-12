@@ -1,0 +1,140 @@
+// Copyright 2026 CamouFlow contributors.
+// SPDX-License-Identifier: MIT
+#include "content/browser/camouflow_native/privacy_navigation_throttle.h"
+
+#include <vector>
+
+#include "base/files/file_util.h"
+#include "base/files/scoped_temp_dir.h"
+#include "base/test/scoped_command_line.h"
+#include "content/browser/renderer_host/navigation_request.h"
+#include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/native_privacy_context.h"
+#include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_observer.h"
+#include "content/public/test/navigation_simulator.h"
+#include "content/public/test/test_renderer_host.h"
+#include "net/base/net_errors.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/mojom/navigation/navigation_params.mojom.h"
+#include "url/gurl.h"
+
+namespace content {
+namespace {
+
+constexpr char kNavigationIdentity[] =
+    R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})";
+
+class NativeDocumentNavigationTest
+    : public RenderViewHostTestHarness,
+      public WebContentsObserver,
+      public testing::WithParamInterface<bool> {
+ public:
+  NativeDocumentNavigationTest()
+      : RenderViewHostTestHarness(
+            base::test::TaskEnvironment::TimeSource::MOCK_TIME,
+            base::test::TaskEnvironment::ThreadPoolExecutionMode::QUEUED) {}
+
+  void DidFinishNavigation(NavigationHandle* handle) override {
+    ++finished_;
+    committed_ = handle->HasCommitted();
+    error_ = handle->GetNetErrorCode();
+  }
+
+ protected:
+  using RenderViewHostTestHarness::web_contents;
+
+  void SetUp() override {
+    command_line_.GetProcessCommandLine()->RemoveSwitch(
+        kGlintDocumentPrivacyBootstrapSwitch);
+    RenderViewHostTestHarness::SetUp();
+    NavigateAndCommit(GURL("https://canvas.test/baseline"));
+    Observe(web_contents());
+    ASSERT_TRUE(owned_.CreateUniqueTempDir());
+    ASSERT_TRUE(base::WriteFile(
+        owned_.GetPath().AppendASCII("camouflow-native-privacy.json"),
+        kNavigationIdentity));
+  }
+
+  void TearDown() override {
+    Observe(nullptr);
+    ShutdownNativePrivacyContext(browser_context());
+    task_environment()->RunUntilIdle();
+    RenderViewHostTestHarness::TearDown();
+  }
+
+  void EnablePolicy() {
+    command_line_.GetProcessCommandLine()->AppendSwitch(
+        kGlintDocumentPrivacyBootstrapSwitch);
+  }
+
+  GURL Target() {
+    return GURL(GetParam() ? "about:blank" : "https://canvas.test/next");
+  }
+
+  base::test::ScopedCommandLine command_line_;
+  base::ScopedTempDir owned_;
+  int finished_ = 0;
+  bool committed_ = false;
+  int error_ = net::OK;
+};
+
+TEST_P(NativeDocumentNavigationTest, FlagOffKeepsUpstreamCommitWithoutKeyService) {
+  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+  simulator->ReadyToCommit();
+  auto* request = NavigationRequest::From(simulator->GetNavigationHandle());
+  ASSERT_TRUE(request);
+  EXPECT_FALSE(request->commit_params().glint_document_canvas_commit);
+  simulator->Commit();
+  EXPECT_EQ(finished_, 1);
+  EXPECT_TRUE(committed_);
+  EXPECT_EQ(error_, net::OK);
+}
+
+TEST_P(NativeDocumentNavigationTest, MissingPolicyRejectsBeforeCommit) {
+  EnablePolicy();
+  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+  simulator->ReadyToCommit();
+  task_environment()->RunUntilIdle();
+  EXPECT_EQ(simulator->GetLastThrottleCheckResult().action(),
+            NavigationThrottle::CANCEL_AND_IGNORE);
+  EXPECT_EQ(finished_, 1);
+  EXPECT_FALSE(committed_);
+  EXPECT_EQ(error_, net::ERR_ABORTED);
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(),
+            GURL("https://canvas.test/baseline"));
+}
+
+TEST_P(NativeDocumentNavigationTest, ReadyRequestCarriesItsSelectedPartitionPolicy) {
+  EnablePolicy();
+  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
+  task_environment()->RunUntilIdle();
+  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+  simulator->ReadyToCommit();
+  auto* request = NavigationRequest::From(simulator->GetNavigationHandle());
+  ASSERT_TRUE(request);
+  const auto& params = request->commit_params();
+  ASSERT_TRUE(params.glint_document_canvas_commit);
+  const auto expected_encoding = params.storage_key.SerializeForNativePrivacy();
+  const auto expected_seed =
+      DeriveNativePrivacyKey(browser_context(), params.storage_key, "canvas");
+  ASSERT_TRUE(expected_encoding);
+  ASSERT_TRUE(expected_seed);
+  EXPECT_EQ(params.glint_document_canvas_commit->version, 1u);
+  EXPECT_EQ(params.glint_document_canvas_commit->partition_encoding,
+            *expected_encoding);
+  EXPECT_EQ(params.glint_document_canvas_commit->partition_seed,
+            std::vector<uint8_t>(expected_seed->begin(), expected_seed->end()));
+  EXPECT_EQ(finished_, 0);
+  simulator->Commit();
+  EXPECT_EQ(finished_, 1);
+  EXPECT_TRUE(committed_);
+  EXPECT_EQ(error_, net::OK);
+}
+
+INSTANTIATE_TEST_SUITE_P(WithAndWithoutUrlLoader,
+                         NativeDocumentNavigationTest,
+                         testing::Bool());
+
+}  // namespace
+}  // namespace content

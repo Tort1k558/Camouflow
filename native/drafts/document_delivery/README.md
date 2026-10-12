@@ -757,3 +757,35 @@ existing storage/link partition modes; none of these cases has executed yet.
 This is a renderer-side timing fixture with supplied WebNavigationParams, not
 proof of real browser-process production, iframe/worker timing or Canvas privacy
 protection. Those remain separate mandatory runtime gates.
+
+### Browser navigation machinery integration fixture candidate
+
+`privacy_navigation_integration_unittest.cc` and
+`document_navigation_integration_tests.patch` prepare three parameterized
+definitions using NavigationSimulator, not MockNavigationHandle. HTTP and
+about:blank routes are intended to exercise ordinary response and no-URL-loader
+registration respectively. The cases require:
+
+- flag-off commit without initializing a key service and with no policy payload;
+- missing policy cancellation with ERR_ABORTED, no committed error document and
+  preservation of the previous committed URL;
+- a ready request's version/encoding/Canvas subkey matching its selected native
+  partition before simulated renderer acknowledgement.
+
+The observer records navigation completion without reading a destroyed request.
+Identity files contain only a fixed synthetic fixture key; no user data or JS
+seed property is involved. The fixture and composed headers passed isolated
+syntax checking with actual pinned content_unittests flags:
+`D:/CamouFlowNative/document-navigation-integration-cpp-check/proof.json`.
+Ordered replay of all five candidates passed across 27 paths in
+`document-canvas-delivery-composed-overlay-v4/proof.json`; active source/GN hashes
+were unchanged. The three definitions intend six cases; none has executed.
+NavigationSimulator drives real browser navigation machinery with simulated
+network/renderer events, not a live Chrome process or renderer first-script test.
+
+Final-state mismatch recovery is still open. FrameLoader detaches the previous
+document before DocumentLoader::InitializeWindow mutates the window and validates
+the final partition. Replacing the later CHECK with a bare return would leave an
+inconsistent frame, not cancel a navigation safely. Keep the rejection guard
+until a complete pre-teardown decision or coherent failure-document protocol is
+implemented and verified; do not activate the privacy capability meanwhile.

@@ -216,6 +216,11 @@ Collector логирует успешные и ошибочные запросы
    Renderer-first-script fixtures подготовлены: оба pre-script callback, inline
    Canvas smoke и контроль без политики. Они прошли syntax с GC plugin, но не
    исполнение и не проверку полного browser → renderer пути.
+   Отдельные NavigationSimulator fixtures подготовлены для HTTP/about:blank:
+   flag-off, missing-policy abort с сохранением предыдущего URL и ready payload.
+   Шесть предполагаемых cases ещё не исполнены. Финальный mismatch нельзя
+   исправить простым return: после teardown нужна согласованная обработка frame
+   либо решение до teardown; CHECK пока сохраняется, capability заблокирована.
 3. Связать browser-owned partition commitment с финальным StorageKey до
    установки документа. В pinned Chromium navigation key может быть provisional:
    готовность ключевого сервиса не доказывает окончательность partition.
