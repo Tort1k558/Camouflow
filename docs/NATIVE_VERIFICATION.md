@@ -96,8 +96,16 @@ local `ScopedTempDir` before destroying the context. BrowserContext shutdown and
 owner destruction still happen before queued loader tasks run; directory cleanup
 happens afterwards. No production lifecycle code or timeout was weakened.
 Patch 0017 and the pinned checkout contain the same corrected fixture. The new
-verification run is `privacy-contexts-001-017-teardown-fixed-j4.json`; its result
-must be checked before claiming the twenty cases passed.
+verification run is `privacy-contexts-001-017-teardown-fixed-j4.json`. All twenty
+exact cases passed, including both destruction cases, and the strict result
+validator was run independently against the saved GTest output. The test binary
+SHA-256 was independently remeasured:
+`b8314bcf6fb56575650cc647c4791ca17b2d44237aaa1d3a0590ae8b805f5b75`.
+The baseline browser executable/core-DLL hashes also matched the report after
+execution. This proves the content-layer bridge fixtures, not renderer delivery,
+actual Chrome profile startup or Canvas protection. The incremental rebuild had
+three steps and reached completed linkage at 14m07.89s; the twenty tests ran in
+103 ms. The old failed run remains retained separately.
 
 ## Current boundary
 
@@ -112,9 +120,9 @@ An opt-in actual Chrome profile/OTR startup smoke completed initial/restart
 storage-separation checks; it does not observe key-service readiness or derivation.
 Readiness patch 0016 is now registered/applied; its ten additional cases extend
 the current verifier to 43; all 43 cases compiled and passed. The linked browser
-above still contains only 001–015. The twenty real-context cases are registered
-in patch 0017 and their content unit target is building; execution is not yet
-verified. Neither change has browser release admission.
+above still contains only 001–015. The twenty real-context cases registered in
+patch 0017 have now compiled, linked and passed, with independently checked
+result names and binary/core hashes. Neither change has browser release admission.
 
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External
