@@ -1,5 +1,8 @@
 # Glint verification
 
+External destinations, run protocol and per-build observations are maintained in
+the [Glint test matrix](GLINT_TEST_MATRIX.md). Update it for every linked build.
+
 ## Evidence levels
 
 1. Python/source tests prove manager behavior under their fixtures.

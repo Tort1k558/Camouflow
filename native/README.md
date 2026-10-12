@@ -7,6 +7,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 - [Architecture](ARCHITECTURE.md)
 - [Status and limitations](../docs/NATIVE_ENGINE.md)
 - [Verification requirements](../docs/NATIVE_VERIFICATION.md)
+- [External test sites and per-build results](../docs/GLINT_TEST_MATRIX.md)
 
 ## Source layout
 
