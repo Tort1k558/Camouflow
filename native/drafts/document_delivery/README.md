@@ -12,6 +12,42 @@ patches remain unregistered. No Canvas protection or
 runtime capability is enabled by these files. Earlier isolated evidence below
 is historical and must not be mistaken for the current linked unit run.
 
+## Registered document prototype 0030
+
+`0030-native-document-commit-prototype.patch` consolidates the seven document
+candidates below into one reproducible source patch. It includes owned document
+seed transport, browser producer/readiness throttle, shared partition resolution,
+early token-bound rejection and their fixtures. It is applied to the pinned
+Windows checkout, but has not yet produced a verified browser binary.
+The browser producer and throttle still require the developer-only
+`--glint-document-canvas-bootstrap-test` flag. Canvas readback candidates are not
+part of 0030; no production privacy capability is admitted.
+
+Before application, the 33 affected paths, GN arguments and browser receipt were
+backed up at `D:/CamouFlowNative/document-prototype-0030-preapply/`. Exact registered
+source replay, dependency checks and unchanged browser core/receipt/GN passed.
+The public document checker also passed on registered 001-030 inputs:
+`document-delivery-public-replay-001-030-v1.json`. It reverses only the hash-verified
+0030 patch inside its temporary overlay, then independently replays all seven
+candidates and checks canonical files. Active sources are never reversed.
+
+The new public gate builds content_unittests and requires all twelve exact
+NavigationSimulator cases, without skipped/foreign/duplicate results:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_privacy_units.py `
+  --workspace D:\CamouFlowNative `
+  --vs-installation D:\CamouFlowNative\toolchain\BuildTools `
+  --jobs 4 --target document-navigation `
+  --report D:\CamouFlowNative\document-navigation-new-proof.json
+```
+
+Use a new report path. NavigationSimulator exercises browser navigation machinery
+with simulated renderer/network events; it does not execute Blink first-script
+delivery or prove the previous page remains usable in a real browser. Final Blink
+partition rejection after teardown remains unresolved. The last verified browser
+is still 001-027; source application and compilation are not runtime admission.
+
 The Mojo schema belongs in `third_party/blink/public/mojom/native_privacy/`.
 The service belongs in `content/browser/camouflow_native/`. Integration requires
 the Blink Mojo GN source registration, content source/dependencies and the
@@ -794,7 +830,8 @@ implemented and verified; do not activate the privacy capability meanwhile.
 ### Shared storage-key resolution candidate
 
 `document_storage_key_resolution.patch` is the sixth ordered document candidate,
-not a registered Chromium patch. Its shared helper mirrors the pinned
+originally an unregistered Chromium candidate, now included in prototype 0030.
+Its shared helper mirrors the pinned
 DocumentLoader normalization: an opaque provisional origin without a storage
 nonce becomes a first-party key for the selected final origin; all other keys
 retain their partition state through WithOrigin. The browser producer derives
@@ -838,8 +875,8 @@ neither this normalization nor source replay activates privacy protection.
 
 ### Early commit rejection candidate
 
-`document_commit_rejection.patch` is the seventh ordered candidate, unregistered
-and not enabled in the current browser. RenderFrameImpl checks the incoming
+`document_commit_rejection.patch` is the seventh ordered candidate, included in
+prototype 0030 but not in the current verified browser. RenderFrameImpl checks the incoming
 version, bounded commitment, seed length and resolved browser-provided partition
 at entry to CommitNavigation, before WebUI state changes, body decoding,
 PrepareFrameForCommit or Blink document teardown. An invalid payload sends an

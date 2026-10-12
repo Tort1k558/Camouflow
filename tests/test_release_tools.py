@@ -865,7 +865,8 @@ def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tm
                                   "0026-native-worker-canvas-handoff-tests.patch",
                                   "0027-native-shared-worker-bootstrap-failure.patch",
                                   "0028-native-worker-handoff-fixture-lifetime.patch",
-                                  "0029-native-document-partition-validator-tests.patch"])
+                                  "0029-native-document-partition-validator-tests.patch",
+                                  "0030-native-document-commit-prototype.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
@@ -974,11 +975,11 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
 
 
 @pytest.mark.parametrize("mutation", [None, "duplicate", "missing", "skip", "failure", "incomplete", "foreign", "disabled", "malformed"])
-@pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition"])
+@pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation"])
 def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, target):
     from scripts.verify_native_privacy_units import required_tests, validate_results
 
-    report = {"tests": {"keys": 43, "contexts": 20, "delivery": 34, "worker-handoff": 4, "document-partition": 9}[target], "failures": 0, "disabled": 0, "testsuites": [
+    report = {"tests": {"keys": 43, "contexts": 20, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
         for suite, cases in required_tests(target).items()]}
@@ -1022,7 +1023,7 @@ def test_native_privacy_verification_refuses_existing_compiler(monkeypatch, runn
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows owned-profile unit verifier")
 @pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure", "source_change"])
-@pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition"])
+@pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation"])
 def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure, target):
     import json
     import subprocess
@@ -1051,7 +1052,8 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         "0019-native-worker-policy-delivery.patch", "0020-native-worker-policy-consumer.patch",
         "0022-native-worker-canvas-thread-handoff.patch", "0024-native-service-worker-canvas-thread-handoff.patch",
         "0026-native-worker-canvas-handoff-tests.patch",
-        "0029-native-document-partition-validator-tests.patch")]
+        "0029-native-document-partition-validator-tests.patch",
+        "0030-native-document-commit-prototype.patch")]
     monkeypatch.setattr(privacy.build, "source_patches", lambda *args: [dict(item) for item in source_patches])
     monkeypatch.setattr(privacy.build, "v8_source_patches", lambda *args: [])
     monkeypatch.setattr(privacy.build, "check_patch_dependencies", lambda *args: None)
@@ -1065,7 +1067,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
     monkeypatch.setattr(privacy, "measure_runtime_core", measure)
     commands = []
     build_target = ("blink_unittests" if target == "worker-handoff" else
-                    "content_unittests" if target in {"contexts", "delivery"} else "camouflow_native_privacy_unittests")
+                    "content_unittests" if target in {"contexts", "delivery", "document-navigation"} else "camouflow_native_privacy_unittests")
 
     def run(args, **kwargs):
         commands.append(args)
@@ -1075,7 +1077,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
                 raise subprocess.CalledProcessError(1, args)
             (output / (build_target + ".exe")).write_bytes(b"owned unit executable")
         else:
-            results = {"tests": {"keys": 43, "contexts": 20, "delivery": 34, "worker-handoff": 4, "document-partition": 9}[target],
+            results = {"tests": {"keys": 43, "contexts": 20, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12}[target],
                        "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
                        "testsuites": [{"name": suite, "testsuite": [
                            {"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(cases)]}
@@ -1098,13 +1100,13 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         assert len(commands) == 1
     else:
         assert commands[1][0] == str(output / (build_target + ".exe"))
-        if target in {"worker-handoff", "document-partition"}:
+        if target in {"worker-handoff", "document-partition", "document-navigation"}:
             assert "*" not in commands[1][1]
             assert set(commands[1][1].removeprefix("--gtest_filter=").split(":")) == {
                 f"{suite}.{case}" for suite, cases in privacy.required_tests(target).items() for case in cases}
     assert proof["target"] == target
     if failure is None:
-        assert proof["tests"] == {"keys": 43, "contexts": 20, "delivery": 34, "worker-handoff": 4, "document-partition": 9}[target] and proof["baseline_browser_code_unchanged"]
+        assert proof["tests"] == {"keys": 43, "contexts": 20, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12}[target] and proof["baseline_browser_code_unchanged"]
         assert len(proof["test_binary_sha256"]) == 64
         if target == "delivery":
             assert len(proof["delivery_source_sha256"]) == 10
@@ -1485,7 +1487,8 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
                  "0025-native-service-worker-startup-gate.patch", "0026-native-worker-canvas-handoff-tests.patch",
                  "0027-native-shared-worker-bootstrap-failure.patch",
                  "0028-native-worker-handoff-fixture-lifetime.patch",
-                 "0029-native-document-partition-validator-tests.patch"):
+                 "0029-native-document-partition-validator-tests.patch",
+                 "0030-native-document-commit-prototype.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1

@@ -102,6 +102,19 @@ REQUIRED_DOCUMENT_PARTITION_TESTS = {
     },
 }
 
+REQUIRED_DOCUMENT_NAVIGATION_TESTS = {
+    "WithAndWithoutUrlLoader/NativeDocumentNavigationTest": {
+        f"{case}/{index}" for index in range(2) for case in (
+            "FlagOffKeepsUpstreamCommitWithoutKeyService",
+            "MissingPolicyRejectsBeforeCommit",
+            "ReadyRequestCarriesItsSelectedPartitionPolicy",
+            "SelectedFrameRejectsExactPendingCommit",
+            "UnknownTokenDoesNotCancelPendingCommit",
+            "PolicyAbsentCannotUseRejectionProtocol",
+        )
+    },
+}
+
 DELIVERY_SOURCE_FILES = {
     f"{name}{suffix}": f"{directory}/{name}{suffix}"
     for name, directory in (
@@ -129,6 +142,8 @@ def require_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "document-navigation":
+        return REQUIRED_DOCUMENT_NAVIGATION_TESTS
     if target == "keys":
         return REQUIRED_TESTS
     if target == "contexts":
@@ -222,13 +237,17 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                                  "0026-native-worker-canvas-handoff-tests.patch"})
     if target == "document-partition":
         required_patches.add("0029-native-document-partition-validator-tests.patch")
+    if target == "document-navigation":
+        required_patches.add("0030-native-document-commit-prototype.patch")
     if not required_patches.issubset(item["name"] for item in patches):
         raise ValueError("The exact context ownership and readiness patches are required")
     delivery_sources = require_delivery_sources(source) if target == "delivery" else None
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("Native final-partition validator units; not navigation recovery, IPC, first-script delivery or admission"
+    scope = ("NavigationSimulator document commit/rejection units; simulated network/renderer, not actual Blink first-script delivery or admission"
+             if target == "document-navigation" else
+             "Native final-partition validator units; not navigation recovery, IPC, first-script delivery or admission"
              if target == "document-partition" else
              "Blink worker-scope seed ownership/thread handoff units; not browser-delivered seed bytes, Canvas or admission"
              if target == "worker-handoff" else
@@ -238,7 +257,7 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
              if target == "contexts" else
              "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission")
     build_target = ("blink_unittests" if target == "worker-handoff" else
-                    "content_unittests" if target in {"contexts", "delivery"} else "camouflow_native_privacy_unittests")
+                    "content_unittests" if target in {"contexts", "delivery", "document-navigation"} else "camouflow_native_privacy_unittests")
     proof = {"passed": False, "scope": scope, "target": target,
              "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path)}
     with log_path.open("x", encoding="utf-8", newline="\n") as log:
@@ -249,7 +268,7 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             executable = output / (build_target + ".exe")
             test_filter = (":".join(f"{suite}.{case}" for suite, cases in required.items() for case in sorted(cases))
-                           if target in {"worker-handoff", "document-partition"} else ":".join(name + ".*" for name in required))
+                           if target in {"worker-handoff", "document-partition", "document-navigation"} else ":".join(name + ".*" for name in required))
             subprocess.run([str(executable), "--gtest_filter=" + test_filter,
                             "--single-process-tests", "--gtest_output=json:" + str(results)],
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
@@ -284,7 +303,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--vs-installation", type=Path)
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
-    parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff", "document-partition"), default="keys")
+    parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation"), default="keys")
     args = parser.parse_args()
     try:
         report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs, target=args.target)

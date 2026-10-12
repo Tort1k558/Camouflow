@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 from scripts import native_build as build
 
 DRAFTS = ROOT / "native/drafts/document_delivery"
+PROTOTYPE = ROOT / "native/patches/0030-native-document-commit-prototype.patch"
 PATCHES = (
     "document_canvas_seed_handoff.patch",
     "document_canvas_commit_transport.patch",
@@ -82,11 +83,16 @@ def verify(workspace: Path, report: Path) -> dict:
     if revision != build.LOCK["chromium_revision"]:
         raise ValueError("Chromium revision differs from the pinned build lock")
     registered = build.source_patches(source, env) + build.v8_source_patches(source, env)
+    prototype = next((item for item in registered if item["name"] == PROTOTYPE.name), None)
+    if prototype is not None and digest(PROTOTYPE) != prototype["sha256"]:
+        raise ValueError("Registered document prototype hash differs")
     inputs = {name: digest(DRAFTS / name) for name in (*PATCHES, *CANONICAL)}
     if any(value is None for value in inputs.values()):
         raise ValueError("A required public candidate file is missing")
     paths = sorted(set(CANONICAL.values()).union(
         *(patch_paths((DRAFTS / name).read_text(encoding="utf-8-sig")) for name in PATCHES)))
+    if prototype is not None and not patch_paths(PROTOTYPE.read_text(encoding="utf-8-sig")).issubset(paths):
+        raise ValueError("Registered document prototype contains unknown paths")
     for relative in paths:
         if (source / relative).resolve() != source / relative:
             raise ValueError("Candidate inputs must not follow source symlinks")
@@ -104,6 +110,9 @@ def verify(workspace: Path, report: Path) -> dict:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(original.read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
         build.run(["git", "init", "-q"], overlay, env)
+        if prototype is not None:
+            build.run(["git", "apply", "--reverse", "--check", str(PROTOTYPE)], overlay, env)
+            build.run(["git", "apply", "--reverse", str(PROTOTYPE)], overlay, env)
         for name in PATCHES:
             build.run(["git", "apply", "--check", str(DRAFTS / name)], overlay, env)
             build.run(["git", "apply", str(DRAFTS / name)], overlay, env)
@@ -117,11 +126,14 @@ def verify(workspace: Path, report: Path) -> dict:
         raise ValueError("Public candidate inputs changed during verification")
     if digest(Path(__file__)) != verifier_sha256:
         raise ValueError("Verifier changed during verification")
+    if prototype is not None and digest(PROTOTYPE) != prototype["sha256"]:
+        raise ValueError("Registered document prototype changed during verification")
     result = {"passed": True, "scope": "Ordered public draft replay only; no syntax/link/runtime/capability admission",
               "chromium_revision": revision, "registered_patches": registered,
               "candidate_sha256": inputs, "patch_order": list(PATCHES),
               "verifier_sha256": verifier_sha256,
               "active_source_sha256": before, "composed_sha256": composed,
+              "prototype_unwrapped_in_owned_overlay": prototype,
               "active_sources_unchanged": True}
     with report.open("x", encoding="utf-8") as stream:
         json.dump(result, stream, indent=2)

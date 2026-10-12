@@ -93,6 +93,26 @@ def test_canonical_mismatch_does_not_publish_success(replay_fixture):
     assert not report.exists()
     assert (source / "src/value.cc").read_text() == "before\n"
 
+
+@pytest.mark.parametrize("mismatch", [False, True])
+def test_replay_unwraps_registered_prototype_only_in_owned_overlay(replay_fixture, monkeypatch, mismatch):
+    workspace, source, candidates = replay_fixture
+    prototype = candidates / "prototype.patch"
+    prototype.write_bytes((candidates / "update.patch").read_bytes())
+    (source / "src/value.cc").write_text("after\n", encoding="utf-8")
+    monkeypatch.setattr(drafts, "PROTOTYPE", prototype)
+    record = {"name": prototype.name, "sha256": "wrong" if mismatch else drafts.digest(prototype)}
+    monkeypatch.setattr(drafts.build, "source_patches", lambda *_: [record])
+    report = workspace / "proof.json"
+    if mismatch:
+        with pytest.raises(ValueError, match="prototype hash"):
+            drafts.verify(workspace, report)
+        assert not report.exists()
+    else:
+        result = drafts.verify(workspace, report)
+        assert result["passed"] and result["prototype_unwrapped_in_owned_overlay"] == record
+    assert (source / "src/value.cc").read_text() == "after\n"
+
 @pytest.mark.parametrize("mismatch", [False, True])
 def test_replay_checks_registered_canonical_file_outside_patch(replay_fixture, monkeypatch, mismatch):
     workspace, source, candidates = replay_fixture
