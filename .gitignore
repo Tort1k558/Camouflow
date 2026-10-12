@@ -29,6 +29,7 @@ docs-site/retype.manifest
 /output/
 /outputs/
 /.playwright-cli/
+/AUTONOMOUS_DEVELOPMENT.md
 /profiles/
 /settings/
 

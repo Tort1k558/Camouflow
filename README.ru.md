@@ -27,6 +27,12 @@
 
 **[Быстрый старт AI](docs/AI_WORKFLOWS.ru.md)** · [CLI, MCP и пример n8n](docs/AI_WORKFLOWS.md#local-cli)
 
+**Glint preview:** наш самостоятельный Chromium-движок в разработке, не готовый
+production-антидетект. [Готовность и ограничения](docs/NATIVE_ENGINE.md) ·
+[Сборка под Windows](native/BUILDING.md).
+
+**Участие в проекте:** [правила](CONTRIBUTING.md) · [сообщить о баге](https://github.com/Tort1k558/Camouflow/issues/new/choose) · [безопасность](SECURITY.md).
+
 **[Облачные задачи каталога](docs-site/docs/hosted-tasks.md)** — CSV, расписания,
 результаты по строкам, ручная помощь браузеру и подписанные webhooks на наших
 приватных серверах. Откройте **Tasks → Hosted tasks**; локальный режим не меняется.

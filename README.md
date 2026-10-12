@@ -25,6 +25,10 @@
 
 ## Describe once. Review. Replay without a model.
 
+**Glint preview:** our own Chromium engine is in development, not a production
+anti-detect release. See [capabilities and limitations](docs/NATIVE_ENGINE.md)
+and the [Windows build guide](native/BUILDING.md).
+
 **Contribute:** [Guidelines](CONTRIBUTING.md) · [Code of conduct](CODE_OF_CONDUCT.md) · [Report a bug](https://github.com/Tort1k558/Camouflow/issues/new/choose) · [Security policy](SECURITY.md).
 
 Try the isolated catalog demo, inspect a structured table, export JSON/CSV, then turn recorded actions into a parameterized scenario. Read-only replay checks outputs using the existing automation engine, without another model request.

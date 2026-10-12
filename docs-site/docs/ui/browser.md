@@ -8,24 +8,24 @@ CamouFlow supports:
 
 - **Camoufox**
 - **CloakBrowser**
-- **Native (preview)**
+- **Glint (preview)**
 
 The selected engine is stored globally and can be overridden per profile.
 
-## Native preview
+## Glint preview
 
-Native has its own persistent Chromium runtime, profile directory and cross-process
+Glint has its own persistent Chromium runtime, profile directory and cross-process
 owner lock. It does not fall back to Camoufox/CloakBrowser or adopt their profile
 directories. Current own-engine development and CI are Windows-only; the patched
 Chromium binary is still being compiled, not available as a verified release.
 
-Native configuration supports Desktop and Mobile Web, viewport size, DPR,
+Glint configuration supports Desktop and Mobile Web, viewport size, DPR,
 locale, timezone and browser permissions. Mobile Web is desktop Chromium with
 viewport/touch emulation, **not real Android/iOS**. Unsupported identity/masking
 options are rejected; Canvas, audio, GPU and hardware diagnostics report native
 values rather than invented fingerprints.
 
-The **Native privacy policy** tab prepares CPU/memory ceilings, installed font
+The **Glint privacy policy** tab prepares CPU/memory ceilings, installed font
 selection, WebRTC routing, webdriver exposure and the headless UA policy.
 **Privacy draft** fills a starting policy; **Native values** clears these requests
 without changing executable, locale, timezone or viewport. Use **Save changes**
@@ -44,11 +44,11 @@ and resources. Verification runs in background workers; changed settings invalid
 earlier compatibility results. Existing sessions must be closed before changing
 their executable or configuration.
 
-The Native compatibility action checks startup, observed document/worker values
+The Glint compatibility action checks startup, observed document/worker values
 and teardown. It does not certify CAPTCHA scores, CDP invisibility or third-party
 anti-bot acceptance. Current upstream SDK runtime checks are distinct from
 verification of our unfinished source patches. See the
-[Native implementation and evidence](https://github.com/Tort1k558/Camouflow/blob/main/docs/NATIVE_ENGINE.md)
+[Glint implementation and verification](https://github.com/Tort1k558/Camouflow/blob/main/docs/NATIVE_ENGINE.md)
 for that boundary.
 
 ## Main groups

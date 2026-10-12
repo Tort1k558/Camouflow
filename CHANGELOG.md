@@ -6,6 +6,22 @@ build attached.
 
 ## Unreleased
 
+## 0.4.3 - 2026-10-12
+
+- Added the experimental **Glint** engine integration: independent persistent
+  Chromium runtime, owned profiles, lifecycle checks, observed diagnostics and
+  local checksum-verified release management. Camoufox/CloakBrowser remain available.
+- Glint is a development preview, not a bundled production anti-detect engine.
+  Own-fork branding/readiness drafts and Canvas/GPU/audio protection are unfinished;
+  privacy requests require verified runtime capability admission.
+- Added a focused Windows Glint build guide, architecture and capability-status
+  table. Consolidated historical verification notes into actionable requirements.
+- Removed the autonomous development diary from public tracking while preserving
+  it locally. Build outputs, machine-specific reports and private server code stay
+  outside public source.
+- Added contribution guidelines, Contributor Covenant, security policy, private
+  vulnerability reporting and structured bug/feature/engine/PR templates.
+
 ## 0.4.2 - 2026-10-11
 
 - Added **Tasks → Team center** and the team-center guide. Desktop credentials
