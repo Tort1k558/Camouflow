@@ -1,0 +1,86 @@
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test_helper.h b/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
+--- a/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
++++ b/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
+@@ -5,7 +5,10 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_WORKERS_WORKER_THREAD_TEST_HELPER_H_
+ #define THIRD_PARTY_BLINK_RENDERER_CORE_WORKERS_WORKER_THREAD_TEST_HELPER_H_
+ 
++#include <array>
++#include <cstdint>
+ #include <memory>
++#include <optional>
+ 
+ #include "base/synchronization/waitable_event.h"
+ #include "mojo/public/cpp/bindings/receiver_set.h"
+@@ -155,7 +158,9 @@
+   void StartWithSourceCode(const SecurityOrigin* security_origin,
+                            const String& source,
+                            const KURL& script_url = KURL("http://fake.url/"),
+-                           WorkerClients* worker_clients = nullptr) {
++                           WorkerClients* worker_clients = nullptr,
++                           std::optional<std::array<uint8_t, 32>> canvas_seed =
++                               std::nullopt) {
+     auto creation_params = std::make_unique<GlobalScopeCreationParams>(
+         script_url, mojom::blink::ScriptType::kClassic,
+         "fake global scope name", "fake user agent", UserAgentMetadata(),
+@@ -174,6 +179,7 @@
+         nullptr /* worklet_module_responses_map */);
+     // Create a dummy parent context.
+     creation_params->parent_context_token = LocalFrameToken();
++    creation_params->glint_canvas_partition_seed = std::move(canvas_seed);
+ 
+     Start(std::move(creation_params),
+           WorkerBackingThreadStartupData::CreateDefault(),
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test.cc b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+--- a/third_party/blink/renderer/core/workers/worker_thread_test.cc
++++ b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+@@ -208,6 +208,49 @@
+   std::unique_ptr<WorkerThreadForTest> worker_thread_;
+ };
+ 
++TEST_F(WorkerThreadTest, GlintCanvasSeedArrivesBeforeEvaluation) {
++  std::array<uint8_t, 32> seed{};
++  for (uint8_t i = 0; i < seed.size(); ++i) {
++    seed[i] = i;
++  }
++  testing::InSequence sequence;
++  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++      .WillOnce([seed](WorkerOrWorkletGlobalScope* scope) {
++        auto* worker_scope = To<WorkerGlobalScope>(scope);
++        EXPECT_EQ(worker_scope->GlintCanvasPartitionSeed(), std::optional(seed));
++        auto copy = worker_scope->GlintCanvasPartitionSeed();
++        ASSERT_TRUE(copy);
++        copy->fill(255);
++        EXPECT_EQ(worker_scope->GlintCanvasPartitionSeed(), std::optional(seed));
++      });
++  EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScript(true)).Times(1);
++  EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++  worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
++                                     KURL("http://fake.url/"), nullptr, seed);
++  seed.fill(255);
++  worker_thread_->WaitForInit();
++  worker_thread_->Terminate();
++  worker_thread_->WaitForShutdownForTesting();
++}
++
++TEST_F(WorkerThreadTest, GlintCanvasSeedRemainsAbsentWithoutBootstrap) {
++  testing::InSequence sequence;
++  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++      .WillOnce([](WorkerOrWorkletGlobalScope* scope) {
++        EXPECT_FALSE(To<WorkerGlobalScope>(scope)->GlintCanvasPartitionSeed());
++      });
++  EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScript(true)).Times(1);
++  EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++  Start();
++  worker_thread_->WaitForInit();
++  worker_thread_->Terminate();
++  worker_thread_->WaitForShutdownForTesting();
++}
++
+ TEST_F(WorkerThreadTest, ShouldTerminateScriptExecution) {
+   using ThreadState = WorkerThread::ThreadState;
+ 

@@ -208,3 +208,39 @@ No active patch application, graph generation, linking or worker runtime executi
 has occurred. After promotion in an idle source tree, real tests must exercise
 both event orders, absent/failed policy, timeout/disconnect, owner destruction,
 termination and nested workers before claiming first-script ordering.
+
+## Dedicated-worker thread handoff draft
+
+`worker_canvas_thread_handoff.patch` continues the startup-gate stack into Blink.
+DedicatedWorker::ContinueStartInternal first creates GlobalScopeCreationParams,
+moves the owned optional seed from WorkerMainScriptLoadParameters and then starts
+the worker with those parameters. WorkerGlobalScope stores that value as an
+immutable member during construction, before script evaluation. Its internal
+C++ accessor checks the owning context thread and returns a copy, not a pointer
+into another thread or a JavaScript property. No profile root key crosses the
+thread boundary. Workers without supplied bootstrap data keep an absent value;
+there is no creator-document seed substitution or generated fallback identity.
+
+The pinned DedicatedWorker and WorkerGlobalScope implementation translation units
+passed isolated syntax checks with actual Blink core flags:
+`D:/CamouFlowNative/worker-canvas-thread-handoff-cpp-check/proof.json`.
+These are not object/link/runtime results.
+
+`worker_canvas_handoff_tests.patch` adds two cases to the existing WorkerThreadTest
+fixture and an optional seed argument to its test-only startup helper. They
+specify delivery to the worker thread before evaluation, owned-copy immutability,
+and absence when no policy was supplied. Ordered mock expectations require scope
+creation before script evaluation and shutdown. The existing core unit-test GN
+registration already includes this fixture; no separate runner or dependency is
+introduced. The updated fixture passed isolated syntax checks with actual Blink
+unit-test flags, omitting its unbuilt PCH:
+`D:/CamouFlowNative/worker-canvas-handoff-ordered-tests-cpp-check/proof.json`.
+**Neither of the two new cases has been executed.** They use FakeWorkerGlobalScope
+and do not prove real broker/GC/nested-worker startup or OffscreenCanvas API use.
+
+The complete six-patch stack, including these ordered tests, applied to a private
+copy without changing active inputs:
+`D:/CamouFlowNative/worker-handoff-ordered-full-stack-applicability/proof.json`.
+It remains unregistered and inactive. Canvas hooks, document bootstrap,
+shared/service worker startup, data-URL origin policy and real runtime checks are
+still required; this handoff does not admit Canvas protection as a capability.
