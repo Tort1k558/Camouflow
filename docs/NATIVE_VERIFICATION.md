@@ -292,6 +292,18 @@ the build log is `worker-handoff-001-027-j4-build.log`. No passing native handof
 result is claimed until its exact four cases execute. Active source/GN inputs
 remain unchanged; future Canvas drafts must stay outside that checkout.
 
+An independent unregistered `document_canvas_seed_handoff.patch` now prepares
+the immutable Blink document-side carrier. A native-only initializer owns one
+surface-seed snapshot, construction copies it into a const Document field and
+getter snapshots cannot mutate that field. Three DocumentTest definitions cover
+absence/copy ownership/independent supplied seeds; they have not executed.
+Applicability and isolated syntax verification of initializer, Document and
+fixture passed, and the five active source hashes remained unchanged:
+`document-canvas-seed-handoff-overlay/proof.json` and
+`document-canvas-seed-handoff-cpp-check/proof.json`. This is not browser delivery
+or first-script readiness: the trusted committed-partition producer is still
+missing. No Canvas hook or policy capability was enabled by this draft.
+
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External
 anti-bot scores may be observations, never guaranteed release capabilities.

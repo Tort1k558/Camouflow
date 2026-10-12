@@ -541,3 +541,34 @@ worker body beacons, in the 40-case gate. This does not prove exactly-once error
 delivery, early termination or queued-port memory release. Before admission, verify
 unavailable startup, exactly one client error, zero body executions on rejection,
 queued port release, early client termination and the complete worker gate.
+
+### Immutable document seed handoff candidate
+
+`document_canvas_seed_handoff.patch` prepares the Blink-owned document carrier,
+following the existing worker-scope ownership pattern. A native-only
+`DocumentInit` builder accepts one 32-byte surface seed, owns its snapshot and
+copies it into a const `Document` member during construction. Getter results are
+copies, not mutable aliases. No JavaScript property, profile root key, caller URL
+or public capability is added. A second assignment to the same initializer is
+rejected; absent policy remains absent rather than inventing a key.
+
+Three `DocumentTest` definitions cover default absence, source/initializer/getter
+copy ownership and independent supplied document seeds. These are not profile
+isolation, navigation or browser-delivery tests. The patch is unregistered and
+unapplied; it cannot supply policy to real documents or protect Canvas by itself.
+Applicability against the pinned checkout passed with all five active files
+unchanged: `D:/CamouFlowNative/document-canvas-seed-handoff-overlay/proof.json`.
+All three affected C++ translation units (initializer, Document and fixture)
+passed isolated syntax checks with the pinned Blink core unit flags, including
+Chromium/Blink plugins and without borrowing a stale PCH:
+`document-canvas-seed-handoff-cpp-check/proof.json`. Source/check hashes were
+revalidated afterwards. No objects were linked or fixture cases executed.
+
+The remaining producer must bind the browser-owned committed partition to this
+initializer before scripts run. Initial empty/about:blank/srcdoc documents,
+cross-origin/OOPIF navigation, BFCache/prerender, redirects, document replacement
+and synthetic DOM documents require explicit lifecycle decisions and real tests.
+Do not infer a policy from a DOM owner's URL, copy a previous page's seed across
+navigation or fill missing policy asynchronously after a synchronous Canvas read.
+Canvas hooks must resolve the actual executing window's current document policy,
+not let script-created DOM documents introduce an unprotected fallback path.
