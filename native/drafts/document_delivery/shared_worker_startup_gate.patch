@@ -1,10 +1,11 @@
 diff --git a/content/renderer/worker/embedded_shared_worker_stub.h b/content/renderer/worker/embedded_shared_worker_stub.h
 --- a/content/renderer/worker/embedded_shared_worker_stub.h
 +++ b/content/renderer/worker/embedded_shared_worker_stub.h
-@@ -8,8 +8,10 @@
+@@ -8,8 +8,11 @@
  #include <memory>
  #include <vector>
  
++#include "base/functional/callback.h"
 +#include "base/memory/weak_ptr.h"
  #include "base/unguessable_token.h"
  #include "content/renderer/service_worker/service_worker_provider_context.h"
@@ -12,10 +13,11 @@ diff --git a/content/renderer/worker/embedded_shared_worker_stub.h b/content/ren
  #include "mojo/public/cpp/bindings/pending_receiver.h"
  #include "mojo/public/cpp/bindings/pending_remote.h"
  #include "mojo/public/cpp/bindings/receiver.h"
-@@ -130,6 +132,8 @@
+@@ -130,6 +133,9 @@
    // used by this worker (typically the network service).
    mojo::Remote<network::mojom::URLLoaderFactory>
        default_factory_disconnect_handler_holder_;
++  std::vector<base::OnceClosure> pending_controls_;
 +  std::unique_ptr<PrivacyWorkerBootstrap> privacy_bootstrap_;
 +  base::WeakPtrFactory<EmbeddedSharedWorkerStub> weak_factory_{this};
  };
@@ -70,7 +72,6 @@ diff --git a/content/renderer/worker/embedded_shared_worker_stub.cc b/content/re
 +        std::move(browser_interface_broker));
 +    broker->GetInterface(endpoint.InitWithNewPipeAndPassReceiver());
 +    browser_interface_broker = broker.Unbind();
-+    receiver_.Pause();
 +  }
 +  auto start_worker = base::BindOnce(
 +      [](base::WeakPtr<EmbeddedSharedWorkerStub> self,
@@ -122,6 +123,10 @@ diff --git a/content/renderer/worker/embedded_shared_worker_stub.cc b/content/re
 +          return;
 +        }
 +        self->impl_ = std::move(impl);
++        auto pending_controls = std::move(self->pending_controls_);
++        for (auto& control : pending_controls) {
++          std::move(control).Run();
++        }
 +      },
 +      weak_factory_.GetWeakPtr(), token, std::move(info), constructor_key, origin,
 +      is_constructor_secure_context, user_agent, ua_metadata, pause_on_start,
@@ -150,15 +155,22 @@ diff --git a/content/renderer/worker/embedded_shared_worker_stub.cc b/content/re
 +          return;
 +        }
 +        std::move(start_worker).Run(std::move(result).value());
-+        if (self) {
-+          self->receiver_.Resume();
-+        }
 +      },
 +      weak_factory_.GetWeakPtr(), std::move(start_worker)));
  }
  
  EmbeddedSharedWorkerStub::~EmbeddedSharedWorkerStub() {
-@@ -204,6 +283,10 @@
+@@ -200,18 +279,38 @@
+ 
+ void EmbeddedSharedWorkerStub::Connect(int connection_request_id,
+                                        blink::MessagePortDescriptor port) {
++  if (!impl_) {
++    pending_controls_.push_back(base::BindOnce(
++        &EmbeddedSharedWorkerStub::Connect, weak_factory_.GetWeakPtr(),
++        connection_request_id, std::move(port)));
++    return;
++  }
+   impl_->Connect(connection_request_id, std::move(port));
  }
  
  void EmbeddedSharedWorkerStub::Terminate() {
@@ -167,5 +179,23 @@ diff --git a/content/renderer/worker/embedded_shared_worker_stub.cc b/content/re
 +    return;
 +  }
    impl_->TerminateWorkerContext();
+ }
+ 
+ void EmbeddedSharedWorkerStub::Freeze() {
++  if (!impl_) {
++    pending_controls_.push_back(base::BindOnce(
++        &EmbeddedSharedWorkerStub::Freeze, weak_factory_.GetWeakPtr()));
++    return;
++  }
+   impl_->Freeze();
+ }
+ 
+ void EmbeddedSharedWorkerStub::Resume() {
++  if (!impl_) {
++    pending_controls_.push_back(base::BindOnce(
++        &EmbeddedSharedWorkerStub::Resume, weak_factory_.GetWeakPtr()));
++    return;
++  }
+   impl_->Resume();
  }
  
