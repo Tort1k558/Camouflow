@@ -26,7 +26,7 @@ def prepare(source: Path, output: Path) -> dict:
     if revision != lock["chromium_revision"]:
         raise ValueError("Chromium revision differs from the pinned build lock")
     output.parent.mkdir(parents=True, exist_ok=True)
-    svg = (ROOT / "app/qml/theme/brand.svg").read_bytes()
+    svg = (ROOT / "app/qml/theme/brand.svg").read_bytes().replace(b"\r\n", b"\n")
     icon = (ROOT / "logo.ico").read_bytes()
     replacements = {}
     branding_name = "chrome/app/theme/chromium/BRANDING"

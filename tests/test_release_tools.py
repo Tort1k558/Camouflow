@@ -895,7 +895,10 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
     for name in ("native/build-lock.json", "logo.ico", "app/qml/theme/brand.svg"):
         target = public / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes((branding.ROOT / name).read_bytes())
+        contents = (branding.ROOT / name).read_bytes()
+        if name.endswith(".svg"):
+            contents = contents.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+        target.write_bytes(contents)
     original = {
         "chrome/app/theme/chromium/BRANDING": b"PRODUCT_FULLNAME=Chromium\nPRODUCT_SHORTNAME=Chromium\nPRODUCT_INSTALLER_FULLNAME=Chromium Installer\nPRODUCT_INSTALLER_SHORTNAME=Chromium Installer\n",
         "chrome/browser/profiles/profile_shortcut_manager_win.cc": b"const int kCurrentProfileIconVersion = 10;\n",
@@ -939,7 +942,7 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
     real_run(["git", "-c", "core.autocrlf=false", "apply", "--check", str(patch)], cwd=source, check=True)
     real_run(["git", "-c", "core.autocrlf=false", "apply", str(patch)], cwd=source, check=True)
     assert (source / "chrome/app/theme/chromium/win/chromium.ico").read_bytes() == (public / "logo.ico").read_bytes()
-    assert (source / "chrome/app/theme/chromium/product_logo.svg").read_bytes() == (public / "app/qml/theme/brand.svg").read_bytes()
+    assert (source / "chrome/app/theme/chromium/product_logo.svg").read_bytes() == (public / "app/qml/theme/brand.svg").read_bytes().replace(b"\r\n", b"\n")
     assert "PRODUCT_FULLNAME=Glint" in (source / "chrome/app/theme/chromium/BRANDING").read_text(encoding="utf-8")
     assert "kCurrentProfileIconVersion = 11" in (source / "chrome/browser/profiles/profile_shortcut_manager_win.cc").read_text(encoding="utf-8")
     for name, count in diagnostic_files.items():
