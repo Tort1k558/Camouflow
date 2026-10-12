@@ -278,6 +278,16 @@ stack controls and the complete suite still require fresh runtime evidence.
 This correction is not yet a verified CDP capability or general invisibility.
 All 1,077 local regression tests passed; the added regression requires coverage
 of both newly identified preview paths in the public patch.
+The first correction build stopped with exit code 1 after 22.67s: the property
+iterator supplies `v8::Name` (string or symbol), while the guarded helper accepted
+only `v8::String`. The helper now accepts native property keys without string
+coercion and applies stack-specific checks only to string keys. Exact pinned V8
+comparison and whitespace checks passed; 268 release-tool tests passed. The
+new four-job retry is in
+`D:\CamouFlowNative\native-build-inspector-console-name-fixed-j4.log`.
+Neither compilation retry substitutes for the unchanged runtime acceptance gate.
+Both corrected inspector translation units subsequently compiled successfully
+in the retry; snapshot-generator and browser linking remain in progress.
 
 | Area | Prepared artifact | Required own-fork evidence |
 | --- | --- | --- |
