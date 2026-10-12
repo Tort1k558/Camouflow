@@ -136,6 +136,10 @@ objects are preserved. Those two targets are retried serially under
 with a fresh `privacy-delivery-001-020-resume-j4.json`. All 34 required cases must
 pass before this unit gate is claimed; serial object/link completion alone is
 not sufficient.
+The serial retry was subsequently interrupted at the user's request to return
+to four concurrent tasks after freeing memory. Its partial log is retained, not
+a passing serial proof. The active replacement uses a new report path,
+`privacy-delivery-001-020-user-resume-j4.json`, and preserves completed objects.
 Startup gates, Canvas seed thread handoff, Canvas readback hooks and branding
 remain unregistered; no protected first-script execution or Canvas capability is
 implied by these endpoint registrations.
