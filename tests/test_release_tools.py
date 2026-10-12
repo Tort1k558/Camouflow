@@ -903,6 +903,15 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
         "chrome/app/theme/chromium/win/chromium.ico": b"\x00old-icon",
         "chrome/app/theme/chromium/win/app_list.ico": b"\x00old-app-icon",
     }
+    diagnostic_files = {
+        "content/browser/renderer_host/render_process_host_impl.cc": 3,
+        "third_party/blink/renderer/core/frame/camouflow_hardware_configuration.h": 1,
+        "ui/gfx/win/camouflow_font_configuration.h": 3,
+        "components/embedder_support/user_agent_utils.cc": 1,
+        "components/embedder_support/user_agent_utils_unittest.cc": 1,
+    }
+    for name, count in diagnostic_files.items():
+        original[name] = b'CHECK(false) << "Invalid CamouFlow Native test";\n' * count
     for size in (16, 24, 48, 64, 128, 256):
         original[f"chrome/app/theme/chromium/product_logo_{size}.png"] = b"\x00old-image"
     for name, contents in original.items():
@@ -933,6 +942,10 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
     assert (source / "chrome/app/theme/chromium/product_logo.svg").read_bytes() == (public / "app/qml/theme/brand.svg").read_bytes()
     assert "PRODUCT_FULLNAME=Glint" in (source / "chrome/app/theme/chromium/BRANDING").read_text(encoding="utf-8")
     assert "kCurrentProfileIconVersion = 11" in (source / "chrome/browser/profiles/profile_shortcut_manager_win.cc").read_text(encoding="utf-8")
+    for name, count in diagnostic_files.items():
+        contents = (source / name).read_text(encoding="utf-8")
+        assert "CamouFlow Native" not in contents
+        assert contents.count("Glint") == count
     for size in (16, 24, 48, 64, 128, 256):
         image = QImage(str(source / f"chrome/app/theme/chromium/product_logo_{size}.png"))
         assert (image.width(), image.height()) == (size, size)

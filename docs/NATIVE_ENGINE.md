@@ -1,4 +1,4 @@
-# CamouFlow Native
+# Glint
 
 ## Scope and current status
 

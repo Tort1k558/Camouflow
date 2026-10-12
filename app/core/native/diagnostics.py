@@ -14,7 +14,7 @@ OBSERVE = """async () => {
             if (!context) throw new Error('Native 2D context unavailable');
             context.font = '20px Arial';
             context.fillStyle = '#246b45';
-            const text = 'CamouFlow Native 0123';
+            const text = 'Glint 0123';
             const width = context.measureText(text).width;
             context.fillText(text, 4, 28);
             const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;

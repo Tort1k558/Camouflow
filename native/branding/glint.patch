@@ -27,6 +27,91 @@ diff --git a/chrome/browser/profiles/profile_shortcut_manager_win.cc b/chrome/br
  
  bool disabled_for_unit_tests = false;
  bool disable_unpinning_for_unit_tests = false;
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -3944,12 +3944,12 @@
+       browser_cmd.GetSwitchValueASCII(kCamouFlowHardwareSwitches[1]);
+   CHECK(!browser_cmd.HasSwitch(kCamouFlowHardwareSwitches[0]) ||
+         !native_concurrency.empty())
+-      << "Invalid CamouFlow Native hardware limits";
++      << "Invalid Glint hardware limits";
+   CHECK(!browser_cmd.HasSwitch(kCamouFlowHardwareSwitches[1]) ||
+         !native_memory.empty())
+-      << "Invalid CamouFlow Native hardware limits";
++      << "Invalid Glint hardware limits";
+   CHECK(camouflow::native::ParseHardwareLimits(native_concurrency, native_memory))
+-      << "Invalid CamouFlow Native hardware limits";
++      << "Invalid Glint hardware limits";
+   renderer_cmd->CopySwitchesFrom(browser_cmd, kCamouFlowHardwareSwitches);
+ 
+   CopyFeatureSwitch(browser_cmd, renderer_cmd, switches::kEnableBlinkFeatures);
+diff --git a/third_party/blink/renderer/core/frame/camouflow_hardware_configuration.h b/third_party/blink/renderer/core/frame/camouflow_hardware_configuration.h
+--- a/third_party/blink/renderer/core/frame/camouflow_hardware_configuration.h
++++ b/third_party/blink/renderer/core/frame/camouflow_hardware_configuration.h
+@@ -19,7 +19,7 @@
+     CHECK(!command->HasSwitch(kConcurrency) || !concurrency.empty());
+     CHECK(!command->HasSwitch(kMemory) || !memory.empty());
+     const auto parsed = ParseHardwareLimits(concurrency, memory);
+-    CHECK(parsed) << "Invalid CamouFlow Native hardware limits";
++    CHECK(parsed) << "Invalid Glint hardware limits";
+     return parsed.limits;
+   }();
+   return limits;
+diff --git a/ui/gfx/win/camouflow_font_configuration.h b/ui/gfx/win/camouflow_font_configuration.h
+--- a/ui/gfx/win/camouflow_font_configuration.h
++++ b/ui/gfx/win/camouflow_font_configuration.h
+@@ -19,7 +19,7 @@
+         if (!command->HasSwitch(kSwitch))
+           return std::nullopt;
+         const auto parsed = ParseFontFamilies(command->GetSwitchValueASCII(kSwitch));
+-        CHECK(parsed) << "Invalid CamouFlow Native font families";
++        CHECK(parsed) << "Invalid Glint font families";
+         return parsed;
+       }());
+   return *families;
+@@ -35,7 +35,7 @@
+   const HRESULT result = RestrictFontCollection(factory, source.Get(),
+                                                *families, &restricted);
+   CHECK(SUCCEEDED(result) && restricted)
+-      << "Unavailable CamouFlow Native font family collection";
++      << "Unavailable Glint font family collection";
+   return restricted;
+ }
+ 
+@@ -48,7 +48,7 @@
+   const HRESULT result = CreateRestrictedFontFallback(factory, collection,
+                                                       *families, &fallback);
+   CHECK(SUCCEEDED(result) && fallback)
+-      << "Unavailable CamouFlow Native font fallback";
++      << "Unavailable Glint font fallback";
+   return fallback;
+ }
+ 
+diff --git a/components/embedder_support/user_agent_utils.cc b/components/embedder_support/user_agent_utils.cc
+--- a/components/embedder_support/user_agent_utils.cc
++++ b/components/embedder_support/user_agent_utils.cc
+@@ -220,7 +220,7 @@
+       command_line->HasSwitch("camouflow-native-user-agent");
+   CHECK(!native_identity ||
+         command_line->GetSwitchValueNative("camouflow-native-user-agent").empty())
+-      << "Invalid CamouFlow Native browser identity flag";
++      << "Invalid Glint browser identity flag";
+   if (command_line->HasSwitch(kHeadless) && !native_identity) {
+     product.insert(0, "Headless");
+   }
+diff --git a/components/embedder_support/user_agent_utils_unittest.cc b/components/embedder_support/user_agent_utils_unittest.cc
+--- a/components/embedder_support/user_agent_utils_unittest.cc
++++ b/components/embedder_support/user_agent_utils_unittest.cc
+@@ -1068,7 +1068,7 @@
+   scoped_command_line.GetProcessCommandLine()->AppendSwitchASCII(
+       "camouflow-native-user-agent", "false");
+   EXPECT_DEATH_IF_SUPPORTED(GetUserAgent(),
+-                            "Invalid CamouFlow Native browser identity flag");
++                            "Invalid Glint browser identity flag");
+ }
+ 
+ TEST_F(UserAgentUtilsTest, HeadlessUserAgent) {
 diff --git a/chrome/app/theme/chromium/win/chromium.ico b/chrome/app/theme/chromium/win/chromium.ico
 index d0aa0c2fdc944c9e3bd28f5bb5128a14254d5afe..b0e06fc2390071d2584f0911cd35bc143fbf3ab0 100644
 GIT binary patch

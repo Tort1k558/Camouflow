@@ -46,6 +46,17 @@ def prepare(source: Path, output: Path) -> dict:
         raise ValueError("Unexpected Windows profile icon version")
     replacements[shortcut_name] = shortcut.replace(
         old_version, "const int kCurrentProfileIconVersion = 11;").encode("utf-8")
+    for name, expected_count in (
+        ("content/browser/renderer_host/render_process_host_impl.cc", 3),
+        ("third_party/blink/renderer/core/frame/camouflow_hardware_configuration.h", 1),
+        ("ui/gfx/win/camouflow_font_configuration.h", 3),
+        ("components/embedder_support/user_agent_utils.cc", 1),
+        ("components/embedder_support/user_agent_utils_unittest.cc", 1),
+    ):
+        text = (source / name).read_text(encoding="utf-8-sig")
+        if text.count("CamouFlow Native") != expected_count:
+            raise ValueError(f"Unexpected legacy product diagnostics: {name}")
+        replacements[name] = text.replace("CamouFlow Native", "Glint").encode("utf-8")
     replacements["chrome/app/theme/chromium/win/chromium.ico"] = icon
     replacements["chrome/app/theme/chromium/win/app_list.ico"] = icon
     replacements["chrome/app/theme/chromium/product_logo.svg"] = svg
@@ -76,8 +87,8 @@ def prepare(source: Path, output: Path) -> dict:
             original = (source / name).read_bytes()
             if contents == original:
                 raise ValueError(f"Branding is already applied: {name}")
-            if name.endswith(("BRANDING", ".cc", ".svg")):
-                before = original.decode("utf-8-sig")
+            if name.endswith(("BRANDING", ".cc", ".h", ".svg")):
+                before = original.decode("utf-8-sig").replace("\r\n", "\n")
                 after = contents.decode("utf-8")
                 if not after.endswith("\n"):
                     after += "\n"

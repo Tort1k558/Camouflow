@@ -1,6 +1,6 @@
-# Native Chromium source workspace
+# Glint Chromium source workspace
 
-This directory tracks the public CamouFlow Native build inputs. Chromium source,
+This directory tracks the public Glint build inputs. Chromium source,
 dependencies, tools and output stay **outside this repository**, on the approved
 `D:\CamouFlowNative` workspace. Backend source and credentials are not included.
 
