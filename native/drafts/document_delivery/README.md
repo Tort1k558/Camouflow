@@ -387,9 +387,9 @@ scripts loaded from the service-worker script cache. One start-data field can
 therefore serve both fresh network installs and subsequent installed-script
 starts, for classic and module workers.
 
-No code currently populates the new field. Normal service workers retain an
-absent seed; this patch alone provides neither policy readiness nor protected
-Canvas. The service-worker host endpoint still needs startup wiring, termination
+The handoff-only patch does not populate the new field. Normal service workers
+retain an absent seed; this patch alone provides neither policy readiness nor
+protected Canvas. Admission still needs verified startup wiring, termination
 handling and runtime tests with multiple clients/partitions. Document bootstrap
 also remains unfinished. Do not populate the field with a creator-document key
 or treat cached scripts as exempt from the readiness gate.
@@ -402,3 +402,35 @@ flags: `service-worker-complete-handoff-cpp-check/proof.json`.
 These are not linking or service-worker lifecycle results. Required runtime cases
 include fresh install, installed-script restart, update, classic/module scripts,
 termination while policy is pending, partitioned reuse and readback agreement.
+
+### Service-worker startup gate draft
+
+`service_worker_startup_gate.patch` requests NativePrivacyWorker from the supplied
+service-worker broker on EmbeddedWorkerInstanceClientImpl's initiator sequence.
+Under the developer-only bootstrap switch it retains owned start parameters until
+the existing consumer returns a validated policy. ContinueStartWorker installs
+the surface seed in WebEmbeddedWorkerStartData before creating the context client
+or starting the worker thread. Both installed and newly fetched scripts use this
+same route; neither a document pipe nor the optional network load parameters
+determine the key.
+
+The instance receiver is not paused. StopWorker or connection loss before readiness
+destroy the unstarted owner, invalidating callbacks and dropping pending start
+parameters. Unavailable, malformed, disconnected or timed-out policy takes the
+existing error/destruction path, rather than an unprotected start. The browser's
+existing instance-client disconnect handler calls Detach. First receipt timing is
+captured before policy wait, not shifted to the later continuation. With the
+switch absent the same continuation starts immediately without a seed.
+
+The twelve-patch draft stack applies to an isolated copy with active inputs
+unchanged: `D:/CamouFlowNative/service-worker-startup-full-stack-applicability/proof.json`.
+The instance client passed isolated syntax checking with pinned renderer flags:
+`service-worker-startup-gate-cpp-check/proof.json`. These do not prove actual
+ThreadPool/initiator sequencing, browser Detach notification, event delivery or
+worker lifecycle. The draft is not registered, linked or enabled in the browser.
+
+Before admission, execute early StopWorker/host disconnect, delayed/failed readiness,
+fresh install, installed-script restart/update, classic/module worker startup and
+multiple-client/partition cases. Profile shutdown, DevTools pause, feature-enabled
+background initialization, fetch/message events and combined Canvas policies also
+require real runtime checks. Document bootstrap and privacy admission remain open.
