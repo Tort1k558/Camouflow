@@ -363,6 +363,30 @@ persistent-profile restart, including both existing origin/empty-image phases:
 It confirms the upstream browser's snapshot-before-mutation behavior, not the
 unlinked candidate's protected export behavior.
 
+### Linked native copy/image tests
+
+All 20 exact cases (10 GlintCanvasCopyTest and 10 GlintCanvasImageTest) executed
+and passed in an isolated Windows executable linked against the existing Blink
+test dependencies. The canonical algorithm, copy and image helpers and both
+fixtures were compiled; no baseline object or ABI was replaced. Tests cover
+immutable detached ownership, unchanged source pixels, explicit BGRA and Skia
+alpha conversion, memory-budget rejection, unsupported float16/color space,
+stable repeated PNG encoding, different fixture seeds, orientation, crop equality
+and transparent out-of-bounds padding. Test execution took 54 ms.
+
+Evidence: `D:/CamouFlowNative/canvas-copy-image-001-029-linked-v2/proof.json` and
+the adjacent exact JSON cases. Executable SHA-256:
+`55a1c5eeede247bf7ed8ba00986a6505aa203e4628c94d0de9da26bcd4666248`.
+Active Chromium source, GN arguments, browser core and receipt remained unchanged.
+The initial v1 attempt retains its failed compile evidence: the private harness
+incorrectly read per-edge Ninja overrides as global flags. v2 separates global
+compile flags from link-edge variables; no C++ fixture was weakened.
+These are executed native helper tests, not HTML/OffscreenCanvas JavaScript calls,
+actual profile seed delivery, fingerprint resistance or production admission.
+After adding the shared commit-preflight helper, the complete eleven-candidate
+stack replayed again over 48 composed/canonical paths with active sources unchanged:
+`D:/CamouFlowNative/canvas-document-exports-public-replay-v2.json`.
+
 ## Protected-raster crop fixtures
 
 The image adapter fixture now contains ten cases. Two additional cases read a

@@ -872,6 +872,22 @@ Seven-candidate replay passed over 32 composed/canonical paths:
 `D:/CamouFlowNative/document-delivery-public-replay-001-029-rejection-v1.json`.
 These results are not browser protection or runtime admission.
 
+The early renderer check now calls the same header-only
+`PreflightGlintDocumentCanvasCommit` used by its dedicated native fixture, rather
+than duplicating seed-length/copy/partition logic in RenderFrameImpl. The header
+rejects oversized commitment and seed lengths other than 32 before copying, then
+uses the shared resolver and final-partition validator to return an owned seed.
+Eleven fixture definitions cover matching input, owned copy, version, empty/large
+commitment, short/long seed, trailing binary data, opaque normalization, storage
+nonce and wrong browser origin. Renderer and fixture translation units passed
+isolated syntax checks: `document-commit-preflight-cpp-check-v1/proof.json`.
+The revised seven-candidate replay passed over 34 composed/canonical paths:
+`document-delivery-public-replay-001-029-preflight-v1.json`.
+All eleven preflight cases also executed and passed in an isolated native
+executable: `D:/CamouFlowNative/document-commit-preflight-001-029-linked-v1/proof.json`.
+This proves incoming payload checks and owned-copy behavior, not final Blink
+partition calculation, renderer abort cleanup or safe navigation recovery.
+
 The early check uses the browser's supplied origin. It does **not** prove the
 final Blink-selected partition before teardown. The final DocumentLoader CHECK
 therefore remains in the candidate; safely rejecting a mismatch discovered only

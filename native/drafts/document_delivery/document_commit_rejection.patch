@@ -64,42 +64,23 @@ diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/b
 diff --git a/content/renderer/render_frame_impl.cc b/content/renderer/render_frame_impl.cc
 --- a/content/renderer/render_frame_impl.cc
 +++ b/content/renderer/render_frame_impl.cc
-@@ -5,6 +5,7 @@
- #include "content/renderer/render_frame_impl.h"
- 
- #include <algorithm>
-+#include <array>
- #include <memory>
- #include <optional>
- #include <string>
-@@ -162,6 +163,8 @@
+@@ -162,6 +162,7 @@
  #include "third_party/blink/public/common/navigation/impression.h"
  #include "third_party/blink/public/common/navigation/navigation_params.h"
  #include "third_party/blink/public/common/navigation/navigation_params_mojom_traits.h"
-+#include "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h"
-+#include "third_party/blink/public/common/native_privacy/document_storage_key_resolution.h"
++#include "third_party/blink/public/common/native_privacy/document_commit_preflight.h"
  #include "third_party/blink/public/common/navigation/navigation_policy.h"
  #include "third_party/blink/public/common/page_state/page_state.h"
  #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
-@@ -2582,6 +2585,27 @@
+@@ -2582,6 +2583,17 @@
      mojom::CookieManagerInfoPtr cookie_manager_info,
      mojom::StorageInfoPtr storage_info,
      mojom::NavigationClient::CommitNavigationCallback commit_callback) {
 +  if (commit_params->glint_document_canvas_commit) {
 +    const auto& policy = *commit_params->glint_document_canvas_commit;
-+    const auto partition = blink::ResolveGlintDocumentStorageKey(
-+        commit_params->storage_key, commit_params->origin_to_commit);
-+    std::array<uint8_t, 32> seed{};
-+    bool valid = policy.partition_encoding.size() <= 8192u &&
-+                 policy.partition_seed.size() == seed.size();
-+    if (valid) {
-+      std::copy(policy.partition_seed.begin(), policy.partition_seed.end(),
-+                seed.begin());
-+      valid = blink::ValidateGlintDocumentCanvasPolicy(
-+                  policy.version, policy.partition_encoding, seed, partition)
-+                  .has_value();
-+    }
-+    if (!valid) {
++    if (!blink::PreflightGlintDocumentCanvasCommit(
++            policy.version, policy.partition_encoding, policy.partition_seed,
++            commit_params->storage_key, commit_params->origin_to_commit)) {
 +      GetFrameHost()->RejectGlintDocumentCanvasCommit(
 +          commit_params->navigation_token);
 +      AbortClientNavigationImpl(/*for_new_navigation=*/false);
@@ -198,3 +179,174 @@ diff --git a/content/browser/camouflow_native/privacy_navigation_integration_uni
  INSTANTIATE_TEST_SUITE_P(WithAndWithoutUrlLoader,
                           NativeDocumentNavigationTest,
                           testing::Bool());
+diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
+--- a/third_party/blink/public/common/BUILD.gn
++++ b/third_party/blink/public/common/BUILD.gn
+@@ -300,6 +300,7 @@
+     "sms/webotp_service_outcome.h",
+     "native_privacy/document_canvas_commit.h",
+     "native_privacy/document_canvas_policy_validation.h",
++    "native_privacy/document_commit_preflight.h",
+     "native_privacy/document_storage_key_resolution.h",
+     "storage_key/storage_key.h",
+     "subresource_load_metrics.h",
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -3892,6 +3892,7 @@
+   sources = [
+     "//base/test/run_all_unittests.cc",
+     "camouflow_native/document_canvas_policy_validation_unittest.cc",
++    "camouflow_native/document_commit_preflight_unittest.cc",
+     "camouflow_native/document_storage_key_resolution_unittest.cc",
+     "camouflow_native/privacy_key_derivation_unittest.cc",
+     "camouflow_native/privacy_profile_key_unittest.cc",
+diff --git a/third_party/blink/public/common/native_privacy/document_commit_preflight.h b/third_party/blink/public/common/native_privacy/document_commit_preflight.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/document_commit_preflight.h
+@@ -0,0 +1,38 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_COMMIT_PREFLIGHT_H_
++#define THIRD_PARTY_BLINK_PUBLIC_COMMON_NATIVE_PRIVACY_DOCUMENT_COMMIT_PREFLIGHT_H_
++
++#include <algorithm>
++#include <array>
++#include <cstdint>
++#include <optional>
++#include <span>
++#include <string_view>
++
++#include "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h"
++#include "third_party/blink/public/common/native_privacy/document_storage_key_resolution.h"
++
++namespace blink {
++// Checks the trusted browser payload before renderer commit mutations. Final
++// Blink-selected partition validation is still required before seed installation.
++inline std::optional<std::array<uint8_t, 32>> PreflightGlintDocumentCanvasCommit(
++    uint32_t version,
++    std::string_view partition_encoding,
++    std::span<const uint8_t> partition_seed,
++    const StorageKey& provisional_partition,
++    const url::Origin& browser_origin_to_commit) {
++  std::array<uint8_t, 32> owned_seed{};
++  if (partition_encoding.size() > 8192u ||
++      partition_seed.size() != owned_seed.size()) {
++    return std::nullopt;
++  }
++  std::copy(partition_seed.begin(), partition_seed.end(), owned_seed.begin());
++  return ValidateGlintDocumentCanvasPolicy(
++      version, partition_encoding, owned_seed,
++      ResolveGlintDocumentStorageKey(provisional_partition,
++                                    browser_origin_to_commit));
++}
++}  // namespace blink
++
++#endif
+diff --git a/content/browser/camouflow_native/document_commit_preflight_unittest.cc b/content/browser/camouflow_native/document_commit_preflight_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/document_commit_preflight_unittest.cc
+@@ -0,0 +1,101 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "third_party/blink/public/common/native_privacy/document_commit_preflight.h"
++
++#include <string>
++#include <vector>
++
++#include "base/unguessable_token.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++
++namespace blink {
++namespace {
++class GlintDocumentCommitPreflightTest : public testing::Test {
++ protected:
++  url::Origin origin_ = url::Origin::Create(GURL("https://canvas.test/"));
++  StorageKey key_ = StorageKey::CreateFirstParty(origin_);
++  std::vector<uint8_t> seed_ = std::vector<uint8_t>(32, 17);
++
++  std::string Encoding(const StorageKey& key) {
++    auto encoding = key.SerializeForNativePrivacy();
++    EXPECT_TRUE(encoding);
++    return encoding.value();
++  }
++};
++
++TEST_F(GlintDocumentCommitPreflightTest, AcceptsMatchingBrowserPartition) {
++  auto result = PreflightGlintDocumentCanvasCommit(
++      1, Encoding(key_), seed_, key_, origin_);
++  ASSERT_TRUE(result);
++  EXPECT_EQ(std::vector<uint8_t>(result->begin(), result->end()), seed_);
++}
++
++TEST_F(GlintDocumentCommitPreflightTest, ReturnsOwnedSeedCopy) {
++  auto result = PreflightGlintDocumentCanvasCommit(
++      1, Encoding(key_), seed_, key_, origin_);
++  ASSERT_TRUE(result);
++  seed_.assign(32, 233);
++  EXPECT_EQ((*result)[0], 17);
++  EXPECT_EQ((*result)[31], 17);
++}
++
++TEST_F(GlintDocumentCommitPreflightTest, RejectsUnsupportedVersion) {
++  EXPECT_FALSE(PreflightGlintDocumentCanvasCommit(
++      2, Encoding(key_), seed_, key_, origin_));
++}
++
++TEST_F(GlintDocumentCommitPreflightTest, RejectsEmptyCommitment) {
++  EXPECT_FALSE(PreflightGlintDocumentCanvasCommit(
++      1, "", seed_, key_, origin_));
++}
++
++TEST_F(GlintDocumentCommitPreflightTest, RejectsOversizedCommitment) {
++  EXPECT_FALSE(PreflightGlintDocumentCanvasCommit(
++      1, std::string(8193, 'a'), seed_, key_, origin_));
++}
++
++TEST_F(GlintDocumentCommitPreflightTest, RejectsShortSeed) {
++  seed_.resize(31);
++  EXPECT_FALSE(PreflightGlintDocumentCanvasCommit(
++      1, Encoding(key_), seed_, key_, origin_));
++}
++
++TEST_F(GlintDocumentCommitPreflightTest, RejectsLongSeed) {
++  seed_.resize(33);
++  EXPECT_FALSE(PreflightGlintDocumentCanvasCommit(
++      1, Encoding(key_), seed_, key_, origin_));
++}
++
++TEST_F(GlintDocumentCommitPreflightTest, RejectsTrailingBinaryCommitment) {
++  auto encoding = Encoding(key_);
++  encoding.push_back('\0');
++  EXPECT_FALSE(PreflightGlintDocumentCanvasCommit(
++      1, encoding, seed_, key_, origin_));
++}
++
++TEST_F(GlintDocumentCommitPreflightTest, ResolvesOpaqueWithoutNonce) {
++  const auto provisional = StorageKey::CreateFirstParty(url::Origin());
++  EXPECT_TRUE(PreflightGlintDocumentCanvasCommit(
++      1, Encoding(key_), seed_, provisional, origin_));
++  EXPECT_FALSE(PreflightGlintDocumentCanvasCommit(
++      1, Encoding(provisional), seed_, provisional, origin_));
++}
++
++TEST_F(GlintDocumentCommitPreflightTest, PreservesStorageNonce) {
++  const auto nonce = base::UnguessableToken::Create();
++  const auto provisional = StorageKey::CreateWithNonce(url::Origin(), nonce);
++  const auto final = StorageKey::CreateWithNonce(origin_, nonce);
++  EXPECT_TRUE(PreflightGlintDocumentCanvasCommit(
++      1, Encoding(final), seed_, provisional, origin_));
++  EXPECT_FALSE(PreflightGlintDocumentCanvasCommit(
++      1, Encoding(key_), seed_, provisional, origin_));
++}
++
++TEST_F(GlintDocumentCommitPreflightTest, RejectsDifferentBrowserOrigin) {
++  const auto other = url::Origin::Create(GURL("https://other.test/"));
++  EXPECT_FALSE(PreflightGlintDocumentCanvasCommit(
++      1, Encoding(key_), seed_, key_, other));
++}
++}  // namespace
++}  // namespace blink

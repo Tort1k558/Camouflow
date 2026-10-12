@@ -28,6 +28,7 @@ CANONICAL = {
     **{name: "third_party/blink/public/common/native_privacy/" + name for name in (
         "document_canvas_commit.h", "document_canvas_policy_validation.h",
         "document_storage_key_resolution.h",
+        "document_commit_preflight.h",
     )},
     **{name: "content/browser/camouflow_native/" + name for name in (
         "privacy_document_commit.h", "privacy_document_commit.cc",
@@ -35,6 +36,7 @@ CANONICAL = {
         "privacy_navigation_throttle.cc", "privacy_navigation_throttle_unittest.cc",
         "privacy_navigation_integration_unittest.cc",
         "document_storage_key_resolution_unittest.cc",
+        "document_commit_preflight_unittest.cc",
     )},
 }
 

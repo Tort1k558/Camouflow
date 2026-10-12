@@ -13,8 +13,8 @@ def test_document_candidate_order_and_canonical_paths():
     assert drafts.PATCHES[-1] == "document_commit_rejection.patch"
     paths = set().union(*(drafts.patch_paths((drafts.DRAFTS / name).read_text(encoding="utf-8-sig"))
                          for name in drafts.PATCHES))
-    assert len(paths) == 31
-    assert len(paths | set(drafts.CANONICAL.values())) == 32
+    assert len(paths) == 33
+    assert len(paths | set(drafts.CANONICAL.values())) == 34
     assert set(drafts.CANONICAL.values()) - paths == {
         "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h",
     }
