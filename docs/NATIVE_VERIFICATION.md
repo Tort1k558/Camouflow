@@ -127,8 +127,15 @@ result names and binary/core hashes. Neither change has browser release admissio
 The base delivery infrastructure is registered/applied as self-contained patches
 0018-0020. It includes the Mojo schema, document-scoped endpoint, worker endpoints
 bound to browser-owned partition/origin state, and the separately bounded worker
-consumer. `privacy-delivery-001-020-first-j4.json` is the first linked verification
-attempt; all 34 required cases must pass before this unit gate is claimed.
+consumer. The first four-job attempt, `privacy-delivery-001-020-first-j4.json`,
+failed before test execution: LLVM reported out-of-memory during concurrent V8
+snapshot-generator linkage and `dedicated_worker_hosts_for_document` compilation.
+This is not a passing IPC gate or evidence of a failed policy assertion. Cached
+objects are preserved. Those two targets are retried serially under
+`privacy-delivery-heavy-step-retry.json`, then the full four-job unit gate resumes
+with a fresh `privacy-delivery-001-020-resume-j4.json`. All 34 required cases must
+pass before this unit gate is claimed; serial object/link completion alone is
+not sufficient.
 Startup gates, Canvas seed thread handoff, Canvas readback hooks and branding
 remain unregistered; no protected first-script execution or Canvas capability is
 implied by these endpoint registrations.
