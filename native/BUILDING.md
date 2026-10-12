@@ -134,6 +134,28 @@ The scripts do not admit capabilities automatically or prove CAPTCHA success.
 Do not substitute a passing old report, SDK binary or Python tests for new
 own-fork runtime evidence. Canvas/GPU/audio protection is not complete.
 
+### Worker startup development probe
+
+After a successful 001-026 browser build, run the separate owned fixture probe:
+
+```powershell
+& $python scripts/verify_native_worker_startup.py --executable "$output\chrome.exe" --work-dir "$workspace\worker-startup-probe" --report "$workspace\worker-startup-new.json"
+if ($LASTEXITCODE -ne 0) { throw 'Glint worker startup probe failed' }
+```
+
+The probe requires the exact registered 0015-0025 patch hashes in the local build
+receipt and measures the executable/core DLLs before and after. It covers thirty
+classic/module dedicated/shared/service-worker cases: baseline and key-enabled
+startup/restart, plus unavailable-policy rejection. Ready service-worker restart
+uses the retained registration without re-registering and requires a new body
+execution beacon with no main-script HTTP fetch. Explicit third-party partitioning
+is enabled in this controlled probe; this does not prove every default setting.
+Worker profiles are isolated outside the public checkout using NativeRuntime's
+existing identity/lock/lifecycle path. A timeout is inconclusive, not a rejection
+pass. This probe does not verify Canvas keys/readback, nested workers, early
+termination, network outages or capability admission. The four Blink handoff
+unit cases still require their own linked execution.
+
 ## 5. Package and deliver separately
 
 `scripts/package_native_windows.py` requires the official mini-installer staged

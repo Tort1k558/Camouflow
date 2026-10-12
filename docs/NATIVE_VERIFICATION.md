@@ -25,6 +25,7 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | `scripts/verify_native_suite.py` | Runtime, hardware, WebRTC, automation, fonts, identity, CDP and combined gates |
 | `scripts/verify_native_storage_paths.py` | Windows path-depth/storage probes |
 | `scripts/verify_native_canvas.py` | Canvas verification tooling, not an implemented protection claim |
+| `scripts/verify_native_worker_startup.py` | Thirty owned classic/module startup/restart and unavailable-policy cases; no Canvas admission |
 
 Run commands as documented in the [build guide](../native/BUILDING.md). Use fresh
 report paths outside source/application repositories. Keep raw outputs and
@@ -177,6 +178,18 @@ code, GN arguments and receipt is retained outside the mutable output; this core
 backup is not a separately verified packaged runtime. No new build/runtime pass
 is claimed yet. Canvas readback hooks, document bootstrap and branding remain
 unregistered; no protected first-script or Canvas capability is admitted.
+
+The worker startup probe is prepared while this browser build runs. Its fixture
+checks first-script body execution through an owned HTTP beacon and an owned
+message response, not script download alone. It distinguishes observable failure
+from timeout and reuses retained service-worker registrations after restart,
+requiring no main-script refetch. The Python validator/receipt/flag regressions
+passed; the owned HTTP fixture and JavaScript parser checks passed under
+`worker-startup-fixture-syntax-check/proof.json`. Those are not browser results.
+The previous 001-015 core backup was actually rejected by the CLI before launch
+because its receipt lacks the required chain:
+`worker-startup-old-baseline-rejection.json`. No new browser startup pass is
+claimed until the compiled runtime completes this probe.
 
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External

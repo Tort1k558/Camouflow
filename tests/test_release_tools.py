@@ -2169,6 +2169,74 @@ def test_native_worker_startup_registered_patches_match_reviewed_candidates(regi
     ).read_text(encoding="utf-8-sig")
 
 
+@pytest.mark.parametrize("mode", ["baseline", "ready", "unavailable"])
+@pytest.mark.parametrize("kind", ["dedicated", "shared", "service"])
+def test_native_worker_startup_observations_require_execution_evidence(mode, kind):
+    from scripts.verify_native_worker_startup import validate_observation
+
+    if mode == "unavailable":
+        observed = {"status": "registration-error" if kind == "service" else "worker-error", "executions": 0}
+    else:
+        observed = {"status": "reply", "id": "owned", "executions": 1}
+    validate_observation(observed, mode=mode, kind=kind, identifier="owned")
+    for failure in ("timeout", "executed", "missing", "boolean"):
+        invalid = dict(observed)
+        if failure == "timeout":
+            invalid["status"] = "timeout"
+        elif failure == "executed":
+            invalid["executions"] += 1
+        elif failure == "boolean":
+            invalid["executions"] = False
+        else:
+            del invalid["executions"]
+        with pytest.raises(ValueError):
+            validate_observation(invalid, mode=mode, kind=kind, identifier="owned")
+
+
+@pytest.mark.parametrize("mode", ["baseline", "ready", "unavailable"])
+def test_native_worker_startup_configuration_uses_only_explicit_probe_flags(mode):
+    from scripts.verify_native_worker_startup import (
+        BOOTSTRAP_ARGUMENT, FEATURE_ARGUMENT, KEY_ARGUMENT, StartupConfiguration,
+    )
+
+    arguments = StartupConfiguration(probe_mode=mode).launch_arguments()
+    assert FEATURE_ARGUMENT in arguments
+    assert (BOOTSTRAP_ARGUMENT in arguments) is (mode != "baseline")
+    assert (KEY_ARGUMENT in arguments) is (mode == "ready")
+    with pytest.raises(ValueError):
+        StartupConfiguration(probe_mode="unknown").launch_arguments()
+
+
+@pytest.mark.parametrize("failure", [None, "patch", "hash", "binary", "revision", "shape"])
+def test_native_worker_startup_receipt_requires_matching_registered_chain(tmp_path, failure):
+    import hashlib
+    import json
+    from scripts.verify_native_worker_startup import LOCK, ROOT, validate_receipt
+
+    executable = tmp_path / "chrome.exe"
+    patches = [next((ROOT / "native/patches").glob(f"{number:04d}-*.patch")) for number in range(15, 26)]
+    receipt = {"chromium_revision": LOCK["chromium_revision"], "binary_sha256_measured": "a" * 64,
+               "patches": [{"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}
+                           for patch in patches]}
+    if failure == "patch":
+        receipt["patches"].pop()
+    elif failure == "hash":
+        receipt["patches"][-1]["sha256"] = "b" * 64
+    elif failure == "binary":
+        receipt["binary_sha256_measured"] = "b" * 64
+    elif failure == "revision":
+        receipt["chromium_revision"] = "b" * 40
+    elif failure == "shape":
+        receipt = []
+    raw = json.dumps(receipt).encode("utf-8")
+    (tmp_path / "camouflow-build.json").write_bytes(raw)
+    if failure is None:
+        assert validate_receipt(executable, {"chrome.exe": "a" * 64}) == raw
+    else:
+        with pytest.raises(ValueError):
+            validate_receipt(executable, {"chrome.exe": "a" * 64})
+
+
 def test_native_runtime_verifier_import_does_not_cache_application_database_root():
     import subprocess
     from scripts.native_build import ROOT
