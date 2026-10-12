@@ -1,0 +1,249 @@
+diff --git a/content/browser/camouflow_native/privacy_key_service.h b/content/browser/camouflow_native/privacy_key_service.h
+--- a/content/browser/camouflow_native/privacy_key_service.h
++++ b/content/browser/camouflow_native/privacy_key_service.h
+@@ -4,10 +4,13 @@
+ #define CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_KEY_SERVICE_H_
+ 
+ #include <array>
++#include <cstddef>
++#include <vector>
+ #include <memory>
+ #include <optional>
+ #include <string_view>
+ 
++#include "base/functional/callback.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/sequence_checker.h"
+ #include "base/supports_user_data.h"
+@@ -30,12 +33,19 @@
+   State state() const;
+   std::optional<std::array<uint8_t, 32>> Derive(
+       const blink::StorageKey& trusted_partition, std::string_view surface) const;
++  // UI-sequence only. Loading callbacks complete once after readiness/failure or
++  // explicit shutdown. Destruction cancels pending callbacks without invoking
++  // them. Terminal states invoke inline; callback owners must handle reentrancy.
++  static constexpr size_t kMaxPendingReadyCallbacks = 256;
++  void WhenReady(base::OnceCallback<void(bool)> callback);
+   void Shutdown();
+ 
+  private:
+   void Loaded(std::unique_ptr<PrivacyProfileKey> key);
++  void NotifyReadiness();
+   State state_ = State::kUninitialized;
+   std::unique_ptr<PrivacyProfileKey> key_;
++  std::vector<base::OnceCallback<void(bool)>> ready_callbacks_;
+   SEQUENCE_CHECKER(sequence_checker_);
+   base::WeakPtrFactory<PrivacyKeyService> weak_factory_{this};
+ };
+diff --git a/content/browser/camouflow_native/privacy_key_service.cc b/content/browser/camouflow_native/privacy_key_service.cc
+--- a/content/browser/camouflow_native/privacy_key_service.cc
++++ b/content/browser/camouflow_native/privacy_key_service.cc
+@@ -2,6 +2,7 @@
+ // SPDX-License-Identifier: MIT
+ #include "content/browser/camouflow_native/privacy_key_service.h"
+ 
++#include "base/check.h"
+ #include "base/functional/bind.h"
+ #include "base/task/thread_pool.h"
+ 
+@@ -41,7 +42,10 @@
+ }
+ 
+ PrivacyKeyService::PrivacyKeyService() = default;
+-PrivacyKeyService::~PrivacyKeyService() { Shutdown(); }
++PrivacyKeyService::~PrivacyKeyService() {
++  ready_callbacks_.clear();
++  Shutdown();
++}
+ 
+ bool PrivacyKeyService::InitializeOwnedProfile(const base::FilePath& owned_profile) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+@@ -78,6 +82,7 @@
+   }
+   key_ = std::move(key);
+   state_ = key_ ? State::kReady : State::kFailed;
++  NotifyReadiness();
+ }
+ 
+ PrivacyKeyService::State PrivacyKeyService::state() const {
+@@ -94,11 +99,35 @@
+   return key_->Derive(trusted_partition, surface);
+ }
+ 
++void PrivacyKeyService::WhenReady(base::OnceCallback<void(bool)> callback) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  CHECK(callback);
++  if (state_ == State::kLoading &&
++      ready_callbacks_.size() < kMaxPendingReadyCallbacks) {
++    ready_callbacks_.push_back(std::move(callback));
++    return;
++  }
++  std::move(callback).Run(state_ == State::kReady);
++}
++
++void PrivacyKeyService::NotifyReadiness() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  auto callbacks = std::move(ready_callbacks_);
++  ready_callbacks_.clear();
++  const auto weak = weak_factory_.GetWeakPtr();
++  for (auto& callback : callbacks) {
++    // A preceding callback may shut down or destroy the service. Do not reuse
++    // the original completion status or dereference this after invoking it.
++    std::move(callback).Run(weak && weak->state_ == State::kReady);
++  }
++}
++
+ void PrivacyKeyService::Shutdown() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   weak_factory_.InvalidateWeakPtrs();
+   key_.reset();
+   state_ = State::kStopped;
++  NotifyReadiness();
+ }
+ 
+ }  // namespace camouflow::native
+diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/content/browser/camouflow_native/privacy_key_service_unittest.cc
+--- a/content/browser/camouflow_native/privacy_key_service_unittest.cc
++++ b/content/browser/camouflow_native/privacy_key_service_unittest.cc
+@@ -2,6 +2,7 @@
+ // SPDX-License-Identifier: MIT
+ #include "content/browser/camouflow_native/privacy_key_service.h"
+ 
++#include "base/functional/bind.h"
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_temp_dir.h"
+ #include "base/strings/string_number_conversions.h"
+@@ -222,5 +223,133 @@
+   EXPECT_NE(a, b);
+ }
+ 
++TEST_F(NativePrivacyKeyServiceTest, ReadinessWaitsForLoadingAndDerivesInsideCallback) {
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  int calls = 0;
++  service.WhenReady(base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_TRUE(ready);
++    EXPECT_TRUE(service.Derive(Partition(), "canvas"));
++  }));
++  EXPECT_EQ(calls, 0);
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, ReadyCallbacksCompleteInline) {
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeEphemeral());
++  int calls = 0;
++  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_TRUE(ready); }));
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, UninitializedReadinessFailsInline) {
++  PrivacyKeyService service;
++  int calls = 0;
++  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, FailedLoadingSettlesReadinessWithoutRegeneration) {
++  ASSERT_TRUE(base::DeleteFile(owned_.GetPath().AppendASCII("camouflow-native-privacy.json")));
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  int calls = 0;
++  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 1);
++  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  EXPECT_EQ(calls, 2);
++  EXPECT_FALSE(base::PathExists(owned_.GetPath().AppendASCII("camouflow-native-privacy.json")));
++}
++
++TEST_F(NativePrivacyKeyServiceTest, ShutdownSettlesReadinessAndIgnoresLateLoad) {
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  int calls = 0;
++  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  service.Shutdown();
++  EXPECT_EQ(calls, 1);
++  tasks_.RunUntilIdle();
++  service.Shutdown();
++  EXPECT_EQ(calls, 1);
++  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  EXPECT_EQ(calls, 2);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, DestructionCancelsQueuedReadiness) {
++  auto service = std::make_unique<PrivacyKeyService>();
++  ASSERT_TRUE(service->InitializeOwnedProfile(owned_.GetPath()));
++  int calls = 0;
++  service->WhenReady(base::BindOnce([&](bool) { ++calls; }));
++  service.reset();
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 0);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, ReadyCallbackShutdownRejectsRemainingCallbacks) {
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  int calls = 0;
++  service.WhenReady(base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_TRUE(ready);
++    service.Shutdown();
++  }));
++  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 2);
++  EXPECT_EQ(service.state(), State::kStopped);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, ReadyCallbackDestructionRejectsRemainingCallbacks) {
++  auto service = std::make_unique<PrivacyKeyService>();
++  ASSERT_TRUE(service->InitializeOwnedProfile(owned_.GetPath()));
++  int calls = 0;
++  service->WhenReady(base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_TRUE(ready);
++    service.reset();
++  }));
++  service->WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 2);
++  EXPECT_EQ(service, nullptr);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, ReadinessCallbacksMayReenterTerminalService) {
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  int calls = 0;
++  service.WhenReady(base::BindOnce([&](bool ready) {
++    ++calls;
++    EXPECT_TRUE(ready);
++    service.WhenReady(base::BindOnce([&](bool nested) { ++calls; EXPECT_TRUE(nested); }));
++  }));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 2);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, ReadinessQueueHasExplicitBound) {
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  size_t successes = 0;
++  size_t rejections = 0;
++  for (size_t i = 0; i < PrivacyKeyService::kMaxPendingReadyCallbacks; ++i) {
++    service.WhenReady(base::BindOnce([&](bool ready) {
++      EXPECT_TRUE(ready);
++      ++successes;
++    }));
++  }
++  service.WhenReady(base::BindOnce([&](bool ready) { EXPECT_FALSE(ready); ++rejections; }));
++  EXPECT_EQ(successes, 0u);
++  EXPECT_EQ(rejections, 1u);
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(successes, PrivacyKeyService::kMaxPendingReadyCallbacks);
++  EXPECT_EQ(rejections, 1u);
++}
++
+ }  // namespace
+ }  // namespace camouflow::native
