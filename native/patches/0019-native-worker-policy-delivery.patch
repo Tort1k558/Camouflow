@@ -83,7 +83,7 @@ diff --git a/content/browser/worker_host/dedicated_worker_host.cc b/content/brow
  
  #include <memory>
  #include <string>
-@@ -1213,4 +1214,18 @@
+@@ -1213,4 +1214,19 @@
        .BindNewPipeAndPassRemote();
  }
  
@@ -94,7 +94,8 @@ diff --git a/content/browser/worker_host/dedicated_worker_host.cc b/content/brow
 +    return;
 +  }
 +  native_privacy_receivers_.Add(
-+      std::make_unique<PrivacyWorkerService>(*process->GetBrowserContext(),
++      std::make_unique<PrivacyWorkerService>(native_privacy_receivers_,
++                                              *process->GetBrowserContext(),
 +                                              GetWorkerStorageKey(),
 +                                              PrivacyWorkerService::Kind::kDedicated,
 +                                              renderer_origin_),
@@ -142,7 +143,7 @@ diff --git a/content/browser/worker_host/shared_worker_host.cc b/content/browser
  
  #include <algorithm>
  #include <utility>
-@@ -1201,4 +1202,18 @@
+@@ -1201,4 +1202,19 @@
    Destruct();
  }
  
@@ -153,7 +154,8 @@ diff --git a/content/browser/worker_host/shared_worker_host.cc b/content/browser
 +    return;
 +  }
 +  native_privacy_receivers_.Add(
-+      std::make_unique<PrivacyWorkerService>(*process->GetBrowserContext(),
++      std::make_unique<PrivacyWorkerService>(native_privacy_receivers_,
++                                              *process->GetBrowserContext(),
 +                                              GetWorkerStorageKey(),
 +                                              PrivacyWorkerService::Kind::kShared,
 +                                              instance().renderer_origin()),
@@ -201,7 +203,7 @@ diff --git a/content/browser/service_worker/service_worker_host.cc b/content/bro
  
  #include <utility>
  
-@@ -331,4 +332,18 @@
+@@ -331,4 +332,19 @@
    }
  }
  
@@ -212,7 +214,8 @@ diff --git a/content/browser/service_worker/service_worker_host.cc b/content/bro
 +    return;
 +  }
 +  native_privacy_receivers_.Add(
-+      std::make_unique<PrivacyWorkerService>(*process->GetBrowserContext(),
++      std::make_unique<PrivacyWorkerService>(native_privacy_receivers_,
++                                              *process->GetBrowserContext(),
 +                                              version()->key(),
 +                                              PrivacyWorkerService::Kind::kService,
 +                                              url::Origin::Create(version()->script_url())),
@@ -235,7 +238,7 @@ diff --git a/content/browser/camouflow_native/privacy_worker_service.h b/content
 new file mode 100644
 --- /dev/null
 +++ b/content/browser/camouflow_native/privacy_worker_service.h
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,49 @@
 +// Copyright 2026 CamouFlow contributors.
 +// SPDX-License-Identifier: MIT
 +#ifndef CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_WORKER_SERVICE_H_
@@ -243,6 +246,7 @@ new file mode 100644
 +
 +#include "base/memory/weak_ptr.h"
 +#include "base/timer/timer.h"
++#include "mojo/public/cpp/bindings/unique_receiver_set.h"
 +#include "third_party/blink/public/common/storage_key/storage_key.h"
 +#include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
 +#include "url/origin.h"
@@ -254,7 +258,9 @@ new file mode 100644
 +class PrivacyWorkerService final : public blink::mojom::NativePrivacyWorker {
 + public:
 +  enum class Kind { kDedicated, kShared, kService };
-+  PrivacyWorkerService(BrowserContext& context,
++  PrivacyWorkerService(
++      mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>& receivers,
++      BrowserContext& context,
 +                       const blink::StorageKey& browser_partition,
 +                       Kind kind,
 +                       const url::Origin& browser_worker_origin);
@@ -270,6 +276,7 @@ new file mode 100644
 +  void Complete(blink::mojom::NativePrivacyDeliveryStatus status,
 +                blink::mojom::NativePrivacyCanvasPolicyPtr policy);
 +
++  mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>& receivers_;
 +  const base::WeakPtr<BrowserContext> context_;
 +  const blink::StorageKey partition_;
 +  const Kind kind_;
@@ -285,7 +292,7 @@ diff --git a/content/browser/camouflow_native/privacy_worker_service.cc b/conten
 new file mode 100644
 --- /dev/null
 +++ b/content/browser/camouflow_native/privacy_worker_service.cc
-@@ -0,0 +1,91 @@
+@@ -0,0 +1,90 @@
 +// Copyright 2026 CamouFlow contributors.
 +// SPDX-License-Identifier: MIT
 +#include "content/browser/camouflow_native/privacy_worker_service.h"
@@ -296,7 +303,6 @@ new file mode 100644
 +#include "base/time/time.h"
 +#include "content/public/browser/browser_context.h"
 +#include "content/public/browser/native_privacy_context.h"
-+#include "mojo/public/cpp/bindings/message.h"
 +
 +namespace content {
 +namespace {
@@ -306,11 +312,13 @@ new file mode 100644
 +}  // namespace
 +
 +PrivacyWorkerService::PrivacyWorkerService(
++    mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>& receivers,
 +    BrowserContext& context,
 +    const blink::StorageKey& browser_partition,
 +    Kind kind,
 +    const url::Origin& browser_worker_origin)
-+    : context_(context.GetWeakPtr()),
++    : receivers_(receivers),
++      context_(context.GetWeakPtr()),
 +      partition_(browser_partition),
 +      kind_(kind),
 +      origin_matches_partition_(partition_.origin() == browser_worker_origin) {}
@@ -319,10 +327,8 @@ new file mode 100644
 +
 +void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
 +  if (requested_) {
-+    timer_.Stop();
-+    weak_factory_.InvalidateWeakPtrs();
-+    pending_reply_.Reset();
-+    mojo::ReportBadMessage("Glint worker policy requested twice on one pipe");
++    // Removes the receiver before destroying this service and its replies.
++    receivers_.ReportBadMessage("Glint worker policy requested twice on one pipe");
 +    return;
 +  }
 +  requested_ = true;
@@ -381,7 +387,7 @@ diff --git a/content/browser/camouflow_native/privacy_worker_service_unittest.cc
 new file mode 100644
 --- /dev/null
 +++ b/content/browser/camouflow_native/privacy_worker_service_unittest.cc
-@@ -0,0 +1,299 @@
+@@ -0,0 +1,300 @@
 +// Copyright 2026 CamouFlow contributors.
 +// SPDX-License-Identifier: MIT
 +#include "content/browser/camouflow_native/privacy_worker_service.h"
@@ -447,7 +453,7 @@ new file mode 100644
 +      Kind kind = Kind::kDedicated) {
 +    mojo::Remote<blink::mojom::NativePrivacyWorker> remote;
 +    receivers_.Add(std::make_unique<PrivacyWorkerService>(
-+                       *context_, partition, kind, worker_origin),
++                       receivers_, *context_, partition, kind, worker_origin),
 +                   remote.BindNewPipeAndPassReceiver());
 +    return remote;
 +  }
@@ -673,6 +679,7 @@ new file mode 100644
 +      [&](Status, Policy) { ++replies; }));
 +  EXPECT_EQ(observer.WaitForBadMessage(),
 +            "Glint worker policy requested twice on one pipe");
++  EXPECT_TRUE(receivers_.empty());
 +  tasks_.RunUntilIdle();
 +  tasks_.FastForwardBy(base::Seconds(11));
 +  EXPECT_FALSE(remote.is_connected());

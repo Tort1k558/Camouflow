@@ -216,6 +216,17 @@ termination and nested workers before claiming first-script ordering.
 
 ## Worker thread handoff draft
 
+The first linked endpoint run reached a Mojo DCHECK in the worker duplicate
+request case: resetting the stored response before closing its receiver is not
+legal. The worker service now receives a reference to the owning
+`UniqueReceiverSet`; duplicate rejection uses its `ReportBadMessage` operation
+and returns immediately because the service is destroyed by receiver removal.
+This closes the binding before dropping replies and cancels pending timers and
+weak callbacks through normal destruction. The three host binders and test
+fixture pass their owning set; the regression also requires that it becomes
+empty. The old syntax-only duplicate-cancellation evidence is historical. The
+corrected linked 34-case run has not passed yet.
+
 `worker_canvas_thread_handoff.patch` continues the startup-gate stack into Blink.
 DedicatedWorker::ContinueStartInternal first creates GlobalScopeCreationParams,
 moves the owned optional seed from WorkerMainScriptLoadParameters and then starts

@@ -5,6 +5,7 @@
 
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
+#include "mojo/public/cpp/bindings/unique_receiver_set.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
 #include "url/origin.h"
@@ -16,7 +17,9 @@ class BrowserContext;
 class PrivacyWorkerService final : public blink::mojom::NativePrivacyWorker {
  public:
   enum class Kind { kDedicated, kShared, kService };
-  PrivacyWorkerService(BrowserContext& context,
+  PrivacyWorkerService(
+      mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>& receivers,
+      BrowserContext& context,
                        const blink::StorageKey& browser_partition,
                        Kind kind,
                        const url::Origin& browser_worker_origin);
@@ -32,6 +35,7 @@ class PrivacyWorkerService final : public blink::mojom::NativePrivacyWorker {
   void Complete(blink::mojom::NativePrivacyDeliveryStatus status,
                 blink::mojom::NativePrivacyCanvasPolicyPtr policy);
 
+  mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>& receivers_;
   const base::WeakPtr<BrowserContext> context_;
   const blink::StorageKey partition_;
   const Kind kind_;

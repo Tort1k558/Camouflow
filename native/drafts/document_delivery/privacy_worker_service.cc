@@ -8,7 +8,6 @@
 #include "base/time/time.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/native_privacy_context.h"
-#include "mojo/public/cpp/bindings/message.h"
 
 namespace content {
 namespace {
@@ -18,11 +17,13 @@ constexpr base::TimeDelta kReadinessDeadline = base::Seconds(10);
 }  // namespace
 
 PrivacyWorkerService::PrivacyWorkerService(
+    mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>& receivers,
     BrowserContext& context,
     const blink::StorageKey& browser_partition,
     Kind kind,
     const url::Origin& browser_worker_origin)
-    : context_(context.GetWeakPtr()),
+    : receivers_(receivers),
+      context_(context.GetWeakPtr()),
       partition_(browser_partition),
       kind_(kind),
       origin_matches_partition_(partition_.origin() == browser_worker_origin) {}
@@ -31,10 +32,8 @@ PrivacyWorkerService::~PrivacyWorkerService() = default;
 
 void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
   if (requested_) {
-    timer_.Stop();
-    weak_factory_.InvalidateWeakPtrs();
-    pending_reply_.Reset();
-    mojo::ReportBadMessage("Glint worker policy requested twice on one pipe");
+    // Removes the receiver before destroying this service and its replies.
+    receivers_.ReportBadMessage("Glint worker policy requested twice on one pipe");
     return;
   }
   requested_ = true;

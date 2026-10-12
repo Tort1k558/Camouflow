@@ -63,7 +63,7 @@ class NativePrivacyWorkerServiceTest : public testing::Test {
       Kind kind = Kind::kDedicated) {
     mojo::Remote<blink::mojom::NativePrivacyWorker> remote;
     receivers_.Add(std::make_unique<PrivacyWorkerService>(
-                       *context_, partition, kind, worker_origin),
+                       receivers_, *context_, partition, kind, worker_origin),
                    remote.BindNewPipeAndPassReceiver());
     return remote;
   }
@@ -289,6 +289,7 @@ TEST_F(NativePrivacyWorkerServiceTest, DuplicateRequestCancelsPendingDelivery) {
       [&](Status, Policy) { ++replies; }));
   EXPECT_EQ(observer.WaitForBadMessage(),
             "Glint worker policy requested twice on one pipe");
+  EXPECT_TRUE(receivers_.empty());
   tasks_.RunUntilIdle();
   tasks_.FastForwardBy(base::Seconds(11));
   EXPECT_FALSE(remote.is_connected());

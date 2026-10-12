@@ -140,6 +140,18 @@ The serial retry was subsequently interrupted at the user's request to return
 to four concurrent tasks after freeing memory. Its partial log is retained, not
 a passing serial proof. The active replacement uses a new report path,
 `privacy-delivery-001-020-user-resume-j4.json`, and preserves completed objects.
+That replacement linked successfully and passed twenty cases before a Mojo
+DCHECK terminated `DuplicateRequestCancelsPendingDelivery`. The worker endpoint
+discarded a pending reply while its receiver was still connected. Global
+`mojo::ReportBadMessage` is not the receiver-owning close operation needed here.
+The service now references its owning `UniqueReceiverSet` and invokes that set's
+`ReportBadMessage`, which removes the receiver and destroys the service with its
+timer, weak callbacks and pending reply. All three worker hosts and the fixture
+pass the same owning set explicitly; the duplicate test additionally requires
+that the set is empty. No DCHECK, bad-message observation or zero-reply assertion
+was disabled. Patch 0019 and canonical snapshots were updated together after the
+failed runner terminated. The new full gate uses
+`privacy-delivery-001-020-duplicate-pipe-fixed-j4.json`; its result is pending.
 Startup gates, Canvas seed thread handoff, Canvas readback hooks and branding
 remain unregistered; no protected first-script execution or Canvas capability is
 implied by these endpoint registrations.
