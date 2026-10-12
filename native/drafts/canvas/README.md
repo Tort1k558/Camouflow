@@ -3,6 +3,15 @@
 Inactive research prototype, not an approved privacy algorithm or Chromium
 patch. No hooks, renderer policy consumer or advertised protection are enabled.
 
+**Rejected for activation in its current coordinate-pattern form.** A native
+diagnostic of a uniform white 1024x1024 canvas produced eight distinct RGB
+colours and changed 917,930 of 1,048,576 opaque pixels. The channel delta is only
+one, but the new spatial pattern is an easily observable inconsistency with a
+uniform fill. Repeat/crop/idempotence success does not resolve this problem.
+Evidence: `D:/CamouFlowNative/canvas-candidate-flat-colour-diagnostic/tests.log`
+and `proof.json` (`privacy_admission: false`). The baseline candidate remains
+public for comparison, not as a patch to apply to production.
+
 The candidate transforms only detached unpremultiplied RGBA8/sRGB copies.
 It canonically selects the RGB least-significant bits of fully opaque pixels
 from an HMAC-SHA256 stream keyed by a trusted partition/surface seed. Absolute
@@ -39,7 +48,8 @@ isolation, Blink API compatibility, export equivalence or privacy admission.
 Important unresolved tradeoffs:
 
 - Flat opaque colors gain a detectable deterministic low-bit pattern. Do not
-  call this undetectable, or approve it from repeat/crop tests alone.
+  call this undetectable, or approve it from repeat/crop tests alone. The native
+  diagnostic above confirmed this issue, rather than just assuming it.
 - Editing/color-picker values can differ by one; quantify compatibility and
   detectability against more selective and alternative algorithms before adoption.
 - Partial alpha, float16/HDR and other color spaces are not protected. Silently
@@ -52,3 +62,7 @@ Important unresolved tradeoffs:
 Next gates: native vectors/idempotence/crop/padding/alpha/performance, then API
 compatibility and adversarial detection tests. No getImageData/toDataURL/toBlob/
 OffscreenCanvas hook may activate this candidate before those gates are reviewed.
+The next comparison should evaluate content-coherent canonicalization (equal
+input colours remain equal) against the coordinate candidate, including known
+fill values, putImageData round trips, gradients and alpha. Preserving a uniform
+fill alone is still not proof that a colour transformation is undetectable.
