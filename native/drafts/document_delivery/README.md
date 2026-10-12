@@ -109,7 +109,7 @@ worker termination/restart and real host destruction still need separate tests.
 
 ## Integration draft
 
-`integration.patch` registers the schema, browser sources, seven unit cases and
+`integration.patch` registers the schema, browser sources, document fixture and
 document BrowserInterfaceBroker binder. It is not applied or registered in the
 build lock. After the current build finishes, copy the Mojo file to the schema
 directory above and the three service C++ files to the content directory above;
@@ -123,4 +123,50 @@ then apply `worker_integration.patch` only in an idle checkout. It adds host-own
 UniqueReceiverSets and broker bindings; dedicated/shared workers use their host's
 GetWorkerStorageKey, service workers use the running version's immutable key.
 Missing process hosts close the new pipe rather than selecting another context.
-No renderer consumer, Canvas readback hook or advertised capability is enabled.
+No renderer startup caller, Canvas readback hook or advertised capability is enabled.
+
+## Worker startup consumer draft
+
+`PrivacyWorkerBootstrap` is a sequence-bound, single-request client for a
+`NativePrivacyWorker` pipe obtained from the worker host's own broker. It accepts
+only ready/version-1/32-byte policy replies, returns an owned Canvas surface seed,
+and rejects failure replies containing a seed, missing policies or unsupported
+versions. Peer disconnect and a ten-second local deadline produce typed errors.
+Completion resets the pipe, timer and weak callbacks before invoking the owner;
+destruction cancels pending work. It never requests a URL, partition or profile
+root key, and never substitutes an unprotected policy on failure.
+
+Ten Mojo/mock-time test definitions cover success/ownership, browser failure and
+timeout, malformed replies, disconnect, client timeout/late replies, destruction
+and absent pipes. Implementation and fixture passed isolated clang checks with
+the pinned renderer target flags:
+`D:/CamouFlowNative/worker-bootstrap-cpp-check/proof.json`.
+They are **not linked or executed**.
+
+`worker_bootstrap_integration.patch` contains the three files, adds implementation
+sources to content/renderer and registers the fixture in content_unittests,
+which already depends on renderer's for_content_tests target. It depends on the
+document schema registration and worker browser-host binder draft. Patch
+applicability and GN formatting-delta checks passed without active input changes:
+`D:/CamouFlowNative/worker-bootstrap-registration-format-delta/proof.json`.
+The pinned content/test BUILD.gn already has two unsorted 0017 insertions; the
+check verified the new insertion introduces no additional formatting drift,
+rather than rewriting unrelated live-build inputs or claiming whole-file format
+success. The first failed formatting check remains in the separate
+`worker-bootstrap-registration-draft/proof.json` evidence directory.
+
+This client is **not called by worker startup yet**. Before enabling protection,
+the DedicatedWorkerHostFactoryClient path must hold script startup and preserve
+owner lifetime until a successful reply; shared/service and nested workers need
+their own startup wiring and thread handoff, not a creator-document pipe. The
+surface seed must reach the global scope before evaluation. Browser-host StorageKey
+and renderer security origin can differ for data-URL dedicated workers in this
+pinned revision; that case needs an explicit policy and tests, not silent
+origin substitution. Document commit/bootstrap, initial about:blank/srcdoc,
+BFCache/prerender and Canvas API wiring also remain unimplemented.
+
+Do not apply this patch, regenerate GN or compile into an active output tree.
+Promote exact source checksums into the build lock in an idle checkout, then
+generate/link and inspect all ten named `NativePrivacyWorkerBootstrapTest.*`
+cases in fresh JSON. That would validate the consumer, not demonstrate first-script
+startup ordering or complete worker fingerprint protection.

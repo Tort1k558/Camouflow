@@ -1,0 +1,348 @@
+diff --git a/content/renderer/BUILD.gn b/content/renderer/BUILD.gn
+--- a/content/renderer/BUILD.gn
++++ b/content/renderer/BUILD.gn
+@@ -166,6 +166,8 @@
+     "worker/embedded_shared_worker_stub.h",
+     "worker/fetch_client_settings_object_helpers.cc",
+     "worker/fetch_client_settings_object_helpers.h",
++    "worker/privacy_worker_bootstrap.cc",
++    "worker/privacy_worker_bootstrap.h",
+     "worker/shared_worker_factory_impl.cc",
+     "worker/shared_worker_factory_impl.h",
+     "worker/worker_thread_registry.cc",
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -3137,6 +3137,7 @@
+     "../renderer/service_worker/service_worker_subresource_loader_unittest.cc",
+     "../renderer/skia_benchmarking_extension_unittest.cc",
+     "../renderer/v8_value_converter_impl_unittest.cc",
++    "../renderer/worker/privacy_worker_bootstrap_unittest.cc",
+     "../renderer/worker/worker_thread_registry_unittest.cc",
+     "navigation_simulator_unittest.cc",
+     "test_aggregation_service_impl_unittest.cc",
+diff --git a/content/renderer/worker/privacy_worker_bootstrap.cc b/content/renderer/worker/privacy_worker_bootstrap.cc
+new file mode 100644
+--- /dev/null
++++ b/content/renderer/worker/privacy_worker_bootstrap.cc
+@@ -0,0 +1,94 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/renderer/worker/privacy_worker_bootstrap.h"
++
++#include <algorithm>
++#include <utility>
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/time/time.h"
++
++namespace content {
++namespace {
++using Status = blink::mojom::NativePrivacyDeliveryStatus;
++using Error = PrivacyWorkerBootstrapError;
++constexpr uint32_t kSupportedCanvasPolicyVersion = 1;
++constexpr base::TimeDelta kBootstrapDeadline = base::Seconds(10);
++}  // namespace
++
++PrivacyWorkerBootstrap::PrivacyWorkerBootstrap(
++    mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint) {
++  if (endpoint.is_valid()) {
++    endpoint_.Bind(std::move(endpoint));
++  }
++}
++
++PrivacyWorkerBootstrap::~PrivacyWorkerBootstrap() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++}
++
++void PrivacyWorkerBootstrap::Start(Callback callback) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  CHECK(!started_);
++  CHECK(callback);
++  started_ = true;
++  callback_ = std::move(callback);
++  if (!endpoint_.is_bound()) {
++    Fail(Error::kDisconnected);
++    return;
++  }
++  endpoint_.set_disconnect_handler(base::BindOnce(
++      &PrivacyWorkerBootstrap::Fail, weak_factory_.GetWeakPtr(),
++      Error::kDisconnected));
++  timer_.Start(FROM_HERE, kBootstrapDeadline,
++               base::BindOnce(&PrivacyWorkerBootstrap::Fail,
++                              weak_factory_.GetWeakPtr(), Error::kTimedOut));
++  endpoint_->GetCanvasPolicy(base::BindOnce(
++      &PrivacyWorkerBootstrap::OnReply, weak_factory_.GetWeakPtr()));
++}
++
++void PrivacyWorkerBootstrap::OnReply(
++    Status status, blink::mojom::NativePrivacyCanvasPolicyPtr policy) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if ((status != Status::kReady && policy) ||
++      (status == Status::kReady &&
++       (!policy || policy->version != kSupportedCanvasPolicyVersion ||
++        policy->partition_seed.size() != 32))) {
++    Fail(Error::kMalformedPolicy);
++    return;
++  }
++  if (status == Status::kUnavailable) {
++    Fail(Error::kUnavailable);
++    return;
++  }
++  if (status == Status::kTimedOut) {
++    Fail(Error::kTimedOut);
++    return;
++  }
++  if (status != Status::kReady) {
++    Fail(Error::kMalformedPolicy);
++    return;
++  }
++  std::array<uint8_t, 32> seed;
++  std::copy(policy->partition_seed.begin(), policy->partition_seed.end(),
++            seed.begin());
++  Complete(seed);
++}
++
++void PrivacyWorkerBootstrap::Fail(Error error) {
++  Complete(base::unexpected(error));
++}
++
++void PrivacyWorkerBootstrap::Complete(Result result) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  timer_.Stop();
++  weak_factory_.InvalidateWeakPtrs();
++  endpoint_.reset();
++  if (callback_) {
++    // The owner may destroy this object from its startup continuation.
++    std::move(callback_).Run(std::move(result));
++  }
++}
++
++}  // namespace content
+diff --git a/content/renderer/worker/privacy_worker_bootstrap.h b/content/renderer/worker/privacy_worker_bootstrap.h
+new file mode 100644
+--- /dev/null
++++ b/content/renderer/worker/privacy_worker_bootstrap.h
+@@ -0,0 +1,57 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CONTENT_RENDERER_WORKER_PRIVACY_WORKER_BOOTSTRAP_H_
++#define CONTENT_RENDERER_WORKER_PRIVACY_WORKER_BOOTSTRAP_H_
++
++#include <array>
++#include <cstdint>
++
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/sequence_checker.h"
++#include "base/timer/timer.h"
++#include "base/types/expected.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
++
++namespace content {
++
++enum class PrivacyWorkerBootstrapError {
++  kUnavailable,
++  kTimedOut,
++  kDisconnected,
++  kMalformedPolicy,
++};
++
++// The caller must bind the worker host's broker, never its creator's document
++// broker. Hold script startup until success; destruction cancels the request.
++class PrivacyWorkerBootstrap final {
++ public:
++  using Result = base::expected<std::array<uint8_t, 32>, PrivacyWorkerBootstrapError>;
++  using Callback = base::OnceCallback<void(Result)>;
++
++  explicit PrivacyWorkerBootstrap(
++      mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint);
++  ~PrivacyWorkerBootstrap();
++  PrivacyWorkerBootstrap(const PrivacyWorkerBootstrap&) = delete;
++  PrivacyWorkerBootstrap& operator=(const PrivacyWorkerBootstrap&) = delete;
++
++  // Call once on the creating sequence. A missing pipe may complete inline.
++  void Start(Callback callback);
++
++ private:
++  void OnReply(blink::mojom::NativePrivacyDeliveryStatus status,
++               blink::mojom::NativePrivacyCanvasPolicyPtr policy);
++  void Fail(PrivacyWorkerBootstrapError error);
++  void Complete(Result result);
++
++  mojo::Remote<blink::mojom::NativePrivacyWorker> endpoint_;
++  bool started_ = false;
++  Callback callback_;
++  base::OneShotTimer timer_;
++  SEQUENCE_CHECKER(sequence_checker_);
++  base::WeakPtrFactory<PrivacyWorkerBootstrap> weak_factory_{this};
++};
++
++}  // namespace content
++#endif
+diff --git a/content/renderer/worker/privacy_worker_bootstrap_unittest.cc b/content/renderer/worker/privacy_worker_bootstrap_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/content/renderer/worker/privacy_worker_bootstrap_unittest.cc
+@@ -0,0 +1,159 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/renderer/worker/privacy_worker_bootstrap.h"
++
++#include <memory>
++#include <optional>
++
++#include "base/test/bind.h"
++#include "base/test/task_environment.h"
++#include "base/time/time.h"
++#include "mojo/public/cpp/bindings/receiver.h"
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace content {
++namespace {
++using Status = blink::mojom::NativePrivacyDeliveryStatus;
++using Policy = blink::mojom::NativePrivacyCanvasPolicyPtr;
++using Error = PrivacyWorkerBootstrapError;
++
++class NativePrivacyWorkerBootstrapTest
++    : public testing::Test,
++      public blink::mojom::NativePrivacyWorker {
++ protected:
++  void GetCanvasPolicy(GetCanvasPolicyCallback callback) override {
++    ++requests_;
++    reply_ = std::move(callback);
++  }
++
++  void Start() {
++    mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint;
++    receiver_.Bind(endpoint.InitWithNewPipeAndPassReceiver());
++    bootstrap_ = std::make_unique<PrivacyWorkerBootstrap>(std::move(endpoint));
++    bootstrap_->Start(base::BindLambdaForTesting(
++        [&](PrivacyWorkerBootstrap::Result result) {
++          ++completions_;
++          result_ = std::move(result);
++        }));
++    tasks_.RunUntilIdle();
++    ASSERT_EQ(requests_, 1);
++    ASSERT_EQ(completions_, 0);
++  }
++
++  Policy ValidPolicy() {
++    auto policy = blink::mojom::NativePrivacyCanvasPolicy::New();
++    policy->version = 1;
++    for (uint8_t i = 0; i < 32; ++i) {
++      policy->partition_seed.push_back(i);
++    }
++    return policy;
++  }
++
++  void Reply(Status status, Policy policy) {
++    ASSERT_TRUE(reply_);
++    std::move(reply_).Run(status, std::move(policy));
++    tasks_.RunUntilIdle();
++  }
++
++  void ExpectError(Error error) {
++    ASSERT_EQ(completions_, 1);
++    ASSERT_TRUE(result_);
++    ASSERT_FALSE(result_->has_value());
++    EXPECT_EQ(result_->error(), error);
++  }
++
++  base::test::SingleThreadTaskEnvironment tasks_{
++      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
++  mojo::Receiver<blink::mojom::NativePrivacyWorker> receiver_{this};
++  GetCanvasPolicyCallback reply_;
++  std::unique_ptr<PrivacyWorkerBootstrap> bootstrap_;
++  int requests_ = 0;
++  int completions_ = 0;
++  std::optional<PrivacyWorkerBootstrap::Result> result_;
++};
++
++TEST_F(NativePrivacyWorkerBootstrapTest, ReadyPolicyReturnsOwnedSurfaceSeedOnce) {
++  Start();
++  Reply(Status::kReady, ValidPolicy());
++  ASSERT_EQ(completions_, 1);
++  ASSERT_TRUE(result_);
++  ASSERT_TRUE(result_->has_value());
++  for (uint8_t i = 0; i < 32; ++i) {
++    EXPECT_EQ(result_->value()[i], i);
++  }
++  tasks_.FastForwardBy(base::Seconds(11));
++  EXPECT_EQ(completions_, 1);
++  EXPECT_EQ(requests_, 1);
++}
++
++TEST_F(NativePrivacyWorkerBootstrapTest, UnavailableDoesNotReturnSeed) {
++  Start();
++  Reply(Status::kUnavailable, nullptr);
++  ExpectError(Error::kUnavailable);
++}
++
++TEST_F(NativePrivacyWorkerBootstrapTest, BrowserTimeoutDoesNotReturnSeed) {
++  Start();
++  Reply(Status::kTimedOut, nullptr);
++  ExpectError(Error::kTimedOut);
++}
++
++TEST_F(NativePrivacyWorkerBootstrapTest, UnknownVersionIsRejected) {
++  Start();
++  auto policy = ValidPolicy();
++  policy->version = 2;
++  Reply(Status::kReady, std::move(policy));
++  ExpectError(Error::kMalformedPolicy);
++}
++
++TEST_F(NativePrivacyWorkerBootstrapTest, ReadyWithoutPolicyIsRejected) {
++  Start();
++  Reply(Status::kReady, nullptr);
++  ExpectError(Error::kMalformedPolicy);
++}
++
++TEST_F(NativePrivacyWorkerBootstrapTest, FailureWithSeedIsRejected) {
++  Start();
++  Reply(Status::kUnavailable, ValidPolicy());
++  ExpectError(Error::kMalformedPolicy);
++}
++
++TEST_F(NativePrivacyWorkerBootstrapTest, PeerDisconnectSettlesOnce) {
++  Start();
++  receiver_.reset();
++  tasks_.RunUntilIdle();
++  ExpectError(Error::kDisconnected);
++  tasks_.FastForwardBy(base::Seconds(11));
++  EXPECT_EQ(completions_, 1);
++}
++
++TEST_F(NativePrivacyWorkerBootstrapTest, DeadlineRejectsLateReadyReply) {
++  Start();
++  tasks_.FastForwardBy(base::Seconds(11));
++  ExpectError(Error::kTimedOut);
++  Reply(Status::kReady, ValidPolicy());
++  EXPECT_EQ(completions_, 1);
++}
++
++TEST_F(NativePrivacyWorkerBootstrapTest, DestructionDropsPendingReply) {
++  Start();
++  bootstrap_.reset();
++  Reply(Status::kReady, ValidPolicy());
++  tasks_.FastForwardBy(base::Seconds(11));
++  EXPECT_EQ(completions_, 0);
++}
++
++TEST_F(NativePrivacyWorkerBootstrapTest, MissingPipeReturnsTypedFailure) {
++  PrivacyWorkerBootstrap bootstrap{
++      mojo::PendingRemote<blink::mojom::NativePrivacyWorker>()};
++  bootstrap.Start(base::BindLambdaForTesting(
++      [&](PrivacyWorkerBootstrap::Result result) {
++        ++completions_;
++        result_ = std::move(result);
++      }));
++  ExpectError(Error::kDisconnected);
++  EXPECT_EQ(requests_, 0);
++}
++
++}  // namespace
++}  // namespace content
