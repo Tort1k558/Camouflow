@@ -31,7 +31,8 @@ the key service per BrowserContext. Off-the-record contexts have independent
 ephemeral identities; they must never redirect to the persistent original.
 
 Key loading is asynchronous on a blocking worker; derivation fails until ready.
-Prepared readiness callbacks and real-context tests are not active build inputs.
+Readiness callbacks are registered in patch 0016 and passed 43 native cases;
+the linked 001–015 browser lacks them. Real-context tests remain unapplied drafts.
 Future renderer/worker delivery must be lifetime-bound and use browser-owned
 partition state. Canvas/WebGL/WebGPU/audio protection remains incomplete.
 

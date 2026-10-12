@@ -10,7 +10,8 @@ experimental, not a released replacement for Camoufox or CloakBrowser.
 | Local checksum-verified bundles, activation and rollback | Implemented; development delivery tested |
 | Hardware/font/WebRTC/automation/headless policies | 001–015 Windows development runtime suite passed; not automatic manager admission |
 | Profile keys, partition codec and browser-owned key service | 001–015 browser linked; 33 exact native cases and basic startup passed, not IPC/privacy admission |
-| Real BrowserContext and readiness tests | Prepared, unapplied; not compiled/run |
+| Readiness callbacks | Registered/applied patch 0016; 43 native cases passed; not in linked 001–015 browser |
+| Real BrowserContext tests | Prepared, unapplied; not compiled/run |
 | Glint product name and existing CamouFlow logo in Chromium | Branding patch prepared; old binary not rebranded |
 | Native Canvas/WebGL/WebGPU/audio protection | Incomplete; not advertised as active |
 | Linux/macOS own-fork runtime | Deferred; not released |

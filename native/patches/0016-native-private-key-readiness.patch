@@ -111,7 +111,7 @@ diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/
  // SPDX-License-Identifier: MIT
  #include "content/browser/camouflow_native/privacy_key_service.h"
  
-+#include "base/functional/bind.h"
++#include "base/test/bind.h"
  #include "base/files/file_util.h"
  #include "base/files/scoped_temp_dir.h"
  #include "base/strings/string_number_conversions.h"
@@ -123,7 +123,7 @@ diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/
 +  PrivacyKeyService service;
 +  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
 +  int calls = 0;
-+  service.WhenReady(base::BindOnce([&](bool ready) {
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_TRUE(ready);
 +    EXPECT_TRUE(service.Derive(Partition(), "canvas"));
@@ -137,14 +137,14 @@ diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/
 +  PrivacyKeyService service;
 +  ASSERT_TRUE(service.InitializeEphemeral());
 +  int calls = 0;
-+  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_TRUE(ready); }));
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) { ++calls; EXPECT_TRUE(ready); }));
 +  EXPECT_EQ(calls, 1);
 +}
 +
 +TEST_F(NativePrivacyKeyServiceTest, UninitializedReadinessFailsInline) {
 +  PrivacyKeyService service;
 +  int calls = 0;
-+  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
 +  EXPECT_EQ(calls, 1);
 +}
 +
@@ -153,10 +153,10 @@ diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/
 +  PrivacyKeyService service;
 +  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
 +  int calls = 0;
-+  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
 +  tasks_.RunUntilIdle();
 +  EXPECT_EQ(calls, 1);
-+  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
 +  EXPECT_EQ(calls, 2);
 +  EXPECT_FALSE(base::PathExists(owned_.GetPath().AppendASCII("camouflow-native-privacy.json")));
 +}
@@ -165,13 +165,13 @@ diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/
 +  PrivacyKeyService service;
 +  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
 +  int calls = 0;
-+  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
 +  service.Shutdown();
 +  EXPECT_EQ(calls, 1);
 +  tasks_.RunUntilIdle();
 +  service.Shutdown();
 +  EXPECT_EQ(calls, 1);
-+  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
 +  EXPECT_EQ(calls, 2);
 +}
 +
@@ -179,7 +179,7 @@ diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/
 +  auto service = std::make_unique<PrivacyKeyService>();
 +  ASSERT_TRUE(service->InitializeOwnedProfile(owned_.GetPath()));
 +  int calls = 0;
-+  service->WhenReady(base::BindOnce([&](bool) { ++calls; }));
++  service->WhenReady(base::BindLambdaForTesting([&](bool) { ++calls; }));
 +  service.reset();
 +  tasks_.RunUntilIdle();
 +  EXPECT_EQ(calls, 0);
@@ -189,12 +189,12 @@ diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/
 +  PrivacyKeyService service;
 +  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
 +  int calls = 0;
-+  service.WhenReady(base::BindOnce([&](bool ready) {
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_TRUE(ready);
 +    service.Shutdown();
 +  }));
-+  service.WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
 +  tasks_.RunUntilIdle();
 +  EXPECT_EQ(calls, 2);
 +  EXPECT_EQ(service.state(), State::kStopped);
@@ -204,12 +204,12 @@ diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/
 +  auto service = std::make_unique<PrivacyKeyService>();
 +  ASSERT_TRUE(service->InitializeOwnedProfile(owned_.GetPath()));
 +  int calls = 0;
-+  service->WhenReady(base::BindOnce([&](bool ready) {
++  service->WhenReady(base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_TRUE(ready);
 +    service.reset();
 +  }));
-+  service->WhenReady(base::BindOnce([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
++  service->WhenReady(base::BindLambdaForTesting([&](bool ready) { ++calls; EXPECT_FALSE(ready); }));
 +  tasks_.RunUntilIdle();
 +  EXPECT_EQ(calls, 2);
 +  EXPECT_EQ(service, nullptr);
@@ -219,10 +219,10 @@ diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/
 +  PrivacyKeyService service;
 +  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
 +  int calls = 0;
-+  service.WhenReady(base::BindOnce([&](bool ready) {
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_TRUE(ready);
-+    service.WhenReady(base::BindOnce([&](bool nested) { ++calls; EXPECT_TRUE(nested); }));
++    service.WhenReady(base::BindLambdaForTesting([&](bool nested) { ++calls; EXPECT_TRUE(nested); }));
 +  }));
 +  tasks_.RunUntilIdle();
 +  EXPECT_EQ(calls, 2);
@@ -234,12 +234,12 @@ diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/
 +  size_t successes = 0;
 +  size_t rejections = 0;
 +  for (size_t i = 0; i < PrivacyKeyService::kMaxPendingReadyCallbacks; ++i) {
-+    service.WhenReady(base::BindOnce([&](bool ready) {
++    service.WhenReady(base::BindLambdaForTesting([&](bool ready) {
 +      EXPECT_TRUE(ready);
 +      ++successes;
 +    }));
 +  }
-+  service.WhenReady(base::BindOnce([&](bool ready) { EXPECT_FALSE(ready); ++rejections; }));
++  service.WhenReady(base::BindLambdaForTesting([&](bool ready) { EXPECT_FALSE(ready); ++rejections; }));
 +  EXPECT_EQ(successes, 0u);
 +  EXPECT_EQ(rejections, 1u);
 +  tasks_.RunUntilIdle();

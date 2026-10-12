@@ -95,8 +95,8 @@ be substituted for this strict round.
 Windows link completed on **2026-10-12**, build process exit code 0, jobs 4;
 the build log records **1h51m49.40s** for this incremental compiler/linker run,
 not the entire development history or a clean build. Receipt includes 15 patches.
-The eight runtime gates and 33 named native-unit cases completed successfully;
-external verification remains in progress. Baseline
+The eight runtime gates, 33 named native-unit cases, external observation round
+and eight-context Canvas baseline completed. Baseline
 observations above must not be transferred to this candidate.
 
 | Measured code | SHA-256 |
@@ -139,6 +139,25 @@ GoogleTest JSON. Browser code remained unchanged. Private evidence:
 `verification-context-chrome-001-015-user-j4/privacy-units.json` and
 `privacy-units-tests.json`. This covers key primitives/loading/service ownership,
 not the unapplied real-BrowserContext/readiness drafts or renderer IPC.
+
+| External check, 001–015 headless observation round | Direct | SOCKS5 route 1 | SOCKS5 route 2 | SOCKS5 route 3 |
+| --- | --- | --- | --- | --- |
+| BrowserScan bot detection | Observed: Normal | Observed: Normal | Observed: Normal | Observed: Normal |
+| Fingerprint Playground bot/tampering/devtools/incognito labels | Observed: Not detected | Observed: Not detected | Observed: Not detected | Observed: Not detected |
+| Official reCAPTCHA v3 sample backend | Not verified: navigation failed | Observed: success, score 0.9 | Not verified: no response within 60 seconds | Not verified: no response within 60 seconds |
+| BrowserScan screenshot artifact | Saved | Failed | Failed | Saved |
+| Real Turnstile/hCaptcha verification | Not verified | Not verified | Not verified | Not verified |
+
+Private report: `verification-context-chrome-001-015-user-j4/external/external-proxy-matrix.json`.
+All four browser sessions were closed after observation. The CLI automation
+masking flag was suppressed; native policy flags remained explicitly configured.
+One round and the public sample score do not establish production CAPTCHA
+reliability. Failed screenshots do not erase available DOM observations.
+
+The candidate's separate Canvas run completed all four groups across eight
+readback contexts and the original three security contexts. Code hashes match
+the candidate table. Report: `verification-context-chrome-001-015-user-j4/canvas.json`.
+This remains a compatibility baseline, not an implemented Canvas privacy policy.
 
 ### Local Canvas calibration — baseline 001–010, 2026-10-12
 
@@ -193,6 +212,22 @@ protection is still absent. This does not test AudioWorklet, prove renderer
 process separation for the cross-origin frame, or validate future key IPC.
 The original 160-check suite was captured before this extension; these are
 additional results, not retroactively expanded coverage of older reports.
+
+### Source-only readiness progression, chain 001–016
+
+Patch 0016 was registered/applied after the 001–015 verification pipeline ended.
+Its first native compilation rejected capturing lambdas in `BindOnce`; test
+callbacks were corrected to the upstream `BindLambdaForTesting` helper.
+The retry completed all **43 exact native cases**, including ten readiness cases,
+with browser code/receipt unchanged. Private report:
+`privacy-readiness-001-016-bindings-fixed.json`. The linked browser remains
+001–015; these service tests do not establish readiness bridge runtime, renderer
+IPC or Canvas protection. The real-context draft remains unapplied.
+
+The production readiness bridge translation unit also compiled successfully
+without changing the linked browser or receipt; private object proof:
+`readiness-bridge-object-001-016.json`. Object compilation is not browser linkage
+or execution of the real-context test draft.
 
 ## Sources and maintenance
 

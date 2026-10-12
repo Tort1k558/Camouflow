@@ -851,7 +851,8 @@ def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tm
                                   "0012-native-browser-privacy-key-derivation.patch",
                                   "0013-native-owned-profile-key-loader.patch",
                                   "0014-native-private-key-service-lifecycle.patch",
-                                  "0015-native-browser-context-key-ownership.patch"])
+                                  "0015-native-browser-context-key-ownership.patch",
+                                  "0016-native-private-key-readiness.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
@@ -861,10 +862,10 @@ def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monk
     related = ([native_build.ROOT / "native/patches" / item for item in
                 ("0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch",
                  "0014-native-private-key-service-lifecycle.patch",
-                 "0015-native-browser-context-key-ownership.patch")]
+                 "0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch")]
                if name in {"0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch",
                            "0014-native-private-key-service-lifecycle.patch",
-                           "0015-native-browser-context-key-ownership.patch"}
+                           "0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
                else [patch])
     expected = sorted({line.split(" b/", 1)[1] for item in related
                        for line in item.read_text(encoding="utf-8").splitlines()
@@ -961,7 +962,7 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
 def test_native_privacy_unit_report_requires_exact_completed_cases(mutation):
     from scripts.verify_native_privacy_units import REQUIRED_TESTS, validate_results
 
-    report = {"tests": 33, "failures": 0, "disabled": 0, "testsuites": [
+    report = {"tests": 43, "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
         for suite, cases in REQUIRED_TESTS.items()]}
@@ -1023,7 +1024,8 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
     monkeypatch.setattr(privacy.build, "run", lambda *args, **kwargs: privacy.build.LOCK["chromium_revision"])
     monkeypatch.setattr(privacy.build, "require_stage", lambda *args: None)
     monkeypatch.setattr(privacy.build, "source_patches", lambda *args:
-                        [{"name": "0015-native-browser-context-key-ownership.patch", "sha256": "a" * 64}])
+                        [{"name": name, "sha256": "a" * 64} for name in (
+                            "0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch")])
     monkeypatch.setattr(privacy.build, "v8_source_patches", lambda *args: [])
     monkeypatch.setattr(privacy.build, "check_patch_dependencies", lambda *args: None)
     monkeypatch.setattr(privacy.build, "depot_command", lambda *args: ["autoninja"])
@@ -1044,7 +1046,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
                 raise subprocess.CalledProcessError(1, args)
             (output / "camouflow_native_privacy_unittests.exe").write_bytes(b"owned unit executable")
         else:
-            results = {"tests": 33, "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
+            results = {"tests": 43, "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
                        "testsuites": [{"name": suite, "testsuite": [
                            {"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(cases)]}
                            for suite, cases in privacy.REQUIRED_TESTS.items()]}
@@ -1058,7 +1060,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
     assert "Owned subprocess output" in report.with_name("proof-build.log").read_text(encoding="utf-8")
     assert commands[0][-3:] == ["-j", "4", "camouflow_native_privacy_unittests"]
     if failure is None:
-        assert proof["tests"] == 33 and proof["baseline_browser_code_unchanged"]
+        assert proof["tests"] == 43 and proof["baseline_browser_code_unchanged"]
         assert len(proof["test_binary_sha256"]) == 64
     else:
         assert proof.get("error") and "baseline_browser_code_unchanged" not in proof
@@ -1427,6 +1429,7 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     (patches / "0013-native-owned-profile-key-loader.patch").write_text("", encoding="utf-8")
     (patches / "0014-native-private-key-service-lifecycle.patch").write_text("", encoding="utf-8")
     (patches / "0015-native-browser-context-key-ownership.patch").write_text("", encoding="utf-8")
+    (patches / "0016-native-private-key-readiness.patch").write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")

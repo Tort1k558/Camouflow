@@ -36,6 +36,11 @@ REQUIRED_TESTS = {
         "OwnerInstallationIsSingleUse", "OwnerDestructionDuringLoadDropsReply", "FailedOwnerCannotReplaceIdentity",
         "IndependentOwnersDoNotRedirectToOriginal", "InvalidOwnerInstallDoesNotOccupySlot",
         "OwnerDataCloneDoesNotCopyPrivateIdentity",
+        "ReadinessWaitsForLoadingAndDerivesInsideCallback", "ReadyCallbacksCompleteInline",
+        "UninitializedReadinessFailsInline", "FailedLoadingSettlesReadinessWithoutRegeneration",
+        "ShutdownSettlesReadinessAndIgnoresLateLoad", "DestructionCancelsQueuedReadiness",
+        "ReadyCallbackShutdownRejectsRemainingCallbacks", "ReadyCallbackDestructionRejectsRemainingCallbacks",
+        "ReadinessCallbacksMayReenterTerminalService", "ReadinessQueueHasExplicitBound",
     },
     "All/NativePrivacyKeyVectorTest": {f"MatchesIndependentPythonVector/{index}" for index in range(4)},
 }
@@ -105,8 +110,9 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     build.require_stage(workspace / "chromium", "sync")
     build.require_stage(workspace / "chromium", "hooks")
     patches = build.source_patches(source, env) + build.v8_source_patches(source, env)
-    if not any(item["name"] == "0015-native-browser-context-key-ownership.patch" for item in patches):
-        raise ValueError("The exact context ownership patch is required")
+    required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
+    if not required_patches.issubset(item["name"] for item in patches):
+        raise ValueError("The exact context ownership and readiness patches are required")
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")

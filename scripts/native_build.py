@@ -188,7 +188,8 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0012-native-browser-privacy-key-derivation.patch",
         "0013-native-owned-profile-key-loader.patch",
         "0014-native-private-key-service-lifecycle.patch",
-        "0015-native-browser-context-key-ownership.patch"))
+        "0015-native-browser-context-key-ownership.patch",
+        "0016-native-private-key-readiness.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:

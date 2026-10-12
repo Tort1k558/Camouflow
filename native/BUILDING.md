@@ -2,7 +2,7 @@
 
 Glint is CamouFlow's own Chromium fork. This guide builds the **registered
 development patch chain**, not Camoufox/CloakBrowser and not an admitted release.
-Linux/macOS own-fork builds are deferred. Branding and readiness candidates in
+Linux/macOS own-fork builds are deferred. Branding and context-test candidates in
 `branding/` and `drafts/` are not registered build inputs yet.
 
 ## Requirements
@@ -104,8 +104,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Glint privacy units failed' }
 ```
 
 The runtime suite covers runtime, hardware, WebRTC, automation, fonts, identity,
-CDP and combined policies. Private-key units currently require 33 named cases;
-unapplied readiness candidates require additional coverage before registration.
+CDP and combined policies. Private-key units currently require 43 named cases
+for chain 001–016, including readiness; older 001–015 reports covered 33.
+The real BrowserContext test draft remains unregistered and needs its own execution.
 The scripts do not admit capabilities automatically or prove CAPTCHA success.
 Do not substitute a passing old report, SDK binary or Python tests for new
 own-fork runtime evidence. Canvas/GPU/audio protection is not complete.

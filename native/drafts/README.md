@@ -1,7 +1,8 @@
 # Unapplied Glint development patches
 
-These candidates are public source, not registered build inputs or passing
-runtime evidence. They must not be applied during an active Chromium build.
+The remaining context-test candidate is public source, not a registered build
+input or passing runtime evidence. Do not apply it during an active build.
+Its promoted readiness dependency is described separately below.
 
 ## BrowserContext privacy bridge
 
@@ -29,8 +30,9 @@ replay gate, compilation and execution are pending after the current build.
 The planned execution is the standard content unit target filtered to
 `NativePrivacyBrowserContextTest.*`, with single-process GoogleTest JSON output.
 All 20 named cases must finish successfully; a count alone is insufficient.
-Seven cases use the readiness bridge added by `key-readiness.patch`, so register
-and compile both candidates together. They check absent/null contexts, queued
+Seven cases use the readiness bridge now registered in
+`../patches/0016-native-private-key-readiness.patch`. Register this context-test
+candidate only after verifying that dependency. They check absent/null contexts, queued
 loading, identity failure, real context shutdown/destruction, reentrant shutdown
 and off-the-record inline completion without reading the persistent identity.
 
@@ -39,9 +41,9 @@ Chrome ProfileImpl/incognito bootstrap, renderer/worker IPC, Canvas protection,
 operating-system memory sanitization or multi-process profile locking. Those
 require separate compilation/runtime evidence.
 
-## Asynchronous privacy key readiness
+## Promoted dependency: asynchronous privacy key readiness
 
-`key-readiness.patch` adds a UI-sequence `PrivacyKeyService::WhenReady` callback
+`../patches/0016-native-private-key-readiness.patch` adds a UI-sequence `PrivacyKeyService::WhenReady` callback
 API and public `WhenNativePrivacyContextReady` bridge, prerequisites to
 browser-owned renderer key delivery. It does not expose the
 root key or activate fingerprint surfaces. Callers must start initialization
@@ -58,10 +60,12 @@ failure without identity regeneration, shutdown/late replies, destruction,
 completion-time shutdown/destruction, nested callbacks and the queue bound.
 They extend the existing native unit target, not a separate test framework.
 
-The patch passes `git apply --check` against the unchanged pinned checkout.
-It has **not been compiled or executed** and is not registered in the build
-gate. Apply/register only after the current compiler terminates, then update the
-strict verifier to require the ten additional named cases and rerun all cases.
+The patch was promoted from this draft directory after the 001–015 build and
+verification processes completed. It is registered/applied in the development
+checkout; the strict verifier now requires **43** cases, including the ten new
+readiness cases. All 43 native cases compiled and passed after correcting test
+callbacks to Chromium's `BindLambdaForTesting` helper. The existing linked
+001–015 browser does not contain this new implementation.
 This is not yet a browser startup gate, document/worker IPC, a timeout policy or
 Canvas protection. Those consumers must bind cancellation to their own lifetime
 and obtain partitions from trusted browser state, not renderer-provided URLs.

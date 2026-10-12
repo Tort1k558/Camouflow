@@ -30,7 +30,7 @@ new file mode 100644
 +#include <optional>
 +#include <string>
 +
-+#include "base/functional/bind.h"
++#include "base/test/bind.h"
 +#include "base/files/file_util.h"
 +#include "base/files/scoped_temp_dir.h"
 +#include "content/browser/camouflow_native/privacy_key_service.h"
@@ -278,11 +278,11 @@ new file mode 100644
 +  auto context = NewContext("Default");
 +  ASSERT_TRUE(context);
 +  int calls = 0;
-+  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_FALSE(ready);
 +  }));
-+  WhenNativePrivacyContextReady(nullptr, base::BindOnce([&](bool ready) {
++  WhenNativePrivacyContextReady(nullptr, base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_FALSE(ready);
 +  }));
@@ -294,7 +294,7 @@ new file mode 100644
 +  ASSERT_TRUE(context);
 +  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
 +  int calls = 0;
-+  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_TRUE(ready);
 +    EXPECT_TRUE(DeriveNativePrivacyKey(context.get(), Partition(), "canvas"));
@@ -310,7 +310,7 @@ new file mode 100644
 +  ASSERT_TRUE(context);
 +  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
 +  int calls = 0;
-+  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_FALSE(ready);
 +  }));
@@ -324,7 +324,7 @@ new file mode 100644
 +  ASSERT_TRUE(context);
 +  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
 +  int calls = 0;
-+  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_FALSE(ready);
 +  }));
@@ -332,7 +332,7 @@ new file mode 100644
 +  EXPECT_EQ(calls, 1);
 +  tasks_.RunUntilIdle();
 +  EXPECT_EQ(calls, 1);
-+  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_FALSE(ready);
 +  }));
@@ -344,7 +344,7 @@ new file mode 100644
 +  ASSERT_TRUE(context);
 +  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
 +  int calls = 0;
-+  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_FALSE(ready);
 +  }));
@@ -359,12 +359,12 @@ new file mode 100644
 +  ASSERT_TRUE(context);
 +  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
 +  int calls = 0;
-+  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_TRUE(ready);
 +    context->NotifyWillBeDestroyed();
 +  }));
-+  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_FALSE(ready);
 +  }));
@@ -378,7 +378,7 @@ new file mode 100644
 +  context->set_is_off_the_record(true);
 +  ASSERT_TRUE(InitializeNativePrivacyContext(context.get(), base::FilePath()));
 +  int calls = 0;
-+  WhenNativePrivacyContextReady(context.get(), base::BindOnce([&](bool ready) {
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
 +    ++calls;
 +    EXPECT_TRUE(ready);
 +    EXPECT_TRUE(DeriveNativePrivacyKey(context.get(), Partition(), "canvas"));
