@@ -732,3 +732,36 @@ The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feat
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred
 at the user's request; their earlier SDK reports are not own-fork verification.
+
+## Private key service lifecycle (0014; 27 native tests passed)
+
+The browser-layer `PrivacyKeyService` uses sequence checking and explicit owner
+shutdown. Persistent identity loading runs on the
+blocking thread pool; derivation is unavailable until loading succeeds. Missing
+or invalid identity remains failed, with no regeneration or ephemeral fallback.
+Explicit ephemeral initialization creates an independent random in-memory key.
+Initialization is single-use; shutdown releases the key, invalidates weak
+replies and prevents later derivation or reinitialization. Destroying a service
+while loading does not deliver a reply to the destroyed owner.
+
+The Windows target passed 27 native cases: the previous 17 container/HMAC cases
+plus ten lifecycle cases covering loading readiness, missing and malformed
+identity, independent ephemeral instances, persistent service recreation,
+persistent-versus-ephemeral isolation, shutdown, destruction during loading and
+single-use initialization. The expanded proof is
+`D:\CamouFlowNative\native-privacy-key-service-layered-unit-proof.json`; raw
+GoogleTest results and the four-job build log use the same prefix on D. The
+earlier runs remain preserved separately. The first compiled design inherited
+`KeyedService` in the content layer, but Chromium's include checker rejected that
+dependency. It was removed rather than whitelisted; a future Chrome factory can
+own this content-layer service. The build gate now checks the Native content
+directory when present. Exact source replay, baseline
+browser code, GN arguments and the 0010 browser receipt were unchanged.
+
+This service is compiled in the native unit target, not yet registered with a
+Chrome profile factory or linked into a newly verified browser. The ephemeral
+tests do not prove actual incognito integration. Profile ownership/lock and
+partitioned worker lifecycle remain caller requirements. Browser-to-renderer
+and worker transport, protected readback readiness, Canvas/GPU/audio and
+authenticated capability admission remain unfinished. No privacy capability
+has been enabled from these tests. Project regression: 1,102 tests passed.

@@ -1,0 +1,334 @@
+diff --git a/content/browser/camouflow_native/privacy_profile_key.h b/content/browser/camouflow_native/privacy_profile_key.h
+--- a/content/browser/camouflow_native/privacy_profile_key.h
++++ b/content/browser/camouflow_native/privacy_profile_key.h
+@@ -21,6 +21,7 @@
+   // Caller must own the canonical profile directory and its process lock.
+   // Windows only; does not create or regenerate missing/invalid identity files.
+   static std::unique_ptr<PrivacyProfileKey> LoadOwnedProfile(const base::FilePath& profile);
++  static std::unique_ptr<PrivacyProfileKey> CreateEphemeral();
+   ~PrivacyProfileKey();
+   PrivacyProfileKey(const PrivacyProfileKey&) = delete;
+   PrivacyProfileKey& operator=(const PrivacyProfileKey&) = delete;
+diff --git a/content/browser/camouflow_native/privacy_profile_key.cc b/content/browser/camouflow_native/privacy_profile_key.cc
+--- a/content/browser/camouflow_native/privacy_profile_key.cc
++++ b/content/browser/camouflow_native/privacy_profile_key.cc
+@@ -9,6 +9,7 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/threading/scoped_blocking_call.h"
+ #include "build/build_config.h"
++#include "crypto/random.h"
+ #include "content/browser/camouflow_native/privacy_key_derivation.h"
+ #include "third_party/boringssl/src/include/openssl/mem.h"
+ 
+@@ -64,6 +65,12 @@
+   return std::unique_ptr<PrivacyProfileKey>(new PrivacyProfileKey(decoded.bytes));
+ }
+ 
++std::unique_ptr<PrivacyProfileKey> PrivacyProfileKey::CreateEphemeral() {
++  DecodedKey decoded;
++  crypto::RandBytes(decoded.bytes);
++  return std::unique_ptr<PrivacyProfileKey>(new PrivacyProfileKey(decoded.bytes));
++}
++
+ std::optional<std::array<uint8_t, 32>> PrivacyProfileKey::Derive(
+     const blink::StorageKey& storage_key, std::string_view surface) const {
+   return DerivePrivacyPartitionKey(key_, storage_key, surface);
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -3868,6 +3868,8 @@
+     "camouflow_native/privacy_partition.h",
+     "camouflow_native/privacy_profile_key.cc",
+     "camouflow_native/privacy_profile_key.h",
++    "camouflow_native/privacy_key_service.cc",
++    "camouflow_native/privacy_key_service.h",
+   ]
+   deps = [
+     "//base",
+@@ -3881,6 +3883,7 @@
+     "//base/test/run_all_unittests.cc",
+     "camouflow_native/privacy_key_derivation_unittest.cc",
+     "camouflow_native/privacy_profile_key_unittest.cc",
++    "camouflow_native/privacy_key_service_unittest.cc",
+   ]
+   deps = [
+     ":camouflow_native_privacy",
+diff --git a/content/browser/camouflow_native/privacy_key_service.h b/content/browser/camouflow_native/privacy_key_service.h
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_key_service.h
+@@ -0,0 +1,40 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_KEY_SERVICE_H_
++#define CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_KEY_SERVICE_H_
++
++#include <array>
++#include <memory>
++#include <optional>
++#include <string_view>
++
++#include "base/memory/weak_ptr.h"
++#include "base/sequence_checker.h"
++#include "content/browser/camouflow_native/privacy_profile_key.h"
++
++namespace camouflow::native {
++
++class PrivacyKeyService {
++ public:
++  enum class State { kUninitialized, kLoading, kReady, kFailed, kStopped };
++  PrivacyKeyService();
++  ~PrivacyKeyService();
++  // Each service must be owned by one BrowserContext; no redirect to original.
++  bool InitializeOwnedProfile(const base::FilePath& owned_profile);
++  bool InitializeEphemeral();
++  State state() const;
++  std::optional<std::array<uint8_t, 32>> Derive(
++      const blink::StorageKey& trusted_partition, std::string_view surface) const;
++  void Shutdown();
++
++ private:
++  void Loaded(std::unique_ptr<PrivacyProfileKey> key);
++  State state_ = State::kUninitialized;
++  std::unique_ptr<PrivacyProfileKey> key_;
++  SEQUENCE_CHECKER(sequence_checker_);
++  base::WeakPtrFactory<PrivacyKeyService> weak_factory_{this};
++};
++
++}  // namespace camouflow::native
++
++#endif  // CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_KEY_SERVICE_H_
+diff --git a/content/browser/camouflow_native/privacy_key_service.cc b/content/browser/camouflow_native/privacy_key_service.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_key_service.cc
+@@ -0,0 +1,71 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/camouflow_native/privacy_key_service.h"
++
++#include "base/functional/bind.h"
++#include "base/task/thread_pool.h"
++
++namespace camouflow::native {
++
++PrivacyKeyService::PrivacyKeyService() = default;
++PrivacyKeyService::~PrivacyKeyService() { Shutdown(); }
++
++bool PrivacyKeyService::InitializeOwnedProfile(const base::FilePath& owned_profile) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (state_ != State::kUninitialized || !owned_profile.IsAbsolute() ||
++      owned_profile.ReferencesParent()) {
++    return false;
++  }
++  state_ = State::kLoading;
++  if (!base::ThreadPool::PostTaskAndReplyWithResult(
++          FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
++                      base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN},
++          base::BindOnce(&PrivacyProfileKey::LoadOwnedProfile, owned_profile),
++          base::BindOnce(&PrivacyKeyService::Loaded, weak_factory_.GetWeakPtr()))) {
++    state_ = State::kFailed;
++    return false;
++  }
++  return true;
++}
++
++bool PrivacyKeyService::InitializeEphemeral() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (state_ != State::kUninitialized) {
++    return false;
++  }
++  key_ = PrivacyProfileKey::CreateEphemeral();
++  state_ = key_ ? State::kReady : State::kFailed;
++  return state_ == State::kReady;
++}
++
++void PrivacyKeyService::Loaded(std::unique_ptr<PrivacyProfileKey> key) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (state_ != State::kLoading) {
++    return;
++  }
++  key_ = std::move(key);
++  state_ = key_ ? State::kReady : State::kFailed;
++}
++
++PrivacyKeyService::State PrivacyKeyService::state() const {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  return state_;
++}
++
++std::optional<std::array<uint8_t, 32>> PrivacyKeyService::Derive(
++    const blink::StorageKey& trusted_partition, std::string_view surface) const {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (state_ != State::kReady || !key_) {
++    return std::nullopt;
++  }
++  return key_->Derive(trusted_partition, surface);
++}
++
++void PrivacyKeyService::Shutdown() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  weak_factory_.InvalidateWeakPtrs();
++  key_.reset();
++  state_ = State::kStopped;
++}
++
++}  // namespace camouflow::native
+diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/content/browser/camouflow_native/privacy_key_service_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_key_service_unittest.cc
+@@ -0,0 +1,153 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/camouflow_native/privacy_key_service.h"
++
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/test/task_environment.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace camouflow::native {
++namespace {
++using State = PrivacyKeyService::State;
++constexpr char kIdentity[] = R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})";
++
++class NativePrivacyKeyServiceTest : public testing::Test {
++ protected:
++  void SetUp() override {
++    ASSERT_TRUE(owned_.CreateUniqueTempDir());
++    ASSERT_TRUE(base::WriteFile(owned_.GetPath().AppendASCII("camouflow-native-privacy.json"), kIdentity));
++  }
++  blink::StorageKey Partition() {
++    return blink::StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://same.test")));
++  }
++  base::test::TaskEnvironment tasks_{base::test::TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
++  base::ScopedTempDir owned_;
++};
++
++TEST_F(NativePrivacyKeyServiceTest, DoesNotDeriveUntilBackgroundLoadCompletes) {
++  PrivacyKeyService service;
++  EXPECT_EQ(service.state(), State::kUninitialized);
++  EXPECT_FALSE(service.Derive(Partition(), "canvas"));
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  EXPECT_EQ(service.state(), State::kLoading);
++  EXPECT_FALSE(service.Derive(Partition(), "canvas"));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(service.state(), State::kReady);
++  const auto first = service.Derive(Partition(), "canvas");
++  ASSERT_TRUE(first);
++  EXPECT_EQ(first, service.Derive(Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyKeyServiceTest, MissingIdentityFailsWithoutEphemeralFallback) {
++  ASSERT_TRUE(base::DeleteFile(owned_.GetPath().AppendASCII("camouflow-native-privacy.json")));
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(service.state(), State::kFailed);
++  EXPECT_FALSE(service.Derive(Partition(), "canvas"));
++  EXPECT_FALSE(service.InitializeEphemeral());
++  EXPECT_FALSE(base::PathExists(owned_.GetPath().AppendASCII("camouflow-native-privacy.json")));
++}
++
++TEST_F(NativePrivacyKeyServiceTest, EphemeralInstancesAreIndependentAndStable) {
++  PrivacyKeyService first;
++  PrivacyKeyService second;
++  ASSERT_TRUE(first.InitializeEphemeral());
++  ASSERT_TRUE(second.InitializeEphemeral());
++  const auto a = first.Derive(Partition(), "canvas");
++  const auto b = second.Derive(Partition(), "canvas");
++  ASSERT_TRUE(a);
++  ASSERT_TRUE(b);
++  EXPECT_NE(a, b);
++  EXPECT_EQ(a, first.Derive(Partition(), "canvas"));
++  EXPECT_FALSE(first.InitializeEphemeral());
++}
++
++TEST_F(NativePrivacyKeyServiceTest, ShutdownClearsReadyKeyAndRejectsReinitialization) {
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeEphemeral());
++  service.Shutdown();
++  EXPECT_EQ(service.state(), State::kStopped);
++  EXPECT_FALSE(service.Derive(Partition(), "canvas"));
++  EXPECT_FALSE(service.InitializeEphemeral());
++  EXPECT_FALSE(service.InitializeOwnedProfile(owned_.GetPath()));
++  service.Shutdown();
++}
++
++TEST_F(NativePrivacyKeyServiceTest, ShutdownCancelsLateLoadReply) {
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  service.Shutdown();
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(service.state(), State::kStopped);
++  EXPECT_FALSE(service.Derive(Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyKeyServiceTest, DestructionWhileLoadingDropsLateReply) {
++  auto service = std::make_unique<PrivacyKeyService>();
++  ASSERT_TRUE(service->InitializeOwnedProfile(owned_.GetPath()));
++  service.reset();
++  tasks_.RunUntilIdle();
++}
++
++TEST_F(NativePrivacyKeyServiceTest, InitializationIsSingleUseAndRejectsRelativePath) {
++  PrivacyKeyService service;
++  EXPECT_FALSE(service.InitializeOwnedProfile(base::FilePath(FILE_PATH_LITERAL("relative"))));
++  EXPECT_EQ(service.state(), State::kUninitialized);
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  EXPECT_FALSE(service.InitializeOwnedProfile(owned_.GetPath()));
++  EXPECT_FALSE(service.InitializeEphemeral());
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(service.state(), State::kReady);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, PersistentIdentitySurvivesServiceRecreation) {
++  std::optional<std::array<uint8_t, 32>> original;
++  {
++    PrivacyKeyService service;
++    ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++    tasks_.RunUntilIdle();
++    original = service.Derive(Partition(), "canvas");
++    ASSERT_TRUE(original);
++  }
++  PrivacyKeyService restarted;
++  ASSERT_TRUE(restarted.InitializeOwnedProfile(owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(original, restarted.Derive(Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyKeyServiceTest, MalformedIdentityRemainsFailedAndUnchanged) {
++  const auto identity = owned_.GetPath().AppendASCII("camouflow-native-privacy.json");
++  ASSERT_TRUE(base::WriteFile(identity, "invalid"));
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(service.state(), State::kFailed);
++  EXPECT_FALSE(service.Derive(Partition(), "canvas"));
++  EXPECT_FALSE(service.InitializeOwnedProfile(owned_.GetPath()));
++  std::string unchanged;
++  ASSERT_TRUE(base::ReadFileToString(identity, &unchanged));
++  EXPECT_EQ(unchanged, "invalid");
++}
++
++TEST_F(NativePrivacyKeyServiceTest, PersistentAndEphemeralInstancesDoNotShareKeys) {
++  PrivacyKeyService persistent;
++  PrivacyKeyService ephemeral;
++  ASSERT_TRUE(persistent.InitializeOwnedProfile(owned_.GetPath()));
++  ASSERT_TRUE(ephemeral.InitializeEphemeral());
++  tasks_.RunUntilIdle();
++  const auto a = persistent.Derive(Partition(), "canvas");
++  const auto b = ephemeral.Derive(Partition(), "canvas");
++  ASSERT_TRUE(a);
++  ASSERT_TRUE(b);
++  EXPECT_NE(a, b);
++  ephemeral.Shutdown();
++  EXPECT_EQ(a, persistent.Derive(Partition(), "canvas"));
++}
++
++}  // namespace
++}  // namespace camouflow::native

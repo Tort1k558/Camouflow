@@ -186,7 +186,8 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0010-native-windows-profile-namespace.patch",
         "0011-native-privacy-partition-serialization.patch",
         "0012-native-browser-privacy-key-derivation.patch",
-        "0013-native-owned-profile-key-loader.patch"))
+        "0013-native-owned-profile-key-loader.patch",
+        "0014-native-private-key-service-lifecycle.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
@@ -229,7 +230,10 @@ def snapshot_dependencies(chromium: Path, workspace: Path, env: dict[str, str]) 
 
 def check_patch_dependencies(source: Path, env: dict[str, str]) -> None:
     run(["git", "diff", "--check"], source, env)
-    for directory in ("third_party/blink/renderer/core/frame", "content/browser/renderer_host"):
+    for directory in ("third_party/blink/renderer/core/frame", "content/browser/renderer_host",
+                      "content/browser/camouflow_native"):
+        if directory == "content/browser/camouflow_native" and not (source / directory).is_dir():
+            continue
         run([sys.executable, str(source / "buildtools/checkdeps/checkdeps.py"),
              "--root", os.path.normcase(str(source)), os.path.normcase(str(source / directory))], source, env)
     script = ("import sys; from pathlib import Path; "

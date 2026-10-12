@@ -849,7 +849,8 @@ def test_native_v8_patch_provenance_requires_the_verified_dependency_revision(tm
                                   "0010-native-windows-profile-namespace.patch",
                                   "0011-native-privacy-partition-serialization.patch",
                                   "0012-native-browser-privacy-key-derivation.patch",
-                                  "0013-native-owned-profile-key-loader.patch"])
+                                  "0013-native-owned-profile-key-loader.patch",
+                                  "0014-native-private-key-service-lifecycle.patch"])
 def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monkeypatch, name):
     import hashlib
 
@@ -857,8 +858,10 @@ def test_native_build_verifies_applied_patch_and_records_checksum(tmp_path, monk
 
     patch = native_build.ROOT / "native/patches" / name
     related = ([native_build.ROOT / "native/patches" / item for item in
-                ("0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch")]
-               if name in {"0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch"}
+                ("0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch",
+                 "0014-native-private-key-service-lifecycle.patch")]
+               if name in {"0012-native-browser-privacy-key-derivation.patch", "0013-native-owned-profile-key-loader.patch",
+                           "0014-native-private-key-service-lifecycle.patch"}
                else [patch])
     expected = sorted({line.split(" b/", 1)[1] for item in related
                        for line in item.read_text(encoding="utf-8").splitlines()
@@ -1058,12 +1061,15 @@ def test_native_build_records_installed_cipd_instances_without_reresolving_remot
     ]
 
 
-def test_native_build_checks_the_chromium_dependency_layers_changed_by_the_patch(tmp_path, monkeypatch):
+@pytest.mark.parametrize("privacy_sources", [False, True])
+def test_native_build_checks_the_chromium_dependency_layers_changed_by_the_patch(tmp_path, monkeypatch, privacy_sources):
     import os
 
     from scripts import native_build
 
     commands = []
+    if privacy_sources:
+        (tmp_path / "content/browser/camouflow_native").mkdir(parents=True)
     monkeypatch.setattr(native_build, "run", lambda args, *a, **kw: commands.append(args))
     native_build.check_patch_dependencies(tmp_path, {})
     assert commands[0] == ["git", "diff", "--check"]
@@ -1072,10 +1078,13 @@ def test_native_build_checks_the_chromium_dependency_layers_changed_by_the_patch
         os.path.normcase(str(tmp_path / "content/browser/renderer_host")),
     ]
     assert all(command[-2] == os.path.normcase(str(tmp_path)) for command in commands[1:3])
-    assert commands[3][:2] == [sys.executable, "-c"]
-    assert "CheckAddedCppIncludes" in commands[3][2]
-    assert "chrome/browser/renderer_preferences_util.cc" in commands[3][2]
-    assert commands[3][-1] == os.path.normcase(str(tmp_path))
+    if privacy_sources:
+        assert commands[3][-1] == os.path.normcase(str(tmp_path / "content/browser/camouflow_native"))
+        assert commands[3][-2] == os.path.normcase(str(tmp_path))
+    assert commands[-1][:2] == [sys.executable, "-c"]
+    assert "CheckAddedCppIncludes" in commands[-1][2]
+    assert "chrome/browser/renderer_preferences_util.cc" in commands[-1][2]
+    assert commands[-1][-1] == os.path.normcase(str(tmp_path))
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows depot_tools uses SDK launcher indirection")
@@ -1231,6 +1240,7 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
     (patches / "0011-native-privacy-partition-serialization.patch").write_text("", encoding="utf-8")
     (patches / "0012-native-browser-privacy-key-derivation.patch").write_text("", encoding="utf-8")
     (patches / "0013-native-owned-profile-key-loader.patch").write_text("", encoding="utf-8")
+    (patches / "0014-native-private-key-service-lifecycle.patch").write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
     file.write_text(file.read_text(encoding="utf-8-sig") + "unreviewed edit\n", encoding="utf-8", newline="\n")

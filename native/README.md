@@ -10,7 +10,7 @@ resumed; existing Linux workspaces and verified results are preserved. Desktop
 CI now schedules only Windows jobs. Linux/macOS support remains unfinished and
 must not be represented as released own-fork runtimes.
 
-## Windows storage path normalization (0008; runtime pending)
+## Windows storage path normalization (0008; intermediate failure resolved by 0009/0010)
 
 `patches/0008-native-leveldb-path-separators.patch` normalizes the 17 LevelDB
 environment UTF-8-to-native path conversions before filesystem operations.
@@ -899,7 +899,7 @@ its executable directory is added only to build-child PATH. This avoids missing
 `python3_bin_reldir.txt` launcher indirection and the Microsoft Store Python alias
 selected by GN child scripts, without fake bootstrap markers or global PATH edits.
 
-## Native WebRTC routing patch (not runtime-verified)
+## Native WebRTC routing patch (Windows own-fork runtime verified)
 
 `0003-native-webrtc-routing-policy.patch` adds the browser-process switch
 `--camouflow-webrtc-ip-handling-policy=disable_non_proxied_udp`. It sets real
@@ -914,9 +914,10 @@ tested against the pinned Chromium 148 SDK binary on Windows: both baseline and
 flagged launches produced five direct loopback STUN requests and UDP host
 candidates. Treating that flag as protection would be misleading.
 
-The new patch has been applied to the pinned Windows source together with
-0004/0005 after the previous build terminated; compilation is in progress, but
-runtime behavior is unverified. Do not change live build inputs. Application configuration
+The new patch has been applied to the pinned Windows source. The current
+001-010 own-fork baseline passed all seven Windows WebRTC checks; evidence is
+`D:\CamouFlowNative\verification-browser-owned-profile-namespace-full-20261012\webrtc.json`.
+Do not change live build inputs. Application configuration
 continues to reject unsupported WebRTC masking/blocking options.
 The build's dependency gate now also invokes the pinned upstream
 `CheckAddedCppIncludes` API on the real browser renderer-preferences file.
@@ -940,4 +941,4 @@ negative control passed its baseline and correctly failed the protected probe
 on Windows. Matching Windows x64, Linux x64 and macOS ARM64 CI artifacts at
 `8fe6bbb` each observed five STUN requests in both the baseline and unpatched
 protected launch and rejected that ineffective policy. All own-fork WebRTC
-results remain pending; a passing negative control is not a privacy capability.
+results for Linux/macOS remain pending; a passing negative control is not a privacy capability.
