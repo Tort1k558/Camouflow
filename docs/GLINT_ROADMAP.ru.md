@@ -47,17 +47,51 @@
 > В конце каждого этапа кратко сообщай: что изменено, что реально проверено,
 > что не проверено/сломано, где доказательства, commit и следующий шаг.
 
-## Исходная граница
+## Подтверждённая база и открытые задачи — 12 октября 2026
+
+Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчами, а не только
+инъекции поверх Chrome. При этом менеджер использует Playwright/CDP для управления
+и SDK-настроек: это не отсутствие CDP и не нативная подмена всех Web API.
+Один профиль запускается в одном persistent BrowserContext; вкладки разделяют
+его хранилище. Document/iframe/worker имеют собственные execution contexts,
+но это не отдельный BrowserContext на каждую вкладку.
 
 | Область | Подтверждённая граница на момент составления плана |
 | --- | --- |
-| Патчи 001–010 | Есть Windows development baseline и отдельные runtime-проверки |
-| Патчи 001–015 | Новую связанную сборку и её отчёты необходимо проверить; результаты старой не переносить |
+| Windows, патчи 001–027 | Связанный браузер: 160 проверок восьми runtime-gates; receipt и core DLL проверены. Внешние результаты старых версий не переносить |
 | CPU/RAM, шрифты, WebRTC, webdriver/headless, ограниченный CDP-сигнал | Нативные политики есть; включение в менеджере требует admission конкретного runtime |
-| Ключи/StorageKey/BrowserContext | Native-примитивы и owner-тесты не доказывают renderer/worker isolation |
-| Readiness / реальные context-тесты | Readiness 0016 прошёл 43 native cases; context-тесты зарегистрированы в 0017, исполнение ещё не подтверждено; браузер пока 001–015 |
-| Canvas, WebGL/WebGPU, Audio | Не считать готовыми защитами |
+| Ключи/StorageKey/BrowserContext | 43 native readiness/key cases и 20 реальных context cases прошли; это не доказательство всех renderer/worker-путей |
+| IPC и consumers | 34 endpoint/consumer cases прошли; совместный прогон context/delivery — 54 cases, не дополнительные независимые 54 проверки |
+| Worker startup | 40 runtime-проверок startup/restart/shared-client/rejection прошли в developer-режиме. Четыре Blink handoff cases ещё не исполнены: собирается тестовый target |
+| Document delivery до JS | Не завершена. Carrier и readiness throttle — незарегистрированные черновики, syntax/applicability не заменяют исполнение трёх и одиннадцати fixture cases |
+| Canvas | Четыре фазы upstream baseline прошли без защиты; алгоритмы/hooks — черновики, capability не активирована |
+| WebGL/WebGPU, Audio | Полноценная защита не завершена |
+| UA/Client Hints, Screen/Intl, storage | Часть конфигурации и диагностик есть; нужна единая карта покрытия, а не вывод «отсутствует» из краткого отчёта |
+| Сеть и внешние сервисы | Штатный Chromium stack; полный сравнительный TLS/HTTP/DNS-прогон и Core-сайты для 001–027 не подтверждены |
 | Название и логотип Chromium | Branding-патч подготовлен; проверить фактический бинарник после применения |
+
+Доказательства и ограничения: [верификация](NATIVE_VERIFICATION.md),
+[матрица результатов](GLINT_TEST_MATRIX.md),
+[черновики доставки](../native/drafts/document_delivery/README.md).
+Количество шагов сборки — не количество тестов и не процент готовности.
+Оценки «75% базы / 30% антидетекта» не использовать как инженерную метрику.
+
+## Приоритеты и обязательные gates
+
+| Приоритет | Работа | Условие завершения |
+| --- | --- | --- |
+| P0 | Завершить текущий Blink target | Четыре точных handoff cases исполнены без skipped; хеши тестового бинарника и неизменность browser core подтверждены |
+| P0 | Доставка до первого JS/API | Проверены browser-owned partition commitment, финальное состояние документа, владение seed, startup/shutdown всех применимых контекстов |
+| P1 | Матрица Web API и конфигурации | Для каждого API указаны support, owner, механизм применения, проверенная сборка, контексты и пробелы |
+| P1 | Сетевая диагностика | Сопоставимые stock Chromium/Glint, DNS/прокси/TLS/HTTP/заголовки; ограничения маршрута и протокола явно записаны |
+| P1 | Canvas → GPU → Audio | Последовательный opt-in с API semantics, изоляцией, совместимостью и комбинированными gates |
+| P1 | Compatibility Test Suite | Обычные сайты/fixtures, мультимедиа, безопасность, хранилища, crash/restart и измеренные ресурсы |
+| P2 | Релиз и сопровождение | Воспроизводимый пакет, происхождение, обновление/rollback, восстановление и Chromium security rebase |
+
+P0 блокирует активацию новых privacy capabilities. Независимые P1-диагностики,
+спецификации и изолированные черновики можно готовить во время сборки,
+не меняя её входные файлы. Не копить все модули без промежуточных gates:
+после базы объединять только совместимые проверенные изменения.
 
 ## Уточнения после изучения Fortress и Fury
 
@@ -154,7 +188,7 @@ Collector логирует успешные и ошибочные запросы
 
 | Работа | Критерий приёмки |
 | --- | --- |
-| Выполнить 20 context-тестов 0017 и затем собрать новый браузер | Exact source replay; обновлённый verifier; все прежние и новые именованные тесты завершены, без skipped |
+| Сохранить пройденные context/endpoint gates; исполнить четыре Blink handoff cases | Exact source replay; все требуемые именованные тесты завершены, без skipped; тестовый target не выдаётся за новую browser-сборку |
 | Проверить настоящий Chrome ProfileImpl и incognito | Реальный startup/shutdown, отдельная OTR-идентичность, без чтения ключа постоянного профиля |
 | Определить версионированный контракт идентичности | Повторный запуск сохраняет идентичность; clone/restore/export следуют явной политике; повреждённый ключ не регенерируется скрыто |
 | Спроектировать browser → renderer IPC | Корневой ключ никогда не передаётся; только ограниченные производные данные, привязанные к нужной поверхности/контексту |
@@ -167,6 +201,63 @@ Collector логирует успешные и ошибочные запросы
 **Выход:** тестируемый контракт доставки до подключения новых поверхностей.
 Стабильная идентичность профиля и межсайтовая unlinkability — разные свойства;
 выбранная partition-политика должна быть документирована и проверена отдельно.
+
+### P0: конкретный следующий пакет доставки
+
+1. После текущего target проверить четыре Blink cases и сохранить результат.
+2. Довести document carrier и bounded readiness barrier, зарегистрировать и
+   исполнить их fixtures только после проверки producer/consumer-контракта.
+3. Связать browser-owned partition commitment с финальным StorageKey до
+   установки документа. В pinned Chromium navigation key может быть provisional:
+   готовность ключевого сервиса не доказывает окончательность partition.
+4. Проверить initial empty, about:blank/srcdoc, nested iframe/OOPIF, redirects,
+   renderer-only replacement, synthetic DOM documents, BFCache/prerender.
+   Canvas читает политику действующего execution context, не URL DOM-owner.
+5. Проверить dedicated/shared/service worker classic/module, вложенные workers,
+   раннее уничтожение, host disconnect, late reply и bounded очереди. Для
+   shared-control черновика нужны границы 64/65, порядок и освобождение портов.
+6. Проверить несколько профилей одновременно, crash/restart и стабильность
+   производных seed внутри заданной partition/surface. Root/seed не публиковать
+   в JS, логах, crash dumps или экспортах; тестовые маркеры не использовать как
+   production-идентичность.
+
+Worker probe корректирует Playwright-флаг ThirdPartyStoragePartitioning только
+для диагностики. Обычный manager launch пока не наследует эту корректировку:
+сначала проверить фактические launch flags и согласовать partition-политику,
+затем допускать capability. Не переносить результат probe на штатный запуск.
+
+## P1. Единая матрица API, конфигурации и сети
+
+Расширять существующие configuration/identity/diagnostics и verifier-скрипты.
+Не вводить второй Policy Manager: сначала зафиксировать единственного владельца
+каждого параметра, версию схемы, validation и путь применения. Политика должна
+достигать применимых document/worker/network/graphics компонентов до первого
+использования API; отсутствие поддержки — явный отказ, не скрытый fallback.
+
+| Поверхность | Обязательное покрытие |
+| --- | --- |
+| Navigator / identity | UA, платформа, CPU/RAM, язык, API presence; SDK/CDP и C++ механизмы различаются в отчёте |
+| Client Hints | JS low/high entropy и HTTP Sec-CH-UA*, Accept-CH/Permissions-Policy, secure context, redirect и поддерживаемые workers |
+| Screen / DPR / viewport | Screen/available area, zoom, размеры окна/viewport и media queries; не требовать screen в workers |
+| Timezone / Intl | Locale, Accept-Language, Date/Intl, restart и все применимые контексты |
+| Canvas / GPU / Audio | Support и API semantics отдельно от privacy capability; readback/export/limits и применимые worker-пути |
+| WebRTC | Permissions, ICE/IP, proxy routing и отсутствие непредусмотренного direct egress |
+| Storage | Cookies, localStorage, IndexedDB, Cache Storage, service-worker registrations; разные профили, partition и crash/restart |
+
+Для каждой строки записывать owner, режим/конфигурацию, support/context,
+конкретный gate/report/build и статус: Verified / Partial / Prototype / Missing /
+Not run / Not applicable. Сначала инвентаризировать существующие проверки.
+
+| Сетевой слой | Диагностика и критерий |
+| --- | --- |
+| TLS / JA3 / JA4 | Запросы самого браузера против stock Chromium сопоставимой версии/ОС на том же маршруте; учитывать GREASE/порядок extensions |
+| HTTP/2 / HTTP/3 | Реальная negotiation, доступность QUIC через маршрут, настройки и поведение запросов; недоступность H3 не превращать в PASS |
+| HTTP headers | UA/Client Hints/Accept-Language согласованы с JS и конфигурацией, включая redirect/subresources |
+| DNS / proxy | Контролируемые наблюдения резолвинга и маршрута, authenticated proxy failure, WebRTC и отсутствие direct fallback |
+| Manager / updates | Отдельно измерять трафик менеджера, загрузчика и обновлений: browser proxy не покрывает их автоматически |
+
+Не писать собственный TLS stack и не патчить BoringSSL без воспроизводимой
+причины. Совпадение JA3/JA4 не доказывает невидимость автоматизации.
 
 ## Этап 3. Canvas — первый новый модуль
 
@@ -237,6 +328,19 @@ extensions/features/limits должны соответствовать факт�
 
 ## Этап 6. Выпуск и поддержка
 
+### P1: Compatibility Test Suite перед выпуском
+
+Поверх существующего suite добавить формализованный набор owned fixtures и
+публичных страниц без аккаунтов: формы/навигация/загрузки, Recorder/replay,
+Canvas/графики/WebGL, мультимедиа и permissions. Проверять CSP/origin/tainted
+security semantics, изоляцию данных и владельцев процессов, concurrent profiles,
+shutdown/crash/restart и upgrade старого профиля без потери данных.
+На одинаковой машине и конфигурации измерять startup/teardown, RAM/CPU на профиль,
+latency readback и crash rate с размером выборки. Порог регрессии определить по
+измеренному baseline до admission, не придумывать проценты после запуска.
+
+### P2: release gates
+
 1. Применить зарегистрированный branding Glint, проверить ресурсы, имя продукта,
    окно, иконки и credits. Не переименовывать криптографические домены/engine ID
    ради косметики без миграционного анализа.
@@ -251,8 +355,16 @@ extensions/features/limits должны соответствовать факт�
 6. Подписанные обновления/каталог проектировать отдельно, с проверкой
    происхождения и безопасным отказом. Без этого development bundle остаётся
    явно обозначенным неподписанным артефактом.
+7. Crash reporting — только opt-in и после редактирования чувствительных данных;
+   профили, URL с токенами, seed/root keys и содержимое страниц не отправлять.
+   Восстановление данных и rollback проверять на копиях, не на профиле пользователя.
+8. Фиксировать versioned manifest, зависимости/toolchain и checksums полного
+   пакета. Различать воспроизводимость процесса сборки и доказанную побитовую
+   воспроизводимость. Подпись/ключи издателя — отдельный release gate.
 
 Linux/macOS и настоящее мобильное исполнение не входят в текущий Windows-этап.
+Linux/macOS отложены пользователем, а не выполнены; полный исходный
+кроссплатформенный goal остаётся незавершённым.
 
 ## Формат отчёта этапа
 
@@ -260,8 +372,15 @@ Linux/macOS и настоящее мобильное исполнение не �
 | --- | --- | --- | --- | --- |
 | Заполнить после фактического выполнения | Точный режим, patch range и хеши | Именованные тесты, маршруты, повторы | Измеренный результат, не обещание | Непроверенные случаи и путь к приватным доказательствам |
 
-Приоритет ближайшей работы: **калибровка измерителя + новая база → readiness/context tests → IPC и
-workers → Canvas → GPU → Audio → комбинированная проверка → release admission**.
+Готовность показывать по подсистемам и требованиям: completed/required gates,
+число и причины skipped/failed, пробелы покрытия, регрессии после upstream update,
+стабильность конфигурации, изоляция, совместимость, crashes и ресурсы. Процент
+прошедших тестов допустим только с явным знаменателем и не равен готовности продукта.
+Внешние детекторы/CAPTCHA — наблюдения по конкретной сборке/маршруту, не admission.
+
+Приоритет ближайшей работы: **четыре Blink handoff cases → document producer и
+startup/lifetime delivery → матрица API/сети → Canvas → GPU → Audio →
+комбинированная совместимость → release admission**.
 Критические ошибки безопасности или жизненного цикла блокируют продвижение,
 даже если внешний диагностический сайт показывает хороший результат.
 
