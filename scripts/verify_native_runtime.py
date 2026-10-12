@@ -361,8 +361,21 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
 
 
 async def verify(profile_root: Path, executable: Path, origin: str, proxy_server: FixtureServer,
-                 *, checks: list[str] | None = None, library_directory: Path | None = None) -> dict:
+                 *, checks: list[str] | None = None, library_directory: Path | None = None,
+                 release_store: Path | None = None, release_digest: str = "") -> dict:
+    if bool(release_store) != bool(release_digest):
+        raise ValueError("Native runtime release verification requires both store and checksum")
     runtime_core = measure_runtime_core(executable, library_directory)
+    release = None
+    if release_store is not None:
+        from app.core.native.distribution import NativeBinaryStore
+
+        store = NativeBinaryStore(release_store)
+        release = store.inspect(release_digest)
+        if (release.get("platform") != "win32" or release.get("build_kind") != "chromium-fork"
+                or Path(release["executable_path"]) != executable
+                or library_directory != executable.parent / release["chromium_version"]):
+            raise ValueError("Runtime release identity or DLL layout differs from the installed package")
     desktop = NativeConfiguration()
     mobile = NativeConfiguration(environment="mobile_web", width=390, height=844, device_scale_factor=3,
                                  locale="de-DE", timezone="Europe/Berlin",
@@ -645,10 +658,14 @@ async def verify(profile_root: Path, executable: Path, origin: str, proxy_server
         checks.append("three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes")
         if measure_runtime_core(executable, library_directory) != runtime_core:
             raise ValueError("Native runtime core changed during verification")
+        if release is not None and store.inspect(release_digest) != release:
+            raise ValueError("Installed Native payload changed during runtime verification")
         checksum = runtime_core[executable.name]
         return {"passed": True, "platform": platform.system(), "architecture": platform.machine(),
                 "version": version, "binary_sha256_measured": checksum, "checks": checks,
                 "runtime_core_sha256_measured": runtime_core,
+                "release_sha256_measured": release_digest if release is not None else None,
+                "payload_files_sha256_measured": release["files_sha256"] if release is not None else None,
                 "mobile_observed": observed, "diagnostics": diagnostics, "fingerprint_patched": False,
                 "permission_states": {"configured_empty": default_permissions,
                                       "configured_grants": granted_permissions,
@@ -695,11 +712,15 @@ def main() -> int:
     parser.add_argument("--report", type=Path, default=ROOT / "outputs/native-runtime/source.json")
     parser.add_argument("--windows-library-directory", type=Path,
                         help="Explicit DLL directory for a versioned official Chrome-bin package; no automatic search")
+    parser.add_argument("--release-store", type=Path, help="Verify every file of an installed immutable Native release")
+    parser.add_argument("--release-sha256", default="", help="Expected installed release archive checksum")
     parser.add_argument("--check-lock", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--abandon-lock", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--controller-child", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--fixture-origin", default="", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if bool(args.release_store) != bool(args.release_sha256):
+        parser.error("--release-store and --release-sha256 must be supplied together")
     if args.abandon_lock:
         from PyQt6.QtCore import QLockFile
         profile = args.abandon_lock
@@ -733,7 +754,8 @@ def main() -> int:
             os.environ["CAMOUFLOW_DATA_DIR"] = str(Path(owned).resolve() / "workspace")
             try:
                 report = asyncio.run(verify(Path(owned).resolve(), executable, f"http://127.0.0.1:{server.server_port}", proxy_server,
-                                            checks=checks, library_directory=args.windows_library_directory))
+                                            checks=checks, library_directory=args.windows_library_directory,
+                                            release_store=args.release_store, release_digest=args.release_sha256))
             finally:
                 close_owned_log_handlers(Path(owned))
                 if previous_data_dir is None:

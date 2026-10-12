@@ -171,6 +171,36 @@ versioned DLL layout, deferred database import, workspace guard and real-credit
 GN setting. The credits rebuild and isolated packaged-runtime retry remain live
 checks, not results inferred from those unit tests.
 
+### Relocated baseline passed; real credits rebuilt
+
+After the import correction, the fresh isolated relocated runtime passed all
+18 checks, including scenarios/Recorder, storage checkpoints, permissions,
+proxy routing and three-profile crash/restart rounds with zero owned survivors.
+Its report is `D:\CamouFlowNative\runtime-own-packaged-isolated-001-005-20261012.json`.
+This proves the relocated development baseline works; its sample credits still
+prevent shipping that archive.
+
+Real credits generation and resource packing completed with exit code 0:
+three executed steps in 4m12.89s. The explicitly selected own source executable
+then rendered actual `chrome://credits` with 19,465,020 HTML bytes and third-party
+entries, recorded in `D:\CamouFlowNative\own-source-real-credits.json` and HTML.
+The three Windows code hashes stayed unchanged; the generated resource payload
+and GN receipt changed. This is rendered-license evidence, not a complete legal
+compliance review. Official staging is being regenerated before creating a new
+archive; previous immutable packages are not overwritten.
+
+The runtime verifier additionally accepts paired `--release-store` and
+`--release-sha256` arguments. It verifies every file through the existing immutable
+store before/after the runtime, requires matching own-fork executable/versioned
+DLL identity and records the archive checksum plus all payload hashes. This
+closes the resource-file gap left by measuring only executable code. It does not
+authenticate a release catalog or admit privacy capabilities. The complete local
+suite passed 1,070 tests. The first full-payload run then passed all 18 runtime
+checks, recorded in `D:\CamouFlowNative\runtime-own-packaged-full-payload-001-005-20261012.json`.
+Its archive checksum and all 261 payload hashes match the installed development
+release exactly. The new real-credit package still requires its own relocated
+checks; the earlier sample-credit archive is not promoted by this result.
+
 | Area | Prepared artifact | Required own-fork evidence |
 | --- | --- | --- |
 | Lifecycle and storage | `verify_native_runtime.py` | All 18 checks; five stores survive committed checkpoints; independent profiles; lock exclusion; cancellation; zero owned survivors after controller death and three-profile restart rounds |

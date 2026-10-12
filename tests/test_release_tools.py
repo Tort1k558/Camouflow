@@ -1664,3 +1664,37 @@ def test_native_windows_build_generates_real_third_party_credits():
 
     arguments = (ROOT / "native/args.gn").read_text(encoding="utf-8-sig")
     assert "generate_about_credits = true" in arguments.splitlines()
+
+
+@pytest.mark.parametrize("arguments", [["--release-store", "D:/owned"], ["--release-sha256", "a" * 64]])
+def test_native_runtime_release_evidence_requires_store_and_checksum_together(monkeypatch, arguments):
+    from scripts import verify_native_runtime
+
+    monkeypatch.setattr(sys, "argv", ["verify_native_runtime", *arguments])
+    with pytest.raises(SystemExit) as error:
+        verify_native_runtime.main()
+    assert error.value.code == 2
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows immutable package evidence")
+@pytest.mark.parametrize("mismatch", ["platform", "build_kind", "executable_path", "chromium_version"])
+def test_native_runtime_rejects_release_identity_mismatch_before_browser_start(tmp_path, monkeypatch, mismatch):
+    import asyncio
+    from types import SimpleNamespace
+    from app.core.native import distribution
+    from scripts import verify_native_runtime
+
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"synthetic launcher")
+    libraries = tmp_path / "148.0.7778.96"
+    libraries.mkdir()
+    for name in ("chrome.dll", "chrome_elf.dll"):
+        (libraries / name).write_bytes(name.encode())
+    release = {"platform": "win32", "build_kind": "chromium-fork", "executable_path": str(executable),
+               "chromium_version": libraries.name}
+    release[mismatch] = {"platform": "linux", "build_kind": "sdk", "executable_path": str(tmp_path / "other.exe"),
+                         "chromium_version": "0.0.0.0"}[mismatch]
+    monkeypatch.setattr(distribution, "NativeBinaryStore", lambda root: SimpleNamespace(inspect=lambda digest: release))
+    with pytest.raises(ValueError, match="release identity or DLL layout"):
+        asyncio.run(verify_native_runtime.verify(tmp_path / "profiles", executable, "http://127.0.0.1:1", None,
+                    library_directory=libraries, release_store=tmp_path / "store", release_digest="a" * 64))
