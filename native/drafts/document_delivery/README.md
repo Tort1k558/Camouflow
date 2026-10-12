@@ -612,3 +612,30 @@ readback with missing policy. Navigation deferring conditions run before the
 normal `CommitNavigation` storage-key calculation; their ordering is not a proof
 that a provisional partition is final. Initial empty, renderer-only replacement,
 BFCache/prerender and opaque documents remain separate required integration gates.
+
+### Final document partition validator candidate
+
+`document_canvas_policy_validation.h` prepares the shared native validation step
+between an authenticated browser commit payload and `DocumentInit`. It accepts
+only version 1 and compares the browser's complete binary partition encoding
+against the final document `StorageKey::SerializeForNativePrivacy()`. It returns
+an owned seed copy only on an exact match; missing, truncated, extended or
+mismatched commitments fail without a replacement seed. This is consistency
+validation, not authentication of an IPC sender or proof that a producer selected
+the right profile. The existing encoding is reused, not a second serializer.
+
+Nine fixture definitions cover owned copying, unsupported versions, absent
+commitment, origin changes, retained top-level-site/ancestor fields with storage
+partitioning disabled, storage nonces, opaque-origin identity and embedded-null
+handling. Comparing ordinary StorageKey equality alone is insufficient: it can
+ignore retained fields that the native privacy derivation uses.
+
+The fixture and included helper passed isolated syntax checking with pinned
+`content_unittests` flags:
+`D:/CamouFlowNative/document-canvas-policy-validation-cpp-check/proof.json`.
+The initial attempt was refused by the eight-GiB commit-headroom guard before
+creating the check workspace; verification ran after headroom recovered. The
+active four-job Blink build was not interrupted or changed.
+The nine cases have not executed. The helper is unregistered/unapplied, not yet
+wired into navigation Mojo, final BlinkStorageKey conversion or DocumentInit;
+it does not enable Canvas or replace the required document lifecycle tests.
