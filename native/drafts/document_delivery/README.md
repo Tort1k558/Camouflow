@@ -276,8 +276,8 @@ opaque-origin isolation, GC and startup behavior remain mandatory runtime gates.
 ## Delivery verification target
 
 `scripts/verify_native_privacy_units.py --target delivery` prepares a strict
-content_unittests verification for exactly 31 cases: nine document endpoint,
-twelve worker endpoint and ten bootstrap consumer cases. It rejects missing,
+content_unittests verification for exactly 34 cases: nine document endpoint,
+twelve worker endpoint and thirteen bootstrap consumer cases. It rejects missing,
 duplicate, skipped, failed or foreign cases. Before building, the ten source and
 schema files must match the public drafts as decoded UTF-8 text; raw source
 checksums are recorded and rechecked after execution. Registered native patch
@@ -295,7 +295,7 @@ Use an unused report path. A successful result would cover the named Mojo/consum
 units, not real host lifetimes, first-script ordering, the two Blink thread-handoff
 cases, Canvas API behavior or privacy admission. Python tests for the verifier use
 synthetic GTest JSON and mocked subprocesses; they are not execution evidence for
-the 31 C++ cases.
+the 34 C++ cases.
 
 ### Duplicate worker request cancellation
 
@@ -434,3 +434,21 @@ fresh install, installed-script restart/update, classic/module worker startup an
 multiple-client/partition cases. Profile shutdown, DevTools pause, feature-enabled
 background initialization, fetch/message events and combined Canvas policies also
 require real runtime checks. Document bootstrap and privacy admission remain open.
+
+### Consumer deletion from completion callbacks
+
+Three additional mock-time fixture cases destroy PrivacyWorkerBootstrap directly
+from ready, unavailable and deadline completion callbacks. They require one
+completion only after further time advancement; the deadline case also attempts
+a late ready reply. This models the ownership pattern used by the shared/service
+startup gates, where the owner resets the consumer during its continuation.
+It is not a replacement for actual stub/context lifecycle tests.
+
+The consumer and thirteen-case fixture passed isolated syntax verification:
+`D:/CamouFlowNative/worker-bootstrap-owner-tests-cpp-check/proof.json`.
+The embedded registration patch was regenerated from the canonical sources and
+passed applicability and GN formatting-delta checks without active input changes:
+`worker-bootstrap-owner-tests-registration-format-delta/proof.json`.
+The strict delivery target now requires all 34 cases; no new C++ case has been
+linked or executed. Python checks compare the embedded consumer/fixture sources
+against the canonical files to prevent stale test copies during later promotion.

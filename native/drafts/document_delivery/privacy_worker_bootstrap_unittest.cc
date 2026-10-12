@@ -26,14 +26,17 @@ class NativePrivacyWorkerBootstrapTest
     reply_ = std::move(callback);
   }
 
-  void Start() {
+  void Start(bool destroy_on_completion = false) {
     mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint;
     receiver_.Bind(endpoint.InitWithNewPipeAndPassReceiver());
     bootstrap_ = std::make_unique<PrivacyWorkerBootstrap>(std::move(endpoint));
     bootstrap_->Start(base::BindLambdaForTesting(
-        [&](PrivacyWorkerBootstrap::Result result) {
+        [&, destroy_on_completion](PrivacyWorkerBootstrap::Result result) {
           ++completions_;
           result_ = std::move(result);
+          if (destroy_on_completion) {
+            bootstrap_.reset();
+          }
         }));
     tasks_.RunUntilIdle();
     ASSERT_EQ(requests_, 1);
@@ -153,6 +156,34 @@ TEST_F(NativePrivacyWorkerBootstrapTest, MissingPipeReturnsTypedFailure) {
       }));
   ExpectError(Error::kDisconnected);
   EXPECT_EQ(requests_, 0);
+}
+
+TEST_F(NativePrivacyWorkerBootstrapTest, ReadyCallbackCanDestroyConsumer) {
+  Start(true);
+  Reply(Status::kReady, ValidPolicy());
+  EXPECT_FALSE(bootstrap_);
+  ASSERT_TRUE(result_);
+  ASSERT_TRUE(result_->has_value());
+  tasks_.FastForwardBy(base::Seconds(11));
+  EXPECT_EQ(completions_, 1);
+}
+
+TEST_F(NativePrivacyWorkerBootstrapTest, FailureCallbackCanDestroyConsumer) {
+  Start(true);
+  Reply(Status::kUnavailable, nullptr);
+  EXPECT_FALSE(bootstrap_);
+  ExpectError(Error::kUnavailable);
+  tasks_.FastForwardBy(base::Seconds(11));
+  EXPECT_EQ(completions_, 1);
+}
+
+TEST_F(NativePrivacyWorkerBootstrapTest, DeadlineCallbackCanDestroyConsumer) {
+  Start(true);
+  tasks_.FastForwardBy(base::Seconds(11));
+  EXPECT_FALSE(bootstrap_);
+  ExpectError(Error::kTimedOut);
+  Reply(Status::kReady, ValidPolicy());
+  EXPECT_EQ(completions_, 1);
 }
 
 }  // namespace

@@ -81,6 +81,7 @@ REQUIRED_DELIVERY_TESTS = {
         "UnknownVersionIsRejected", "ReadyWithoutPolicyIsRejected", "FailureWithSeedIsRejected",
         "PeerDisconnectSettlesOnce", "DeadlineRejectsLateReadyReply", "DestructionDropsPendingReply",
         "MissingPipeReturnsTypedFailure",
+        "ReadyCallbackCanDestroyConsumer", "FailureCallbackCanDestroyConsumer", "DeadlineCallbackCanDestroyConsumer",
     },
 }
 
