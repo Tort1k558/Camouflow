@@ -327,9 +327,9 @@ The existing immutable WorkerGlobalScope field receives the value on its own
 thread. No creator-document seed, JavaScript property or inferred partition is
 introduced; an absent value remains absent.
 
-This is transport only: EmbeddedSharedWorkerStub does not yet wait for the
-browser-owned policy, and ordinary shared workers therefore still receive no
-seed. Startup failure, host disconnect, pending Connect/Freeze/Resume requests,
+At this handoff-only checkpoint, EmbeddedSharedWorkerStub did not wait for the
+browser-owned policy; ordinary shared workers still receive no seed. Startup
+failure, host disconnect, pending Connect/Freeze/Resume requests,
 partitioned reuse and service-worker startup remain separate gates. Do not enable
 the experimental capability from this handoff alone.
 
@@ -338,3 +338,37 @@ unchanged: `D:/CamouFlowNative/shared-worker-canvas-full-stack-applicability/pro
 WebSharedWorkerImpl passed isolated syntax checking with the pinned Blink core
 flags: `D:/CamouFlowNative/shared-worker-canvas-handoff-cpp-check/proof.json`.
 These checks are not GN generation, linking or shared-worker runtime evidence.
+
+### Shared-worker startup gate draft
+
+`shared_worker_startup_gate.patch` reuses PrivacyWorkerBootstrap under the same
+developer-only `--glint-worker-canvas-bootstrap-test` switch. It requests the
+worker host's own endpoint through the supplied broker; no URL or client partition
+is supplied by the renderer. The shared-worker command receiver is paused before
+startup. Owned loading parameters, policy container, broker and host pipes are
+bound to one startup continuation; no references to constructor arguments escape.
+The normal path invokes the same continuation immediately without a seed.
+
+Only a validated ready policy starts WebSharedWorkerImpl. The seed is installed
+before the existing classic/module thread handoff; commands resume after the
+implementation exists. Unavailable policy, disconnect, malformed response or the
+consumer's ten-second deadline terminate the unstarted stub instead of starting
+without protection. Network-factory disconnection also handles the not-yet-started
+state. Weak callbacks are invalidated on destruction; queued commands/host
+disconnect while paused remain subject to runtime verification, not an assumption
+of immediate dispatch.
+
+Chromium's callback implementation rejects capturing lambdas: this draft uses
+stateless lambdas and explicitly owned bound arguments. The earlier rejected
+syntax check is not a passing result. Final syntax verification passed with the
+pinned renderer flags:
+`D:/CamouFlowNative/shared-worker-unified-startup-gate-cpp-check/proof.json`.
+The complete ten-patch draft stack applies in an isolated copy with active inputs
+unchanged: `shared-worker-unified-startup-full-stack-applicability/proof.json`.
+
+The gate remains unregistered and inactive in every linked browser. No shared
+startup/lifecycle test has executed against it. Required next tests include early
+host/network disconnection, timeout, queued Connect/Freeze/Resume/Terminate,
+classic/module scripts, partitioned reuse across clients, nested workers and
+Canvas readback/export agreement. Service-worker and document startup are still
+unfinished; no Canvas capability or production admission is enabled.
