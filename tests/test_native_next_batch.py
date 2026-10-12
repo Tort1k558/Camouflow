@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -38,7 +39,9 @@ def test_next_batch_patch_coverage_and_canonical_sources():
     for name in PATCHES:
         text = (DRAFTS / name).read_text(encoding="utf-8-sig")
         current_paths = validate_patch_paths(text)
-        assert paths.isdisjoint(current_paths)
+        # Endpoint/consumer follow-ups intentionally extend the same legacy mock.
+        overlap = paths & current_paths
+        assert overlap.issubset({"content/renderer/worker/privacy_worker_bootstrap_unittest.cc"})
         paths.update(current_paths)
         additions.update(added_sources(text))
     assert paths == EXISTING_PATHS | set(CANONICAL.values())
@@ -72,3 +75,58 @@ def test_audio_and_surface_helpers_do_not_enable_api_hooks():
     producer = (DRAFTS / "policy/surface_policy_producer.cc").read_text(encoding="utf-8-sig")
     for surface in ("canvas", "webgl", "webgpu", "audio"):
         assert f'DeriveNativePrivacyKey(context, trusted_partition, "{surface}")' in producer
+
+
+def test_worker_endpoint_reuses_readiness_and_preserves_canvas_only_fixture():
+    text = (DRAFTS / "policy/surface_worker_endpoint.patch").read_text(encoding="utf-8-sig")
+    assert "+  void GetSurfacePolicy(GetSurfacePolicyCallback callback) override;" in text
+    assert "+void PrivacyWorkerService::WaitForReadiness() {" in text
+    assert text.count("+  WaitForReadiness();") == 2
+    assert "+    ADD_FAILURE() << \"Canvas-only fixture must not request a surface bundle\";" in text
+    names = re.findall(r"\+TEST_F\(NativePrivacyWorkerSurfaceServiceTest, (\w+)\)", text)
+    assert len(names) == len(set(names)) == 8
+    assert "SurfaceThenCanvasCannotRequestTwice" in names
+    assert "CanvasThenSurfaceCannotRequestTwice" in names
+
+
+def test_worker_surface_bootstrap_is_explicit_and_owns_its_browser_partition():
+    text = (DRAFTS / "policy/surface_worker_bootstrap.patch").read_text(encoding="utf-8-sig")
+    assert "+  endpoint_->GetSurfacePolicy(base::BindOnce(" in text
+    assert "+  auto owned = glint::candidate::DecodeOwnedWorkerSurfacePolicy(" in text
+    assert "+  selected_worker_partition_.reset();" in text
+    assert "+  browser_worker_origin_.reset();" in text
+    assert "+    ADD_FAILURE() << \"Surface bootstrap must not fall back to Canvas-only delivery\";" in text
+    names = re.findall(r"\+TEST_F\(NativePrivacyWorkerSurfaceBootstrapTest, (\w+)\)", text)
+    assert len(names) == len(set(names)) == 22
+    assert "OriginOnlyRequestOwnsBrowserPartition" in names
+
+
+def test_worker_scope_rejects_before_first_script_without_renderer_check():
+    text = (DRAFTS / "policy/worker_surface_handoff.patch").read_text(encoding="utf-8-sig")
+    assert "+      script_state && !privacy_rejected) {" in text
+    assert "+    worker_script_.Clear();" in text and "+    close();" in text
+    assert "+    CHECK(" not in text
+    assert "GetSecurityOrigin()->ToUrlOrigin(), glint_canvas_partition_seed_.has_value()" in text
+    names = re.findall(r"\+TEST_F\(GlintWorkerSurfaceThreadTest, (\w+)\)", text)
+    assert len(names) == len(set(names)) == 4
+
+
+def test_wire_bounds_precede_partition_serialization():
+    text = (DRAFTS / "policy/surface_policy_wire.h").read_text(encoding="utf-8-sig")
+    assert text.index("!HasValidSurfacePolicyPayload") < text.index("wire.partition.SerializeForNativePrivacy")
+
+
+def test_all_worker_launchers_use_explicit_surface_delivery_and_forward_required_flag():
+    text = (DRAFTS / "policy/worker_surface_launchers.patch").read_text(encoding="utf-8-sig")
+    for path in ("dedicated_worker_host_factory_client.cc", "embedded_shared_worker_stub.cc",
+                 "embedded_worker_instance_client_impl.cc", "dedicated_worker.cc",
+                 "web_shared_worker_impl.cc", "web_embedded_worker_impl.cc"):
+        assert any(relative.endswith("/" + path) for relative in validate_patch_paths(text))
+    assert text.count("+      privacy_bootstrap_mode_ == WorkerPrivacyBootstrapMode::kSurfaces;") == 1
+    assert "+    const auto partition = params->storage_key;" in text
+    assert "+    privacy_bootstrap_->StartSurfacePolicy(partition, base::BindOnce(" in text
+    assert "+    privacy_bootstrap_->StartSurfacePolicy(origin, base::BindOnce(" in text
+    assert "+  worker_main_script_load_params->glint_surface_policy = surface_policy_;" in text
+    assert "+  start_data->glint_surface_policy = std::move(surface_policy);" in text
+    assert text.count("creation_params->glint_surface_policy_required") == 3
+    assert "+  privacy_bootstrap_failed_ = true;" in text

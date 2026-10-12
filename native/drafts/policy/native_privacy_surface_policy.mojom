@@ -3,12 +3,16 @@
 module blink.mojom;
 
 import "mojo/public/mojom/base/byte_string.mojom";
+import "third_party/blink/public/mojom/storage_key/storage_key.mojom";
 
 // One browser-owned partition snapshot; never reachable through a Web API.
 // ByteString retains embedded nulls in native StorageKey serialization.
 // This schema is not yet connected to document commits or worker endpoints.
 struct GlintSurfacePolicyCommit {
   uint32 version;
+  // Supplied only by the lifetime-bound browser endpoint. Needed for workers
+  // whose renderer creation API does not carry the authoritative StorageKey.
+  StorageKey partition;
   mojo_base.mojom.ByteString partition_encoding;
   array<uint8, 32> canvas_seed;
   array<uint8, 32> webgl_seed;

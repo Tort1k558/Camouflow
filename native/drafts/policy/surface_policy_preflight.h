@@ -21,16 +21,19 @@ struct SurfacePolicyView {
   std::span<const uint8_t> audio;
 };
 
+inline bool HasValidSurfacePolicyPayload(const SurfacePolicyView& incoming) {
+  return incoming.version == kSurfacePolicyVersion &&
+         !incoming.partition_encoding.empty() && incoming.partition_encoding.size() <= 8192 &&
+         incoming.canvas.size() == 32 && incoming.webgl.size() == 32 &&
+         incoming.webgpu.size() == 32 && incoming.audio.size() == 32;
+}
+
 // Validate all lengths before allocation/copy. The returned snapshot owns bytes.
 // Final Blink partition validation must still occur before installation.
-inline std::optional<SurfacePolicy> PreflightSurfacePolicyCommit(
+inline std::optional<SurfacePolicy> PreflightSurfacePolicyForPartition(
     const SurfacePolicyView& incoming,
-    const blink::StorageKey& provisional_partition,
-    const url::Origin& browser_origin_to_commit) {
-  if (incoming.version != kSurfacePolicyVersion ||
-      incoming.partition_encoding.empty() || incoming.partition_encoding.size() > 8192 ||
-      incoming.canvas.size() != 32 || incoming.webgl.size() != 32 ||
-      incoming.webgpu.size() != 32 || incoming.audio.size() != 32) {
+    const blink::StorageKey& selected_partition) {
+  if (!HasValidSurfacePolicyPayload(incoming)) {
     return std::nullopt;
   }
   SurfacePolicy owned;
@@ -39,11 +42,19 @@ inline std::optional<SurfacePolicy> PreflightSurfacePolicyCommit(
   std::ranges::copy(incoming.webgl, owned.webgl.begin());
   std::ranges::copy(incoming.webgpu, owned.webgpu.begin());
   std::ranges::copy(incoming.audio, owned.audio.begin());
-  if (!ValidateSurfacePolicy(owned, blink::ResolveGlintDocumentStorageKey(
-                                        provisional_partition, browser_origin_to_commit))) {
+  if (!ValidateSurfacePolicy(owned, selected_partition)) {
     return std::nullopt;
   }
   return owned;
+}
+
+inline std::optional<SurfacePolicy> PreflightSurfacePolicyCommit(
+    const SurfacePolicyView& incoming,
+    const blink::StorageKey& provisional_partition,
+    const url::Origin& browser_origin_to_commit) {
+  return PreflightSurfacePolicyForPartition(
+      incoming, blink::ResolveGlintDocumentStorageKey(
+                    provisional_partition, browser_origin_to_commit));
 }
 }  // namespace glint::candidate
 

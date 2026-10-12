@@ -1,0 +1,233 @@
+diff --git a/third_party/blink/renderer/core/workers/global_scope_creation_params.h b/third_party/blink/renderer/core/workers/global_scope_creation_params.h
+--- a/third_party/blink/renderer/core/workers/global_scope_creation_params.h
++++ b/third_party/blink/renderer/core/workers/global_scope_creation_params.h
+@@ -9,6 +9,8 @@
+ #include <cstdint>
+ #include <memory>
+ #include <optional>
++
++#include "third_party/blink/public/common/native_privacy/glint/worker_surface_policy.h"
+ 
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/unguessable_token.h"
+@@ -275,6 +277,8 @@
+ 
+   // Owned bootstrap data transported before the worker thread starts.
+   std::optional<std::array<uint8_t, 32>> glint_canvas_partition_seed;
++  bool glint_surface_policy_required = false;
++  std::optional<glint::candidate::WorkerSurfacePolicy> glint_surface_policy;
+ };
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/core/workers/worker_global_scope.h b/third_party/blink/renderer/core/workers/worker_global_scope.h
+--- a/third_party/blink/renderer/core/workers/worker_global_scope.h
++++ b/third_party/blink/renderer/core/workers/worker_global_scope.h
+@@ -31,6 +31,9 @@
+ #include <cstdint>
+ 
+ #include <memory>
++#include <optional>
++
++#include "third_party/blink/public/common/native_privacy/glint/worker_surface_policy.h"
+ 
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/time/time.h"
+@@ -143,7 +146,23 @@
+   // Internal C++ only. Captures an owned surface seed for readback work.
+   std::optional<std::array<uint8_t, 32>> GlintCanvasPartitionSeed() const {
+     DCHECK(IsContextThread());
++    if (glint_surface_policy_required_) {
++      return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.canvas)
++                                   : std::nullopt;
++    }
+     return glint_canvas_partition_seed_;
++  }
++  std::optional<std::array<uint8_t, 32>> GlintWebGLPartitionSeed() const {
++    DCHECK(IsContextThread());
++    return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.webgl) : std::nullopt;
++  }
++  std::optional<std::array<uint8_t, 32>> GlintWebGPUPartitionSeed() const {
++    DCHECK(IsContextThread());
++    return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.webgpu) : std::nullopt;
++  }
++  std::optional<std::array<uint8_t, 32>> GlintAudioPartitionSeed() const {
++    DCHECK(IsContextThread());
++    return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.audio) : std::nullopt;
+   }
+   KURL CompleteURL(const String&) const final;
+   bool IsWorkerGlobalScope() const final { return true; }
+@@ -407,6 +426,8 @@
+   // origin.
+   scoped_refptr<const SecurityOrigin> top_level_frame_security_origin_;
+   const std::optional<std::array<uint8_t, 32>> glint_canvas_partition_seed_;
++  const bool glint_surface_policy_required_;
++  const std::optional<glint::candidate::WorkerSurfacePolicy> glint_surface_policy_;
+ };
+ 
+ template <>
+diff --git a/third_party/blink/renderer/core/workers/worker_global_scope.cc b/third_party/blink/renderer/core/workers/worker_global_scope.cc
+--- a/third_party/blink/renderer/core/workers/worker_global_scope.cc
++++ b/third_party/blink/renderer/core/workers/worker_global_scope.cc
+@@ -26,6 +26,8 @@
+  */
+ 
+ #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
++
++#include "third_party/blink/public/common/native_privacy/glint/worker_surface_policy_validation.h"
+ 
+ #include "base/memory/scoped_refptr.h"
+ #include "base/metrics/histogram_functions.h"
+@@ -540,8 +542,10 @@
+ 
+   // Step 24. If script is a classic script, then run the classic script script.
+   // Otherwise, it is a module script; run the module script script. [spec text]
++  const bool privacy_rejected = glint_surface_policy_required_ && !glint_surface_policy_;
+   bool is_success = false;
+-  if (ScriptState* script_state = ScriptController()->GetScriptState()) {
++  if (ScriptState* script_state = ScriptController()->GetScriptState();
++      script_state && !privacy_rejected) {
+     v8::HandleScope handle_scope(script_state->GetIsolate());
+     ScriptEvaluationResult result =
+         std::move(worker_script_)
+@@ -588,6 +592,12 @@
+     debugger->ExternalAsyncTaskFinished(*stack_id_);
+ 
+   script_eval_state_ = ScriptEvalState::kEvaluated;
++  if (privacy_rejected) {
++    // No V8 script ran. Preserve evaluation/debugger notifications, then use
++    // normal worker close/teardown rather than crashing the renderer.
++    worker_script_.Clear();
++    close();
++  }
+   if (auto* controller = GetThread()->GetWorkerInspectorController()) {
+     controller->WorkerScriptLoaded();
+   }
+@@ -711,7 +721,12 @@
+       top_level_frame_security_origin_(
+           std::move(creation_params->top_level_frame_security_origin)),
+       glint_canvas_partition_seed_(
+-          std::move(creation_params->glint_canvas_partition_seed)) {
++          std::move(creation_params->glint_canvas_partition_seed)),
++      glint_surface_policy_required_(creation_params->glint_surface_policy_required ||
++                                     creation_params->glint_surface_policy.has_value()),
++      glint_surface_policy_(glint::candidate::ValidateWorkerSurfacePolicy(
++          std::move(creation_params->glint_surface_policy),
++          GetSecurityOrigin()->ToUrlOrigin(), glint_canvas_partition_seed_.has_value())) {
+   // Workers should always maintain the default world of an isolate.
+   CHECK(creation_params->is_default_world_of_isolate);
+   TRACE_EVENT("blink.worker", "WorkerGlobalScope::WorkerGlobalScope");
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test_helper.h b/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
+--- a/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
++++ b/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
+@@ -160,7 +160,10 @@
+                            const KURL& script_url = KURL("http://fake.url/"),
+                            WorkerClients* worker_clients = nullptr,
+                            std::optional<std::array<uint8_t, 32>> canvas_seed =
+-                               std::nullopt) {
++                               std::nullopt,
++                           std::optional<glint::candidate::WorkerSurfacePolicy> surface_policy =
++                               std::nullopt,
++                           bool surface_policy_required = false) {
+     auto creation_params = std::make_unique<GlobalScopeCreationParams>(
+         script_url, mojom::blink::ScriptType::kClassic,
+         "fake global scope name", "fake user agent", UserAgentMetadata(),
+@@ -180,6 +183,8 @@
+     // Create a dummy parent context.
+     creation_params->parent_context_token = LocalFrameToken();
+     creation_params->glint_canvas_partition_seed = std::move(canvas_seed);
++    creation_params->glint_surface_policy_required = surface_policy_required;
++    creation_params->glint_surface_policy = std::move(surface_policy);
+ 
+     Start(std::move(creation_params),
+           WorkerBackingThreadStartupData::CreateDefault(),
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test.cc b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+--- a/third_party/blink/renderer/core/workers/worker_thread_test.cc
++++ b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+@@ -207,6 +207,87 @@
+   std::unique_ptr<MockWorkerReportingProxy> reporting_proxy_;
+   std::unique_ptr<WorkerThreadForTest> worker_thread_;
+ };
++
++
++class GlintWorkerSurfaceThreadTest : public WorkerThreadTest {
++ protected:
++  glint::candidate::WorkerSurfacePolicy SurfacePolicy() {
++    auto partition = blink::StorageKey::CreateFirstParty(security_origin_->ToUrlOrigin());
++    glint::candidate::SurfacePolicy policy;
++    policy.partition_encoding = *partition.SerializeForNativePrivacy();
++    policy.canvas.fill(1);
++    policy.webgl.fill(2);
++    policy.webgpu.fill(3);
++    policy.audio.fill(4);
++    return {partition, std::move(policy)};
++  }
++  void ExpectRejectedSurface(std::optional<glint::candidate::WorkerSurfacePolicy> policy,
++                             std::optional<std::array<uint8_t, 32>> legacy = std::nullopt) {
++    base::WaitableEvent evaluated;
++    EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++        .WillOnce([](WorkerOrWorkletGlobalScope* scope) {
++          auto* worker = To<WorkerGlobalScope>(scope);
++          EXPECT_FALSE(worker->GlintCanvasPartitionSeed());
++          EXPECT_FALSE(worker->GlintWebGLPartitionSeed());
++          EXPECT_FALSE(worker->GlintWebGPUPartitionSeed());
++          EXPECT_FALSE(worker->GlintAudioPartitionSeed());
++        });
++    EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++    EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScript(_))
++        .WillOnce([&evaluated](bool success) { EXPECT_FALSE(success); evaluated.Signal(); });
++    EXPECT_CALL(*reporting_proxy_, DidCloseWorkerGlobalScope()).Times(AtMost(1));
++    EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++    EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++    worker_thread_->StartWithSourceCode(security_origin_.get(), "globalThis.glintFixtureRan = true;",
++        KURL("http://fake.url/"), nullptr, legacy, std::move(policy), true);
++    const bool reported = evaluated.TimedWait(base::Seconds(10));
++    worker_thread_->Terminate();
++    worker_thread_->WaitForShutdownForTesting();
++    EXPECT_TRUE(reported);
++    EXPECT_EQ(ExitCode::kGracefullyTerminated, GetExitCode());
++  }
++};
++
++TEST_F(GlintWorkerSurfaceThreadTest, AllSeedsOwnedBeforeFirstScript) {
++  auto policy = SurfacePolicy();
++  const auto expected = policy;
++  testing::InSequence sequence;
++  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++      .WillOnce([expected](WorkerOrWorkletGlobalScope* scope) {
++        auto* worker = To<WorkerGlobalScope>(scope);
++        EXPECT_EQ(worker->GlintCanvasPartitionSeed(), std::optional(expected.policy.canvas));
++        EXPECT_EQ(worker->GlintWebGLPartitionSeed(), std::optional(expected.policy.webgl));
++        EXPECT_EQ(worker->GlintWebGPUPartitionSeed(), std::optional(expected.policy.webgpu));
++        EXPECT_EQ(worker->GlintAudioPartitionSeed(), std::optional(expected.policy.audio));
++        auto copy = worker->GlintAudioPartitionSeed();
++        ASSERT_TRUE(copy);
++        copy->fill(255);
++        EXPECT_EQ(worker->GlintAudioPartitionSeed(), std::optional(expected.policy.audio));
++      });
++  EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScript(true)).Times(1);
++  EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++  worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
++      KURL("http://fake.url/"), nullptr, std::nullopt, policy, true);
++  policy.policy.audio.fill(255);
++  worker_thread_->WaitForInit();
++  worker_thread_->Terminate();
++  worker_thread_->WaitForShutdownForTesting();
++}
++TEST_F(GlintWorkerSurfaceThreadTest, RequiredMissingBundleDoesNotEvaluateScript) {
++  ExpectRejectedSurface(std::nullopt);
++}
++TEST_F(GlintWorkerSurfaceThreadTest, DifferentFinalOriginDoesNotEvaluateScript) {
++  auto policy = SurfacePolicy();
++  policy.partition = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://wrong.test/")));
++  policy.policy.partition_encoding = *policy.partition.SerializeForNativePrivacy();
++  ExpectRejectedSurface(std::move(policy));
++}
++TEST_F(GlintWorkerSurfaceThreadTest, LegacySeedCannotSubstituteForSurfaceBundle) {
++  ExpectRejectedSurface(SurfacePolicy(), SurfacePolicy().policy.canvas);
++}
+ 
+ TEST_F(WorkerThreadTest, GlintCanvasSeedArrivesBeforeEvaluation) {
+   std::array<uint8_t, 32> seed{};

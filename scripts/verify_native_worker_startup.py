@@ -4,18 +4,18 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from dataclasses import dataclass
 import hashlib
 import json
-from pathlib import Path
 import platform
 import shutil
 import sys
 import tempfile
 import threading
 import traceback
-from urllib.parse import parse_qs, urlsplit
 import uuid
+from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -23,12 +23,18 @@ sys.path.insert(0, str(ROOT))
 from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime
 from scripts.native_build import LOCK
-from scripts.verify_native_runtime import FixtureHandler, FixtureServer, measure_runtime_core
+from scripts.verify_native_runtime import (
+    FixtureHandler,
+    FixtureServer,
+    measure_runtime_core,
+)
 
 CASES = tuple((kind, script_type) for kind in ("dedicated", "shared", "service")
               for script_type in ("classic", "module"))
 FEATURE_ARGUMENT = "--enable-features=ThirdPartyStoragePartitioning"
 BOOTSTRAP_ARGUMENT = "--glint-worker-canvas-bootstrap-test"
+SURFACE_BOOTSTRAP_ARGUMENT = "--glint-worker-surface-bootstrap-test"
+SURFACE_PATCH = "0031-native-worker-surface-policy.patch"
 KEY_ARGUMENT = "--camouflow-native-privacy-key-service=1"
 PHASES = {"baseline": ("initial", "restart"), "ready": ("initial", "restart"), "unavailable": ("initial",)}
 
@@ -152,6 +158,7 @@ class WorkerStartupHandler(FixtureHandler):
 @dataclass(frozen=True)
 class StartupConfiguration(NativeConfiguration):
     probe_mode: str = "baseline"
+    bootstrap_policy: str = "canvas"
     disabled_features_argument: str | None = None
     ignored_driver_argument: str | None = None
 
@@ -169,13 +176,15 @@ class StartupConfiguration(NativeConfiguration):
     def launch_arguments(self) -> list[str]:
         if self.probe_mode not in PHASES:
             raise ValueError("Unknown worker startup probe mode")
+        if self.bootstrap_policy not in {"canvas", "surfaces"}:
+            raise ValueError("Unknown worker bootstrap policy")
         arguments = super().launch_arguments() + [FEATURE_ARGUMENT, "--enable-automation"]
         if self.disabled_features_argument is not None:
             if partitioning_argument([self.disabled_features_argument]) != self.disabled_features_argument:
                 raise ValueError("Worker probe still disables storage partitioning")
             arguments.append(self.disabled_features_argument)
         if self.probe_mode != "baseline":
-            arguments.append(BOOTSTRAP_ARGUMENT)
+            arguments.append(SURFACE_BOOTSTRAP_ARGUMENT if self.bootstrap_policy == "surfaces" else BOOTSTRAP_ARGUMENT)
         if self.probe_mode == "ready":
             arguments.append(KEY_ARGUMENT)
         return arguments
@@ -259,7 +268,9 @@ def validate_observation(observed: dict, *, mode: str, kind: str, identifier: st
         raise ValueError("Worker startup did not produce the owned response and exactly one execution beacon")
 
 
-def validate_receipt(executable: Path, core: dict) -> bytes:
+def validate_receipt(executable: Path, core: dict, *, bootstrap_policy: str = "canvas") -> bytes:
+    if bootstrap_policy not in {"canvas", "surfaces"}:
+        raise ValueError("Unknown worker bootstrap policy")
     path = executable.parent / "camouflow-build.json"
     if path != path.resolve() or path.is_symlink():
         raise ValueError("Worker startup requires a canonical local build receipt")
@@ -277,11 +288,18 @@ def validate_receipt(executable: Path, core: dict) -> bytes:
         expected = {"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}
         if expected not in receipt.get("patches", []):
             raise ValueError("Worker startup receipt lacks a required exact patch")
+    if bootstrap_policy == "surfaces":
+        patch = ROOT / "native/patches" / SURFACE_PATCH
+        if not patch.is_file() or patch.is_symlink():
+            raise ValueError("Surface worker runtime requires a registered source patch, not uncompiled drafts")
+        expected = {"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}
+        if expected not in receipt["patches"]:
+            raise ValueError("Worker runtime receipt lacks the exact compiled surface-policy patch")
     return raw
 
 
 async def verify(executable: Path, owned: Path, server: WorkerStartupServer, report: dict,
-                 runtimes: list[NativeRuntime]) -> None:
+                 runtimes: list[NativeRuntime], *, bootstrap_policy: str = "canvas") -> None:
     origin = f"http://127.0.0.1:{server.server_port}"
     discovery = NativeRuntime(profile_dir=owned / "driver-arguments", executable=executable,
                               configuration=StartupConfiguration())
@@ -290,13 +308,14 @@ async def verify(executable: Path, owned: Path, server: WorkerStartupServer, rep
         context = await discovery.start(headless=True)
         original_arguments = await browser_arguments(context)
         disabled_features_argument = partitioning_argument(original_arguments)
-        report["driver_disabled_features_original"] = [argument for argument in original_arguments
-                                                        if argument.startswith("--disable-features=")][0]
+        report["driver_disabled_features_original"] = next(
+            argument for argument in original_arguments if argument.startswith("--disable-features="))
         report["probe_disabled_features_replacement"] = disabled_features_argument
     finally:
         await discovery.close()
     for mode, phases in PHASES.items():
-        configuration = StartupConfiguration(probe_mode=mode, disabled_features_argument=disabled_features_argument,
+        configuration = StartupConfiguration(probe_mode=mode, bootstrap_policy=bootstrap_policy,
+                                             disabled_features_argument=disabled_features_argument,
                                              ignored_driver_argument=report["driver_disabled_features_original"])
         report["arguments"][mode] = configuration.launch_arguments()
         runtime = NativeRuntime(profile_dir=owned / mode, executable=executable, configuration=configuration)
@@ -344,17 +363,19 @@ def main() -> int:
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--bootstrap-policy", choices=("canvas", "surfaces"), default="canvas")
     args = parser.parse_args()
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite worker startup evidence")
     report = {"schema": 1, "passed": False, "checks": [], "arguments": {}, "platform": platform.platform(),
+              "bootstrap_policy": args.bootstrap_policy, "privacy_admitted": False,
               "scope": "Owned classic/module worker startup, restart, shared multi-page clients and unavailable-policy rejection; not Canvas, nested workers, early startup termination or admission"}
     server = thread = owned = None
     runtimes = []
     try:
         executable = args.executable.resolve(strict=True)
         core = measure_runtime_core(executable)
-        receipt = validate_receipt(executable, core)
+        receipt = validate_receipt(executable, core, bootstrap_policy=args.bootstrap_policy)
         report.update(runtime_core_sha256_measured=core, binary_sha256_measured=core[executable.name],
                       receipt_sha256=hashlib.sha256(receipt).hexdigest())
         args.work_dir.mkdir(parents=True, exist_ok=True)
@@ -364,8 +385,9 @@ def main() -> int:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         owned = Path(tempfile.mkdtemp(prefix="glint-worker-startup-", dir=args.work_dir.resolve()))
-        asyncio.run(verify(executable, owned, server, report, runtimes))
-        if measure_runtime_core(executable) != core or validate_receipt(executable, core) != receipt:
+        asyncio.run(verify(executable, owned, server, report, runtimes, bootstrap_policy=args.bootstrap_policy))
+        if (measure_runtime_core(executable) != core
+                or validate_receipt(executable, core, bootstrap_policy=args.bootstrap_policy) != receipt):
             raise ValueError("Worker runtime code or receipt changed during verification")
         expected = {f"{mode}-{phase}-{kind}-{script_type}" for mode, phases in PHASES.items()
                     for phase in phases for kind, script_type in CASES}
@@ -374,7 +396,7 @@ def main() -> int:
         if {check["name"] for check in report["checks"]} != expected or len(report["checks"]) != len(expected):
             raise ValueError("Worker startup phases are incomplete")
         report["passed"] = True
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - persist failed diagnostic evidence before exiting
         report.update(error=str(error), traceback=traceback.format_exc())
     finally:
         if server is not None:

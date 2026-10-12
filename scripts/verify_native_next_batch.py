@@ -17,7 +17,9 @@ from scripts.verify_native_runtime import measure_runtime_core
 
 DRAFTS = ROOT / "native/drafts"
 PATCHES = ("gpu/gpu_metadata_minimization.patch", "audio/audio_helpers_integration.patch",
-           "policy/surface_policy_helpers_integration.patch", "policy/surface_policy_wire_schema.patch")
+           "policy/surface_policy_helpers_integration.patch", "policy/surface_policy_wire_schema.patch",
+           "policy/surface_worker_endpoint.patch", "policy/surface_worker_bootstrap.patch",
+           "policy/worker_surface_handoff.patch", "policy/worker_surface_launchers.patch")
 CANONICAL = {
     **{"audio/" + name: "third_party/blink/renderer/modules/webaudio/glint/" + name for name in (
         "offline_audio_candidate.h", "offline_audio_candidate.cc", "offline_audio_limits.h",
@@ -25,7 +27,8 @@ CANONICAL = {
         "offline_audio_buffer_unittest.cc")},
     **{"policy/" + name: "third_party/blink/public/common/native_privacy/glint/" + name for name in (
         "surface_policy.h", "surface_policy_validation.h", "surface_policy_validation_unittest.cc",
-        "surface_policy_preflight.h", "surface_policy_preflight_unittest.cc", "surface_policy_wire.h")},
+        "surface_policy_preflight.h", "surface_policy_preflight_unittest.cc", "surface_policy_wire.h",
+        "worker_surface_policy.h", "worker_surface_policy_validation.h")},
     **{"policy/" + name: "content/browser/camouflow_native/glint/" + name for name in (
         "surface_policy_producer.h", "surface_policy_producer.cc", "surface_policy_producer_unittest.cc")},
     "policy/native_privacy_surface_policy.mojom": "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom",
@@ -37,6 +40,28 @@ EXISTING_PATHS = {
     "third_party/blink/renderer/modules/webaudio/BUILD.gn", "third_party/blink/renderer/modules/BUILD.gn",
     "content/browser/BUILD.gn", "content/test/BUILD.gn",
     "third_party/blink/public/mojom/BUILD.gn",
+    "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom",
+    "content/browser/camouflow_native/privacy_worker_service.h",
+    "content/browser/camouflow_native/privacy_worker_service.cc",
+    "content/browser/camouflow_native/privacy_worker_service_unittest.cc",
+    "content/renderer/worker/privacy_worker_bootstrap_unittest.cc",
+    "content/renderer/worker/privacy_worker_bootstrap.h",
+    "content/renderer/worker/privacy_worker_bootstrap.cc",
+    "third_party/blink/renderer/core/workers/global_scope_creation_params.h",
+    "third_party/blink/renderer/core/workers/worker_global_scope.h",
+    "third_party/blink/renderer/core/workers/worker_global_scope.cc",
+    "third_party/blink/renderer/core/workers/worker_thread_test_helper.h",
+    "third_party/blink/renderer/core/workers/worker_thread_test.cc",
+    "third_party/blink/public/common/loader/worker_main_script_load_parameters.h",
+    "third_party/blink/public/web/web_embedded_worker_start_data.h",
+    "third_party/blink/renderer/core/workers/dedicated_worker.cc",
+    "third_party/blink/renderer/core/exported/web_shared_worker_impl.cc",
+    "third_party/blink/renderer/modules/exported/web_embedded_worker_impl.cc",
+    "content/renderer/worker/dedicated_worker_host_factory_client.h",
+    "content/renderer/worker/dedicated_worker_host_factory_client.cc",
+    "content/renderer/service_worker/embedded_worker_instance_client_impl.h",
+    "content/renderer/service_worker/embedded_worker_instance_client_impl.cc",
+    "content/renderer/worker/embedded_shared_worker_stub.cc",
 }
 
 

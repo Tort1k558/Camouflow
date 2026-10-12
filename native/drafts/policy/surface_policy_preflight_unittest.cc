@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: MIT
 #include "surface_policy_preflight.h"
 #include "surface_policy_wire.h"
+#include "worker_surface_policy_validation.h"
 
+#include "base/unguessable_token.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -82,6 +84,50 @@ TEST_F(GlintSurfacePolicyPreflightTest, WireRejectsMalformedSeedAndWrongPartitio
   const auto other = blink::StorageKey::CreateFirstParty(
       url::Origin::Create(GURL("https://other.test/")));
   EXPECT_FALSE(EncodeSurfacePolicyCommit(*policy, other));
+}
+TEST_F(GlintSurfacePolicyPreflightTest, WorkerDecoderPreservesExactOpaqueIdentity) {
+  const auto first = blink::StorageKey::CreateFirstParty(url::Origin());
+  const auto second = blink::StorageKey::CreateFirstParty(url::Origin());
+  encoding_ = *first.SerializeForNativePrivacy();
+  auto policy = PreflightSurfacePolicyForPartition(Incoming(), first);
+  ASSERT_TRUE(policy);
+  auto wire = EncodeSurfacePolicyCommit(*policy, first);
+  ASSERT_TRUE(wire);
+  EXPECT_TRUE(DecodeWorkerSurfacePolicy(*wire, first));
+  EXPECT_FALSE(DecodeWorkerSurfacePolicy(*wire, second));
+}
+TEST_F(GlintSurfacePolicyPreflightTest, WorkerDecoderCannotReplaceNoncePartition) {
+  const auto first = blink::StorageKey::CreateWithNonce(origin_, base::UnguessableToken::Create());
+  const auto second = blink::StorageKey::CreateWithNonce(origin_, base::UnguessableToken::Create());
+  encoding_ = *first.SerializeForNativePrivacy();
+  auto policy = PreflightSurfacePolicyForPartition(Incoming(), first);
+  ASSERT_TRUE(policy);
+  auto wire = EncodeSurfacePolicyCommit(*policy, first);
+  ASSERT_TRUE(wire);
+  EXPECT_TRUE(DecodeWorkerSurfacePolicy(*wire, first));
+  EXPECT_FALSE(DecodeWorkerSurfacePolicy(*wire, second));
+  EXPECT_FALSE(DecodeWorkerSurfacePolicy(*wire, partition_));
+}
+TEST_F(GlintSurfacePolicyPreflightTest, BrowserOwnedWorkerPartitionMatchesFinalOrigin) {
+  auto policy = PreflightSurfacePolicyCommit(Incoming(), partition_, origin_);
+  ASSERT_TRUE(policy);
+  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
+  ASSERT_TRUE(wire);
+  auto owned = DecodeOwnedWorkerSurfacePolicy(*wire, origin_);
+  ASSERT_TRUE(owned);
+  EXPECT_TRUE(ValidateWorkerSurfacePolicy(owned, origin_, false));
+  EXPECT_FALSE(ValidateWorkerSurfacePolicy(owned, origin_, true));
+  EXPECT_FALSE(ValidateWorkerSurfacePolicy(owned,
+      url::Origin::Create(GURL("https://wrong.test/")), false));
+}
+TEST_F(GlintSurfacePolicyPreflightTest, WirePartitionCannotDisagreeWithBinaryCommitment) {
+  auto policy = PreflightSurfacePolicyCommit(Incoming(), partition_, origin_);
+  ASSERT_TRUE(policy);
+  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
+  ASSERT_TRUE(wire);
+  wire->partition = blink::StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://wrong.test/")));
+  EXPECT_FALSE(DecodeOwnedWorkerSurfacePolicy(*wire, wire->partition.origin()));
+  EXPECT_FALSE(DecodeSurfacePolicyCommit(*wire, partition_, origin_));
 }
 }  // namespace
 }  // namespace glint::candidate

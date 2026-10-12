@@ -1,0 +1,299 @@
+diff --git a/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom b/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom
+--- a/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom
++++ b/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom
+@@ -1,6 +1,8 @@
+ // Copyright 2026 CamouFlow contributors.
+ // SPDX-License-Identifier: MIT
+ module blink.mojom;
++
++import "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom";
+ 
+ enum NativePrivacyDeliveryStatus {
+   kReady,
+@@ -24,4 +26,7 @@
+ interface NativePrivacyWorker {
+   GetCanvasPolicy() => (NativePrivacyDeliveryStatus status,
+                        NativePrivacyCanvasPolicy? policy);
++  // Exactly one policy request per pipe, shared with the Canvas-only method.
++  GetSurfacePolicy() => (NativePrivacyDeliveryStatus status,
++                        GlintSurfacePolicyCommit? policy);
+ };
+diff --git a/content/browser/camouflow_native/privacy_worker_service.h b/content/browser/camouflow_native/privacy_worker_service.h
+--- a/content/browser/camouflow_native/privacy_worker_service.h
++++ b/content/browser/camouflow_native/privacy_worker_service.h
+@@ -29,12 +29,16 @@
+   PrivacyWorkerService& operator=(const PrivacyWorkerService&) = delete;
+ 
+   void GetCanvasPolicy(GetCanvasPolicyCallback callback) override;
++  void GetSurfacePolicy(GetSurfacePolicyCallback callback) override;
+ 
+  private:
++  bool BeginRequest();
++  void WaitForReadiness();
+   void OnReady(bool ready);
+   void OnTimeout();
+   void Complete(blink::mojom::NativePrivacyDeliveryStatus status,
+-                blink::mojom::NativePrivacyCanvasPolicyPtr policy);
++                blink::mojom::NativePrivacyCanvasPolicyPtr policy,
++                blink::mojom::GlintSurfacePolicyCommitPtr surfaces = nullptr);
+ 
+   const raw_ref<mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>> receivers_;
+   const base::WeakPtr<BrowserContext> context_;
+@@ -43,6 +47,7 @@
+   const bool origin_matches_partition_;
+   bool requested_ = false;
+   GetCanvasPolicyCallback pending_reply_;
++  GetSurfacePolicyCallback pending_surface_reply_;
+   base::OneShotTimer timer_;
+   base::WeakPtrFactory<PrivacyWorkerService> weak_factory_{this};
+ };
+diff --git a/content/browser/camouflow_native/privacy_worker_service.cc b/content/browser/camouflow_native/privacy_worker_service.cc
+--- a/content/browser/camouflow_native/privacy_worker_service.cc
++++ b/content/browser/camouflow_native/privacy_worker_service.cc
+@@ -6,6 +6,8 @@
+ 
+ #include "base/functional/bind.h"
+ #include "base/time/time.h"
++#include "content/browser/camouflow_native/glint/surface_policy_producer.h"
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h"
+ #include "content/public/browser/browser_context.h"
+ #include "content/public/browser/native_privacy_context.h"
+ 
+@@ -30,14 +32,33 @@
+ 
+ PrivacyWorkerService::~PrivacyWorkerService() = default;
+ 
+-void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
++bool PrivacyWorkerService::BeginRequest() {
+   if (requested_) {
+     // Removes the receiver before destroying this service and its replies.
+     receivers_->ReportBadMessage("Glint worker policy requested twice on one pipe");
++    return false;
++  }
++  requested_ = true;
++  return true;
++}
++
++void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
++  if (!BeginRequest()) {
+     return;
+   }
+-  requested_ = true;
+   pending_reply_ = std::move(callback);
++  WaitForReadiness();
++}
++
++void PrivacyWorkerService::GetSurfacePolicy(GetSurfacePolicyCallback callback) {
++  if (!BeginRequest()) {
++    return;
++  }
++  pending_surface_reply_ = std::move(callback);
++  WaitForReadiness();
++}
++
++void PrivacyWorkerService::WaitForReadiness() {
+   // Unpartitioned shared/service workers can serve multiple top-level sites.
+   // Do not invent a single client's site or silently use its document identity.
+   if (!context_ || context_->ShutdownStarted() || !origin_matches_partition_ ||
+@@ -55,13 +76,21 @@
+ }
+ 
+ void PrivacyWorkerService::OnReady(bool ready) {
+-  if (!pending_reply_) {
++  if (!pending_reply_ && !pending_surface_reply_) {
+     return;
+   }
+   if (!ready || !context_ || context_->ShutdownStarted() || !origin_matches_partition_ ||
+       (kind_ != Kind::kDedicated &&
+        !blink::StorageKey::IsThirdPartyStoragePartitioningEnabled())) {
+     Complete(Status::kUnavailable, nullptr);
++    return;
++  }
++  if (pending_surface_reply_) {
++    auto snapshot = glint::candidate::CreateSurfacePolicy(context_.get(), partition_);
++    auto wire = snapshot ? glint::candidate::EncodeSurfacePolicyCommit(*snapshot, partition_)
++                         : nullptr;
++    const auto status = wire ? Status::kReady : Status::kUnavailable;
++    Complete(status, nullptr, std::move(wire));
+     return;
+   }
+   auto seed = DeriveNativePrivacyKey(context_.get(), partition_, "canvas");
+@@ -80,9 +109,14 @@
+ }
+ 
+ void PrivacyWorkerService::Complete(
+-    Status status, blink::mojom::NativePrivacyCanvasPolicyPtr policy) {
++    Status status, blink::mojom::NativePrivacyCanvasPolicyPtr policy,
++    blink::mojom::GlintSurfacePolicyCommitPtr surfaces) {
+   timer_.Stop();
+   weak_factory_.InvalidateWeakPtrs();
++  if (pending_surface_reply_) {
++    std::move(pending_surface_reply_).Run(status, std::move(surfaces));
++    return;
++  }
+   if (pending_reply_) {
+     std::move(pending_reply_).Run(status, std::move(policy));
+   }
+diff --git a/content/renderer/worker/privacy_worker_bootstrap_unittest.cc b/content/renderer/worker/privacy_worker_bootstrap_unittest.cc
+--- a/content/renderer/worker/privacy_worker_bootstrap_unittest.cc
++++ b/content/renderer/worker/privacy_worker_bootstrap_unittest.cc
+@@ -24,6 +24,11 @@
+   void GetCanvasPolicy(GetCanvasPolicyCallback callback) override {
+     ++requests_;
+     reply_ = std::move(callback);
++  }
++
++  void GetSurfacePolicy(GetSurfacePolicyCallback callback) override {
++    ADD_FAILURE() << "Canvas-only fixture must not request a surface bundle";
++    std::move(callback).Run(Status::kUnavailable, nullptr);
+   }
+ 
+   void Start(bool destroy_on_completion = false) {
+diff --git a/content/browser/camouflow_native/privacy_worker_service_unittest.cc b/content/browser/camouflow_native/privacy_worker_service_unittest.cc
+--- a/content/browser/camouflow_native/privacy_worker_service_unittest.cc
++++ b/content/browser/camouflow_native/privacy_worker_service_unittest.cc
+@@ -21,6 +21,7 @@
+ #include "net/base/features.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ #include "third_party/blink/public/common/features.h"
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h"
+ #include "url/gurl.h"
+ #include "url/origin.h"
+ 
+@@ -296,5 +297,136 @@
+   EXPECT_EQ(replies, 0);
+ }
+ 
++
++class NativePrivacyWorkerSurfaceServiceTest : public NativePrivacyWorkerServiceTest {};
++using SurfacePolicy = blink::mojom::GlintSurfacePolicyCommitPtr;
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, MissingServiceReturnsNoSnapshot) {
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++    ++replies;
++    EXPECT_EQ(status, Status::kUnavailable);
++    EXPECT_FALSE(policy);
++  }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, ReadySnapshotMatchesEveryDomainForAllWorkerKinds) {
++  Initialize();
++  tasks_.RunUntilIdle();
++  for (auto kind : {Kind::kDedicated, Kind::kShared, Kind::kService}) {
++    auto remote = Connect(kind);
++    int replies = 0;
++    remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++      ++replies;
++      EXPECT_EQ(status, Status::kReady);
++      ASSERT_TRUE(policy);
++      auto decoded = glint::candidate::DecodeWorkerSurfacePolicy(*policy, Partition());
++      ASSERT_TRUE(decoded);
++      EXPECT_EQ(decoded->canvas, DeriveNativePrivacyKey(context_.get(), Partition(), "canvas"));
++      EXPECT_EQ(decoded->webgl, DeriveNativePrivacyKey(context_.get(), Partition(), "webgl"));
++      EXPECT_EQ(decoded->webgpu, DeriveNativePrivacyKey(context_.get(), Partition(), "webgpu"));
++      EXPECT_EQ(decoded->audio, DeriveNativePrivacyKey(context_.get(), Partition(), "audio"));
++    }));
++    remote.FlushForTesting();
++    EXPECT_EQ(replies, 1);
++  }
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, LoadingDoesNotReplyWithPrematureSnapshot) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++    ++replies;
++    EXPECT_EQ(status, Status::kReady);
++    EXPECT_TRUE(policy);
++  }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, WrongWorkerOriginCannotGetSnapshot) {
++  Initialize();
++  tasks_.RunUntilIdle();
++  auto remote = ConnectForPartition(Partition(), url::Origin::Create(GURL("https://other.test/")));
++  int replies = 0;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++    ++replies;
++    EXPECT_EQ(status, Status::kUnavailable);
++    EXPECT_FALSE(policy);
++  }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, ShutdownDuringReadinessReturnsNoSnapshot) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++    ++replies;
++    EXPECT_EQ(status, Status::kUnavailable);
++    EXPECT_FALSE(policy);
++  }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  ShutdownNativePrivacyContext(context_.get());
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, SurfaceThenCanvasCannotRequestTwice) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status, SurfacePolicy) { ++replies; }));
++  remote.FlushForTesting();
++  ASSERT_EQ(replies, 0);
++  mojo::test::BadMessageObserver observer;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting([&](Status, Policy) { ++replies; }));
++  EXPECT_EQ(observer.WaitForBadMessage(), "Glint worker policy requested twice on one pipe");
++  EXPECT_TRUE(receivers_.empty());
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(replies, 0);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, CanvasThenSurfaceCannotRequestTwice) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting([&](Status, Policy) { ++replies; }));
++  remote.FlushForTesting();
++  ASSERT_EQ(replies, 0);
++  mojo::test::BadMessageObserver observer;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status, SurfacePolicy) { ++replies; }));
++  EXPECT_EQ(observer.WaitForBadMessage(), "Glint worker policy requested twice on one pipe");
++  EXPECT_TRUE(receivers_.empty());
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(replies, 0);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, UnpartitionedSharedServiceWorkersRejectSnapshot) {
++  base::test::ScopedFeatureList disabled;
++  disabled.InitAndDisableFeature(net::features::kThirdPartyStoragePartitioning);
++  Initialize();
++  tasks_.RunUntilIdle();
++  for (auto kind : {Kind::kShared, Kind::kService}) {
++    auto remote = Connect(kind);
++    int replies = 0;
++    remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++      ++replies;
++      EXPECT_EQ(status, Status::kUnavailable);
++      EXPECT_FALSE(policy);
++    }));
++    remote.FlushForTesting();
++    EXPECT_EQ(replies, 1);
++  }
++}
++
+ }  // namespace
+ }  // namespace content

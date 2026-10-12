@@ -71,7 +71,8 @@ separate checks. Source registration is not browser linkage or privacy admission
 
 | Candidate | Prepared behavior | Evidence boundary |
 | --- | --- | --- |
-| Surface policy v2 | One owned partition snapshot with independent Canvas/WebGL/WebGPU/Audio seeds; bounded preflight, binary Mojo schema and owned codec | Source replay and generated bindings; 21 native fixture definitions, not compiled |
+| Surface policy v2 | One owned partition snapshot with independent Canvas/WebGL/WebGPU/Audio seeds; bounded preflight, typed browser partition, binary Mojo schema and owned codec | Source replay and generated bindings; 25 native fixture definitions, not compiled |
+| Worker surface delivery | Shared endpoint readiness, explicit v2 consumer/modes, all three launchers, immutable Blink scope and first-script rejection | Source replay; 8 browser, 22 consumer/mode and 4 Blink fixture definitions, not compiled |
 | GPU metadata minimization | Disabled-by-default native feature; remove WebGL debug extension and identifying WebGPU info without fabricating hardware | Source replay; candidate runtime not verified |
 | Offline Audio | Deterministic scalar prototype and bounded detached AudioBuffer copy; no live processing or JS method replacement | Source replay; 15 native fixture definitions, not compiled or integrated |
 
@@ -86,7 +87,7 @@ diagnostics before enabling new hooks. Their successful 001-027 baseline runs
 do not verify the drafts or claim anti-bot acceptance. Worker APIs unavailable
 in upstream remain explicit exclusions, not fabricated coverage.
 
-`verify_native_next_batch.py` replays the four unregistered integration patches
+`verify_native_next_batch.py` replays the eight unregistered integration patches
 in an owned temporary overlay, checks exact canonical copies and rejects source,
 receipt, GN-input or browser-core drift. Run it with a new evidence path outside
 both repositories; it never runs GN, compilation or modifies active sources.
