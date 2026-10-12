@@ -585,6 +585,22 @@ four-job build and ordinary-launch storage/full runtime gates remain pending.
 The successful eight-case direct proof on `0009` must not be reused as evidence
 that `0010` manager integration works.
 
+The `0010` four-job own-fork build completed successfully in 1m26.85s, with five
+executed build steps and terminal exit zero. Its measured `chrome.dll` is
+`b52b8c7cb66aa83f97d1cb46179a8033c7bfcf48cbfa4260a1f410ee803aa334`.
+The public **ordinary-launch** eight-case storage matrix passed through the
+unchanged app `NativeRuntime` at profile path lengths 90/130/150/170:
+`D:\CamouFlowNative\storage-path-matrix-browser-owned-namespace-20261012.json`.
+This closes the reproduced app storage path regression without a launch-prefix
+workaround in Python. The full lifecycle/runtime gate also passed all 18 checks,
+including existing Recorder capture/replay and profile backup/restore, under
+the original nested report/workspace structure. Three concurrent profiles
+completed three restart/crash rounds, with zero surviving owned processes in
+each round. Report:
+`D:\CamouFlowNative\verification-browser-owned-profile-namespace-full-20261012/runtime.json`.
+The remaining eight-gate suite execution, new shipping archive and relocated
+package verification remain pending; this is not full release admission.
+
 The [CloakBrowser repository](https://github.com/CloakHQ/CloakBrowser) is a feature
 reference, not proof of Native parity. Superiority requires reproducible matched
 comparisons, not copied scores or a larger patch count. Linux/macOS remain deferred

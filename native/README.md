@@ -57,7 +57,7 @@ raw GoogleTest output: `native-sql-namespace-unit-results.json` on D.
 The direct probe and SQL tests do not activate extended paths in the manager.
 Original failed controls remain on D; see `docs/NATIVE_VERIFICATION.md`.
 
-## Browser-owned profile namespace (0010; compilation/runtime pending)
+## Browser-owned profile namespace (0010; storage and lifecycle runtime passed)
 
 After the native SQL target exited successfully, `0010` was applied to the
 pinned Chromium source. It initializes Windows `DIR_USER_DATA` with extended
@@ -66,12 +66,21 @@ Already extended and device namespace paths are not prefixed twice; UNC syntax
 is handled separately from drive paths. No profile relocation, alias, retry,
 app-side launch formatting, ownership-path change or non-Windows change is made.
 
-A four-job own-fork rebuild is now running. This integration still needs the
-ordinary-launch storage matrix and full manager/runtime suite on the rebuilt
-binary; direct-launch success on the earlier binary is not sufficient. Root
-paths above the Windows bootstrap buffer limit and actual UNC storage remain
-outside verified coverage. Do not claim arbitrary path-length support or
-activate fingerprint capabilities from this filesystem patch.
+The four-job own-fork rebuild completed successfully (1m26.85s, five executed
+build steps, exit zero). The ordinary-launch storage matrix now passed all eight
+desktop/mobile cases at root lengths 90/130/150/170 through the unchanged
+`NativeRuntime`, without an app-side extended prefix. The full lifecycle gate
+also passed all 18 checks, including Recorder/replay, backup/restore, proxy,
+permissions, process locks, crash recovery and three independent profiles across
+three restart/crash rounds with no surviving owned processes. Evidence:
+`D:\CamouFlowNative\storage-path-matrix-browser-owned-namespace-20261012.json` and
+`verification-browser-owned-profile-namespace-full-20261012/runtime.json` on D.
+
+The remaining full-suite gates are still running; packaging and relocated
+package verification have not yet been repeated on this build. Root paths above
+the Windows bootstrap buffer limit and actual UNC storage remain outside
+verified coverage. Do not claim arbitrary path-length support or activate
+fingerprint capabilities from this filesystem patch.
 
 ## Current Windows source build
 
