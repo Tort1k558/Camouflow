@@ -48,6 +48,12 @@ secret keys, proxy credentials or identifying fingerprint payloads.
 
 ## Repeatable run protocol
 
+First calibrate the existing local probes against stock Chrome. Distinguish
+value changes, API behavior regressions and expected context-specific absences.
+Add repeatability/isolation comparisons and record CDP attach vs Runtime.enable
+separately. The [implementation roadmap](GLINT_ROADMAP.ru.md) defines these gates;
+external green tiles do not replace them.
+
 1. Record build ID, Chromium version, applied patch range, executable/core-DLL
    hashes, date, Windows version and policy configuration.
 2. Run headed manual, headed automation and headless automation separately.
