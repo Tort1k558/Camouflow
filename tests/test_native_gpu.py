@@ -568,6 +568,29 @@ def test_future_halo_hook_and_fixtures_remain_unregistered_and_canonical():
     assert fixtures.count("TEST(GlintRgba8ReadbackRegionTest,") == 11
 
 
+def test_future_gpu_transport_patch_covers_both_decoders_without_advertising_webgl_api():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_gpu_transport_draft import DRAFTS, EXPECTED, PATCH
+
+    text = PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == EXPECTED
+    assert '+BASE_FEATURE(kGlintReadbackMetadataCandidate,' in text
+    assert '+             base::FEATURE_DISABLED_BY_DEFAULT);' in text
+    assert 'QueryGlintReadbackMetadata()' in text
+    assert 'GetGlintReadFramebufferMetadataCHROMIUM' in text
+    assert 'GL_ANGLE_get_tex_level_parameter' in text
+    fixtures = (DRAFTS / "glint_readback_metadata_unittest.cc").read_text(encoding="utf-8-sig")
+    assert fixtures.count("TEST(GlintReadbackMetadataTest,") == 12
+    assert not any(path.endswith(".idl") for path in EXPECTED)
+
+
+def test_future_gpu_command_id_parser_ignores_macro_footer():
+    from scripts.verify_native_gpu_transport_draft import command_ids
+
+    assert command_ids("  OP(Existing) /* 579 */\n  OP(New) /* 580 */\n#define GLES2_CMD_OP(name) name\n") == [
+        ("Existing", 579), ("New", 580)]
+
+
 def test_future_clipped_publication_patch_preserves_cpu_pbo_destination_contract():
     from scripts.verify_native_document_drafts import patch_paths
     from scripts.verify_native_halo_draft import (

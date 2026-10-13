@@ -357,6 +357,21 @@ The current Chromium commit StorageKey is provisional and DocumentLoader can
 adjust it: first-script delivery therefore also needs an exact trusted-partition
 commitment check against final document state, not just a ready profile root.
 
+## GPU attachment metadata transport candidate
+
+The separate [GPU transport draft](../native/drafts/gpu-transport/README.md)
+extends the pending readback batch with a private command, both native decoder
+implementations and the Blink consumer. It queries the actual selected attachment,
+including supported texture levels, instead of deriving dimensions from a viewport.
+The new feature defaults off and adds no WebGL JavaScript API.
+
+Source replay of all three candidate patches passed with canonical helper matching,
+324 legacy command IDs preserved and new command ID 580. An isolated rerun of the
+pinned upstream command generator reproduced all 59 copied generated headers.
+Neither check compiled C++, executed the command or admitted protected readback.
+The 12 codec fixtures and real decoder/texture/error/binding checks remain pending.
+The active 001–034 Chromium build was not changed by these checks.
+
 ## Current WebGL clipping compatibility gate
 
 The registered 001–034 browser batch is compiling; its new protections are not

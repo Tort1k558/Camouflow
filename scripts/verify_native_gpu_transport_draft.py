@@ -1,0 +1,132 @@
+"""Replay the private GPU metadata command candidate; not a runtime gate."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts import native_build as build
+from scripts.verify_native_document_drafts import digest, patch_paths
+from scripts.verify_native_halo_draft import (
+    CANONICAL,
+    CLIPPED_CANONICAL,
+    CLIPPED_PATCH,
+)
+from scripts.verify_native_halo_draft import (
+    DRAFTS as READBACK,
+)
+from scripts.verify_native_halo_draft import (
+    PATCH as HALO_PATCH,
+)
+
+DRAFTS = ROOT / "native/drafts/gpu-transport"
+PATCH = DRAFTS / "gpu_readback_metadata_candidate.patch"
+COMMON = "gpu/command_buffer/common/"
+RAW = {name: COMMON + name for name in (
+    "glint_readback_metadata.h", "glint_readback_metadata_unittest.cc")}
+EXPECTED = {
+    "gpu/BUILD.gn", "gpu/GLES2/gl2chromium_autogen.h",
+    "gpu/command_buffer/build_gles2_cmd_buffer.py",
+    "gpu/command_buffer/gles2_cmd_buffer_functions.txt",
+    "gpu/config/gpu_finch_features.cc", "gpu/config/gpu_finch_features.h",
+    COMMON + "BUILD.gn", COMMON + "gles2_cmd_format_autogen.h",
+    COMMON + "gles2_cmd_format_test_autogen.h", COMMON + "gles2_cmd_ids_autogen.h",
+    *RAW.values(),
+    *("gpu/command_buffer/client/" + name for name in (
+        "gles2_c_lib_autogen.h", "gles2_cmd_helper_autogen.h", "gles2_implementation.cc",
+        "gles2_implementation_autogen.h", "gles2_interface_autogen.h",
+        "gles2_interface_stub_autogen.h", "gles2_interface_stub_impl_autogen.h",
+        "gles2_trace_implementation_autogen.h", "gles2_trace_implementation_impl_autogen.h")),
+    *("gpu/command_buffer/service/" + name for name in (
+        "gles2_cmd_decoder.cc", "gles2_cmd_decoder_passthrough.h",
+        "gles2_cmd_decoder_passthrough_doers.cc", "gles2_cmd_decoder_passthrough_handlers.cc")),
+    *("third_party/blink/renderer/modules/webgl/" + name for name in (
+        "webgl_rendering_context_base.cc", "webgl2_rendering_context_base.cc")),
+}
+
+
+def command_ids(text: str) -> list[tuple[str, int]]:
+    return [(name, int(number)) for name, number in re.findall(
+        r"^\s*OP\((\w+)\).*?/\*\s*(\d+)\s*\*/", text, re.MULTILINE)]
+
+
+def verify(workspace: Path, report: Path) -> dict:
+    source = workspace / "chromium/src"
+    if source != source.resolve() or not source.is_dir():
+        raise ValueError("A canonical Chromium checkout is required")
+    if (not report.is_absolute() or report != report.resolve() or not report.parent.is_dir()
+            or report.exists() or report.is_symlink() or report.is_relative_to(source)
+            or report.is_relative_to(ROOT)):
+        raise ValueError("A new canonical private report outside both repositories is required")
+    env = build.environment(workspace)
+    registered = build.source_patches(source, env) + build.v8_source_patches(source, env)
+    if "0034-native-gpu-metadata-minimization.patch" not in {item["name"] for item in registered}:
+        raise ValueError("The exact registered 001-034 baseline is required")
+    patches = (HALO_PATCH, CLIPPED_PATCH, PATCH)
+    if patch_paths(PATCH.read_text(encoding="utf-8-sig")) != EXPECTED:
+        raise ValueError("GPU transport source coverage differs from the reviewed candidate")
+    paths = set().union(*(patch_paths(item.read_text(encoding="utf-8-sig")) for item in patches))
+    if any((source / name).resolve() != source / name for name in paths):
+        raise ValueError("Source inputs must not follow links")
+    before = {name: digest(source / name) for name in paths}
+    inputs = {str(item.relative_to(ROOT)): digest(item) for item in (
+        *patches, *(DRAFTS / name for name in RAW),
+        *(READBACK / name for name in CANONICAL | CLIPPED_CANONICAL), Path(__file__))}
+    if any(value is None for value in inputs.values()):
+        raise ValueError("A canonical candidate input is missing")
+    ids_path = COMMON + "gles2_cmd_ids_autogen.h"
+    previous_ids = command_ids((source / ids_path).read_text(encoding="utf-8-sig"))
+    with tempfile.TemporaryDirectory(prefix="glint-gpu-transport-replay-", dir=report.parent) as owned:
+        overlay = Path(owned)
+        for name in paths:
+            if (source / name).is_file():
+                target = overlay / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text((source / name).read_text(encoding="utf-8-sig"),
+                                  encoding="utf-8", newline="\n")
+        build.run(["git", "init", "-q"], overlay, env)
+        build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
+        for patch in patches:
+            build.run(["git", "apply", "--check", str(patch)], overlay, env)
+            build.run(["git", "apply", str(patch)], overlay, env)
+        for directory, canonical in ((READBACK, CANONICAL | CLIPPED_CANONICAL), (DRAFTS, RAW)):
+            for name, relative in canonical.items():
+                if (overlay / relative).read_bytes() != (directory / name).read_bytes():
+                    raise ValueError("Composed source differs from its canonical helper")
+        current_ids = command_ids((overlay / ids_path).read_text(encoding="utf-8-sig"))
+        if (len(previous_ids) != 324 or current_ids[:-1] != previous_ids
+                or current_ids[-1] != ("GetGlintReadFramebufferMetadataCHROMIUM", 580)):
+            raise ValueError("GPU command ABI changed outside the appended private command")
+        composed = {name: digest(overlay / name) for name in paths}
+    if before != {name: digest(source / name) for name in paths}:
+        raise ValueError("Active Chromium inputs changed during candidate replay")
+    if inputs != {name: digest(ROOT / name) for name in inputs}:
+        raise ValueError("Canonical candidate inputs changed during replay")
+    result = {"passed": True, "compiled": False, "privacy_admitted": False,
+              "active_source_unchanged": True, "legacy_command_ids_preserved": len(previous_ids),
+              "new_command_id": 580, "inputs": inputs, "composed_source": composed,
+              "registered_patches": registered}
+    report.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    return result
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--workspace", required=True, type=Path)
+    parser.add_argument("--report", required=True, type=Path)
+    args = parser.parse_args()
+    result = verify(args.workspace, args.report)
+    print(json.dumps({key: result[key] for key in (
+        "passed", "compiled", "privacy_admitted", "legacy_command_ids_preserved")}))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
