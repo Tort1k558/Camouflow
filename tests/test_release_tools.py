@@ -409,14 +409,21 @@ def test_native_build_rejects_invalid_job_budgets_before_filesystem_changes(tmp_
     assert list(tmp_path.iterdir()) == []
 
 
-def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_path, monkeypatch):
+@pytest.mark.parametrize("missing_dll", [None, "chrome.dll", "chrome_elf.dll"])
+def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_path, monkeypatch, missing_dll):
     import json
     from scripts import native_build
+    if missing_dll and sys.platform != "win32":
+        pytest.skip("Windows core DLL receipt")
 
     source = tmp_path / "chromium/src"
     source.mkdir(parents=True)
     (source.parent / ".gclient").write_text("owned", encoding="utf-8")
     (source / "DEPS").write_text("owned", encoding="utf-8")
+    output = source / "out/CamouFlowNative"
+    output.mkdir(parents=True)
+    receipt_path = output / "camouflow-build.json"
+    receipt_path.write_text("stale receipt", encoding="utf-8")
     relative = {"win32": "chrome.exe", "linux": "chrome", "darwin": "Chromium.app/Contents/MacOS/Chromium"}[sys.platform]
     commands = []
     def run(args, *a, **kwargs):
@@ -427,6 +434,10 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
             binary = source / "out/CamouFlowNative" / relative
             binary.parent.mkdir(parents=True, exist_ok=True)
             binary.write_bytes(b"owned test binary")
+            if sys.platform == "win32":
+                for name in ("chrome.dll", "chrome_elf.dll"):
+                    if name != missing_dll:
+                        (binary.parent / name).write_bytes(name.encode("ascii"))
         return ""
     monkeypatch.setattr(native_build, "preflight", lambda *a, **kw: {})
     monkeypatch.setattr(native_build, "environment", lambda *a: {})
@@ -437,11 +448,19 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
     monkeypatch.setattr(native_build, "source_patches", lambda *a: [])
     monkeypatch.setattr(native_build, "depot_command", lambda name, *a: [name])
     monkeypatch.setattr(native_build, "run", run)
+    if missing_dll:
+        with pytest.raises(ValueError, match=missing_dll):
+            native_build.execute("build", tmp_path, jobs=1)
+        assert not receipt_path.exists()
+        return
     native_build.execute("build", tmp_path, jobs=1)
     assert ["autoninja", "-C", "out/CamouFlowNative", "-j", "1", "chrome"] in commands
     receipt = json.loads((source / "out/CamouFlowNative/camouflow-build.json").read_text(encoding="utf-8"))
     assert receipt["build_jobs"] == 1
     assert receipt["native_patch_runtime_verified"] is False
+    core = native_build.measure_runtime_core(source / "out/CamouFlowNative" / relative)
+    assert receipt["runtime_core_sha256_measured"] == core
+    assert receipt["binary_sha256_measured"] == core[Path(relative).name]
 
 
 @pytest.mark.parametrize("changed", ["patches", "v8_patches", "output_arguments", "input_arguments"])

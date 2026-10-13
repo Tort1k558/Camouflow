@@ -5,12 +5,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
-import hashlib
 import json
 import logging
 import os
 import platform
-import re
 import subprocess
 import sys
 import sysconfig
@@ -30,29 +28,13 @@ from app.core.native.configuration import NativeConfiguration  # noqa: E402
 from app.core.native.diagnostics import inspect_native_profile  # noqa: E402
 from app.core.native.runtime import NativeRuntime, NativeRuntimeError  # noqa: E402
 from playwright.async_api import Error as PlaywrightError, async_playwright  # noqa: E402
+from scripts.native_build import measure_runtime_core as measure_build_core  # noqa: E402
 
 def measure_runtime_core(executable: Path, library_directory: Path | None = None) -> dict[str, str]:
     """Bind Windows evidence to executable code in DLLs, not only the launcher."""
     if not executable.is_file():
         raise NativeRuntimeError("Native browser is not installed")
-    if library_directory is not None:
-        if (sys.platform != "win32" or not library_directory.is_absolute()
-                or library_directory != library_directory.resolve() or not library_directory.is_dir()
-                or (library_directory != executable.parent and
-                    (library_directory.parent != executable.parent
-                     or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", library_directory.name) is None))):
-            raise ValueError("Windows library directory must be canonical and belong to the browser package")
-    paths = [executable]
-    if sys.platform == "win32":
-        directory = executable.parent if library_directory is None else library_directory
-        paths.extend(directory / name for name in ("chrome.dll", "chrome_elf.dll"))
-    measured = {}
-    for path in paths:
-        if not path.is_absolute() or path != path.resolve() or not path.is_file():
-            raise ValueError("Native runtime core is missing or linked: " + path.name)
-        with path.open("rb") as content:
-            measured[path.name] = hashlib.file_digest(content, "sha256").hexdigest()
-    return measured
+    return measure_build_core(executable, library_directory)
 
 
 STORAGE = """async value => {

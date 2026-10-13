@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -14,6 +15,28 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = json.loads((ROOT / "native/build-lock.json").read_text(encoding="utf-8-sig"))
+
+
+def measure_runtime_core(executable: Path, library_directory: Path | None = None) -> dict[str, str]:
+    """Bind Windows browser code in its DLLs, not only the launcher."""
+    if library_directory is not None:
+        if (sys.platform != "win32" or not library_directory.is_absolute()
+                or library_directory != library_directory.resolve() or not library_directory.is_dir()
+                or (library_directory != executable.parent and
+                    (library_directory.parent != executable.parent
+                     or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", library_directory.name) is None))):
+            raise ValueError("Windows library directory must be canonical and belong to the browser package")
+    paths = [executable]
+    if sys.platform == "win32":
+        directory = executable.parent if library_directory is None else library_directory
+        paths.extend(directory / name for name in ("chrome.dll", "chrome_elf.dll"))
+    measured = {}
+    for path in paths:
+        if not path.is_absolute() or path != path.resolve() or not path.is_file():
+            raise ValueError("Native runtime core is missing or linked: " + path.name)
+        with path.open("rb") as content:
+            measured[path.name] = hashlib.file_digest(content, "sha256").hexdigest()
+    return measured
 
 
 def run(args: list[str], cwd: Path, env: dict[str, str], *, capture: bool = False) -> str:
@@ -390,13 +413,13 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
     relative_binary = {"win32": "chrome.exe", "linux": "chrome",
                        "darwin": "Chromium.app/Contents/MacOS/Chromium"}[sys.platform]
     binary = output / relative_binary
-    with binary.open("rb") as stream:
-        checksum = hashlib.file_digest(stream, "sha256").hexdigest()
+    core = measure_runtime_core(binary)
     receipt = {"schema": 1, "native_version": LOCK["native_version"],
                "chromium_revision": LOCK["chromium_revision"],
                "depot_tools_revision": LOCK["depot_tools_revision"],
                "platform": sys.platform, "binary": relative_binary, "build_jobs": jobs,
-               "binary_sha256_measured": checksum,
+               "binary_sha256_measured": core[binary.name],
+               "runtime_core_sha256_measured": core,
                "args_sha256": hashlib.sha256(output.joinpath("args.gn").read_bytes()).hexdigest(),
                "fingerprint_patched": False, "patches": patches,
                "native_patch_runtime_verified": False}
