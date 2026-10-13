@@ -7,6 +7,14 @@ import pytest
 from scripts import verify_native_document_drafts as drafts
 
 
+def test_registered_renderer_mock_records_exact_rejected_navigation_token():
+    text = drafts.PROTOTYPE.read_text(encoding="utf-8-sig")
+    assert "diff --git a/content/test/test_render_frame.cc b/content/test/test_render_frame.cc" in text
+    assert "+  void RejectGlintDocumentCanvasCommit(" in text
+    assert "+    last_rejected_glint_commit_ = navigation_token;" in text
+    assert "+    return std::exchange(last_rejected_glint_commit_, std::nullopt);" in text
+
+
 def test_document_candidate_order_and_canonical_paths():
     assert len(drafts.PATCHES) == 7
     assert drafts.PATCHES[0] == "document_canvas_seed_handoff.patch"

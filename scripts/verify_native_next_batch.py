@@ -28,7 +28,8 @@ PATCHES = ("gpu/gpu_metadata_minimization.patch", "audio/audio_helpers_integrati
            "canvas/offscreen_candidate_hook.patch", "canvas/surface_seed_reader_tests.patch",
            "audio/offline_audio_surface_hook.patch", "audio/offline_audio_surface_guard_tests.patch",
            "policy/initial_main_surface_transport.patch", "policy/window_privacy_readiness.patch",
-           "policy/startup_privacy_preload.patch", "policy/child_surface_transport.patch")
+           "policy/startup_privacy_preload.patch", "policy/child_surface_transport.patch",
+           "gpu/gpu_shader_metadata_minimization.patch")
 CANONICAL = {
     **{"canvas/" + name: "third_party/blink/renderer/core/html/canvas/glint/" + name for name in (
         "canvas_partition_seed.h", "canvas_partition_seed.cc", "canvas_readback_candidate.h",
@@ -60,6 +61,7 @@ EXISTING_PATHS = {
     "content/browser/camouflow_native/privacy_context_unittest.cc",
     "content/public/browser/native_privacy_context.h",
     "content/common/frame.mojom",
+    "content/test/test_render_frame.cc",
     "content/browser/renderer_host/render_view_host_impl.cc",
     "content/browser/renderer_host/render_frame_host_impl.h",
     "content/renderer/render_frame_impl.h",
@@ -70,6 +72,7 @@ EXISTING_PATHS = {
     "third_party/blink/renderer/core/loader/frame_loader.cc",
     "third_party/blink/public/common/features.h", "third_party/blink/common/features.cc",
     "third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc",
+    "third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc",
     "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
     "third_party/blink/renderer/modules/webaudio/BUILD.gn", "third_party/blink/renderer/modules/BUILD.gn",
     "content/browser/BUILD.gn", "content/test/BUILD.gn",

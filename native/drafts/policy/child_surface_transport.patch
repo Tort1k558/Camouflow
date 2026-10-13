@@ -367,3 +367,59 @@ index e74b58447d2db348a1ba2f3446836ded73cd6b33..c1e12d9290df3383eaba960c558fb8f4
      "../browser/camouflow_native/privacy_context_unittest.cc",
      "../browser/camouflow_native/privacy_document_commit_unittest.cc",
      "../browser/camouflow_native/privacy_navigation_throttle_unittest.cc",
+diff --git a/content/test/test_render_frame.cc b/content/test/test_render_frame.cc
+index a5740723f9fe85c823d39121a644aca20de5dc48..ed7eb69b0a762f1e959eba212c2d8f08c9e6a7fb 100644
+--- a/content/test/test_render_frame.cc
++++ b/content/test/test_render_frame.cc
+@@ -176,6 +176,51 @@ class MockFrameHost : public mojom::FrameHost {
+         std::move(browser_interface_broker_receiver));
+   }
+ 
++  void CreateChildFrameWithGlintPolicy(
++      const blink::LocalFrameToken& frame_token,
++      mojo::PendingAssociatedRemote<mojom::Frame> frame_remote,
++      mojo::PendingReceiver<blink::mojom::BrowserInterfaceBroker>
++          browser_interface_broker_receiver,
++      blink::mojom::PolicyContainerBindParamsPtr policy_container_bind_params,
++      mojo::PendingAssociatedReceiver<blink::mojom::AssociatedInterfaceProvider>
++          associated_interface_provider_receiver,
++      blink::mojom::TreeScopeType scope,
++      const std::string& frame_name,
++      const std::string& frame_unique_name,
++      bool is_created_by_script,
++      const blink::FramePolicy& frame_policy,
++      blink::mojom::FrameOwnerPropertiesPtr frame_owner_properties,
++      blink::FrameOwnerElementType owner_type,
++      ukm::SourceId document_ukm_source_id,
++      CreateChildFrameWithGlintPolicyCallback callback) override {
++    // This renderer-only fixture cannot authenticate a browser-owned child key.
++    std::move(callback).Run(false, nullptr);
++  }
++
++  bool CreateChildFrameWithGlintPolicy(
++      const blink::LocalFrameToken& frame_token,
++      mojo::PendingAssociatedRemote<mojom::Frame> frame_remote,
++      mojo::PendingReceiver<blink::mojom::BrowserInterfaceBroker>
++          browser_interface_broker_receiver,
++      blink::mojom::PolicyContainerBindParamsPtr policy_container_bind_params,
++      mojo::PendingAssociatedReceiver<blink::mojom::AssociatedInterfaceProvider>
++          associated_interface_provider_receiver,
++      blink::mojom::TreeScopeType scope,
++      const std::string& frame_name,
++      const std::string& frame_unique_name,
++      bool is_created_by_script,
++      const blink::FramePolicy& frame_policy,
++      blink::mojom::FrameOwnerPropertiesPtr frame_owner_properties,
++      blink::FrameOwnerElementType owner_type,
++      ukm::SourceId document_ukm_source_id,
++      bool* created,
++      blink::mojom::GlintSurfacePolicyCommitPtr* policy) override {
++    // No synthetic policy or fallback to ordinary asynchronous creation.
++    *created = false;
++    policy->reset();
++    return true;
++  }
++
+   void DidCommitSameDocumentNavigation(
+       mojom::DidCommitProvisionalLoadParamsPtr params,
+       mojom::DidCommitSameDocumentNavigationParamsPtr same_doc_params)

@@ -25,6 +25,8 @@ WEBGL_LIMITS = {"MAX_TEXTURE_SIZE", "MAX_CUBE_MAP_TEXTURE_SIZE", "MAX_RENDERBUFF
                 "MAX_VERTEX_ATTRIBS", "MAX_TEXTURE_IMAGE_UNITS", "MAX_VERTEX_TEXTURE_IMAGE_UNITS"}
 WEBGPU_LIMITS = {"maxTextureDimension2D", "maxBufferSize", "maxComputeWorkgroupSizeX",
                  "maxComputeInvocationsPerWorkgroup"}
+SHADER_PIXELS = [value for y in range(1, 5) for x in range(1, 5) for value in (x, y, 85, 255)]
+SHADER_CROP = [value for y in range(2, 4) for x in range(2, 4) for value in (x, y, 85, 255)]
 
 
 def probe_inputs() -> dict[str, str]:
@@ -35,7 +37,7 @@ def probe_inputs() -> dict[str, str]:
 GPU_READ = """async () => {
   const result = {webgl: {}, webgpu: {available: false, reason: 'API unavailable'}};
   for (const name of ['webgl', 'webgl2']) {
-    const canvas = new OffscreenCanvas(2, 2);
+    const canvas = new OffscreenCanvas(4, 4);
     const gl = canvas.getContext(name, {antialias: false});
     if (!gl) { result.webgl[name] = {available: false}; continue; }
     const extensions = gl.getSupportedExtensions().slice().sort();
@@ -47,6 +49,7 @@ GPU_READ = """async () => {
     if (!debug) {
       unavailableParameter = {value: gl.getParameter(0x9245), error: gl.getError()};
     }
+    gl.disable(gl.DITHER);
     gl.clearColor(17 / 255, 34 / 255, 51 / 255, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     const pixels = new Uint8Array(4);
@@ -57,7 +60,77 @@ GPU_READ = """async () => {
                       'MAX_TEXTURE_IMAGE_UNITS', 'MAX_VERTEX_TEXTURE_IMAGE_UNITS']) {
       limits[key] = gl.getParameter(gl[key]);
     }
+    const debugShaders = gl.getExtension('WEBGL_debug_shaders');
+    const shaders = [];
+    let program = null, vertices = null, pack = null;
+    let scene, translatedShaderLength;
+    try {
+      const version = name === 'webgl2' ? '#version 300 es\\n' : '';
+      const compile = (type, source) => {
+        const shader = gl.createShader(type);
+        if (!shader) throw new Error(name + ': shader allocation failed');
+        shaders.push(shader); gl.shaderSource(shader, source); gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          throw new Error(name + ': shader compilation failed: ' + gl.getShaderInfoLog(shader));
+        }
+        return shader;
+      };
+      const vertex = compile(gl.VERTEX_SHADER, version +
+        (name === 'webgl2' ? 'in' : 'attribute') +
+        ' vec2 position; void main() { gl_Position = vec4(position, 0.0, 1.0); }');
+      const fragment = compile(gl.FRAGMENT_SHADER, version + 'precision highp float;' +
+        (name === 'webgl2' ? 'out vec4 colour;' : '') + 'void main() {' +
+        (name === 'webgl2' ? 'colour' : 'gl_FragColor') +
+        '= vec4((gl_FragCoord.x + 0.5) / 255.0, (gl_FragCoord.y + 0.5) / 255.0, 85.0 / 255.0, 1.0); }');
+      program = gl.createProgram(); vertices = gl.createBuffer();
+      if (!program || !vertices) throw new Error(name + ': scene allocation failed');
+      gl.attachShader(program, vertex); gl.attachShader(program, fragment); gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error(name + ': program link failed: ' + gl.getProgramInfoLog(program));
+      }
+      translatedShaderLength = debugShaders ? debugShaders.getTranslatedShaderSource(fragment).length : 0;
+      gl.useProgram(program); gl.bindBuffer(gl.ARRAY_BUFFER, vertices);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const position = gl.getAttribLocation(program, 'position');
+      if (position < 0) throw new Error(name + ': position attribute unavailable');
+      gl.enableVertexAttribArray(position); gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      gl.viewport(0, 0, 4, 4); gl.drawArrays(gl.TRIANGLES, 0, 3);
+      const full = new Uint8Array(64), repeat = new Uint8Array(64), crop = new Uint8Array(16);
+      gl.readPixels(0, 0, 4, 4, gl.RGBA, gl.UNSIGNED_BYTE, full);
+      gl.readPixels(0, 0, 4, 4, gl.RGBA, gl.UNSIGNED_BYTE, repeat);
+      gl.readPixels(1, 1, 2, 2, gl.RGBA, gl.UNSIGNED_BYTE, crop);
+      scene = {pixels: Array.from(full), repeat: Array.from(repeat), crop: Array.from(crop),
+        pbo: null, packed: null};
+      if (name === 'webgl2') {
+        pack = gl.createBuffer();
+        if (!pack) throw new Error(name + ': pixel pack allocation failed');
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pack);
+        gl.bufferData(gl.PIXEL_PACK_BUFFER, new Uint8Array(84).fill(165), gl.STREAM_READ);
+        gl.readPixels(0, 0, 4, 4, gl.RGBA, gl.UNSIGNED_BYTE, 12);
+        const pbo = new Uint8Array(84);
+        gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, pbo);
+        scene.pbo = Array.from(pbo);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+        gl.pixelStorei(gl.PACK_ROW_LENGTH, 6);
+        gl.pixelStorei(gl.PACK_SKIP_PIXELS, 1);
+        gl.pixelStorei(gl.PACK_SKIP_ROWS, 1);
+        const packed = new Uint8Array(120).fill(165);
+        gl.readPixels(0, 0, 4, 4, gl.RGBA, gl.UNSIGNED_BYTE, packed);
+        scene.packed = Array.from(packed);
+      }
+    } finally {
+      if (name === 'webgl2') {
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+        gl.pixelStorei(gl.PACK_ROW_LENGTH, 0); gl.pixelStorei(gl.PACK_SKIP_PIXELS, 0);
+        gl.pixelStorei(gl.PACK_SKIP_ROWS, 0);
+      }
+      if (pack) gl.deleteBuffer(pack);
+      if (vertices) gl.deleteBuffer(vertices);
+      if (program) gl.deleteProgram(program);
+      for (const shader of shaders) gl.deleteShader(shader);
+    }
     result.webgl[name] = {available: true, extensions, debug: Boolean(debug),
+      debugShaders: Boolean(debugShaders), translatedShaderLength, scene,
       vendor, renderer, unavailableParameter, pixels: Array.from(pixels), limits,
       error: gl.getError(), contextLost: gl.isContextLost()};
     gl.getExtension('WEBGL_lose_context')?.loseContext();
@@ -122,6 +195,28 @@ class GpuFixtureHandler(CanvasFixtureHandler):
     worker_read = GPU_READ
 
 
+def validate_shader_readback(scene: dict, api: str) -> None:
+    if api not in {"webgl", "webgl2"}:
+        raise ValueError("Unknown WebGL readback API: " + api)
+    if not isinstance(scene, dict) or set(scene) != {"pixels", "repeat", "crop", "pbo", "packed"}:
+        raise ValueError("Missing shader readback observations: " + api)
+    expected = {"pixels": SHADER_PIXELS, "repeat": SHADER_PIXELS, "crop": SHADER_CROP}
+    if api == "webgl2":
+        expected["pbo"] = [165] * 12 + SHADER_PIXELS + [165] * 8
+        packed = [165] * 120
+        for row in range(4):
+            start = (row + 1) * 24 + 4
+            packed[start:start + 16] = SHADER_PIXELS[row * 16:(row + 1) * 16]
+        expected["packed"] = packed
+    elif scene["pbo"] is not None or scene["packed"] is not None:
+        raise ValueError("WebGL1 claimed WebGL2 pack operations")
+    for name, reference in expected.items():
+        value = scene[name]
+        if (not isinstance(value, list) or any(type(byte) is not int or not 0 <= byte <= 255 for byte in value)
+                or value != reference):
+            raise ValueError("Shader/crop/PBO/padding readback mismatch: " + api + "/" + name)
+
+
 def validate_observations(observed: dict, *, minimized: bool = False,
                           baseline: dict | None = None) -> dict:
     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
@@ -142,6 +237,7 @@ def validate_observations(observed: dict, *, minimized: bool = False,
                     raise ValueError(f"GPU context disappeared: {context}/{api}")
                 continue
             coverage[api] += 1
+            validate_shader_readback(gl.get("scene"), api)
             if (gl.get("pixels") != [17, 34, 51, 255] or type(gl.get("error")) is not int or gl["error"] != 0
                     or gl.get("contextLost") is not False):
                 raise ValueError(f"WebGL operation failed: {context}/{api}")
@@ -155,6 +251,14 @@ def validate_observations(observed: dict, *, minimized: bool = False,
                 raise ValueError(f"Invalid WebGL metadata: {context}/{api}")
             if gl["debug"] != ("WEBGL_debug_renderer_info" in extensions):
                 raise ValueError(f"Inconsistent debug extension: {context}/{api}")
+            if (type(gl.get("debugShaders")) is not bool
+                    or gl["debugShaders"] != ("WEBGL_debug_shaders" in extensions)
+                    or type(gl.get("translatedShaderLength")) is not int
+                    or gl["translatedShaderLength"] < 0
+                    or (not gl["debugShaders"] and gl["translatedShaderLength"] != 0)):
+                raise ValueError(f"Inconsistent translated-shader debug extension: {context}/{api}")
+            if minimized and gl["debugShaders"]:
+                raise ValueError(f"Translated shader metadata still exposed: {context}/{api}")
             if minimized and gl["debug"]:
                 raise ValueError(f"GPU debug metadata still exposed: {context}/{api}")
             if not gl["debug"] and (gl.get("vendor") is not None or gl.get("renderer") is not None
@@ -165,7 +269,7 @@ def validate_observations(observed: dict, *, minimized: bool = False,
                 if not previous["available"] or previous["limits"] != limits:
                     raise ValueError(f"WebGL availability/limits changed: {context}/{api}")
                 previous_extensions = [item for item in previous["extensions"]
-                                       if not minimized or item != "WEBGL_debug_renderer_info"]
+                                       if not minimized or item not in {"WEBGL_debug_renderer_info", "WEBGL_debug_shaders"}]
                 if previous_extensions != extensions:
                     raise ValueError(f"Unrelated WebGL extensions changed: {context}/{api}")
         gpu = values["webgpu"]
@@ -248,7 +352,7 @@ def main() -> int:
         parser.error("Refusing to overwrite existing GPU evidence")
     report = {"schema": 1, "platform": platform.platform(), "passed": False, "checks": [],
               "privacy_admitted": False, "contexts": sorted(CONTEXTS),
-              "scope": "Local GPU metadata and buffer/compute/clear diagnostics only; no GPU readback privacy or anti-bot claim"}
+              "scope": "Local GPU metadata, real GLSL draw/crop/repeat, WebGL2 PBO/pack padding and WebGPU buffer/compute diagnostics; no GPU readback privacy or anti-bot claim"}
     server = None
     thread = None
     try:

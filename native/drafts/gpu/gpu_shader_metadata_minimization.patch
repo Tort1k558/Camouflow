@@ -1,0 +1,23 @@
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc b/third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc
+index 0bd94e997dc906d0dd79784c1dbceba9e21e4c41..2b82204b51ebb52dc77f3cc87e66efc3ec7c74df 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc
+@@ -25,6 +25,8 @@
+ 
+ #include "third_party/blink/renderer/modules/webgl/webgl_debug_shaders.h"
+ 
++#include "base/feature_list.h"
++#include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/renderer/modules/webgl/gl_string_query.h"
+ #include "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h"
+ #include "third_party/blink/renderer/modules/webgl/webgl_shader.h"
+@@ -56,6 +58,9 @@ String WebGLDebugShaders::getTranslatedShaderSource(WebGLShader* shader) {
+ }
+ 
+ bool WebGLDebugShaders::Supported(WebGLRenderingContextBase* context) {
++  if (base::FeatureList::IsEnabled(features::kGlintGpuMetadataMinimization)) {
++    return false;
++  }
+   return context->ExtensionsUtil()->SupportsExtension(
+       "GL_ANGLE_translated_shader_source");
+ }

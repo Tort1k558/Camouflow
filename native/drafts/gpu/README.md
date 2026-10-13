@@ -9,6 +9,7 @@ The disabled-by-default `GlintGpuMetadataMinimization` Blink feature proposes:
 | API | Candidate change | Preserved |
 | --- | --- | --- |
 | WebGL / WebGL2 | Do not offer WEBGL_debug_renderer_info | Actual backend, other extensions, limits, shaders and pixels |
+| WebGL / WebGL2 debug shaders | Follow-up removes WEBGL_debug_shaders and translated driver shader text | Actual GLSL compilation, linking and drawing |
 | WebGPU adapter info | Empty identification strings; omit developer-specific adapter details | Actual subgroup sizes, fallback status, device features, limits and rendering |
 
 No different video card or operating system is fabricated. A later experimental
@@ -46,3 +47,43 @@ regression, real device creation, rendering/compute and unchanged limits/feature
 Unavailable WebGPU must be reported as unavailable, not a passing masking result.
 GPU readback protection, extension/limit reduction and profile-policy admission
 are separate unfinished work; metadata minimization is not complete GPU privacy.
+
+## Shader and pixel-pack follow-up
+
+`gpu_shader_metadata_minimization.patch` uses the same disabled-by-default
+metadata feature at the extension support boundary. Enumeration and
+`getExtension` therefore agree; it does not substitute a fake shader, vendor,
+GPU capability or readback result. This is unregistered/uncompiled source.
+The browser architecture reuses the existing extension registry and feature,
+not JavaScript wrappers or a second preference system.
+
+The expanded diagnostic compiles real GLSL1/GLSL3 vertex/fragment shaders,
+links a program and renders a 4×4 nonuniform scene in WebGL1 and WebGL2. It
+requires exact repeated full reads and an interior crop. WebGL2 additionally
+reads through a pixel-pack buffer at a nonzero offset and through explicit
+row-length/skip-row/skip-pixel layout. Prefix, suffix and row padding must remain
+untouched; unavailable/incorrect methods cannot count as successful coverage.
+Shader debug exposure is checked against the extension list. Metadata mode may
+remove only the two debug extensions, while shader execution and other
+extensions/limits stay unchanged.
+
+The last linked **001–027, unprotected** Windows browser passed both feature-off
+and restart phases in all eight document/worker contexts, with both WebGL
+versions and WebGPU operations available:
+`gpu-shader-pbo-001-027-baseline-v5.json` on D. This proves the fixture and current
+upstream behavior, not execution of either metadata candidate or GPU masking.
+Shaders/buffers/devices and owned profiles are cleaned up; core and probe-input
+hashes stayed unchanged during the run.
+
+Brave's [August 2026 engineering report](https://brave.com/privacy-updates/38-webgl-webgpu-fingerprinting-protections/)
+distinguishes adapter descriptors, debug identifiers and extension-list entropy.
+Our choices are not a copy of its session-based policy: Glint keeps profile
+identity stable across restarts and currently preserves real non-debug
+capabilities. Extension randomization and arbitrary GPU-buffer noise are not
+admitted. In particular, WebGPU mapped compute/storage data must not be treated
+as image pixels; the unchanged integer buffer/compute checks remain mandatory.
+
+The combined 27-candidate source stack replay passed across 115 paths after the
+registered renderer mock repair, with active sources/GN/receipt/core unchanged:
+`gpu-shader-child-mock-public-replay-v2.json`. This is source composition, not
+execution of the GPU metadata feature.

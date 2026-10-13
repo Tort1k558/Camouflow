@@ -67,6 +67,14 @@ def test_owned_replay_disables_machine_specific_crlf_conversion():
     assert text.index(configure) < text.index(apply)
 
 
+def test_gpu_shader_debug_metadata_is_gated_at_extension_support_boundary():
+    text = (DRAFTS / "gpu/gpu_shader_metadata_minimization.patch").read_text(encoding="utf-8-sig")
+    assert "+  if (base::FeatureList::IsEnabled(features::kGlintGpuMetadataMinimization)) {" in text
+    assert "+    return false;" in text
+    assert "GL_ANGLE_translated_shader_source" in text
+    assert not any(line.startswith("+") and "getTranslatedShaderSource" in line for line in text.splitlines())
+
+
 def test_startup_preload_settles_before_profile_publication_without_event_loop():
     text = (DRAFTS / "policy/startup_privacy_preload.patch").read_text(encoding="utf-8-sig")
     assert "+      ScopedAllowBlockingForProfile allow_native_identity_read;" in text
@@ -102,6 +110,9 @@ def test_child_policy_is_authenticated_before_local_initial_document_creation():
     assert len(names) == len(set(names)) == 5
     assert "bool created, auto policy" not in fixtures
     assert "FeatureOffCallbackCanDestroyFrameOwner" in names
+    assert "+    *created = false;" in text
+    assert "+    policy->reset();" in text
+    assert "+    // No synthetic policy or fallback to ordinary asynchronous creation." in text
 
 
 def test_initial_main_policy_is_browser_owned_and_consumed_before_frame_creation():

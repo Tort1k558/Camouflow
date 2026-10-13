@@ -11,6 +11,7 @@ from scripts.verify_native_gpu import (
     WEBGL_LIMITS,
     WEBGPU_LIMITS,
     validate_observations,
+    validate_shader_readback,
 )
 
 
@@ -18,9 +19,10 @@ def observation(*, minimized=False, webgpu=True):
     gl = {"available": True, "extensions": ["EXT_color_buffer_float"], "debug": False,
           "vendor": None, "renderer": None, "unavailableParameter": {"value": None, "error": 1280},
           "pixels": [17, 34, 51, 255], "error": 0, "contextLost": False,
-          "limits": dict.fromkeys(WEBGL_LIMITS, 16)}
+          "limits": dict.fromkeys(WEBGL_LIMITS, 16), "debugShaders": False, "translatedShaderLength": 0}
     if not minimized:
-        gl.update(extensions=["EXT_color_buffer_float", "WEBGL_debug_renderer_info"], debug=True,
+        gl.update(extensions=["EXT_color_buffer_float", "WEBGL_debug_renderer_info", "WEBGL_debug_shaders"], debug=True,
+                  debugShaders=True, translatedShaderLength=256,
                   vendor="Actual vendor", renderer="Actual renderer", unavailableParameter=None)
     info = {"vendor": "", "architecture": "", "device": "", "description": "",
             "subgroupMinSize": 4, "subgroupMaxSize": 32, "isFallbackAdapter": False}
@@ -31,8 +33,19 @@ def observation(*, minimized=False, webgpu=True):
            "roundtrip": [17, 34, 51, 255], "compute": [18, 35, 52, 256], "validationError": None, "errors": []}
     if not webgpu:
         gpu = {"available": False, "reason": "No adapter"}
-    return {name: {"webgl": {"webgl": copy.deepcopy(gl), "webgl2": copy.deepcopy(gl)},
-                   "webgpu": copy.deepcopy(gpu)} for name in CONTEXTS}
+    full = [value for y in range(1, 5) for x in range(1, 5) for value in (x, y, 85, 255)]
+    cropped = [value for y in range(2, 4) for x in range(2, 4) for value in (x, y, 85, 255)]
+    packed = [165] * 120
+    for row in range(4):
+        start = (row + 1) * 24 + 4
+        packed[start:start + 16] = full[row * 16:(row + 1) * 16]
+    variants = {}
+    for api in ("webgl", "webgl2"):
+        variants[api] = copy.deepcopy(gl)
+        variants[api]["scene"] = {"pixels": full.copy(), "repeat": full.copy(), "crop": cropped.copy(),
+            "pbo": [165] * 12 + full + [165] * 8 if api == "webgl2" else None,
+            "packed": packed.copy() if api == "webgl2" else None}
+    return {name: {"webgl": copy.deepcopy(variants), "webgpu": copy.deepcopy(gpu)} for name in CONTEXTS}
 
 
 def test_baseline_and_minimized_preserve_capabilities():
@@ -44,6 +57,41 @@ def test_baseline_and_minimized_preserve_capabilities():
 
 def test_unavailable_webgpu_is_not_counted_as_coverage():
     assert validate_observations(observation(webgpu=False))["webgpu"] == 0
+
+
+@pytest.mark.parametrize("field,index,value", [
+    ("pixels", 0, 2), ("repeat", 0, 2), ("crop", 0, 0),
+    ("pbo", 0, 0), ("pbo", 12, 0), ("pbo", 83, 0),
+    ("packed", 0, 0), ("packed", 28, 0), ("packed", 119, 0),
+    ("pixels", 0, True),
+])
+def test_shader_readback_and_untouched_padding_cannot_be_corrupted(field, index, value):
+    observed = observation()
+    observed["document"]["webgl"]["webgl2"]["scene"][field][index] = value
+    with pytest.raises(ValueError, match="readback mismatch"):
+        validate_observations(observed)
+
+
+def test_webgl1_cannot_claim_webgl2_pack_operations():
+    observed = observation()
+    observed["document"]["webgl"]["webgl"]["scene"]["pbo"] = []
+    with pytest.raises(ValueError, match="WebGL1 claimed"):
+        validate_observations(observed)
+
+
+def test_unknown_webgl_variant_cannot_pass_readback_validation():
+    scene = observation()["document"]["webgl"]["webgl"]["scene"]
+    with pytest.raises(ValueError, match="Unknown WebGL"):
+        validate_shader_readback(scene, "webgl3")
+
+
+@pytest.mark.parametrize("field,value", [("debugShaders", True), ("translatedShaderLength", 8),
+                                        ("translatedShaderLength", True), ("translatedShaderLength", -1)])
+def test_translated_shader_debug_metadata_cannot_leak_in_minimized_mode(field, value):
+    observed = observation(minimized=True)
+    observed["document"]["webgl"]["webgl"][field] = value
+    with pytest.raises(ValueError):
+        validate_observations(observed, minimized=True)
 
 
 @pytest.mark.parametrize("field,value", [

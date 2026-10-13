@@ -351,9 +351,18 @@ uses a bool plus an owned typed policy with a one-shot callback
 `child-surfaces-public-replay-v2.json`. Four aggregate patches on D independently
 reproduce that exact source (`surface-promotion-v5/proof.json`); they remain
 unregistered and unapplied.
+That historical promotion snapshot predates the renderer mock adapter and GPU
+shader follow-up; the updated 27-candidate aggregate is
+`surface-promotion-v6/proof.json` on D. Promotion still requires the current
+registered navigation-unit build to finish and pass first.
 
 This synchronous opt-in protocol is not a production performance admission.
 Nested creation, iframe removal/reparenting, parent navigation/process exit,
 prerender, credentialless/fenced partitions, opaque sandbox origins with the
 sandbox-token feature both on and off, invalid tokens and associated endpoint
 ordering need actual browser tests. No active build source has changed.
+
+The renderer-only `MockFrameHost` adapter explicitly reports unavailable for
+both signatures of the new child protocol. It has no browser-owned key service
+and cannot fabricate an authenticated policy or call the legacy asynchronous
+creation path as a fallback. These mock responses are not real IPC/key tests.
