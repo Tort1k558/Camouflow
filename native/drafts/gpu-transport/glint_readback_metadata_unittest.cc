@@ -16,7 +16,7 @@ TEST(GlintReadbackMetadataTest, ByteColourRoundTripPreservesNativeDimensions) {
   ASSERT_TRUE(metadata.has_value());
   EXPECT_EQ(metadata->width, 8192);
   EXPECT_EQ(metadata->height, 4096);
-  EXPECT_EQ(metadata->internal_format, GL_RGBA8);
+  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
   EXPECT_EQ(metadata->samples, 0);
   EXPECT_TRUE(metadata->rgba8_compatible);
 }
@@ -26,7 +26,7 @@ TEST(GlintReadbackMetadataTest,
   const auto metadata = DecodeGlintReadbackMetadata(
       EncodeGlintReadbackMetadata(16, 8, GL_RGBA16F, 4, false));
   ASSERT_TRUE(metadata.has_value());
-  EXPECT_EQ(metadata->internal_format, GL_RGBA16F);
+  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA16F));
   EXPECT_EQ(metadata->samples, 4);
   EXPECT_FALSE(metadata->rgba8_compatible);
 }

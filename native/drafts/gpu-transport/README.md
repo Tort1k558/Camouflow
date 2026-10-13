@@ -2,6 +2,31 @@
 
 **Unregistered; command/decoder/Blink integration is uncompiled and not a verified browser capability.**
 
+## Executed metadata codec fixtures
+
+The actual candidate `glint_readback_metadata_unittest.cc` and header were
+compiled and executed with MSVC C++20, `/O2 /W4 /WX`, and the real GoogleTest
+sources from the pinned Chromium checkout: **14/14 cases passed**. No test
+framework, GL type or assertion was stubbed. This is a standalone standard-library
+test executable, not a Chromium GN target, IPC/decoder/attachment execution,
+GPU-driver test or browser admission. Browser core, GN and receipt remained
+unchanged. Raw compile/test logs, results, copied candidate files and the
+executable remain beside the private report on D.
+Current proof: `gpu-metadata-codec-001-048-v3.json`, with raw `tests.json`
+inside its `-artifacts` directory. The complete candidate composition also
+passed fresh code generation after the fixture correction:
+`identity-readback-codec-fixture-001-048-v1.json`. These reports do not enable
+the candidate in the existing 001-047 browser.
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_gpu_metadata_codec.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\gpu-codec-new.json --vs-installation D:\CamouFlowNative\toolchain\BuildTools
+```
+
+The first run failed under `/WX` on signed/unsigned fixture comparisons of
+`GLenum` with integer GL macros. Both expected values now have the actual
+`GLenum` type, in the canonical fixture and its candidate patch. No diagnostic
+or test was disabled; the failed report and logs remain retained.
+
 The current draft follows registered 001–047. It preserves explicit expected-result
 checks in CPU publication and uses stateless `base::BindOnce` cleanup callbacks
 with separately bound native decoder/binding arguments. The callbacks restore

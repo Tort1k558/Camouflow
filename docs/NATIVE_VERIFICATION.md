@@ -21,6 +21,7 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | --- | --- |
 | `scripts/verify_release.py --build --runtime` | Desktop package and packaged legacy-engine checks |
 | `scripts/verify_native_cpp.py` | Standalone native policy primitives |
+| `scripts/verify_native_gpu_metadata_codec.py` | 14 actual candidate codec cases on standalone MSVC/GoogleTest; not a Chromium GN target, decoder/driver test or browser capability |
 | `scripts/verify_native_privacy_units.py` | Keys: 43; contexts: 26; surface navigation: 42; window transport: 13; worker surfaces: 55; GPU readback: 31/31 passed on 001-048. Legacy delivery remains a separate 34-case target |
 | `scripts/verify_native_suite.py` | Runtime, hardware, WebRTC, automation, fonts, identity, CDP and combined gates |
 | `scripts/verify_native_storage_paths.py` | Windows path-depth/storage probes |

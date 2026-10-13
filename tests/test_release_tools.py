@@ -1007,12 +1007,12 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
 
 @pytest.mark.parametrize("mutation", [None, "duplicate", "missing", "skip", "failure", "incomplete", "foreign", "disabled", "malformed"])
 @pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation",
-                                    "surface-navigation", "window-transport", "gpu-pack-copy", "worker-surfaces"])
+                                    "surface-navigation", "window-transport", "gpu-pack-copy", "worker-surfaces", "gpu-metadata-codec"])
 def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, target):
     from scripts.verify_native_privacy_units import required_tests, validate_results
 
     report = {"tests": {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12,
-                        "surface-navigation": 42, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55}[target], "failures": 0, "disabled": 0, "testsuites": [
+                        "surface-navigation": 42, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55, "gpu-metadata-codec": 14}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
         for suite, cases in required_tests(target).items()]}
@@ -2572,6 +2572,65 @@ def test_identity_fixture_catalog_matches_all_six_candidate_patches():
         document = path.endswith("document_loader_test.cc")
         identity.require_fixture_definitions(added, "DocumentLoaderTest" if document else "GlintWorkerSurfaceThreadTest",
                                             names, macro="TEST_P" if document else "TEST_F")
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows standalone codec runner")
+@pytest.mark.parametrize("failure", [None, "compile", "missing_case", "input_change", "browser_change"])
+def test_native_metadata_codec_runner_binds_inputs_and_actual_results(tmp_path, monkeypatch, failure):
+    import json
+    import subprocess
+    from scripts import verify_native_gpu_metadata_codec as codec
+
+    workspace = tmp_path / "workspace"
+    source = workspace / "chromium/src"
+    repo = tmp_path / "repo"
+    vs = tmp_path / "vs"
+    files = [source / "gpu/command_buffer/common/gl2_types.h",
+             source / "testing/gtest/include/gtest/gtest.h",
+             source / "third_party/googletest/src/googletest/src/gtest-all.cc",
+             source / "third_party/googletest/src/googletest/src/gtest_main.cc",
+             vs / "Common7/Tools/VsDevCmd.bat", repo / "scripts/verify_native_privacy_units.py",
+             repo / "native/drafts/gpu-transport/glint_readback_metadata.h",
+             repo / "native/drafts/gpu-transport/glint_readback_metadata_unittest.cc",
+             source / "out/CamouFlowNative/args.gn", source / "out/CamouFlowNative/camouflow-build.json"]
+    for path in files:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("synthetic unit input", encoding="utf-8")
+    monkeypatch.setattr(codec, "ROOT", repo)
+    monkeypatch.setattr(codec.build, "environment", lambda *_: {})
+    monkeypatch.setattr(codec.build, "run", lambda *args, **kwargs: codec.build.LOCK["chromium_revision"])
+    measurements = []
+    def measure(*_):
+        measurements.append(True)
+        return {"chrome.exe": "changed" if failure == "browser_change" and len(measurements) > 1 else "unchanged"}
+    monkeypatch.setattr(codec.build, "measure_runtime_core", measure)
+    def run(command, **kwargs):
+        owned = kwargs["cwd"]
+        if command[0] == "cmd.exe":
+            if failure == "compile":
+                raise subprocess.CalledProcessError(1, command)
+            (owned / "metadata-codec-tests.exe").write_bytes(b"synthetic test program")
+            if failure == "input_change":
+                files[2].write_text("changed input", encoding="utf-8")
+        else:
+            required = codec.required_tests("gpu-metadata-codec")
+            names = sorted(required["GlintReadbackMetadataTest"])
+            if failure == "missing_case":
+                names.pop()
+            result = {"tests": len(names), "failures": 0, "disabled": 0,
+                      "testsuites": [{"name": "GlintReadbackMetadataTest", "testsuite": [
+                          {"name": name, "status": "RUN", "result": "COMPLETED"} for name in names]}]}
+            (owned / "tests.json").write_text(json.dumps(result), encoding="utf-8")
+        return subprocess.CompletedProcess(command, 0)
+    monkeypatch.setattr(codec.subprocess, "run", run)
+    report = tmp_path / "codec.json"
+    proof = codec.verify(workspace, report, vs)
+    assert proof["passed"] is (failure is None)
+    assert proof["chromium_target_built"] is False
+    assert proof["privacy_admitted"] is False
+    assert report.is_file()
+    with pytest.raises(ValueError, match="overwrite"):
+        codec.verify(workspace, report, vs)
 
 
 def test_native_error_patch_covers_console_coercion_and_property_preview_paths():

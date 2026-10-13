@@ -225,6 +225,15 @@ def require_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "gpu-metadata-codec":
+        return {"GlintReadbackMetadataTest": {
+            "ByteColourRoundTripPreservesNativeDimensions", "NonByteAndMultisampleInformationIsNotFabricated",
+            "UnavailableCannotBecomeReady", "TruncatedWireNeverReadsMissingFields",
+            "ExtraFieldsAreNotSilentlyAccepted", "SchemaIsExact", "ReadyStatusIsExact",
+            "DimensionsMustBePositive", "InvalidFormatIsNotGuessed", "NegativeSamplesAreRejected",
+            "ByteColourClassificationIsAnExactBoolean", "ByteColourClaimCannotPromoteFloatIntegerOrUnknownFormat",
+            "ByteColourEligibilityPreservesAllSupportedFormats", "ProducerRejectsInvalidRepresentations",
+        }}
     if target == "gpu-readback":
         return REQUIRED_GPU_READBACK_TESTS
     if target == "worker-surfaces":

@@ -88,6 +88,23 @@ Permissions-Policy delegation. The fixture now grants only its exact localhost
 origin and iframe features in strict mode; the failed evidence remains retained.
 These are controlled gates, not external detector or CAPTCHA acceptance.
 
+### Unregistered GPU codec execution — 2026-10-14
+
+**14/14 actual `GlintReadbackMetadataTest` cases passed**, zero failures,
+disabled cases or errors. The standalone executable uses real GoogleTest and
+GL types from the pinned Chromium source, compiled with MSVC C++20 `/O2 /W4 /WX`.
+It checks schema/status, exact wire length, dimensions, format/sample validity,
+byte-colour eligibility and producer rejection. It is not the Chromium GN test
+target, GPU protocol/attachment execution, a driver test or a new browser build.
+
+Proof and raw logs/results remain on D:
+`gpu-metadata-codec-001-048-v3.json` and its `-artifacts` directory.
+Browser core, GN and receipt remained unchanged. The original `/WX` failure on
+signed/unsigned fixture expectations remains recorded; expected GL enums were
+typed explicitly, without suppressing a warning or removing a test. Full draft
+composition and fresh Mojo/GPU generation passed after that fixture-only repair:
+`identity-readback-codec-fixture-001-048-v1.json`.
+
 ### Windows native readback units 001-048 — 2026-10-14
 
 The cached j4 retry linked `blink_unittests.exe` in **1h30m44.64s**, 654 executed
