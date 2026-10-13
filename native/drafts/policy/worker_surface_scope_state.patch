@@ -1,0 +1,22 @@
+diff --git a/third_party/blink/renderer/core/workers/worker_global_scope.h b/third_party/blink/renderer/core/workers/worker_global_scope.h
+--- a/third_party/blink/renderer/core/workers/worker_global_scope.h
++++ b/third_party/blink/renderer/core/workers/worker_global_scope.h
+@@ -144,6 +144,18 @@
+   const KURL& Url() const final;
+ 
+   // Internal C++ only. Captures an owned surface seed for readback work.
++  bool GlintSurfacePolicyRequired() const {
++    DCHECK(IsContextThread());
++    return glint_surface_policy_required_;
++  }
++  bool GlintSurfacePolicyReady() const {
++    DCHECK(IsContextThread());
++    return !glint_surface_policy_required_ || glint_surface_policy_.has_value();
++  }
++  const std::optional<glint::candidate::WorkerSurfacePolicy>& GlintSurfacePolicy() const {
++    DCHECK(IsContextThread());
++    return glint_surface_policy_;
++  }
+   std::optional<std::array<uint8_t, 32>> GlintCanvasPartitionSeed() const {
+     DCHECK(IsContextThread());
+     if (glint_surface_policy_required_) {

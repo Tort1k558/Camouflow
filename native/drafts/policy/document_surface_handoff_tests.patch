@@ -1,0 +1,273 @@
+diff --git a/third_party/blink/renderer/core/loader/document_loader_test.cc b/third_party/blink/renderer/core/loader/document_loader_test.cc
+--- a/third_party/blink/renderer/core/loader/document_loader_test.cc
++++ b/third_party/blink/renderer/core/loader/document_loader_test.cc
+@@ -704,6 +704,269 @@
+   client.Observe(nullptr, KURL());
+ }
+ 
++
++namespace {
++constexpr std::string_view kGlintSurfaceInlineHtml =
++    "<script>document.title = 'glint-surface-inline-ok';</script>";
++
++std::optional<glint::candidate::DocumentSurfacePolicy> GlintSurfaceSnapshot(
++    const StorageKey& partition) {
++  auto encoding = partition.SerializeForNativePrivacy();
++  if (!encoding) {
++    return std::nullopt;
++  }
++  glint::candidate::SurfacePolicy policy;
++  policy.partition_encoding = *encoding;
++  policy.canvas.fill(1);
++  policy.webgl.fill(2);
++  policy.webgpu.fill(3);
++  policy.audio.fill(4);
++  return glint::candidate::DocumentSurfacePolicy{partition, std::move(policy)};
++}
++
++std::unique_ptr<WebNavigationParams> GlintSurfaceFixtureParams(
++    std::string_view html = kGlintSurfaceInlineHtml) {
++  const KURL url(NullUrl(), "https://surface.test/document");
++  auto params = WebNavigationParams::CreateWithHTMLStringForTesting(base::span(html), WebURL(url));
++  params->origin_to_commit = WebSecurityOrigin::Create(WebURL(url));
++  params->storage_key = StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://surface.test/")));
++  params->glint_document_surface_policy_required = true;
++  params->glint_document_surface_policy = GlintSurfaceSnapshot(params->storage_key);
++  return params;
++}
++
++void CommitGlintSurfaceFixture(WebLocalFrameImpl* frame,
++                              std::unique_ptr<WebNavigationParams> params) {
++  frame->GetFrame()->Loader().CommitNavigation(std::move(params), nullptr);
++  frame_test_helpers::PumpPendingRequestsForFrameToLoad(frame);
++}
++
++void ExpectRejectedGlintSurfaceFixture(WebLocalFrameImpl* frame,
++                                     std::unique_ptr<WebNavigationParams> params) {
++  CommitGlintSurfaceFixture(frame, std::move(params));
++  const auto* document = frame->GetFrame()->GetDocument();
++  EXPECT_TRUE(document->GlintSurfacePolicyRequired());
++  EXPECT_FALSE(document->GlintSurfacePolicyReady());
++  EXPECT_FALSE(document->GlintCanvasPartitionSeed());
++  EXPECT_FALSE(document->GlintWebGLPartitionSeed());
++  EXPECT_FALSE(document->GlintWebGPUPartitionSeed());
++  EXPECT_FALSE(document->GlintAudioPartitionSeed());
++  EXPECT_TRUE(document->title().empty());
++  EXPECT_FALSE(frame->GetFrame()->DomWindow()->CanExecuteScripts(kAboutToExecuteScript));
++}
++
++class GlintSurfaceBeforeScriptClient final : public frame_test_helpers::TestWebFrameClient {
++ public:
++  void Observe(WebLocalFrameImpl* frame) { frame_ = frame; }
++  void DidCreateScriptContext(v8::Local<v8::Context>, int32_t world_id) override {
++    if (world_id == DOMWrapperWorld::kMainWorldId) Record();
++  }
++  void DidClearWindowObject() override { Record(); }
++  std::vector<glint::candidate::DocumentSurfacePolicy> snapshots;
++  std::vector<String> titles;
++  std::vector<bool> readiness;
++
++ private:
++  void Record() {
++    if (!frame_ || !frame_->GetFrame()) return;
++    const auto* document = frame_->GetFrame()->GetDocument();
++    if (document->Url() != KURL(NullUrl(), "https://surface.test/document")) return;
++    readiness.push_back(document->GlintSurfacePolicyReady());
++    titles.push_back(document->title());
++    if (document->GlintSurfacePolicy()) snapshots.push_back(*document->GlintSurfacePolicy());
++  }
++  WeakPersistent<WebLocalFrameImpl> frame_;
++};
++}  // namespace
++
++TEST_P(DocumentLoaderTest, GlintSurfacesOwnAllSeedsBeforeFirstInlineScript) {
++  GlintSurfaceBeforeScriptClient client;
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize(&client);
++  auto* frame = helper.LocalMainFrame();
++  client.Observe(frame);
++  auto params = GlintSurfaceFixtureParams();
++  ASSERT_TRUE(params->glint_document_surface_policy);
++  const auto expected = *params->glint_document_surface_policy;
++  CommitGlintSurfaceFixture(frame, std::move(params));
++  ASSERT_FALSE(client.snapshots.empty());
++  ASSERT_EQ(client.snapshots.size(), client.titles.size());
++  ASSERT_EQ(client.snapshots.size(), client.readiness.size());
++  for (size_t i = 0; i < client.snapshots.size(); ++i) {
++    EXPECT_TRUE(client.readiness[i]);
++    EXPECT_TRUE(client.titles[i].empty());
++    EXPECT_EQ(client.snapshots[i].policy.canvas, expected.policy.canvas);
++    EXPECT_EQ(client.snapshots[i].policy.webgl, expected.policy.webgl);
++    EXPECT_EQ(client.snapshots[i].policy.webgpu, expected.policy.webgpu);
++    EXPECT_EQ(client.snapshots[i].policy.audio, expected.policy.audio);
++  }
++  EXPECT_EQ(frame->GetFrame()->GetDocument()->title(), "glint-surface-inline-ok");
++  client.Observe(nullptr);
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesOffKeepsUpstreamInlineScript) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_surface_policy_required = false;
++  params->glint_document_surface_policy.reset();
++  CommitGlintSurfaceFixture(helper.LocalMainFrame(), std::move(params));
++  const auto* document = helper.LocalMainFrame()->GetFrame()->GetDocument();
++  EXPECT_FALSE(document->GlintSurfacePolicyRequired());
++  EXPECT_TRUE(document->GlintSurfacePolicyReady());
++  EXPECT_FALSE(document->GlintAudioPartitionSeed());
++  EXPECT_EQ(document->title(), "glint-surface-inline-ok");
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesMissingRequiredBundleDoesNotRunScript) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_surface_policy.reset();
++  ExpectRejectedGlintSurfaceFixture(helper.LocalMainFrame(), std::move(params));
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesDifferentFinalPartitionDoesNotRunScript) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_surface_policy = GlintSurfaceSnapshot(
++      StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://other.test/"))));
++  ExpectRejectedGlintSurfaceFixture(helper.LocalMainFrame(), std::move(params));
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesWrongVersionDoesNotRunScript) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto params = GlintSurfaceFixtureParams();
++  ASSERT_TRUE(params->glint_document_surface_policy);
++  params->glint_document_surface_policy->policy.version = 1;
++  ExpectRejectedGlintSurfaceFixture(helper.LocalMainFrame(), std::move(params));
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesReusedDomainDoesNotRunScript) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto params = GlintSurfaceFixtureParams();
++  ASSERT_TRUE(params->glint_document_surface_policy);
++  params->glint_document_surface_policy->policy.audio = params->glint_document_surface_policy->policy.canvas;
++  ExpectRejectedGlintSurfaceFixture(helper.LocalMainFrame(), std::move(params));
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesLegacySeedCannotSubstituteForRequiredBundle) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_canvas_commit = std::make_unique<GlintDocumentCanvasCommit>();
++  ExpectRejectedGlintSurfaceFixture(helper.LocalMainFrame(), std::move(params));
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesInvalidPayloadCannotClearRequirement) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto params = GlintSurfaceFixtureParams();
++  ASSERT_TRUE(params->glint_document_surface_policy);
++  params->glint_document_surface_policy_required = false;
++  params->glint_document_surface_policy->policy.version = 1;
++  ExpectRejectedGlintSurfaceFixture(helper.LocalMainFrame(), std::move(params));
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesCloneOwnsAllDomainsWithoutCanvasFallback) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  CommitGlintSurfaceFixture(frame, GlintSurfaceFixtureParams());
++  auto clone = frame->GetFrame()->Loader().GetDocumentLoader()->CreateWebNavigationParamsToCloneDocument();
++  ASSERT_TRUE(clone->glint_document_surface_policy);
++  EXPECT_TRUE(clone->glint_document_surface_policy_required);
++  EXPECT_FALSE(clone->glint_document_canvas_commit);
++  const auto expected_audio = clone->glint_document_surface_policy->policy.audio;
++  clone->glint_document_surface_policy->policy.audio.fill(255);
++  EXPECT_EQ(frame->GetFrame()->GetDocument()->GlintAudioPartitionSeed(), std::optional(expected_audio));
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesJavascriptReplacementKeepsOwnedPolicy) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  CommitGlintSurfaceFixture(frame, GlintSurfaceFixtureParams());
++  const auto expected = frame->GetFrame()->GetDocument()->GlintSurfacePolicy();
++  ASSERT_TRUE(expected);
++  auto clone = frame->GetFrame()->Loader().GetDocumentLoader()->CreateWebNavigationParamsToCloneDocument();
++  constexpr std::string_view html = "<script>document.title='glint-clone-script-ok';</script>";
++  WebNavigationParams::FillStaticResponse(clone.get(), "text/html", "UTF-8", base::span(html));
++  frame->GetFrame()->Loader().CommitNavigation(std::move(clone), nullptr, CommitReason::kJavascriptUrl);
++  frame_test_helpers::PumpPendingRequestsForFrameToLoad(frame);
++  EXPECT_TRUE(frame->GetFrame()->GetDocument()->GlintSurfacePolicyReady());
++  EXPECT_EQ(frame->GetFrame()->GetDocument()->GlintAudioPartitionSeed(), std::optional(expected->policy.audio));
++  EXPECT_EQ(frame->GetFrame()->GetDocument()->title(), "glint-clone-script-ok");
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesInvalidCloneRemainsRequiredAndMissing) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_surface_policy.reset();
++  ExpectRejectedGlintSurfaceFixture(frame, std::move(params));
++  auto clone = frame->GetFrame()->Loader().GetDocumentLoader()->CreateWebNavigationParamsToCloneDocument();
++  EXPECT_TRUE(clone->glint_document_surface_policy_required);
++  EXPECT_FALSE(clone->glint_document_surface_policy);
++  EXPECT_FALSE(clone->glint_document_canvas_commit);
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesLateRejectionIsInertReplacementNotRollback) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  CommitGlintSurfaceFixture(frame, GlintSurfaceFixtureParams());
++  EXPECT_EQ(frame->GetFrame()->GetDocument()->title(), "glint-surface-inline-ok");
++  auto next = GlintSurfaceFixtureParams();
++  next->glint_document_surface_policy.reset();
++  ExpectRejectedGlintSurfaceFixture(frame, std::move(next));
++  EXPECT_TRUE(frame->GetFrame()->GetDocument()->title().empty());
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesInitialBlankChildInheritsExactParentPartition) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  constexpr std::string_view html = "<iframe></iframe>";
++  CommitGlintSurfaceFixture(frame, GlintSurfaceFixtureParams(html));
++  auto* child = DynamicTo<LocalFrame>(frame->GetFrame()->Tree().FirstChild());
++  ASSERT_TRUE(child);
++  EXPECT_TRUE(child->GetDocument()->GlintSurfacePolicyRequired());
++  EXPECT_TRUE(child->GetDocument()->GlintSurfacePolicyReady());
++  EXPECT_EQ(child->GetDocument()->GlintAudioPartitionSeed(), frame->GetFrame()->GetDocument()->GlintAudioPartitionSeed());
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesSrcdocChildInheritsBeforeItsFirstScript) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  constexpr std::string_view html = R"HTML(<iframe srcdoc="<script>document.title='glint-child-ok';</script>"></iframe>)HTML";
++  CommitGlintSurfaceFixture(frame, GlintSurfaceFixtureParams(html));
++  auto* child = DynamicTo<LocalFrame>(frame->GetFrame()->Tree().FirstChild());
++  ASSERT_TRUE(child);
++  EXPECT_TRUE(child->GetDocument()->GlintSurfacePolicyReady());
++  EXPECT_EQ(child->GetDocument()->GlintAudioPartitionSeed(), frame->GetFrame()->GetDocument()->GlintAudioPartitionSeed());
++  EXPECT_EQ(child->GetDocument()->title(), "glint-child-ok");
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfacesSandboxedSrcdocCannotBorrowParentIdentity) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  constexpr std::string_view html = R"HTML(<iframe sandbox="allow-scripts" srcdoc="<script>document.title='glint-child-ran';</script>"></iframe>)HTML";
++  CommitGlintSurfaceFixture(frame, GlintSurfaceFixtureParams(html));
++  auto* child = DynamicTo<LocalFrame>(frame->GetFrame()->Tree().FirstChild());
++  ASSERT_TRUE(child);
++  EXPECT_TRUE(child->GetDocument()->GlintSurfacePolicyRequired());
++  EXPECT_FALSE(child->GetDocument()->GlintSurfacePolicyReady());
++  EXPECT_FALSE(child->GetDocument()->GlintAudioPartitionSeed());
++  EXPECT_TRUE(child->GetDocument()->title().empty());
++}
++
+ TEST_P(DocumentLoaderTest, GlintCanvasCommitInstallsOwnedDocumentSeed) {
+   WebViewImpl* view =
+       web_view_helper_.InitializeAndLoad("https://example.com/foo.html");

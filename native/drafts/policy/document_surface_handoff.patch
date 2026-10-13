@@ -1,0 +1,248 @@
+diff --git a/third_party/blink/renderer/core/dom/document_init.h b/third_party/blink/renderer/core/dom/document_init.h
+--- a/third_party/blink/renderer/core/dom/document_init.h
++++ b/third_party/blink/renderer/core/dom/document_init.h
+@@ -35,6 +35,7 @@
+ 
+ #include "base/dcheck_is_on.h"
+ #include "base/uuid.h"
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
+ #include "services/metrics/public/cpp/ukm_source_id.h"
+ #include "third_party/blink/public/common/tokens/tokens.h"
+ #include "third_party/blink/renderer/core/core_export.h"
+@@ -113,6 +114,14 @@
+     return glint_canvas_partition_seed_;
+   }
+ 
++  DocumentInit& WithGlintSurfacePolicy(
++      std::optional<glint::candidate::DocumentSurfacePolicy> policy,
++      bool required);
++  bool GlintSurfacePolicyRequired() const { return glint_surface_policy_required_; }
++  const std::optional<glint::candidate::DocumentSurfacePolicy>& GlintSurfacePolicy() const {
++    return glint_surface_policy_;
++  }
++
+   DocumentInit& WithToken(const DocumentToken& token);
+   const std::optional<DocumentToken>& GetToken() const;
+ 
+@@ -173,6 +182,8 @@
+   LocalDOMWindow* window_ = nullptr;
+   std::optional<DocumentToken> token_;
+   std::optional<std::array<uint8_t, 32>> glint_canvas_partition_seed_;
++  bool glint_surface_policy_required_ = false;
++  std::optional<glint::candidate::DocumentSurfacePolicy> glint_surface_policy_;
+   ExecutionContext* execution_context_ = nullptr;
+   KURL url_;
+   Document* owner_document_ = nullptr;
+diff --git a/third_party/blink/renderer/core/dom/document_init.cc b/third_party/blink/renderer/core/dom/document_init.cc
+--- a/third_party/blink/renderer/core/dom/document_init.cc
++++ b/third_party/blink/renderer/core/dom/document_init.cc
+@@ -29,6 +29,8 @@
+ 
+ #include "third_party/blink/renderer/core/dom/document_init.h"
+ 
++#include <utility>
++
+ #include "base/uuid.h"
+ #include "services/metrics/public/cpp/ukm_source_id.h"
+ #include "third_party/blink/public/common/tokens/tokens.h"
+@@ -136,6 +138,14 @@
+     const std::array<uint8_t, 32>& seed) {
+   CHECK(!glint_canvas_partition_seed_.has_value());
+   glint_canvas_partition_seed_ = seed;
++  return *this;
++}
++
++DocumentInit& DocumentInit::WithGlintSurfacePolicy(
++    std::optional<glint::candidate::DocumentSurfacePolicy> policy,
++    bool required) {
++  glint_surface_policy_required_ = required || policy.has_value();
++  glint_surface_policy_ = std::move(policy);
+   return *this;
+ }
+ 
+diff --git a/third_party/blink/renderer/core/dom/document.h b/third_party/blink/renderer/core/dom/document.h
+--- a/third_party/blink/renderer/core/dom/document.h
++++ b/third_party/blink/renderer/core/dom/document.h
+@@ -50,6 +50,7 @@
+ #include "services/network/public/mojom/restricted_cookie_manager.mojom-blink-forward.h"
+ #include "services/network/public/mojom/web_sandbox_flags.mojom-blink-forward.h"
+ #include "third_party/blink/public/common/metrics/document_update_reason.h"
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
+ #include "third_party/blink/public/common/tokens/tokens.h"
+ #include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-blink-forward.h"
+ #include "third_party/blink/public/mojom/css/preferred_contrast.mojom-blink-forward.h"
+@@ -980,8 +981,28 @@
+ 
+   bool WellFormed() const { return well_formed_; }
+ 
++  bool GlintSurfacePolicyRequired() const { return glint_surface_policy_required_; }
++  bool GlintSurfacePolicyReady() const {
++    return !glint_surface_policy_required_ || glint_surface_policy_.has_value();
++  }
++  const std::optional<glint::candidate::DocumentSurfacePolicy>& GlintSurfacePolicy() const {
++    return glint_surface_policy_;
++  }
+   std::optional<std::array<uint8_t, 32>> GlintCanvasPartitionSeed() const {
++    if (glint_surface_policy_required_) {
++      return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.canvas)
++                                   : std::nullopt;
++    }
+     return glint_canvas_partition_seed_;
++  }
++  std::optional<std::array<uint8_t, 32>> GlintWebGLPartitionSeed() const {
++    return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.webgl) : std::nullopt;
++  }
++  std::optional<std::array<uint8_t, 32>> GlintWebGPUPartitionSeed() const {
++    return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.webgpu) : std::nullopt;
++  }
++  std::optional<std::array<uint8_t, 32>> GlintAudioPartitionSeed() const {
++    return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.audio) : std::nullopt;
+   }
+ 
+   const DocumentToken& Token() const {
+@@ -2691,6 +2712,8 @@
+   // in unit tests).
+   Member<ExecutionContext> execution_context_;
+   const std::optional<std::array<uint8_t, 32>> glint_canvas_partition_seed_;
++  const bool glint_surface_policy_required_;
++  const std::optional<glint::candidate::DocumentSurfacePolicy> glint_surface_policy_;
+ 
+   // Documents should always have an agent.
+   Member<Agent> agent_;
+diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink/renderer/core/dom/document.cc
+--- a/third_party/blink/renderer/core/dom/document.cc
++++ b/third_party/blink/renderer/core/dom/document.cc
+@@ -974,6 +974,13 @@
+       dom_window_(initializer.GetWindow()),
+       execution_context_(initializer.GetExecutionContext()),
+       glint_canvas_partition_seed_(initializer.GlintCanvasPartitionSeed()),
++      glint_surface_policy_required_(initializer.GlintSurfacePolicyRequired() ||
++                                     initializer.GlintSurfacePolicy().has_value()),
++      glint_surface_policy_(initializer.GetWindow() &&
++          glint::candidate::ValidateDocumentSurfacePolicy(
++              initializer.GlintSurfacePolicy(), initializer.GetWindow()->GetStorageKey(),
++              glint_surface_policy_required_, glint_canvas_partition_seed_.has_value())
++              ? initializer.GlintSurfacePolicy() : std::nullopt),
+       agent_(initializer.GetAgent()),
+       http_refresh_scheduler_(MakeGarbageCollected<HttpRefreshScheduler>(this)),
+       fallback_base_url_(initializer.FallbackBaseURL()),
+diff --git a/third_party/blink/renderer/core/frame/local_dom_window.cc b/third_party/blink/renderer/core/frame/local_dom_window.cc
+--- a/third_party/blink/renderer/core/frame/local_dom_window.cc
++++ b/third_party/blink/renderer/core/frame/local_dom_window.cc
+@@ -468,6 +468,9 @@
+ 
+   // Detached frames should not be attempting to execute script.
+   DCHECK(!GetFrame()->IsDetached());
++  if (document_ && !document_->GlintSurfacePolicyReady()) {
++    return false;
++  }
+ 
+   // Normally, scripts are not allowed in sandboxed contexts that disallow them.
+   // However, there is an exception for cases when the script should bypass the
+diff --git a/third_party/blink/renderer/core/loader/document_loader.h b/third_party/blink/renderer/core/loader/document_loader.h
+--- a/third_party/blink/renderer/core/loader/document_loader.h
++++ b/third_party/blink/renderer/core/loader/document_loader.h
+@@ -46,6 +46,7 @@
+ #include "third_party/blink/public/common/frame/view_transition_state.h"
+ #include "third_party/blink/public/common/loader/loading_behavior_flag.h"
+ #include "third_party/blink/public/common/native_privacy/document_canvas_commit.h"
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
+ #include "third_party/blink/public/common/permissions_policy/document_policy.h"
+ #include "third_party/blink/public/common/scheduler/task_attribution_id.h"
+ #include "third_party/blink/public/common/subresource_load_metrics.h"
+@@ -712,6 +713,9 @@
+ 
+   blink::BlinkStorageKey storage_key_;
+   std::unique_ptr<GlintDocumentCanvasCommit> glint_document_canvas_commit_;
++  const bool glint_document_surface_payload_required_;
++  const bool glint_document_surface_policy_required_;
++  std::optional<glint::candidate::DocumentSurfacePolicy> glint_document_surface_policy_;
+ 
+   WebNavigationType navigation_type_;
+ 
+diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
+--- a/third_party/blink/renderer/core/loader/document_loader.cc
++++ b/third_party/blink/renderer/core/loader/document_loader.cc
+@@ -37,6 +37,7 @@
+ #include <utility>
+ 
+ #include "base/auto_reset.h"
++#include "base/command_line.h"
+ #include "base/containers/flat_map.h"
+ #include "base/containers/to_vector.h"
+ #include "base/debug/crash_logging.h"
+@@ -384,6 +385,9 @@
+   scoped_refptr<SecurityOrigin> origin_to_commit;
+   BlinkStorageKey storage_key;
+   std::unique_ptr<GlintDocumentCanvasCommit> glint_document_canvas_commit;
++  bool glint_document_surface_payload_required;
++  bool glint_document_surface_policy_required;
++  std::optional<glint::candidate::DocumentSurfacePolicy> glint_document_surface_policy;
+   WebNavigationType navigation_type;
+   DocumentLoadTiming document_load_timing;
+   base::TimeTicks time_of_last_data_received;
+@@ -581,6 +585,11 @@
+       storage_key_(std::move(params_->storage_key)),
+       glint_document_canvas_commit_(
+           std::move(params_->glint_document_canvas_commit)),
++      glint_document_surface_payload_required_(params_->glint_document_surface_policy_required),
++      glint_document_surface_policy_required_(
++          params_->glint_document_surface_policy_required ||
++          base::CommandLine::ForCurrentProcess()->HasSwitch("glint-document-surface-bootstrap-test")),
++      glint_document_surface_policy_(std::move(params_->glint_document_surface_policy)),
+       navigation_type_(navigation_type),
+       document_load_timing_(*this),
+       service_worker_network_provider_(
+@@ -744,7 +753,10 @@
+   // sandbox flags and various policies are copied separately during commit in
+   // CommitNavigation() and CalculateSandboxFlags().
+   params->storage_key = window->GetStorageKey();
+-  if (auto seed = frame_->GetDocument()->GlintCanvasPartitionSeed()) {
++  if (frame_->GetDocument()->GlintSurfacePolicyRequired()) {
++    params->glint_document_surface_policy_required = true;
++    params->glint_document_surface_policy = frame_->GetDocument()->GlintSurfacePolicy();
++  } else if (auto seed = frame_->GetDocument()->GlintCanvasPartitionSeed()) {
+     auto encoding = params->storage_key.SerializeForNativePrivacy();
+     CHECK(encoding);
+     params->glint_document_canvas_commit =
+@@ -3025,7 +3037,25 @@
+           .WithFallbackBaseURL(fallback_base_url_)
+           .WithUkmSourceId(ukm_source_id_)
+           .WithBaseAuctionNonce(base_auction_nonce_);
+-  if (glint_document_canvas_commit_) {
++  if (glint_document_surface_policy_required_ || glint_document_surface_policy_ ||
++      (owner_document && owner_document->GlintSurfacePolicyRequired())) {
++    auto policy = std::move(glint_document_surface_policy_);
++    if (!policy && !glint_document_surface_payload_required_ &&
++        !glint_document_canvas_commit_ && owner_document &&
++        owner_document->GlintSurfacePolicyRequired() &&
++        glint::candidate::ValidateDocumentSurfacePolicy(
++            owner_document->GlintSurfacePolicy(), frame_->DomWindow()->GetStorageKey(),
++            true, false)) {
++      // Only exact-partition inheritance is allowed, never a new derivation or
++      // a fallback for a supplied but inconsistent browser payload.
++      policy = owner_document->GlintSurfacePolicy();
++    }
++    if (glint_document_canvas_commit_) {
++      policy.reset();
++    }
++    document_init.WithGlintSurfacePolicy(std::move(policy), true);
++    glint_document_canvas_commit_.reset();
++  } else if (glint_document_canvas_commit_) {
+     const auto& policy = *glint_document_canvas_commit_;
+     auto validated_seed = ValidateGlintDocumentCanvasPolicy(
+         policy.version, policy.partition_encoding, policy.partition_seed,
+@@ -3036,6 +3066,13 @@
+     glint_document_canvas_commit_.reset();
+   }
+   Document* document = frame_->DomWindow()->InstallNewDocument(document_init);
++  if (!document->GlintSurfacePolicyReady()) {
++    // Final-origin rejection is fail-closed, not recovery of the unloaded page.
++    frame_->DomWindow()->AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(
++        mojom::blink::ConsoleMessageSource::kSecurity,
++        mojom::blink::ConsoleMessageLevel::kError,
++        "Glint document policy was rejected before script execution."));
++  }
+ 
+   RecordUseCountersForCommit();
+   RecordConsoleMessagesForCommit();

@@ -42,7 +42,8 @@ def test_next_batch_patch_coverage_and_canonical_sources():
         # Endpoint/consumer follow-ups intentionally extend the same legacy mock.
         overlap = paths & current_paths
         assert overlap.issubset({"content/renderer/worker/privacy_worker_bootstrap_unittest.cc",
-                                 "content/test/BUILD.gn", "content/browser/BUILD.gn"})
+                                 "content/test/BUILD.gn", "content/browser/BUILD.gn",
+                                 "third_party/blink/renderer/core/workers/worker_global_scope.h"})
         paths.update(current_paths)
         additions.update(added_sources(text))
     assert paths == EXISTING_PATHS | set(CANONICAL.values())
@@ -159,3 +160,74 @@ def test_document_surface_producer_reuses_selected_partition_and_existing_key_se
     names = re.findall(r"TEST_F\(GlintDocumentSurfaceProducerTest, (\w+)\)", fixture)
     assert len(names) == len(set(names)) == 8
     assert "MalformedIdentityCannotProduceOrRegenerateCommit" in names
+
+
+def test_surface_bootstrap_flags_are_forwarded_to_renderer_processes():
+    text = (DRAFTS / "policy/surface_bootstrap_switches.patch").read_text(encoding="utf-8-sig")
+    for flag in ("glint-worker-canvas-bootstrap-test", "glint-worker-surface-bootstrap-test",
+                 "glint-document-canvas-bootstrap-test", "glint-document-surface-bootstrap-test"):
+        assert f'+      "{flag}"' in text
+    assert "renderer_cmd->CopySwitchesFrom(browser_cmd, glint_bootstrap_test_switches);" in text
+
+
+def test_document_surface_transport_is_explicit_and_rejects_before_lifecycle_mutation():
+    text = (DRAFTS / "policy/document_surface_transport.patch").read_text(encoding="utf-8-sig")
+    assert "+  GlintSurfacePolicyCommit? glint_document_surface_commit;" in text
+    assert "+  bool glint_document_surface_policy_required = false;" in text
+    assert text.count("+          nullptr /* glint_document_surface_commit */,") == 4
+    assert text.count("+          false /* glint_document_surface_policy_required */,") == 4
+    assert "CreateDocumentSurfacePolicyCommit(" in text
+    assert "+  std::optional<glint::candidate::DocumentSurfacePolicy> document_surface_policy;" in text
+    assert "+    if (!document_surface_policy) {" in text
+    assert "+      AbortClientNavigationImpl(/*for_new_navigation=*/false);" in text
+    assert "+  navigation_params->glint_document_surface_policy = std::move(document_surface_policy);" in text
+    assert "+         !request->commit_params().glint_document_surface_policy_required)) {" in text
+    assert "+  const auto node_id = rejected->frame_tree_node()->frame_tree_node_id();" in text
+    assert "+  if (auto* node = FrameTreeNode::GloballyFindByID(node_id)) {" in text
+
+
+def test_document_surface_handoff_keeps_final_origin_semantics_and_has_no_new_check():
+    text = (DRAFTS / "policy/document_surface_handoff.patch").read_text(encoding="utf-8-sig")
+    assert "+          glint::candidate::ValidateDocumentSurfacePolicy(" in text
+    assert "+              initializer.GlintSurfacePolicy(), initializer.GetWindow()->GetStorageKey()," in text
+    assert "+  if (document_ && !document_->GlintSurfacePolicyReady()) {" in text
+    assert "+    if (!policy && !glint_document_surface_payload_required_ &&" in text
+    assert "+    document_init.WithGlintSurfacePolicy(std::move(policy), true);" in text
+    assert "+  if (frame_->GetDocument()->GlintSurfacePolicyRequired()) {" in text
+    assert "+    params->glint_document_surface_policy = frame_->GetDocument()->GlintSurfacePolicy();" in text
+    additions = "\n".join(line[1:] for line in text.splitlines() if line.startswith("+") and not line.startswith("+++"))
+    assert "CHECK(" not in additions and "CalculateOrigin(" not in additions
+
+
+def test_document_surface_first_script_and_inheritance_fixture_definitions_are_complete():
+    text = (DRAFTS / "policy/document_surface_handoff_tests.patch").read_text(encoding="utf-8-sig")
+    names = re.findall(r"\+TEST_P\(DocumentLoaderTest, (\w+)\)", text)
+    assert len(names) == len(set(names)) == 15
+    for name in ("GlintSurfacesOwnAllSeedsBeforeFirstInlineScript",
+                 "GlintSurfacesInitialBlankChildInheritsExactParentPartition",
+                 "GlintSurfacesSrcdocChildInheritsBeforeItsFirstScript",
+                 "GlintSurfacesSandboxedSrcdocCannotBorrowParentIdentity",
+                 "GlintSurfacesLateRejectionIsInertReplacementNotRollback"):
+        assert name in names
+    assert "+  EXPECT_FALSE(frame->GetFrame()->DomWindow()->CanExecuteScripts(kAboutToExecuteScript));" in text
+
+
+def test_document_surface_navigation_fixtures_cover_readiness_and_selected_tokens():
+    text = (DRAFTS / "policy/document_surface_navigation_tests.patch").read_text(encoding="utf-8-sig")
+    readiness = re.findall(r"\+TEST_F\(NativeDocumentSurfaceReadinessTest, (\w+)\)", text)
+    navigation = re.findall(r"\+TEST_P\(NativeDocumentNavigationTest, (Surface\w+)\)", text)
+    assert len(readiness) == len(set(readiness)) == 6
+    assert len(navigation) == len(set(navigation)) == 8
+    assert "DeadlineRejectsLateReplyWithoutCanvasFallback" in readiness
+    assert "SurfaceStaleRejectedTokenCannotCancelNextNavigation" in navigation
+    assert "SurfaceConflictingFlagsRejectEvenReadyContext" in navigation
+    assert "SurfaceFlagOffCannotCarryPriorNavigationEnvelope" in navigation
+    assert "SurfaceRejectionObserverMayDestroyWebContents" in navigation
+
+
+def test_worker_surface_consumers_can_distinguish_flag_off_from_missing_required_policy():
+    text = (DRAFTS / "policy/worker_surface_scope_state.patch").read_text(encoding="utf-8-sig")
+    assert "+  bool GlintSurfacePolicyRequired() const {" in text
+    assert "+  bool GlintSurfacePolicyReady() const {" in text
+    assert "+    return !glint_surface_policy_required_ || glint_surface_policy_.has_value();" in text
+    assert text.count("+    DCHECK(IsContextThread());") == 3

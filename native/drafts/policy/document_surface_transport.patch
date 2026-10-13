@@ -1,0 +1,260 @@
+diff --git a/third_party/blink/public/mojom/navigation/navigation_params.mojom b/third_party/blink/public/mojom/navigation/navigation_params.mojom
+--- a/third_party/blink/public/mojom/navigation/navigation_params.mojom
++++ b/third_party/blink/public/mojom/navigation/navigation_params.mojom
+@@ -42,6 +42,7 @@
+ import "services/network/public/mojom/permissions_policy/permissions_policy.mojom";
+ import "third_party/blink/public/mojom/runtime_feature_state/runtime_feature.mojom";
+ import "third_party/blink/public/mojom/storage_key/storage_key.mojom";
++import "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom";
+ import "third_party/blink/public/mojom/tokens/tokens.mojom";
+ import "url/mojom/origin.mojom";
+ import "url/mojom/url.mojom";
+@@ -411,6 +412,9 @@
+ 
+   // Absence retains the upstream path; admission requires a browser producer.
+   GlintDocumentCanvasCommit? glint_document_canvas_commit;
++  // Developer-only v2 is explicit; a missing bundle cannot mean flag-off.
++  GlintSurfacePolicyCommit? glint_document_surface_commit;
++  bool glint_document_surface_policy_required = false;
+ 
+   // Whether or not the user agent override string should be used.
+   bool is_overriding_user_agent = false;
+diff --git a/content/browser/camouflow_native/privacy_navigation_throttle.h b/content/browser/camouflow_native/privacy_navigation_throttle.h
+--- a/content/browser/camouflow_native/privacy_navigation_throttle.h
++++ b/content/browser/camouflow_native/privacy_navigation_throttle.h
+@@ -6,6 +6,7 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/timer/timer.h"
+ #include "content/public/browser/navigation_throttle.h"
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
+ 
+ namespace content {
+ class BrowserContext;
+@@ -13,6 +14,11 @@
+ 
+ inline constexpr char kGlintDocumentPrivacyBootstrapSwitch[] =
+     "glint-document-canvas-bootstrap-test";
++inline constexpr char kGlintDocumentSurfaceBootstrapSwitch[] =
++    "glint-document-surface-bootstrap-test";
++
++CONTENT_EXPORT glint::candidate::DocumentPrivacyBootstrapMode
++GetGlintDocumentPrivacyBootstrapMode();
+ 
+ class CONTENT_EXPORT PrivacyNavigationThrottle final : public NavigationThrottle {
+  public:
+diff --git a/content/browser/camouflow_native/privacy_navigation_throttle.cc b/content/browser/camouflow_native/privacy_navigation_throttle.cc
+--- a/content/browser/camouflow_native/privacy_navigation_throttle.cc
++++ b/content/browser/camouflow_native/privacy_navigation_throttle.cc
+@@ -14,6 +14,13 @@
+ #include "content/public/browser/web_contents.h"
+ 
+ namespace content {
++
++glint::candidate::DocumentPrivacyBootstrapMode GetGlintDocumentPrivacyBootstrapMode() {
++  const auto* command = base::CommandLine::ForCurrentProcess();
++  return glint::candidate::SelectDocumentPrivacyBootstrapMode(
++      command->HasSwitch(kGlintDocumentPrivacyBootstrapSwitch),
++      command->HasSwitch(kGlintDocumentSurfaceBootstrapSwitch));
++}
+ 
+ PrivacyNavigationThrottle::PrivacyNavigationThrottle(
+     NavigationThrottleRegistry& registry)
+@@ -38,9 +45,12 @@
+ 
+ NavigationThrottle::ThrottleCheckResult
+ PrivacyNavigationThrottle::CheckReadiness() {
+-  if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
+-          kGlintDocumentPrivacyBootstrapSwitch)) {
++  const auto mode = GetGlintDocumentPrivacyBootstrapMode();
++  if (mode == glint::candidate::DocumentPrivacyBootstrapMode::kOff) {
+     return PROCEED;
++  }
++  if (mode == glint::candidate::DocumentPrivacyBootstrapMode::kConflict) {
++    return CANCEL_AND_IGNORE;
+   }
+   CHECK(!pending_);
+   if (!context_ || context_->ShutdownStarted()) {
+diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
+--- a/content/browser/renderer_host/navigation_request.cc
++++ b/content/browser/renderer_host/navigation_request.cc
+@@ -52,6 +52,7 @@
+ #include "content/browser/blob_storage/chrome_blob_storage_context.h"
+ #include "content/browser/browsing_topics/header_util.h"
+ #include "content/browser/camouflow_native/privacy_document_commit.h"
++#include "content/browser/camouflow_native/glint/document_surface_commit_producer.h"
+ #include "content/browser/camouflow_native/privacy_navigation_throttle.h"
+ #include "content/browser/child_process_security_policy_impl.h"
+ #include "content/browser/client_hints/client_hints.h"
+@@ -1443,7 +1444,9 @@
+           // The correct storage key will be computed before committing the
+           // navigation.
+           blink::StorageKey(),
+-          nullptr /* glint_document_canvas_commit */, override_user_agent,
++          nullptr /* glint_document_canvas_commit */,
++          nullptr /* glint_document_surface_commit */,
++          false /* glint_document_surface_policy_required */, override_user_agent,
+           /*redirects=*/std::vector<GURL>(),
+           /*redirect_response=*/
+           std::vector<network::mojom::URLResponseHeadPtr>(),
+@@ -1605,6 +1608,8 @@
+           // NavigationRequest below.
+           blink::StorageKey(),
+           nullptr /* glint_document_canvas_commit */,
++          nullptr /* glint_document_surface_commit */,
++          false /* glint_document_surface_policy_required */,
+           is_overriding_user_agent, redirects,
+           /*redirect_response=*/
+           std::vector<network::mojom::URLResponseHeadPtr>(),
+@@ -6729,8 +6734,28 @@
+   commit_params_->storage_key = GetRenderFrameHost()->CalculateStorageKey(
+       origin_to_commit, base::OptionalToPtr(nonce));
+   commit_params_->glint_document_canvas_commit.reset();
+-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+-          kGlintDocumentPrivacyBootstrapSwitch)) {
++  commit_params_->glint_document_surface_commit.reset();
++  commit_params_->glint_document_surface_policy_required = false;
++  const auto privacy_mode = GetGlintDocumentPrivacyBootstrapMode();
++  if (privacy_mode == glint::candidate::DocumentPrivacyBootstrapMode::kConflict) {
++    OnRequestFailedInternal(network::URLLoaderCompletionStatus(net::ERR_ABORTED),
++                            true, std::nullopt, false);
++    return;
++  }
++  if (privacy_mode == glint::candidate::DocumentPrivacyBootstrapMode::kSurfaces) {
++    auto policy = glint::candidate::CreateDocumentSurfacePolicyCommit(
++        GetRenderFrameHost()->GetBrowserContext(), commit_params_->storage_key,
++        origin_to_commit);
++    if (!policy) {
++      // Failure destroys this request; do not access it after cancellation.
++      OnRequestFailedInternal(network::URLLoaderCompletionStatus(net::ERR_ABORTED),
++                              true, std::nullopt, false);
++      return;
++    }
++    commit_params_->glint_document_surface_policy_required = true;
++    commit_params_->glint_document_surface_commit = std::move(policy);
++  }
++  if (privacy_mode == glint::candidate::DocumentPrivacyBootstrapMode::kCanvas) {
+     auto policy = CreatePrivacyDocumentCanvasCommit(
+         GetRenderFrameHost()->GetBrowserContext(),
+         blink::ResolveGlintDocumentStorageKey(commit_params_->storage_key,
+diff --git a/content/browser/renderer_host/navigation_entry_impl.cc b/content/browser/renderer_host/navigation_entry_impl.cc
+--- a/content/browser/renderer_host/navigation_entry_impl.cc
++++ b/content/browser/renderer_host/navigation_entry_impl.cc
+@@ -1023,6 +1023,8 @@
+           // navigation.
+           blink::StorageKey(),
+           nullptr /* glint_document_canvas_commit */,
++          nullptr /* glint_document_surface_commit */,
++          false /* glint_document_surface_policy_required */,
+           GetIsOverridingUserAgent(), redirects,
+           std::vector<network::mojom::URLResponseHeadPtr>(),
+           std::vector<net::RedirectInfo>(), std::string(), original_url,
+diff --git a/content/browser/renderer_host/navigation_controller_impl.cc b/content/browser/renderer_host/navigation_controller_impl.cc
+--- a/content/browser/renderer_host/navigation_controller_impl.cc
++++ b/content/browser/renderer_host/navigation_controller_impl.cc
+@@ -4625,6 +4625,8 @@
+           // navigation.
+           blink::StorageKey(),
+           nullptr /* glint_document_canvas_commit */,
++          nullptr /* glint_document_surface_commit */,
++          false /* glint_document_surface_policy_required */,
+           override_user_agent, params.redirect_chain,
+           std::vector<network::mojom::URLResponseHeadPtr>(),
+           std::vector<net::RedirectInfo>(), params.post_content_type,
+diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -10072,7 +10072,9 @@
+       continue;
+     }
+     if (!request->IsWaitingToCommit() || request->GetRenderFrameHost() != this ||
+-        !request->commit_params().glint_document_canvas_commit) {
++        (!request->commit_params().glint_document_canvas_commit &&
++         !request->commit_params().glint_document_surface_commit &&
++         !request->commit_params().glint_document_surface_policy_required)) {
+       return;
+     }
+     rejected = request;
+@@ -10082,12 +10084,15 @@
+   if (!rejected) {
+     return;
+   }
+-  FrameTreeNode* node = rejected->frame_tree_node();
++  const auto node_id = rejected->frame_tree_node()->frame_tree_node_id();
+   rejected->set_net_error(net::ERR_ABORTED);
+   NavigationRequestCancelled(rejected,
+                              NavigationDiscardReason::kInternalCancellation);
+-  node->render_manager()->DiscardSpeculativeRFHIfUnused(
+-      NavigationDiscardReason::kInternalCancellation);
++  // A finish observer can close the tab and destroy both this RFH and its node.
++  if (auto* node = FrameTreeNode::GloballyFindByID(node_id)) {
++    node->render_manager()->DiscardSpeculativeRFHIfUnused(
++        NavigationDiscardReason::kInternalCancellation);
++  }
+   // Cleanup can destroy this RenderFrameHost; do not access members here.
+ }
+ 
+diff --git a/third_party/blink/public/web/web_navigation_params.h b/third_party/blink/public/web/web_navigation_params.h
+--- a/third_party/blink/public/web/web_navigation_params.h
++++ b/third_party/blink/public/web/web_navigation_params.h
+@@ -28,6 +28,7 @@
+ #include "third_party/blink/public/common/frame/view_transition_state.h"
+ #include "third_party/blink/public/common/navigation/impression.h"
+ #include "third_party/blink/public/common/native_privacy/document_canvas_commit.h"
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
+ #include "third_party/blink/public/common/storage_key/storage_key.h"
+ #include "third_party/blink/public/common/tokens/tokens.h"
+ #include "third_party/blink/public/mojom/blob/blob_url_store.mojom-shared.h"
+@@ -397,6 +398,8 @@
+   // taking into account the origin computed by the renderer.
+   StorageKey storage_key;
+   std::unique_ptr<GlintDocumentCanvasCommit> glint_document_canvas_commit;
++  bool glint_document_surface_policy_required = false;
++  std::optional<glint::candidate::DocumentSurfacePolicy> glint_document_surface_policy;
+ 
+   blink::DocumentToken document_token;
+   // The devtools token for this navigation. See DocumentLoader
+diff --git a/content/renderer/render_frame_impl.cc b/content/renderer/render_frame_impl.cc
+--- a/content/renderer/render_frame_impl.cc
++++ b/content/renderer/render_frame_impl.cc
+@@ -163,6 +163,7 @@
+ #include "third_party/blink/public/common/navigation/navigation_params.h"
+ #include "third_party/blink/public/common/navigation/navigation_params_mojom_traits.h"
+ #include "third_party/blink/public/common/native_privacy/document_commit_preflight.h"
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
+ #include "third_party/blink/public/common/navigation/navigation_policy.h"
+ #include "third_party/blink/public/common/page_state/page_state.h"
+ #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
+@@ -2583,6 +2584,23 @@
+     mojom::CookieManagerInfoPtr cookie_manager_info,
+     mojom::StorageInfoPtr storage_info,
+     mojom::NavigationClient::CommitNavigationCallback commit_callback) {
++  std::optional<glint::candidate::DocumentSurfacePolicy> document_surface_policy;
++  if (commit_params->glint_document_surface_policy_required ||
++      commit_params->glint_document_surface_commit) {
++    if (commit_params->glint_document_surface_policy_required &&
++        commit_params->glint_document_surface_commit) {
++      document_surface_policy = glint::candidate::DecodeOwnedDocumentSurfacePolicy(
++          *commit_params->glint_document_surface_commit, commit_params->storage_key,
++          commit_params->origin_to_commit,
++          commit_params->glint_document_canvas_commit != nullptr);
++    }
++    if (!document_surface_policy) {
++      // Reject before lifecycle callbacks, body decoding or old-page teardown.
++      GetFrameHost()->RejectGlintDocumentCanvasCommit(commit_params->navigation_token);
++      AbortClientNavigationImpl(/*for_new_navigation=*/false);
++      return;
++    }
++  }
+   if (commit_params->glint_document_canvas_commit) {
+     const auto& policy = *commit_params->glint_document_canvas_commit;
+     if (!blink::PreflightGlintDocumentCanvasCommit(
+@@ -2701,6 +2719,9 @@
+   navigation_params->is_client_redirect = is_client_redirect;
+   FillMiscNavigationParams(*common_params, *commit_params,
+                            navigation_params.get());
++  navigation_params->glint_document_surface_policy_required =
++      commit_params->glint_document_surface_policy_required;
++  navigation_params->glint_document_surface_policy = std::move(document_surface_policy);
+   navigation_params->policy_container =
+       ToWebPolicyContainer(std::move(policy_container));
+   navigation_params->view_transition_state =

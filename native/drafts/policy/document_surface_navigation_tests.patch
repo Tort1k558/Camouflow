@@ -1,0 +1,286 @@
+diff --git a/content/browser/camouflow_native/privacy_navigation_throttle_unittest.cc b/content/browser/camouflow_native/privacy_navigation_throttle_unittest.cc
+--- a/content/browser/camouflow_native/privacy_navigation_throttle_unittest.cc
++++ b/content/browser/camouflow_native/privacy_navigation_throttle_unittest.cc
+@@ -33,6 +33,7 @@
+     RenderViewHostTestHarness::SetUp();
+     command_line_.GetProcessCommandLine()->RemoveSwitch(
+         kGlintDocumentPrivacyBootstrapSwitch);
++    command_line_.GetProcessCommandLine()->RemoveSwitch(kGlintDocumentSurfaceBootstrapSwitch);
+     ASSERT_TRUE(owned_.CreateUniqueTempDir());
+     ASSERT_TRUE(base::WriteFile(
+         owned_.GetPath().AppendASCII("camouflow-native-privacy.json"), kIdentity));
+@@ -201,5 +202,80 @@
+   EXPECT_EQ(cancelled_, 0);
+ }
+ 
++
++class NativeDocumentSurfaceReadinessTest : public NativeDocumentReadinessThrottleTest {
++ protected:
++  void EnableSurfaces() {
++    command_line_.GetProcessCommandLine()->AppendSwitch(kGlintDocumentSurfaceBootstrapSwitch);
++  }
++};
++
++TEST_F(NativeDocumentSurfaceReadinessTest, ReadyContextProceedsForBothCommitPaths) {
++  EnableSurfaces();
++  Initialize();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(GetGlintDocumentPrivacyBootstrapMode(), glint::candidate::DocumentPrivacyBootstrapMode::kSurfaces);
++  EXPECT_EQ(NavigationThrottle::PROCEED, throttle_->WillProcessResponse());
++  EXPECT_EQ(NavigationThrottle::PROCEED, throttle_->WillCommitWithoutUrlLoader());
++}
++
++TEST_F(NativeDocumentSurfaceReadinessTest, LoadingDefersThenResumesOnlyOnce) {
++  EnableSurfaces();
++  Initialize();
++  EXPECT_EQ(NavigationThrottle::DEFER, throttle_->WillProcessResponse());
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(resumed_, 0);
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(resumed_, 1);
++  EXPECT_EQ(cancelled_, 0);
++  task_environment()->FastForwardBy(base::Seconds(20));
++  EXPECT_EQ(resumed_, 1);
++}
++
++TEST_F(NativeDocumentSurfaceReadinessTest, MissingContextCancelsAfterDeferInstalled) {
++  EnableSurfaces();
++  EXPECT_EQ(NavigationThrottle::DEFER, throttle_->WillCommitWithoutUrlLoader());
++  EXPECT_EQ(cancelled_, 0);
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(cancelled_, 1);
++  EXPECT_EQ(resumed_, 0);
++}
++
++TEST_F(NativeDocumentSurfaceReadinessTest, DeadlineRejectsLateReplyWithoutCanvasFallback) {
++  EnableSurfaces();
++  Initialize();
++  EXPECT_EQ(NavigationThrottle::DEFER, throttle_->WillProcessResponse());
++  base::RunLoop().RunUntilIdle();
++  task_environment()->AdvanceClock(base::Seconds(11));
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(cancelled_, 1);
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(cancelled_, 1);
++  EXPECT_EQ(resumed_, 0);
++}
++
++TEST_F(NativeDocumentSurfaceReadinessTest, ConflictingFlagsRejectReadyContextWithoutWaiting) {
++  EnableSurfaces();
++  Enable();
++  Initialize();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(GetGlintDocumentPrivacyBootstrapMode(), glint::candidate::DocumentPrivacyBootstrapMode::kConflict);
++  EXPECT_EQ(NavigationThrottle::CANCEL_AND_IGNORE, throttle_->WillProcessResponse());
++  EXPECT_EQ(NavigationThrottle::CANCEL_AND_IGNORE, throttle_->WillCommitWithoutUrlLoader());
++  EXPECT_EQ(resumed_, 0);
++}
++
++TEST_F(NativeDocumentSurfaceReadinessTest, ShutdownCancelsPendingReplyExactlyOnce) {
++  EnableSurfaces();
++  Initialize();
++  EXPECT_EQ(NavigationThrottle::DEFER, throttle_->WillProcessResponse());
++  base::RunLoop().RunUntilIdle();
++  ShutdownNativePrivacyContext(browser_context());
++  EXPECT_EQ(cancelled_, 1);
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(cancelled_, 1);
++  EXPECT_EQ(resumed_, 0);
++}
++
+ }  // namespace
+ }  // namespace content
+diff --git a/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc b/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
+--- a/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
++++ b/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
+@@ -42,6 +42,11 @@
+     ++finished_;
+     committed_ = handle->HasCommitted();
+     error_ = handle->GetNetErrorCode();
++    if (destroy_contents_on_finish_) {
++      destroy_contents_on_finish_ = false;
++      Observe(nullptr);
++      DeleteContents();
++    }
+   }
+ 
+  protected:
+@@ -50,6 +55,7 @@
+   void SetUp() override {
+     command_line_.GetProcessCommandLine()->RemoveSwitch(
+         kGlintDocumentPrivacyBootstrapSwitch);
++    command_line_.GetProcessCommandLine()->RemoveSwitch(kGlintDocumentSurfaceBootstrapSwitch);
+     RenderViewHostTestHarness::SetUp();
+     NavigateAndCommit(GURL("https://canvas.test/baseline"));
+     Observe(web_contents());
+@@ -71,6 +77,10 @@
+         kGlintDocumentPrivacyBootstrapSwitch);
+   }
+ 
++  void EnableSurfacePolicy() {
++    command_line_.GetProcessCommandLine()->AppendSwitch(kGlintDocumentSurfaceBootstrapSwitch);
++  }
++
+   GURL Target() {
+     return GURL(GetParam() ? "about:blank" : "https://canvas.test/next");
+   }
+@@ -79,6 +89,7 @@
+   base::ScopedTempDir owned_;
+   int finished_ = 0;
+   bool committed_ = false;
++  bool destroy_contents_on_finish_ = false;
+   int error_ = net::OK;
+ };
+ 
+@@ -185,6 +196,151 @@
+   EXPECT_TRUE(committed_);
+ }
+ 
++
++TEST_P(NativeDocumentNavigationTest, SurfaceReadyRequestCarriesAllSelectedPartitionDomains) {
++  EnableSurfacePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  auto* request = NavigationRequest::From(simulator->GetNavigationHandle());
++  ASSERT_TRUE(request);
++  const auto& params = request->commit_params();
++  ASSERT_TRUE(params.glint_document_surface_policy_required);
++  ASSERT_TRUE(params.glint_document_surface_commit);
++  EXPECT_FALSE(params.glint_document_canvas_commit);
++  auto owned = glint::candidate::DecodeOwnedDocumentSurfacePolicy(
++      *params.glint_document_surface_commit, params.storage_key, params.origin_to_commit, false);
++  ASSERT_TRUE(owned);
++  EXPECT_EQ(owned->policy.canvas, DeriveNativePrivacyKey(browser_context(), owned->partition, "canvas"));
++  EXPECT_EQ(owned->policy.webgl, DeriveNativePrivacyKey(browser_context(), owned->partition, "webgl"));
++  EXPECT_EQ(owned->policy.webgpu, DeriveNativePrivacyKey(browser_context(), owned->partition, "webgpu"));
++  EXPECT_EQ(owned->policy.audio, DeriveNativePrivacyKey(browser_context(), owned->partition, "audio"));
++  EXPECT_EQ(finished_, 0);
++  simulator->Commit();
++  EXPECT_TRUE(committed_);
++  EXPECT_EQ(error_, net::OK);
++}
++
++TEST_P(NativeDocumentNavigationTest, SurfaceMissingPolicyRejectsBeforeCommitWithoutFallback) {
++  EnableSurfacePolicy();
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(simulator->GetLastThrottleCheckResult().action(), NavigationThrottle::CANCEL_AND_IGNORE);
++  EXPECT_EQ(finished_, 1);
++  EXPECT_FALSE(committed_);
++  EXPECT_EQ(error_, net::ERR_ABORTED);
++  EXPECT_EQ(web_contents()->GetLastCommittedURL(), GURL("https://canvas.test/baseline"));
++}
++
++TEST_P(NativeDocumentNavigationTest, SurfaceConflictingFlagsRejectEvenReadyContext) {
++  EnableSurfacePolicy();
++  EnablePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(finished_, 1);
++  EXPECT_FALSE(committed_);
++  EXPECT_EQ(error_, net::ERR_ABORTED);
++}
++
++TEST_P(NativeDocumentNavigationTest, SurfaceSelectedFrameRejectsOnlyItsExactPendingToken) {
++  EnableSurfacePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  auto* request = NavigationRequest::From(simulator->GetNavigationHandle());
++  ASSERT_TRUE(request);
++  ASSERT_TRUE(request->commit_params().glint_document_surface_commit);
++  static_cast<mojom::FrameHost*>(request->GetRenderFrameHost())
++      ->RejectGlintDocumentCanvasCommit(request->commit_params().navigation_token);
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(finished_, 1);
++  EXPECT_FALSE(committed_);
++  EXPECT_EQ(error_, net::ERR_ABORTED);
++  EXPECT_EQ(web_contents()->GetLastCommittedURL(), GURL("https://canvas.test/baseline"));
++}
++
++TEST_P(NativeDocumentNavigationTest, SurfaceUnknownTokenDoesNotCancelPendingCommit) {
++  EnableSurfacePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  auto* request = NavigationRequest::From(simulator->GetNavigationHandle());
++  ASSERT_TRUE(request);
++  static_cast<mojom::FrameHost*>(request->GetRenderFrameHost())
++      ->RejectGlintDocumentCanvasCommit(base::UnguessableToken::Create());
++  EXPECT_EQ(finished_, 0);
++  simulator->Commit();
++  EXPECT_TRUE(committed_);
++}
++
++TEST_P(NativeDocumentNavigationTest, SurfaceStaleRejectedTokenCannotCancelNextNavigation) {
++  EnableSurfacePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  auto first = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  first->ReadyToCommit();
++  auto* request = NavigationRequest::From(first->GetNavigationHandle());
++  ASSERT_TRUE(request);
++  const auto stale = request->commit_params().navigation_token;
++  static_cast<mojom::FrameHost*>(request->GetRenderFrameHost())->RejectGlintDocumentCanvasCommit(stale);
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(finished_, 1);
++  auto second = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  second->ReadyToCommit();
++  auto* next = NavigationRequest::From(second->GetNavigationHandle());
++  ASSERT_TRUE(next);
++  static_cast<mojom::FrameHost*>(next->GetRenderFrameHost())->RejectGlintDocumentCanvasCommit(stale);
++  EXPECT_EQ(finished_, 1);
++  second->Commit();
++  EXPECT_EQ(finished_, 2);
++  EXPECT_TRUE(committed_);
++}
++
++TEST_P(NativeDocumentNavigationTest, SurfaceFlagOffCannotCarryPriorNavigationEnvelope) {
++  EnableSurfacePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  auto first = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  first->ReadyToCommit();
++  first->Commit();
++  command_line_.GetProcessCommandLine()->RemoveSwitch(kGlintDocumentSurfaceBootstrapSwitch);
++  auto second = NavigationSimulator::CreateBrowserInitiated(GURL("https://canvas.test/after-surface-off"), web_contents());
++  second->ReadyToCommit();
++  auto* request = NavigationRequest::From(second->GetNavigationHandle());
++  ASSERT_TRUE(request);
++  EXPECT_FALSE(request->commit_params().glint_document_surface_policy_required);
++  EXPECT_FALSE(request->commit_params().glint_document_surface_commit);
++  EXPECT_FALSE(request->commit_params().glint_document_canvas_commit);
++  second->Commit();
++  EXPECT_TRUE(committed_);
++}
++
++TEST_P(NativeDocumentNavigationTest, SurfaceRejectionObserverMayDestroyWebContents) {
++  EnableSurfacePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  auto* request = NavigationRequest::From(simulator->GetNavigationHandle());
++  ASSERT_TRUE(request);
++  const auto token = request->commit_params().navigation_token;
++  auto* selected = static_cast<mojom::FrameHost*>(request->GetRenderFrameHost());
++  destroy_contents_on_finish_ = true;
++  selected->RejectGlintDocumentCanvasCommit(token);
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(finished_, 1);
++  EXPECT_FALSE(committed_);
++  EXPECT_EQ(error_, net::ERR_ABORTED);
++  EXPECT_FALSE(web_contents());
++}
++
+ INSTANTIATE_TEST_SUITE_P(WithAndWithoutUrlLoader,
+                          NativeDocumentNavigationTest,
+                          testing::Bool());

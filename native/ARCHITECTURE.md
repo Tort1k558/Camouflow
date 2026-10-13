@@ -78,7 +78,8 @@ separate checks. Source registration is not browser linkage or privacy admission
 
 Canonical public source and unregistered integration patches live under
 `drafts/policy`, `drafts/gpu` and `drafts/audio`. These candidates do not edit
-the active 0030 build. Surface transport v2, Audio API admission and GPU readback
+the active 0030 build. Document/worker v2 transport and final-owner handoff have
+candidate code, not compiled/runtime proof. Audio API admission and GPU readback
 protection remain unfinished. Existing profile-key derivation domains must stay
 stable across a transport-version change.
 
@@ -87,7 +88,7 @@ diagnostics before enabling new hooks. Their successful 001-027 baseline runs
 do not verify the drafts or claim anti-bot acceptance. Worker APIs unavailable
 in upstream remain explicit exclusions, not fabricated coverage.
 
-`verify_native_next_batch.py` replays the nine unregistered integration patches
+`verify_native_next_batch.py` replays the fifteen unregistered integration patches
 in an owned temporary overlay, checks exact canonical copies and rejects source,
 receipt, GN-input or browser-core drift. Run it with a new evidence path outside
 both repositories; it never runs GN, compilation or modifies active sources.
@@ -96,11 +97,17 @@ The document v2 candidate owns the browser-selected partition and independent
 surface seeds, and requires validation against Blink's final StorageKey, not
 only its provisional key. The browser producer uses the existing context key
 service without regeneration or another root-key store. Its 30 content fixture
-definitions are source-only.
-Final handoff cannot use `CalculateOrigin` as a read-only pre-unload probe:
+definitions are source-only. Additional handoff/readiness/navigation fixtures
+bring the expected document v2 case set to 112; none has executed.
+Final handoff does not use `CalculateOrigin` as a read-only pre-unload probe:
 origin privilege changes and sandbox-token consumption must retain upstream
 semantics. The current late Canvas prototype check does not prove old-document
-rollback. No document v2 policy or new readback hook is admitted by source replay.
+rollback. Early renderer rejection precedes teardown; the late final-key guard
+creates an inert replacement, not restoration of the previous document. Blank
+and srcdoc inheritance requires exact partition matching. Root initial empty
+documents and different-partition children need authenticated delivery rather
+than parent-key borrowing. No document v2 policy or new readback hook is admitted
+by source replay or generated bindings.
 
 `scripts/native_build.py` pins upstream revisions, records sync/hooks dependency
 snapshots and checks applied changes by replaying registered patches into a

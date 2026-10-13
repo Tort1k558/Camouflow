@@ -175,3 +175,55 @@ constructs the new DocumentLoader only **after** unloading/detaching the old
 document. Early malformed-payload rejection, final-partition rejection, old-page
 usability and synchronous blank/srcdoc/JavaScript/XSLT inheritance need separate
 integration evidence before admission.
+
+## Document/worker delivery batch (unregistered, source-only)
+
+The next five patches extend the helper stage above:
+
+| Candidate | Implementation | Current evidence |
+| --- | --- | --- |
+| `surface_bootstrap_switches.patch` | Forward both document and worker v2 switches to renderer processes; preserve v1 flags | Ordered source replay only |
+| `document_surface_transport.patch` | Shared readiness/mode selection, browser producer, typed commit payload with an explicit required bit, early renderer validation and selected-token rejection | Source replay; pinned C++ and Blink Mojo binding generation |
+| `document_surface_handoff.patch` | Owned DocumentLoader/DocumentInit handoff; immutable document state validated against the final window key; script gate; exact-partition synchronous inheritance and clone ownership | Source replay only; no C++ or execution |
+| `document_surface_handoff_tests.patch` | Fifteen first-script, invalid-data, blank/srcdoc/sandbox and clone fixture definitions in four existing storage/link modes | Sixty expected cases; **not executed** |
+| `document_surface_navigation_tests.patch` | Six readiness/deadline/shutdown fixtures and eight navigation fixtures in two URL-loader modes | Twenty-two expected cases; **not executed** |
+
+`worker_surface_scope_state.patch` adds matching thread-checked readiness and
+ownership accessors to the existing worker scope. Shared readback consumers must
+distinguish an upstream flag-off context from a required policy that is missing
+or invalid. Treating both as an absent optional seed would expose unprotected
+output. These accessors do not activate any API hook.
+
+The renderer rejects malformed/missing required envelopes before lifecycle
+callbacks, body decoding or old-page teardown. The browser rejection remains
+bound to its exact pending navigation token, selected RFH and browser-owned
+privacy requirement; no caller-selected partition or root key is accepted.
+Cleanup re-resolves the cached frame-tree node ID after cancellation rather than
+dereferencing a raw node pointer: a finish observer may destroy the tab/RFH/node
+inside cancellation. A new two-mode fixture covers that reentrant destruction;
+it has not executed.
+
+Final Blink validation is distinct. A late mismatch produces an **inert
+replacement document**, not a new renderer CHECK and **not restoration of the
+old page**. The fixture explicitly describes this limitation. Missing required
+browser data cannot borrow an owner's seed. Synchronous inheritance may copy an
+owner's already validated policy only when its full binary partition matches
+the final key, including retained site/nonce/opaque identity. Clones preserve
+all four domains and the required state, including required-but-missing state;
+they cannot downgrade to Canvas-only data.
+
+Root initial empty documents and different-partition sandboxed children still
+need their own authenticated browser delivery path. They cannot borrow a parent
+identity or silently run unprotected. Safe navigation recovery, XSLT/discard
+replacement, all first-script paths and real browser compatibility are not
+verified. Do not activate v2 or promote readiness from this source batch.
+
+The fifteen-patch public replay passed across **75 paths**:
+`gpu-audio-policy-document-scope-public-replay-v2.json` on D. Native sources,
+baseline browser core, receipt and GN arguments stayed unchanged. Binding proof:
+`document-surface-transport-bindings-v1/proof.json` and
+`document-surface-blink-bindings-v1/proof.json`. Binding generation is not
+translation-unit compilation, linking or browser execution. The document
+stage has 112 planned native cases (30 helpers/producer + 60 handoff + 22
+readiness/navigation); none of these new cases has run. The active 0030 build
+still uses its unchanged, older twelve-case navigation gate.

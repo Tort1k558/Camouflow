@@ -1,0 +1,15 @@
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -3891,7 +3891,10 @@
+   };
+   renderer_cmd->CopySwitchesFrom(browser_cmd, kSwitchNames);
+   const char* const glint_bootstrap_test_switches[] = {
+-      "glint-worker-canvas-bootstrap-test"};
++      "glint-worker-canvas-bootstrap-test",
++      "glint-worker-surface-bootstrap-test",
++      "glint-document-canvas-bootstrap-test",
++      "glint-document-surface-bootstrap-test"};
+   renderer_cmd->CopySwitchesFrom(browser_cmd, glint_bootstrap_test_switches);
+ 
+   // |switches::kGaiaConfig| can be set via browser command-line arguments,

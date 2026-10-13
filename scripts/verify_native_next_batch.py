@@ -20,7 +20,10 @@ PATCHES = ("gpu/gpu_metadata_minimization.patch", "audio/audio_helpers_integrati
            "policy/surface_policy_helpers_integration.patch", "policy/surface_policy_wire_schema.patch",
            "policy/surface_worker_endpoint.patch", "policy/surface_worker_bootstrap.patch",
            "policy/worker_surface_handoff.patch", "policy/worker_surface_launchers.patch",
-           "policy/document_surface_validation.patch")
+           "policy/document_surface_validation.patch", "policy/surface_bootstrap_switches.patch",
+           "policy/document_surface_transport.patch", "policy/document_surface_handoff.patch",
+           "policy/document_surface_handoff_tests.patch", "policy/document_surface_navigation_tests.patch",
+           "policy/worker_surface_scope_state.patch")
 CANONICAL = {
     **{"audio/" + name: "third_party/blink/renderer/modules/webaudio/glint/" + name for name in (
         "offline_audio_candidate.h", "offline_audio_candidate.cc", "offline_audio_limits.h",
@@ -66,6 +69,26 @@ EXISTING_PATHS = {
     "content/renderer/service_worker/embedded_worker_instance_client_impl.h",
     "content/renderer/service_worker/embedded_worker_instance_client_impl.cc",
     "content/renderer/worker/embedded_shared_worker_stub.cc",
+    "content/browser/renderer_host/render_process_host_impl.cc",
+    "content/browser/camouflow_native/privacy_navigation_throttle.h",
+    "content/browser/camouflow_native/privacy_navigation_throttle.cc",
+    "content/browser/renderer_host/navigation_request.cc",
+    "content/browser/renderer_host/navigation_entry_impl.cc",
+    "content/browser/renderer_host/navigation_controller_impl.cc",
+    "content/browser/renderer_host/render_frame_host_impl.cc",
+    "content/renderer/render_frame_impl.cc",
+    "third_party/blink/public/mojom/navigation/navigation_params.mojom",
+    "third_party/blink/public/web/web_navigation_params.h",
+    "third_party/blink/renderer/core/dom/document_init.h",
+    "third_party/blink/renderer/core/dom/document_init.cc",
+    "third_party/blink/renderer/core/dom/document.h",
+    "third_party/blink/renderer/core/dom/document.cc",
+    "third_party/blink/renderer/core/frame/local_dom_window.cc",
+    "third_party/blink/renderer/core/loader/document_loader.h",
+    "third_party/blink/renderer/core/loader/document_loader.cc",
+    "third_party/blink/renderer/core/loader/document_loader_test.cc",
+    "content/browser/camouflow_native/privacy_navigation_throttle_unittest.cc",
+    "content/browser/camouflow_native/privacy_navigation_integration_unittest.cc",
 }
 
 
