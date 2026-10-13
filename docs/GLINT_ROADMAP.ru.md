@@ -88,7 +88,17 @@ core/входные файлы неизменны, только старый fea
 
 Полная сборка 001–036 была остановлена по просьбе пользователя на 58/4994 задачах;
 после его команды возобновлена на j1, без удаления объектов и кэша.
-Текущий лог: `D:\CamouFlowNative\surface-batch-001-036-chrome-j1-v6.log`.
+Лог этого возобновления: `D:\CamouFlowNative\surface-batch-001-036-chrome-j1-v6.log`.
+Затем по команде пользователя сборка переключена на j4 с сохранением кэша.
+Попытка v7 завершилась после 100 задач из 4843: две ошибки C++ в WebGL,
+а не OOM — `base::expected` нельзя проверять через `!`, и `base::BindOnce`
+не принимает захватывающую лямбду. Патч 0037 использует `has_value()` и
+stateless callback с `WrapPersistent(this)`, сохраняя восстановление pack-state.
+Реальная компиляция ранее падавшего translation unit прошла с исходными flags:
+`D:\CamouFlowNative\webgl-readback-compilation-001-037-v2\proof.json`.
+Проверки неизменности source/core/GN прошли; это не новый проверенный браузер.
+Полная сборка 001–037 вновь запущена на **j4** без удаления объектов.
+Текущий лог: `D:\CamouFlowNative\surface-batch-001-037-chrome-j4-v8.log`.
 В следующем GPU-пакете подготовлен четырнадцатый passthrough fixture:
 multisample metadata сравнивается с фактическим `GL_RENDERBUFFER_SAMPLES`,
 а не с запрошенным числом samples. Формат RGBA8 сам по себе не означает

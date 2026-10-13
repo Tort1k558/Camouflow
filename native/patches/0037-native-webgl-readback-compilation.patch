@@ -1,0 +1,30 @@
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+index d79999a..2f3d41c 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -5168,7 +5168,7 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+                   rectangle.computeByteSize());
+     const auto destination = std::span(data, buffer_size.ValueOrDie());
+     if (!glint::candidate::CopyRgba8ReadbackToPackLayout(
+-            source, destination, width, height, 0, GetPackPixelStoreParams())) {
++            source, destination, width, height, 0, GetPackPixelStoreParams()).has_value()) {
+       SynthesizeGLError(GL_INVALID_OPERATION, "readPixels",
+                         "Glint WebGL pack-copy failed.");
+     }
+@@ -5281,10 +5281,12 @@ bool WebGLRenderingContextBase::PrepareGlintRgba8Readback(
+   if (!binder.Succeeded()) {
+     return false;
+   }
+-  base::ScopedClosureRunner restore(base::BindOnce([this] {
+-    DrawingBufferClientRestorePixelPackParameters();
+-    DrawingBufferClientRestorePixelPackBufferBinding();
+-  }));
++  base::ScopedClosureRunner restore(blink::BindOnce(
++      [](WebGLRenderingContextBase* context) {
++        context->DrawingBufferClientRestorePixelPackParameters();
++        context->DrawingBufferClientRestorePixelPackBufferBinding();
++      },
++      WrapPersistent(this)));
+   // Only the service-side GL state changes. Keep WebGL's cached pack/buffer
+   // bindings intact so the existing virtual restorers restore the real state.
+   ContextGL()->PixelStorei(GL_PACK_ALIGNMENT, 1);

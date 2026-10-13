@@ -83,7 +83,7 @@ def test_registered_replay_preserves_reviewed_successor_order(followups):
 
 
 @pytest.mark.parametrize("names", [batch.PROMOTED[:2], batch.FOLLOWUPS,
-                                   (*batch.PROMOTED, "0037-unreviewed.patch")])
+                                   (*batch.PROMOTED, "0038-unreviewed.patch")])
 def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
     with pytest.raises(ValueError):
         batch.registered_replay_chain([{"name": name} for name in names])
@@ -91,6 +91,18 @@ def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
 
 def test_unpromoted_baseline_has_no_registered_reversal():
     assert batch.registered_replay_chain([{"name": "0030-native-document-commit-prototype.patch"}]) == ()
+
+
+def test_webgl_compile_fix_uses_expected_and_gc_owned_stateless_cleanup():
+    patch = (batch.ROOT / "native/patches/0037-native-webgl-readback-compilation.patch").read_text(encoding="utf-8-sig")
+    additions = "\n".join(line[1:] for line in patch.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert "GetPackPixelStoreParams()).has_value()" in additions
+    assert "[](WebGLRenderingContextBase* context)" in additions
+    assert "WrapPersistent(this)" in additions
+    assert "context->DrawingBufferClientRestorePixelPackParameters();" in additions
+    assert "context->DrawingBufferClientRestorePixelPackBufferBinding();" in additions
+    assert "[this]" not in additions
 
 
 def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():

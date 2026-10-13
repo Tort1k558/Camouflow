@@ -12,7 +12,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 
 ## Source layout
 
-Current Windows development source is **001-036**. Patches 0031-0034 jointly
+Current Windows development source is **001-037**. Patches 0031-0034 jointly
 promote browser-owned document/worker surface policy, startup/child transport,
 Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
 replay passed across 125 paths; this batch is **not yet fully compiled or runtime
@@ -27,7 +27,16 @@ at j1; available system commit dropped to 0.39 GiB during the measured run.
 The following j1 build reached a C++ incomplete-type error in the dedicated
 worker host. Repair 0036 adds the complete Mojo surface type to its service
 header; the previously failed dedicated worker translation unit compiled with
-the exact 001-036 source chain unchanged. The full incremental retry uses j1.
+the exact 001-036 source chain unchanged. The user-requested j4 retry completed
+100 tasks before failing on WebGL C++ errors, not LLVM OOM. Patch 0037 checks
+the pack-copy `base::expected` through `has_value()` and binds a stateless
+cleanup callback with a GC-owned context, restoring both pack parameters and
+the pixel-pack buffer. The formerly failed WebGL translation unit compiled
+with the exact pinned build flags in an isolated output directory; source,
+browser core and GN guards passed (`webgl-readback-compilation-001-037-v2/proof.json`
+on D). Ordered next-batch replay passed across 125 paths with this follow-up.
+The full incremental retry uses j4; none of these checks is browser/runtime
+admission.
 Existing objects are preserved; the new browser remains unverified.
 Compilation is not runtime admission.
 
