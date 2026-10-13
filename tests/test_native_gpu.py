@@ -175,3 +175,143 @@ def test_gpu_cli_records_failure_without_admission(tmp_path, monkeypatch):
     evidence = json.loads(report.read_text(encoding="utf-8"))
     assert evidence["passed"] is False and evidence["privacy_admitted"] is False
     assert evidence["error"] and not evidence["checks"]
+
+
+def readback_observation(*, protected=False):
+    from PyQt6.QtCore import QBuffer, QIODevice
+    from PyQt6.QtGui import QColor, QImage
+
+    observed = observation()
+    for name, row in observed.items():
+        for api, gl in row["webgl"].items():
+            scene = gl["scene"]
+            full = scene["pixels"]
+            if protected:
+                full = [byte ^ (int(name != "cross_origin_frame") if index % 4 == 0 else int(index % 4 == 1))
+                        for index, byte in enumerate(full)]
+            scene.update(pixels=full, repeat=full.copy(), crop=full[20:28] + full[36:44])
+            if api == "webgl2":
+                scene["pbo"] = [165] * 12 + full + [165] * 8
+                for y in range(4):
+                    start = (y + 1) * 24 + 4
+                    scene["packed"][start:start + 16] = full[y * 16:(y + 1) * 16]
+            image = QImage(4, 4, QImage.Format.Format_RGBA8888)
+            for y in range(4):
+                for x in range(4):
+                    offset = (y * 4 + x) * 4
+                    image.setPixelColor(x, 3 - y, QColor(*full[offset:offset + 4]))
+            buffer = QBuffer()
+            assert buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+            assert image.save(buffer, "PNG")
+            scene["png"] = list(bytes(buffer.data()))
+            initial = {"alignment": 4, "framebuffer": True, "rowLength": 0,
+                       "skipRows": 0, "skipPixels": 0, "packBound": False}
+            scene["initialState"] = initial
+            scene["packState"] = {**initial, "rowLength": 6, "skipRows": 1, "skipPixels": 1} if api == "webgl2" else initial.copy()
+            scene["exportState"] = scene["packState"].copy()
+    return observed
+
+
+def test_readback_gate_checks_native_png_without_canvas_remasking():
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    baseline = validate_readback(readback_observation(), protected=False)
+    assert validate_readback(readback_observation(protected=True), protected=True, baseline=baseline) == baseline
+
+
+@pytest.mark.parametrize("value", [None, [], [True] * 33, [0] * 65537])
+def test_readback_png_requires_bounded_typed_bytes(value):
+    from scripts.verify_native_gpu_readback import decode_png
+
+    with pytest.raises(ValueError):
+        decode_png(value)
+
+
+def test_readback_png_checks_dimensions_before_native_decoder(monkeypatch):
+    from scripts import verify_native_gpu_readback as gate
+
+    value = readback_observation()["document"]["webgl"]["webgl"]["scene"]["png"]
+    value[16:20] = [127, 255, 255, 255]
+    class ForbiddenDecoder:
+        @staticmethod
+        def fromData(*args):
+            pytest.fail("Unbounded dimensions reached the native image decoder")
+    monkeypatch.setattr(gate, "QImage", ForbiddenDecoder)
+    with pytest.raises(ValueError, match="before decoding"):
+        gate.decode_png(value)
+
+
+@pytest.mark.parametrize("field,change", [
+    ("pixels", lambda value: value.__setitem__(0, value[0] + 4)),
+    ("pixels", lambda value: value.__setitem__(3, 254)),
+    ("repeat", lambda value: value.__setitem__(0, value[0] ^ 1)),
+    ("crop", lambda value: value.__setitem__(0, value[0] ^ 1)),
+    ("pbo", lambda value: value.__setitem__(0, 0)),
+    ("packed", lambda value: value.__setitem__(0, 0)),
+    ("png", lambda value: value.__setitem__(0, 0)),
+    ("packState", lambda value: value.__setitem__("alignment", 1)),
+    ("exportState", lambda value: value.__setitem__("rowLength", 0)),
+    ("initialState", lambda value: value.__setitem__("framebuffer", 1)),
+])
+def test_readback_gate_rejects_pixels_padding_export_and_state_corruption(field, change):
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    observed = readback_observation(protected=True)
+    change(observed["document"]["webgl"]["webgl2"]["scene"][field])
+    with pytest.raises(ValueError):
+        validate_readback(observed, protected=True)
+
+
+def test_readback_gate_rejects_unprotected_runtime_and_partition_alias():
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    with pytest.raises(ValueError):
+        validate_readback(readback_observation(), protected=True)
+    observed = readback_observation(protected=True)
+    observed["cross_origin_frame"] = copy.deepcopy(observed["document"])
+    with pytest.raises(ValueError):
+        validate_readback(observed, protected=True)
+
+
+def test_readback_restart_ignores_driver_debug_cache_length_but_not_pixels():
+    from scripts.verify_native_gpu_readback import restart_state
+
+    initial = readback_observation()
+    restarted = copy.deepcopy(initial)
+    restarted["document"]["webgl"]["webgl"]["translatedShaderLength"] = 10
+    assert restart_state(initial) == restart_state(restarted)
+    restarted["document"]["webgl"]["webgl"]["scene"]["pixels"][0] ^= 1
+    assert restart_state(initial) != restart_state(restarted)
+
+
+def test_readback_feature_merges_existing_partition_flag():
+    from scripts.verify_native_gpu_readback import (
+        READBACK_FEATURE,
+        ReadbackConfiguration,
+    )
+    from scripts.verify_native_worker_startup import FEATURE_ARGUMENT
+
+    arguments = ReadbackConfiguration(probe_mode="ready").launch_arguments()
+    enabled = [argument for argument in arguments if argument.startswith("--enable-features=")]
+    assert enabled == [FEATURE_ARGUMENT + "," + READBACK_FEATURE]
+    assert FEATURE_ARGUMENT in ReadbackConfiguration().launch_arguments()
+
+
+def test_readback_cli_rejects_old_receipt_before_creating_profiles(tmp_path, monkeypatch):
+    from scripts import verify_native_gpu_readback as gpu
+
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"not executed")
+    monkeypatch.setattr(gpu, "measure_runtime_core", lambda path: {"chrome.exe": "fixture"})
+    def reject_receipt(*args):
+        raise ValueError("uncompiled readback")
+    monkeypatch.setattr(gpu, "validate_receipt", reject_receipt)
+    owned = tmp_path / "owned"
+    report = tmp_path / "failed.json"
+    monkeypatch.setattr(sys, "argv", ["probe", "--executable", str(executable),
+                                     "--work-dir", str(owned), "--report", str(report)])
+    assert gpu.main() == 1
+    assert not owned.exists()
+    evidence = json.loads(report.read_text(encoding="utf-8"))
+    assert evidence["passed"] is False and evidence["privacy_admitted"] is False
+    assert evidence["error"] == "uncompiled readback" and not evidence["checks"]

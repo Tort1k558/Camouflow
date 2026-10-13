@@ -195,18 +195,23 @@ class GpuFixtureHandler(CanvasFixtureHandler):
     worker_read = GPU_READ
 
 
-def validate_shader_readback(scene: dict, api: str) -> None:
+def validate_shader_readback(scene: dict, api: str, *, expected_pixels: list[int] | None = None) -> None:
     if api not in {"webgl", "webgl2"}:
         raise ValueError("Unknown WebGL readback API: " + api)
     if not isinstance(scene, dict) or set(scene) != {"pixels", "repeat", "crop", "pbo", "packed"}:
         raise ValueError("Missing shader readback observations: " + api)
-    expected = {"pixels": SHADER_PIXELS, "repeat": SHADER_PIXELS, "crop": SHADER_CROP}
+    full = SHADER_PIXELS if expected_pixels is None else expected_pixels
+    if (not isinstance(full, list) or len(full) != 64
+            or any(type(byte) is not int or not 0 <= byte <= 255 for byte in full)):
+        raise ValueError("Invalid expected shader pixels")
+    crop = full[20:28] + full[36:44]
+    expected = {"pixels": full, "repeat": full, "crop": crop}
     if api == "webgl2":
-        expected["pbo"] = [165] * 12 + SHADER_PIXELS + [165] * 8
+        expected["pbo"] = [165] * 12 + full + [165] * 8
         packed = [165] * 120
         for row in range(4):
             start = (row + 1) * 24 + 4
-            packed[start:start + 16] = SHADER_PIXELS[row * 16:(row + 1) * 16]
+            packed[start:start + 16] = full[row * 16:(row + 1) * 16]
         expected["packed"] = packed
     elif scene["pbo"] is not None or scene["packed"] is not None:
         raise ValueError("WebGL1 claimed WebGL2 pack operations")

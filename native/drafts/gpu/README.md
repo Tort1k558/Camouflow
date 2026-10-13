@@ -155,3 +155,28 @@ All 29 public candidates replayed successfully across 124 source paths:
 reproduced that exact source (`surface-promotion-v8/proof.json`). Both private
 reports are on D; active source, GN arguments, build receipt and linked runtime
 core were unchanged. These checks prove source composition only.
+
+### Prepared protected readback gate
+
+`scripts/verify_native_gpu_readback.py` requires exact registered worker,
+document, surface-readback and GPU patch hashes plus every linked core-file hash
+**before** creating profiles or launching a browser. The old 001-027 runtime
+was rejected (`gpu-readback-old-refusal-v1.json`), with no owned directory created.
+
+The gate uses two independent owned profiles, initial/restart phases and all
+eight document/worker contexts. It checks same-partition agreement, cross-origin
+and cross-profile separation, bounded RGB low-bit changes with unchanged alpha,
+full/repeat/crop/PBO/padding consistency, pack/framebuffer state and native PNG
+export. PNG dimensions are bounded before decoding through the existing Qt
+image library outside the browser; decoding through a protected 2D canvas
+would incorrectly apply a second, different surface seed. WebGPU integer
+buffer/compute behavior and real GPU capabilities remain independently checked.
+
+The **old, unprotected** binary passed the PNG/pack-state fixture in both
+initial/restart phases (`gpu-png-pack-state-001-027-baseline-v3.json`). The first
+run exposed ANGLE's shorter translated debug shader text after cache reuse;
+restart comparison now excludes only that length while separately validating
+debug-extension presence/error behavior. It still compares pixels, exports,
+state, metadata and capabilities. This is fixture evidence, **not execution
+of the new WebGL patch**. Error/context-loss, custom framebuffer and other
+formats remain separate unfinished gates.
