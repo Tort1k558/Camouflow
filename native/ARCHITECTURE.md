@@ -57,6 +57,12 @@ Manager diagnostics also compare measured WebGL/WebGL2 extensions, six limits an
 context attributes between document and dedicated worker. A feature-off 001-027
 browser passed en-US/de-DE loopback checks with unchanged core hashes; these
 observations do not validate metadata spoofing, the new policy batch or presets.
+Identity diagnostics reject contradictions between known navigator platform
+values, explicit Windows/macOS/Chrome OS UA markers and Client Hints OS. They do
+not infer OS versions from reduced UA text or treat Linux navigator.platform as
+proof of desktop Linux: Android and Chrome/Chromium OS also use that family.
+Windows en-US/de-DE observations passed on the unchanged 001-027 baseline;
+synthetic platform cases are not Linux/macOS/Android runtime validation.
 `verify_native_identity_readback_batch.py` composes all six identity candidates
 with the five halo/clipping/GPU metadata candidates in one isolated source tree.
 The exact combined source and pinned Mojo/GPU generation passed; no native

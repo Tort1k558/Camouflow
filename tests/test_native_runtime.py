@@ -365,6 +365,63 @@ def test_native_identity_audit_preserves_reduced_ua_and_real_full_version():
     assert audit_observed_identity(coherent_identity_observations(), "148.0.7778.96") == []
 
 
+@pytest.mark.parametrize("navigator_platform,hint_platform,ua_marker", [
+    ("Win32", "Windows", "Windows NT 10.0; Win64; x64"),
+    ("MacIntel", "macOS", "Macintosh; Intel Mac OS X 10_15_7"),
+    ("Linux x86_64", "Linux", "X11; Linux x86_64"),
+    ("Linux x86_64", "Chrome OS", "X11; CrOS x86_64 14541.0.0"),
+    ("Linux x86_64", "Chromium OS", "X11; CrOS x86_64 14541.0.0"),
+    ("Linux armv8l", "Android", "Linux; Android 10; K"),
+    ("Linux x86_64", "Android", "X11; Linux x86_64"),
+])
+def test_native_identity_audit_preserves_known_chromium_platform_reduction(
+        navigator_platform, hint_platform, ua_marker):
+    from app.core.native.diagnostics import audit_observed_identity
+
+    observed = coherent_identity_observations()
+    for values in observed.values():
+        values["platform"] = navigator_platform
+        values["userAgentData"]["platform"] = hint_platform
+        values["userAgent"] = f"Mozilla/5.0 ({ua_marker}) Chrome/148.0.0.0 Safari/537.36"
+        values["userAgentHighEntropy"]["platformVersion"] = "15.0.0"
+    assert audit_observed_identity(observed, "148.0.7778.96") == []
+
+
+@pytest.mark.parametrize("scope", ["document", "worker"])
+@pytest.mark.parametrize("navigator_platform,hint_platform,ua_marker", [
+    ("Win32", "macOS", ""), ("MacIntel", "Windows", ""),
+    ("Linux x86_64", "Windows", ""),
+    ("Linux x86_64", "Linux", "Windows NT 10.0"),
+    ("Win32", "Windows", "Macintosh"),
+    ("Linux x86_64", "Linux", "CrOS x86_64"),
+])
+def test_native_identity_audit_rejects_os_contradictions(
+        scope, navigator_platform, hint_platform, ua_marker):
+    from app.core.native.diagnostics import audit_observed_identity
+
+    observed = coherent_identity_observations()
+    values = observed[scope]
+    values["platform"] = navigator_platform
+    values["userAgentData"]["platform"] = hint_platform
+    values["userAgent"] = f"Mozilla/5.0 ({ua_marker}) Chrome/148.0.0.0 Safari/537.36"
+    assert any("disagrees with Client Hints OS" in issue
+               for issue in audit_observed_identity(observed, "148.0.7778.96"))
+
+
+@pytest.mark.parametrize("field", ["navigator", "hints"])
+@pytest.mark.parametrize("invalid", [[], {}, None, False])
+def test_native_identity_audit_reports_malformed_platform_without_throwing(field, invalid):
+    from app.core.native.diagnostics import audit_observed_identity
+
+    observed = coherent_identity_observations()
+    values = observed["document"]
+    if field == "navigator":
+        values["platform"] = invalid
+    else:
+        values["userAgentData"]["platform"] = invalid
+    assert audit_observed_identity(observed, "148.0.7778.96")
+
+
 @pytest.mark.parametrize("field", ["userAgent", "platform", "language", "timezone", "intlLocale",
                                    "languages", "userAgentData", "userAgentHighEntropy"])
 def test_native_identity_audit_never_accepts_matching_missing_values(field):

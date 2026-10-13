@@ -231,6 +231,24 @@ def audit_observed_identity(observed: dict, browser_version: str) -> list[str]:
             continue
         if not isinstance(hints.get("platform"), str) or not hints["platform"].strip():
             issues.append(f"{prefix} Client Hints platform is missing")
+        hint_platform = hints.get("platform")
+        navigator_platform = values.get("platform")
+        expected_platforms = {"Win32": {"Windows"}, "Win64": {"Windows"},
+                              "MacIntel": {"macOS"}, "MacPPC": {"macOS"}}
+        if (isinstance(navigator_platform, str) and isinstance(hint_platform, str)
+                and navigator_platform in expected_platforms
+                and hint_platform not in expected_platforms[navigator_platform]):
+            issues.append(f"{prefix} navigator platform disagrees with Client Hints OS")
+        # Linux navigator.platform also occurs on Android and Chrome/Chromium OS.
+        if (isinstance(navigator_platform, str) and isinstance(hint_platform, str)
+                and navigator_platform.startswith("Linux")):
+            if hint_platform not in {"Linux", "Android", "Chrome OS", "Chromium OS"}:
+                issues.append(f"{prefix} navigator platform disagrees with Client Hints OS")
+        if isinstance(ua, str) and isinstance(hint_platform, str):
+            for marker, platforms in (("Windows NT", {"Windows"}), ("Macintosh", {"macOS"}),
+                                      ("CrOS", {"Chrome OS", "Chromium OS"})):
+                if marker in ua and hint_platform not in platforms:
+                    issues.append(f"{prefix} UA operating system disagrees with Client Hints OS")
         if type(hints.get("mobile")) is not bool:
             issues.append(f"{prefix} Client Hints mobile flag is invalid")
         for key, expected, source in (("brands", major, hints), ("fullVersionList", browser_version, high)):
