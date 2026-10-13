@@ -17,7 +17,9 @@ async def _prepare_diagnostic_page(context):
             return
         await route.fulfill(
             status=200, content_type="text/html; charset=utf-8",
-            body='<!doctype html><meta charset="utf-8"><title>Glint local diagnostics</title>',
+            body=('<!doctype html><meta charset="utf-8">'
+                  '<meta name="viewport" content="width=device-width, initial-scale=1">'
+                  '<title>Glint local diagnostics</title>'),
             headers={"Content-Security-Policy": "default-src 'none'; worker-src blob:",
                      "Cache-Control": "no-store"})
 

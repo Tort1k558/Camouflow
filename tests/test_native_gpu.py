@@ -672,6 +672,19 @@ def test_texture_lifecycle_baseline_rejects_incomplete_or_inconsistent_observati
         validate(observed)
 
 
+def test_future_gpu_attachment_fixtures_use_native_command_and_actual_renderbuffer_state():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_gpu_transport_draft import ATTACHMENT_PATCH, ATTACHMENT_PATHS
+
+    text = ATTACHMENT_PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == ATTACHMENT_PATHS
+    assert text.count("+TEST_P(GLES3DecoderTest,") == 3
+    assert text.count("+    ASSERT_EQ(error::kNoError, ExecuteCmd(command));") == 4
+    assert "+    EXPECT_EQ(metadata->rgba8_compatible, false);" in text
+    assert "+    EXPECT_EQ(metadata->width, 6);" in text
+    assert "CheckFramebufferStatusEXT(GL_READ_FRAMEBUFFER)" in text
+
+
 def test_future_gpu_command_id_parser_ignores_macro_footer():
     from scripts.verify_native_gpu_transport_draft import command_ids
 

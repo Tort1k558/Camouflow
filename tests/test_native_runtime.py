@@ -867,6 +867,7 @@ def test_native_health_fixture_blocks_other_requests_without_network_fallback():
     owned.abort.assert_not_awaited()
     response = owned.fulfill.await_args.kwargs
     assert response["status"] == 200
+    assert '<meta name="viewport" content="width=device-width, initial-scale=1">' in response["body"]
     assert response["headers"]["Content-Security-Policy"] == "default-src 'none'; worker-src blob:"
     outside = SimpleNamespace(request=SimpleNamespace(url="https://example.com/"),
                               abort=AsyncMock(), fulfill=AsyncMock())

@@ -365,7 +365,7 @@ implementations and the Blink consumer. It queries the actual selected attachmen
 including supported texture levels, instead of deriving dimensions from a viewport.
 The new feature defaults off and adds no WebGL JavaScript API.
 
-Source replay of all four candidate patches passed with canonical helper matching,
+Source replay of all five candidate patches passed with canonical helper matching,
 324 legacy command IDs preserved and new command ID 580. An isolated rerun of the
 pinned upstream command generator reproduced all 59 copied generated headers.
 Neither check compiled C++, executed the command or admitted protected readback.
@@ -373,6 +373,10 @@ The 12 codec fixtures and 10 decoder command fixtures remain uncompiled. The
 decoder fixtures cover unavailable responses, invalid shared memory, overflow,
 truncated buffers and initialized results on both backends; they are not proof
 of those invariants until executed. Real texture/error/binding checks remain pending.
+Three additional feature-on validating-decoder fixtures execute the command
+against actual renderbuffer metadata: RGBA8 extents, integer format classification
+and storage redefinition. These are also uncompiled; passthrough attachment
+fixtures and protected texture runtime coverage remain pending.
 The active 001–034 Chromium build was not changed by these checks.
 
 ## Manager identity coherence diagnostics
@@ -396,6 +400,13 @@ is aborted, with no external server/network fallback. CSP permits the diagnostic
 blob worker, not external resources. A real 001–027 health-path run observed a
 secure context, genuine Client Hints and no mismatches; navigation/inspection
 failure still requires runtime teardown. This is not HTTP or TLS evidence.
+
+The controlled health document includes a responsive viewport declaration.
+Without it, genuine mobile layout uses a 980 CSS-pixel viewport, which is not a
+configured-screen failure. An owned Mobile Web run with 390×844, DPR 3, touch,
+`de-DE` and `Europe/Berlin` passed the manager diagnostic after that fixture fix.
+It still reports genuine Windows Client Hints with `mobile=false`: Web Emulation,
+not an Android identity. The earlier layout mismatch is retained as failed evidence.
 
 ## Texture lifecycle baseline
 
