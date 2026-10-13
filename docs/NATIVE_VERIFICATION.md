@@ -375,6 +375,21 @@ truncated buffers and initialized results on both backends; they are not proof
 of those invariants until executed. Real texture/error/binding checks remain pending.
 The active 001–034 Chromium build was not changed by these checks.
 
+## Texture lifecycle baseline
+
+`scripts/verify_native_gpu_textures.py` verifies actual texture uploads/readback,
+2D resize, non-base mip attachment, cube faces and WebGL2 array/3D layers on
+selected color attachment 1 with a deliberately different viewport. Read repeats,
+binding preservation and exact errors are checked in all eight contexts before
+and after restart. The owned feature-off 001–027 runtime passed 208 case
+observations; its measured runtime core matched the prior baseline.
+
+The initial diagnostic failed because its non-base texture mip chain was
+incomplete under ANGLE's ES3 completeness rules. The fixture now explicitly
+sets `TEXTURE_MAX_LEVEL=1`; that failure is retained separately. This is baseline
+compatibility evidence, **not execution of the new native GPU metadata command**
+and not a privacy capability. Protected texture results remain pending.
+
 ## Current WebGL clipping compatibility gate
 
 The registered 001–034 browser batch is compiling; its new protections are not

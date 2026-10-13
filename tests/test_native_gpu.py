@@ -625,6 +625,53 @@ def test_future_gpu_codegen_gate_rejects_generated_source_drift(tmp_path, monkey
         assert transport.verify_codegen(overlay, formatter, {}) == 1
 
 
+def texture_fixture_observations():
+    from scripts.verify_native_canvas import CONTEXTS
+    from scripts.verify_native_gpu_textures import CASE_CONFIG, CASES
+
+    return {context: {api: {"available": True, "finalError": 0, "cases": [
+        {"name": name, "width": CASE_CONFIG[name][0], "height": CASE_CONFIG[name][1],
+         "color": CASE_CONFIG[name][2][:],
+         "pixels": CASE_CONFIG[name][2] * (CASE_CONFIG[name][0] * CASE_CONFIG[name][1]),
+         "repeat": CASE_CONFIG[name][2] * (CASE_CONFIG[name][0] * CASE_CONFIG[name][1]),
+         "errors": [0, 0], "bindingsPreserved": True} for name in sorted(names)]}
+        for api, names in CASES.items()} for context in CONTEXTS}
+
+
+def test_texture_lifecycle_baseline_requires_actual_cases_in_every_context():
+    from scripts.verify_native_gpu_textures import validate
+
+    validate(texture_fixture_observations())
+
+
+@pytest.mark.parametrize("mutation", ["missing-context", "missing-case", "duplicate-case",
+                                     "invented-color", "wrong-pixels", "changed-binding", "boolean-error"])
+def test_texture_lifecycle_baseline_rejects_incomplete_or_inconsistent_observations(mutation):
+    from scripts.verify_native_gpu_textures import validate
+
+    observed = texture_fixture_observations()
+    context = next(iter(observed))
+    value = observed[context]["webgl2"]
+    item = value["cases"][0]
+    if mutation == "missing-context":
+        del observed[context]
+    elif mutation == "missing-case":
+        value["cases"].pop()
+    elif mutation == "duplicate-case":
+        value["cases"][-1] = item
+    elif mutation == "invented-color":
+        item["color"] = [0, 0, 0, 0]
+        item["pixels"] = item["repeat"] = [0] * len(item["pixels"])
+    elif mutation == "wrong-pixels":
+        item["pixels"][0] ^= 1
+    elif mutation == "changed-binding":
+        item["bindingsPreserved"] = False
+    else:
+        item["errors"][0] = False
+    with pytest.raises(ValueError):
+        validate(observed)
+
+
 def test_future_gpu_command_id_parser_ignores_macro_footer():
     from scripts.verify_native_gpu_transport_draft import command_ids
 

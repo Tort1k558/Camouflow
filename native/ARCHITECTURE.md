@@ -14,6 +14,22 @@ bounded teardown. Recorder, scenarios and AI use the common browser contract.
 
 ## Configuration and privacy
 
+### Product contract: coherent browser identity
+
+The primary objective is a plausible, stable browser environment, not blanket
+suppression of every exposed value. Treat OS, UA/Client Hints/HTTP, graphics
+capabilities, fonts, display, language and timezone as one versioned identity.
+Document, frames and workers must agree; profile restart must preserve identity,
+while independent profiles retain independent keys and storage.
+
+GPU metadata minimization is an optional privacy experiment, not the default
+identity strategy. Missing extensions or empty identifying fields do not prove
+plausibility. Future identity presets require measured reference environments
+and native capability/behaviour checks; do not independently randomize hardware
+strings while retaining contradictory driver capabilities. Cross-OS and mobile
+identities remain unverified until their complete observable environment agrees.
+Current Mobile Web remains desktop Chromium viewport/touch emulation.
+
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy
 requests before startup. Unsupported requests fail rather than silently falling
 back. Diagnostics observe actual document/worker browser values; they do not
