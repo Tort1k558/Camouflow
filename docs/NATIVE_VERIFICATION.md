@@ -30,6 +30,7 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | `scripts/verify_native_worker_startup.py` | Default: 40 owned startup/restart/shared-client cases; `--include-nested` adds 20 nested dedicated-worker cases; no Canvas admission |
 | `scripts/verify_native_surfaces.py --include-nested-canvas` | Passed on browser 001-047: 7 existing phases and 24 parent/child Canvas cases across baseline/two profiles and restart, including first-script/repeated readback and separate fetch/body counters |
 | `scripts/verify_native_surfaces.py --derivation-mode profile-identity --include-nested-canvas` | Prepared: stable cross-origin Canvas/Audio, restart and two-profile isolation using exact compiled patches 0049-0054; existing 001-047 receipt is rejected, not treated as an identity-mode result |
+| `scripts/verify_native_surfaces.py --include-concurrent-profiles` | Prepared: five additional phases with two live profiles, symmetric close/restart, unchanged survivor surfaces and exact launch-policy checks; not yet browser-executed |
 | `scripts/verify_native_gpu_readback.py --derivation-mode profile-identity` | Prepared: six existing phases with cross-origin WebGL1/2/renderbuffer consistency, restart and profile isolation; requires exact identity and complete GPU transport patches, not an old receipt |
 | `scripts/verify_native_identity.py --strict-client-hints` | Passed on browser 001-047: 8 strict document/frame HTTP-versus-JS comparisons, 6 worker JS-preservation checks and 4 invalid-UA rejection checks; 18 total |
 
@@ -107,6 +108,16 @@ mode. Its receipt additionally binds 0046/0047 and 0055–0058. The existing
 001-047 browser was rejected before any fixture launch:
 `D:\CamouFlowNative\profile-identity-gpu-old-core-rejection-001-047-v1.json`.
 This is not WebGPU, validating-decoder coverage or a passing new-mode result.
+
+`--include-concurrent-profiles` adds five phases after the sequential baseline:
+both profiles live, A closed, A restarted while B stays live, B closed, then B
+restarted while A stays live. Every observed survivor must match its earlier
+Canvas/Audio snapshot; both-live phases also require cross-profile isolation.
+Each phase checks actual launch arguments, including the selected mode and
+storage-partitioning exclusions. Teardown attempts both owners even when one
+fails. The original seven-phase default and optional 24 nested Canvas cases
+remain unchanged. These are prepared lifecycle/consistency checks, not memory/
+CPU benchmarks, concurrent nested-worker coverage or passing browser evidence.
 
 Nested worker coverage is opt-in and preserves the existing 40-case contract:
 

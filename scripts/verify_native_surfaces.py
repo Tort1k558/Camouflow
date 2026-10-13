@@ -389,9 +389,60 @@ def probe_inputs() -> dict[str, str]:
     return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in names}
 
 
+CONCURRENT_PHASES = (
+    "concurrent-start", "after-profile-a-close", "after-profile-a-restart",
+    "after-profile-b-close", "after-profile-b-restart",
+)
+
+
+async def verify_concurrent_profiles(profiles: dict[str, NativeRuntime], origin: str, results: dict,
+                                     report: dict, *, derivation_mode: str) -> None:
+    first, second = profiles["profile-a"], profiles["profile-b"]
+    try:
+        for runtime in (first, second):
+            await runtime.start(headless=True)
+        for phase in CONCURRENT_PHASES:
+            if phase == "after-profile-a-close":
+                await first.close()
+            elif phase == "after-profile-a-restart":
+                await first.start(headless=True)
+            elif phase == "after-profile-b-close":
+                await second.close()
+            elif phase == "after-profile-b-restart":
+                await second.start(headless=True)
+            active = {name: runtime for name, runtime in profiles.items() if runtime.context is not None}
+            expected = ({"profile-b"} if phase == "after-profile-a-close" else
+                        {"profile-a"} if phase == "after-profile-b-close" else {"profile-a", "profile-b"})
+            if set(active) != expected:
+                raise ValueError("Concurrent profile lifecycle differs from the required phase")
+            check = {"name": phase, "passed": False, "active_profiles": sorted(active), "observed": {}}
+            report["checks"].append(check)
+            for name, runtime in active.items():
+                arguments = await browser_arguments(runtime.context)
+                requested = runtime.configuration.launch_arguments()
+                identity_arguments = [value for value in arguments if value.startswith("--glint-fingerprint-derivation-mode=")]
+                expected_identity = [IDENTITY_ARGUMENT] if derivation_mode == "profile-identity" else []
+                if (any(value not in arguments for value in requested)
+                        or partitioning_argument(arguments) != runtime.configuration.disabled_features_argument
+                        or identity_arguments != expected_identity):
+                    raise ValueError("Concurrent profile launch arguments do not match the selected policy")
+                observed = await observe(runtime.context, origin, read=COMBINED_READ)
+                check["observed"][name] = observed
+                validate_combined(observed, results[name], protected=True, derivation_mode=derivation_mode)
+            if len(active) == 2:
+                validate_isolation(results["baseline"], check["observed"]["profile-a"],
+                                   check["observed"]["profile-b"], derivation_mode=derivation_mode)
+            check["passed"] = True
+    finally:
+        # A teardown failure must not prevent closing the other owned profile.
+        errors = await asyncio.gather(first.close(), second.close(), return_exceptions=True)
+        if any(isinstance(error, BaseException) for error in errors):
+            raise RuntimeError("Concurrent profile cleanup failed")
+
+
 async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, report: dict,
                  runtimes: list[NativeRuntime], *, include_nested_canvas: bool = False,
-                 derivation_mode: str = "partitioned-privacy") -> None:
+                 derivation_mode: str = "partitioned-privacy", include_concurrent_profiles: bool = False) -> None:
     origin = f"http://127.0.0.1:{server.server_port}"
     discovery = NativeRuntime(owned / "driver-arguments", executable, SurfaceConfiguration())
     runtimes.append(discovery)
@@ -405,12 +456,15 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
     finally:
         await discovery.close()
     results = {}
+    profiles = {}
     for name in ("baseline", "profile-a", "profile-b"):
         mode = "baseline" if name == "baseline" else "ready"
         configuration = SurfaceConfiguration(probe_mode=mode, derivation_mode=derivation_mode,
             disabled_features_argument=replacement, ignored_driver_argument=original)
         runtime = NativeRuntime(owned / name, executable, configuration)
         runtimes.append(runtime)
+        if mode == "ready":
+            profiles[name] = runtime
         previous = None
         previous_nested = None
         for phase in ("initial", "restart"):
@@ -464,6 +518,8 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
         name: compare_quality({context: row["audio"] for context, row in results["baseline"].items()},
                               {context: row["audio"] for context, row in results[name].items()})
         for name in ("profile-a", "profile-b")}
+    if include_concurrent_profiles:
+        await verify_concurrent_profiles(profiles, origin, results, report, derivation_mode=derivation_mode)
     check = {"name": "missing-document-policy", "passed": False}
     check["derivation_mode"] = "partitioned-privacy"
     report["checks"].append(check)
@@ -480,6 +536,8 @@ def main() -> int:
                         help="Also check first-script/repeated Canvas in classic/module parent/child workers")
     parser.add_argument("--derivation-mode", choices=DERIVATION_MODES, default="partitioned-privacy",
                         help="Owned profile-identity diagnostics require exact compiled patches 0049-0054")
+    parser.add_argument("--include-concurrent-profiles", action="store_true",
+                        help="Also check two live profiles and symmetric close/restart isolation")
     args = parser.parse_args()
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite surface evidence")
@@ -487,6 +545,9 @@ def main() -> int:
               "platform": platform.platform(), "scope": "Combined Canvas/OfflineAudio isolation, first-parser-script consistency, restart, float32 error/SNR and missing-policy rejection; render durations measured, not a performance admission; no GPU or anti-bot admission"}
     report["include_nested_canvas"] = args.include_nested_canvas
     report["derivation_mode"] = args.derivation_mode
+    report["include_concurrent_profiles"] = args.include_concurrent_profiles
+    if args.include_concurrent_profiles:
+        report["scope"] += "; two simultaneously live profiles with symmetric close/restart surface isolation; no resource performance admission"
     if args.derivation_mode == "profile-identity":
         report["scope"] += "; stable cross-origin profile identity; missing-policy rejection uses the compatibility mode"
     if args.include_nested_canvas:
@@ -509,19 +570,23 @@ def main() -> int:
         thread.start()
         owned = Path(tempfile.mkdtemp(prefix="glint-surfaces-", dir=args.work_dir.resolve()))
         asyncio.run(verify(executable, owned, server, report, runtimes,
-                           include_nested_canvas=args.include_nested_canvas, derivation_mode=args.derivation_mode))
+                           include_nested_canvas=args.include_nested_canvas, derivation_mode=args.derivation_mode,
+                           include_concurrent_profiles=args.include_concurrent_profiles))
         if (measure_runtime_core(executable) != core or validate_receipt(executable, core, derivation_mode=args.derivation_mode) != receipt
                 or probe_inputs() != inputs):
             raise ValueError("Surface runtime, receipt or probe code changed during verification")
         expected = {f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b")
                     for phase in ("initial", "restart")}
         expected.add("missing-document-policy")
+        if args.include_concurrent_profiles:
+            expected.update(CONCURRENT_PHASES)
         if ({check["name"] for check in report["checks"]} != expected
                 or len(report["checks"]) != len(expected)):
             raise ValueError("Combined surface phases are incomplete")
         if args.include_nested_canvas:
             cases = {f"{parent}-{child}" for parent, child in nested_canvas.NESTED_CASES}
-            nested_checks = [check for check in report["checks"] if check["name"] != "missing-document-policy"]
+            nested_checks = [check for check in report["checks"] if check["name"] in {
+                f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b") for phase in ("initial", "restart")}]
             if any(set(check.get("nested_canvas", {})) != cases
                    or set(check.get("nested_canvas_evidence", {})) != cases
                    or any(entry.get("passed") is not True for entry in check["nested_canvas_evidence"].values())

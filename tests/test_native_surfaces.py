@@ -115,6 +115,70 @@ def test_combined_baseline_protected_restart_and_isolation():
     surfaces.validate_isolation(baseline, first, second)
 
 
+@pytest.mark.parametrize("mode", surfaces.DERIVATION_MODES)
+@pytest.mark.parametrize("failure", [None, "start-a", "start-b", "survivor-changed", "restart-changed", "cleanup",
+                                    "missing-argument", "duplicate-mode"])
+def test_concurrent_profile_probe_requires_stability_and_closes_both_owners(monkeypatch, mode, failure):
+    import asyncio
+    from types import SimpleNamespace
+
+    events = []
+    class Runtime:
+        def __init__(self, name):
+            self.name = name
+            self.context = None
+            self.starts = self.closes = 0
+            self.configuration = surfaces.SurfaceConfiguration(probe_mode="ready", derivation_mode=mode,
+                disabled_features_argument="--disable-features=Example",
+                ignored_driver_argument="--disable-features=Example,ThirdPartyStoragePartitioning")
+
+        async def start(self, **kwargs):
+            self.starts += 1
+            events.append(("start", self.name))
+            if failure == ("start-a" if self.name == "profile-a" else "start-b"):
+                raise ValueError("owned startup failure")
+            self.context = SimpleNamespace(name=self.name)
+
+        async def close(self):
+            self.closes += 1
+            events.append(("close", self.name))
+            if failure == "cleanup" and self.name == "profile-a":
+                raise ValueError("owned cleanup failure")
+            self.context = None
+
+    profiles = {name: Runtime(name) for name in ("profile-a", "profile-b")}
+    results = {"baseline": observation(),
+               "profile-a": observation("b", "c" if mode == "partitioned-privacy" else "b"),
+               "profile-b": observation("d", "e" if mode == "partitioned-privacy" else "d")}
+    async def observe(context, *args, **kwargs):
+        if ((failure == "survivor-changed" and profiles["profile-a"].context is None)
+                or (failure == "restart-changed" and profiles[context.name].starts > 1)):
+            return observation("f", "a" if mode == "partitioned-privacy" else "f")
+        return copy.deepcopy(results[context.name])
+    monkeypatch.setattr(surfaces, "observe", observe)
+    async def arguments(context):
+        values = profiles[context.name].configuration.launch_arguments()
+        if failure == "missing-argument":
+            values.remove(surfaces.KEY_ARGUMENT)
+        elif failure == "duplicate-mode":
+            values.append(surfaces.IDENTITY_ARGUMENT)
+        return values
+    monkeypatch.setattr(surfaces, "browser_arguments", arguments)
+    report = {"checks": []}
+    operation = surfaces.verify_concurrent_profiles(profiles, "http://owned", results, report, derivation_mode=mode)
+    if failure is None:
+        asyncio.run(operation)
+        assert [check["name"] for check in report["checks"]] == list(surfaces.CONCURRENT_PHASES)
+        assert all(check["passed"] for check in report["checks"])
+        assert [check["active_profiles"] for check in report["checks"]] == [
+            ["profile-a", "profile-b"], ["profile-b"], ["profile-a", "profile-b"],
+            ["profile-a"], ["profile-a", "profile-b"]]
+    else:
+        with pytest.raises((ValueError, RuntimeError)):
+            asyncio.run(operation)
+    assert events[-2:] == [("close", "profile-a"), ("close", "profile-b")]
+
+
 def test_combined_profile_identity_is_stable_across_sites_restart_and_independent_profiles():
     baseline, first, second = observation(), observation("b"), observation("d")
     surfaces.validate_combined(first, copy.deepcopy(first), protected=True,
