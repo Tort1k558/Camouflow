@@ -297,7 +297,10 @@ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None 
             validate_shader_readback(read_scene, api, expected_pixels=full)
             validate_errors(scene["validation"], api, full[:4], scene["lost"])
             if api == "webgl2":
-                validate_renderbuffer(scene["renderbuffer"], protected=protected)
+                try:
+                    validate_renderbuffer(scene["renderbuffer"], protected=protected)
+                except ValueError as error:
+                    raise ValueError(f"{context}/{api}/renderbuffer: {error}") from error
             elif scene["renderbuffer"] is not None:
                 raise ValueError("WebGL1 claimed WebGL2 renderbuffer coverage")
             if any((byte != reference if not protected or index % 4 == 3 else
@@ -413,7 +416,10 @@ def validate_renderbuffer(observed: dict, *, protected: bool) -> None:
                 raise ValueError("Renderbuffer repeat/crop/PBO/pack padding mismatch: " + field)
         if protected and full == reference:
             raise ValueError("Renderbuffer readback was not protected")
-        validate_boundary_reads(frame["boundaryReads"], full, width, height)
+        try:
+            validate_boundary_reads(frame["boundaryReads"], full, width, height)
+        except ValueError as error:
+            raise ValueError(f"{name}: {error}") from error
         if protected:
             # Every pixel in this opaque two-pixel colour-cell gradient has a
             # different quantized neighbour. The candidate therefore selects
@@ -460,7 +466,7 @@ def validate_boundary_reads(observed: list, full: list[int], width: int, height:
                 or actual["bounds"] != request or actual["cpu"] != expected
                 or actual["pbo"] != [165] * 12 + expected + [165] * 20
                 or actual["packedCpu"] != packed or actual["packedPbo"] != [165] * 12 + packed + [165] * 20):
-            raise ValueError("Framebuffer boundary read changed pixels, padding, binding or errors")
+            raise ValueError("Framebuffer boundary read changed pixels, padding, binding or errors: " + str(request))
 
 
 def validate_errors(observed: dict, api: str, first_pixel: list[int], lost: dict) -> None:

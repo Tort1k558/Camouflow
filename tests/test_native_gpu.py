@@ -306,6 +306,21 @@ def test_readback_gate_checks_native_png_without_canvas_remasking():
     assert validate_readback(readback_observation(protected=True), protected=True, baseline=baseline) == baseline
 
 
+@pytest.mark.parametrize("context", ["document", "shared", "service"])
+@pytest.mark.parametrize("phase", ["initial", "resized"])
+def test_readback_boundary_failure_names_context_phase_and_request(context, phase):
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    observed = readback_observation(protected=True)
+    frame = observed[context]["webgl"]["webgl2"]["scene"]["renderbuffer"][phase]
+    request = frame["boundaryReads"][0]
+    request["cpu"][0] = 0
+    with pytest.raises(ValueError) as caught:
+        validate_readback(observed, protected=True)
+    assert f"{context}/webgl2/renderbuffer: {phase}:" in str(caught.value)
+    assert str(request["bounds"]) in str(caught.value)
+
+
 def profile_identity_readback_observation():
     observed = readback_observation(protected=True)
     observed["cross_origin_frame"] = copy.deepcopy(observed["document"])
