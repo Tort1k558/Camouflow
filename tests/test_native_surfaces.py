@@ -359,12 +359,19 @@ def test_gpu_passthrough_attachment_fixtures_enable_feature_and_cover_native_sta
 
     text = PASSTHROUGH_ATTACHMENT_PATCH.read_text(encoding="utf-8-sig")
     assert patch_paths(text) == PASSTHROUGH_ATTACHMENT_PATHS
-    assert text.count("+TEST_F(GlintPassthroughAttachmentTest,") == 4
+    assert text.count("+TEST_F(GlintPassthroughAttachmentTest,") == 6
     assert "InitAndEnableFeature(features::kGlintReadbackMetadataCandidate)" in text
     assert "ActualRgba8ExtentsPreserveRenderbufferBinding" in text
     assert "RedefinedAttachmentUsesCurrentNativeDimensions" in text
     assert "IntegerAttachmentIsNotByteColourCompatible" in text
     assert "MetadataQueryPreservesPendingClientError" in text
+    assert "TextureAttachmentUsesNativeExtentsAndPreservesBinding" in text
+    assert "TextureReattachmentUsesSelectedObjectNotBoundTexture" in text
+    assert "DoGetIntegerv(GL_TEXTURE_BINDING_2D, &before, 1);" in text
+    assert "DoGetIntegerv(GL_TEXTURE_BINDING_2D, &after, 1);" in text
+    assert "DoFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D," in text
+    assert "EXPECT_EQ(second->width, 4);" in text
+    assert "EXPECT_EQ(second->height, 7);" in text
     assert "GTEST_SKIP" not in text
     assert PATCHES[-1] == PASSTHROUGH_ATTACHMENT_PATCH
 
