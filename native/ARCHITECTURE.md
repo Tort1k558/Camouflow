@@ -34,8 +34,12 @@ The unregistered `drafts/profile-identity` sequence separates partitioned privac
 derivation from stable profile identity and prepares an immutable browser-owned
 selection per key service. Invalid selections reject initialization; installed
 owners cannot switch modes. Source replay covers the three-patch sequence; twenty-six
-native fixture definitions are prepared, not executed. Policy producers, wire
-delivery, renderer/worker consumption and UI selection remain unintegrated.
+native fixture definitions are prepared, not executed. A fourth, eight-file
+candidate integrates selected derivation into the surface producer and a v3
+wire mode with five more fixture definitions. Unknown modes and v2 reject before
+seed copies; final-partition validation remains mandatory. Pinned Mojo parsing
+and C++ binding generation passed in an isolated copy. Native compilation,
+first-script renderer/worker handoff and launch/UI selection remain unverified.
 This does not enable an identity mode in the currently compiling browser.
 
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy

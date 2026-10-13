@@ -19,6 +19,7 @@ from scripts.verify_native_document_drafts import digest, patch_paths
 PATCH = ROOT / "native/drafts/profile-identity/profile_identity_derivation_candidate.patch"
 MODE_PATCH = ROOT / "native/drafts/profile-identity/immutable_identity_mode_candidate.patch"
 CONTEXT_PATCH = ROOT / "native/drafts/profile-identity/identity_context_tests_candidate.patch"
+TRANSPORT_PATCH = ROOT / "native/drafts/profile-identity/identity_transport_v3_candidate.patch"
 PREFIX = "content/browser/camouflow_native/"
 PATHS = {PREFIX + name for name in (
     "privacy_partition.h", "privacy_key_derivation.h", "privacy_key_derivation.cc",
@@ -49,6 +50,62 @@ CONTEXT_FIXTURES = (
     "SelectedIncognitoIdentityRejectsPersistentRoot",
     "SelectedNullAndFailedContextsNeverExposeMode",
 )
+COMMON = "third_party/blink/public/common/native_privacy/glint/"
+PRODUCER = PREFIX + "glint/"
+TRANSPORT_PATHS = {COMMON + name for name in (
+    "surface_policy.h", "surface_policy_validation.h", "surface_policy_preflight.h",
+    "surface_policy_wire.h", "surface_policy_preflight_unittest.cc")}
+TRANSPORT_PATHS.update({PRODUCER + "surface_policy_producer.cc",
+                        PRODUCER + "surface_policy_producer_unittest.cc",
+                        "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom"})
+TRANSPORT_FIXTURES = {
+    PRODUCER + "surface_policy_producer_unittest.cc": (
+        "IdentityModeSelectsStableSeedsWithExactPartition",
+        "DefaultModeRetainsPartitionDependentSeeds"),
+    COMMON + "surface_policy_preflight_unittest.cc": (
+        "IdentityModeRoundtripSurvivesDocumentAndWorkerDecode",
+        "UnknownModeAndLegacyVersionRejectBeforeCopy",
+        "StableIdentityDoesNotAuthorizeAnotherPartition"),
+}
+
+
+def verify_bindings(source: Path, overlay: Path, env: dict) -> dict:
+    output = source / "out/CamouFlowNative"
+    schema = "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom"
+    mapping = output / "gen/third_party/blink/public/mojom/mojom_core__type_mappings"
+    parser = source / "mojo/public/tools/mojom/mojom_parser.py"
+    generator = source / "mojo/public/tools/bindings/mojom_bindings_generator.py"
+    inputs = {str(path): digest(path) for path in (mapping, parser, generator)}
+    if any(value is None for value in inputs.values()):
+        raise ValueError("Pinned parser, generator and existing build typemap are required")
+    typemap = json.loads(mapping.read_text(encoding="utf-8-sig"))
+    for language in typemap["_metadata"]["module_typemaps"]:
+        typemap["_metadata"]["module_typemaps"][language] = []
+    typemap_path = overlay / "single-module-typemap.json"
+    typemap_path.write_text(json.dumps(typemap), encoding="utf-8")
+    generated = overlay / "bindings-gen"
+    build.run([sys.executable, str(parser), "--input-root", str(overlay),
+               "--input-root", str(source), "--input-root", str(output / "gen"),
+               "--output-root", str(generated), "--module-root", str(output / "gen"),
+               "--mojoms", str(overlay / schema)], overlay, env)
+    command = [sys.executable, str(generator), "--use_bundled_pylibs", "-o", str(generated),
+               "generate", str(overlay / schema), "-d", str(overlay), "--generators", "c++",
+               "--bytecode_path", str(output / "gen/mojo/public/tools/bindings"),
+               "--typemap", str(typemap_path)]
+    for options in (["--generate_non_variant_code"], [],
+                    ["--generate_non_variant_code", "--generate_message_ids"]):
+        build.run(command + options, overlay, env)
+    header = (generated / (schema + ".h")).read_text(encoding="utf-8-sig")
+    if not all(value in header for value in (
+            "uint32_t identity_mode", "blink::StorageKey partition", "std::string partition_encoding",
+            *("std::vector<uint8_t> " + surface + "_seed"
+              for surface in ("canvas", "webgl", "webgpu", "audio")))):
+        raise ValueError("Generated v3 policy binding types differ")
+    if inputs != {name: digest(Path(name)) for name in inputs}:
+        raise ValueError("Pinned binding inputs changed during generation")
+    return {"passed": True, "compiled": False, "inputs": inputs,
+            "generated": {path.relative_to(generated).as_posix(): digest(path)
+                          for path in generated.rglob("*") if path.is_file()}}
 
 
 def reference_vectors() -> dict[str, str]:
@@ -60,7 +117,10 @@ def reference_vectors() -> dict[str, str]:
     return values
 
 
-def verify(workspace: Path, report: Path, *, include_mode: bool = False) -> dict:
+def verify(workspace: Path, report: Path, *, include_mode: bool = False,
+           include_transport: bool = False, check_bindings: bool = False) -> dict:
+    include_transport = include_transport or check_bindings
+    include_mode = include_mode or include_transport
     source = workspace / "chromium/src"
     if source != source.resolve() or not source.is_dir():
         raise ValueError("A canonical Chromium checkout is required")
@@ -83,6 +143,11 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False) -> dict
             raise ValueError("Context fixture candidate source coverage differs")
         patches.extend((MODE_PATCH, CONTEXT_PATCH))
         paths.add(CONTEXT_PATH)
+    if include_transport:
+        if patch_paths(TRANSPORT_PATCH.read_text(encoding="utf-8-sig")) != TRANSPORT_PATHS:
+            raise ValueError("Identity transport candidate source coverage differs")
+        patches.append(TRANSPORT_PATCH)
+        paths.update(TRANSPORT_PATHS)
     if any((source / name).resolve() != source / name for name in paths):
         raise ValueError("Profile identity inputs must not follow links")
     before = {name: digest(source / name) for name in paths}
@@ -90,6 +155,7 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False) -> dict
         raise ValueError("A profile identity baseline input is missing")
     inputs = {str(path.relative_to(ROOT)): digest(path) for path in (*patches, Path(__file__))}
     vectors = reference_vectors()
+    bindings = None
     with tempfile.TemporaryDirectory(prefix="glint-profile-identity-replay-", dir=report.parent) as owned:
         overlay = Path(owned)
         for name in paths:
@@ -112,6 +178,13 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False) -> dict
             context_fixtures = (overlay / CONTEXT_PATH).read_text(encoding="utf-8-sig")
             if any(name not in context_fixtures for name in CONTEXT_FIXTURES):
                 raise ValueError("BrowserContext mode fixture coverage differs")
+        if include_transport:
+            for name, expected in TRANSPORT_FIXTURES.items():
+                text = (overlay / name).read_text(encoding="utf-8-sig")
+                if any(fixture not in text for fixture in expected):
+                    raise ValueError("Identity transport native fixture coverage differs")
+        if check_bindings:
+            bindings = verify_bindings(source, overlay, env)
         composed = {name: digest(overlay / name) for name in paths}
     if before != {name: digest(source / name) for name in paths}:
         raise ValueError("Active profile identity source changed during replay")
@@ -120,6 +193,8 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False) -> dict
     result = {"passed": True, "compiled": False, "mode_enabled": False, "privacy_admitted": False,
               "immutable_mode_candidate_replayed": include_mode,
               "context_mode_fixtures_replayed": include_mode,
+              "identity_transport_candidate_replayed": include_transport,
+              "bindings": bindings,
               "active_source_unchanged": True, "inputs": inputs, "composed_source": composed,
               "independent_reference_vectors": vectors, "registered_patches": registered}
     report.write_text(json.dumps(result, indent=2), encoding="utf-8")
@@ -132,8 +207,13 @@ def main() -> int:
     parser.add_argument("--report", required=True, type=Path)
     parser.add_argument("--include-mode", action="store_true",
                         help="Replay the dependent immutable browser-mode candidate as well")
+    parser.add_argument("--include-transport", action="store_true",
+                        help="Replay mode, context and v3 producer/transport candidates in order")
+    parser.add_argument("--check-bindings", action="store_true",
+                        help="Also generate isolated pinned Mojo C++ bindings; no native compilation")
     args = parser.parse_args()
-    result = verify(args.workspace, args.report, include_mode=args.include_mode)
+    result = verify(args.workspace, args.report, include_mode=args.include_mode,
+                    include_transport=args.include_transport, check_bindings=args.check_bindings)
     print(json.dumps({key: result[key] for key in ("passed", "compiled", "mode_enabled")}))
     return 0
 

@@ -239,3 +239,22 @@ def test_identity_context_fixtures_cover_owner_lifecycle_and_incognito_without_s
     assert "+  context->NotifyWillBeDestroyed();" in text
     assert "+  first->set_is_off_the_record(true);" in text
     assert "+  second->set_is_off_the_record(true);" in text
+
+
+def test_identity_transport_v3_carries_mode_without_weakening_partition_validation():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_profile_identity_draft import (
+        TRANSPORT_FIXTURES, TRANSPORT_PATCH, TRANSPORT_PATHS,
+    )
+
+    text = TRANSPORT_PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == TRANSPORT_PATHS
+    assert "+constexpr uint32_t kSurfacePolicyVersion = 3;" in text
+    assert "+  uint32 identity_mode;" in text
+    assert "wire->identity_mode = static_cast<uint32_t>(policy.identity_mode);" in text
+    added = " ".join(line[1:].strip() for line in text.splitlines()
+                     if line.startswith("+") and not line.startswith("+++"))
+    assert "owned.identity_mode = static_cast<SurfaceIdentityMode>(incoming.identity_mode);" in added
+    assert added.count("content::DeriveNativeSelectedFingerprintKey( context,") == 4
+    assert "IsValidSurfaceIdentityMode" in text
+    assert all(name in text for names in TRANSPORT_FIXTURES.values() for name in names)

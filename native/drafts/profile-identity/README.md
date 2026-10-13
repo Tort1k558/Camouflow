@@ -59,12 +59,37 @@ wire-mode delivery, renderer/worker consumption, launch settings and UI admissio
 are not integrated. The default is preserved for existing callers, not a product
 decision to use partitioned noise as an ordinary browser identity.
 
-## Remaining gates
+## Policy v3 producer/transport candidate
+
+`identity_transport_v3_candidate.patch` is the fourth patch. It selects all four
+seeds through the immutable browser service, maps its mode explicitly, and carries
+that mode in the owned policy and Mojo payload. Policy v3 rejects v2 and unknown
+modes before copying seeds. Document and worker preflight preserve the received
+mode and still require exact final-partition binding, even when identity seeds
+remain equal across sites.
+
+Five additional native fixtures cover stable/default production, owned
+document/worker roundtrip, unsupported versions/modes and cross-partition
+rejection. Pinned Mojo parsing and isolated C++ binding generation passed,
+including the mode, typed partition and four seed arrays. **No fixtures or
+generated bindings have been compiled.**
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-transport-replay.json --include-transport
+.venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-transport-bindings.json --check-bindings
+```
+
+This batch is unregistered and has not changed the active build. Native binding
+compilation, first-script document/worker handoff, renderer retention, launch/UI
+selection and combined runtime remain required. It must not be mixed with v2
+consumers or admitted as a tested fingerprint feature.
+
+## Runtime admission gates
 
 - Execute native fixtures, including unchanged legacy privacy vectors.
 - Verify real BrowserContext/OTR lifetime and persisted profile restart.
-- Integrate the immutable browser-owned mode into trusted policy production and
-  versioned delivery; reject unknown wire modes before consuming any seeds.
+- Compile and execute the selected producer and versioned delivery candidates;
+  verify rejection of unknown wire modes before consuming any seeds.
 - Preserve final-partition authorization and renderer/worker IPC binding regardless
   of the entropy mode; a renderer must never choose another profile or mode.
 - Validate cross-context, cross-origin and cross-API consistency before using
