@@ -15,8 +15,11 @@ from the finish observer. The earlier missing-service throttle tests do not reac
 this late cancellation point.
 
 Both patches replayed in an owned overlay against 001-039 without changing active
-sources (`document-ready-observer-replay-v1/proof.json` on D). They are **not yet
-compiled or executed**. The active j4 Chrome build stays frozen.
+sources (`document-ready-observer-replay-v1/proof.json` on D). Both actual C++
+translation units passed syntax/type checking with their generated browser and
+content-unittest target flags; source/compiler/core/GN guards passed
+(`document-ready-observer-cpp-v1/proof.json`). They are **not yet optimized,
+linked or executed**. The active j4 Chrome build stays frozen.
 
 ## Earlier preparation record
 

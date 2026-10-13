@@ -71,6 +71,31 @@ external green tiles do not replace them.
 
 ## Build history
 
+### Windows development candidate 001-038 — 2026-10-13
+
+Chromium **148.0.7778.96**; j4 incremental build succeeded in **31m11s**.
+Receipt includes all 38 exact patches. Windows browser behavior changed in
+`chrome.dll`; an unchanged launcher EXE hash does not imply an unchanged engine.
+
+| Core file | Measured SHA-256 |
+| --- | --- |
+| `chrome.exe` | `61e97ba3335f64836b3abcf93d67af0d6ddd0d06c291b4592b1448643b35e222` |
+| `chrome.dll` | `68e539371a0b0064f455ca7277b66be9cabbd408f79fcf656702e8c59b970211` |
+| `chrome_elf.dll` | `3468b145cea9de7df386ad58c0daedba0d39c71bac58b0136486a36a2037b74d` |
+
+| Owned runtime check | Result | Boundary |
+| --- | --- | --- |
+| Surface-policy worker startup | Passed: 40/40 | Classic/module dedicated, shared and service workers; ready, absent-policy and restart phases |
+| Combined Canvas/OfflineAudio | Passed: 6 baseline/profile/restart phases | Two protected profiles plus baseline; document/frame/worker observations where APIs apply |
+| Cross-profile isolation | Passed | The owned fixture's observations only; not general anti-bot acceptance |
+| Missing required document policy | **Failed: browser crash** | Illegal `READY_TO_COMMIT` failure transition; full combined gate failed |
+| External detector/CAPTCHA destinations | Not run for this build | Earlier build observations cannot be transferred |
+
+Private evidence on D: `worker-surfaces-startup-001-038-v1.json` and
+`combined-surfaces-001-038-v1.json`. Registered repair 0039 and the subsequent
+observer-lifetime drafts are not validated by these results. This candidate is
+**not release-admitted**; retain failed evidence and rerun after repairs.
+
 ### Windows development baseline 001–010 — 2026-10-12
 
 Chromium **148.0.7778.96**; executable SHA-256:
