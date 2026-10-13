@@ -1771,6 +1771,23 @@ def test_controller_tree_excludes_preexisting_processes_and_tracks_new_descendan
     assert set(controller_descendants(before, current, 10)) == {30, 40}
 
 
+def test_controller_process_snapshot_bounds_windows_cim_and_preserves_owner_identity(monkeypatch):
+    from scripts import verify_native_runtime
+
+    monkeypatch.setattr(verify_native_runtime.sys, "platform", "win32")
+
+    def snapshot(command, **kwargs):
+        assert command[:3] == ["powershell.exe", "-NoProfile", "-Command"]
+        assert "-Property ProcessId,ParentProcessId,Name,CreationDate" in command[3]
+        assert "-OperationTimeoutSec 30" in command[3]
+        assert kwargs["timeout"] == 60
+        return '{"ProcessId":123,"ParentProcessId":42,"Name":"chrome.exe","CreationDate":"owned-start"}'
+
+    monkeypatch.setattr(verify_native_runtime.subprocess, "check_output", snapshot)
+    assert verify_native_runtime.process_snapshot() == {
+        123: {"parent": 42, "name": "chrome.exe", "started": "owned-start"}}
+
+
 def test_controller_process_snapshot_parses_posix_start_times_and_names_with_spaces(monkeypatch):
     from scripts import verify_native_runtime
 

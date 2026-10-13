@@ -172,10 +172,11 @@ def process_snapshot() -> dict:
         return linux_process_snapshot()
     if sys.platform == "win32":
         command = ("[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); "
-                   "Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,CreationDate "
+                   "Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId,Name,CreationDate "
+                   "-OperationTimeoutSec 30 | Select-Object ProcessId,ParentProcessId,Name,CreationDate "
                    "| ConvertTo-Json -Compress")
         output = subprocess.check_output(["powershell.exe", "-NoProfile", "-Command", command],
-                                         encoding="utf-8", errors="replace", timeout=15)
+                                         encoding="utf-8", errors="replace", timeout=60)
         rows = json.loads(output) if output.strip() else []
         if isinstance(rows, dict):
             rows = [rows]
