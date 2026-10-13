@@ -1,6 +1,6 @@
 # GPU attachment metadata transport — candidate
 
-**Unregistered, uncompiled, not a verified browser capability.**
+**Unregistered; command/decoder/Blink integration is uncompiled and not a verified browser capability.**
 
 Apply after the two candidates in `../next-readback/`, in order:
 
@@ -45,7 +45,21 @@ This option currently requires the Windows checkout's formatter.
 
 ## Required before promotion
 
-- Compile the generated command, both decoders, Blink consumer and 12 codec fixtures.
+The 12 standalone codec fixtures compiled with the checkout's `clang-cl` and
+executed successfully on Windows. This uses the VS C++ runtime/standard library,
+not the full Chromium build/link configuration. Strict verification rejects
+missing, duplicate, skipped, foreign and failed cases; inputs and the active
+browser/GN files are checked for changes. Private proof:
+`D:\CamouFlowNative\gpu-metadata-codec-native-v3.json`.
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_gpu_codec.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\gpu-codec-new-report.json --vs-installation D:\CamouFlowNative\toolchain\BuildTools
+```
+
+This compiles only into a disposable private directory, never the active output.
+It does not verify decoder execution, GPU calls, Blink ABI or privacy admission.
+
+- Compile/link the generated command, both decoders, Blink consumer and codec fixtures in Chromium.
 - Execute the 10 prepared decoder fixtures: feature-off unavailable response,
   invalid shared-memory ID, overflowing offset, truncated storage and initialized
   result rejection, on both decoder backends. Error cases check the entire shared

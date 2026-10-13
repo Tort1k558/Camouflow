@@ -98,6 +98,11 @@ C++ fixture пока не скомпилирован и не выполнен.
 успешны на исходниках 001–036; active sources не изменены. Приватное доказательство:
 `D:\CamouFlowNative\identity-readback-multisample-001-036-batch-v1.json`.
 `compiled=false`, `mode_enabled=false`, `privacy_admitted=false`.
+Отдельно реально скомпилированы и выполнены **12 standalone C++ codec tests**
+через checkout `clang-cl` и VS STL: `scripts/verify_native_gpu_codec.py`.
+`D:\CamouFlowNative\gpu-metadata-codec-native-v3.json` подтверждает неизменность
+входов и активных core/GN. Это не компиляция команды/decoder/Blink в Chromium,
+не проверка ABI полного браузера и не admission защиты.
 
 Подготовлен отдельный unit gate `--target worker-surfaces` в
 `scripts/verify_native_privacy_units.py`: строго 55 завершённых случаев —

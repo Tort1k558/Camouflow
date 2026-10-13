@@ -778,6 +778,54 @@ def test_texture_lifecycle_baseline_rejects_incomplete_or_inconsistent_observati
         validate(observed)
 
 
+@pytest.mark.parametrize("mutation", [None, "duplicate", "missing", "skip", "failure", "foreign", "boolean", "malformed"])
+def test_standalone_gpu_codec_requires_every_real_completed_case(mutation):
+    from scripts.verify_native_gpu_codec import CASES, validate_results
+
+    cases = [{"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(CASES)]
+    results = {"tests": 12, "failures": 0, "disabled": 0,
+               "testsuites": [{"name": "GlintReadbackMetadataTest", "testsuite": cases}]}
+    if mutation == "duplicate":
+        cases[1] = dict(cases[0])
+    elif mutation == "missing":
+        cases.pop()
+    elif mutation == "skip":
+        cases[0]["result"] = "SKIPPED"
+    elif mutation == "failure":
+        cases[0]["failures"] = [{}]
+    elif mutation == "foreign":
+        cases[0]["name"] = "ForeignCase"
+    elif mutation == "boolean":
+        results["failures"] = False
+    elif mutation == "malformed":
+        results["testsuites"][0] = None
+    if mutation is None:
+        validate_results(results)
+    else:
+        with pytest.raises(ValueError):
+            validate_results(results)
+
+
+def test_standalone_gpu_codec_rejects_report_log_collision_before_startup(tmp_path, monkeypatch):
+    from scripts import verify_native_gpu_codec as codec
+
+    monkeypatch.setattr(codec.sys, "platform", "win32")
+    report = tmp_path / "collision.log"
+    with pytest.raises(ValueError, match="new canonical private report"):
+        codec.verify(tmp_path / "workspace", report, tmp_path / "vs")
+    assert not report.exists()
+
+
+def test_standalone_gpu_codec_matches_canonical_fixture_names():
+    import re
+
+    from scripts.verify_native_gpu_codec import CASES, ROOT
+
+    text = (ROOT / "native/drafts/gpu-transport/glint_readback_metadata_unittest.cc").read_text(encoding="utf-8-sig")
+    assert re.findall(r"TEST\(GlintReadbackMetadataTest,\s*(\w+)\)", text)
+    assert set(re.findall(r"TEST\(GlintReadbackMetadataTest,\s*(\w+)\)", text)) == CASES
+
+
 def test_future_gpu_attachment_fixtures_use_native_command_and_actual_renderbuffer_state():
     from scripts.verify_native_document_drafts import patch_paths
     from scripts.verify_native_gpu_transport_draft import ATTACHMENT_PATCH, ATTACHMENT_PATHS
