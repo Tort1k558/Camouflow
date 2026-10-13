@@ -359,7 +359,7 @@ def test_gpu_passthrough_attachment_fixtures_enable_feature_and_cover_native_sta
 
     text = PASSTHROUGH_ATTACHMENT_PATCH.read_text(encoding="utf-8-sig")
     assert patch_paths(text) == PASSTHROUGH_ATTACHMENT_PATHS
-    assert text.count("+TEST_F(GlintPassthroughAttachmentTest,") == 13
+    assert text.count("+TEST_F(GlintPassthroughAttachmentTest,") == 14
     assert "InitAndEnableFeature(features::kGlintReadbackMetadataCandidate)" in text
     assert "ActualRgba8ExtentsPreserveRenderbufferBinding" in text
     assert "RedefinedAttachmentUsesCurrentNativeDimensions" in text
@@ -374,6 +374,11 @@ def test_gpu_passthrough_attachment_fixtures_enable_feature_and_cover_native_sta
     assert "SelectedReadAttachmentControlsNativeMetadata" in text
     assert "NoReadBufferRemainsUnavailableWithoutClientErrors" in text
     assert "IncompleteFramebufferRemainsUnavailableWithoutClientErrors" in text
+    assert "MultisampleMetadataMatchesActualRenderbufferSamples" in text
+    assert "storage.Init(GL_RENDERBUFFER, 1, GL_RGBA8, 8, 4);" in text
+    assert "query.Init(GL_RENDERBUFFER, GL_RENDERBUFFER_SAMPLES, shared_memory_id_," in text
+    assert "ASSERT_GT(native_samples, 0);" in text
+    assert "EXPECT_EQ(metadata->samples, native_samples);" in text
     assert "select.Init(GL_COLOR_ATTACHMENT1);" in text
     assert "select.Init(GL_NONE);" in text
     assert "EXPECT_FALSE(QueryAttachment());" in text
