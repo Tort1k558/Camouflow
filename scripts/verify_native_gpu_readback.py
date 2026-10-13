@@ -272,7 +272,11 @@ def decode_png(value: list[int]) -> list[int]:
             for byte in data[row * image.bytesPerLine():row * image.bytesPerLine() + 16]]
 
 
-def validate_readback(observed: dict, *, protected: bool, baseline: dict | None = None) -> dict:
+def validate_readback(observed: dict, *, protected: bool, baseline: dict | None = None,
+                      derivation_mode: str = "partitioned-privacy") -> dict:
+    if not isinstance(derivation_mode, str) or derivation_mode not in {
+            "partitioned-privacy", "profile-identity"}:
+        raise ValueError("Unknown WebGL readback derivation mode")
     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
         raise ValueError("Readback must cover all document and worker contexts")
     normalized = copy.deepcopy(observed)
@@ -327,6 +331,8 @@ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None 
     if coverage["webgl"] != len(CONTEXTS) or coverage["webgl2"] != len(CONTEXTS):
         raise ValueError("Incomplete native WebGL coverage")
     if protected:
+        stable_identity = derivation_mode == "profile-identity"
+        contexts = CONTEXTS if stable_identity else SAME_PARTITION
         if any(row["webgl"]["webgl"]["scene"]["pixels"] != row["webgl"]["webgl2"]["scene"]["pixels"]
                for row in observed.values()):
             raise ValueError("WebGL1 and WebGL2 surface domains disagree")
@@ -334,17 +340,19 @@ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None 
             reference = observed["document"]["webgl"][api]["scene"]["pixels"]
             if reference == SHADER_PIXELS:
                 raise ValueError("Protected readback did not change the nonuniform scene")
-            if any(observed[name]["webgl"][api]["scene"]["pixels"] != reference for name in SAME_PARTITION):
-                raise ValueError("Same-partition WebGL contexts disagree")
-            if observed["cross_origin_frame"]["webgl"][api]["scene"]["pixels"] == reference:
+            if any(observed[name]["webgl"][api]["scene"]["pixels"] != reference for name in contexts):
+                raise ValueError("Profile identity WebGL contexts disagree" if stable_identity
+                                 else "Same-partition WebGL contexts disagree")
+            if not stable_identity and observed["cross_origin_frame"]["webgl"][api]["scene"]["pixels"] == reference:
                 raise ValueError("Cross-origin WebGL partition was not isolated")
         for phase in ("initial", "resized"):
             pixels = {name: row["webgl"]["webgl2"]["scene"]["renderbuffer"][phase]["pixels"]
                       for name, row in observed.items()}
             reference = pixels["document"]
-            if any(pixels[name] != reference for name in SAME_PARTITION):
-                raise ValueError("Same-partition renderbuffer contexts disagree")
-            if pixels["cross_origin_frame"] == reference:
+            if any(pixels[name] != reference for name in contexts):
+                raise ValueError("Profile identity renderbuffer contexts disagree" if stable_identity
+                                 else "Same-partition renderbuffer contexts disagree")
+            if not stable_identity and pixels["cross_origin_frame"] == reference:
                 raise ValueError("Cross-origin renderbuffer partition was not isolated")
     return normalized
 

@@ -272,6 +272,46 @@ def test_readback_gate_checks_native_png_without_canvas_remasking():
     assert validate_readback(readback_observation(protected=True), protected=True, baseline=baseline) == baseline
 
 
+def profile_identity_readback_observation():
+    observed = readback_observation(protected=True)
+    observed["cross_origin_frame"] = copy.deepcopy(observed["document"])
+    return observed
+
+
+def test_profile_identity_gpu_gate_requires_equal_site_outputs_without_relaxing_png_or_metadata():
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    baseline = validate_readback(readback_observation(), protected=False)
+    observed = profile_identity_readback_observation()
+    assert validate_readback(observed, protected=True, baseline=baseline,
+                             derivation_mode="profile-identity") == baseline
+    with pytest.raises(ValueError, match="Cross-origin"):
+        validate_readback(observed, protected=True)
+    with pytest.raises(ValueError, match="Profile identity WebGL"):
+        validate_readback(readback_observation(protected=True), protected=True,
+                          derivation_mode="profile-identity")
+
+
+@pytest.mark.parametrize("mode", ["", "unknown", None, [], True])
+def test_unknown_gpu_derivation_mode_cannot_relax_checks(mode):
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    with pytest.raises(ValueError, match="derivation mode"):
+        validate_readback(profile_identity_readback_observation(), protected=True,
+                          derivation_mode=mode)
+
+
+@pytest.mark.parametrize("context", sorted(CONTEXTS))
+def test_profile_identity_gpu_gate_rejects_context_renderbuffer_disagreement(context):
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    observed = profile_identity_readback_observation()
+    observed[context]["webgl"]["webgl2"]["scene"]["renderbuffer"] = (
+        readback_observation(protected=True)["cross_origin_frame"]["webgl"]["webgl2"]["scene"]["renderbuffer"])
+    with pytest.raises(ValueError, match="Profile identity renderbuffer"):
+        validate_readback(observed, protected=True, derivation_mode="profile-identity")
+
+
 @pytest.mark.parametrize("value", [None, [], [True] * 33, [0] * 65537])
 def test_readback_png_requires_bounded_typed_bytes(value):
     from scripts.verify_native_gpu_readback import decode_png
@@ -294,6 +334,7 @@ def test_readback_png_checks_dimensions_before_native_decoder(monkeypatch):
         gate.decode_png(value)
 
 
+@pytest.mark.parametrize("mode", ["partitioned-privacy", "profile-identity"])
 @pytest.mark.parametrize("field,change", [
     ("pixels", lambda value: value.__setitem__(0, value[0] + 4)),
     ("pixels", lambda value: value.__setitem__(3, 254)),
@@ -306,13 +347,14 @@ def test_readback_png_checks_dimensions_before_native_decoder(monkeypatch):
     ("exportState", lambda value: value.__setitem__("rowLength", 0)),
     ("initialState", lambda value: value.__setitem__("framebuffer", 1)),
 ])
-def test_readback_gate_rejects_pixels_padding_export_and_state_corruption(field, change):
+def test_readback_gate_rejects_pixels_padding_export_and_state_corruption(field, change, mode):
     from scripts.verify_native_gpu_readback import validate_readback
 
-    observed = readback_observation(protected=True)
+    observed = (profile_identity_readback_observation() if mode == "profile-identity"
+                else readback_observation(protected=True))
     change(observed["document"]["webgl"]["webgl2"]["scene"][field])
     with pytest.raises(ValueError):
-        validate_readback(observed, protected=True)
+        validate_readback(observed, protected=True, derivation_mode=mode)
 
 
 def test_readback_gate_rejects_unprotected_runtime_and_partition_alias():
@@ -337,37 +379,43 @@ def test_readback_restart_ignores_driver_debug_cache_length_but_not_pixels():
     assert restart_state(initial) != restart_state(restarted)
 
 
+@pytest.mark.parametrize("mode", ["partitioned-privacy", "profile-identity"])
 @pytest.mark.parametrize("case", ["zero", "negative", "short", "wrongType", "invalidFormat",
                                  "incomplete", "pending", "noPackBuffer", "overlappingPack"])
-def test_readback_error_gate_requires_exact_errors_and_no_extra_pending_error(case):
+def test_readback_error_gate_requires_exact_errors_and_no_extra_pending_error(case, mode):
     from scripts.verify_native_gpu_readback import validate_readback
 
-    observed = readback_observation(protected=True)
+    observed = (profile_identity_readback_observation() if mode == "profile-identity"
+                else readback_observation(protected=True))
     observed["document"]["webgl"]["webgl2"]["scene"]["validation"][case]["nextError"] = 1282
     with pytest.raises(ValueError):
-        validate_readback(observed, protected=True)
+        validate_readback(observed, protected=True, derivation_mode=mode)
 
 
+@pytest.mark.parametrize("mode", ["partitioned-privacy", "profile-identity"])
 @pytest.mark.parametrize("case", ["zero", "negative", "short", "wrongType", "invalidFormat",
                                  "incomplete", "overlappingPack"])
-def test_readback_error_gate_rejects_destination_mutation_on_failure_or_empty_read(case):
+def test_readback_error_gate_rejects_destination_mutation_on_failure_or_empty_read(case, mode):
     from scripts.verify_native_gpu_readback import validate_readback
 
-    observed = readback_observation(protected=True)
+    observed = (profile_identity_readback_observation() if mode == "profile-identity"
+                else readback_observation(protected=True))
     observed["document"]["webgl"]["webgl2"]["scene"]["validation"][case]["pixels"][0] = 0
     with pytest.raises(ValueError):
-        validate_readback(observed, protected=True)
+        validate_readback(observed, protected=True, derivation_mode=mode)
 
 
+@pytest.mark.parametrize("mode", ["partitioned-privacy", "profile-identity"])
 @pytest.mark.parametrize("field,value", [("lost", False), ("error", 0), ("nextError", 1282),
                                        ("pixels", [0] * 4), ("lost", 1), ("error", True)])
-def test_readback_error_gate_rejects_lost_context_semantic_changes(field, value):
+def test_readback_error_gate_rejects_lost_context_semantic_changes(field, value, mode):
     from scripts.verify_native_gpu_readback import validate_readback
 
-    observed = readback_observation(protected=True)
+    observed = (profile_identity_readback_observation() if mode == "profile-identity"
+                else readback_observation(protected=True))
     observed["document"]["webgl"]["webgl2"]["scene"]["lost"][field] = value
     with pytest.raises(ValueError):
-        validate_readback(observed, protected=True)
+        validate_readback(observed, protected=True, derivation_mode=mode)
 
 
 def test_readback_feature_merges_existing_partition_flag():

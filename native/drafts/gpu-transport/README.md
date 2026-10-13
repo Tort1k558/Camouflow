@@ -68,3 +68,16 @@ This option currently requires the Windows checkout's formatter.
   exact newly built binary; upstream/model/source replay is insufficient.
 
 Float/integer/HDR attachments and WebGPU readback remain outside this candidate.
+
+## Prepared identity observation contract
+
+`verify_native_gpu_readback.validate_readback` accepts explicit
+`derivation_mode="profile-identity"` for prepared owned runners. It requires
+equal protected WebGL and renderbuffer outputs across all document/worker
+contexts; the default partitioned-privacy contract still requires cross-site
+differences. Both retain PNG/pixel agreement, CPU/PBO padding, GL state/errors,
+context loss, upper colour bits and alpha checks. Unknown modes reject.
+
+These are synthetic validator checks, not protected browser results. The runtime
+CLI/receipt gate still exercises registered partitioned privacy only; identity
+activation and binary admission are not enabled by this parameter.
