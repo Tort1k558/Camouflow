@@ -166,6 +166,14 @@ Replay 001–041 прошёл по 125 путям. Повторный surface-na
 Proof: `inline-rejection-compilation-001-044-v1/proof.json` на D.
 Полный 42-case gate повторяется на j4; лог:
 `D:\CamouFlowNative\surface-navigation-001-044-v5-build.log`.
+Следующий run дошёл до observer closure: Chromium запрещает удалять WebContents
+во время уведомления списка observers. Fixture-only патч **0045** запрашивает
+отложенное закрытие через weak-bound task; teardown инвалидирует ожидающий task.
+Общий driver inline-cancellation используется для конфликта и четырёх late-loss
+случаев. Проверки `ERR_ABORTED`, отсутствия commit, recovery и удаления вкладки
+сохранены; ни один из 42 случаев не пропущен. Fixture отдельно скомпилирован;
+replay прошёл по 126 путям. Proof: `observer-fixture-compilation-001-045-v1/proof.json`.
+Повторный j4 gate: `D:\CamouFlowNative\surface-navigation-001-045-v6-build.log`.
 В следующем GPU-пакете подготовлен четырнадцатый passthrough fixture:
 multisample metadata сравнивается с фактическим `GL_RENDERBUFFER_SAMPLES`,
 а не с запрошенным числом samples. Формат RGBA8 сам по себе не означает

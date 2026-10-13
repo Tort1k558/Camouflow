@@ -1,0 +1,118 @@
+diff --git a/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc b/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
+--- a/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
++++ b/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
+@@ -6,6 +6,9 @@
+ 
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_temp_dir.h"
++#include "base/functional/bind.h"
++#include "base/memory/weak_ptr.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "base/test/scoped_command_line.h"
+ #include "content/browser/renderer_host/navigation_request.h"
+ #include "content/browser/renderer_host/render_frame_host_impl.h"
+@@ -53,7 +56,11 @@
+     if (destroy_contents_on_finish_) {
+       destroy_contents_on_finish_ = false;
+       Observe(nullptr);
+-      DeleteContents();
++      // WebContents cannot be destroyed while its observer list is notifying.
++      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++          FROM_HERE,
++          base::BindOnce(&NativeDocumentNavigationTest::DeleteContentsAfterNotification,
++                         weak_factory_.GetWeakPtr()));
+     }
+   }
+ 
+@@ -74,6 +81,7 @@
+   }
+ 
+   void TearDown() override {
++    weak_factory_.InvalidateWeakPtrs();
+     Observe(nullptr);
+     ShutdownNativePrivacyContext(browser_context());
+     task_environment()->RunUntilIdle();
+@@ -87,6 +95,19 @@
+ 
+   void EnableSurfacePolicy() {
+     command_line_.GetProcessCommandLine()->AppendSwitch(kGlintDocumentSurfaceBootstrapSwitch);
++  }
++
++  void DeleteContentsAfterNotification() { DeleteContents(); }
++
++  void StartRejectedNavigation() {
++    if (GetParam()) {
++      // Inline cancellation leaves no pending entry for NavigationSimulator.
++      NavigationController::LoadURLParams params(Target());
++      web_contents()->GetController().LoadURLWithParams(params);
++    } else {
++      auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++      simulator->ReadyToCommit();
++    }
+   }
+ 
+   GURL Target() {
+@@ -100,6 +121,7 @@
+   bool shutdown_policy_at_ready_ = false;
+   bool destroy_contents_on_finish_ = false;
+   int error_ = net::OK;
++  base::WeakPtrFactory<NativeDocumentNavigationTest> weak_factory_{this};
+ };
+ 
+ TEST_P(NativeDocumentNavigationTest, FlagOffKeepsUpstreamCommitWithoutKeyService) {
+@@ -248,14 +270,7 @@
+   EnablePolicy();
+   ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
+   task_environment()->RunUntilIdle();
+-  if (GetParam()) {
+-    // Inline about:blank rejection leaves no pending entry for NavigationSimulator.
+-    NavigationController::LoadURLParams params(Target());
+-    web_contents()->GetController().LoadURLWithParams(params);
+-  } else {
+-    auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+-    simulator->ReadyToCommit();
+-  }
++  StartRejectedNavigation();
+   task_environment()->RunUntilIdle();
+   EXPECT_EQ(finished_, 1);
+   EXPECT_FALSE(committed_);
+@@ -362,8 +377,7 @@
+   ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
+   task_environment()->RunUntilIdle();
+   shutdown_policy_at_ready_ = true;
+-  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+-  simulator->ReadyToCommit();
++  StartRejectedNavigation();
+   task_environment()->RunUntilIdle();
+   EXPECT_EQ(finished_, 1);
+   EXPECT_FALSE(committed_);
+@@ -385,8 +399,7 @@
+   task_environment()->RunUntilIdle();
+   shutdown_policy_at_ready_ = true;
+   destroy_contents_on_finish_ = true;
+-  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+-  simulator->ReadyToCommit();
++  StartRejectedNavigation();
+   task_environment()->RunUntilIdle();
+   EXPECT_EQ(finished_, 1);
+   EXPECT_FALSE(committed_);
+@@ -399,8 +412,7 @@
+   ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
+   task_environment()->RunUntilIdle();
+   shutdown_policy_at_ready_ = true;
+-  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+-  simulator->ReadyToCommit();
++  StartRejectedNavigation();
+   task_environment()->RunUntilIdle();
+   EXPECT_EQ(finished_, 1);
+   EXPECT_FALSE(committed_);
+@@ -422,8 +434,7 @@
+   task_environment()->RunUntilIdle();
+   shutdown_policy_at_ready_ = true;
+   destroy_contents_on_finish_ = true;
+-  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
+-  simulator->ReadyToCommit();
++  StartRejectedNavigation();
+   task_environment()->RunUntilIdle();
+   EXPECT_EQ(finished_, 1);
+   EXPECT_FALSE(committed_);

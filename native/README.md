@@ -12,7 +12,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 
 ## Source layout
 
-Current Windows development source is **001-044**. Patches 0031-0034 jointly
+Current Windows development source is **001-045**. Patches 0031-0034 jointly
 promote browser-owned document/worker surface policy, startup/child transport,
 Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
 replay passed across 125 paths for 001-038. That Windows browser compiled, but
@@ -108,6 +108,14 @@ retaining exact abort, no-commit and original-document assertions. Network-path
 simulation and production cancellation behavior are unchanged. The repaired
 fixture compiled to an owned object and 126-path replay passed
 (`inline-rejection-compilation-001-044-v1/proof.json` on D). Full execution is pending.
+
+The next run reached observer-driven closure and exposed a fixture violation:
+Chromium forbids destroying WebContents while its observer list is notifying.
+Fixture-only patch 0045 requests deferred closure through a weak-bound task and
+invalidates it on teardown. It also shares the correct inline-cancellation
+driver across conflict and late-loss cases. No case is skipped and the 42-case
+contract remains unchanged. The repaired fixture compiled and 126-path replay
+passed (`observer-fixture-compilation-001-045-v1/proof.json`); execution is pending.
 
 The identity verifier now compares document HTTP User-Agent, primary
 Accept-Language and platform/mobile Client Hints against JavaScript, not just

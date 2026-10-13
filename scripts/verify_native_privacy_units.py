@@ -313,7 +313,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
         required_patches.update({"0039-native-document-ready-commit-cancellation.patch",
                                  "0040-native-ready-commit-observer-lifetime.patch",
                                  "0043-native-surface-navigation-throttle-registration.patch",
-                                 "0044-native-inline-navigation-rejection-fixture.patch"})
+                                 "0044-native-inline-navigation-rejection-fixture.patch",
+                                 "0045-native-navigation-observer-fixture-lifetime.patch"})
     if target == "worker-surfaces":
         required_patches.update({"0017-native-browser-context-tests.patch",
                                  "0018-native-document-policy-delivery.patch",

@@ -25,7 +25,8 @@ FOLLOWUPS = ("0035-native-initial-origin-calculation.patch", "0036-native-worker
              "0041-native-child-transport-fixture-interface.patch",
              "0042-native-initial-policy-fixture-scheme-lifetime.patch",
              "0043-native-surface-navigation-throttle-registration.patch",
-             "0044-native-inline-navigation-rejection-fixture.patch")
+             "0044-native-inline-navigation-rejection-fixture.patch",
+             "0045-native-navigation-observer-fixture-lifetime.patch")
 
 
 def registered_replay_chain(registered: list[dict]) -> tuple[str, ...]:

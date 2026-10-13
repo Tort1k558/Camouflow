@@ -83,7 +83,7 @@ def test_registered_replay_preserves_reviewed_successor_order(followups):
 
 
 @pytest.mark.parametrize("names", [batch.PROMOTED[:2], batch.FOLLOWUPS,
-                                   (*batch.PROMOTED, "0045-unreviewed.patch")])
+                                   (*batch.PROMOTED, "0046-unreviewed.patch")])
 def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
     with pytest.raises(ValueError):
         batch.registered_replay_chain([{"name": name} for name in names])
@@ -222,6 +222,25 @@ def test_inline_conflict_rejection_fixture_preserves_failure_and_old_document():
     assert "EXPECT_FALSE(committed_);" in text and "EXPECT_EQ(error_, net::ERR_ABORTED);" in text
     assert '+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), GURL("https://canvas.test/baseline"));' in text
     assert "DISABLED_" not in text and "GTEST_SKIP" not in text
+
+
+def test_observer_fixture_defers_close_with_weak_lifetime_and_covers_late_inline_abort():
+    from scripts.verify_native_document_drafts import patch_paths
+
+    patch = batch.ROOT / "native/patches/0045-native-navigation-observer-fixture-lifetime.patch"
+    text = patch.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == {"content/browser/camouflow_native/privacy_navigation_integration_unittest.cc"}
+    additions = "\n".join(line[1:] for line in text.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert "base::SequencedTaskRunner::GetCurrentDefault()->PostTask(" in additions
+    assert "weak_factory_.GetWeakPtr()" in additions
+    assert "weak_factory_.InvalidateWeakPtrs();" in additions
+    assert "void DeleteContentsAfterNotification() { DeleteContents(); }" in additions
+    assert "base::WeakPtrFactory<NativeDocumentNavigationTest> weak_factory_{this};" in additions
+    assert additions.count("StartRejectedNavigation();") == 5
+    assert "LoadURLWithParams(params)" in additions
+    assert "simulator->ReadyToCommit();" in additions
+    assert "GTEST_SKIP" not in text and "DISABLED_" not in text
 
 
 def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():
