@@ -6,7 +6,9 @@ Linux/macOS own-fork builds are deferred. The branding candidate in `branding/`
 is not a registered build input. Context tests are registered in patch 0017;
 document/worker IPC unit infrastructure is registered in patches 0018-0020.
 Worker startup gates and thread handoff are registered in patches 0021-0026,
-including four unexecuted Blink handoff cases. They do not enable Canvas privacy.
+including four Blink handoff cases that passed after test-only patch 0028.
+They do not enable Canvas privacy. The cohesive 0031–0034 source batch is now
+registered; its new unit/browser checks remain pending the current build.
 
 ## Requirements
 

@@ -71,8 +71,10 @@ Development diaries and machine-specific evidence stay outside public source.
 
 The next cohesive development batch is documented in
 [GPU metadata](drafts/gpu/README.md), [offline Audio](drafts/audio/README.md) and
-[surface policy v2](drafts/policy/README.md). These are unregistered candidates,
-not enabled protections. Their local diagnostic runners test real GPU operations
+[surface policy v2](drafts/policy/README.md). Their source is now registered in
+0031–0034, but these are not verified or enabled protections. The following
+[bounded WebGL halo batch](drafts/next-readback/README.md) remains unregistered.
+Their local diagnostic runners test real GPU operations
 and AudioBuffer semantics independently of fingerprint-masking claims.
 
 Durable contracts live in architecture docs; released changes belong in the

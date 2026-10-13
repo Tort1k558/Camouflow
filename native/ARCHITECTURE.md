@@ -52,13 +52,13 @@ Document
 bootstrap and Canvas/WebGL/WebGPU/audio protection remain incomplete.
 
 Patch 0029 registers a shared final-partition validator header and nine native
-cases, all passed through the public document-partition target. Unregistered
+cases, all passed through the public document-partition target. Registered
 document commit/renderer candidates reuse that header rather than defining a
 second copy. The validator checks exact native partition encoding, not IPC
 sender authentication or safe cancellation after document teardown.
 
 Patch 0030 registers the developer-only document commit prototype: shared
-StorageKey resolution, early payload preflight and token-bound rejection of the
+StorageKey resolution, final wire-origin payload construction and token-bound rejection of the
 selected pending navigation. The public `--target document-navigation` gate
 requires twelve exact NavigationSimulator cases. That gate uses real browser
 navigation machinery with simulated renderer/network behavior; first-script
@@ -67,21 +67,24 @@ separate checks. Source registration is not browser linkage or privacy admission
 
 ## Source reproducibility
 
-### Next-batch candidates (not enabled)
+### Registered surface batch (not admitted)
 
 | Candidate | Prepared behavior | Evidence boundary |
 | --- | --- | --- |
 | Surface policy v2 | One owned partition snapshot with independent Canvas/WebGL/WebGPU/Audio seeds; bounded preflight, typed browser partition, binary Mojo schema and owned codec | Source replay and generated bindings; 25 native fixture definitions, not compiled |
 | Worker surface delivery | Shared endpoint readiness, explicit v2 consumer/modes, all three launchers, immutable Blink scope and first-script rejection | Source replay; 8 browser, 22 consumer/mode and 4 Blink fixture definitions, not compiled |
 | GPU metadata minimization | Disabled-by-default native feature; remove WebGL debug extension and identifying WebGPU info without fabricating hardware | Source replay; candidate runtime not verified |
-| Offline Audio | Deterministic scalar prototype and bounded detached AudioBuffer copy; no live processing or JS method replacement | Source replay; 15 native fixture definitions, not compiled or integrated |
+| Offline Audio | Deterministic scalar prototype and bounded detached AudioBuffer copy; no live processing or JS method replacement | Registered API integration; native fixtures and protected runtime pending |
 
-Canonical public source and unregistered integration patches live under
-`drafts/policy`, `drafts/gpu` and `drafts/audio`. These candidates do not edit
-the active 0030 build. Document/worker v2 transport and final-owner handoff have
+Canonical public source and historical integration inputs live under
+`drafts/policy`, `drafts/gpu` and `drafts/audio`. They were promoted together into
+registered patches 0031–0034 after the corrected 12-case document gate passed.
+Exact registered-source replay passed across 125 paths; the full browser batch
+is compiling. Do not modify these frozen inputs during that build.
+Document/worker v2 transport and final-owner handoff have
 candidate code, not compiled/runtime proof. Canvas and OfflineAudio API candidates
 consume explicit owned seed results; API admission and GPU readback
-protection remain unfinished. Existing profile-key derivation domains must stay
+admission remain unfinished. Existing profile-key derivation domains must stay
 stable across a transport-version change.
 
 `verify_native_gpu.py` and `verify_native_audio.py` provide local compatibility
@@ -89,10 +92,13 @@ diagnostics before enabling new hooks. Their successful 001-027 baseline runs
 do not verify the drafts or claim anti-bot acceptance. Worker APIs unavailable
 in upstream remain explicit exclusions, not fabricated coverage.
 
-`verify_native_next_batch.py` replays the twenty-two unregistered integration patches
+`verify_native_next_batch.py` replays thirty canonical integration inputs
 in an owned temporary overlay, checks exact canonical copies and rejects source,
 receipt, GN-input or browser-core drift. Run it with a new evidence path outside
 both repositories; it never runs GN, compilation or modifies active sources.
+For the promoted state it reverses 0031–0034 only in that owned copy, then
+recomposes the canonical inputs and requires equality with registered source.
+Partial registration is rejected.
 
 The document v2 candidate owns the browser-selected partition and independent
 surface seeds, and requires validation against Blink's final StorageKey, not
@@ -117,7 +123,17 @@ seed before rendering starts, checks the additional-copy budget and produces
 one detached mutable buffer before both completion event and Promise. Native
 seed-reader and startRendering rejection fixtures are prepared, not executed.
 No realtime Audio or analyser protection, complete ImageData-format support,
-GPU readback protection or verified fingerprint-resistance claim is implied.
+complete GPU readback protection or verified fingerprint-resistance claim is implied.
+
+The registered WebGL hook covers default sRGB RGBA8/RGB8 and single-sample
+RGB8/RGBA8 renderbuffer attachments, using actual selected attachment extents.
+CPU/PBO pack handling, pending GL errors, resize and export consistency have
+prepared gates; only the feature-off 001–027 fixture baseline has run.
+Texture, float/integer/HDR attachments and WebGPU readback remain unsupported.
+The subsequent unregistered `drafts/next-readback` candidate replaces redundant
+full-frame allocation with an exact full-frame private transform or a clipped
+one-pixel halo. Its 58,860 independent model comparisons and source replay passed;
+11 native fixtures, driver compatibility and performance measurements are pending.
 
 `scripts/native_build.py` pins upstream revisions, records sync/hooks dependency
 snapshots and checks applied changes by replaying registered patches into a
@@ -163,7 +179,7 @@ Before creating profiles or launching a browser, the gate requires exact
 registered surface patches and a build receipt binding **every runtime core
 file**, not just `chrome.exe` while Blink resides in `chrome.dll`. Reserved patch
 names 0031 (worker policy), 0032 (document policy) and 0033 (surface readback)
-are promotion prerequisites, **not currently registered or compiled patches**.
+are registered and applied, **not yet compiled or runtime verified**.
 The current 001–027 browser is deliberately rejected before launch.
 
 Measured float32 bit arrays are bound to each Audio digest. The combined gate
