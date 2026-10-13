@@ -1,0 +1,23 @@
+diff --git a/content/browser/camouflow_native/glint/child_surface_transport_unittest.cc b/content/browser/camouflow_native/glint/child_surface_transport_unittest.cc
+--- a/content/browser/camouflow_native/glint/child_surface_transport_unittest.cc
++++ b/content/browser/camouflow_native/glint/child_surface_transport_unittest.cc
+@@ -9,6 +9,7 @@
+ #include "base/test/bind.h"
+ #include "base/test/scoped_command_line.h"
+ #include "content/browser/camouflow_native/glint/document_surface_commit_producer.h"
++#include "content/common/frame.mojom.h"
+ #include "content/public/browser/native_privacy_context.h"
+ #include "content/public/test/test_renderer_host.h"
+ #include "content/test/test_render_frame_host.h"
+@@ -44,9 +45,9 @@
+     ASSERT_TRUE(IsNativePrivacyContextReady(browser_context()));
+   }
+   void RequestFeatureOff(
+-      RenderFrameHostImpl::CreateChildFrameWithGlintPolicyCallback callback) {
++      mojom::FrameHost::CreateChildFrameWithGlintPolicyCallback callback) {
+     auto* parent = static_cast<RenderFrameHostImpl*>(main_rfh());
+-    parent->CreateChildFrameWithGlintPolicy(
++    static_cast<mojom::FrameHost*>(parent)->CreateChildFrameWithGlintPolicy(
+         blink::LocalFrameToken(), TestRenderFrameHost::CreateStubFrameRemote(),
+         TestRenderFrameHost::CreateStubBrowserInterfaceBrokerReceiver(),
+         TestRenderFrameHost::CreateStubPolicyContainerBindParams(),

@@ -304,7 +304,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     if target == "contexts":
         required_patches.add("0032-native-document-surface-policy.patch")
     if target in {"surface-navigation", "window-transport"}:
-        required_patches.update({"0031-native-worker-surface-policy.patch", "0032-native-document-surface-policy.patch"})
+        required_patches.update({"0031-native-worker-surface-policy.patch", "0032-native-document-surface-policy.patch",
+                                 "0041-native-child-transport-fixture-interface.patch"})
     if target == "surface-navigation":
         required_patches.update({"0039-native-document-ready-commit-cancellation.patch",
                                  "0040-native-ready-commit-observer-lifetime.patch"})

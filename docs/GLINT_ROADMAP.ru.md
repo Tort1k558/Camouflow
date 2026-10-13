@@ -132,6 +132,14 @@ syntax/type-check обоих C++ файлов прошёл ранее. Нати�
 без параллельного Chrome builder; затем выполнение тестов и новая проверка браузера.
 Лог: `D:\CamouFlowNative\surface-navigation-001-040-v1-build.log`.
 До этих проверок 0040 не считается runtime-готовым или релизным.
+Эта попытка завершилась после 276 задач: fixture child transport обращался к
+приватному RFH override. Это C++ access error, не OOM. Патч **0041** вызывает
+тот же реальный обработчик через публичный `mojom::FrameHost`, без расширения API.
+Ранее падавший fixture скомпилирован в отдельный объект с target flags;
+source/core/GN unchanged: `child-interface-compilation-001-041-v1/proof.json` на D.
+Replay 001–041 прошёл по 125 путям. Повторный surface-navigation gate остаётся
+на j4 и использует сохранённый кэш; 42 случая ещё не выполнены.
+Новый лог: `D:\CamouFlowNative\surface-navigation-001-041-v2-build.log`.
 В следующем GPU-пакете подготовлен четырнадцатый passthrough fixture:
 multisample metadata сравнивается с фактическим `GL_RENDERBUFFER_SAMPLES`,
 а не с запрошенным числом samples. Формат RGBA8 сам по себе не означает

@@ -83,7 +83,7 @@ def test_registered_replay_preserves_reviewed_successor_order(followups):
 
 
 @pytest.mark.parametrize("names", [batch.PROMOTED[:2], batch.FOLLOWUPS,
-                                   (*batch.PROMOTED, "0041-unreviewed.patch")])
+                                   (*batch.PROMOTED, "0042-unreviewed.patch")])
 def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
     with pytest.raises(ValueError):
         batch.registered_replay_chain([{"name": name} for name in names])
@@ -165,6 +165,20 @@ def test_promoted_observer_patch_and_unit_gate_include_all_eight_late_cases():
     suite = REQUIRED_SURFACE_NAVIGATION_TESTS["WithAndWithoutUrlLoader/NativeDocumentNavigationTest"]
     assert {f"{case}/{index}" for case in names for index in range(2)}.issubset(suite)
     assert sum(map(len, REQUIRED_SURFACE_NAVIGATION_TESTS.values())) == 42
+
+
+def test_child_transport_fixture_uses_public_mojo_dispatch_without_widening_rfh_api():
+    from scripts.verify_native_document_drafts import patch_paths
+
+    patch = batch.ROOT / "native/patches/0041-native-child-transport-fixture-interface.patch"
+    text = patch.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == {"content/browser/camouflow_native/glint/child_surface_transport_unittest.cc"}
+    additions = "\n".join(line[1:] for line in text.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert '#include "content/common/frame.mojom.h"' in additions
+    assert "mojom::FrameHost::CreateChildFrameWithGlintPolicyCallback" in additions
+    assert "static_cast<mojom::FrameHost*>(parent)->CreateChildFrameWithGlintPolicy(" in additions
+    assert "friend" not in additions and "public:" not in additions
 
 
 def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():

@@ -12,7 +12,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 
 ## Source layout
 
-Current Windows development source is **001-040**. Patches 0031-0034 jointly
+Current Windows development source is **001-041**. Patches 0031-0034 jointly
 promote browser-owned document/worker surface policy, startup/child transport,
 Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
 replay passed across 125 paths for 001-038. That Windows browser compiled, but
@@ -68,6 +68,14 @@ cases. The surface-navigation gate now requires all **42** exact native cases,
 including late policy loss, recovery and observer-driven tab destruction.
 The latest linked browser is still 001-039; 0040 native execution and browser
 verification remain pending. This is not release or external anti-bot admission.
+
+The first 0040 native test build completed 276 steps before a fixture C++ access
+error, not OOM: child transport called a private RFH override directly. Patch
+0041 dispatches through the public `mojom::FrameHost` interface and uses its
+callback alias, without widening the production API. The formerly failed fixture
+compiled to an isolated object with pinned target flags; input/core guards passed
+(`child-interface-compilation-001-041-v1/proof.json` on D). Source replay passed
+across 125 paths. Existing cache is preserved; the 42-case execution remains pending.
 
 The identity verifier now compares document HTTP User-Agent, primary
 Accept-Language and platform/mobile Client Hints against JavaScript, not just
