@@ -142,7 +142,7 @@ RENDERBUFFER_READ = """
             const [x, y, w, h] = bounds, size = Math.max(4, w * h * 4);
             const cpu = new Uint8Array(size).fill(165), buffer = gl.createBuffer();
             if (!buffer) throw new Error('Boundary PBO allocation failed');
-            let pbo, bound;
+            let pbo, bound, packedCpu, packedPbo;
             gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, cpu);
             try {
               gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buffer);
@@ -151,8 +151,23 @@ RENDERBUFFER_READ = """
               bound = gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING) === buffer;
               const output = new Uint8Array(size + 32);
               gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, output); pbo = Array.from(output);
+              gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+              gl.pixelStorei(gl.PACK_ALIGNMENT, 8); gl.pixelStorei(gl.PACK_ROW_LENGTH, w + 2);
+              gl.pixelStorei(gl.PACK_SKIP_ROWS, 1); gl.pixelStorei(gl.PACK_SKIP_PIXELS, 1);
+              const stride = Math.ceil((w + 2) * 4 / 8) * 8, packedSize = 32 + (h + 2) * stride;
+              const packed = new Uint8Array(packedSize).fill(165);
+              gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, packed); packedCpu = Array.from(packed);
+              gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buffer);
+              gl.bufferData(gl.PIXEL_PACK_BUFFER, new Uint8Array(packedSize + 32).fill(165), gl.STREAM_READ);
+              gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, 12);
+              bound = bound && gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING) === buffer;
+              const packedOutput = new Uint8Array(packedSize + 32);
+              gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, packedOutput); packedPbo = Array.from(packedOutput);
             } finally { gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null); gl.deleteBuffer(buffer); }
-            boundaryReads.push({bounds, cpu: Array.from(cpu), pbo, bound, error: gl.getError(), nextError: gl.getError()});
+            gl.pixelStorei(gl.PACK_ALIGNMENT, 4); gl.pixelStorei(gl.PACK_ROW_LENGTH, 0);
+            gl.pixelStorei(gl.PACK_SKIP_ROWS, 0); gl.pixelStorei(gl.PACK_SKIP_PIXELS, 0);
+            boundaryReads.push({bounds, cpu: Array.from(cpu), pbo, packedCpu, packedPbo,
+              bound, error: gl.getError(), nextError: gl.getError()});
           }
           gl.pixelStorei(gl.PACK_ROW_LENGTH, 10); gl.pixelStorei(gl.PACK_SKIP_ROWS, 1); gl.pixelStorei(gl.PACK_SKIP_PIXELS, 1);
           const packed = new Uint8Array(400).fill(165);
@@ -402,13 +417,19 @@ def validate_boundary_reads(observed: list, full: list[int], width: int, height:
                 if 0 <= x + column < width and 0 <= y + row < height:
                     source = ((y + row) * width + x + column) * 4
                     expected[target:target + 4] = full[source:source + 4]
-        if (not isinstance(actual, dict) or set(actual) != {"bounds", "cpu", "pbo", "bound", "error", "nextError"}
+        stride = ((w + 2) * 4 + 7) // 8 * 8
+        packed = [165] * (32 + (h + 2) * stride)
+        for row in range(h):
+            start = (row + 1) * stride + 4
+            packed[start:start + w * 4] = expected[row * w * 4:(row + 1) * w * 4]
+        if (not isinstance(actual, dict) or set(actual) != {"bounds", "cpu", "pbo", "packedCpu", "packedPbo", "bound", "error", "nextError"}
                 or actual["bound"] is not True or type(actual["error"]) is not int or actual["error"] != 0
                 or type(actual["nextError"]) is not int or actual["nextError"] != 0
                 or any(not isinstance(actual[field], list) or any(type(value) is not int for value in actual[field])
-                       for field in ("bounds", "cpu", "pbo"))
+                       for field in ("bounds", "cpu", "pbo", "packedCpu", "packedPbo"))
                 or actual["bounds"] != request or actual["cpu"] != expected
-                or actual["pbo"] != [165] * 12 + expected + [165] * 20):
+                or actual["pbo"] != [165] * 12 + expected + [165] * 20
+                or actual["packedCpu"] != packed or actual["packedPbo"] != [165] * 12 + packed + [165] * 20):
             raise ValueError("Framebuffer boundary read changed pixels, padding, binding or errors")
 
 

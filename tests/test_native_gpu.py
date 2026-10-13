@@ -254,7 +254,13 @@ def boundary_observation(full, width, height):
                 source = ((y + row) * width + x + column) * 4
                 pixels[offset:offset + 4] = (full[source:source + 4]
                     if 0 <= x + column < width and 0 <= y + row < height else [165] * 4)
+        stride = ((w + 2) * 4 + 7) // 8 * 8
+        packed = [165] * (32 + (h + 2) * stride)
+        for row in range(h):
+            start = (row + 1) * stride + 4
+            packed[start:start + w * 4] = pixels[row * w * 4:(row + 1) * w * 4]
         results.append({"bounds": bounds, "cpu": pixels, "pbo": [165] * 12 + pixels + [165] * 20,
+                        "packedCpu": packed, "packedPbo": [165] * 12 + packed + [165] * 20,
                         "bound": True, "error": 0, "nextError": 0})
     return results
 
@@ -483,7 +489,7 @@ def test_renderbuffer_gate_rejects_missing_multisample_or_modified_uniform_attac
 
 @pytest.mark.parametrize("phase", ["initial", "resized"])
 @pytest.mark.parametrize("index", range(6))
-@pytest.mark.parametrize("field", ["cpu", "pbo", "bounds"])
+@pytest.mark.parametrize("field", ["cpu", "pbo", "bounds", "packedCpu", "packedPbo"])
 def test_renderbuffer_boundary_gate_rejects_crops_outside_writes_padding_and_wrong_requests(phase, index, field):
     from scripts.verify_native_gpu_readback import validate_renderbuffer
 

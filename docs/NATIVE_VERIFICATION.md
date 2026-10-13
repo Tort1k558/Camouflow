@@ -357,6 +357,29 @@ The current Chromium commit StorageKey is provisional and DocumentLoader can
 adjust it: first-script delivery therefore also needs an exact trusted-partition
 commitment check against final document state, not just a ready profile root.
 
+## Current WebGL clipping compatibility gate
+
+The registered 001–034 browser batch is compiling; its new protections are not
+runtime admitted. The following independent checks do not change that boundary:
+
+- An owned feature-off 001–027 browser confirmed native CPU/PBO reads preserve
+  destination bytes outside a framebuffer, including negative/partially clipped,
+  entirely outside and zero-sized requests, in eight contexts across restart.
+- The registered 0034 source currently republishes the entire zero-initialized
+  private rectangle. This is a known source-level clipping compatibility issue;
+  a successful build cannot override the required destination-preservation gate.
+- The separate [next-readback batch](../native/drafts/next-readback/README.md)
+  prepares bounded halo allocation plus clipped CPU/PBO publication. Source
+  replay passed against an owned copy of 001–034 across 11 paths. Its 17 native
+  fixtures have not been compiled or executed; protected browser results remain
+  pending. The independent 58,860-comparison model is not native GPU proof.
+
+`verify_native_gpu_readback.py` now requires the boundary cases in both original
+and resized attachment extents. Tight and padded CPU/PBO destinations must agree
+with full-frame protected pixels inside bounds; outside pixels, offset bytes,
+skipped rows/pixels and padding must remain unchanged. Exact errors and native
+buffer binding are checked, not inferred from a digest or a case count.
+
 Current development is Windows-only. Linux/macOS own-fork runtime verification,
 Canvas/GPU/audio protection and security rebasing remain required. External
 anti-bot scores may be observations, never guaranteed release capabilities.
