@@ -103,9 +103,14 @@ The full v2 retry also stopped on memory exhaustion after **56.39s**, five
 completed steps. This time `core_probes_impl.cc` failed with LLVM OOM; another
 compiler reported Windows **0x5AF** (insufficient paging capacity). The 37
 BrowserContext cases still did not execute. Failed v2 evidence is retained.
-Known heavy `core_probes_impl` and generated `shorthands` objects are being
-scheduled as separate single-object targets with the original `j4` option and
-unchanged flags, rather than suppressing diagnostics or changing system paging.
+Known heavy `core_probes_impl` and generated `shorthands` objects then compiled
+successfully as separate single-object targets with the original `j4` option and
+unchanged flags: **50.43s** and **26.92s**, one executed step each. Proof on D:
+`heavy-objects-001-058-isolated-v1/proof.json`. Source, browser core, GN, receipt
+and toolchain remained unchanged; no diagnostic was suppressed or paging
+configuration changed. The full cached retry now uses
+`identity-contexts-001-058-v3.json`. This proves two objects, not the 37 cases or
+that every remaining parallel compile will fit memory.
 
 ### Additional owned browser gates 001-047 — 2026-10-14
 
