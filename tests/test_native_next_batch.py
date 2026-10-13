@@ -506,3 +506,4 @@ def test_initial_origin_compile_repair_preserves_immutable_member_and_header_abi
     assert "glint_document_surface_payload_required_ && glint_document_surface_policy_" in normalized
     assert "CHECK(sandbox_origin->IsOpaque());" in text
     assert "CHECK(origin->IsSameOriginWith(effective_origin_to_commit.get()));" in text
+    assert '"effective_origin_to_commit' not in text

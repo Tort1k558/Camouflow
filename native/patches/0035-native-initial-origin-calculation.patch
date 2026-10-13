@@ -1,5 +1,5 @@
 diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
-index e7cf29f..b05ffb1 100644
+index e7cf29f..629e2f1 100644
 --- a/third_party/blink/renderer/core/loader/document_loader.cc
 +++ b/third_party/blink/renderer/core/loader/document_loader.cc
 @@ -2381,11 +2381,21 @@ Frame* DocumentLoader::CalculateOwnerFrame() {
@@ -118,21 +118,18 @@ index e7cf29f..b05ffb1 100644
 -                               origin_to_commit_->ToString().Ascii());
 +                               effective_origin_to_commit->ToString().Ascii());
      SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_local", origin->IsLocal());
--    SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_to_commit_local",
+     SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_to_commit_local",
 -                          origin_to_commit_->IsLocal());
-+    SCOPED_CRASH_KEY_BOOL("OriginCalc", "effective_origin_to_commitlocal",
 +                          effective_origin_to_commit->IsLocal());
      SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_opaque", origin->IsOpaque());
--    SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_to_commit_opaque",
+     SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_to_commit_opaque",
 -                          origin_to_commit_->IsOpaque());
-+    SCOPED_CRASH_KEY_BOOL("OriginCalc", "effective_origin_to_commitopaque",
 +                          effective_origin_to_commit->IsOpaque());
      SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_block",
                            origin->block_local_access_from_local_origin());
      SCOPED_CRASH_KEY_BOOL(
--        "OriginCalc", "origin_to_commit_block",
+         "OriginCalc", "origin_to_commit_block",
 -        origin_to_commit_->block_local_access_from_local_origin());
-+        "OriginCalc", "effective_origin_to_commitblock",
 +        effective_origin_to_commit->block_local_access_from_local_origin());
      if (origin->IsLocal() && !origin->IsOpaque() &&
          origin->block_local_access_from_local_origin() &&
