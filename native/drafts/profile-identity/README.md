@@ -2,6 +2,24 @@
 
 **Unregistered and uncompiled. No identity mode is enabled.**
 
+## Native C++ type checks
+
+The current six-patch candidate passed real clang syntax checks with actual
+generated target flags, in an isolated overlay without reusing old precompiled
+headers. No active Chromium source, browser core or GN configuration changed.
+
+| Scope | Checked translation units | Private evidence on D |
+| --- | --- | --- |
+| Core APIs | `privacy_key_derivation.cc`, `privacy_profile_key.cc`, `privacy_key_service.cc`, `privacy_context.cc` | `profile-identity-core-syntax-001-037-v1/proof.json` |
+| Fixture definitions | `privacy_key_derivation_unittest.cc`, `privacy_key_service_unittest.cc`, `privacy_context_unittest.cc` | `profile-identity-fixtures-syntax-001-037-v1/proof.json` |
+
+This does **not** execute cryptography, service/context fixtures, transport
+bindings, first-script delivery or browser behavior. Optimized objects and
+linkage remain unverified; `privacy_admitted` is false. The regular privacy
+unit target currently links 6754 cached inputs, so its isolated future-mode
+link/run must wait for resource headroom rather than compete with the active
+four-job Chrome build. Do not replace that gate with stubbed crypto or owners.
+
 This candidate adds an explicit browser-owned profile-identity derivation API
 alongside the existing partitioned privacy API. It does not replace that API,
 change existing privacy-domain bytes, expose the profile root key, or silently
