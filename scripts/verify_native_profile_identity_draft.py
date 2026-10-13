@@ -18,6 +18,7 @@ from scripts.verify_native_document_drafts import digest, patch_paths
 
 PATCH = ROOT / "native/drafts/profile-identity/profile_identity_derivation_candidate.patch"
 MODE_PATCH = ROOT / "native/drafts/profile-identity/immutable_identity_mode_candidate.patch"
+CONTEXT_PATCH = ROOT / "native/drafts/profile-identity/identity_context_tests_candidate.patch"
 PREFIX = "content/browser/camouflow_native/"
 PATHS = {PREFIX + name for name in (
     "privacy_partition.h", "privacy_key_derivation.h", "privacy_key_derivation.cc",
@@ -37,6 +38,16 @@ MODE_FIXTURES = (
     "InstalledModeCannotBeReplaced",
     "SelectedIdentityReloadPreservesModeAndKey",
     "SelectedEphemeralIdentityOwnersStayIndependent",
+)
+CONTEXT_PATH = PREFIX + "privacy_context_unittest.cc"
+CONTEXT_FIXTURES = (
+    "SelectedModesBelongToTheirContextOwners",
+    "SelectedIdentityRejectsLoadingAndContextShutdown",
+    "InvalidSelectedModeDoesNotOwnTheContext",
+    "SelectedModeCannotReplaceLoadingOwner",
+    "SelectedIdentitySurvivesNewContextWithSameRoot",
+    "SelectedIncognitoIdentityRejectsPersistentRoot",
+    "SelectedNullAndFailedContextsNeverExposeMode",
 )
 
 
@@ -64,20 +75,24 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False) -> dict
     if patch_paths(PATCH.read_text(encoding="utf-8-sig")) != PATHS:
         raise ValueError("Profile identity candidate source coverage differs")
     patches = [PATCH]
+    paths = set(PATHS)
     if include_mode:
         if patch_paths(MODE_PATCH.read_text(encoding="utf-8-sig")) != MODE_PATHS:
             raise ValueError("Immutable mode candidate source coverage differs")
-        patches.append(MODE_PATCH)
-    if any((source / name).resolve() != source / name for name in PATHS):
+        if patch_paths(CONTEXT_PATCH.read_text(encoding="utf-8-sig")) != {CONTEXT_PATH}:
+            raise ValueError("Context fixture candidate source coverage differs")
+        patches.extend((MODE_PATCH, CONTEXT_PATCH))
+        paths.add(CONTEXT_PATH)
+    if any((source / name).resolve() != source / name for name in paths):
         raise ValueError("Profile identity inputs must not follow links")
-    before = {name: digest(source / name) for name in PATHS}
+    before = {name: digest(source / name) for name in paths}
     if any(value is None for value in before.values()):
         raise ValueError("A profile identity baseline input is missing")
     inputs = {str(path.relative_to(ROOT)): digest(path) for path in (*patches, Path(__file__))}
     vectors = reference_vectors()
     with tempfile.TemporaryDirectory(prefix="glint-profile-identity-replay-", dir=report.parent) as owned:
         overlay = Path(owned)
-        for name in PATHS:
+        for name in paths:
             target = overlay / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text((source / name).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
@@ -94,13 +109,17 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False) -> dict
                 encoding="utf-8-sig")
             if any(name not in service_fixtures for name in MODE_FIXTURES):
                 raise ValueError("Immutable mode native fixture coverage differs")
-        composed = {name: digest(overlay / name) for name in PATHS}
-    if before != {name: digest(source / name) for name in PATHS}:
+            context_fixtures = (overlay / CONTEXT_PATH).read_text(encoding="utf-8-sig")
+            if any(name not in context_fixtures for name in CONTEXT_FIXTURES):
+                raise ValueError("BrowserContext mode fixture coverage differs")
+        composed = {name: digest(overlay / name) for name in paths}
+    if before != {name: digest(source / name) for name in paths}:
         raise ValueError("Active profile identity source changed during replay")
     if inputs != {name: digest(ROOT / name) for name in inputs}:
         raise ValueError("Canonical identity candidate inputs changed during replay")
     result = {"passed": True, "compiled": False, "mode_enabled": False, "privacy_admitted": False,
               "immutable_mode_candidate_replayed": include_mode,
+              "context_mode_fixtures_replayed": include_mode,
               "active_source_unchanged": True, "inputs": inputs, "composed_source": composed,
               "independent_reference_vectors": vectors, "registered_patches": registered}
     report.write_text(json.dumps(result, indent=2), encoding="utf-8")

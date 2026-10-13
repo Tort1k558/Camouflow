@@ -43,6 +43,13 @@ Eight additional C++ fixtures cover default compatibility, cross-partition
 identity, readiness/shutdown, invalid modes, owner replacement rejection,
 persisted reload and ephemeral isolation. **Prepared, not executed.**
 
+`identity_context_tests_candidate.patch` is the third patch in the sequence.
+Seven further fixtures exercise real `TestBrowserContext` owners: per-context
+mode separation, loading/shutdown rejection, invalid mode installation, loading
+owner replacement, same-root restart, independent incognito roots and null/failed
+contexts. These are native test definitions, **not executed BrowserContext proof**.
+The `--include-mode` replay checks all three patches in order.
+
 ```powershell
 .venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\immutable-mode-replay.json --include-mode
 ```

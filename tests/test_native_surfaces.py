@@ -224,3 +224,18 @@ def test_immutable_identity_mode_candidate_preserves_default_and_rejects_invalid
     assert "return key_->DeriveProfileIdentity(trusted_partition, surface);" in text
     assert text.count("IsValidNativeFingerprintDerivationMode(derivation_mode_)") == 2
     assert "+  struct Owner : base::SupportsUserData {};" in text
+
+
+def test_identity_context_fixtures_cover_owner_lifecycle_and_incognito_without_source_edits():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_profile_identity_draft import (
+        CONTEXT_FIXTURES, CONTEXT_PATCH, CONTEXT_PATH,
+    )
+
+    text = CONTEXT_PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == {CONTEXT_PATH}
+    assert text.count("+TEST_F(NativePrivacyBrowserContextTest,") == len(CONTEXT_FIXTURES)
+    assert all(name in text for name in CONTEXT_FIXTURES)
+    assert "+  context->NotifyWillBeDestroyed();" in text
+    assert "+  first->set_is_off_the_record(true);" in text
+    assert "+  second->set_is_off_the_record(true);" in text
