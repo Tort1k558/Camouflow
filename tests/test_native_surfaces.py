@@ -14,6 +14,70 @@ from scripts import verify_native_surfaces as surfaces
 from scripts.verify_native_canvas import ERRORS_EXPECTED, GEOMETRY_EXPECTED
 
 
+def denial_observation():
+    frame = {"id": "owned-frame", "loaderId": "original-loader", "url": "about:blank"}
+    return {"url": "http://127.0.0.1/owned", "counts": {"requests": 1, "executions": 0},
+        "before_frame": frame, "after_frame": copy.deepcopy(frame),
+        "before_history": {"currentIndex": 0, "entries": [{"url": "about:blank"}]},
+        "after_history": {"currentIndex": 0, "entries": [{"url": "about:blank"}]},
+        "events": [
+            {"method": "Network.requestWillBeSent", "requestId": "owned-request", "type": "Document",
+             "frameId": "owned-frame", "url": "http://127.0.0.1/owned"},
+            {"method": "Network.loadingFailed", "requestId": "owned-request", "type": "Document",
+             "errorText": "net::ERR_ABORTED", "canceled": True}]}
+
+
+def test_document_denial_requires_exact_document_abort_and_unchanged_commit():
+    surfaces.validate_denial_navigation(denial_observation(), denied=True)
+
+
+@pytest.mark.parametrize("mutation", ["wrong_request", "fetch_abort", "wrong_error", "not_canceled",
+    "foreign_frame", "loader_changed", "url_changed", "history_changed", "commit_event",
+    "missing_abort", "script_executed", "not_fetched", "boolean_count", "overflow"])
+def test_document_denial_cannot_pass_with_incomplete_or_unrelated_evidence(mutation):
+    observed = denial_observation()
+    if mutation == "wrong_request":
+        observed["events"][1]["requestId"] = "unrelated"
+    elif mutation == "fetch_abort":
+        observed["events"][1]["type"] = "Fetch"
+    elif mutation == "wrong_error":
+        observed["events"][1]["errorText"] = "net::ERR_FAILED"
+    elif mutation == "not_canceled":
+        observed["events"][1]["canceled"] = False
+    elif mutation == "foreign_frame":
+        observed["events"][0]["frameId"] = "unrelated"
+    elif mutation == "loader_changed":
+        observed["after_frame"]["loaderId"] = "new-loader"
+    elif mutation == "url_changed":
+        observed["after_frame"]["url"] = observed["url"]
+    elif mutation == "history_changed":
+        observed["after_history"]["currentIndex"] = 1
+    elif mutation == "commit_event":
+        observed["events"].append({"method": "Page.frameNavigated", "url": observed["url"]})
+    elif mutation == "missing_abort":
+        observed["events"].pop()
+    elif mutation == "script_executed":
+        observed["counts"]["executions"] = 1
+    elif mutation == "not_fetched":
+        observed["counts"]["requests"] = 0
+    elif mutation == "boolean_count":
+        observed["counts"]["requests"] = True
+    elif mutation == "overflow":
+        observed["events"].append({"method": "overflow"})
+    with pytest.raises(ValueError):
+        surfaces.validate_denial_navigation(observed, denied=True)
+
+
+def test_document_denial_calibration_requires_executed_committed_control():
+    observed = denial_observation()
+    observed["counts"]["executions"] = 1
+    observed["after_frame"]["url"] = observed["url"]
+    surfaces.validate_denial_navigation(observed, denied=False)
+    observed["after_frame"]["url"] = "about:blank"
+    with pytest.raises(ValueError, match="did not commit"):
+        surfaces.validate_denial_navigation(observed, denied=False)
+
+
 def observation(digest="a", cross=None):
     rows = {}
     for name in surfaces.CONTEXTS:

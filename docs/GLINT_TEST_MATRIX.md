@@ -82,13 +82,16 @@ The EXE and `chrome_elf.dll` hashes remain the same as 001-038.
 | --- | --- | --- |
 | Combined baseline/profile/restart phases | Passed: 6/6 | Repeated on the linked 001-039 engine |
 | Missing required document policy | **Failed: persistent-context launch timeout** | No earlier fatal transition in the saved log; denying initial about:blank prevents the driver's startup wait from completing |
-| Independent browser-level CDP diagnostic | Observed: browser stayed alive, fixture fetched once, execution beacon absent | Prototype only; needs baseline control and committed-document/event checks before admission |
+| Revised combined gate v2 | **Passed: 7/7** | Same 001-039 core; controlled document execution plus denied-profile CDP observation independent of startup-page commit |
+| Missing-policy browser-level CDP check v2 | Passed | Control: one request/one script execution; denied: one request/zero execution, exact Document request correlated to `ERR_ABORTED`, unchanged frame/loader/history and no commit event; browser remains responsive |
 | Worker checks and external detectors | Not rerun for this build | Do not transfer 001-038 results |
 
-Private evidence: `combined-surfaces-001-039-v1.json`,
-`no-policy-cdp-v1/proof.json`. The combined gate remains **failed**. Next: make
-the denial probe independent of a successfully committed startup page, prove
-the control endpoint executes normally, and promote the reviewed observer guard.
+Private evidence: `combined-surfaces-001-039-v1.json` (failed persistent-driver
+probe), `no-policy-cdp-v1/proof.json` (prototype), and
+`combined-surfaces-001-039-v2.json` (revised full gate passed; cleanup passed).
+This is not persistent-driver startup recovery or anti-bot admission. The reviewed
+finish-observer lifetime guard and its eight native cases still require promotion
+and execution before release.
 
 ### Windows development candidate 001-038 — 2026-10-13
 

@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import platform
 import shutil
 import sys
@@ -20,7 +21,7 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from playwright.async_api import Error as BrowserError
+from playwright.async_api import async_playwright
 
 from app.core.native.runtime import NativeRuntime
 from scripts.verify_native_audio import AUDIO_READ
@@ -41,6 +42,7 @@ from scripts.verify_native_canvas import (
 from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
 from scripts.verify_native_worker_startup import (
     FEATURE_ARGUMENT,
+    KEY_ARGUMENT,
     StartupConfiguration,
     browser_arguments,
     partitioning_argument,
@@ -57,6 +59,143 @@ REQUIRED_PATCHES = (
 COMBINED_READ = f"async () => ({{canvas: await ({READ})(), audio: await ({AUDIO_READ})(true)}})"
 DOCUMENT_CONTEXTS = CONTEXTS - {"dedicated", "shared", "service"}
 SAME_PARTITION = CONTEXTS - {"cross_origin_frame"}
+
+
+def validate_denial_navigation(observed: dict, *, denied: bool) -> None:
+    expected = {"requests": 1, "executions": 0 if denied else 1}
+    if (observed["counts"] != expected
+            or any(type(value) is not int for value in observed["counts"].values())):
+        raise ValueError("Denial probe requires one fetched fixture and calibrated script execution")
+    if any(event["method"] == "overflow" for event in observed["events"]):
+        raise ValueError("Owned navigation event evidence exceeded its bounded budget")
+    before, after = observed["before_frame"], observed["after_frame"]
+    if before["id"] != after["id"]:
+        raise ValueError("Denial probe lost its owned frame")
+    if not denied:
+        if after["url"] != observed["url"]:
+            raise ValueError("Control document did not commit")
+        return
+    if (before["url"] != after["url"] or before["loaderId"] != after["loaderId"]
+            or observed["before_history"] != observed["after_history"]):
+        raise ValueError("Denied document changed the committed frame or navigation history")
+    requests = {event["requestId"] for event in observed["events"]
+                if event["method"] == "Network.requestWillBeSent" and event["type"] == "Document"
+                and event["url"] == observed["url"] and event["frameId"] == before["id"]}
+    aborted = {event["requestId"] for event in observed["events"]
+               if event["method"] == "Network.loadingFailed" and event["type"] == "Document"
+               and event["errorText"] == "net::ERR_ABORTED" and event["canceled"] is True}
+    if len(requests) != 1 or not requests.issubset(aborted):
+        raise ValueError("Denied owned document lacks an exact correlated ERR_ABORTED event")
+    if any(event["method"] == "Page.frameNavigated" and event["url"] == observed["url"]
+           for event in observed["events"]):
+        raise ValueError("Denied document emitted a commit event")
+
+
+async def verify_document_denial(executable: Path, owned: Path, server: SurfaceFixtureServer,
+                                original: str, replacement: str, check: dict) -> None:
+    # A denied initial about:blank cannot satisfy a persistent driver's page wait.
+    # Browser-level CDP observes the original profile without requiring that commit.
+    temporary = owned / "denial-driver-temp"
+    temporary.mkdir()
+    marker = owned / "denial-driver-live"
+    marker.write_text("owned diagnostic driver", encoding="utf-8")
+    saved = {name: os.environ.get(name) for name in ("TEMP", "TMP", "TMPDIR")}
+    try:
+        for name in saved:
+            os.environ[name] = str(temporary)
+        driver = await async_playwright().start()
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+    observations = check.setdefault("observations", {})
+    try:
+        for mode in ("baseline", "unavailable"):
+            configuration = SurfaceConfiguration(probe_mode=mode,
+                disabled_features_argument=replacement, ignored_driver_argument=original)
+            browser = await driver.chromium.launch(executable_path=str(executable), headless=True,
+                args=configuration.launch_arguments(), ignore_default_args=[original])
+            try:
+                cdp = await browser.new_browser_cdp_session()
+                arguments = (await cdp.send("Browser.getBrowserCommandLine"))["arguments"]
+                check.setdefault("effective_arguments", {})[mode] = arguments
+                if (KEY_ARGUMENT in arguments or partitioning_argument(arguments) != replacement
+                        or FEATURE_ARGUMENT not in arguments
+                        or (DOCUMENT_ARGUMENT in arguments) != (mode == "unavailable")):
+                    raise ValueError("Denial browser arguments do not match the owned missing-key mode")
+                target = await cdp.send("Target.createTarget", {"url": "about:blank"})
+                session = (await cdp.send("Target.attachToTarget", {
+                    "targetId": target["targetId"], "flatten": False}))["sessionId"]
+                pending, events = {}, []
+
+                def received(event):
+                    if event.get("sessionId") != session:
+                        return
+                    message = json.loads(event["message"])
+                    future = pending.pop(message.get("id"), None)
+                    if future is not None and not future.done():
+                        future.set_result(message)
+                    method, params = message.get("method"), message.get("params", {})
+                    if len(events) >= 512:
+                        if events[-1]["method"] != "overflow":
+                            events.append({"method": "overflow"})
+                        return
+                    if method == "Network.requestWillBeSent" and params.get("type") == "Document":
+                        events.append({"method": method, "requestId": params["requestId"],
+                            "type": params["type"], "frameId": params["frameId"],
+                            "url": params["request"]["url"]})
+                    elif method == "Network.loadingFailed" and params.get("type") == "Document":
+                        events.append({"method": method, "requestId": params["requestId"],
+                            "type": params["type"], "errorText": params["errorText"],
+                            "canceled": params.get("canceled", False)})
+                    elif method == "Page.frameNavigated":
+                        events.append({"method": method, "url": params["frame"]["url"]})
+
+                cdp.on("Target.receivedMessageFromTarget", received)
+
+                async def send(index, method, params):
+                    future = asyncio.get_running_loop().create_future()
+                    pending[index] = future
+                    try:
+                        await cdp.send("Target.sendMessageToTarget", {"sessionId": session,
+                            "message": json.dumps({"id": index, "method": method, "params": params})})
+                        message = await asyncio.wait_for(future, 15)
+                        if "error" in message or not isinstance(message.get("result"), dict):
+                            raise ValueError(f"Owned CDP command failed: {method}")
+                        return message["result"]
+                    finally:
+                        pending.pop(index, None)
+
+                await send(1, "Page.enable", {})
+                await send(2, "Network.enable", {})
+                before = await send(3, "Page.getFrameTree", {})
+                history = await send(4, "Page.getNavigationHistory", {})
+                identifier = uuid.uuid4().hex
+                url = f"http://127.0.0.1:{server.server_port}/surface-startup?id={identifier}"
+                navigation = await send(5, "Page.navigate", {"url": url})
+                deadline = asyncio.get_running_loop().time() + 10
+                while asyncio.get_running_loop().time() < deadline:
+                    counts = server.counts(identifier)
+                    if ((mode == "baseline" and counts["executions"] == 1)
+                            or (mode == "unavailable" and any(event["method"] == "Network.loadingFailed"
+                                and event["type"] == "Document" for event in events))):
+                        break
+                    await asyncio.sleep(0.05)
+                await asyncio.sleep(0.5)
+                after = await send(6, "Page.getFrameTree", {})
+                observed = {"url": url, "counts": server.counts(identifier), "navigation": navigation,
+                    "before_frame": before["frameTree"]["frame"], "after_frame": after["frameTree"]["frame"],
+                    "before_history": history, "after_history": await send(7, "Page.getNavigationHistory", {}),
+                    "events": list(events), "browser_live": await cdp.send("Browser.getVersion")}
+                observations[mode] = observed
+                validate_denial_navigation(observed, denied=mode == "unavailable")
+            finally:
+                await asyncio.wait_for(browser.close(), 15)
+    finally:
+        await asyncio.wait_for(driver.stop(), 15)
+    marker.unlink()
 
 
 class SurfaceFixtureServer(FixtureServer):
@@ -293,31 +432,10 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
         name: compare_quality({context: row["audio"] for context, row in results["baseline"].items()},
                               {context: row["audio"] for context, row in results[name].items()})
         for name in ("profile-a", "profile-b")}
-    configuration = SurfaceConfiguration(probe_mode="unavailable",
-        disabled_features_argument=replacement, ignored_driver_argument=original)
-    runtime = NativeRuntime(owned / "missing-policy", executable, configuration)
-    runtimes.append(runtime)
     check = {"name": "missing-document-policy", "passed": False}
     report["checks"].append(check)
-    try:
-        context = await runtime.start(headless=True)
-        identifier = uuid.uuid4().hex
-        page = context.pages[0] if context.pages else await context.new_page()
-        try:
-            await page.goto(f"{origin}/surface-startup?id={identifier}", timeout=20000)
-        except BrowserError as error:
-            check["navigation_error"] = str(error)
-            if "net::ERR_ABORTED" not in str(error):
-                raise ValueError("Missing-policy navigation did not produce an explicit abort") from error
-        else:
-            raise ValueError("Missing-policy document committed")
-        await asyncio.sleep(0.5)
-        check["observed"] = server.counts(identifier)
-        if check["observed"]["requests"] < 1 or check["observed"]["executions"] != 0:
-            raise ValueError("Missing-policy rejection lacks a fetched fixture or executed script")
-        check["passed"] = True
-    finally:
-        await runtime.close()
+    await verify_document_denial(executable, owned, server, original, replacement, check)
+    check["passed"] = True
 
 
 def main() -> int:
@@ -369,7 +487,7 @@ def main() -> int:
             thread.join(timeout=5)
         if owned is not None:
             try:
-                if any(runtime.has_resources for runtime in runtimes):
+                if any(runtime.has_resources for runtime in runtimes) or (owned / "denial-driver-live").exists():
                     raise ValueError("Live resources remain; owned profiles retained")
                 if owned != owned.resolve() or not owned.is_relative_to(args.work_dir.resolve()):
                     raise ValueError("Refusing cleanup outside the owned workspace")

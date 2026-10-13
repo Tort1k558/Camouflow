@@ -56,6 +56,16 @@ content. This repair still requires a new build and runtime rerun.
 Private evidence on D: `worker-surfaces-startup-001-038-v1.json` and
 `combined-surfaces-001-038-v1.json`. These are owned fixtures, not CAPTCHA results.
 
+The 001-039 browser compiled on j4 in 8m15s. Its revised combined owned gate passed
+**7/7**, including exact missing-policy document abort. A browser-level CDP probe
+avoids requiring a denied startup about:blank to commit: a control page executes,
+the missing-key page is fetched once but never commits or executes, and its
+Document request reports `ERR_ABORTED`. Frame/loader/history and live-browser
+checks passed (`combined-surfaces-001-039-v2.json` on D). The first persistent-driver
+probe timeout remains recorded; it is not a passing startup-recovery check.
+The reviewed observer-lifetime follow-up and eight native cases remain pending,
+so this is not release or external anti-bot admission.
+
 The identity verifier now compares document HTTP User-Agent, primary
 Accept-Language and platform/mobile Client Hints against JavaScript, not just
 against another HTTP baseline. The exact old 001-027 runtime passed 18 checks
