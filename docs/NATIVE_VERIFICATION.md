@@ -21,16 +21,31 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | --- | --- |
 | `scripts/verify_release.py --build --runtime` | Desktop package and packaged legacy-engine checks |
 | `scripts/verify_native_cpp.py` | Standalone native policy primitives |
-| `scripts/verify_native_privacy_units.py` | Default: 43 exact key/service cases; `--target contexts`: 20 BrowserContext cases; `--target delivery`: 34 document/worker IPC and consumer cases |
+| `scripts/verify_native_privacy_units.py` | Keys: 43; contexts: 26; surface navigation: 42; window transport: 13; worker surfaces: 55; GPU readback: 31 prepared cases. Legacy delivery remains a separate 34-case target |
 | `scripts/verify_native_suite.py` | Runtime, hardware, WebRTC, automation, fonts, identity, CDP and combined gates |
 | `scripts/verify_native_storage_paths.py` | Windows path-depth/storage probes |
 | `scripts/verify_native_canvas.py` | Canvas verification tooling, not an implemented protection claim |
-| `scripts/verify_native_worker_startup.py` | Thirty owned classic/module startup/restart and unavailable-policy cases; no Canvas admission |
+| `scripts/verify_native_worker_startup.py` | Default: 40 owned startup/restart/shared-client cases; `--include-nested` adds 20 nested dedicated-worker cases; no Canvas admission |
 
 Run commands as documented in the [build guide](../native/BUILDING.md). Use fresh
 report paths outside source/application repositories. Keep raw outputs and
 measured executable/core-DLL hashes; a count without exact names and successful
 completion is insufficient. Failed or skipped cases are not a passing gate.
+
+Nested worker coverage is opt-in and preserves the existing 40-case contract:
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_worker_startup.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative --report D:\CamouFlowNative\worker-nested-new.json --bootstrap-policy surfaces --include-nested
+```
+
+This requires all four classic/module parent/child combinations in baseline,
+ready and unavailable-parent modes, including restart for baseline and ready.
+Independent fetch and body-execution counters bind the reply to the child.
+Timeouts, duplicate/missing executions and unexpected child fetches reject.
+Unavailable-parent coverage does not prove independently denying an already
+running parent's child. Early termination and protected pixel output are
+separate gates. HTTP fixtures and Node syntax checks alone are not browser
+execution; retain the measured-core runtime report before claiming these cases.
 
 The standalone Canvas baseline also measures the executable and Windows core
 DLLs before and after observation, and refuses to overwrite an existing report.

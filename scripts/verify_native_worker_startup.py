@@ -15,7 +15,7 @@ import traceback
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -37,6 +37,48 @@ SURFACE_BOOTSTRAP_ARGUMENT = "--glint-worker-surface-bootstrap-test"
 SURFACE_PATCH = "0031-native-worker-surface-policy.patch"
 KEY_ARGUMENT = "--camouflow-native-privacy-key-service=1"
 PHASES = {"baseline": ("initial", "restart"), "ready": ("initial", "restart"), "unavailable": ("initial",)}
+NESTED_CASES = tuple((parent, child) for parent in ("classic", "module") for child in ("classic", "module"))
+
+NESTED_PROBE = """async ({id, childId, parentType, childType}) => {
+  let worker;
+  try {
+    return await new Promise(resolve => {
+      const timer = setTimeout(() => resolve({status: 'timeout'}), 15000);
+      const finish = value => { clearTimeout(timer); resolve(value); };
+      const query = new URLSearchParams({id, childId, parentType, childType});
+      worker = new Worker(`/startup-nested-parent.js?${query}`, {type: parentType});
+      worker.onmessage = event => finish(event.data.status ? {status: event.data.status} :
+        {status: 'reply', id: event.data.id});
+      worker.onerror = event => { event.preventDefault(); finish({status: 'worker-error'}); };
+      worker.postMessage('probe');
+    });
+  } finally { worker?.terminate(); }
+}"""
+
+
+def nested_worker_source(identifier: str, child_identifier: str, parent_type: str, child_type: str) -> str:
+    if (parent_type, child_type) not in NESTED_CASES:
+        raise ValueError("Unknown nested worker script types")
+    if (not isinstance(identifier, str) or not isinstance(child_identifier, str)
+            or not identifier or not child_identifier or identifier == child_identifier):
+        raise ValueError("Nested workers require distinct nonempty execution identifiers")
+    prefix = "import {moduleMarker} from '/startup-module.js';\n" if parent_type == "module" else ""
+    child_url = "/startup-dedicated.js?" + urlencode({"id": child_identifier, "type": child_type})
+    return prefix + f"""
+const execution = fetch('/startup-executed?id=' + encodeURIComponent({json.dumps(identifier)}));
+const child = new Worker({json.dumps(child_url)}, {{type: {json.dumps(child_type)}}});
+child.onmessage = async event => {{
+  await execution;
+  child.terminate();
+  self.postMessage({{id: event.data.id}});
+}};
+child.onerror = event => {{
+  event.preventDefault();
+  child.terminate();
+  self.postMessage({{status: 'nested-worker-error'}});
+}};
+self.onmessage = () => child.postMessage('probe');
+"""
 
 PROBE = """async ({kind, scriptType, id, cached, retain}) => {
   let worker, registration, channel;
@@ -124,6 +166,15 @@ class WorkerStartupHandler(FixtureHandler):
             with self.server.execution_lock:
                 self.server.executions[identifier] = self.server.executions.get(identifier, 0) + 1
             body = ""
+        elif parsed.path == "/startup-nested-parent.js":
+            try:
+                identifier = query["id"][0]
+                body = nested_worker_source(identifier, query["childId"][0], query["parentType"][0], query["childType"][0])
+            except (KeyError, ValueError):
+                self.send_error(400, "Invalid nested worker fixture request")
+                return
+            with self.server.execution_lock:
+                self.server.script_requests[identifier] = self.server.script_requests.get(identifier, 0) + 1
         elif parsed.path in {f"/startup-{kind}.js" for kind, _ in CASES}:
             identifier = query.get("id", [""])[0]
             with self.server.execution_lock:
@@ -268,6 +319,43 @@ def validate_observation(observed: dict, *, mode: str, kind: str, identifier: st
         raise ValueError("Worker startup did not produce the owned response and exactly one execution beacon")
 
 
+def validate_nested_observation(observed: dict, *, mode: str, child_identifier: str) -> None:
+    if (mode not in PHASES or not isinstance(observed, dict)
+            or not isinstance(child_identifier, str) or not child_identifier):
+        raise ValueError("Unknown or incomplete nested worker observation")
+    for field in ("executions", "script_requests"):
+        values = observed.get(field)
+        if (not isinstance(values, dict) or set(values) != {"parent", "child"}
+                or any(type(value) is not int or value < 0 for value in values.values())):
+            raise ValueError("Nested worker execution/fetch counters are incomplete")
+    if mode == "unavailable":
+        if (set(observed) != {"status", "executions", "script_requests"}
+                or observed["status"] != "worker-error"
+                or observed["executions"] != {"parent": 0, "child": 0}
+                or observed["script_requests"]["child"] != 0
+                or observed["script_requests"]["parent"] not in {0, 1}):
+            raise ValueError("Unavailable parent policy must reject without parent/child execution or child fetch")
+    elif (set(observed) != {"status", "id", "executions", "script_requests"}
+          or observed["status"] != "reply" or observed["id"] != child_identifier
+          or observed["executions"] != {"parent": 1, "child": 1}
+          or observed["script_requests"] != {"parent": 1, "child": 1}):
+        raise ValueError("Nested workers must fetch and execute each body exactly once and return the child reply")
+
+
+async def verify_nested_workers(page, server: WorkerStartupServer, mode: str, phase: str, report: dict) -> None:
+    for parent_type, child_type in NESTED_CASES:
+        identifier, child_identifier = uuid.uuid4().hex, uuid.uuid4().hex
+        observed = await asyncio.wait_for(page.evaluate(NESTED_PROBE, {
+            "id": identifier, "childId": child_identifier, "parentType": parent_type, "childType": child_type,
+        }), timeout=25)
+        observed["executions"] = {"parent": server.count(identifier), "child": server.count(child_identifier)}
+        observed["script_requests"] = {"parent": server.script_count(identifier), "child": server.script_count(child_identifier)}
+        check = {"name": f"{mode}-{phase}-nested-{parent_type}-{child_type}", "passed": False, "observed": observed}
+        report["checks"].append(check)
+        validate_nested_observation(observed, mode=mode, child_identifier=child_identifier)
+        check["passed"] = True
+
+
 def validate_receipt(executable: Path, core: dict, *, bootstrap_policy: str = "canvas") -> bytes:
     if bootstrap_policy not in {"canvas", "surfaces"}:
         raise ValueError("Unknown worker bootstrap policy")
@@ -299,7 +387,7 @@ def validate_receipt(executable: Path, core: dict, *, bootstrap_policy: str = "c
 
 
 async def verify(executable: Path, owned: Path, server: WorkerStartupServer, report: dict,
-                 runtimes: list[NativeRuntime], *, bootstrap_policy: str = "canvas") -> None:
+                 runtimes: list[NativeRuntime], *, bootstrap_policy: str = "canvas", include_nested: bool = False) -> None:
     origin = f"http://127.0.0.1:{server.server_port}"
     discovery = NativeRuntime(profile_dir=owned / "driver-arguments", executable=executable,
                               configuration=StartupConfiguration())
@@ -354,6 +442,8 @@ async def verify(executable: Path, owned: Path, server: WorkerStartupServer, rep
                         raise ValueError("Installed service-worker restart fetched the main script instead of using retained installation")
                     check["passed"] = True
                 await verify_shared_clients(context, origin, server, mode, phase, report)
+                if include_nested:
+                    await verify_nested_workers(page, server, mode, phase, report)
             finally:
                 await runtime.close()
 
@@ -364,16 +454,22 @@ def main() -> int:
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--bootstrap-policy", choices=("canvas", "surfaces"), default="canvas")
+    parser.add_argument("--include-nested", action="store_true", help="Add 20 classic/module nested dedicated-worker checks")
     args = parser.parse_args()
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite worker startup evidence")
     report = {"schema": 1, "passed": False, "checks": [], "arguments": {}, "platform": platform.platform(),
               "bootstrap_policy": args.bootstrap_policy, "privacy_admitted": False,
               "scope": "Owned classic/module worker startup, restart, shared multi-page clients and unavailable-policy rejection; not Canvas, nested workers, early startup termination or admission"}
+    report["include_nested"] = args.include_nested
+    if args.include_nested:
+        report["scope"] = "Owned worker startup/restart plus nested dedicated-worker body execution; unavailable parent prevents child creation; not independent child denial, early termination, Canvas or admission"
     server = thread = owned = None
     runtimes = []
     try:
         executable = args.executable.resolve(strict=True)
+        probe_checksum = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+        report["probe_sha256"] = probe_checksum
         core = measure_runtime_core(executable)
         receipt = validate_receipt(executable, core, bootstrap_policy=args.bootstrap_policy)
         report.update(runtime_core_sha256_measured=core, binary_sha256_measured=core[executable.name],
@@ -385,14 +481,19 @@ def main() -> int:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         owned = Path(tempfile.mkdtemp(prefix="glint-worker-startup-", dir=args.work_dir.resolve()))
-        asyncio.run(verify(executable, owned, server, report, runtimes, bootstrap_policy=args.bootstrap_policy))
+        asyncio.run(verify(executable, owned, server, report, runtimes,
+                           bootstrap_policy=args.bootstrap_policy, include_nested=args.include_nested))
         if (measure_runtime_core(executable) != core
-                or validate_receipt(executable, core, bootstrap_policy=args.bootstrap_policy) != receipt):
-            raise ValueError("Worker runtime code or receipt changed during verification")
+                or validate_receipt(executable, core, bootstrap_policy=args.bootstrap_policy) != receipt
+                or hashlib.sha256(Path(__file__).read_bytes()).hexdigest() != probe_checksum):
+            raise ValueError("Worker runtime code, receipt or probe changed during verification")
         expected = {f"{mode}-{phase}-{kind}-{script_type}" for mode, phases in PHASES.items()
                     for phase in phases for kind, script_type in CASES}
         expected.update(f"{mode}-{phase}-shared-clients-{script_type}" for mode, phases in PHASES.items()
                         for phase in phases for script_type in ("classic", "module"))
+        if args.include_nested:
+            expected.update(f"{mode}-{phase}-nested-{parent}-{child}" for mode, phases in PHASES.items()
+                            for phase in phases for parent, child in NESTED_CASES)
         if {check["name"] for check in report["checks"]} != expected or len(report["checks"]) != len(expected):
             raise ValueError("Worker startup phases are incomplete")
         report["passed"] = True

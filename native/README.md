@@ -17,16 +17,16 @@ patch chain; they do not transfer automatically to newer binaries.
 
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
-| Registered Windows source | 001-047 | Ordered replay passed across 130 paths; 0046/0047 not yet built or runtime-verified |
+| Registered Windows source | 001-047 | Ordered replay passed across 130 paths |
 | Native navigation/readiness | 001-045 | **42/42** cases passed: missing/conflicting policy, late policy loss, recovery and observer-driven closure |
 | Native BrowserContext isolation | 001-045 | **26/26** cases passed |
 | Native window/child transport | 001-045 | **13/13** cases passed |
 | Native worker surfaces | 001-045 | **55/55** cases passed |
-| Current linked Windows browser | 001-045 | Incremental j4 build succeeded in **5m30s**, with EXE/DLL-bound receipt |
+| Current linked Windows candidate | 001-047 | Corrected incremental j4 build succeeded in **12m46s**; full regression suite in progress |
 | Complete eight-gate runtime suite | 001-045 | **160 checks passed** on unchanged runtime core |
 | Worker startup/restart | 001-045 | **40/40** classic/module, shared-client and unavailable-policy checks passed |
 | Combined Canvas/OfflineAudio | 001-045 | Two retries **7/7 passed**; initial profile-B timeout remains unresolved |
-| Protected WebGL readback | 001-045 | **Failed**: clipped reads overwrite out-of-bounds destination bytes; paired repair 0046/0047 awaits compilation and runtime |
+| Protected WebGL readback | 001-047 | **Six phases passed**, including clipped CPU/PBO reads, state/errors, exports, restart and profile isolation; wider admission remains blocked |
 | Branding | Prepared | Product/logo patch not applied to verified binary |
 | Linux/macOS | Deferred | No current own-fork runtime admission |
 | Mobile Web | Emulation | Desktop viewport/touch mode, not Android/iOS |
@@ -50,6 +50,11 @@ Evidence on D: `browser-verification-001-045-v1/suite/suite.json`,
 Protected GPU failure: `gpu-readback-001-045-v1.json`. The initial combined timeout remains
 recorded in `browser-verification-001-045-v1/surfaces.json`; a passing retry
 does not prove the intermittent failure is fixed.
+
+The corrected 001-047 WebGL run passed on the measured new DLL:
+`browser-verification-001-047-v1/gpu-readback.json`. The older failed run remains
+recorded. The 001-047 full suite, surface/worker reruns and the 31-case native
+readback gate still require their own completed evidence before release.
 
 ## Source layout
 

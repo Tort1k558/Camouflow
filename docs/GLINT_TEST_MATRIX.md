@@ -71,6 +71,32 @@ external green tiles do not replace them.
 
 ## Build history
 
+### Windows development candidate 001-047 — 2026-10-13
+
+Corrected j4 incremental build succeeded in **12m46.29s**, 76 executed steps.
+The first attempt failed on a typed `base::expected` call, not OOM; its log
+remains retained. The corrected caller also passed isolated optimized object
+compilation before retrying the whole browser.
+
+Measured `chrome.dll` SHA-256:
+`f70a287dc74fbb8788c0b94ac55f48169de7fc79a7c500d463cb1d47f1bd59d7`.
+The receipt binds all 47 exact patch hashes, EXE/DLL core and GN configuration.
+
+| Owned check | Result | Boundary |
+| --- | --- | --- |
+| Protected WebGL readback | **Passed: six phases** | Baseline and two independent profiles before/after restart in eight document/worker contexts; CPU/PBO clipping, untouched padding, renderbuffer resize, exports, errors and profile isolation |
+| Eight-gate suite, combined surfaces and worker startup | In progress | No transfer of 001-045 results |
+| Optional nested dedicated workers | Probe prepared | 20 additional cases; HTTP fixture and Node syntax checks passed, actual browser execution pending |
+| Native readback fixtures | Prepared, not executed | Exact 31-case gate; a passing browser probe is not native fixture execution |
+| External detectors and CAPTCHA | Not rerun | No third-party acceptance claim |
+
+Private evidence: `browser-verification-001-047-v1/gpu-readback.json`,
+`halo-expected-compilation-001-047-v2/proof.json` and
+`nested-fixture-validation-001-047-v1/proof.json` on D:. Source replay is
+`clipped-readback-replay-001-047-v2.json`; the earlier failed build is
+`clipped-readback-001-047-chrome-j4-v12.log`. No release or broad GPU capability
+is admitted by this single owned readback run.
+
 ### Windows development candidate 001-045 — 2026-10-13
 
 j4 incremental build succeeded in **5m29.58s**, four executed build steps.
