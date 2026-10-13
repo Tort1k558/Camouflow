@@ -13,6 +13,7 @@ headers. No active Chromium source, browser core or GN configuration changed.
 | Core APIs | `privacy_key_derivation.cc`, `privacy_profile_key.cc`, `privacy_key_service.cc`, `privacy_context.cc` | `profile-identity-core-syntax-001-037-v1/proof.json` |
 | Fixture definitions | `privacy_key_derivation_unittest.cc`, `privacy_key_service_unittest.cc`, `privacy_context_unittest.cc` | `profile-identity-fixtures-syntax-001-037-v1/proof.json` |
 | V3 transport | `surface_policy_producer.cc`, its fixture file and `surface_policy_preflight_unittest.cc`, with freshly generated candidate Mojo headers | `profile-identity-transport-syntax-001-038-v3/proof.json` |
+| First-evaluation fixture definitions | `document_loader_test.cc`, `worker_thread_test.cc`, with the same v3 candidate bindings | `profile-identity-handoff-syntax-001-038-v1/proof.json` |
 
 This does **not** execute cryptography, service/context/transport fixtures,
 generated serialization implementations, first-script delivery or browser
@@ -21,6 +22,11 @@ linkage remain unverified; `privacy_admitted` is false. The regular privacy
 unit target currently links 6754 cached inputs, so its isolated future-mode
 link/run must wait for resource headroom rather than compete with the active
 four-job Chrome build. Do not replace that gate with stubbed crypto or owners.
+
+The handoff check parses real test target files, including the six new identity
+cases, without suppressing compiler diagnostics or reusing old PCH state.
+It does not launch a renderer/worker, evaluate JavaScript, or prove that trusted
+mode/seed delivery happens before the first script. Those remain runtime gates.
 
 This candidate adds an explicit browser-owned profile-identity derivation API
 alongside the existing partitioned privacy API. It does not replace that API,
