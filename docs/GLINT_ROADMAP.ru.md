@@ -70,6 +70,15 @@
 
 ## Подтверждённая база и открытые задачи — 13 октября 2026
 
+Диагностика менеджера теперь проверяет совпадение `brands`, `mobile` и `platform`
+между обычным `userAgentData` и `getHighEntropyValues` в document/dedicated worker;
+отсутствующее поле и `0` вместо `false` считаются ошибкой. 11 новых негативных
+контролей входят в 336 Python-проверок Native runtime. Реальный owned-прогон
+на неизменённом браузере 001–027 прошёл для desktop en-US/de-DE и Mobile Web
+390×844/DPR 3: `D:\CamouFlowNative\manager-owned-hints-screen-001-027-v1.json`.
+Исходная вкладка и её сеть сохранены; core/входные файлы проверены до и после.
+Это аудит согласованности, не новая подмена и не admission патчей 028–036.
+
 Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчами, а не только
 инъекции поверх Chrome. При этом менеджер использует Playwright/CDP для управления
 и SDK-настроек: это не отсутствие CDP и не нативная подмена всех Web API.

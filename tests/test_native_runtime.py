@@ -355,7 +355,9 @@ def coherent_identity_observations():
               "language": "en-US", "languages": ["en-US", "en"], "timezone": "UTC", "intlLocale": "en-US",
               "userAgentData": {"platform": "Windows", "mobile": False,
                                 "brands": [{"brand": "Chromium", "version": "148"}]},
-              "userAgentHighEntropy": {"fullVersionList": [{"brand": "Chromium", "version": "148.0.7778.96"}]}}
+              "userAgentHighEntropy": {"fullVersionList": [{"brand": "Chromium", "version": "148.0.7778.96"}],
+                                       "brands": [{"brand": "Chromium", "version": "148"}],
+                                       "platform": "Windows", "mobile": False}}
     return {"document": values, "worker": copy.deepcopy(values)}
 
 
@@ -432,6 +434,7 @@ def test_native_identity_audit_preserves_known_chromium_platform_reduction(
     for values in observed.values():
         values["platform"] = navigator_platform
         values["userAgentData"]["platform"] = hint_platform
+        values["userAgentHighEntropy"]["platform"] = hint_platform
         values["userAgent"] = f"Mozilla/5.0 ({ua_marker}) Chrome/148.0.0.0 Safari/537.36"
         values["userAgentHighEntropy"]["platformVersion"] = "15.0.0"
     assert audit_observed_identity(observed, "148.0.7778.96") == []
@@ -473,6 +476,30 @@ def test_native_identity_audit_reports_malformed_platform_without_throwing(field
     else:
         values["userAgentData"]["platform"] = invalid
     assert audit_observed_identity(observed, "148.0.7778.96")
+
+
+@pytest.mark.parametrize("scope", ["document", "worker"])
+@pytest.mark.parametrize("key,value", [
+    ("platform", "Android"), ("mobile", True), ("mobile", 0),
+    ("brands", [{"brand": "Chromium", "version": "149"}]),
+])
+def test_native_identity_audit_rejects_high_entropy_base_hint_contradictions(scope, key, value):
+    from app.core.native.diagnostics import audit_observed_identity
+
+    observed = coherent_identity_observations()
+    observed[scope]["userAgentHighEntropy"][key] = value
+    assert f"{scope.capitalize()} high-entropy Client Hints {key} disagrees with base hints" in (
+        audit_observed_identity(observed, "148.0.7778.96"))
+
+
+@pytest.mark.parametrize("key", ["platform", "mobile", "brands"])
+def test_native_identity_audit_requires_high_entropy_base_hint_fields(key):
+    from app.core.native.diagnostics import audit_observed_identity
+
+    observed = coherent_identity_observations()
+    del observed["document"]["userAgentHighEntropy"][key]
+    assert f"Document high-entropy Client Hints {key} disagrees with base hints" in (
+        audit_observed_identity(observed, "148.0.7778.96"))
 
 
 @pytest.mark.parametrize("field", ["userAgent", "platform", "language", "timezone", "intlLocale",

@@ -302,6 +302,10 @@ def audit_observed_identity(observed: dict, browser_version: str) -> list[str]:
                     issues.append(f"{prefix} UA operating system disagrees with Client Hints OS")
         if type(hints.get("mobile")) is not bool:
             issues.append(f"{prefix} Client Hints mobile flag is invalid")
+        for key in ("brands", "mobile", "platform"):
+            if (key not in high or type(high[key]) is not type(hints.get(key))
+                    or high[key] != hints.get(key)):
+                issues.append(f"{prefix} high-entropy Client Hints {key} disagrees with base hints")
         for key, expected, source in (("brands", major, hints), ("fullVersionList", browser_version, high)):
             brands = source.get(key)
             chromium = [brand.get("version") for brand in brands
