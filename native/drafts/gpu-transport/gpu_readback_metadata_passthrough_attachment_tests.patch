@@ -67,8 +67,8 @@ index 1a2d236..ca39de1 100644
 +    if (status != error::kNoError) {
 +      return std::nullopt;
 +    }
-+    EXPECT_EQ(result->GetNumResults(), kGlintReadbackMetadataValues);
-+    if (result->GetNumResults() != kGlintReadbackMetadataValues) {
++    EXPECT_EQ(result->GetNumResults(), static_cast<int>(kGlintReadbackMetadataValues));
++    if (result->GetNumResults() != static_cast<int>(kGlintReadbackMetadataValues)) {
 +      return std::nullopt;
 +    }
 +    return DecodeGlintReadbackMetadata(std::span<const GLint>(
@@ -92,7 +92,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(metadata);
 +  EXPECT_EQ(metadata->width, 9);
 +  EXPECT_EQ(metadata->height, 3);
-+  EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
 +  EXPECT_EQ(metadata->samples, 0);
 +  EXPECT_TRUE(metadata->rgba8_compatible);
 +  GLint after = 0;
@@ -115,7 +115,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(second);
 +  EXPECT_EQ(second->width, 4);
 +  EXPECT_EQ(second->height, 7);
-+  EXPECT_EQ(second->internal_format, GL_RGBA8);
++  EXPECT_EQ(second->internal_format, static_cast<GLenum>(GL_RGBA8));
 +  EXPECT_TRUE(second->rgba8_compatible);
 +  EXPECT_EQ(GL_NO_ERROR, GetGLError());
 +}
@@ -127,7 +127,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(metadata);
 +  EXPECT_EQ(metadata->width, 7);
 +  EXPECT_EQ(metadata->height, 2);
-+  EXPECT_EQ(metadata->internal_format, GL_RGBA8UI);
++  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8UI));
 +  EXPECT_FALSE(metadata->rgba8_compatible);
 +  EXPECT_EQ(GL_NO_ERROR, GetGLError());
 +}
@@ -167,7 +167,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(metadata);
 +  EXPECT_EQ(metadata->width, 9);
 +  EXPECT_EQ(metadata->height, 3);
-+  EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
 +  EXPECT_EQ(metadata->samples, 0);
 +  EXPECT_TRUE(metadata->rgba8_compatible);
 +  GLint after = 0;
@@ -203,7 +203,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(second);
 +  EXPECT_EQ(second->width, 4);
 +  EXPECT_EQ(second->height, 7);
-+  EXPECT_EQ(second->internal_format, GL_RGBA8);
++  EXPECT_EQ(second->internal_format, static_cast<GLenum>(GL_RGBA8));
 +  EXPECT_TRUE(second->rgba8_compatible);
 +  GLint bound = 0;
 +  DoGetIntegerv(GL_TEXTURE_BINDING_2D, &bound, 1);
@@ -231,7 +231,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(metadata);
 +  EXPECT_EQ(metadata->width, 4);
 +  EXPECT_EQ(metadata->height, 2);
-+  EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
 +  EXPECT_EQ(metadata->samples, 0);
 +  EXPECT_TRUE(metadata->rgba8_compatible);
 +  EXPECT_EQ(GL_NO_ERROR, GetGLError());
@@ -260,7 +260,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(metadata);
 +  EXPECT_EQ(metadata->width, 4);
 +  EXPECT_EQ(metadata->height, 4);
-+  EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
 +  EXPECT_EQ(metadata->samples, 0);
 +  EXPECT_TRUE(metadata->rgba8_compatible);
 +  GLint after = 0;
@@ -283,7 +283,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(metadata);
 +  EXPECT_EQ(metadata->width, 9);
 +  EXPECT_EQ(metadata->height, 3);
-+  EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
 +  EXPECT_EQ(metadata->samples, 0);
 +  EXPECT_TRUE(metadata->rgba8_compatible);
 +  GLint after = 0;
@@ -306,7 +306,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(metadata);
 +  EXPECT_EQ(metadata->width, 9);
 +  EXPECT_EQ(metadata->height, 3);
-+  EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
 +  EXPECT_EQ(metadata->samples, 0);
 +  EXPECT_TRUE(metadata->rgba8_compatible);
 +  GLint after = 0;
@@ -320,7 +320,7 @@ index 1a2d236..ca39de1 100644
 +  CreateAttachment(GL_RGBA8, 8, 4);
 +  const auto first = QueryAttachment();
 +  ASSERT_TRUE(first);
-+  EXPECT_EQ(first->internal_format, GL_RGBA8);
++  EXPECT_EQ(first->internal_format, static_cast<GLenum>(GL_RGBA8));
 +  EXPECT_TRUE(first->rgba8_compatible);
 +  const GLuint other = kClientRenderbufferId + 1;
 +  GenHelper<cmds::GenRenderbuffersImmediate>(other);
@@ -338,7 +338,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(selected);
 +  EXPECT_EQ(selected->width, 8);
 +  EXPECT_EQ(selected->height, 4);
-+  EXPECT_EQ(selected->internal_format, GL_RGBA8UI);
++  EXPECT_EQ(selected->internal_format, static_cast<GLenum>(GL_RGBA8UI));
 +  EXPECT_FALSE(selected->rgba8_compatible);
 +  GLint read_buffer = 0;
 +  DoGetIntegerv(GL_READ_BUFFER, &read_buffer, 1);
@@ -384,7 +384,7 @@ index 1a2d236..ca39de1 100644
 +  query.Init(GL_RENDERBUFFER, GL_RENDERBUFFER_SAMPLES, shared_memory_id_,
 +             kSharedMemoryOffset);
 +  ASSERT_EQ(error::kNoError, ExecuteCmd(query));
-+  ASSERT_EQ(result->GetNumResults(), 1u);
++  ASSERT_EQ(result->GetNumResults(), 1);
 +  const GLint native_samples = result->GetData()[0];
 +  ASSERT_GT(native_samples, 0);
 +  ASSERT_EQ(GL_NO_ERROR, GetGLError());
@@ -392,7 +392,7 @@ index 1a2d236..ca39de1 100644
 +  ASSERT_TRUE(metadata);
 +  EXPECT_EQ(metadata->width, 8);
 +  EXPECT_EQ(metadata->height, 4);
-+  EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
 +  EXPECT_EQ(metadata->samples, native_samples);
 +  EXPECT_TRUE(metadata->rgba8_compatible);
 +  GLint binding = 0;

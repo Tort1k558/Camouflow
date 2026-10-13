@@ -50,13 +50,13 @@ index 915fe5a..7a97e02 100644
 +    Command command;
 +    command.Init(shared_memory_id_, kSharedMemoryOffset);
 +    ASSERT_EQ(error::kNoError, ExecuteCmd(command));
-+    ASSERT_EQ(result->GetNumResults(), kGlintReadbackMetadataValues);
++    ASSERT_EQ(result->GetNumResults(), static_cast<int>(kGlintReadbackMetadataValues));
 +    const auto metadata = DecodeGlintReadbackMetadata(std::span<const GLint>(
 +        result->GetData(), kGlintReadbackMetadataValues));
 +    ASSERT_TRUE(metadata.has_value());
 +    EXPECT_EQ(metadata->width, 9);
 +    EXPECT_EQ(metadata->height, 3);
-+    EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++    EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
 +    EXPECT_EQ(metadata->samples, 0);
 +    EXPECT_EQ(metadata->rgba8_compatible, true);
 +    EXPECT_EQ(GL_NO_ERROR, GetGLError());
@@ -88,13 +88,13 @@ index 915fe5a..7a97e02 100644
 +    Command command;
 +    command.Init(shared_memory_id_, kSharedMemoryOffset);
 +    ASSERT_EQ(error::kNoError, ExecuteCmd(command));
-+    ASSERT_EQ(result->GetNumResults(), kGlintReadbackMetadataValues);
++    ASSERT_EQ(result->GetNumResults(), static_cast<int>(kGlintReadbackMetadataValues));
 +    const auto metadata = DecodeGlintReadbackMetadata(std::span<const GLint>(
 +        result->GetData(), kGlintReadbackMetadataValues));
 +    ASSERT_TRUE(metadata.has_value());
 +    EXPECT_EQ(metadata->width, 5);
 +    EXPECT_EQ(metadata->height, 3);
-+    EXPECT_EQ(metadata->internal_format, GL_RGBA8I);
++    EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8I));
 +    EXPECT_EQ(metadata->samples, 0);
 +    EXPECT_EQ(metadata->rgba8_compatible, false);
 +    EXPECT_EQ(GL_NO_ERROR, GetGLError());
@@ -126,13 +126,13 @@ index 915fe5a..7a97e02 100644
 +    Command command;
 +    command.Init(shared_memory_id_, kSharedMemoryOffset);
 +    ASSERT_EQ(error::kNoError, ExecuteCmd(command));
-+    ASSERT_EQ(result->GetNumResults(), kGlintReadbackMetadataValues);
++    ASSERT_EQ(result->GetNumResults(), static_cast<int>(kGlintReadbackMetadataValues));
 +    const auto metadata = DecodeGlintReadbackMetadata(std::span<const GLint>(
 +        result->GetData(), kGlintReadbackMetadataValues));
 +    ASSERT_TRUE(metadata.has_value());
 +    EXPECT_EQ(metadata->width, 9);
 +    EXPECT_EQ(metadata->height, 3);
-+    EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++    EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
 +    EXPECT_EQ(metadata->samples, 0);
 +    EXPECT_EQ(metadata->rgba8_compatible, true);
 +    EXPECT_EQ(GL_NO_ERROR, GetGLError());
@@ -154,13 +154,13 @@ index 915fe5a..7a97e02 100644
 +    Command command;
 +    command.Init(shared_memory_id_, kSharedMemoryOffset);
 +    ASSERT_EQ(error::kNoError, ExecuteCmd(command));
-+    ASSERT_EQ(result->GetNumResults(), kGlintReadbackMetadataValues);
++    ASSERT_EQ(result->GetNumResults(), static_cast<int>(kGlintReadbackMetadataValues));
 +    const auto metadata = DecodeGlintReadbackMetadata(std::span<const GLint>(
 +        result->GetData(), kGlintReadbackMetadataValues));
 +    ASSERT_TRUE(metadata.has_value());
 +    EXPECT_EQ(metadata->width, 6);
 +    EXPECT_EQ(metadata->height, 2);
-+    EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++    EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
 +    EXPECT_EQ(metadata->samples, 0);
 +    EXPECT_EQ(metadata->rgba8_compatible, true);
 +    EXPECT_EQ(GL_NO_ERROR, GetGLError());

@@ -838,6 +838,19 @@ def test_future_gpu_binding_restorers_use_stateless_callbacks():
     assert text.count("+          decoder->CheckErrorCallbackState();") == 2
 
 
+def test_future_gpu_fixture_counts_and_formats_match_native_types():
+    import re
+    from scripts.verify_native_gpu_transport_draft import (
+        ATTACHMENT_PATCH, PASSTHROUGH_ATTACHMENT_PATCH, PROTOCOL_PATCH,
+    )
+
+    for path in (ATTACHMENT_PATCH, PASSTHROUGH_ATTACHMENT_PATCH, PROTOCOL_PATCH):
+        text = path.read_text(encoding="utf-8-sig")
+        assert not re.search(r"GetNumResults\(\)(?:,| !=) kGlintReadbackMetadataValues", text)
+        assert "GetNumResults(), 1u" not in text
+        assert not re.search(r"\w+->internal_format, GL_\w+\);", text)
+
+
 def test_future_clipped_publication_checks_expected_explicitly():
     from scripts.verify_native_halo_draft import CLIPPED_PATCH, DRAFTS
 
