@@ -107,6 +107,94 @@ READBACK_READ = READBACK_READ.replace(
     "    scene.lost = {lost: gl.isContextLost(), error: gl.getError(),\n"
     "      nextError: gl.getError(), pixels: Array.from(lostPixels)};")
 
+RENDERBUFFER_READ = """
+      scene.renderbuffer = null;
+      if (name === 'webgl2') {
+        const framebuffer = gl.createFramebuffer(), first = gl.createRenderbuffer(), second = gl.createRenderbuffer();
+        const multiFramebuffer = gl.createFramebuffer(), multi = gl.createRenderbuffer();
+        if (!framebuffer || !first || !second || !multiFramebuffer || !multi) throw new Error('Renderbuffer allocation failed');
+        const viewport = Array.from(gl.getParameter(gl.VIEWPORT));
+        const scissor = Array.from(gl.getParameter(gl.SCISSOR_BOX));
+        const fill = (width, height) => {
+          for (const buffer of [first, second]) {
+            gl.bindRenderbuffer(gl.RENDERBUFFER, buffer);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.RGBA8, width, height);
+          }
+          if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('Renderbuffer framebuffer incomplete');
+          gl.disable(gl.SCISSOR_TEST);
+          gl.clearBufferfv(gl.COLOR, 0, new Float32Array([17 / 255, 34 / 255, 51 / 255, 1]));
+          gl.enable(gl.SCISSOR_TEST);
+          for (let y = 0; y < height; ++y) for (let x = 0; x < width; ++x) {
+            gl.scissor(x, y, 1, 1);
+            gl.clearBufferfv(gl.COLOR, 1, new Float32Array([(x + 1) / 255, (y + 1) / 255, 85 / 255, 1]));
+          }
+          gl.disable(gl.SCISSOR_TEST); gl.readBuffer(gl.COLOR_ATTACHMENT1);
+        };
+        const read = (width, height) => {
+          gl.pixelStorei(gl.PACK_ROW_LENGTH, 0); gl.pixelStorei(gl.PACK_SKIP_ROWS, 0); gl.pixelStorei(gl.PACK_SKIP_PIXELS, 0);
+          const pixels = new Uint8Array(width * height * 4), repeat = new Uint8Array(pixels.length), crop = new Uint8Array(16);
+          gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, repeat);
+          gl.readPixels(1, 1, 2, 2, gl.RGBA, gl.UNSIGNED_BYTE, crop);
+          gl.pixelStorei(gl.PACK_ROW_LENGTH, 10); gl.pixelStorei(gl.PACK_SKIP_ROWS, 1); gl.pixelStorei(gl.PACK_SKIP_PIXELS, 1);
+          const packed = new Uint8Array(400).fill(165);
+          gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, packed);
+          gl.pixelStorei(gl.PACK_ROW_LENGTH, 0); gl.pixelStorei(gl.PACK_SKIP_ROWS, 0); gl.pixelStorei(gl.PACK_SKIP_PIXELS, 0);
+          const buffer = gl.createBuffer();
+          if (!buffer) throw new Error('Framebuffer PBO allocation failed');
+          let pbo, packBinding;
+          try {
+            gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buffer);
+            gl.bufferData(gl.PIXEL_PACK_BUFFER, new Uint8Array(pixels.length + 32).fill(165), gl.STREAM_READ);
+            gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, 12);
+            packBinding = gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING) === buffer;
+            const output = new Uint8Array(pixels.length + 32);
+            gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, output); pbo = Array.from(output);
+          } finally { gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null); gl.deleteBuffer(buffer); }
+          return {width: gl.getRenderbufferParameter(gl.RENDERBUFFER, gl.RENDERBUFFER_WIDTH),
+            height: gl.getRenderbufferParameter(gl.RENDERBUFFER, gl.RENDERBUFFER_HEIGHT),
+            pixels: Array.from(pixels), repeat: Array.from(repeat), crop: Array.from(crop),
+            packed: Array.from(packed), pbo, packBinding,
+            bindings: {read: gl.getParameter(gl.READ_FRAMEBUFFER_BINDING) === framebuffer,
+              draw: gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING) === framebuffer,
+              selected: gl.getParameter(gl.READ_BUFFER) === gl.COLOR_ATTACHMENT1}, error: gl.getError()};
+        };
+        try {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+          gl.bindRenderbuffer(gl.RENDERBUFFER, first);
+          gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, first);
+          gl.bindRenderbuffer(gl.RENDERBUFFER, second);
+          gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.RENDERBUFFER, second);
+          gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+          fill(8, 8); const initial = read(8, 8);
+          gl.readBuffer(gl.COLOR_ATTACHMENT0);
+          const uniform = new Uint8Array(4);
+          gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, uniform);
+          fill(6, 5); const resized = read(6, 5);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, multiFramebuffer);
+          gl.bindRenderbuffer(gl.RENDERBUFFER, multi);
+          gl.renderbufferStorageMultisample(gl.RENDERBUFFER, 1, gl.RGBA8, 4, 4);
+          gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, multi);
+          gl.drawBuffers([gl.COLOR_ATTACHMENT0]); gl.readBuffer(gl.COLOR_ATTACHMENT0);
+          if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('Multisample framebuffer incomplete');
+          const samples = gl.getRenderbufferParameter(gl.RENDERBUFFER, gl.RENDERBUFFER_SAMPLES);
+          const rejected = new Uint8Array(4).fill(165);
+          gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, rejected);
+          const multisample = {error: gl.getError(), nextError: gl.getError(), pixels: Array.from(rejected)};
+          scene.renderbuffer = {viewport, initial, resized, uniform: Array.from(uniform), samples, multisample};
+        } finally {
+          gl.disable(gl.SCISSOR_TEST); gl.scissor(...scissor);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.readBuffer(gl.BACK); gl.drawBuffers([gl.BACK]);
+          gl.bindRenderbuffer(gl.RENDERBUFFER, null); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+          gl.pixelStorei(gl.PACK_ROW_LENGTH, 6); gl.pixelStorei(gl.PACK_SKIP_ROWS, 1); gl.pixelStorei(gl.PACK_SKIP_PIXELS, 1);
+          for (const buffer of [first, second, multi]) gl.deleteRenderbuffer(buffer);
+          gl.deleteFramebuffer(framebuffer); gl.deleteFramebuffer(multiFramebuffer);
+        }
+      }
+"""
+READBACK_READ = READBACK_READ.replace(
+    "      scene.initialState = beforeExport;", "      scene.initialState = beforeExport;" + RENDERBUFFER_READ)
+
 
 class ReadbackFixtureHandler(GpuFixtureHandler):
     worker_read = READBACK_READ
@@ -164,13 +252,17 @@ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None 
                 raise ValueError("WebGL readback coverage is unavailable: " + context + "/" + api)
             scene = gl.get("scene")
             fields = {"pixels", "repeat", "crop", "pbo", "packed", "png", "packState",
-                      "exportState", "initialState", "validation", "lost"}
+                      "exportState", "initialState", "validation", "lost", "renderbuffer"}
             if not isinstance(scene, dict) or set(scene) != fields:
                 raise ValueError("Readback/export/state observations are incomplete")
             full = scene["pixels"]
             read_scene = {key: scene[key] for key in ("pixels", "repeat", "crop", "pbo", "packed")}
             validate_shader_readback(read_scene, api, expected_pixels=full)
             validate_errors(scene["validation"], api, full[:4], scene["lost"])
+            if api == "webgl2":
+                validate_renderbuffer(scene["renderbuffer"], protected=protected)
+            elif scene["renderbuffer"] is not None:
+                raise ValueError("WebGL1 claimed WebGL2 renderbuffer coverage")
             if any((byte != reference if not protected or index % 4 == 3 else
                     byte >> 1 != reference >> 1) for index, (byte, reference) in enumerate(zip(full, SHADER_PIXELS))):
                 raise ValueError("Readback changed alpha, upper colour bits or baseline pixels")
@@ -213,7 +305,68 @@ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None 
                 raise ValueError("Same-partition WebGL contexts disagree")
             if observed["cross_origin_frame"]["webgl"][api]["scene"]["pixels"] == reference:
                 raise ValueError("Cross-origin WebGL partition was not isolated")
+        for phase in ("initial", "resized"):
+            pixels = {name: row["webgl"]["webgl2"]["scene"]["renderbuffer"][phase]["pixels"]
+                      for name, row in observed.items()}
+            reference = pixels["document"]
+            if any(pixels[name] != reference for name in SAME_PARTITION):
+                raise ValueError("Same-partition renderbuffer contexts disagree")
+            if pixels["cross_origin_frame"] == reference:
+                raise ValueError("Cross-origin renderbuffer partition was not isolated")
     return normalized
+
+
+def validate_renderbuffer(observed: dict, *, protected: bool) -> None:
+    if (not isinstance(observed, dict) or set(observed) != {"viewport", "initial", "resized", "uniform", "samples", "multisample"}
+            or observed["viewport"] != [0, 0, 4, 4] or any(type(value) is not int for value in observed["viewport"])
+            or observed["uniform"] != [17, 34, 51, 255] or any(type(value) is not int for value in observed["uniform"])
+            or type(observed["samples"]) is not int or observed["samples"] < 1):
+        raise ValueError("Renderbuffer setup or uniform attachment changed")
+    palette = {}
+    for name, width, height in (("initial", 8, 8), ("resized", 6, 5)):
+        frame = observed[name]
+        fields = {"width", "height", "pixels", "repeat", "crop", "packed", "pbo", "packBinding", "bindings", "error"}
+        if (not isinstance(frame, dict) or set(frame) != fields or type(frame["width"]) is not int or frame["width"] != width
+                or type(frame["height"]) is not int or frame["height"] != height or type(frame["error"]) is not int or frame["error"] != 0
+                or frame["packBinding"] is not True or not isinstance(frame["bindings"], dict)
+                or set(frame["bindings"]) != {"read", "draw", "selected"} or any(value is not True for value in frame["bindings"].values())):
+            raise ValueError("Selected framebuffer extent, bindings or operation failed: " + name)
+        full = frame["pixels"]
+        reference = [value for y in range(1, height + 1) for x in range(1, width + 1) for value in (x, y, 85, 255)]
+        if (not isinstance(full, list) or len(full) != len(reference)
+                or any(type(byte) is not int or not 0 <= byte <= 255 for byte in full)
+                or any((byte != expected if not protected or index % 4 == 3 else byte >> 1 != expected >> 1)
+                       for index, (byte, expected) in enumerate(zip(full, reference)))):
+            raise ValueError("Renderbuffer pixels changed alpha, upper colour bits or baseline")
+        row_bytes = width * 4
+        expected = {"repeat": full, "crop": full[row_bytes + 4:row_bytes + 12] + full[row_bytes * 2 + 4:row_bytes * 2 + 12],
+                    "pbo": [165] * 12 + full + [165] * 20, "packed": [165] * 400}
+        for row in range(height):
+            start = (row + 1) * 40 + 4
+            expected["packed"][start:start + row_bytes] = full[row * row_bytes:(row + 1) * row_bytes]
+        for field, value in expected.items():
+            actual = frame[field]
+            if (not isinstance(actual, list) or any(type(byte) is not int for byte in actual) or actual != value):
+                raise ValueError("Renderbuffer repeat/crop/PBO/pack padding mismatch: " + field)
+        if protected and full == reference:
+            raise ValueError("Renderbuffer readback was not protected")
+        if protected:
+            # Every pixel in this opaque two-pixel colour-cell gradient has a
+            # different quantized neighbour. The candidate therefore selects
+            # one RGB value per quantized colour, also across the resize.
+            # Merely changing a viewport-sized prefix cannot satisfy this.
+            for offset in range(0, len(full), 4):
+                colour = tuple(byte >> 1 for byte in reference[offset:offset + 3])
+                chosen = tuple(full[offset:offset + 3])
+                if colour in palette and palette[colour] != chosen:
+                    raise ValueError("Renderbuffer colour policy is inconsistent outside viewport or after resize")
+                palette[colour] = chosen
+    multi = observed["multisample"]
+    if (not isinstance(multi, dict) or set(multi) != {"error", "nextError", "pixels"}
+            or type(multi["error"]) is not int or type(multi["nextError"]) is not int
+            or not isinstance(multi["pixels"], list) or any(type(byte) is not int for byte in multi["pixels"])
+            or multi != {"error": 1282, "nextError": 0, "pixels": [165] * 4}):
+        raise ValueError("Multisample read did not preserve native rejection and destination")
 
 
 def validate_errors(observed: dict, api: str, first_pixel: list[int], lost: dict) -> None:
@@ -311,6 +464,11 @@ async def verify(executable: Path, owned: Path, server: FixtureServer, report: d
                       for name in ("baseline", "profile-a", "profile-b")]
             if len(set(pixels)) != 3:
                 raise ValueError("WebGL scene did not isolate both profiles from baseline")
+        for phase in ("initial", "resized"):
+            pixels = [tuple(results[name][context]["webgl"]["webgl2"]["scene"]["renderbuffer"][phase]["pixels"])
+                      for name in ("baseline", "profile-a", "profile-b")]
+            if len(set(pixels)) != 3:
+                raise ValueError("Renderbuffer scene did not isolate both profiles from baseline")
     report["cross_profile_isolation_passed"] = True
 
 

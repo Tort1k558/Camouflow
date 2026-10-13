@@ -217,7 +217,28 @@ def readback_observation(*, protected=False):
                 noPackBuffer={"error": 1282, "nextError": 0} if api == "webgl2" else None,
                 overlappingPack={"error": 1282, "nextError": 0, "pixels": [165] * 8} if api == "webgl2" else None)
             scene["lost"] = {"lost": True, "error": 37442, "nextError": 0, "pixels": [165] * 4}
+            scene["renderbuffer"] = renderbuffer_observation(protected=protected, cross=name == "cross_origin_frame") if api == "webgl2" else None
     return observed
+
+
+def renderbuffer_observation(*, protected=False, cross=False):
+    result = {"viewport": [0, 0, 4, 4], "uniform": [17, 34, 51, 255], "samples": 4,
+              "multisample": {"error": 1282, "nextError": 0, "pixels": [165] * 4}}
+    for name, width, height in (("initial", 8, 8), ("resized", 6, 5)):
+        full = [value for y in range(1, height + 1) for x in range(1, width + 1) for value in (x, y, 85, 255)]
+        if protected:
+            full = [byte if index % 4 == 3 else (byte & 254) | (int(not cross) if index % 4 == 0 else int(index % 4 == 1))
+                    for index, byte in enumerate(full)]
+        row_bytes = width * 4
+        packed = [165] * 400
+        for row in range(height):
+            start = (row + 1) * 40 + 4
+            packed[start:start + row_bytes] = full[row * row_bytes:(row + 1) * row_bytes]
+        result[name] = {"width": width, "height": height, "error": 0, "pixels": full,
+            "repeat": full.copy(), "crop": full[row_bytes + 4:row_bytes + 12] + full[2 * row_bytes + 4:2 * row_bytes + 12],
+            "pbo": [165] * 12 + full + [165] * 20, "packed": packed, "packBinding": True,
+            "bindings": {"read": True, "draw": True, "selected": True}}
+    return result
 
 
 def test_readback_gate_checks_native_png_without_canvas_remasking():
@@ -356,3 +377,86 @@ def test_readback_cli_rejects_old_receipt_before_creating_profiles(tmp_path, mon
     evidence = json.loads(report.read_text(encoding="utf-8"))
     assert evidence["passed"] is False and evidence["privacy_admitted"] is False
     assert evidence["error"] == "uncompiled readback" and not evidence["checks"]
+
+
+@pytest.mark.parametrize("field,value", [("width", 4), ("height", 4), ("width", True),
+                                        ("packBinding", False), ("bindings", {"read": True, "draw": True, "selected": False}),
+                                        ("error", 1282)])
+def test_renderbuffer_gate_rejects_viewport_extent_and_binding_substitution(field, value):
+    from scripts.verify_native_gpu_readback import validate_renderbuffer
+
+    observed = renderbuffer_observation(protected=True)
+    observed["initial"][field] = value
+    with pytest.raises(ValueError):
+        validate_renderbuffer(observed, protected=True)
+
+
+@pytest.mark.parametrize("field,index", [("repeat", 0), ("crop", 0), ("packed", 0), ("packed", 399),
+                                      ("pbo", 0), ("pbo", 287), ("pixels", 3)])
+def test_renderbuffer_gate_rejects_mutated_reads_padding_or_alpha(field, index):
+    from scripts.verify_native_gpu_readback import validate_renderbuffer
+
+    observed = renderbuffer_observation(protected=True)
+    observed["initial"][field][index] ^= 1
+    with pytest.raises(ValueError):
+        validate_renderbuffer(observed, protected=True)
+
+
+def synchronize_renderbuffer_reads(frame):
+    full = frame["pixels"]
+    row_bytes = frame["width"] * 4
+    frame.update(repeat=full.copy(), pbo=[165] * 12 + full + [165] * 20,
+                 crop=full[row_bytes + 4:row_bytes + 12] + full[2 * row_bytes + 4:2 * row_bytes + 12],
+                 packed=[165] * 400)
+    for row in range(frame["height"]):
+        start = (row + 1) * 40 + 4
+        frame["packed"][start:start + row_bytes] = full[row * row_bytes:(row + 1) * row_bytes]
+
+
+def test_renderbuffer_gate_rejects_protection_limited_to_viewport_even_when_reads_agree():
+    from scripts.verify_native_gpu_readback import validate_renderbuffer
+
+    observed = renderbuffer_observation(protected=True)
+    raw = renderbuffer_observation()["initial"]["pixels"]
+    frame = observed["initial"]
+    for y in range(8):
+        for x in range(8):
+            if x >= 4 or y >= 4:
+                offset = (y * 8 + x) * 4
+                frame["pixels"][offset:offset + 4] = raw[offset:offset + 4]
+    synchronize_renderbuffer_reads(frame)
+    with pytest.raises(ValueError, match="outside viewport or after resize"):
+        validate_renderbuffer(observed, protected=True)
+
+
+def test_renderbuffer_gate_rejects_palette_rekey_after_resize_even_when_reads_agree():
+    from scripts.verify_native_gpu_readback import validate_renderbuffer
+
+    observed = renderbuffer_observation(protected=True)
+    frame = observed["resized"]
+    frame["pixels"] = [byte ^ int(index % 4 == 1) for index, byte in enumerate(frame["pixels"])]
+    synchronize_renderbuffer_reads(frame)
+    with pytest.raises(ValueError, match="outside viewport or after resize"):
+        validate_renderbuffer(observed, protected=True)
+
+
+@pytest.mark.parametrize("context,source", [("same_origin_frame", "cross_origin_frame"), ("cross_origin_frame", "document")])
+def test_renderbuffer_gate_requires_own_partition_isolation(context, source):
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    observed = readback_observation(protected=True)
+    observed[context]["webgl"]["webgl2"]["scene"]["renderbuffer"] = copy.deepcopy(
+        observed[source]["webgl"]["webgl2"]["scene"]["renderbuffer"])
+    with pytest.raises(ValueError):
+        validate_readback(observed, protected=True)
+
+
+@pytest.mark.parametrize("field,value", [("samples", 0), ("samples", True), ("uniform", [0] * 4),
+                                       ("multisample", {"error": 0, "nextError": 0, "pixels": [165] * 4})])
+def test_renderbuffer_gate_rejects_missing_multisample_or_modified_uniform_attachment(field, value):
+    from scripts.verify_native_gpu_readback import validate_renderbuffer
+
+    observed = renderbuffer_observation(protected=True)
+    observed[field] = value
+    with pytest.raises(ValueError):
+        validate_renderbuffer(observed, protected=True)

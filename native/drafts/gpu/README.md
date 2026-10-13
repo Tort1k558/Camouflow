@@ -1,8 +1,9 @@
 # GPU metadata minimization candidate
 
-`gpu_metadata_minimization.patch` is unregistered and not compiled or enabled in
-the current browser. It is prepared for the next batch without changing active
-0030 build sources.
+The canonical candidates below are now included in registered patch **0034**,
+as part of the 001-034 source batch. Chrome is compiling on Windows; the last
+verified browser remains 001-027. No new GPU protection is runtime-admitted.
+Earlier preparation/replay notes below describe their pre-promotion stages.
 
 The disabled-by-default `GlintGpuMetadataMinimization` Blink feature proposes:
 
@@ -234,5 +235,35 @@ promotion. Actual renderer/worker/browser execution remains pending.
 The refreshed four aggregate patches reproduce that exact 125-path source
 (`surface-promotion-v10/proof.json`). The corrected NavigationSimulator binary
 passed all 12 cases (`document-navigation-001-030-j4-v3.json`); this prerequisite
-is satisfied, but the four aggregate patches still require registration,
-compilation and the prepared protected-browser gates.
+is satisfied. The four aggregates are registered/applied as 0031-0034; compilation
+and the prepared protected-browser gates remain unfinished.
+
+## Prepared selected-framebuffer runtime gate
+
+The owned GPU readback runner now measures **WebGL2 renderbuffer** frames in
+every document/worker context alongside default-framebuffer reads and PNG
+exports. This does not claim WebGL1 custom-framebuffer coverage.
+
+| Check | Fixture |
+| --- | --- |
+| Selected read buffer | Gradient in attachment 1; distinct unchanged uniform colour in attachment 0 |
+| Extent versus viewport | 8×8 attachment with the original 4×4 viewport |
+| Resize | Same renderbuffer objects reallocated to 6×5 and read again |
+| Readback consistency | Full/repeat/crop, offset PBO, row-length/skip layout and untouched padding |
+| State preservation | Read/draw framebuffer, selected attachment and pack-buffer bindings |
+| Multisample | Native operation error with an untouched sentinel destination |
+| Isolation | Stable restart; same-partition agreement; separate origins and profiles |
+
+Protected gradient checks require a single RGB choice per quantized colour,
+including outside the viewport and across resize. A runner that merely masks
+a viewport-sized prefix cannot pass by returning mutually consistent crops and
+PBO copies. Alpha and upper colour bits remain exact; uniform fills remain
+unchanged. This is a bounded compatibility gate for this candidate algorithm,
+not a fingerprint-resistance or full-GPU admission.
+
+The old **unprotected 001-027** binary passed the expanded fixture in all eight
+contexts during both initial/restart phases:
+`gpu-png-pack-state-001-027-baseline-v7.json` on D. Core and probe hashes remained
+unchanged and owned profiles were cleaned up. Protected checks still wait for
+the new binary. Fixture operations follow the
+[WebGL2 multiple-render-target and readback contract](https://registry.khronos.org/webgl/specs/latest/2.0/#3.7.11).
