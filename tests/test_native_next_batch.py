@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts import verify_native_next_batch as batch
 from scripts.verify_native_next_batch import (
     CANONICAL,
     DRAFTS,
@@ -52,6 +53,13 @@ def test_next_batch_patch_coverage_and_canonical_sources():
     assert set(additions) == set(CANONICAL.values())
     for name, relative in CANONICAL.items():
         assert additions[relative] == (DRAFTS / name).read_text(encoding="utf-8-sig")
+
+
+def test_owned_replay_disables_machine_specific_crlf_conversion():
+    text = Path(batch.__file__).read_text(encoding="utf-8-sig")
+    configure = 'build.run(["git", "config", "core.autocrlf", "false"], overlay, env)'
+    apply = 'build.run(["git", "apply", "--check", str(DRAFTS / name)], overlay, env)'
+    assert text.index(configure) < text.index(apply)
 
 
 @pytest.mark.parametrize("relative", [

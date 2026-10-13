@@ -124,6 +124,11 @@ snapshots and checks applied changes by replaying registered patches into a
 temporary Git index. Patch 0007 belongs to the separate V8 checkout. Unknown
 changes and changed build inputs prevent generation of a successful receipt.
 
+Next-batch replay owns its temporary Git configuration and disables `autocrlf`:
+composed-source hashes use LF regardless of the developer's machine settings.
+Regrouping candidate patches must reproduce those exact bytes and preserve all
+source/build/runtime input hashes; source equivalence is not compilation proof.
+
 Do not edit an active checkout, GN arguments or registered patch content while
 compilation is running. An object build proves only those translation units;
 production linking and actual browser execution are separate gates.

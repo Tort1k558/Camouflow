@@ -157,6 +157,7 @@ def verify(workspace: Path, report: Path) -> dict:
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_text(original.read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
         build.run(["git", "init", "-q"], overlay, env)
+        build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
         for name in PATCHES:
             build.run(["git", "apply", "--check", str(DRAFTS / name)], overlay, env)
             build.run(["git", "apply", str(DRAFTS / name)], overlay, env)
