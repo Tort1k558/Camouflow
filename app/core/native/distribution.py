@@ -221,6 +221,10 @@ class NativeBinaryStore:
         observed = await probe_native_binary(Path(release["executable_path"]), NativeConfiguration(), self._child("health"))
         if observed != release["chromium_version"]:
             raise ValueError("Native runtime version differs from its release manifest")
+        if self.inspect(digest) != release:
+            raise ValueError("Native release metadata changed during its health check")
+        if self._current() != current:
+            raise ValueError("Native active release changed during candidate verification")
         if current["active"] == digest:
             return release
         target = self._child("current.json")

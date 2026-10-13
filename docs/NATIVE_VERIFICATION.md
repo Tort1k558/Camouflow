@@ -32,6 +32,12 @@ retain the owned directory and report its path, rather than returning success
 or deleting live profile files. Released-resource errors still propagate; this
 cleanup rule does not replace actual orphan-process/crash verification.
 
+Managed activation rechecks the candidate's complete checksummed payload and
+manifest after its asynchronous health probe, before publishing `current.json`.
+An out-of-band active-pointer change also rejects the switch rather than being
+overwritten. A passing version/startup probe alone cannot activate a payload
+that changed while it was being checked; this is integrity, not signing proof.
+
 | Tool | Scope |
 | --- | --- |
 | `scripts/verify_release.py --build --runtime` | Desktop package and packaged legacy-engine checks |

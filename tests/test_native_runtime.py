@@ -1765,6 +1765,37 @@ def test_native_binary_activation_and_rollback_probe_before_atomic_selection(tmp
     assert not list(store.root.glob("native-current-*.tmp"))
 
 
+@pytest.mark.parametrize("mutation", ["binary", "library", "active-pointer"])
+def test_native_activation_rechecks_candidate_and_pointer_after_health_probe(tmp_path, monkeypatch, mutation):
+    import json
+    from unittest.mock import AsyncMock
+    from app.core.native import distribution
+
+    store = distribution.NativeBinaryStore(tmp_path / "native-binaries")
+    archive, first = _native_checksummed_release_archive(tmp_path)
+    store.install_archive(archive, first)
+    archive, candidate = _native_checksummed_release_archive(tmp_path, {"native_version": "0.2.0-dev"})
+    installed = store.install_archive(archive, candidate)
+    monkeypatch.setattr(distribution, "probe_native_binary", AsyncMock(return_value="148.0.7778.96"))
+    asyncio.run(store.activate(first))
+    current = store.root / "current.json"
+    original = current.read_bytes()
+    changed_pointer = json.dumps({"active": first, "previous": candidate}).encode()
+    async def probe(*_):
+        if mutation == "binary":
+            Path(installed["executable_path"]).write_bytes(b"changed after probe")
+        elif mutation == "library":
+            (Path(installed["executable_path"]).parent / "lib/native.dll").write_bytes(b"changed after probe")
+        else:
+            current.write_bytes(changed_pointer)
+        return "148.0.7778.96"
+    monkeypatch.setattr(distribution, "probe_native_binary", probe)
+    with pytest.raises(ValueError):
+        asyncio.run(store.activate(candidate))
+    assert current.read_bytes() == (changed_pointer if mutation == "active-pointer" else original)
+    assert not list(store.root.glob("native-current-*.tmp"))
+
+
 @pytest.mark.parametrize("failure", ["startup", "version"])
 def test_native_failed_activation_preserves_the_existing_release_and_reports_failure(tmp_path, monkeypatch, failure):
     from unittest.mock import AsyncMock
