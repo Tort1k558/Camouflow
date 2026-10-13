@@ -365,6 +365,56 @@ def test_native_identity_audit_preserves_reduced_ua_and_real_full_version():
     assert audit_observed_identity(coherent_identity_observations(), "148.0.7778.96") == []
 
 
+def coherent_request_identity_headers():
+    return {"User-Agent": coherent_identity_observations()["document"]["userAgent"],
+            "Accept-Language": "en-US,en;q=0.9", "Sec-CH-UA-Platform": '"Windows"',
+            "Sec-CH-UA-Mobile": "?0"}
+
+
+def test_native_request_identity_audit_compares_emitted_values_without_inferring_tls():
+    from app.core.native.diagnostics import audit_observed_request_identity
+
+    observed = coherent_identity_observations()
+    headers = coherent_request_identity_headers()
+    assert audit_observed_request_identity(headers, observed) == []
+    observed["document"]["language"] = "de-DE"
+    headers["Accept-Language"] = "de-DE,de;q=0.9"
+    assert audit_observed_request_identity(headers, observed) == []
+
+
+@pytest.mark.parametrize("header,value", [
+    ("User-Agent", "other"), ("Accept-Language", "de-DE"),
+    ("Sec-CH-UA-Platform", '"Linux"'), ("Sec-CH-UA-Mobile", "?1"),
+    ("Sec-CH-UA-Platform", "Windows"), ("Sec-CH-UA-Mobile", "false"),
+])
+def test_native_request_identity_audit_rejects_http_js_contradictions(header, value):
+    from app.core.native.diagnostics import audit_observed_request_identity
+
+    headers = coherent_request_identity_headers()
+    headers[header] = value
+    assert audit_observed_request_identity(headers, coherent_identity_observations())
+
+
+@pytest.mark.parametrize("header", list(coherent_request_identity_headers()))
+def test_native_request_identity_audit_requires_all_compared_headers(header):
+    from app.core.native.diagnostics import audit_observed_request_identity
+
+    headers = coherent_request_identity_headers()
+    del headers[header]
+    assert audit_observed_request_identity(headers, coherent_identity_observations())
+
+
+@pytest.mark.parametrize("headers,observed", [
+    (None, {}), ({"User-Agent": []}, {}),
+    ({"User-Agent": "one", "user-agent": "two"}, {}),
+    ({}, None), ({}, {"document": None}),
+])
+def test_native_request_identity_audit_rejects_unavailable_or_ambiguous_evidence(headers, observed):
+    from app.core.native.diagnostics import audit_observed_request_identity
+
+    assert audit_observed_request_identity(headers, observed)
+
+
 @pytest.mark.parametrize("navigator_platform,hint_platform,ua_marker", [
     ("Win32", "Windows", "Windows NT 10.0; Win64; x64"),
     ("MacIntel", "macOS", "Macintosh; Intel Mac OS X 10_15_7"),

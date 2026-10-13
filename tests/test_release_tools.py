@@ -489,19 +489,27 @@ def test_native_build_does_not_record_success_if_inputs_change_during_compilatio
 
 
 @pytest.mark.parametrize("mutation", ["http_ua", "metadata", "http_hint", "getter", "own_property",
-    "illegal_invocation", "plugins", "chrome", "empty_versions", "missing_headless_control"])
+    "illegal_invocation", "plugins", "chrome", "empty_versions", "missing_headless_control",
+    "http_js_platform", "http_js_language"])
 def test_native_identity_gate_rejects_incoherent_or_injected_observations(mutation):
     from copy import deepcopy
     from scripts.verify_native_identity import HINTS, validate_observation
 
     baseline = {"userAgent": "HeadlessChrome/148.0.0.0",
+        "language": "en-US", "userAgentData": {"platform": "Windows", "mobile": False},
         "metadata": {"fullVersionList": [{"brand": "Chromium", "version": "148.0.7778.96"}]},
         "headers": {"user-agent": "HeadlessChrome/148.0.0.0", **{name.lower(): "native" for name in HINTS}},
         "getter": "function get userAgent() { [native code] }", "ownProperty": False,
         "illegalInvocation": True, "plugins": ["PDF Viewer"], "chromeType": "object"}
+    baseline["headers"].update({"accept-language": "en-US,en;q=0.9",
+                                "sec-ch-ua-platform": '"Windows"', "sec-ch-ua-mobile": "?0"})
     observed = deepcopy(baseline)
     observed["userAgent"] = observed["headers"]["user-agent"] = "Chrome/148.0.0.0"
-    if mutation == "http_ua":
+    if mutation in {"http_js_platform", "http_js_language"}:
+        key, value = (("sec-ch-ua-platform", '"Linux"') if mutation == "http_js_platform"
+                      else ("accept-language", "de-DE"))
+        baseline["headers"][key] = observed["headers"][key] = value
+    elif mutation == "http_ua":
         observed["headers"]["user-agent"] = "HeadlessChrome/148.0.0.0"
     elif mutation == "metadata":
         observed["metadata"]["platform"] = "invented"
@@ -531,10 +539,14 @@ def test_native_identity_gate_accepts_only_preserved_native_identity(protected, 
     from scripts.verify_native_identity import HINTS, validate_observation
 
     baseline = {"userAgent": "HeadlessChrome/148.0.0.0",
+        "language": "en-US", "userAgentData": {"platform": "Windows", "mobile": False},
         "metadata": {"fullVersionList": [{"brand": "Chromium", "version": "148.0.7778.96"}]},
         "headers": {"user-agent": "HeadlessChrome/148.0.0.0", **{name.lower(): None for name in HINTS}},
         "getter": "function get userAgent() { [native code] }", "ownProperty": False,
         "illegalInvocation": True, "plugins": None if worker else ["PDF Viewer"], "chromeType": "undefined" if worker else "object"}
+    baseline["headers"].update({"accept-language": "en-US,en;q=0.9",
+                                "sec-ch-ua-platform": None if worker else '"Windows"',
+                                "sec-ch-ua-mobile": None if worker else "?0"})
     observed = deepcopy(baseline)
     if protected:
         observed["userAgent"] = observed["headers"]["user-agent"] = "Chrome/148.0.0.0"

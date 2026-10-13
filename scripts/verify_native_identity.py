@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from playwright.async_api import Error as PlaywrightError, async_playwright  # noqa: E402
+from app.core.native.diagnostics import audit_observed_request_identity  # noqa: E402
 from scripts.verify_native_hardware import WORKERS  # noqa: E402
 from scripts.verify_native_runtime import FixtureHandler, FixtureServer  # noqa: E402
 
@@ -29,6 +30,8 @@ READ = """async () => {
   try { descriptor.get.call({}); } catch (error) { illegalInvocation = error instanceof TypeError; }
   return {
     userAgent: navigator.userAgent,
+    language: navigator.language,
+    userAgentData: navigator.userAgentData.toJSON(),
     metadata: await navigator.userAgentData.getHighEntropyValues([
       'architecture', 'bitness', 'platformVersion', 'fullVersionList', 'model', 'wow64', 'formFactors']),
     headers: await (await fetch('/identity-echo')).json(),
@@ -43,7 +46,8 @@ READ = """async () => {
 class IdentityFixtureHandler(FixtureHandler):
     def do_GET(self):
         if self.path == "/identity-echo":
-            body = json.dumps({name.lower(): self.headers.get(name) for name in ("User-Agent", *HINTS)}).encode("utf-8")
+            body = json.dumps({name.lower(): self.headers.get(name)
+                               for name in ("User-Agent", "Accept-Language", *HINTS)}).encode("utf-8")
             content_type = "application/json"
         elif self.path == "/hardware-dedicated.js":
             body = f"self.onmessage = async () => self.postMessage(await ({READ})());".encode("utf-8")
@@ -72,6 +76,15 @@ class IdentityFixtureHandler(FixtureHandler):
 
 
 def validate_observation(observed: dict, baseline: dict, *, protected: bool, worker: bool) -> None:
+    if not worker:
+        for values in (baseline, observed):
+            headers = values.get("headers")
+            identity_headers = ({name: headers.get(name) for name in (
+                "user-agent", "accept-language", "sec-ch-ua-platform", "sec-ch-ua-mobile")}
+                if isinstance(headers, dict) else headers)
+            issues = audit_observed_request_identity(identity_headers, {"document": values})
+            if issues:
+                raise ValueError("Native request/JS identity contradictions: " + "; ".join(issues))
     if baseline["userAgent"].count("HeadlessChrome/") != 1:
         raise ValueError("An actual headless UA leak is required as the baseline control")
     if not baseline["metadata"].get("fullVersionList"):

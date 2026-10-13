@@ -261,6 +261,40 @@ def audit_observed_identity(observed: dict, browser_version: str) -> list[str]:
     return issues
 
 
+def audit_observed_request_identity(headers: dict, observed: dict) -> list[str]:
+    """Compare one document request with JS; not TLS or full Client Hints proof."""
+    if (not isinstance(headers, dict) or any(not isinstance(key, str) or not isinstance(value, str)
+                                           for key, value in headers.items())):
+        return ["Document request identity headers could not be observed"]
+    normalized = {key.lower(): value for key, value in headers.items()}
+    if len(normalized) != len(headers):
+        return ["Document request contains ambiguous repeated header names"]
+    document = observed.get("document") if isinstance(observed, dict) else None
+    if not isinstance(document, dict):
+        return ["Document request identity cannot be compared without JS observations"]
+    issues = []
+    ua = document.get("userAgent")
+    if not isinstance(ua, str) or not ua or normalized.get("user-agent") != ua:
+        issues.append("Document request User-Agent disagrees with JS identity")
+    language = document.get("language")
+    primary = normalized.get("accept-language", "").split(",", 1)[0].split(";", 1)[0].strip()
+    if not isinstance(language, str) or not language or primary.casefold() != language.casefold():
+        issues.append("Document request Accept-Language disagrees with JS primary language")
+    hints = document.get("userAgentData")
+    if not isinstance(hints, dict):
+        issues.append("Document request Client Hints cannot be compared without JS observations")
+        return issues
+    platform = hints.get("platform")
+    if (not isinstance(platform, str) or not platform or not platform.isascii()
+            or any(ord(value) < 32 or value in '\\"' for value in platform)
+            or normalized.get("sec-ch-ua-platform") != '"' + platform + '"'):
+        issues.append("Document request Client Hints platform disagrees with JS identity")
+    mobile = hints.get("mobile")
+    if type(mobile) is not bool or normalized.get("sec-ch-ua-mobile") != ("?1" if mobile else "?0"):
+        issues.append("Document request Client Hints mobile flag disagrees with JS identity")
+    return issues
+
+
 async def inspect_native_profile(page, configuration: NativeConfiguration, browser_version: str) -> dict:
     configuration.validate()
     observed = await page.evaluate(OBSERVE)
