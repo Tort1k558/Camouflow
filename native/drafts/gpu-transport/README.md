@@ -13,6 +13,21 @@ Combined identity/readback replay and isolated Mojo/GPU code generation passed:
 unchanged. This is source/bindings evidence, **not C++ decoder compilation or
 browser execution**; older reports predate the 0037-compatible draft.
 
+The two decoder implementations additionally passed actual clang C++ syntax
+checks using the current `gles2_sources` target's definitions, include paths,
+language and diagnostic flags, with candidate headers first in an isolated
+overlay. Precompiled-header reuse was disabled so old headers cannot hide new
+declarations. No diagnostics were suppressed for the candidate.
+
+| Translation unit | Private evidence on D |
+| --- | --- |
+| `gles2_cmd_decoder.cc` | `future-gpu-validating-syntax-001-037-v1/proof.json` |
+| `gles2_cmd_decoder_passthrough_doers.cc` | `future-gpu-doers-syntax-001-037-v2/proof.json` |
+
+Both checks retained unchanged active source/browser/GN guards. They do not run
+the optimizer or linker, compile all callers/handlers, or execute protocol and
+attachment fixtures. Feature-on runtime admission remains blocked.
+
 Apply after the two candidates in `../next-readback/`, in order:
 
 1. `webgl_halo_readback_candidate.patch`
