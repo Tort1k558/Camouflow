@@ -142,7 +142,7 @@ Pack state is restored with scope cleanup, including failure paths. Existing
 application GL errors are not drained. The core transform is accessed through
 an exported bridge so component builds do not depend on a private core symbol.
 
-**Explicit limitations:** only the default RGBA8/RGB8 sRGB framebuffer and
+**This patch alone:** only the default RGBA8/RGB8 sRGB framebuffer and
 RGBA/UNSIGNED_BYTE output are implemented. Custom framebuffers, float/integer
 formats, overlapping pack rows and wide-gamut/HDR currently reject in this
 experimental mode; this intentionally prevents a raw fallback but is not API
@@ -207,3 +207,30 @@ this correction and must not be used as the final promotion source. The refreshe
 four-patch aggregate replay independently reproduced those 124 paths
 (`surface-promotion-v9/proof.json`); it is the current prepared source batch,
 still not registered or compiled.
+
+## Selected renderbuffer framebuffer candidate
+
+`renderbuffer_readback_candidate.patch` extends the same bounded native path to
+single-sample RGB8/RGBA8 renderbuffer attachments. The selected read attachment,
+not necessarily attachment zero, supplies its native width, height and internal
+format. The canonical full-frame transform must use that extent even when the
+viewport or canvas dimensions differ. Existing framebuffer, read-buffer and
+pack bindings remain unchanged. Multisampled attachments require an explicit
+upstream resolve and retain an operation error instead of returning raw data.
+
+This follow-up is **unregistered and uncompiled**; no custom-framebuffer browser
+result is claimed. Texture-backed framebuffers, smaller packed formats,
+floating-point/integer formats and HDR remain unfinished. In particular,
+Blink's texture objects do not own authoritative per-level dimensions. Do not
+substitute viewport dimensions or add incomplete JavaScript-visible metadata;
+texture support needs a service-owned attachment description compatible with
+both validating and passthrough GPU decoders.
+
+With the corrected final-wire-origin baseline and this renderbuffer follow-up,
+all 30 public candidates passed ordered replay across 125 paths
+(`wire-origin-renderbuffer-public-replay-v1.json`). Earlier aggregate proofs
+predate the origin fix and renderbuffer extension and cannot authorize this
+promotion. Actual renderer/worker/browser execution remains pending.
+The refreshed four aggregate patches reproduce that exact 125-path source
+(`surface-promotion-v10/proof.json`); registration waits for the corrected
+NavigationSimulator gate to pass all 12 cases.

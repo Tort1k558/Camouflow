@@ -1,0 +1,125 @@
+diff --git a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+index f5ef984115d33b2f4a00e6fd40d6bae43abe0e61..f37679fe17895b3f1e3b59064a4acf642351d858 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+@@ -910,8 +910,8 @@ void WebGL2RenderingContextBase::readPixels(GLint x,
+   if (base::FeatureList::IsEnabled(features::kGlintWebGLReadbackCandidate) &&
+       width > 0 && height > 0) {
+     SkBitmap rectangle;
+-    if (!PrepareGlintDefaultRgba8Readback(x, y, width, height, format, type,
+-                                          rectangle)) {
++    if (!PrepareGlintRgba8Readback(x, y, width, height, format, type,
++                                   rectangle)) {
+       return;
+     }
+     const auto pack = GetPackPixelStoreParams();
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h b/third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h
+index 5b338b43e408e2d9f872e9dd6f9a8982034b1e6a..0bbcd904cc8feccc6dc0aed4c963bfe633e325be 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h
++++ b/third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h
+@@ -48,6 +48,7 @@ class WebGLRenderbuffer final : public WebGLObject {
+   }
+   GLsizei Width() const { return width_; }
+   GLsizei Height() const { return height_; }
++  bool IsMultisampled() const { return is_multisampled_; }
+ 
+   // Returns:
+   //   -1 if the renderbuffer *used to be* multisampled and *is now*
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+index d6e161ef3849c75c9c1a4d67fbe73cdad7098ed0..d79999a18788c6280dcd27bd07855208145f2dd2 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -5159,8 +5159,8 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+   if (base::FeatureList::IsEnabled(features::kGlintWebGLReadbackCandidate) &&
+       width > 0 && height > 0) {
+     SkBitmap rectangle;
+-    if (!PrepareGlintDefaultRgba8Readback(x, y, width, height, format, type,
+-                                          rectangle)) {
++    if (!PrepareGlintRgba8Readback(x, y, width, height, format, type,
++                                   rectangle)) {
+       return;
+     }
+     const auto source =
+@@ -5183,7 +5183,7 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+   }
+ }
+ 
+-bool WebGLRenderingContextBase::PrepareGlintDefaultRgba8Readback(
++bool WebGLRenderingContextBase::PrepareGlintRgba8Readback(
+     GLint x,
+     GLint y,
+     GLsizei width,
+@@ -5210,23 +5210,41 @@ bool WebGLRenderingContextBase::PrepareGlintDefaultRgba8Readback(
+     return false;
+   }
+   const auto pack = GetPackPixelStoreParams();
+-  const auto storage = GetDrawingBuffer()->StorageFormat();
+-  if (framebuffer || format != GL_RGBA || type != GL_UNSIGNED_BYTE ||
++  auto storage = GetDrawingBuffer()->StorageFormat();
++  int frame_width = drawingBufferWidth();
++  int frame_height = drawingBufferHeight();
++  if (framebuffer) {
++    auto* attachment =
++        framebuffer->GetAttachmentObject(framebuffer->GetReadBuffer());
++    if (!attachment || !attachment->IsRenderbuffer()) {
++      return reject(
++          "Glint WebGL texture framebuffer readback is not implemented.");
++    }
++    auto* renderbuffer = static_cast<WebGLRenderbuffer*>(attachment);
++    if (renderbuffer->IsMultisampled()) {
++      return reject(
++          "Glint WebGL multisample readback requires an explicit resolve.");
++    }
++    // These fields are maintained by native renderbufferStorage operations.
++    // Never infer the attachment extent from the viewport or canvas dimensions.
++    storage = renderbuffer->InternalFormat();
++    frame_width = renderbuffer->Width();
++    frame_height = renderbuffer->Height();
++  }
++  if (format != GL_RGBA || type != GL_UNSIGNED_BYTE ||
+       (storage != GL_RGBA8 && storage != GL_RGB8) ||
+-      GetColorSpace() != gfx::ColorSpace::CreateSRGB() ||
++      (!framebuffer && GetColorSpace() != gfx::ColorSpace::CreateSRGB()) ||
+       (static_cast<int64_t>(pack.skip_pixels) + width >
+        (pack.row_length > 0 ? pack.row_length : width))) {
+     return reject(
+-        "Glint WebGL candidate supports nonoverlapping default RGBA8/sRGB "
+-        "readback only.");
++        "Glint WebGL candidate supports nonoverlapping RGBA8 default/sRGB or "
++        "single-sample RGB8/RGBA8 renderbuffer readback only.");
+   }
+   auto seed = glint::candidate::SurfacePartitionSeed(
+       GetExecutionContext(), glint::candidate::SurfaceSeedKind::kWebGL);
+   if (!seed.has_value() || !seed.value()) {
+     return reject("Glint WebGL policy is unavailable.");
+   }
+-  const int frame_width = drawingBufferWidth();
+-  const int frame_height = drawingBufferHeight();
+   if (frame_width <= 0 || frame_height <= 0 || width <= 0 || height <= 0) {
+     return reject("Glint WebGL readback dimensions are unavailable.");
+   }
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+index c8d78a014cbafe4dfc63582b92e4fb8500df4b21..c78874a6753d57106a7d4ea9f11c143684d73053 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+@@ -1961,13 +1961,13 @@ class MODULES_EXPORT WebGLRenderingContextBase
+   gfx::Rect GetImageDataSize(ImageData*);
+ 
+   // Helper implementing readPixels for WebGL 1.0 and 2.0.
+-  bool PrepareGlintDefaultRgba8Readback(GLint x,
+-                                        GLint y,
+-                                        GLsizei width,
+-                                        GLsizei height,
+-                                        GLenum format,
+-                                        GLenum type,
+-                                        SkBitmap& protected_rectangle);
++  bool PrepareGlintRgba8Readback(GLint x,
++                                 GLint y,
++                                 GLsizei width,
++                                 GLsizei height,
++                                 GLenum format,
++                                 GLenum type,
++                                 SkBitmap& protected_rectangle);
+   void ReadPixelsHelper(GLint x,
+                         GLint y,
+                         GLsizei width,

@@ -55,6 +55,9 @@ def test_next_batch_patch_coverage_and_canonical_sources():
                                  "third_party/blink/renderer/core/html/build.gni",
                                  "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
                                  "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc",
+                                 "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h",
+                                 "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
+                                 "third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc",
                                  "content/browser/renderer_host/render_frame_host_impl.cc",
                                  "third_party/blink/renderer/core/loader/document_loader.cc",
                                  "third_party/blink/renderer/core/workers/worker_thread_test.cc"})
@@ -111,6 +114,29 @@ def test_webgl_exports_share_surface_domain_without_changing_2d_policy():
     assert "base::unexpected(SurfaceSeedError::kInvalidPolicy)" in text
     patch = (DRAFTS / "gpu/webgl_default_readback_candidate.patch").read_text(encoding="utf-8-sig")
     assert patch.count("+    const auto seed = glint::candidate::CanvasExportPartitionSeed(") == 3
+
+
+def test_renderbuffer_readback_uses_selected_native_attachment_extent():
+    text = (DRAFTS / "gpu/renderbuffer_readback_candidate.patch").read_text(encoding="utf-8-sig")
+    assert "framebuffer->GetAttachmentObject(framebuffer->GetReadBuffer())" in text
+    assert "!attachment || !attachment->IsRenderbuffer()" in text
+    assert "renderbuffer->IsMultisampled()" in text
+    assert "+    storage = renderbuffer->InternalFormat();" in text
+    assert "+    frame_width = renderbuffer->Width();" in text
+    assert "+    frame_height = renderbuffer->Height();" in text
+    assert "+  bool IsMultisampled() const { return is_multisampled_; }" in text
+    assert "PrepareGlintRgba8Readback" in text
+    additions = "\n".join(line[1:] for line in text.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert "GL_VIEWPORT" not in additions and "GetError(" not in additions
+
+
+def test_document_policy_producers_bind_exact_final_wire_origin():
+    registered = (DRAFTS.parents[1] / "native/patches/0030-native-document-commit-prototype.patch").read_text(encoding="utf-8-sig")
+    future = (DRAFTS / "policy/document_surface_transport.patch").read_text(encoding="utf-8-sig")
+    assert "commit_params_->origin_to_commit));" in registered
+    assert "+        commit_params_->origin_to_commit);" in future
+    assert "ReuseRequestNavigationClientForCommitIfNeeded();" in registered
 
 
 def test_gpu_shader_debug_metadata_is_gated_at_extension_support_boundary():

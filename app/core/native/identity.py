@@ -1,14 +1,13 @@
 """Local profile keys for future native privacy policy; never browser switches."""
 
-from dataclasses import dataclass, field
 import hashlib
 import hmac
 import json
-from pathlib import Path
 import secrets
+from dataclasses import dataclass, field
+from pathlib import Path
 
 from PyQt6.QtCore import QFileDevice, QIODevice, QSaveFile
-
 
 IDENTITY_FILE = "camouflow-native-privacy.json"
 
@@ -42,8 +41,11 @@ def load_or_create_identity(profile: Path) -> NativePrivacyIdentity:
     if path.is_symlink() or path.is_junction():
         raise ValueError("Native privacy identity must not be linked")
     if path.exists():
-        if not path.is_file() or path.stat().st_size > 256:
+        metadata = path.stat()
+        if not path.is_file() or metadata.st_size > 256:
             raise ValueError("Native privacy identity is invalid")
+        if metadata.st_nlink != 1:
+            raise ValueError("Native privacy identity must not be hard linked")
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
             if (not isinstance(payload, dict) or set(payload) != {"schema", "seed"}

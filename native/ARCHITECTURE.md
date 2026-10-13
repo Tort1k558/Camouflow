@@ -133,6 +133,15 @@ Do not edit an active checkout, GN arguments or registered patch content while
 compilation is running. An object build proves only those translation units;
 production linking and actual browser execution are separate gates.
 
+The first compiled NavigationSimulator commit/rejection run passed 11 of 12
+cases; its browser-initiated `about:blank` case exposed an opaque-origin mismatch.
+Policy construction had run before `ReadyToCommitNavigation` selected the origin
+stored in the commit parameters. Recomputing an opaque origin can change its
+nonce. The corrected source binds both the Canvas prototype and prepared v2
+policy to the exact final wire origin, after upstream weak-lifetime and selected
+frame checks. It does not change Chromium's origin selection or weaken the test.
+The complete 12-case rerun is in progress; successful execution is not yet proven.
+
 ## Combined surface runtime gate
 
 `scripts/verify_native_surfaces.py` prepares seven owned-browser phases for the
@@ -193,6 +202,13 @@ Activation checks compatibility/health; compilation alone is not release admissi
 There is no signed online update catalog. Development bundles are unsigned.
 
 ## Known boundaries
+
+Python startup rejects hard-linked privacy-key files before starting the browser
+driver, matching the native key-loader contract. A shared filesystem inode must
+not silently become the identity of two independently locked profiles. Rejection
+does not replace the key and releases the acquired profile lock. ZIP export and
+restore continue to omit/discard this private identity: restored profiles receive
+new keys, while ordinary restarts preserve existing owned keys.
 
 - Graceful close/reopen commits are tested; abrupt crashes may lose pending writes.
 - Thread/owner checks do not prove operating-system memory sanitization.

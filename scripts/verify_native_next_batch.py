@@ -30,7 +30,7 @@ PATCHES = ("gpu/gpu_metadata_minimization.patch", "audio/audio_helpers_integrati
            "policy/initial_main_surface_transport.patch", "policy/window_privacy_readiness.patch",
            "policy/startup_privacy_preload.patch", "policy/child_surface_transport.patch",
            "gpu/gpu_shader_metadata_minimization.patch", "gpu/rgba8_pack_copy_integration.patch",
-           "gpu/webgl_default_readback_candidate.patch")
+           "gpu/webgl_default_readback_candidate.patch", "gpu/renderbuffer_readback_candidate.patch")
 CANONICAL = {
     **{"gpu/" + name: "third_party/blink/renderer/modules/webgl/glint/" + name for name in (
         "rgba8_pack_copy.h", "rgba8_pack_copy.cc", "rgba8_pack_copy_unittest.cc")},
@@ -81,6 +81,7 @@ EXISTING_PATHS = {
     "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h",
     "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
     "third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc",
+    "third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h",
     "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
     "third_party/blink/renderer/modules/webaudio/BUILD.gn", "third_party/blink/renderer/modules/BUILD.gn",
     "content/browser/BUILD.gn", "content/test/BUILD.gn",

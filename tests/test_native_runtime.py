@@ -76,6 +76,55 @@ def test_native_privacy_keys_persist_and_are_not_shared_between_profiles(tmp_pat
     assert not (first / IDENTITY_FILE).read_bytes().startswith(b"\xef\xbb\xbf")
 
 
+def test_native_privacy_loader_rejects_shared_hard_links_without_replacing_keys(tmp_path):
+    import os
+
+    from app.core.native.identity import IDENTITY_FILE, load_or_create_identity
+
+    first, second = tmp_path / "first", tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    load_or_create_identity(first)
+    original = first / IDENTITY_FILE
+    linked = second / IDENTITY_FILE
+    before = original.read_bytes()
+    os.link(original, linked)
+    for profile in (first, second):
+        with pytest.raises(ValueError, match="hard linked"):
+            load_or_create_identity(profile)
+    assert original.read_bytes() == linked.read_bytes() == before
+    linked.unlink()
+    assert load_or_create_identity(first).seed != load_or_create_identity(second).seed
+
+
+def test_native_hard_linked_key_aborts_before_browser_driver_and_releases_profile_lock(tmp_path, monkeypatch):
+    import json
+    import os
+    from unittest.mock import Mock
+
+    from PyQt6.QtCore import QLockFile
+
+    from app.core.native import runtime as module
+    from app.core.native.identity import IDENTITY_FILE, load_or_create_identity
+
+    profile = tmp_path / "owned"
+    profile.mkdir()
+    (profile / "camouflow-native.json").write_text(
+        json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
+    load_or_create_identity(profile)
+    os.link(profile / IDENTITY_FILE, tmp_path / "shared-key")
+    driver = Mock()
+    monkeypatch.setattr(module, "async_playwright", driver)
+    runtime = NativeRuntime(profile, Path(__file__), NativeConfiguration())
+    with pytest.raises(ValueError, match="hard linked"):
+        asyncio.run(runtime.start())
+    driver.assert_not_called()
+    assert not runtime.has_resources and runtime._privacy_identity is None
+    lock = QLockFile(str(profile / "native-runtime.lock"))
+    assert lock.tryLock(0)
+    lock.unlock()
+
+
 def test_native_privacy_derivation_is_stable_and_separated_by_profile_partition_and_surface(tmp_path):
     from app.core.native.identity import load_or_create_identity
 
