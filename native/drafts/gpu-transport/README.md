@@ -2,7 +2,7 @@
 
 **Unregistered; command/decoder/Blink integration is uncompiled and not a verified browser capability.**
 
-The current draft follows registered 001–037. It preserves explicit expected-result
+The current draft follows registered 001–047. It preserves explicit expected-result
 checks in CPU publication and uses stateless `base::BindOnce` cleanup callbacks
 with separately bound native decoder/binding arguments. The callbacks restore
 renderbuffer/texture bindings on every exit and retain error-state checking;
@@ -50,6 +50,14 @@ configuration while it compiles.
 
 The public gate passed all six units against 001–037:
 `gpu-transport-public-cpp-001-037-v2.json` on D.
+
+It was rechecked on the corrected 001–047 source with fresh isolated command
+generation and the actual current target flags:
+`gpu-transport-cpp-001-047-v1.json` on D. All six units passed; the 324 existing
+command IDs, active source, runtime core and GN arguments remained unchanged.
+The paired halo/clipped repair is registered as 0046/0047; the remaining four
+transport/protocol/attachment patches are still unregistered. These are C++
+type checks, not optimized objects, executed fixtures or browser admission.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/verify_native_gpu_transport_draft.py `
