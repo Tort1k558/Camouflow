@@ -50,6 +50,11 @@ def test_next_batch_patch_coverage_and_canonical_sources():
                                  "content/browser/renderer_host/render_frame_host_impl.h",
                                  "content/common/frame.mojom",
                                  "third_party/blink/renderer/modules/BUILD.gn",
+                                 "third_party/blink/public/common/features.h",
+                                 "third_party/blink/common/features.cc",
+                                 "third_party/blink/renderer/core/html/build.gni",
+                                 "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+                                 "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc",
                                  "content/browser/renderer_host/render_frame_host_impl.cc",
                                  "third_party/blink/renderer/core/loader/document_loader.cc",
                                  "third_party/blink/renderer/core/workers/worker_thread_test.cc"})
@@ -66,6 +71,43 @@ def test_owned_replay_disables_machine_specific_crlf_conversion():
     configure = 'build.run(["git", "config", "core.autocrlf", "false"], overlay, env)'
     apply = 'build.run(["git", "apply", "--check", str(DRAFTS / name)], overlay, env)'
     assert text.index(configure) < text.index(apply)
+
+
+def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():
+    text = (DRAFTS / "gpu/webgl_default_readback_candidate.patch").read_text(encoding="utf-8-sig")
+    assert "+BASE_FEATURE(kGlintWebGLReadbackCandidate, base::FEATURE_DISABLED_BY_DEFAULT);" in text
+    assert "GetExecutionContext(), glint::candidate::SurfaceSeedKind::kWebGL" in text
+    assert "if (!seed.has_value() || !seed.value())" in text
+    assert "framebuffer || format != GL_RGBA || type != GL_UNSIGNED_BYTE" in text
+    assert "kCandidateAdditionalPixelBudget" in text
+    assert "total_bytes.IsValid()" in text
+
+
+def test_webgl_readback_keeps_intermediate_pixels_private_and_restores_pack_state():
+    text = (DRAFTS / "gpu/webgl_default_readback_candidate.patch").read_text(encoding="utf-8-sig")
+    assert "base::ScopedClosureRunner restore(base::BindOnce([this]" in text
+    assert "DrawingBufferClientRestorePixelPackParameters();" in text
+    assert "DrawingBufferClientRestorePixelPackBufferBinding();" in text
+    assert "ContextGL()->BindBuffer(GL_PIXEL_PACK_BUFFER, 0);" in text
+    assert "rectangle.data());" in text and "canonical.data());" in text
+    assert "ProtectWebGLCanonicalPixels(" in text
+    assert "CopyRgba8ReadbackToPackLayout(" in text
+    assert "BufferSubDataImpl(GL_PIXEL_PACK_BUFFER, destination, row_bytes," in text
+    additions = "\n".join(line[1:] for line in text.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert "ContextGL()->GetError(" not in additions
+    assert "ContextGL()->Draw" not in additions
+
+
+def test_webgl_exports_share_surface_domain_without_changing_2d_policy():
+    text = (DRAFTS / "canvas/readback_export_seed.h").read_text(encoding="utf-8-sig")
+    assert "!webgl_context ||" in text
+    assert "return CanvasPartitionSeed(context);" in text
+    assert "SurfacePartitionSeed(context, SurfaceSeedKind::kWebGL)" in text
+    assert "CORE_EXPORT bool ProtectWebGLCanonicalPixels(" in text
+    assert "base::unexpected(SurfaceSeedError::kInvalidPolicy)" in text
+    patch = (DRAFTS / "gpu/webgl_default_readback_candidate.patch").read_text(encoding="utf-8-sig")
+    assert patch.count("+    const auto seed = glint::candidate::CanvasExportPartitionSeed(") == 3
 
 
 def test_gpu_shader_debug_metadata_is_gated_at_extension_support_boundary():

@@ -29,14 +29,16 @@ PATCHES = ("gpu/gpu_metadata_minimization.patch", "audio/audio_helpers_integrati
            "audio/offline_audio_surface_hook.patch", "audio/offline_audio_surface_guard_tests.patch",
            "policy/initial_main_surface_transport.patch", "policy/window_privacy_readiness.patch",
            "policy/startup_privacy_preload.patch", "policy/child_surface_transport.patch",
-           "gpu/gpu_shader_metadata_minimization.patch", "gpu/rgba8_pack_copy_integration.patch")
+           "gpu/gpu_shader_metadata_minimization.patch", "gpu/rgba8_pack_copy_integration.patch",
+           "gpu/webgl_default_readback_candidate.patch")
 CANONICAL = {
     **{"gpu/" + name: "third_party/blink/renderer/modules/webgl/glint/" + name for name in (
         "rgba8_pack_copy.h", "rgba8_pack_copy.cc", "rgba8_pack_copy_unittest.cc")},
     **{"canvas/" + name: "third_party/blink/renderer/core/html/canvas/glint/" + name for name in (
         "canvas_partition_seed.h", "canvas_partition_seed.cc", "canvas_readback_candidate.h",
         "canvas_readback_candidate.cc", "canvas_readback_copy.h", "canvas_readback_copy.cc",
-        "canvas_readback_image.h", "canvas_readback_image.cc")},
+        "canvas_readback_image.h", "canvas_readback_image.cc", "readback_export_seed.h",
+        "readback_export_seed.cc")},
     **{"audio/" + name: "third_party/blink/renderer/modules/webaudio/glint/" + name for name in (
         "offline_audio_candidate.h", "offline_audio_candidate.cc", "offline_audio_limits.h",
         "offline_audio_buffer.h", "offline_audio_buffer.cc", "offline_audio_candidate_unittest.cc",
@@ -76,6 +78,9 @@ EXISTING_PATHS = {
     "third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc",
     "third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc",
     "third_party/blink/renderer/modules/webgl/BUILD.gn",
+    "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h",
+    "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
+    "third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc",
     "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
     "third_party/blink/renderer/modules/webaudio/BUILD.gn", "third_party/blink/renderer/modules/BUILD.gn",
     "content/browser/BUILD.gn", "content/test/BUILD.gn",

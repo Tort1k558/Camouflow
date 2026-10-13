@@ -119,3 +119,39 @@ sources, GN, receipt and linked core unchanged:
 `rgba8-pack-copy-public-replay-v1.json` on D. Four aggregate candidate patches
 independently reproduce that exact source (`surface-promotion-v7/proof.json`).
 Neither run invokes a compiler or activates the helper in the current build.
+
+## Default framebuffer readback candidate
+
+`webgl_default_readback_candidate.patch` connects the pack-copy foundation to
+native WebGL1/2 `readPixels`, including WebGL2 pixel-pack buffers. It remains
+**disabled by default, unregistered and uncompiled**. No active build input is
+modified. This is a partial research implementation, not GPU privacy admission.
+
+| Path | Candidate behavior | Runtime proof |
+| --- | --- | --- |
+| ArrayBuffer / SharedArrayBuffer | Protect detached full frame, crop privately, then scatter into validated destination | Pending |
+| Pixel-pack buffer | Restore original pack/buffer state, upload only requested pixel rows | Pending |
+| HTML / Offscreen exports | Select the same owned WebGL seed instead of the Canvas domain | Pending |
+| Live render target / WebGPU compute buffers | Unchanged | Must be rechecked |
+
+The implementation requires the browser-owned WebGL surface seed. Missing or
+invalid required policy rejects; it never publishes raw intermediate pixels.
+Two detached RGBA8 allocations share the existing 64 MiB budget. Original API
+validation executes before the hook; zero-size reads keep the upstream path.
+Pack state is restored with scope cleanup, including failure paths. Existing
+application GL errors are not drained. The core transform is accessed through
+an exported bridge so component builds do not depend on a private core symbol.
+
+**Explicit limitations:** only the default RGBA8/RGB8 sRGB framebuffer and
+RGBA/UNSIGNED_BYTE output are implemented. Custom framebuffers, float/integer
+formats, overlapping pack rows and wide-gamut/HDR currently reject in this
+experimental mode; this intentionally prevents a raw fallback but is not API
+compatibility. Cross-export orientation, premultiplication, driver read failure,
+out-of-bounds reads, context loss, binding restoration and performance still
+require actual browser tests. Full GPU support remains unfinished.
+
+All 29 public candidates replayed successfully across 124 source paths:
+`webgl-readback-public-replay-v1.json`. Four aggregate patches independently
+reproduced that exact source (`surface-promotion-v8/proof.json`). Both private
+reports are on D; active source, GN arguments, build receipt and linked runtime
+core were unchanged. These checks prove source composition only.

@@ -1,0 +1,419 @@
+diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
+index 4c43340c8fe486fe08f5c13354f0d336405ffedd..9d23d440113b5f232f5a11d2499a102e687a9eda 100644
+--- a/third_party/blink/common/features.cc
++++ b/third_party/blink/common/features.cc
+@@ -1007,6 +1007,7 @@ BASE_FEATURE(kGetDisplayMediaIgnoreAudioPermissionFailures,
+              base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ BASE_FEATURE(kGlintGpuMetadataMinimization, base::FEATURE_DISABLED_BY_DEFAULT);
++BASE_FEATURE(kGlintWebGLReadbackCandidate, base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+ BASE_FEATURE_PARAM(std::string,
+                    kHTMLParserYieldEventNameForPause,
+diff --git a/third_party/blink/public/common/features.h b/third_party/blink/public/common/features.h
+index 147e9c86b79063c303265bdd4b4b4dbf6032ab82..c474904bc6fc043d83767d46dcc7ff090c8a42f8 100644
+--- a/third_party/blink/public/common/features.h
++++ b/third_party/blink/public/common/features.h
+@@ -707,6 +707,8 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
+ 
+ // Developer opt-in only; this minimizes metadata, not GPU capabilities.
+ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGlintGpuMetadataMinimization);
++// Experimental default-RGBA8 framebuffer readback; no capability admission.
++BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGlintWebGLReadbackCandidate);
+ 
+ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
+     std::string,
+diff --git a/third_party/blink/renderer/core/html/build.gni b/third_party/blink/renderer/core/html/build.gni
+index 8861bf8a7c4cb66f363fb3c2682fa2968bde19ec..11799977666c127536002c900b391035a2314974 100644
+--- a/third_party/blink/renderer/core/html/build.gni
++++ b/third_party/blink/renderer/core/html/build.gni
+@@ -35,6 +35,8 @@ blink_core_sources_html = [
+   "canvas/element_image.h",
+   "canvas/glint/canvas_partition_seed.cc",
+   "canvas/glint/canvas_partition_seed.h",
++  "canvas/glint/readback_export_seed.h",
++  "canvas/glint/readback_export_seed.cc",
+   "canvas/glint/canvas_readback_candidate.cc",
+   "canvas/glint/canvas_readback_candidate.h",
+   "canvas/glint/canvas_readback_copy.cc",
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.cc b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..6ea08c683c64c3d18d0012401de12d2e3a9349ff
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.cc
+@@ -0,0 +1,13 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "readback_export_seed.h"
++
++namespace glint::candidate {
++bool ProtectWebGLCanonicalPixels(
++    std::span<uint8_t> rgba,
++    uint32_t width,
++    uint32_t height,
++    const std::array<uint8_t, 32>& partition_seed) {
++  return TransformEdgeCoherentCanvas(rgba, width, height, partition_seed);
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..f309ca834752a353af65ef7351ac53f4e152951d
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
+@@ -0,0 +1,33 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_READBACK_EXPORT_SEED_H_
++#define GLINT_READBACK_EXPORT_SEED_H_
++
++#include "base/feature_list.h"
++#include "canvas_partition_seed.h"
++#include "canvas_readback_candidate.h"
++#include "third_party/blink/public/common/features.h"
++
++namespace glint::candidate {
++// Component-safe bridge: the transform implementation belongs to blink_core.
++CORE_EXPORT bool ProtectWebGLCanonicalPixels(
++    std::span<uint8_t> rgba,
++    uint32_t width,
++    uint32_t height,
++    const std::array<uint8_t, 32>& partition_seed);
++
++inline SurfaceSeedResult CanvasExportPartitionSeed(
++    blink::ExecutionContext* context,
++    bool webgl_context) {
++  if (!webgl_context || !base::FeatureList::IsEnabled(
++                            blink::features::kGlintWebGLReadbackCandidate)) {
++    return CanvasPartitionSeed(context);
++  }
++  auto seed = SurfacePartitionSeed(context, SurfaceSeedKind::kWebGL);
++  if (seed.has_value() && !seed.value()) {
++    return base::unexpected(SurfaceSeedError::kInvalidPolicy);
++  }
++  return seed;
++}
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+index 2d970b5416d75e7b5f8faade14b31ade15d065c0..92d85c1cc4d2e6f6aab4404a98643a6f432f7f05 100644
+--- a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
++++ b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+@@ -83,6 +83,7 @@
+ #include "third_party/blink/renderer/core/html/canvas/element_image.h"
+ #include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ #include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h"
+ #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+ #include "third_party/blink/renderer/core/html/canvas/predefined_color_space.h"
+ #include "third_party/blink/renderer/core/html/canvas/unique_font_selector.h"
+@@ -1311,7 +1312,9 @@ String HTMLCanvasElement::ToDataURLInternal(
+ 
+   scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(source_buffer);
+   if (image_bitmap && export_exception) {
+-    const auto seed = glint::candidate::CanvasPartitionSeed(GetExecutionContext());
++    const auto seed = glint::candidate::CanvasExportPartitionSeed(
++        GetExecutionContext(),
++        RenderingContext() && RenderingContext()->IsWebGL());
+     if (!seed.has_value()) {
+       export_exception->ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+@@ -1442,7 +1445,9 @@ void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
+   CanvasAsyncBlobCreator* async_creator = nullptr;
+   scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(kBackBuffer);
+   if (image_bitmap) {
+-    const auto seed = glint::candidate::CanvasPartitionSeed(GetExecutionContext());
++    const auto seed = glint::candidate::CanvasExportPartitionSeed(
++        GetExecutionContext(),
++        RenderingContext() && RenderingContext()->IsWebGL());
+     if (!seed.has_value()) {
+       exception_state.ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+diff --git a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+index ac7e0897b6d05cb54bd6c140222fadde3fa8f8eb..bf1f925b0228e4f1e6f6fdcb2b1cd4b35769273b 100644
+--- a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
++++ b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+@@ -28,7 +28,9 @@
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_factory.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_resource_tracker.h"
+ #include "third_party/blink/renderer/core/html/canvas/element_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ #include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h"
+ #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+ #include "third_party/blink/renderer/core/html/canvas/ukm_parameters.h"
+ #include "third_party/blink/renderer/core/html/canvas/unique_font_selector.h"
+@@ -36,7 +38,6 @@
+ #include "third_party/blink/renderer/core/inspector/console_message.h"
+ #include "third_party/blink/renderer/core/probe/core_probes.h"
+ #include "third_party/blink/renderer/core/workers/dedicated_worker_global_scope.h"
+-#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ 
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ #include "third_party/blink/renderer/platform/fonts/plain_text_painter.h"
+@@ -427,7 +428,8 @@ ScriptPromise<Blob> OffscreenCanvas::convertToBlob(
+   scoped_refptr<StaticBitmapImage> image_bitmap = context_->GetImage();
+   if (image_bitmap) {
+     auto* execution_context = ExecutionContext::From(script_state);
+-    const auto seed = glint::candidate::CanvasPartitionSeed(execution_context);
++    const auto seed = glint::candidate::CanvasExportPartitionSeed(
++        execution_context, context_ && context_->IsWebGL());
+     if (!seed.has_value()) {
+       exception_state.ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+diff --git a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+index 18aaa25ad71c65f717ca58a936bd1c78a6a537ec..f5ef984115d33b2f4a00e6fd40d6bae43abe0e61 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+@@ -3,8 +3,12 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.h"
++#include "base/feature_list.h"
++#include "third_party/blink/public/common/features.h"
++#include "third_party/skia/include/core/SkBitmap.h"
+ 
+ #include <memory>
++#include <span>
+ 
+ #include "base/compiler_specific.h"
+ #include "base/containers/heap_array.h"
+@@ -903,6 +907,36 @@ void WebGL2RenderingContextBase::readPixels(GLint x,
+ 
+   ClearIfComposited(kClearCallerOther);
+ 
++  if (base::FeatureList::IsEnabled(features::kGlintWebGLReadbackCandidate) &&
++      width > 0 && height > 0) {
++    SkBitmap rectangle;
++    if (!PrepareGlintDefaultRgba8Readback(x, y, width, height, format, type,
++                                          rectangle)) {
++      return;
++    }
++    const auto pack = GetPackPixelStoreParams();
++    unsigned image_bytes = 0, padding = 0, skip_bytes = 0;
++    if (WebGLImageConversion::ComputeImageSizeInBytes(
++            GL_RGBA, GL_UNSIGNED_BYTE, width, height, 1, pack, &image_bytes,
++            &padding, &skip_bytes) != GL_NO_ERROR) {
++      SynthesizeGLError(GL_INVALID_OPERATION, "readPixels",
++                        "Glint WebGL PBO layout changed.");
++      return;
++    }
++    const size_t row_bytes = static_cast<size_t>(width) * 4;
++    const size_t row_pixels = pack.row_length > 0 ? pack.row_length : width;
++    const size_t stride = row_pixels * 4 + padding;
++    const auto pixels =
++        std::span(static_cast<const uint8_t*>(rectangle.getPixels()),
++                  rectangle.computeByteSize());
++    for (size_t row = 0; row < static_cast<size_t>(height); ++row) {
++      const int64_t destination = offset + skip_bytes + row * stride;
++      const auto input = pixels.subspan(row * row_bytes, row_bytes);
++      BufferSubDataImpl(GL_PIXEL_PACK_BUFFER, destination, row_bytes,
++                        input.data());
++    }
++    return;
++  }
+   {
+     ScopedDrawingBufferBinder binder(GetDrawingBuffer(), framebuffer);
+     if (!binder.Succeeded()) {
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+index e3f40494b329dd99664439f3134d80b29e4688d7..a0425eeb7e2c46c337d189b13bc3ded3427f6964 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -25,9 +25,19 @@
+ 
+ #include "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h"
+ 
++#include <algorithm>
+ #include <memory>
++#include <span>
+ #include <utility>
+ 
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h"
++#include "third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h"
++#include "third_party/skia/include/core/SkBitmap.h"
++
+ #include "base/bit_cast.h"
+ #include "base/byte_size.h"
+ #include "base/compiler_specific.h"
+@@ -5146,6 +5156,24 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+   if (isContextLost() || !GetDrawingBuffer())
+     return;
+ 
++  if (base::FeatureList::IsEnabled(features::kGlintWebGLReadbackCandidate) &&
++      width > 0 && height > 0) {
++    SkBitmap rectangle;
++    if (!PrepareGlintDefaultRgba8Readback(x, y, width, height, format, type,
++                                          rectangle)) {
++      return;
++    }
++    const auto source =
++        std::span(static_cast<const uint8_t*>(rectangle.getPixels()),
++                  rectangle.computeByteSize());
++    const auto destination = std::span(data, buffer_size.ValueOrDie());
++    if (!glint::candidate::CopyRgba8ReadbackToPackLayout(
++            source, destination, width, height, 0, GetPackPixelStoreParams())) {
++      SynthesizeGLError(GL_INVALID_OPERATION, "readPixels",
++                        "Glint WebGL pack-copy failed.");
++    }
++    return;
++  }
+   {
+     ScopedDrawingBufferBinder binder(GetDrawingBuffer(), framebuffer);
+     if (!binder.Succeeded()) {
+@@ -5155,6 +5183,126 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+   }
+ }
+ 
++bool WebGLRenderingContextBase::PrepareGlintDefaultRgba8Readback(
++    GLint x,
++    GLint y,
++    GLsizei width,
++    GLsizei height,
++    GLenum format,
++    GLenum type,
++    SkBitmap& protected_rectangle) {
++  const auto reject = [this](const char* reason) {
++    SynthesizeGLError(GL_INVALID_OPERATION, "readPixels", reason);
++    return false;
++  };
++  if (isContextLost() || !GetDrawingBuffer()) {
++    return false;
++  }
++  WebGLFramebuffer* framebuffer = nullptr;
++  if (!ValidateReadBufferAndGetInfo("readPixels", framebuffer)) {
++    return false;
++  }
++  const auto pack = GetPackPixelStoreParams();
++  const auto storage = GetDrawingBuffer()->StorageFormat();
++  if (framebuffer || format != GL_RGBA || type != GL_UNSIGNED_BYTE ||
++      (storage != GL_RGBA8 && storage != GL_RGB8) ||
++      GetColorSpace() != gfx::ColorSpace::CreateSRGB() ||
++      (pack.row_length > 0 &&
++       static_cast<int64_t>(pack.skip_pixels) + width > pack.row_length)) {
++    return reject(
++        "Glint WebGL candidate supports nonoverlapping default RGBA8/sRGB "
++        "readback only.");
++  }
++  auto seed = glint::candidate::SurfacePartitionSeed(
++      GetExecutionContext(), glint::candidate::SurfaceSeedKind::kWebGL);
++  if (!seed.has_value() || !seed.value()) {
++    return reject("Glint WebGL policy is unavailable.");
++  }
++  const int frame_width = drawingBufferWidth();
++  const int frame_height = drawingBufferHeight();
++  if (frame_width <= 0 || frame_height <= 0 || width <= 0 || height <= 0) {
++    return reject("Glint WebGL readback dimensions are unavailable.");
++  }
++  base::CheckedNumeric<size_t> frame_bytes = frame_width;
++  frame_bytes *= frame_height;
++  frame_bytes *= 4;
++  base::CheckedNumeric<size_t> rectangle_bytes = width;
++  rectangle_bytes *= height;
++  rectangle_bytes *= 4;
++  auto total_bytes = frame_bytes + rectangle_bytes;
++  if (!total_bytes.IsValid() ||
++      total_bytes.ValueOrDie() >
++          glint::candidate::kCandidateAdditionalPixelBudget) {
++    return reject("Glint WebGL detached readback budget exceeded.");
++  }
++  SkBitmap frame;
++  const auto frame_info =
++      SkImageInfo::Make(frame_width, frame_height, kRGBA_8888_SkColorType,
++                        kUnpremul_SkAlphaType, SkColorSpace::MakeSRGB());
++  const auto rectangle_info = frame_info.makeWH(width, height);
++  if (!frame.tryAllocPixels(frame_info, static_cast<size_t>(frame_width) * 4) ||
++      !protected_rectangle.tryAllocPixels(rectangle_info,
++                                          static_cast<size_t>(width) * 4)) {
++    return reject("Glint WebGL detached allocation failed.");
++  }
++  auto canonical = std::span(static_cast<uint8_t*>(frame.getPixels()),
++                             frame_bytes.ValueOrDie());
++  auto rectangle =
++      std::span(static_cast<uint8_t*>(protected_rectangle.getPixels()),
++                rectangle_bytes.ValueOrDie());
++  std::fill(canonical.begin(), canonical.end(), 0);
++  std::fill(rectangle.begin(), rectangle.end(), 0);
++  ScopedDrawingBufferBinder binder(GetDrawingBuffer(), framebuffer);
++  if (!binder.Succeeded()) {
++    return false;
++  }
++  base::ScopedClosureRunner restore(base::BindOnce([this] {
++    DrawingBufferClientRestorePixelPackParameters();
++    DrawingBufferClientRestorePixelPackBufferBinding();
++  }));
++  // Only the service-side GL state changes. Keep WebGL's cached pack/buffer
++  // bindings intact so the existing virtual restorers restore the real state.
++  ContextGL()->PixelStorei(GL_PACK_ALIGNMENT, 1);
++  if (IsWebGL2()) {
++    ContextGL()->BindBuffer(GL_PIXEL_PACK_BUFFER, 0);
++    ContextGL()->PixelStorei(GL_PACK_ROW_LENGTH, 0);
++    ContextGL()->PixelStorei(GL_PACK_SKIP_PIXELS, 0);
++    ContextGL()->PixelStorei(GL_PACK_SKIP_ROWS, 0);
++  }
++  // Preserve the driver's requested-rectangle/out-of-bounds behavior privately.
++  // Never publish an unprotected intermediate, including SharedArrayBuffer.
++  ContextGL()->ReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE,
++                          rectangle.data());
++  ContextGL()->ReadPixels(0, 0, frame_width, frame_height, GL_RGBA,
++                          GL_UNSIGNED_BYTE, canonical.data());
++  if (isContextLost() ||
++      ContextGL()->GetGraphicsResetStatusKHR() != GL_NO_ERROR) {
++    return false;
++  }
++  if (!glint::candidate::ProtectWebGLCanonicalPixels(
++          canonical, frame_width, frame_height, *seed.value())) {
++    return reject("Glint WebGL canonical readback could not be protected.");
++  }
++  for (int row = 0; row < height; ++row) {
++    const int64_t source_y = static_cast<int64_t>(y) + row;
++    if (source_y < 0 || source_y >= frame_height)
++      continue;
++    for (int column = 0; column < width; ++column) {
++      const int64_t source_x = static_cast<int64_t>(x) + column;
++      if (source_x < 0 || source_x >= frame_width)
++        continue;
++      const size_t input =
++          (static_cast<size_t>(source_y) * frame_width + source_x) * 4;
++      const size_t output = (static_cast<size_t>(row) * width + column) * 4;
++      const auto pixel = canonical.subspan(input, 4);
++      auto target = rectangle.subspan(output, 4);
++      std::copy(pixel.begin(), pixel.end(), target.begin());
++    }
++  }
++  protected_rectangle.setImmutable();
++  return true;
++}
++
+ void WebGLRenderingContextBase::RenderbufferStorageImpl(
+     GLenum target,
+     GLsizei samples,
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+index 1ff87239e6a75354cd8f52ec26e7325a0182b7b6..c8d78a014cbafe4dfc63582b92e4fb8500df4b21 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+@@ -71,6 +71,8 @@ namespace media {
+ class PaintCanvasVideoRenderer;
+ }
+ 
++class SkBitmap;
++
+ namespace blink {
+ 
+ class AcceleratedStaticBitmapImage;
+@@ -1959,6 +1961,13 @@ class MODULES_EXPORT WebGLRenderingContextBase
+   gfx::Rect GetImageDataSize(ImageData*);
+ 
+   // Helper implementing readPixels for WebGL 1.0 and 2.0.
++  bool PrepareGlintDefaultRgba8Readback(GLint x,
++                                        GLint y,
++                                        GLsizei width,
++                                        GLsizei height,
++                                        GLenum format,
++                                        GLenum type,
++                                        SkBitmap& protected_rectangle);
+   void ReadPixelsHelper(GLint x,
+                         GLint y,
+                         GLsizei width,
