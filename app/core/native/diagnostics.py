@@ -260,6 +260,13 @@ def audit_observed_identity(observed: dict, browser_version: str) -> list[str]:
         if not isinstance(values, dict):
             issues.append(f"{prefix} identity could not be observed")
             continue
+        concurrency = values.get("hardwareConcurrency")
+        if type(concurrency) is not int or concurrency <= 0:
+            issues.append(f"{prefix} hardware concurrency is invalid")
+        memory = values.get("deviceMemory")
+        if "deviceMemory" not in values or (memory is not None and (
+                type(memory) not in (int, float) or not 0 < memory <= 3.4028234663852886e38)):
+            issues.append(f"{prefix} device memory observation is invalid")
         for field in ("userAgent", "platform", "language", "timezone", "intlLocale"):
             if not isinstance(values.get(field), str) or not values[field].strip():
                 issues.append(f"{prefix} identity is missing {field}")

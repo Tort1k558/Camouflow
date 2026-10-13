@@ -353,12 +353,41 @@ def coherent_identity_observations():
 
     values = {"userAgent": "Mozilla/5.0 Chrome/148.0.0.0 Safari/537.36", "platform": "Win32",
               "language": "en-US", "languages": ["en-US", "en"], "timezone": "UTC", "intlLocale": "en-US",
+              "hardwareConcurrency": 12, "deviceMemory": 8,
               "userAgentData": {"platform": "Windows", "mobile": False,
                                 "brands": [{"brand": "Chromium", "version": "148"}]},
               "userAgentHighEntropy": {"fullVersionList": [{"brand": "Chromium", "version": "148.0.7778.96"}],
                                        "brands": [{"brand": "Chromium", "version": "148"}],
                                        "platform": "Windows", "mobile": False}}
     return {"document": values, "worker": copy.deepcopy(values)}
+
+
+@pytest.mark.parametrize("scope", ["document", "worker"])
+@pytest.mark.parametrize("key,value", [
+    ("hardwareConcurrency", None), ("hardwareConcurrency", True), ("hardwareConcurrency", 0),
+    ("hardwareConcurrency", -1), ("hardwareConcurrency", 1.5), ("hardwareConcurrency", "12"),
+    ("deviceMemory", True), ("deviceMemory", 0), ("deviceMemory", -1),
+    ("deviceMemory", "8"), ("deviceMemory", float("nan")), ("deviceMemory", float("inf")),
+    ("deviceMemory", 10 ** 400),
+])
+def test_native_identity_audit_rejects_invalid_hardware_observations(scope, key, value):
+    from app.core.native.diagnostics import audit_observed_identity
+
+    observed = coherent_identity_observations()
+    observed[scope][key] = value
+    assert audit_observed_identity(observed, "148.0.7778.96")
+
+
+def test_native_identity_audit_preserves_explicit_device_memory_unavailability():
+    from app.core.native.diagnostics import audit_observed_identity
+
+    observed = coherent_identity_observations()
+    for values in observed.values():
+        values["deviceMemory"] = None
+        values["hardwareConcurrency"] = 128
+    assert audit_observed_identity(observed, "148.0.7778.96") == []
+    del observed["worker"]["deviceMemory"]
+    assert audit_observed_identity(observed, "148.0.7778.96") == ["Worker device memory observation is invalid"]
 
 
 def test_native_identity_audit_preserves_reduced_ua_and_real_full_version():
