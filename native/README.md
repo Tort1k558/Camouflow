@@ -12,7 +12,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 
 ## Source layout
 
-Current Windows development source is **001-037**. Patches 0031-0034 jointly
+Current Windows development source is **001-038**. Patches 0031-0034 jointly
 promote browser-owned document/worker surface policy, startup/child transport,
 Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
 replay passed across 125 paths; this batch is **not yet fully compiled or runtime
@@ -37,6 +37,14 @@ browser core and GN guards passed (`webgl-readback-compilation-001-037-v2/proof.
 on D). Ordered next-batch replay passed across 125 paths with this follow-up.
 The full incremental retry uses j4; none of these checks is browser/runtime
 admission.
+
+The next j4 attempt completed 449 tasks before a renderer C++ error:
+`mojo::StructPtr` does not support comparison with `nullptr`. Patch 0038 uses
+its actual `is_null()` API when checking the legacy Canvas carrier. The failed
+renderer translation unit compiled with the pinned build flags in a separate
+owned output; source/core/GN guards passed
+(`renderer-pointer-compilation-001-038-v1/proof.json` on D). Full source replay
+passed across 125 paths. The main browser is still not rebuilt or admitted.
 Existing objects are preserved; the new browser remains unverified.
 Compilation is not runtime admission.
 

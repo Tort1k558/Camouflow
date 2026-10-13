@@ -83,7 +83,7 @@ def test_registered_replay_preserves_reviewed_successor_order(followups):
 
 
 @pytest.mark.parametrize("names", [batch.PROMOTED[:2], batch.FOLLOWUPS,
-                                   (*batch.PROMOTED, "0038-unreviewed.patch")])
+                                   (*batch.PROMOTED, "0039-unreviewed.patch")])
 def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
     with pytest.raises(ValueError):
         batch.registered_replay_chain([{"name": name} for name in names])
@@ -103,6 +103,15 @@ def test_webgl_compile_fix_uses_expected_and_gc_owned_stateless_cleanup():
     assert "context->DrawingBufferClientRestorePixelPackParameters();" in additions
     assert "context->DrawingBufferClientRestorePixelPackBufferBinding();" in additions
     assert "[this]" not in additions
+
+
+def test_renderer_presence_fix_uses_actual_mojo_pointer_api():
+    patch = (batch.ROOT / "native/patches/0038-native-renderer-struct-pointer-presence.patch").read_text(encoding="utf-8-sig")
+    additions = "\n".join(line[1:] for line in patch.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert "!commit_params->glint_document_canvas_commit.is_null()" in additions
+    assert "!= nullptr" not in additions
+    assert "DecodeOwnedDocumentSurfacePolicy" in patch
 
 
 def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():

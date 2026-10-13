@@ -98,7 +98,15 @@ stateless callback с `WrapPersistent(this)`, сохраняя восстано�
 `D:\CamouFlowNative\webgl-readback-compilation-001-037-v2\proof.json`.
 Проверки неизменности source/core/GN прошли; это не новый проверенный браузер.
 Полная сборка 001–037 вновь запущена на **j4** без удаления объектов.
-Текущий лог: `D:\CamouFlowNative\surface-batch-001-037-chrome-j4-v8.log`.
+Лог этой попытки: `D:\CamouFlowNative\surface-batch-001-037-chrome-j4-v8.log`.
+Она завершилась после 449 задач: renderer сравнивал `mojo::StructPtr` с `nullptr`.
+Патч 0038 сохраняет проверку наличия legacy Canvas carrier через `!is_null()`.
+Ранее падавший `render_frame_impl.cc` скомпилирован с исходными target flags
+в отдельном output; source/core/GN неизменны:
+`D:\CamouFlowNative\renderer-pointer-compilation-001-038-v1\proof.json`.
+Replay цепочки 001–038 прошёл по 125 путям. Следующая полная попытка — j4,
+с сохранением уже собранных объектов; runtime 001–038 ещё не подтверждён.
+Текущий лог: `D:\CamouFlowNative\surface-batch-001-038-chrome-j4-v9.log`.
 В следующем GPU-пакете подготовлен четырнадцатый passthrough fixture:
 multisample metadata сравнивается с фактическим `GL_RENDERBUFFER_SAMPLES`,
 а не с запрошенным числом samples. Формат RGBA8 сам по себе не означает
