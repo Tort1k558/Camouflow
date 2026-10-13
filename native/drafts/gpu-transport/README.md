@@ -78,6 +78,11 @@ contexts; the default partitioned-privacy contract still requires cross-site
 differences. Both retain PNG/pixel agreement, CPU/PBO padding, GL state/errors,
 context loss, upper colour bits and alpha checks. Unknown modes reject.
 
+`validate_profile_isolation` validates the baseline and both protected profiles
+before comparing their WebGL and renderbuffer outputs. Both profiles must differ
+from the baseline and each other in every context. The registered runtime runner
+uses this same check with the existing partitioned-privacy default.
+
 These are synthetic validator checks, not protected browser results. The runtime
 CLI/receipt gate still exercises registered partitioned privacy only; identity
 activation and binary admission are not enabled by this parameter.

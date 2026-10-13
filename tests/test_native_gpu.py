@@ -292,6 +292,35 @@ def test_profile_identity_gpu_gate_requires_equal_site_outputs_without_relaxing_
                           derivation_mode="profile-identity")
 
 
+def test_profile_identity_gpu_gate_requires_independent_profile_and_renderbuffer_outputs():
+    from scripts.verify_native_gpu_readback import validate_profile_isolation
+
+    baseline = readback_observation()
+    first = profile_identity_readback_observation()
+    cross = readback_observation(protected=True)["cross_origin_frame"]
+    second = {context: copy.deepcopy(cross) for context in CONTEXTS}
+    validate_profile_isolation(baseline, first, second, derivation_mode="profile-identity")
+    with pytest.raises(ValueError, match="both profiles"):
+        validate_profile_isolation(baseline, first, first, derivation_mode="profile-identity")
+    for context in CONTEXTS:
+        second[context]["webgl"]["webgl2"]["scene"]["renderbuffer"] = copy.deepcopy(
+            first[context]["webgl"]["webgl2"]["scene"]["renderbuffer"])
+    with pytest.raises(ValueError, match="Renderbuffer scene"):
+        validate_profile_isolation(baseline, first, second, derivation_mode="profile-identity")
+
+
+def test_gpu_profile_isolation_validates_each_profile_before_comparing_pixels():
+    from scripts.verify_native_gpu_readback import validate_profile_isolation
+
+    first = profile_identity_readback_observation()
+    cross = readback_observation(protected=True)["cross_origin_frame"]
+    second = {context: copy.deepcopy(cross) for context in CONTEXTS}
+    second["document"]["webgl"]["webgl2"]["scene"]["packed"][0] = 0
+    with pytest.raises(ValueError):
+        validate_profile_isolation(readback_observation(), first, second,
+                                   derivation_mode="profile-identity")
+
+
 @pytest.mark.parametrize("mode", ["", "unknown", None, [], True])
 def test_unknown_gpu_derivation_mode_cannot_relax_checks(mode):
     from scripts.verify_native_gpu_readback import validate_readback

@@ -357,6 +357,24 @@ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None 
     return normalized
 
 
+def validate_profile_isolation(baseline: dict, first: dict, second: dict, *,
+                               derivation_mode: str = "partitioned-privacy") -> None:
+    normalized = validate_readback(baseline, protected=False, derivation_mode=derivation_mode)
+    validate_readback(first, protected=True, baseline=normalized, derivation_mode=derivation_mode)
+    validate_readback(second, protected=True, baseline=normalized, derivation_mode=derivation_mode)
+    for context in CONTEXTS:
+        for api in ("webgl", "webgl2"):
+            pixels = [tuple(row[context]["webgl"][api]["scene"]["pixels"])
+                      for row in (baseline, first, second)]
+            if len(set(pixels)) != 3:
+                raise ValueError("WebGL scene did not isolate both profiles from baseline")
+        for phase in ("initial", "resized"):
+            pixels = [tuple(row[context]["webgl"]["webgl2"]["scene"]["renderbuffer"][phase]["pixels"])
+                      for row in (baseline, first, second)]
+            if len(set(pixels)) != 3:
+                raise ValueError("Renderbuffer scene did not isolate both profiles from baseline")
+
+
 def validate_renderbuffer(observed: dict, *, protected: bool) -> None:
     if (not isinstance(observed, dict) or set(observed) != {"viewport", "initial", "resized", "uniform", "samples", "multisample"}
             or observed["viewport"] != [0, 0, 4, 4] or any(type(value) is not int for value in observed["viewport"])
@@ -530,17 +548,7 @@ async def verify(executable: Path, owned: Path, server: FixtureServer, report: d
                 check["passed"] = True
             finally:
                 await runtime.close()
-    for context in CONTEXTS:
-        for api in ("webgl", "webgl2"):
-            pixels = [tuple(results[name][context]["webgl"][api]["scene"]["pixels"])
-                      for name in ("baseline", "profile-a", "profile-b")]
-            if len(set(pixels)) != 3:
-                raise ValueError("WebGL scene did not isolate both profiles from baseline")
-        for phase in ("initial", "resized"):
-            pixels = [tuple(results[name][context]["webgl"]["webgl2"]["scene"]["renderbuffer"][phase]["pixels"])
-                      for name in ("baseline", "profile-a", "profile-b")]
-            if len(set(pixels)) != 3:
-                raise ValueError("Renderbuffer scene did not isolate both profiles from baseline")
+    validate_profile_isolation(results["baseline"], results["profile-a"], results["profile-b"])
     report["cross_profile_isolation_passed"] = True
 
 
