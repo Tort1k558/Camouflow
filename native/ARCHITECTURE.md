@@ -168,6 +168,16 @@ budgets, GPU readback, malformed-policy injection,
 root-initial/sandbox delivery and public anti-bot diagnostics remain separate
 work. `privacy_admitted` stays false even if this functional gate passes.
 
+The combined gate also measures Canvas and OfflineAudio from the owned page's
+first inline parser script, rather than injecting the first measurement after
+load. All six baseline/profile/restart phases require `readyState == loading`,
+one fetched fixture, one completed execution beacon and matching settled-document
+results. Audio float bits remain bound to their digest; render durations are not
+identity. The 001–027 unprotected baseline passed this fixture on actual initial
+and restarted browsers (`first-script-001-027-baseline-v1.json` on D). This checks
+the probe, not v2 protection. Initial about:blank, popup and sandboxed child
+first-script delivery still require separate lifecycle tests.
+
 ## Distribution
 
 `distribution.py` manages checksum-verified local bundles and release selection.

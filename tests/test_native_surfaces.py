@@ -86,6 +86,33 @@ def test_restart_durations_are_measured_not_fingerprint_identity():
     surfaces.validate_combined(observed, previous, protected=True)
 
 
+def test_first_parser_script_matches_settled_policy_without_timing_identity():
+    document = observation("b", "c")["document"]
+    first = copy.deepcopy(document)
+    first["audio"]["signal"]["renderMilliseconds"] = 100.0
+    surfaces.validate_first_script({"parserState": "loading", "observed": first}, document,
+                                  {"requests": 1, "executions": 1})
+
+
+@pytest.mark.parametrize("mutation", ["late", "missing", "canvas", "audio", "unbound_bits", "beacon"])
+def test_first_parser_script_rejects_late_incomplete_or_changed_policy(mutation):
+    document = observation("b", "c")["document"]
+    result = {"parserState": "loading", "observed": copy.deepcopy(document)}
+    counts = {"requests": 1, "executions": 1}
+    if mutation == "late":
+        result["parserState"] = "complete"
+    elif mutation == "missing":
+        del result["observed"]["audio"]
+    elif mutation in {"canvas", "audio"}:
+        result["observed"][mutation] = observation("d", "e")["document"][mutation]
+    elif mutation == "unbound_bits":
+        result["observed"]["audio"]["signal"]["sampleBits"][0] ^= 1
+    else:
+        counts["executions"] = 0
+    with pytest.raises(ValueError):
+        surfaces.validate_first_script(result, document, counts)
+
+
 def test_unavailable_document_audio_cannot_pass():
     observed = observation("b", "c")
     observed["srcdoc_frame"]["audio"] = {"available": False, "reason": "API unavailable"}
@@ -142,6 +169,13 @@ def test_owned_denial_fixture_counts_requests_and_execution_separately():
             urlopen(f"{origin}/surface-startup?id=invalid", timeout=5)
         assert failure.value.code == 400
         assert server.counts("invalid") == {"requests": 0, "executions": 0}
+        first_identifier = "b" * 32
+        with urlopen(f"{origin}/surface-first-script?id={first_identifier}", timeout=5) as response:
+            body = response.read().decode("utf-8")
+            assert "const glintParserState = document.readyState;" in body
+            assert f"({surfaces.COMBINED_READ})()" in body
+            assert "window.__glintFirstSurfaceRead" in body
+        assert server.counts(first_identifier) == {"requests": 1, "executions": 0}
     finally:
         server.shutdown()
         server.server_close()

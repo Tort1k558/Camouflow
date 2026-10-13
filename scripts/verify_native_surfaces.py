@@ -80,7 +80,7 @@ class SurfaceFixtureHandler(CanvasFixtureHandler):
 
     def do_GET(self) -> None:
         parsed = urlsplit(self.path)
-        if parsed.path not in {"/surface-startup", "/surface-executed"}:
+        if parsed.path not in {"/surface-startup", "/surface-first-script", "/surface-executed"}:
             return super().do_GET()
         identifiers = parse_qs(parsed.query).get("id", [])
         if len(identifiers) != 1 or len(identifiers[0]) != 32 or any(
@@ -90,9 +90,22 @@ class SurfaceFixtureHandler(CanvasFixtureHandler):
         identifier = identifiers[0]
         execution = parsed.path == "/surface-executed"
         self.server.record(identifier, "executions" if execution else "requests")
-        body = b"" if execution else (
-            f"<!doctype html><script>fetch('/surface-executed?id={identifier}');</script>"
-        ).encode()
+        if execution:
+            body = b""
+        elif parsed.path == "/surface-first-script":
+            body = (
+                "<!doctype html><script>"
+                "const glintParserState = document.readyState;"
+                f"window.__glintFirstSurfaceRead = ({COMBINED_READ})().then(async observed => {{"
+                f"const response = await fetch('/surface-executed?id={identifier}');"
+                "if (!response.ok) throw new Error('First-script execution beacon failed');"
+                "return {parserState: glintParserState, observed};});"
+                "</script>"
+            ).encode()
+        else:
+            body = (
+                f"<!doctype html><script>fetch('/surface-executed?id={identifier}');</script>"
+            ).encode()
         self.send_response(204 if execution else 200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -174,6 +187,23 @@ def validate_isolation(baseline: dict, first: dict, second: dict) -> None:
             raise ValueError("Protected Audio changed silent samples or buffer semantics")
 
 
+def validate_first_script(result: dict, document: dict, counts: dict) -> None:
+    if (not isinstance(result, dict) or set(result) != {"parserState", "observed"}
+            or result["parserState"] != "loading"):
+        raise ValueError("Surface measurement did not start in the first parser script")
+    observed = result["observed"]
+    if not isinstance(observed, dict) or set(observed) != {"canvas", "audio"}:
+        raise ValueError("First-script surface observations are incomplete")
+    if counts != {"requests": 1, "executions": 1}:
+        raise ValueError("First-script fixture lacks one fetched document and completed execution")
+    if observed["canvas"] != document["canvas"]:
+        raise ValueError("Canvas policy changed between the first script and settled document")
+    first_audio = strip_quality({"document": observed["audio"]})
+    settled_audio = strip_quality({"document": document["audio"]})
+    if first_audio != settled_audio:
+        raise ValueError("Audio policy changed between the first script and settled document")
+
+
 def probe_inputs() -> dict[str, str]:
     names = ("scripts/verify_native_surfaces.py", "scripts/verify_native_canvas.py",
              "scripts/verify_native_audio.py", "scripts/verify_native_worker_startup.py",
@@ -224,6 +254,15 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
                     security[frame_name] = await asyncio.wait_for(frame.evaluate(SECURITY_READ), timeout=20)
                 check["security"] = security
                 validate_security(security)
+                identifier = uuid.uuid4().hex
+                page = context.pages[0]
+                await page.goto(f"{origin}/surface-first-script?id={identifier}", timeout=20000)
+                first_script = await asyncio.wait_for(
+                    page.evaluate("() => window.__glintFirstSurfaceRead"), timeout=30)
+                counts = server.counts(identifier)
+                check["first_script"] = first_script
+                check["first_script_counts"] = counts
+                validate_first_script(first_script, observed["document"], counts)
                 check["passed"] = True
                 previous = observed
                 results[name] = observed
@@ -271,7 +310,7 @@ def main() -> int:
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite surface evidence")
     report = {"schema": 1, "passed": False, "privacy_admitted": False, "checks": [],
-              "platform": platform.platform(), "scope": "Combined Canvas/OfflineAudio isolation, restart, float32 error/SNR and missing-policy rejection; render durations measured, not a performance admission; no GPU or anti-bot admission"}
+              "platform": platform.platform(), "scope": "Combined Canvas/OfflineAudio isolation, first-parser-script consistency, restart, float32 error/SNR and missing-policy rejection; render durations measured, not a performance admission; no GPU or anti-bot admission"}
     server = thread = owned = None
     runtimes = []
     try:
