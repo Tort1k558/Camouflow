@@ -297,7 +297,7 @@ def test_native_locale_is_configured_for_browser_and_worker_processes():
     assert NativeConfiguration(locale="de-DE").launch_arguments() == ["--lang=de-DE", "--accept-lang=de-DE"]
 
 
-@pytest.mark.parametrize("key", ["language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "userAgentData", "userAgentHighEntropy"])
+@pytest.mark.parametrize("key", ["language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "intlLocale", "userAgentData", "userAgentHighEntropy"])
 def test_native_diagnostics_detects_document_worker_disagreement(key):
     from app.core.native.diagnostics import compare_observed
 
@@ -306,6 +306,79 @@ def test_native_diagnostics_detects_document_worker_disagreement(key):
     assert compare_observed(NativeConfiguration(), observed) == []
     observed["worker"][key] = "inconsistent"
     assert compare_observed(NativeConfiguration(), observed) == [f"Document and dedicated worker disagree on {key}"]
+
+
+def coherent_identity_observations():
+    import copy
+
+    values = {"userAgent": "Mozilla/5.0 Chrome/148.0.0.0 Safari/537.36", "platform": "Win32",
+              "language": "en-US", "languages": ["en-US", "en"], "timezone": "UTC", "intlLocale": "en-US",
+              "userAgentData": {"platform": "Windows", "mobile": False,
+                                "brands": [{"brand": "Chromium", "version": "148"}]},
+              "userAgentHighEntropy": {"fullVersionList": [{"brand": "Chromium", "version": "148.0.7778.96"}]}}
+    return {"document": values, "worker": copy.deepcopy(values)}
+
+
+def test_native_identity_audit_preserves_reduced_ua_and_real_full_version():
+    from app.core.native.diagnostics import audit_observed_identity
+
+    assert audit_observed_identity(coherent_identity_observations(), "148.0.7778.96") == []
+
+
+@pytest.mark.parametrize("field", ["userAgent", "platform", "language", "timezone", "intlLocale",
+                                   "languages", "userAgentData", "userAgentHighEntropy"])
+def test_native_identity_audit_never_accepts_matching_missing_values(field):
+    from app.core.native.diagnostics import audit_observed_identity
+
+    observed = coherent_identity_observations()
+    for values in observed.values():
+        del values[field]
+    assert audit_observed_identity(observed, "148.0.7778.96")
+
+
+@pytest.mark.parametrize("mutation", ["ua", "primary-language", "low-version", "full-version", "duplicate-brand",
+                                     "invalid-mobile", "missing-platform", "worker-unavailable", "invalid-runtime"])
+def test_native_identity_audit_rejects_incoherent_versions_or_missing_evidence(mutation):
+    from app.core.native.diagnostics import audit_observed_identity
+
+    observed = coherent_identity_observations()
+    values = observed["document"]
+    version = "148.0.7778.96"
+    if mutation == "ua":
+        values["userAgent"] = values["userAgent"].replace("148.", "152.")
+    elif mutation == "primary-language":
+        values["languages"][0] = "de-DE"
+    elif mutation == "low-version":
+        values["userAgentData"]["brands"][0]["version"] = "152"
+    elif mutation == "full-version":
+        values["userAgentHighEntropy"]["fullVersionList"][0]["version"] = "148.0.7778.1"
+    elif mutation == "duplicate-brand":
+        values["userAgentData"]["brands"] *= 2
+    elif mutation == "invalid-mobile":
+        values["userAgentData"]["mobile"] = 0
+    elif mutation == "missing-platform":
+        values["userAgentData"]["platform"] = ""
+    elif mutation == "worker-unavailable":
+        observed["worker"] = None
+    else:
+        version = "unknown"
+    assert audit_observed_identity(observed, version)
+
+
+def test_native_profile_inspection_includes_missing_identity_evidence():
+    import asyncio
+
+    from app.core.native.diagnostics import inspect_native_profile
+
+    class Page:
+        async def evaluate(self, expression):
+            values = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC"}
+            return {"document": values, "worker": dict(values)}
+
+    report = asyncio.run(inspect_native_profile(Page(), NativeConfiguration(), "148.0.7778.96"))
+    assert "Document identity is missing userAgent" in report["mismatches"]
+    assert "Worker Client Hints coherence could not be observed" in report["mismatches"]
+    assert report["native_patch_capabilities"] == []
 
 
 def test_native_diagnostics_reports_blocked_worker_without_fake_observations():

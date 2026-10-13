@@ -1,6 +1,7 @@
 """Read actual Native browser values; never replace fingerprint APIs."""
 
 from dataclasses import asdict
+import re
 
 from .configuration import NativeConfiguration
 
@@ -108,6 +109,7 @@ OBSERVE = """async () => {
             hardwareConcurrency: navigator.hardwareConcurrency,
             deviceMemory: navigator.deviceMemory ?? null,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            intlLocale: Intl.DateTimeFormat().resolvedOptions().locale,
             userAgentData: navigator.userAgentData?.toJSON() ?? null,
             userAgentHighEntropy, userAgentDataError
         };
@@ -155,7 +157,7 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
     if worker is None:
         mismatches.append(observed.get("workerError") or "Worker values could not be observed")
     else:
-        for key in ("userAgent", "platform", "language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "userAgentData", "userAgentHighEntropy"):
+        for key in ("userAgent", "platform", "language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "intlLocale", "userAgentData", "userAgentHighEntropy"):
             if worker.get(key) != document.get(key):
                 mismatches.append(f"Document and dedicated worker disagree on {key}")
         if "canvas" in document and "canvas" in worker:
@@ -184,9 +186,54 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
     return mismatches
 
 
+def audit_observed_identity(observed: dict, browser_version: str) -> list[str]:
+    """Check measured identity coherence, without inventing missing observations."""
+    issues = []
+    if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", browser_version):
+        return ["Actual Chromium runtime version could not be validated"]
+    major = browser_version.split(".", 1)[0]
+    for scope in ("document", "worker"):
+        values = observed.get(scope)
+        prefix = scope.capitalize()
+        if not isinstance(values, dict):
+            issues.append(f"{prefix} identity could not be observed")
+            continue
+        for field in ("userAgent", "platform", "language", "timezone", "intlLocale"):
+            if not isinstance(values.get(field), str) or not values[field].strip():
+                issues.append(f"{prefix} identity is missing {field}")
+        languages = values.get("languages")
+        if (not isinstance(languages, list) or not languages
+                or any(not isinstance(value, str) or not value.strip() for value in languages)):
+            issues.append(f"{prefix} identity is missing a valid languages list")
+        elif (not isinstance(values.get("language"), str)
+              or languages[0].casefold() != values["language"].casefold()):
+            issues.append(f"{prefix} language disagrees with the primary languages entry")
+        ua = values.get("userAgent", "")
+        versions = re.findall(r"(?:HeadlessChrome|Chrome)/([0-9]+)(?:\.[0-9]+){3}(?:\s|$)", ua) if isinstance(ua, str) else []
+        if versions != [major]:
+            issues.append(f"{prefix} UA does not report the actual Chromium major version")
+        hints = values.get("userAgentData")
+        high = values.get("userAgentHighEntropy")
+        if not isinstance(hints, dict) or not isinstance(high, dict):
+            issues.append(f"{prefix} Client Hints coherence could not be observed")
+            continue
+        if not isinstance(hints.get("platform"), str) or not hints["platform"].strip():
+            issues.append(f"{prefix} Client Hints platform is missing")
+        if type(hints.get("mobile")) is not bool:
+            issues.append(f"{prefix} Client Hints mobile flag is invalid")
+        for key, expected, source in (("brands", major, hints), ("fullVersionList", browser_version, high)):
+            brands = source.get(key)
+            chromium = [brand.get("version") for brand in brands
+                        if isinstance(brand, dict) and brand.get("brand") == "Chromium"] if isinstance(brands, list) else []
+            if chromium != [expected]:
+                issues.append(f"{prefix} Client Hints {key} disagrees with the actual Chromium version")
+    return issues
+
+
 async def inspect_native_profile(page, configuration: NativeConfiguration, browser_version: str) -> dict:
     configuration.validate()
     observed = await page.evaluate(OBSERVE)
+    mismatches = compare_observed(configuration, observed) + audit_observed_identity(observed, browser_version)
     return {"browser_version": browser_version, "configuration": asdict(configuration),
-            "observed": observed, "mismatches": compare_observed(configuration, observed),
+            "observed": observed, "mismatches": mismatches,
             "limitations": configuration.limitations(), "native_patch_capabilities": []}

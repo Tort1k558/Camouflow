@@ -375,6 +375,20 @@ truncated buffers and initialized results on both backends; they are not proof
 of those invariants until executed. Real texture/error/binding checks remain pending.
 The active 001–034 Chromium build was not changed by these checks.
 
+## Manager identity coherence diagnostics
+
+The manager's profile inspection compares the measured Chromium runtime version
+with the reduced UA major, low-entropy Chromium brand version and genuine
+high-entropy full version in document and dedicated worker. Missing observations
+cannot pass merely because both contexts omit the same fields. Primary language
+must agree with `languages[0]`; Intl locale is observed and compared across contexts.
+
+The owned feature-off 001–027 runtime passed real inspection with `en-US` and
+`de-DE`; measured runtime core and diagnostic source hashes remained unchanged.
+This does not generate cross-OS/GPU presets, verify HTTP headers on arbitrary
+sites or admit new native capabilities. The separate native identity gate remains
+responsible for controlled HTTP/Client Hints/frame/worker checks.
+
 ## Texture lifecycle baseline
 
 `scripts/verify_native_gpu_textures.py` verifies actual texture uploads/readback,
