@@ -444,8 +444,9 @@ and not a privacy capability. Protected texture results remain pending.
 
 ## Current WebGL clipping compatibility gate
 
-The registered 001–034 browser batch is compiling; its new protections are not
-runtime admitted. The following independent checks do not change that boundary:
+The first 001–034 browser build failed; repair 0035 is registered. A complete
+rebuilt browser and its protected readback checks remain pending. The following
+independent checks do not change that boundary:
 
 - An owned feature-off 001–027 browser confirmed native CPU/PBO reads preserve
   destination bytes outside a framebuffer, including negative/partially clipped,
