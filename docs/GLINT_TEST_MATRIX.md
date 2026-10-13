@@ -84,6 +84,7 @@ The EXE and `chrome_elf.dll` hashes remain the same as 001-038.
 | Missing required document policy | **Failed: persistent-context launch timeout** | No earlier fatal transition in the saved log; denying initial about:blank prevents the driver's startup wait from completing |
 | Revised combined gate v2 | **Passed: 7/7** | Same 001-039 core; controlled document execution plus denied-profile CDP observation independent of startup-page commit |
 | Missing-policy browser-level CDP check v2 | Passed | Control: one request/one script execution; denied: one request/zero execution, exact Document request correlated to `ERR_ABORTED`, unchanged frame/loader/history and no commit event; browser remains responsive |
+| General manager/runtime gate | **Passed: 18 named checks** | Persistent five-store isolation/restart, owner locks, crash/controller/teardown recovery, permissions, authenticated loopback HTTP proxy, scenarios, Recorder and Mobile Web Emulation |
 | Worker checks and external detectors | Not rerun for this build | Do not transfer 001-038 results |
 
 Private evidence: `combined-surfaces-001-039-v1.json` (failed persistent-driver
@@ -92,6 +93,12 @@ probe), `no-policy-cdp-v1/proof.json` (prototype), and
 This is not persistent-driver startup recovery or anti-bot admission. The reviewed
 finish-observer lifetime guard and its eight native cases still require promotion
 and execution before release.
+
+General runtime evidence: `owned-runtime-suite-001-039-v1/runtime.json` and
+`suite.json` on D, bound to the same measured three-file runtime core. This run
+requested only `runtime` (`full_suite=false`), not all eight standard gates.
+The proxy is an owned local fixture, not proof for the user's external proxies;
+Mobile Web Emulation is not an Android/iOS runtime. It does not admit 0040/0041.
 
 ### Windows development candidate 001-038 — 2026-10-13
 

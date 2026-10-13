@@ -69,6 +69,13 @@ including late policy loss, recovery and observer-driven tab destruction.
 The latest linked browser is still 001-039; 0040 native execution and browser
 verification remain pending. This is not release or external anti-bot admission.
 
+The 001-039 general runtime gate also passed all **18** named checks, including
+persistent storage/lock/crash recovery, permissions, owned authenticated HTTP
+proxy, scenarios, Recorder and Mobile Web Emulation. It requested only the
+runtime gate, not the full eight-gate suite; evidence is
+`owned-runtime-suite-001-039-v1/runtime.json` on D. These results do not admit
+the later 0040/0041 source or external proxy/anti-bot behavior.
+
 The first 0040 native test build completed 276 steps before a fixture C++ access
 error, not OOM: child transport called a private RFH override directly. Patch
 0041 dispatches through the public `mojom::FrameHost` interface and uses its
