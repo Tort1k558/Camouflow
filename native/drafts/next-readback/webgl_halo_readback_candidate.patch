@@ -511,7 +511,7 @@ index d79999a18788c6280dcd27bd07855208145f2dd2..5beeb1681e735c8093a39d20c8b03477
 +      if (!glint::candidate::ProtectWebGLCanonicalPixels(
 +              pixels, region->width, region->height, *seed.value()) ||
 +          !glint::candidate::OverlayProtectedRgba8ReadbackRegion(
-+              pixels, rectangle, request, *region)) {
++              pixels, rectangle, request, *region).has_value()) {
 +        return reject("Glint WebGL halo readback could not be protected.");
 +      }
 +      break;

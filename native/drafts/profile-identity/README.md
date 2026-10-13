@@ -219,7 +219,8 @@ GPU command generation. This does not register the candidates or validate
 their optimized code, linked fixtures or browser behavior.
 
 Composition also passed on source 001-047 after promotion of the paired halo/
-clipped-publication repair: `identity-readback-001-047-batch-v1.json` on D.
+clipped-publication repair: `identity-readback-001-047-batch-v2.json` on D
+(rechecked after the typed-result correction in the unverified halo patch).
 The checker reverses those two exact registered patches only inside its owned
 copy before reconstructing the full composition. The six identity and four
 remaining GPU transport patches are still unregistered; no identity mode is enabled.

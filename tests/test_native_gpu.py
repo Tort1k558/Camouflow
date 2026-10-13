@@ -986,3 +986,14 @@ def test_future_clipped_publication_patch_preserves_cpu_pbo_destination_contract
     assert "gfx::Rect(0, 0, width, height)" in source
     fixtures = (DRAFTS / "rgba8_clipped_publication_unittest.cc").read_text(encoding="utf-8-sig")
     assert fixtures.count("TEST(GlintRgba8ClippedPublicationTest,") == 6
+
+
+def test_halo_readback_checks_actual_expected_result_api():
+    from pathlib import Path
+    from scripts.verify_native_halo_draft import PATCH, ROOT
+
+    registered = ROOT / "native/patches/0046-native-webgl-bounded-readback.patch"
+    assert registered.read_bytes() == PATCH.read_bytes()
+    text = Path(PATCH).read_text(encoding="utf-8-sig")
+    assert "+              pixels, rectangle, request, *region).has_value()) {" in text
+    assert "+              pixels, rectangle, request, *region)) {" not in text

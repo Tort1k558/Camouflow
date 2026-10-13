@@ -1,6 +1,6 @@
 # WebGL readback: bounded halo candidate
 
-**Registered as 0046/0047, not yet compiled or runtime-verified.**
+**Registered as 0046/0047; complete browser build and runtime verification pending.**
 This paired repair follows registered 001–045. It changes private readback allocation, not the fingerprint
 algorithm, GPU identity, live framebuffer or JavaScript API.
 
@@ -51,12 +51,20 @@ These are allocation calculations, **not measured performance improvements**.
 ## Evidence and pending checks
 
 Promotion replay passed across the complete 130-path registered chain:
-`clipped-readback-replay-001-047-v1.json` on D. The existing 001-045 browser,
+`clipped-readback-replay-001-047-v2.json` on D. The existing 001-045 browser,
 receipt and GN arguments remained unchanged. Draft composition tools reverse
 the exact promoted pair only in their owned overlays before replaying future
 candidates; partial promotion or different canonical bytes reject.
 The native `--target gpu-readback` gate requires 31 exact cases: 14 pack-copy,
 11 region-planner and 6 clipped-publication cases. These have not executed yet.
+
+The first full build exposed a typed-result error in the Blink halo call.
+The unverified 0046 patch and its canonical candidate now explicitly check
+`base::expected::has_value()`. The previously failed implementation compiled
+to an isolated optimized object using the actual failed target command:
+`halo-expected-compilation-001-047-v2/proof.json` on D. Source/compiler/runtime
+guards passed. This does not prove linking or protected browser behavior;
+the failed first build log remains recorded.
 
 | Check | Status |
 | :-- | :-- |
@@ -81,8 +89,8 @@ the active source tree:
 .venv\Scripts\python.exe scripts/verify_native_readback_regions.py --report D:\CamouFlowNative\halo-model-new.json
 ```
 
-After the current build finishes: run its strict unit/browser gates first,
-review and promote this separate patch, compile its native fixtures, then repeat
+After the current build finishes: run its strict unit/browser gates,
+compile and execute the 31-case native gate, then repeat
 full-frame/crop/export equivalence and normal browser compatibility checks.
 Apply `webgl_halo_readback_candidate.patch` before
 `webgl_clipped_publication_candidate.patch`; the public replay command checks
