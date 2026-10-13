@@ -98,10 +98,29 @@ lifecycle and rejection helpers. **None has been compiled or executed.**
 
 Source replay validates composition, not browser or Blink execution. The worker
 fixture exercises a worker global scope, not independent production coverage of
-all dedicated/shared/service-worker launchers. Chrome launch selection and
-manager capability admission still remain to be implemented and verified.
+all dedicated/shared/service-worker launchers. Chrome launch selection still
+requires native execution; manager capability admission remains blocked.
 
-## Outstanding runtime gates
+## Strict Chrome launch candidate
+
+`identity_launch_candidate.patch` is the sixth patch. The browser-only
+`--glint-fingerprint-derivation-mode` switch accepts exactly `partitioned-privacy`
+or `profile-identity`. An explicit value requires key service `=1`; profile
+identity also requires both full document/worker surface bootstrap switches and
+rejects either legacy Canvas bootstrap. Unknown/empty values reject launch.
+Absent selection preserves existing callers' partitioned-privacy behaviour.
+
+Persistent and incognito profile initialization pass the resolved mode to their
+own service. Incognito still uses an empty root and independent ephemeral key;
+the selection switch is not copied to renderer processes. Four native launch
+fixture definitions are prepared, **not executed**. This is a development opt-in,
+not a new admitted manager capability or a user release.
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-launch-replay.json --include-launch --check-bindings
+```
+
+## Required before admission
 
 - Execute native fixtures, including unchanged legacy privacy vectors.
 - Verify real BrowserContext/OTR lifetime and persisted profile restart.

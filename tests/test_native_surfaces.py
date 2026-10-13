@@ -271,3 +271,22 @@ def test_identity_blink_handoff_fixtures_cover_first_script_clone_and_rejection(
     assert all(name in text for names in HANDOFF_FIXTURES.values() for name in names)
     assert "+    EXPECT_TRUE(client.titles[i].empty());" in text
     assert "clone->glint_document_surface_policy->policy.identity_mode" in text
+
+
+def test_identity_launch_candidate_requires_full_surfaces_and_keeps_renderer_selection_closed():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_profile_identity_draft import LAUNCH_FIXTURES, LAUNCH_PATCH, LAUNCH_PATHS
+
+    text = LAUNCH_PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == LAUNCH_PATHS
+    assert all(name in text for name in LAUNCH_FIXTURES)
+    assert text.count("+TEST_F(NativePrivacyBrowserContextTest,") == len(LAUNCH_FIXTURES)
+    assert "glint-fingerprint-derivation-mode" in text
+    assert "!command.HasSwitch(kNativePrivacyKeyServiceSwitch)" in text
+    assert '!command.HasSwitch("glint-document-surface-bootstrap-test")' in text
+    assert '!command.HasSwitch("glint-worker-surface-bootstrap-test")' in text
+    assert text.count("CHECK(native_mode.has_value());") == 2
+    assert "render_process_host_impl.cc" not in text
+    added = " ".join(line[1:].strip() for line in text.splitlines()
+                     if line.startswith("+") and not line.startswith("+++"))
+    assert "this, base::FilePath(), *native_mode" in added

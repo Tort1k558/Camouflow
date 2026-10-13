@@ -1,0 +1,206 @@
+diff --git a/chrome/browser/profiles/off_the_record_profile_impl.cc b/chrome/browser/profiles/off_the_record_profile_impl.cc
+index dd4aaa8..763da5b 100644
+--- a/chrome/browser/profiles/off_the_record_profile_impl.cc
++++ b/chrome/browser/profiles/off_the_record_profile_impl.cc
+@@ -191,9 +191,13 @@ OffTheRecordProfileImpl::OffTheRecordProfileImpl(
+ 
+ void OffTheRecordProfileImpl::Init() {
+   const auto* native_command = base::CommandLine::ForCurrentProcess();
++  const auto native_mode =
++      content::ResolveNativeFingerprintDerivationModeForLaunch(*native_command);
++  CHECK(native_mode.has_value());
+   if (native_command->HasSwitch(content::kNativePrivacyKeyServiceSwitch)) {
+     CHECK_EQ(native_command->GetSwitchValueASCII(content::kNativePrivacyKeyServiceSwitch), "1");
+-    CHECK(content::InitializeNativePrivacyContext(this, base::FilePath()));
++    CHECK(content::InitializeNativePrivacyContext(this, base::FilePath(),
++                                                  *native_mode));
+   }
+   FullBrowserTransitionManager::Get()->OnProfileCreated(this);
+ 
+diff --git a/chrome/browser/profiles/profile_impl.cc b/chrome/browser/profiles/profile_impl.cc
+index 0fbc850..51f7172 100644
+--- a/chrome/browser/profiles/profile_impl.cc
++++ b/chrome/browser/profiles/profile_impl.cc
+@@ -677,6 +677,9 @@ void ProfileImpl::LoadPrefsForNormalStartup(bool async_prefs) {
+ 
+ void ProfileImpl::DoFinalInit(CreateMode create_mode) {
+   const auto* native_command = base::CommandLine::ForCurrentProcess();
++  const auto native_mode =
++      content::ResolveNativeFingerprintDerivationModeForLaunch(*native_command);
++  CHECK(native_mode.has_value());
+   if (native_command->HasSwitch(content::kNativePrivacyKeyServiceSwitch)) {
+     CHECK_EQ(native_command->GetSwitchValueASCII(content::kNativePrivacyKeyServiceSwitch), "1");
+     base::FilePath native_owned_root;
+@@ -688,9 +691,11 @@ void ProfileImpl::DoFinalInit(CreateMode create_mode) {
+       // associated frame endpoints; never pump a nested loop or delay CreateView.
+       TRACE_EVENT0("browser", "Glint.ReadOnlyStartupIdentityPreload");
+       ScopedAllowBlockingForProfile allow_native_identity_read;
+-      CHECK(content::InitializeNativePrivacyContextBeforeFirstFrame(this, native_owned_root));
++      CHECK(content::InitializeNativePrivacyContextBeforeFirstFrame(
++          this, native_owned_root, *native_mode));
+     } else {
+-      CHECK(content::InitializeNativePrivacyContext(this, native_owned_root));
++      CHECK(content::InitializeNativePrivacyContext(this, native_owned_root,
++                                                    *native_mode));
+     }
+   }
+   TRACE_EVENT0("browser", "ProfileImpl::DoFinalInit");
+diff --git a/content/browser/camouflow_native/privacy_context.cc b/content/browser/camouflow_native/privacy_context.cc
+index 73f7351..12499bb 100644
+--- a/content/browser/camouflow_native/privacy_context.cc
++++ b/content/browser/camouflow_native/privacy_context.cc
+@@ -2,6 +2,8 @@
+ // SPDX-License-Identifier: MIT
+ #include "content/public/browser/native_privacy_context.h"
+ 
++#include "base/command_line.h"
++
+ #include <utility>
+ 
+ #include "base/check.h"
+@@ -13,6 +15,31 @@
+ namespace content {
+ using camouflow::native::PrivacyKeyService;
+ 
++std::optional<NativeFingerprintDerivationMode>
++ResolveNativeFingerprintDerivationModeForLaunch(
++    const base::CommandLine& command) {
++  if (!command.HasSwitch(kNativeFingerprintDerivationModeSwitch)) {
++    return NativeFingerprintDerivationMode::kPartitionedPrivacy;
++  }
++  if (!command.HasSwitch(kNativePrivacyKeyServiceSwitch) ||
++      command.GetSwitchValueASCII(kNativePrivacyKeyServiceSwitch) != "1") {
++    return std::nullopt;
++  }
++  const auto value =
++      command.GetSwitchValueASCII(kNativeFingerprintDerivationModeSwitch);
++  if (value == "partitioned-privacy") {
++    return NativeFingerprintDerivationMode::kPartitionedPrivacy;
++  }
++  if (value != "profile-identity" ||
++      !command.HasSwitch("glint-document-surface-bootstrap-test") ||
++      !command.HasSwitch("glint-worker-surface-bootstrap-test") ||
++      command.HasSwitch("glint-document-canvas-bootstrap-test") ||
++      command.HasSwitch("glint-worker-canvas-bootstrap-test")) {
++    return std::nullopt;
++  }
++  return NativeFingerprintDerivationMode::kProfileIdentity;
++}
++
+ bool InitializeNativePrivacyContext(BrowserContext* context,
+                                     const base::FilePath& owned_root,
+                                     NativeFingerprintDerivationMode mode) {
+diff --git a/content/browser/camouflow_native/privacy_context_unittest.cc b/content/browser/camouflow_native/privacy_context_unittest.cc
+index dc61290..8a28a73 100644
+--- a/content/browser/camouflow_native/privacy_context_unittest.cc
++++ b/content/browser/camouflow_native/privacy_context_unittest.cc
+@@ -6,9 +6,10 @@
+ #include <optional>
+ #include <string>
+ 
+-#include "base/test/bind.h"
++#include "base/command_line.h"
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_temp_dir.h"
++#include "base/test/bind.h"
+ #include "content/browser/camouflow_native/privacy_key_service.h"
+ #include "content/public/test/browser_task_environment.h"
+ #include "content/public/test/test_browser_context.h"
+@@ -629,5 +630,65 @@ TEST_F(NativePrivacyBrowserContextTest,
+   EXPECT_FALSE(base::PathExists(IdentityPath()));
+ }
+ 
++TEST_F(NativePrivacyBrowserContextTest,
++       LaunchWithoutModePreservesCompatibilityDefault) {
++  base::CommandLine command(base::CommandLine::NO_PROGRAM);
++  EXPECT_EQ(ResolveNativeFingerprintDerivationModeForLaunch(command),
++            NativeFingerprintDerivationMode::kPartitionedPrivacy);
++}
++
++TEST_F(NativePrivacyBrowserContextTest,
++       ExplicitLaunchModeRequiresEnabledKeyService) {
++  base::CommandLine command(base::CommandLine::NO_PROGRAM);
++  command.AppendSwitchASCII(kNativeFingerprintDerivationModeSwitch,
++                            "partitioned-privacy");
++  EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++  command.AppendSwitchASCII(kNativePrivacyKeyServiceSwitch, "0");
++  EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++  command.AppendSwitchASCII(kNativePrivacyKeyServiceSwitch, "1");
++  EXPECT_EQ(ResolveNativeFingerprintDerivationModeForLaunch(command),
++            NativeFingerprintDerivationMode::kPartitionedPrivacy);
++  for (const auto* invalid :
++       {"", "unknown", "PROFILE-IDENTITY", "profile-identity "}) {
++    command.AppendSwitchASCII(kNativeFingerprintDerivationModeSwitch, invalid);
++    EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++  }
++}
++
++TEST_F(NativePrivacyBrowserContextTest,
++       IdentityLaunchRequiresBothFullSurfacePolicies) {
++  base::CommandLine command(base::CommandLine::NO_PROGRAM);
++  command.AppendSwitchASCII(kNativePrivacyKeyServiceSwitch, "1");
++  command.AppendSwitchASCII(kNativeFingerprintDerivationModeSwitch,
++                            "profile-identity");
++  EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++  command.AppendSwitch("glint-document-surface-bootstrap-test");
++  EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++  command.RemoveSwitch("glint-document-surface-bootstrap-test");
++  command.AppendSwitch("glint-worker-surface-bootstrap-test");
++  EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++  command.AppendSwitch("glint-document-surface-bootstrap-test");
++  EXPECT_EQ(ResolveNativeFingerprintDerivationModeForLaunch(command),
++            NativeFingerprintDerivationMode::kProfileIdentity);
++}
++
++TEST_F(NativePrivacyBrowserContextTest,
++       IdentityLaunchRejectsEitherLegacyCanvasConflict) {
++  base::CommandLine command(base::CommandLine::NO_PROGRAM);
++  command.AppendSwitchASCII(kNativePrivacyKeyServiceSwitch, "1");
++  command.AppendSwitchASCII(kNativeFingerprintDerivationModeSwitch,
++                            "profile-identity");
++  command.AppendSwitch("glint-document-surface-bootstrap-test");
++  command.AppendSwitch("glint-worker-surface-bootstrap-test");
++  for (const auto* legacy : {"glint-document-canvas-bootstrap-test",
++                             "glint-worker-canvas-bootstrap-test"}) {
++    command.AppendSwitch(legacy);
++    EXPECT_FALSE(ResolveNativeFingerprintDerivationModeForLaunch(command));
++    command.RemoveSwitch(legacy);
++    EXPECT_EQ(ResolveNativeFingerprintDerivationModeForLaunch(command),
++              NativeFingerprintDerivationMode::kProfileIdentity);
++  }
++}
++
+ }  // namespace
+ }  // namespace content
+diff --git a/content/public/browser/native_privacy_context.h b/content/public/browser/native_privacy_context.h
+index 8f97557..6b2fad9 100644
+--- a/content/public/browser/native_privacy_context.h
++++ b/content/public/browser/native_privacy_context.h
+@@ -10,7 +10,10 @@
+ #include "base/functional/callback_forward.h"
+ #include "content/common/content_export.h"
+ 
+-namespace base { class FilePath; }
++namespace base {
++class FilePath;
++class CommandLine;
++}  // namespace base
+ namespace blink { class StorageKey; }
+ namespace content {
+ class BrowserContext;
+@@ -29,6 +32,15 @@ inline bool IsValidNativeFingerprintDerivationMode(
+ // Explicit development opt-in; does not enable any protected fingerprint surface.
+ inline constexpr char kNativePrivacyKeyServiceSwitch[] = "camouflow-native-privacy-key-service";
+ 
++// Development-only browser selection. Never copied to renderer command lines.
++inline constexpr char kNativeFingerprintDerivationModeSwitch[] =
++    "glint-fingerprint-derivation-mode";
++// An explicit mode requires the key service; profile identity requires full
++// document/worker surface bootstrap without either legacy Canvas bootstrap.
++CONTENT_EXPORT std::optional<NativeFingerprintDerivationMode>
++ResolveNativeFingerprintDerivationModeForLaunch(
++    const base::CommandLine& command);
++
+ // UI thread only. Persistent roots must be owned and process-locked by the embedder.
+ // Off-the-record contexts require an empty root and never read the persistent key.
+ CONTENT_EXPORT bool InitializeNativePrivacyContext(

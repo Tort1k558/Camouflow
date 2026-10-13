@@ -21,6 +21,7 @@ MODE_PATCH = ROOT / "native/drafts/profile-identity/immutable_identity_mode_cand
 CONTEXT_PATCH = ROOT / "native/drafts/profile-identity/identity_context_tests_candidate.patch"
 TRANSPORT_PATCH = ROOT / "native/drafts/profile-identity/identity_transport_v3_candidate.patch"
 HANDOFF_PATCH = ROOT / "native/drafts/profile-identity/identity_handoff_tests_candidate.patch"
+LAUNCH_PATCH = ROOT / "native/drafts/profile-identity/identity_launch_candidate.patch"
 PREFIX = "content/browser/camouflow_native/"
 PATHS = {PREFIX + name for name in (
     "privacy_partition.h", "privacy_key_derivation.h", "privacy_key_derivation.cc",
@@ -78,6 +79,16 @@ HANDOFF_FIXTURES = {
         "UnknownIdentityModeRejectsEvaluation",
         "StableIdentityModeCannotReplaceFinalOrigin"),
 }
+LAUNCH_PATHS = {"content/public/browser/native_privacy_context.h",
+                PREFIX + "privacy_context.cc", CONTEXT_PATH,
+                "chrome/browser/profiles/profile_impl.cc",
+                "chrome/browser/profiles/off_the_record_profile_impl.cc"}
+LAUNCH_FIXTURES = (
+    "LaunchWithoutModePreservesCompatibilityDefault",
+    "ExplicitLaunchModeRequiresEnabledKeyService",
+    "IdentityLaunchRequiresBothFullSurfacePolicies",
+    "IdentityLaunchRejectsEitherLegacyCanvasConflict",
+)
 
 
 def verify_bindings(source: Path, overlay: Path, env: dict) -> dict:
@@ -130,7 +141,8 @@ def reference_vectors() -> dict[str, str]:
 
 def verify(workspace: Path, report: Path, *, include_mode: bool = False,
            include_transport: bool = False, check_bindings: bool = False,
-           include_handoff: bool = False) -> dict:
+           include_handoff: bool = False, include_launch: bool = False) -> dict:
+    include_handoff = include_handoff or include_launch
     include_transport = include_transport or check_bindings or include_handoff
     include_mode = include_mode or include_transport
     source = workspace / "chromium/src"
@@ -165,6 +177,11 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False,
             raise ValueError("Identity handoff candidate source coverage differs")
         patches.append(HANDOFF_PATCH)
         paths.update(HANDOFF_FIXTURES)
+    if include_launch:
+        if patch_paths(LAUNCH_PATCH.read_text(encoding="utf-8-sig")) != LAUNCH_PATHS:
+            raise ValueError("Identity launch candidate source coverage differs")
+        patches.append(LAUNCH_PATCH)
+        paths.update(LAUNCH_PATHS)
     if any((source / name).resolve() != source / name for name in paths):
         raise ValueError("Profile identity inputs must not follow links")
     before = {name: digest(source / name) for name in paths}
@@ -205,6 +222,10 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False,
                 text = (overlay / name).read_text(encoding="utf-8-sig")
                 if any(fixture not in text for fixture in expected):
                     raise ValueError("Identity Blink handoff native fixture coverage differs")
+        if include_launch:
+            context_fixtures = (overlay / CONTEXT_PATH).read_text(encoding="utf-8-sig")
+            if any(fixture not in context_fixtures for fixture in LAUNCH_FIXTURES):
+                raise ValueError("Identity launch native fixture coverage differs")
         if check_bindings:
             bindings = verify_bindings(source, overlay, env)
         composed = {name: digest(overlay / name) for name in paths}
@@ -217,6 +238,7 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False,
               "context_mode_fixtures_replayed": include_mode,
               "identity_transport_candidate_replayed": include_transport,
               "identity_handoff_fixtures_replayed": include_handoff,
+              "identity_launch_candidate_replayed": include_launch,
               "bindings": bindings,
               "active_source_unchanged": True, "inputs": inputs, "composed_source": composed,
               "independent_reference_vectors": vectors, "registered_patches": registered}
@@ -236,10 +258,12 @@ def main() -> int:
                         help="Also generate isolated pinned Mojo C++ bindings; no native compilation")
     parser.add_argument("--include-handoff", action="store_true",
                         help="Also replay Blink mode handoff fixtures after the v3 candidate")
+    parser.add_argument("--include-launch", action="store_true",
+                        help="Also replay strict Chrome launch selection and all preceding candidates")
     args = parser.parse_args()
     result = verify(args.workspace, args.report, include_mode=args.include_mode,
                     include_transport=args.include_transport, check_bindings=args.check_bindings,
-                    include_handoff=args.include_handoff)
+                    include_handoff=args.include_handoff, include_launch=args.include_launch)
     print(json.dumps({key: result[key] for key in ("passed", "compiled", "mode_enabled")}))
     return 0
 

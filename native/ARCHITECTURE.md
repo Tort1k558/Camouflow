@@ -43,6 +43,10 @@ first-script renderer/worker handoff and launch/UI selection remain unverified.
 The fifth candidate adds six Blink fixture definitions for before-script mode
 retention, independent document clones, invalid mode rejection and worker-origin
 binding. Their source composition is checked, not their native execution.
+The sixth candidate prepares browser-only launch selection with strict service,
+full document/worker surface and legacy-conflict checks. Persistent/incognito
+initialization passes the immutable mode to its own service; renderer command
+lines do not receive it. Four more launch fixture definitions remain unexecuted.
 This does not enable an identity mode in the currently compiling browser.
 
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy
