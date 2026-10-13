@@ -231,17 +231,24 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
                     if first.get(key) != second.get(key):
                         mismatches.append(f"Document and dedicated worker disagree on webgpu {key}")
         document_graphics, worker_graphics = document.get("graphics", {}), worker.get("graphics", {})
-        for kind in ("webgl", "webgl2"):
-            if kind in document_graphics and kind in worker_graphics:
-                first, second = document_graphics[kind], worker_graphics[kind]
-                if first.get("available") != second.get("available"):
-                    mismatches.append(f"Document and dedicated worker disagree on {kind} availability")
-                elif first.get("available"):
-                    for key in ("vendor", "renderer", "version", "shadingLanguage", "unmaskedVendor",
-                                "unmaskedRenderer", "maxTextureSize", "maxViewportDimensions",
-                                "extensions", "limits", "contextAttributes"):
-                        if first.get(key) != second.get(key):
-                            mismatches.append(f"Document and dedicated worker disagree on {kind} {key}")
+        if not isinstance(document_graphics, dict) or not isinstance(worker_graphics, dict):
+            mismatches.append("WebGL observations could not be compared")
+        else:
+            for kind in ("webgl", "webgl2"):
+                if kind in document_graphics and kind in worker_graphics:
+                    first, second = document_graphics[kind], worker_graphics[kind]
+                    if (not isinstance(first, dict) or not isinstance(second, dict)
+                            or type(first.get("available")) is not bool or type(second.get("available")) is not bool):
+                        mismatches.append(f"{kind} observations could not be compared")
+                        continue
+                    if first.get("available") != second.get("available"):
+                        mismatches.append(f"Document and dedicated worker disagree on {kind} availability")
+                    elif first.get("available"):
+                        for key in ("vendor", "renderer", "version", "shadingLanguage", "unmaskedVendor",
+                                    "unmaskedRenderer", "maxTextureSize", "maxViewportDimensions",
+                                    "extensions", "limits", "contextAttributes"):
+                            if first.get(key) != second.get(key):
+                                mismatches.append(f"Document and dedicated worker disagree on {kind} {key}")
     for scope in ("document", "worker"):
         if (observed.get(scope) or {}).get("userAgentDataError"):
             mismatches.append(f"{scope.capitalize()} high-entropy client hints could not be observed: "
@@ -420,10 +427,66 @@ def audit_observed_request_identity(headers: dict, observed: dict, *, strict_cli
     return issues
 
 
+def audit_observed_graphics(observed: dict) -> list[str]:
+    """Validate emitted GPU observations, without fabricating unavailable APIs."""
+    issues = []
+    gl_limits = {"MAX_TEXTURE_SIZE", "MAX_CUBE_MAP_TEXTURE_SIZE", "MAX_RENDERBUFFER_SIZE",
+                 "MAX_VERTEX_ATTRIBS", "MAX_TEXTURE_IMAGE_UNITS", "MAX_VERTEX_TEXTURE_IMAGE_UNITS"}
+    gpu_limits = {"maxTextureDimension2D", "maxBindGroups", "maxBufferSize", "maxStorageBufferBindingSize",
+                  "maxComputeWorkgroupSizeX", "maxComputeInvocationsPerWorkgroup"}
+
+    def valid_names(value):
+        return (isinstance(value, list) and all(isinstance(name, str) and name for name in value)
+                and len(value) == len(set(value)))
+
+    def valid_limits(value, names):
+        return (isinstance(value, dict) and set(value) == names
+                and all(type(limit) is int and limit >= 0 for limit in value.values()))
+
+    for scope in ("document", "worker"):
+        values = observed.get(scope)
+        if not isinstance(values, dict):
+            continue
+        if "graphics" in values:
+            graphics = values["graphics"]
+            if not isinstance(graphics, dict) or set(graphics) != {"webgl", "webgl2"}:
+                issues.append(f"{scope.capitalize()} WebGL context coverage is incomplete")
+            else:
+                for kind, row in graphics.items():
+                    valid = isinstance(row, dict) and type(row.get("available")) is bool
+                    if valid and row["available"]:
+                        dimensions = row.get("maxViewportDimensions")
+                        valid = (all(isinstance(row.get(key), str) for key in ("vendor", "renderer", "version", "shadingLanguage"))
+                                 and all(key in row and (row[key] is None or isinstance(row[key], str)) for key in ("unmaskedVendor", "unmaskedRenderer"))
+                                 and valid_names(row.get("extensions")) and valid_limits(row.get("limits"), gl_limits)
+                                 and type(row.get("maxTextureSize")) is int and row["maxTextureSize"] > 0
+                                 and row["limits"]["MAX_TEXTURE_SIZE"] == row["maxTextureSize"]
+                                 and isinstance(dimensions, list) and len(dimensions) == 2
+                                 and all(type(value) is int and value > 0 for value in dimensions)
+                                 and isinstance(row.get("contextAttributes"), dict) and bool(row["contextAttributes"]))
+                    if not valid:
+                        issues.append(f"{scope.capitalize()} {kind} capability observation is incomplete or malformed")
+        if "webgpu" in values:
+            row = values["webgpu"]
+            valid = isinstance(row, dict) and type(row.get("available")) is bool
+            if valid and row["available"]:
+                info = row.get("info")
+                valid = (valid_names(row.get("features")) and valid_limits(row.get("limits"), gpu_limits)
+                         and isinstance(info, dict)
+                         and all(isinstance(info.get(key), str) for key in ("vendor", "architecture", "device", "description"))
+                         and type(info.get("isFallbackAdapter")) is bool
+                         and all(type(info.get(key)) is int and info[key] >= 0 for key in ("subgroupMinSize", "subgroupMaxSize"))
+                         and info["subgroupMinSize"] <= info["subgroupMaxSize"])
+            if not valid:
+                issues.append(f"{scope.capitalize()} WebGPU capability observation is incomplete or malformed")
+    return issues
+
+
 async def inspect_native_profile(page, configuration: NativeConfiguration, browser_version: str) -> dict:
     configuration.validate()
     observed = await page.evaluate(OBSERVE)
-    mismatches = compare_observed(configuration, observed) + audit_observed_identity(observed, browser_version)
+    mismatches = (compare_observed(configuration, observed) + audit_observed_identity(observed, browser_version)
+                  + audit_observed_graphics(observed))
     return {"browser_version": browser_version, "configuration": asdict(configuration),
             "observed": observed, "mismatches": mismatches,
             "limitations": configuration.limitations(), "native_patch_capabilities": []}

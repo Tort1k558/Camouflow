@@ -15,6 +15,15 @@ the [Glint test matrix](GLINT_TEST_MATRIX.md). Update it for every linked build.
 Never treat one level as proof of a broader level. Prepared/unapplied patches,
 upstream SDK controls and old reports are not proof of a new own-engine release.
 
+Manager diagnostics now validate emitted WebGL/WebGPU capability structures
+before treating equal values as meaningful: context coverage, boolean availability,
+unique extension/features lists, integer limits, texture/limit agreement,
+viewport dimensions and adapter-info/subgroup fields. Unavailable APIs remain
+unavailable; no renderer/adapter or capability is synthesized. Legacy comparisons
+remain compatible, and missing GPU sections in older observations do not become
+new evidence. This is observation validation, not measured preset admission or
+proof that a driver identity is plausible.
+
 ## Public gates
 
 | Tool | Scope |

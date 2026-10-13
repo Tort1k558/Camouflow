@@ -619,6 +619,56 @@ def test_native_graphics_diagnostics_detects_document_worker_disagreement(key):
         f"Document and dedicated worker disagree on webgl2 {key}"]
 
 
+@pytest.mark.parametrize("mutation", [None, "missing-context", "missing-limits", "boolean-limit", "texture-conflict",
+                                    "duplicate-extension", "missing-features", "subgroup-conflict", "missing-info"])
+def test_native_graphics_audit_rejects_identically_incomplete_capabilities(mutation):
+    import copy
+    from app.core.native.diagnostics import audit_observed_graphics
+
+    gl_limits = {name: 16 for name in ("MAX_TEXTURE_SIZE", "MAX_CUBE_MAP_TEXTURE_SIZE", "MAX_RENDERBUFFER_SIZE",
+                 "MAX_VERTEX_ATTRIBS", "MAX_TEXTURE_IMAGE_UNITS", "MAX_VERTEX_TEXTURE_IMAGE_UNITS")}
+    gl = {"available": True, "vendor": "native", "renderer": "native", "version": "native",
+          "shadingLanguage": "native", "unmaskedVendor": None, "unmaskedRenderer": None,
+          "maxTextureSize": 16, "maxViewportDimensions": [16, 16], "extensions": [],
+          "limits": gl_limits, "contextAttributes": {"alpha": True}}
+    gpu = {"available": True, "features": [],
+           "limits": {name: 16 for name in ("maxTextureDimension2D", "maxBindGroups", "maxBufferSize",
+                      "maxStorageBufferBindingSize", "maxComputeWorkgroupSizeX", "maxComputeInvocationsPerWorkgroup")},
+           "info": {"vendor": "", "architecture": "", "device": "", "description": "",
+                    "isFallbackAdapter": False, "subgroupMinSize": 4, "subgroupMaxSize": 8}}
+    row = {"graphics": {"webgl": gl, "webgl2": copy.deepcopy(gl)}, "webgpu": gpu}
+    if mutation == "missing-context":
+        row["graphics"].pop("webgl")
+    elif mutation == "missing-limits":
+        gl.pop("limits")
+    elif mutation == "boolean-limit":
+        gl["limits"]["MAX_TEXTURE_SIZE"] = True
+    elif mutation == "texture-conflict":
+        gl["maxTextureSize"] = 32
+    elif mutation == "duplicate-extension":
+        gl["extensions"] = ["native-extension", "native-extension"]
+    elif mutation == "missing-features":
+        gpu.pop("features")
+    elif mutation == "subgroup-conflict":
+        gpu["info"]["subgroupMinSize"] = 16
+    elif mutation == "missing-info":
+        gpu.pop("info")
+    observed = {"document": row, "worker": copy.deepcopy(row)}
+    issues = audit_observed_graphics(observed)
+    assert bool(issues) is (mutation is not None)
+    if issues:
+        assert any(issue.startswith("Document") for issue in issues)
+        assert any(issue.startswith("Worker") for issue in issues)
+
+
+def test_native_graphics_audit_preserves_unavailable_apis_without_capability_claim():
+    from app.core.native.diagnostics import audit_observed_graphics
+
+    row = {"graphics": {kind: {"available": False, "error": "Unavailable"} for kind in ("webgl", "webgl2")},
+           "webgpu": {"available": False, "error": "Unavailable"}}
+    assert audit_observed_graphics({"document": row, "worker": row}) == []
+
+
 def test_native_graphics_diagnostics_preserves_unavailable_contexts_without_fake_renderer():
     from app.core.native.diagnostics import compare_observed
 

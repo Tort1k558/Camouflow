@@ -221,13 +221,18 @@ steps and the unresolved first-download transport limitation.
   failed fresh download with cached files and call it a clean build.
 - depot_tools global-Git recommendations are warnings. Keep the project's
   workspace-local configuration instead of applying suggested global changes.
-- On `LLVM ERROR: out of memory`, retain the output and retry the build command
-  with `--jobs 2` (or `--jobs 1` for a single large object). Four jobs are a
-  concurrency maximum, not a total-memory cap. Do not rerun sync or erase cached
-  objects to recover from an OOM.
+- On `LLVM ERROR: out of memory`, retain the failed report/log/reproducer and
+  inspect physical memory and Windows commit headroom. `-j4` limits concurrent
+  local work, not total memory: see the [official Siso concurrency documentation](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/siso_tips.md).
+  Known heavy object targets can be compiled separately with the same `-j4`,
+  production flags and diagnostics, then reused by the cached full build.
+  This worked for generated navigation, instrumentation and CSS shorthand
+  objects on 001-058. Do not silently lower an explicitly requested job count,
+  suppress diagnostics, rerun sync or erase cached objects to recover from OOM.
 
 Individual preparation, build and runtime stages have been exercised in the
 development workspace. This consolidated fresh-machine sequence has **not yet
 been replayed end to end on a new machine**. Existing runtime proof covers the
-001–010 baseline; newer key/context code and prepared branding/readiness must
+001-047 browser; registered source is 001-058 and its identity key/service target
+passed 62 cases. Context/transport/handoff, new-mode runtime and prepared branding still must
 be compiled and verified before claiming them in a released browser.
