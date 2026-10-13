@@ -264,3 +264,26 @@ sandbox delivery, first-script/browser-context tests, popup/creator lifecycle
 regressions and XSLT/discard behavior also remain unverified. The earlier
 four-patch promotion snapshot predates this new source and must be regenerated
 before any promotion. Nothing here is registered or active in the current build.
+
+## Bounded popup readiness candidate
+
+`window_privacy_readiness.patch` holds a validated `CreateNewWindow` request
+while its BrowserContext loads the existing identity. It waits asynchronously,
+for at most ten seconds, without blocking the browser UI or returning raw
+policy. Each requesting RFH admits at most one pending request. Missing service,
+read failure, shutdown and timeout return the existing blocked-window result.
+
+Completion stops the timer and invalidates late replies before invoking the
+one-shot callback, which may destroy the waiter. RFH destruction cancels it.
+Before retrying the original creation path, the callback verifies the original
+render-frame generation, document token and live renderer. The original path
+rechecks sandbox restrictions, URL and current activation; the wait does not
+extend or fabricate a user gesture. Eight native fixtures are prepared, not
+executed, including inline destruction and late-reply cancellation.
+
+This is **popup readiness, not a solution for cold initial main-view creation**.
+Simply deferring `CreateView` while marking its associated frame live is unsafe:
+Mojo's endpoint client CHECKs calls before interface association. A main-view
+barrier must precede that creation/lifecycle boundary; it cannot be implemented
+as a postponed send or a sleep. That integration, true timeout execution and
+full RFH/popup lifecycle regressions remain mandatory before activation.

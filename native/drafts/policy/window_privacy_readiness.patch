@@ -1,0 +1,369 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+index efe165f124b0be69dbacad9d1679978dafa0cb5e..82a06773b6cce2dc2084111ec63c0eba1163ab16 100644
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -707,6 +707,8 @@ source_set("browser") {
+     "camouflow_native/glint/surface_policy_producer.h",
+     "camouflow_native/glint/document_surface_commit_producer.h",
+     "camouflow_native/glint/document_surface_commit_producer.cc",
++    "camouflow_native/glint/window_privacy_readiness.cc",
++    "camouflow_native/glint/window_privacy_readiness.h",
+     "camouflow_native/privacy_context.cc",
+     "camouflow_native/privacy_document_commit.cc",
+     "camouflow_native/privacy_document_commit.h",
+diff --git a/content/browser/camouflow_native/glint/window_privacy_readiness.cc b/content/browser/camouflow_native/glint/window_privacy_readiness.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..d1d6b842217ef3a4707b2e39536a97a82a7ed962
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/window_privacy_readiness.cc
+@@ -0,0 +1,52 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "window_privacy_readiness.h"
++
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/time/time.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/native_privacy_context.h"
++
++namespace glint::candidate {
++WindowPrivacyReadiness::WindowPrivacyReadiness(
++    content::BrowserContext* context,
++    base::OnceCallback<void(bool)> callback)
++    : context_(context ? context->GetWeakPtr() : nullptr),
++      callback_(std::move(callback)) {}
++
++WindowPrivacyReadiness::~WindowPrivacyReadiness() = default;
++
++void WindowPrivacyReadiness::Start() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (started_ || !callback_) {
++    return;
++  }
++  started_ = true;
++  if (!context_ || context_->ShutdownStarted()) {
++    Complete(false);
++    return;
++  }
++  timer_.Start(FROM_HERE, base::Seconds(10),
++               base::BindOnce(&WindowPrivacyReadiness::Complete,
++                              weak_factory_.GetWeakPtr(), false));
++  // Ready/failed/shutdown may settle inline. Do not access members afterwards.
++  content::WhenNativePrivacyContextReady(
++      context_.get(), base::BindOnce(&WindowPrivacyReadiness::Complete,
++                                     weak_factory_.GetWeakPtr()));
++}
++
++void WindowPrivacyReadiness::Complete(bool ready) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!callback_) {
++    return;
++  }
++  ready = ready && context_ && !context_->ShutdownStarted() &&
++          content::IsNativePrivacyContextReady(context_.get());
++  timer_.Stop();
++  weak_factory_.InvalidateWeakPtrs();
++  auto callback = std::move(callback_);
++  std::move(callback).Run(ready);
++}
++}  // namespace glint::candidate
+diff --git a/content/browser/camouflow_native/glint/window_privacy_readiness.h b/content/browser/camouflow_native/glint/window_privacy_readiness.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..a36d4ed7689c1299ad115f263afc1cb98c27b4e2
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/window_privacy_readiness.h
+@@ -0,0 +1,36 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_WINDOW_PRIVACY_READINESS_H_
++#define GLINT_WINDOW_PRIVACY_READINESS_H_
++
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "content/common/content_export.h"
++#include "content/public/browser/browser_context.h"
++
++namespace glint::candidate {
++// Owned by the requesting RFH. Destruction cancels rather than invoking a
++// callback on a destroyed frame; terminal completion may destroy this object.
++class CONTENT_EXPORT WindowPrivacyReadiness {
++ public:
++  WindowPrivacyReadiness(content::BrowserContext* context,
++                         base::OnceCallback<void(bool)> callback);
++  ~WindowPrivacyReadiness();
++  WindowPrivacyReadiness(const WindowPrivacyReadiness&) = delete;
++  WindowPrivacyReadiness& operator=(const WindowPrivacyReadiness&) = delete;
++
++  void Start();
++
++ private:
++  void Complete(bool ready);
++
++  base::WeakPtr<content::BrowserContext> context_;
++  base::OnceCallback<void(bool)> callback_;
++  bool started_ = false;
++  base::OneShotTimer timer_;
++  base::WeakPtrFactory<WindowPrivacyReadiness> weak_factory_{this};
++};
++}  // namespace glint::candidate
++
++#endif
+diff --git a/content/browser/camouflow_native/glint/window_privacy_readiness_unittest.cc b/content/browser/camouflow_native/glint/window_privacy_readiness_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..3f05e6e2fb77027149f4669f1a86e624ddaf44a5
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/window_privacy_readiness_unittest.cc
+@@ -0,0 +1,144 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "window_privacy_readiness.h"
++
++#include <memory>
++
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/test/bind.h"
++#include "content/public/browser/native_privacy_context.h"
++#include "content/public/test/test_renderer_host.h"
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace glint::candidate {
++namespace {
++class GlintWindowPrivacyReadinessTest : public content::RenderViewHostTestHarness {
++ public:
++  GlintWindowPrivacyReadinessTest()
++      : RenderViewHostTestHarness(
++            base::test::TaskEnvironment::TimeSource::MOCK_TIME,
++            base::test::TaskEnvironment::ThreadPoolExecutionMode::QUEUED) {}
++
++ protected:
++  void SetUp() override {
++    RenderViewHostTestHarness::SetUp();
++    ASSERT_TRUE(owned_.CreateUniqueTempDir());
++    ASSERT_TRUE(base::WriteFile(owned_.GetPath().AppendASCII("camouflow-native-privacy.json"),
++        R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})"));
++  }
++  void TearDown() override {
++    content::ShutdownNativePrivacyContext(browser_context());
++    task_environment()->RunUntilIdle();
++    RenderViewHostTestHarness::TearDown();
++  }
++  void Initialize() {
++    ASSERT_TRUE(content::InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  }
++  base::ScopedTempDir owned_;
++};
++}  // namespace
++
++TEST_F(GlintWindowPrivacyReadinessTest, MissingContextRejectsInline) {
++  int calls = 0;
++  WindowPrivacyReadiness request(nullptr, base::BindLambdaForTesting([&](bool ready) {
++    EXPECT_FALSE(ready);
++    ++calls;
++  }));
++  request.Start();
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(GlintWindowPrivacyReadinessTest, UninitializedContextRejectsInline) {
++  int calls = 0;
++  WindowPrivacyReadiness request(browser_context(), base::BindLambdaForTesting([&](bool ready) {
++    EXPECT_FALSE(ready);
++    ++calls;
++  }));
++  request.Start();
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(GlintWindowPrivacyReadinessTest, LoadingWaitsForActualProfileReadiness) {
++  Initialize();
++  int calls = 0;
++  WindowPrivacyReadiness request(browser_context(), base::BindLambdaForTesting([&](bool ready) {
++    EXPECT_TRUE(ready);
++    ++calls;
++  }));
++  request.Start();
++  EXPECT_EQ(calls, 0);
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(calls, 1);
++  task_environment()->FastForwardBy(base::Seconds(20));
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(GlintWindowPrivacyReadinessTest, DuplicateStartDoesNotRequestTwice) {
++  Initialize();
++  int calls = 0;
++  WindowPrivacyReadiness request(browser_context(), base::BindLambdaForTesting([&](bool ready) {
++    EXPECT_TRUE(ready);
++    ++calls;
++  }));
++  request.Start();
++  request.Start();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(GlintWindowPrivacyReadinessTest, DestructionCancelsBeforeServiceReply) {
++  Initialize();
++  int calls = 0;
++  auto request = std::make_unique<WindowPrivacyReadiness>(browser_context(),
++      base::BindLambdaForTesting([&](bool) { ++calls; }));
++  request->Start();
++  request.reset();
++  task_environment()->RunUntilIdle();
++  task_environment()->FastForwardBy(base::Seconds(20));
++  EXPECT_EQ(calls, 0);
++}
++
++TEST_F(GlintWindowPrivacyReadinessTest, ShutdownSettlesFailureOnce) {
++  Initialize();
++  int calls = 0;
++  WindowPrivacyReadiness request(browser_context(), base::BindLambdaForTesting([&](bool ready) {
++    EXPECT_FALSE(ready);
++    ++calls;
++  }));
++  request.Start();
++  content::ShutdownNativePrivacyContext(browser_context());
++  task_environment()->RunUntilIdle();
++  task_environment()->FastForwardBy(base::Seconds(20));
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(GlintWindowPrivacyReadinessTest, MalformedIdentityDoesNotOpenWindow) {
++  ASSERT_TRUE(base::WriteFile(owned_.GetPath().AppendASCII("camouflow-native-privacy.json"), "invalid"));
++  Initialize();
++  int calls = 0;
++  WindowPrivacyReadiness request(browser_context(), base::BindLambdaForTesting([&](bool ready) {
++    EXPECT_FALSE(ready);
++    ++calls;
++  }));
++  request.Start();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(GlintWindowPrivacyReadinessTest, InlineCallbackMayDestroyRequest) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  std::unique_ptr<WindowPrivacyReadiness> request;
++  int calls = 0;
++  request = std::make_unique<WindowPrivacyReadiness>(browser_context(),
++      base::BindLambdaForTesting([&](bool ready) {
++        EXPECT_TRUE(ready);
++        ++calls;
++        request.reset();
++      }));
++  request->Start();
++  EXPECT_FALSE(request);
++  EXPECT_EQ(calls, 1);
++}
++}  // namespace glint::candidate
+diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
+index 90ec3cafb9025342752dced557cef7ca7e889424..100f157e3f131f045faf313d1a59153d5eac4053 100644
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -4,6 +4,8 @@
+ 
+ #include "content/browser/renderer_host/render_frame_host_impl.h"
+ #include "content/browser/camouflow_native/glint/document_surface_commit_producer.h"
++#include "content/browser/camouflow_native/glint/window_privacy_readiness.h"
++#include "content/public/browser/native_privacy_context.h"
+ 
+ #include <algorithm>
+ #include <cstdint>
+@@ -10194,6 +10196,22 @@ base::SafeRef<RenderFrameHostImpl> RenderFrameHostImpl::GetSafeRef() const {
+   return weak_ptr_factory_.GetSafeRef();
+ }
+ 
++void RenderFrameHostImpl::OnGlintWindowPrivacyReady(
++    base::WeakPtr<RenderFrameHostImpl> requesting_frame,
++    blink::DocumentToken requesting_document,
++    mojom::CreateNewWindowParamsPtr params,
++    CreateNewWindowCallback callback,
++    bool ready) {
++  glint_window_privacy_readiness_.reset();
++  if (!ready || !requesting_frame || !IsRenderFrameLive() ||
++      requesting_document != GetDocumentTokenIgnoringSafetyRestrictions()) {
++    std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
++    return;
++  }
++  // Revalidate sandbox, URL, lifecycle and activation in the original path.
++  CreateNewWindow(std::move(params), std::move(callback));
++}
++
+ void RenderFrameHostImpl::CreateNewWindow(
+     mojom::CreateNewWindowParamsPtr params,
+     CreateNewWindowCallback callback) {
+@@ -10245,6 +10263,26 @@ void RenderFrameHostImpl::CreateNewWindow(
+     }
+   }
+ 
++  const auto* privacy_command = base::CommandLine::ForCurrentProcess();
++  if (privacy_command->HasSwitch("glint-document-surface-bootstrap-test") &&
++      !privacy_command->HasSwitch("glint-document-canvas-bootstrap-test") &&
++      !IsNativePrivacyContextReady(GetBrowserContext())) {
++    if (glint_window_privacy_readiness_) {
++      std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
++      return;
++    }
++    glint_window_privacy_readiness_ =
++        std::make_unique<glint::candidate::WindowPrivacyReadiness>(
++            GetBrowserContext(),
++            base::BindOnce(&RenderFrameHostImpl::OnGlintWindowPrivacyReady,
++                           weak_ptr_factory_.GetWeakPtr(),
++                           render_frame_scoped_weak_ptr_factory_.GetWeakPtr(),
++                           GetDocumentTokenIgnoringSafetyRestrictions(),
++                           std::move(params), std::move(callback)));
++    glint_window_privacy_readiness_->Start();
++    return;
++  }
++
+   bool no_javascript_access = false;
+ 
+   // Filter out URLs to which navigation is disallowed from this context.
+diff --git a/content/browser/renderer_host/render_frame_host_impl.h b/content/browser/renderer_host/render_frame_host_impl.h
+index 44ebb73fb3421e7c69a83ab3dbf979487700e8e1..5b86d87601e434aa508af4db9de09652bdea6966 100644
+--- a/content/browser/renderer_host/render_frame_host_impl.h
++++ b/content/browser/renderer_host/render_frame_host_impl.h
+@@ -269,6 +269,10 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kDoNotEvictOnAXLocationChange);
+ 
+ }  // namespace features
+ 
++namespace glint::candidate {
++class WindowPrivacyReadiness;
++}
++
+ namespace content {
+ 
+ class AgentSchedulingGroupHost;
+@@ -5659,6 +5663,15 @@ class CONTENT_EXPORT RenderFrameHostImpl
+   // pre-commit opaque origin was derived from the expected token.
+   std::optional<base::UnguessableToken> last_sandbox_origin_token_for_testing_;
+ 
++  void OnGlintWindowPrivacyReady(
++      base::WeakPtr<RenderFrameHostImpl> requesting_frame,
++      blink::DocumentToken requesting_document,
++      mojom::CreateNewWindowParamsPtr params,
++      CreateNewWindowCallback callback,
++      bool ready);
++  std::unique_ptr<glint::candidate::WindowPrivacyReadiness>
++      glint_window_privacy_readiness_;
++
+   // WeakPtrFactories are the last members, to ensure they are destroyed before
+   // all other fields of `this`.
+   base::WeakPtrFactory<RenderFrameHostImpl> weak_ptr_factory_{this};
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+index 51f6f581a0c2531854b7e82d39485496dbafc56e..e74b58447d2db348a1ba2f3446836ded73cd6b33 100644
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2563,6 +2563,7 @@ test("content_unittests") {
+     "../../third_party/blink/public/common/native_privacy/glint/document_surface_policy_unittest.cc",
+     "../../third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc",
+     "../browser/camouflow_native/glint/document_surface_commit_producer_unittest.cc",
++    "../browser/camouflow_native/glint/window_privacy_readiness_unittest.cc",
+     "../browser/camouflow_native/privacy_context_unittest.cc",
+     "../browser/camouflow_native/privacy_document_commit_unittest.cc",
+     "../browser/camouflow_native/privacy_navigation_throttle_unittest.cc",

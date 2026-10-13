@@ -92,6 +92,29 @@ def test_initial_policy_origin_guard_precedes_upstream_calculation_and_cannot_bo
     assert "FinalDifferentKeyStillRejectsAdoptedPolicy" in names
 
 
+def test_popup_wait_keeps_request_and_revalidates_frame_and_document():
+    text = (DRAFTS / "policy/window_privacy_readiness.patch").read_text(encoding="utf-8-sig")
+    assert "+                           render_frame_scoped_weak_ptr_factory_.GetWeakPtr()," in text
+    assert "+                           GetDocumentTokenIgnoringSafetyRestrictions()," in text
+    assert "+      requesting_document != GetDocumentTokenIgnoringSafetyRestrictions()) {" in text
+    assert "+  glint_window_privacy_readiness_.reset();" in text
+    assert "+  CreateNewWindow(std::move(params), std::move(callback));" in text
+    assert "+    if (glint_window_privacy_readiness_) {" in text
+    assert "GetAgentSchedulingGroup().CreateView" not in text
+
+
+def test_popup_readiness_settles_once_before_destructive_callback():
+    text = (DRAFTS / "policy/window_privacy_readiness.cc").read_text(encoding="utf-8-sig")
+    assert "base::Seconds(10)" in text
+    assert text.index("timer_.Stop();") < text.index("std::move(callback).Run(ready);")
+    assert text.index("weak_factory_.InvalidateWeakPtrs();") < text.index("std::move(callback).Run(ready);")
+    assert "content::IsNativePrivacyContextReady(context_.get())" in text
+    fixtures = (DRAFTS / "policy/window_privacy_readiness_unittest.cc").read_text(encoding="utf-8-sig")
+    names = re.findall(r"TEST_F\(GlintWindowPrivacyReadinessTest, (\w+)\)", fixtures)
+    assert len(names) == len(set(names)) == 8
+    assert "InlineCallbackMayDestroyRequest" in names
+
+
 @pytest.mark.parametrize("relative", [
     "../outside.cc", "unrelated/source.cc", "content/browser/unknown.cc",
     "C:/outside.cc", "third_party\\blink\\fake.cc",
