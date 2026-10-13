@@ -83,7 +83,7 @@ def test_registered_replay_preserves_reviewed_successor_order(followups):
 
 
 @pytest.mark.parametrize("names", [batch.PROMOTED[:2], batch.FOLLOWUPS,
-                                   (*batch.PROMOTED, "0042-unreviewed.patch")])
+                                   (*batch.PROMOTED, "0043-unreviewed.patch")])
 def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
     with pytest.raises(ValueError):
         batch.registered_replay_chain([{"name": name} for name in names])
@@ -179,6 +179,21 @@ def test_child_transport_fixture_uses_public_mojo_dispatch_without_widening_rfh_
     assert "mojom::FrameHost::CreateChildFrameWithGlintPolicyCallback" in additions
     assert "static_cast<mojom::FrameHost*>(parent)->CreateChildFrameWithGlintPolicy(" in additions
     assert "friend" not in additions and "public:" not in additions
+
+
+def test_initial_policy_fixture_creates_url_origin_only_when_test_calls_factory():
+    from scripts.verify_native_document_drafts import patch_paths
+
+    patch = batch.ROOT / "native/patches/0042-native-initial-policy-fixture-scheme-lifetime.patch"
+    text = patch.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == {"third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc"}
+    additions = "\n".join(line[1:] for line in text.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert "url::Origin Origin() {" in additions
+    assert 'return url::Origin::Create(GURL("https://initial.test/"));' in additions
+    assert "const url::Origin kOrigin" not in additions
+    assert "Owned(Origin())" in additions
+    assert "DCHECK" not in additions and "ScopedSchemeRegistry" not in additions
 
 
 def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():

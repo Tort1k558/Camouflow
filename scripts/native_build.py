@@ -214,7 +214,8 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0038-native-renderer-struct-pointer-presence.patch",
         "0039-native-document-ready-commit-cancellation.patch",
         "0040-native-ready-commit-observer-lifetime.patch",
-        "0041-native-child-transport-fixture-interface.patch"))
+        "0041-native-child-transport-fixture-interface.patch",
+        "0042-native-initial-policy-fixture-scheme-lifetime.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:

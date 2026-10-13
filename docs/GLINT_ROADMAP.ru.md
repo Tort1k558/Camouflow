@@ -140,6 +140,14 @@ source/core/GN unchanged: `child-interface-compilation-001-041-v1/proof.json` н
 Replay 001–041 прошёл по 125 путям. Повторный surface-navigation gate остаётся
 на j4 и использует сохранённый кэш; 42 случая ещё не выполнены.
 Новый лог: `D:\CamouFlowNative\surface-navigation-001-041-v2-build.log`.
+Этот test binary успешно собрался за **31m17.34s**, но завершился до выполнения
+тестов: глобальный `GURL`/origin в initial-policy fixture использовал URL registry
+раньше регистрации content schemes. Патч **0042** заменяет глобальную инициализацию
+на вызываемую тестом фабрику, без отключения DCHECK или изменения production API.
+Исправленный fixture отдельно скомпилирован; proof на D:
+`initial-origin-fixture-compilation-001-042-v1/proof.json`.
+Следующий j4 прогон сохраняет объекты; 42 теста ещё не считаются выполненными.
+Лог: `D:\CamouFlowNative\surface-navigation-001-042-v3-build.log`.
 В следующем GPU-пакете подготовлен четырнадцатый passthrough fixture:
 multisample metadata сравнивается с фактическим `GL_RENDERBUFFER_SAMPLES`,
 а не с запрошенным числом samples. Формат RGBA8 сам по себе не означает

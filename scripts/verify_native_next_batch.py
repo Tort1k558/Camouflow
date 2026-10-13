@@ -22,7 +22,8 @@ FOLLOWUPS = ("0035-native-initial-origin-calculation.patch", "0036-native-worker
              "0037-native-webgl-readback-compilation.patch", "0038-native-renderer-struct-pointer-presence.patch",
              "0039-native-document-ready-commit-cancellation.patch",
              "0040-native-ready-commit-observer-lifetime.patch",
-             "0041-native-child-transport-fixture-interface.patch")
+             "0041-native-child-transport-fixture-interface.patch",
+             "0042-native-initial-policy-fixture-scheme-lifetime.patch")
 
 
 def registered_replay_chain(registered: list[dict]) -> tuple[str, ...]:

@@ -1067,7 +1067,8 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         "0022-native-worker-canvas-thread-handoff.patch", "0024-native-service-worker-canvas-thread-handoff.patch",
         "0026-native-worker-canvas-handoff-tests.patch",
         "0029-native-document-partition-validator-tests.patch",
-        "0030-native-document-commit-prototype.patch", "0032-native-document-surface-policy.patch")]
+        "0030-native-document-commit-prototype.patch", "0032-native-document-surface-policy.patch",
+        "0042-native-initial-policy-fixture-scheme-lifetime.patch")]
     monkeypatch.setattr(privacy.build, "source_patches", lambda *args: [dict(item) for item in source_patches])
     monkeypatch.setattr(privacy.build, "v8_source_patches", lambda *args: [])
     monkeypatch.setattr(privacy.build, "check_patch_dependencies", lambda *args: None)
@@ -1511,7 +1512,8 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
                  "0038-native-renderer-struct-pointer-presence.patch",
                  "0039-native-document-ready-commit-cancellation.patch",
                  "0040-native-ready-commit-observer-lifetime.patch",
-                 "0041-native-child-transport-fixture-interface.patch"):
+                 "0041-native-child-transport-fixture-interface.patch",
+                 "0042-native-initial-policy-fixture-scheme-lifetime.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1

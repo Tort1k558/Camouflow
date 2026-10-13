@@ -299,6 +299,9 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     build.require_stage(workspace / "chromium", "hooks")
     patches = build.source_patches(source, env) + build.v8_source_patches(source, env)
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
+    if (any(item["name"] == "0032-native-document-surface-policy.patch" for item in patches)
+            and target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces"}):
+        required_patches.add("0042-native-initial-policy-fixture-scheme-lifetime.patch")
     if target in {"contexts", "delivery"}:
         required_patches.add("0017-native-browser-context-tests.patch")
     if target == "contexts":
