@@ -83,6 +83,22 @@ Private proof/raw results/log: `identity-keys-001-058-v1.json`, `-tests.json`
 and `-build.log` on D. This is key/service proof, not BrowserContext, IPC,
 first-script delivery, GPU-driver coverage or linked identity-mode admission.
 
+### BrowserContext build recovery 001-058 — 2026-10-14
+
+The first `identity-contexts` build stopped after **5m49.15s**, 152 completed
+steps, with `LLVM ERROR: out of memory` while compiling generated
+`navigation_params.mojom-blink.cc`. **The 37 cases did not execute.** Failed
+report/log remain in `identity-contexts-001-058-v1.*` on D.
+
+The exact failed object subsequently compiled alone under the unchanged
+production flags, diagnostics and `j4` setting: **2m21.31s**, one executed step.
+Source, browser core, GN and receipt remained unchanged; object SHA-256:
+`5cbdc33f47b63a38fe0ead6d581e3955aa029fbfc8137d73e6e642d1e7f3624b`.
+Private proof, log and saved Clang reproducer:
+`navigation-object-001-058-isolated-v1/` on D. The full cached j4 retry uses
+`identity-contexts-001-058-v2.json`; object compilation is not a passing
+BrowserContext gate or linked browser result.
+
 ### Additional owned browser gates 001-047 — 2026-10-14
 
 | Gate | Result | Scope and limits |
