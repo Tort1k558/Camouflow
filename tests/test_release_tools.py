@@ -2505,6 +2505,75 @@ def test_native_runtime_rejects_release_identity_mismatch_before_browser_start(t
                     library_directory=libraries, release_store=tmp_path / "store", release_digest="a" * 64))
 
 
+@pytest.mark.parametrize("mutation", [None, "comment", "wrong_suite", "wrong_macro", "duplicate", "declaration_only"])
+def test_identity_fixture_audit_requires_actual_unique_definitions(mutation):
+    from scripts.verify_native_profile_identity_draft import require_fixture_definitions
+
+    text = "TEST_F(OwnedSuite,\n       RequiredCase) { EXPECT_TRUE(true); }\n"
+    if mutation == "comment":
+        text = "// RequiredCase\n"
+    elif mutation == "wrong_suite":
+        text = text.replace("OwnedSuite", "OtherSuite")
+    elif mutation == "wrong_macro":
+        text = text.replace("TEST_F", "TEST_P")
+    elif mutation == "duplicate":
+        text += text
+    elif mutation == "declaration_only":
+        text = "TEST_F(OwnedSuite, RequiredCase);\n"
+    if mutation is None:
+        require_fixture_definitions(text, "OwnedSuite", ("RequiredCase",))
+    else:
+        with pytest.raises(ValueError, match="definitions differ"):
+            require_fixture_definitions(text, "OwnedSuite", ("RequiredCase",))
+
+
+@pytest.mark.parametrize("mutation", [None, "missing", "reordered", "duplicate", "extra"])
+def test_identity_document_handoff_requires_all_four_pinned_parameters(mutation):
+    from scripts.verify_native_profile_identity_draft import require_document_identity_parameters
+
+    modes = ["TestMode::kUnpartitionedStorageAndLinks",
+             "TestMode::kUnpartitionedStorageParttionedWithSelfLinks",
+             "TestMode::kPartitionedStorageUnpartitionedLinks",
+             "TestMode::kPartitionedStorageAndLinksWithSelfLinks"]
+    if mutation == "missing":
+        modes.pop()
+    elif mutation == "reordered":
+        modes.reverse()
+    elif mutation == "duplicate":
+        modes[1] = modes[0]
+    elif mutation == "extra":
+        modes.append("TestMode::kUnknown")
+    text = "INSTANTIATE_TEST_SUITE_P(\nDocumentLoaderTest, DocumentLoaderTest, testing::Values(" + ",\n".join(modes) + "));\n"
+    if mutation is None:
+        assert require_document_identity_parameters(text) == 4
+    else:
+        with pytest.raises(ValueError, match="parameter coverage changed"):
+            require_document_identity_parameters(text)
+
+
+def test_identity_fixture_catalog_matches_all_six_candidate_patches():
+    import re
+    from scripts import verify_native_profile_identity_draft as identity
+
+    patches = (identity.PATCH, identity.MODE_PATCH, identity.CONTEXT_PATCH,
+               identity.TRANSPORT_PATCH, identity.HANDOFF_PATCH, identity.LAUNCH_PATCH)
+    added = "\n".join(line[1:] for patch in patches
+                      for line in patch.read_text(encoding="utf-8-sig").splitlines()
+                      if line.startswith("+") and not line.startswith("+++"))
+    definitions = re.findall(r"^TEST(?:_F|_P)?\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)\s*\{", added, re.MULTILINE)
+    assert len(definitions) == len(set(definitions)) == 41
+    identity.require_fixture_definitions(added, "NativeProfileIdentityKeyTest", identity.DERIVATION_FIXTURES, macro="TEST")
+    identity.require_fixture_definitions(added, "NativePrivacyKeyServiceTest", identity.SERVICE_FIXTURES + identity.MODE_FIXTURES)
+    identity.require_fixture_definitions(added, "NativePrivacyBrowserContextTest", identity.CONTEXT_FIXTURES + identity.LAUNCH_FIXTURES)
+    for path, names in identity.TRANSPORT_FIXTURES.items():
+        suite = "GlintSurfacePolicyProducerTest" if path.startswith(identity.PRODUCER) else "GlintSurfacePolicyPreflightTest"
+        identity.require_fixture_definitions(added, suite, names)
+    for path, names in identity.HANDOFF_FIXTURES.items():
+        document = path.endswith("document_loader_test.cc")
+        identity.require_fixture_definitions(added, "DocumentLoaderTest" if document else "GlintWorkerSurfaceThreadTest",
+                                            names, macro="TEST_P" if document else "TEST_F")
+
+
 def test_native_error_patch_covers_console_coercion_and_property_preview_paths():
     from scripts.native_build import ROOT
 

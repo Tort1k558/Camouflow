@@ -251,6 +251,10 @@ combined surfaces и 24 nested Canvas cases; строгий HTTP/JS Client Hints
 На source 001–048 выполнены 31 нативный readback case и C++ preflight всей
 Identity/GPU-композиции (22 + 6 единиц). Новые 41 identity fixtures, линковка
 пакета и его browser runtime всё ещё впереди; прежние сбои сохранены.
+Уточнение состава: 41 новая тестовая функция означает **50 GTest cases**, а не
+41 execution. Три DocumentLoader-теста разворачиваются в четыре режима каждый.
+Replay gate проверяет suite/name/macro и единственность определений, а также
+все четыре pinned storage/link режима; source-проверка не считается запуском.
 
 Следующий пакет: стабильная profile identity, доставка в documents/iframe/workers
 и GPU metadata/readback. Готовить его в изолированной копии, не меняя активную

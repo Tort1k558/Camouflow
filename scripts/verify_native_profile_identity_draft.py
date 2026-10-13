@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import hmac
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -23,6 +24,17 @@ TRANSPORT_PATCH = ROOT / "native/drafts/profile-identity/identity_transport_v3_c
 HANDOFF_PATCH = ROOT / "native/drafts/profile-identity/identity_handoff_tests_candidate.patch"
 LAUNCH_PATCH = ROOT / "native/drafts/profile-identity/identity_launch_candidate.patch"
 PREFIX = "content/browser/camouflow_native/"
+DERIVATION_FIXTURES = (
+    "CanvasMatchesIndependentVector", "WebglMatchesIndependentVector",
+    "WebgpuMatchesIndependentVector", "AudioMatchesIndependentVector",
+    "DifferentPartitionsShareIdentityNotPrivacy", "IndependentRootsAndSurfacesDoNotShareKeys",
+    "UnsupportedSurfacesAreRejected",
+)
+SERVICE_FIXTURES = (
+    "ProfileIdentityRequiresReadyAndRejectsShutdown",
+    "ProfileIdentityFailureDoesNotRegenerateAKey",
+    "ProfileIdentityEphemeralOwnersAreIndependent", "ProfileIdentityOwnedReloadPreservesTheKey",
+)
 PATHS = {PREFIX + name for name in (
     "privacy_partition.h", "privacy_key_derivation.h", "privacy_key_derivation.cc",
     "privacy_key_derivation_unittest.cc", "privacy_profile_key.h", "privacy_profile_key.cc",
@@ -89,6 +101,31 @@ LAUNCH_FIXTURES = (
     "IdentityLaunchRequiresBothFullSurfacePolicies",
     "IdentityLaunchRejectsEitherLegacyCanvasConflict",
 )
+
+
+def require_fixture_definitions(text: str, suite: str, names: tuple[str, ...], *,
+                                macro: str = "TEST_F") -> None:
+    if macro not in {"TEST", "TEST_F", "TEST_P"}:
+        raise ValueError("Unsupported native test definition macro")
+    pattern = re.compile(r"^" + macro + r"\s*\(\s*" + re.escape(suite)
+                         + r"\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s*\{", re.MULTILINE)
+    observed = pattern.findall(text)
+    if any(observed.count(name) != 1 for name in names):
+        raise ValueError(f"Native fixture definitions differ for {suite}")
+
+
+def require_document_identity_parameters(text: str) -> int:
+    pattern = re.compile(
+        r"^INSTANTIATE_TEST_SUITE_P\(\s*DocumentLoaderTest\s*,\s*DocumentLoaderTest\s*,"
+        r"\s*testing::Values\(([^()]+)\)\s*\);", re.MULTILINE)
+    matches = pattern.findall(text)
+    expected = ("TestMode::kUnpartitionedStorageAndLinks",
+                "TestMode::kUnpartitionedStorageParttionedWithSelfLinks",
+                "TestMode::kPartitionedStorageUnpartitionedLinks",
+                "TestMode::kPartitionedStorageAndLinksWithSelfLinks")
+    if len(matches) != 1 or tuple(value.strip() for value in matches[0].split(",")) != expected:
+        raise ValueError("Identity DocumentLoader parameter coverage changed")
+    return len(expected)
 
 
 def verify_bindings(source: Path, overlay: Path, env: dict) -> dict:
@@ -213,28 +250,36 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False,
         fixtures = (overlay / (PREFIX + "privacy_key_derivation_unittest.cc")).read_text(encoding="utf-8-sig")
         if any(value not in fixtures for value in vectors.values()):
             raise ValueError("Independent profile identity vectors differ from native fixtures")
+        require_fixture_definitions(fixtures, "NativeProfileIdentityKeyTest", DERIVATION_FIXTURES, macro="TEST")
+        service_fixtures = (overlay / (PREFIX + "privacy_key_service_unittest.cc")).read_text(encoding="utf-8-sig")
+        require_fixture_definitions(service_fixtures, "NativePrivacyKeyServiceTest", SERVICE_FIXTURES)
+        fixture_count = len(DERIVATION_FIXTURES) + len(SERVICE_FIXTURES)
+        parameter_expansion = 0
         if include_mode:
-            service_fixtures = (overlay / (PREFIX + "privacy_key_service_unittest.cc")).read_text(
-                encoding="utf-8-sig")
-            if any(name not in service_fixtures for name in MODE_FIXTURES):
-                raise ValueError("Immutable mode native fixture coverage differs")
+            require_fixture_definitions(service_fixtures, "NativePrivacyKeyServiceTest", MODE_FIXTURES)
             context_fixtures = (overlay / CONTEXT_PATH).read_text(encoding="utf-8-sig")
-            if any(name not in context_fixtures for name in CONTEXT_FIXTURES):
-                raise ValueError("BrowserContext mode fixture coverage differs")
+            require_fixture_definitions(context_fixtures, "NativePrivacyBrowserContextTest", CONTEXT_FIXTURES)
+            fixture_count += len(MODE_FIXTURES) + len(CONTEXT_FIXTURES)
         if include_transport:
             for name, expected in TRANSPORT_FIXTURES.items():
                 text = (overlay / name).read_text(encoding="utf-8-sig")
-                if any(fixture not in text for fixture in expected):
-                    raise ValueError("Identity transport native fixture coverage differs")
+                suite = ("GlintSurfacePolicyProducerTest" if name.startswith(PRODUCER)
+                         else "GlintSurfacePolicyPreflightTest")
+                require_fixture_definitions(text, suite, expected)
+                fixture_count += len(expected)
         if include_handoff:
             for name, expected in HANDOFF_FIXTURES.items():
                 text = (overlay / name).read_text(encoding="utf-8-sig")
-                if any(fixture not in text for fixture in expected):
-                    raise ValueError("Identity Blink handoff native fixture coverage differs")
+                document = name.endswith("document_loader_test.cc")
+                require_fixture_definitions(text, "DocumentLoaderTest" if document else "GlintWorkerSurfaceThreadTest",
+                                            expected, macro="TEST_P" if document else "TEST_F")
+                if document:
+                    parameter_expansion = len(expected) * (require_document_identity_parameters(text) - 1)
+                fixture_count += len(expected)
         if include_launch:
             context_fixtures = (overlay / CONTEXT_PATH).read_text(encoding="utf-8-sig")
-            if any(fixture not in context_fixtures for fixture in LAUNCH_FIXTURES):
-                raise ValueError("Identity launch native fixture coverage differs")
+            require_fixture_definitions(context_fixtures, "NativePrivacyBrowserContextTest", LAUNCH_FIXTURES)
+            fixture_count += len(LAUNCH_FIXTURES)
         if check_bindings:
             bindings = verify_bindings(source, overlay, env)
         if check_cpp:
@@ -251,6 +296,9 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False,
               "identity_transport_candidate_replayed": include_transport,
               "identity_handoff_fixtures_replayed": include_handoff,
               "identity_launch_candidate_replayed": include_launch,
+              "native_fixture_definitions": fixture_count,
+              "native_fixture_cases_expected": fixture_count + parameter_expansion,
+              "native_fixture_cases_executed": False,
               "bindings": bindings,
               "cpp_syntax": cpp,
               "active_source_unchanged": True, "inputs": inputs, "composed_source": composed,

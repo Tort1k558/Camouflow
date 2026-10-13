@@ -2,6 +2,25 @@
 
 **Unregistered and uncompiled. No identity mode is enabled.**
 
+## Exact fixture inventory
+
+The full six-patch candidate adds **41 test definitions, 50 expected GTest
+cases**. Three `DocumentLoaderTest` definitions each run in four pinned
+storage/link-partition modes; the other 38 definitions are not parameterized.
+The public replay gate requires each expected suite/name/macro definition
+exactly once and validates the four actual DocumentLoader instantiation modes.
+Bare name mentions, another suite, duplicate definitions or a declaration without a body
+cannot replace a required definition. The report separates
+`native_fixture_definitions`, `native_fixture_cases_expected` and
+`native_fixture_cases_executed=false`. None of these source counts proves
+execution; the linked native run must cover all 50 exact cases, including the
+parameterized variants, plus the unchanged legacy-policy regressions.
+The inventory replay passed on registered source 001-048:
+`identity-fixture-coverage-001-048-v2.json`. The complete Identity/GPU composition
+also passed fresh isolated Mojo/GPU generation with this audit:
+`identity-readback-fixture-coverage-001-048-v1.json`. Both reports are private on
+D, preserve active source, and explicitly report no native fixture execution.
+
 ## Native C++ type checks
 
 The complete six-patch identity candidate now has a reproducible public gate:
