@@ -12,7 +12,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 
 ## Source layout
 
-Current Windows development source is **001-043**. Patches 0031-0034 jointly
+Current Windows development source is **001-044**. Patches 0031-0034 jointly
 promote browser-owned document/worker surface policy, startup/child transport,
 Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
 replay passed across 125 paths for 001-038. That Windows browser compiled, but
@@ -100,6 +100,14 @@ paths. Its translation unit compiled to an owned object with pinned flags;
 source/core guards passed (`surface-throttle-compilation-001-043-v1/proof.json`).
 Source replay passed across 126 paths. The 42-case gate still requires a full
 passing rerun; a partially executed/crashed run is not admission.
+
+After 0043, missing-policy checks progressed; the next failure was the simulator's
+assumption that inline about:blank conflict cancellation leaves a pending entry.
+Fixture-only patch 0044 exercises that case through the real NavigationController,
+retaining exact abort, no-commit and original-document assertions. Network-path
+simulation and production cancellation behavior are unchanged. The repaired
+fixture compiled to an owned object and 126-path replay passed
+(`inline-rejection-compilation-001-044-v1/proof.json` on D). Full execution is pending.
 
 The identity verifier now compares document HTTP User-Agent, primary
 Accept-Language and platform/mobile Client Hints against JavaScript, not just

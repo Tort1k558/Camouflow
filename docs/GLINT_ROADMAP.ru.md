@@ -157,6 +157,15 @@ Replay 001–041 прошёл по 125 путям. Повторный surface-na
 `surface-throttle-compilation-001-043-v1/proof.json`. Replay прошёл по 126 путям.
 42-case gate повторяется на j4 с сохранением кэша. Прошлый partial/crashed run —
 не PASS. Лог: `D:\CamouFlowNative\surface-navigation-001-043-v4-build.log`.
+После 0043 test binary пересобрался за **56.10s**; missing-policy checks прошли
+дальше. Следующий сбой был в NavigationSimulator: конфликт режимов немедленно
+отменяет about:blank, не оставляя pending entry. Fixture-only патч **0044**
+проверяет этот путь через реальный NavigationController, сохраняя `ERR_ABORTED`,
+запрет commit и прежний URL. Production cancellation и network-path simulation
+не изменены. Исправленный fixture скомпилирован; replay прошёл по 126 путям.
+Proof: `inline-rejection-compilation-001-044-v1/proof.json` на D.
+Полный 42-case gate повторяется на j4; лог:
+`D:\CamouFlowNative\surface-navigation-001-044-v5-build.log`.
 В следующем GPU-пакете подготовлен четырнадцатый passthrough fixture:
 multisample metadata сравнивается с фактическим `GL_RENDERBUFFER_SAMPLES`,
 а не с запрошенным числом samples. Формат RGBA8 сам по себе не означает
