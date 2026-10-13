@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import copy
 import json
 import sys
@@ -13,6 +14,39 @@ from scripts.verify_native_gpu import (
     validate_observations,
     validate_shader_readback,
 )
+
+
+def test_owned_readback_returns_observation_unchanged():
+    from scripts.verify_native_canvas import read_owned_context
+
+    expected = {"pixels": [17, 34, 51, 255]}
+    class Frame:
+        async def evaluate(self, read):
+            assert read == "owned probe"
+            return expected
+    assert asyncio.run(read_owned_context(Frame(), "owned probe", "document")) is expected
+
+
+def test_owned_readback_timeout_names_context_without_accepting_it():
+    from scripts.verify_native_canvas import read_owned_context
+
+    class Frame:
+        async def evaluate(self, read):
+            await asyncio.Event().wait()
+    with pytest.raises(TimeoutError, match="Owned readback timed out in about_blank_frame"):
+        asyncio.run(read_owned_context(Frame(), "owned probe", "about_blank_frame", timeout=0.01))
+
+
+def test_owned_readback_retains_non_timeout_errors():
+    from scripts.verify_native_canvas import read_owned_context
+
+    failure = ValueError("Invalid browser reply")
+    class Frame:
+        async def evaluate(self, read):
+            raise failure
+    with pytest.raises(ValueError) as caught:
+        asyncio.run(read_owned_context(Frame(), "owned probe", "document"))
+    assert caught.value is failure
 
 
 def observation(*, minimized=False, webgpu=True):

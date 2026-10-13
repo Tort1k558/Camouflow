@@ -223,6 +223,13 @@ def validate_security(observed: dict) -> None:
         raise ValueError("Native Canvas security or empty-image behavior changed")
 
 
+async def read_owned_context(frame, read: str, name: str, *, timeout: float = 30):
+    try:
+        return await asyncio.wait_for(frame.evaluate(read), timeout=timeout)
+    except TimeoutError as error:
+        raise TimeoutError("Owned readback timed out in " + name) from error
+
+
 async def observe(context, origin: str, read: str = READ) -> dict:
     page = context.pages[0]
     await page.goto(origin, wait_until="load", timeout=30000)
@@ -238,7 +245,7 @@ async def observe(context, origin: str, read: str = READ) -> dict:
       document.body.append(srcdoc);
     }""")
     await page.locator("#owned-srcdoc").content_frame.locator("h1").wait_for(timeout=15000)
-    observed = {"document": await asyncio.wait_for(page.evaluate(read), timeout=30)}
+    observed = {"document": await read_owned_context(page, read, "document")}
     for name, frame_id in (("same_origin_frame", "owned-frame"), ("cross_origin_frame", "cross-origin"),
                            ("about_blank_frame", "owned-about-blank"), ("srcdoc_frame", "owned-srcdoc")):
         element = await page.locator("#" + frame_id).element_handle()
@@ -247,8 +254,8 @@ async def observe(context, origin: str, read: str = READ) -> dict:
         frame = await element.content_frame()
         if frame is None:
             raise ValueError("Owned Canvas frame is missing: " + name)
-        observed[name] = await asyncio.wait_for(frame.evaluate(read), timeout=30)
-    observed.update(await asyncio.wait_for(page.evaluate(WORKERS), timeout=40))
+        observed[name] = await read_owned_context(frame, read, name)
+    observed.update(await read_owned_context(page, WORKERS, "workers", timeout=40))
     return observed
 
 
