@@ -21,9 +21,10 @@ cases. The last verified browser remains 001-027; no new privacy capability or
 anti-bot result is admitted by this promotion.
 
 Patch 0035 fixes initial-origin calculation; its translation unit compiled.
-The full build remains pending. Two j4 attempts ended with LLVM out-of-memory
-failures; the next incremental attempt uses j2 after resource preflight,
-preserving the existing outputs. Compilation is not runtime admission.
+The full build remains pending. Two j4 attempts and the following j2 attempt
+ended with LLVM out-of-memory failures. A single failed object is being checked
+at j1 with system commit/compiler memory measurements, preserving the existing
+outputs. Compilation is not runtime admission.
 
 Prepared native gates additionally require 26 BrowserContext cases, 34 surface
 navigation/readiness cases, 13 window/child cases and 14 RGBA8 pack-copy cases.

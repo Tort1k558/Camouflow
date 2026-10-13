@@ -68,7 +68,7 @@
 > В конце каждого этапа кратко сообщай: что изменено, что реально проверено,
 > что не проверено/сломано, где доказательства, commit и следующий шаг.
 
-## Подтверждённая база и открытые задачи — 12 октября 2026
+## Подтверждённая база и открытые задачи — 13 октября 2026
 
 Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчами, а не только
 инъекции поверх Chrome. При этом менеджер использует Playwright/CDP для управления
@@ -84,9 +84,12 @@ Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчам
 | Ключи/StorageKey/BrowserContext | 43 native readiness/key cases и 20 реальных context cases прошли; это не доказательство всех renderer/worker-путей |
 | IPC и consumers | 34 endpoint/consumer cases прошли; совместный прогон context/delivery — 54 cases, не дополнительные независимые 54 проверки |
 | Worker startup | 40 runtime-проверок прошли в developer-режиме; все четыре Blink handoff cases прошли после test-only исправления 0028. Browser core/receipt/GN не изменились; Canvas/admission этим не подтверждаются |
-| Document delivery до JS | Не завершена. Validator зарегистрирован как 0029, девять native cases прошли через публичный target. Carrier, throttle, transport и producer остаются черновиками; first-script delivery и безопасное восстановление при final mismatch не проверены |
-| Canvas | Четыре фазы upstream baseline прошли без защиты; алгоритмы/hooks — черновики, capability не активирована |
-| WebGL/WebGPU, Audio | Полноценная защита не завершена |
+| Исходники 001–035 | Зарегистрированы; полноценный новый браузер не подтверждён. Два запуска j4 и один j2 завершились LLVM OOM; выполняется отдельная проверка одного объекта с измерением памяти, без очистки кэша |
+| Document delivery до JS | Producer/transport и document/worker surface policy зарегистрированы в новой цепочке; first-script delivery и безопасное восстановление при final mismatch ещё требуют проверки нового бинарника |
+| Canvas / Offline Audio | Нативные кандидаты зарегистрированы; upstream baseline не доказывает защиту. Capability в менеджере не активирована |
+| WebGL/WebGPU | Частичный WebGL readback зарегистрирован; будущие исправления clipping/halo и GPU metadata transport остаются отдельным пакетом. WebGPU readback не завершён |
+| Устойчивая идентичность | Подготовлены шесть патчей derivation/mode/transport/handoff/launch, Python reference и проверки наблюдений; нативный runtime этого режима ещё не проверен |
+| Совместный следующий пакет | 12 identity/readback патчей прошли изолированный source replay и Mojo/GPU codegen; добавлены texture attachment/binding fixtures. Это не компиляция и не выполненные C++-тесты |
 | UA/Client Hints, Screen/Intl, storage | Часть конфигурации и диагностик есть; нужна единая карта покрытия, а не вывод «отсутствует» из краткого отчёта |
 | Сеть и внешние сервисы | Штатный Chromium stack; полный сравнительный TLS/HTTP/DNS-прогон и Core-сайты для 001–027 не подтверждены |
 | Название и логотип Chromium | Branding-патч подготовлен; проверить фактический бинарник после применения |
