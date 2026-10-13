@@ -193,3 +193,18 @@ def test_owned_denial_fixture_counts_requests_and_execution_separately():
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_profile_identity_candidate_keeps_privacy_api_and_prepares_native_lifecycle_fixtures():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_profile_identity_draft import PATCH, PATHS, reference_vectors
+
+    text = PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == PATHS
+    assert text.count("+TEST(NativeProfileIdentityKeyTest,") == 7
+    assert text.count("+TEST_F(NativePrivacyKeyServiceTest,") == 4
+    assert 'std::string_view("canvas\\0audio", 12)' in text
+    assert "+  if (!IsNativePrivacyContextReady(context)) {" in text
+    assert '+  message.push_back(\'\\0\');' in text
+    assert '+  std::string message("Glint/profile-identity/v1");' in text
+    assert all(value in text for value in reference_vectors().values())
