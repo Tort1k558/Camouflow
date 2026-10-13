@@ -28,7 +28,8 @@ def _merge_composed_sources(first: dict, second: dict) -> dict:
     return first | second
 
 
-def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dict:
+def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_cpp: bool = False) -> dict:
+    check_codegen = check_codegen or check_cpp
     source = workspace / "chromium/src"
     if source != source.resolve() or not source.is_dir():
         raise ValueError("A canonical Chromium checkout is required")
@@ -38,6 +39,12 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
         raise ValueError("A new private report outside both repositories is required")
     validators = (Path(__file__), Path(identity.__file__), Path(gpu.__file__),
                   ROOT / "scripts/verify_native_halo_draft.py", Path(build.__file__))
+    if check_cpp:
+        validators += (ROOT / "scripts/verify_native_identity_cpp.py", ROOT / "scripts/verify_native_gpu_cpp.py")
+        for suffix in (".identity.cpp.log", ".gpu.cpp.log"):
+            log = Path(str(report) + suffix)
+            if log.exists() or log.is_symlink():
+                raise ValueError("Refusing to overwrite combined C++ evidence")
     helpers = (*(gpu.DRAFTS / name for name in gpu.RAW),
                *(gpu.READBACK / name for name in gpu.CANONICAL | gpu.CLIPPED_CANONICAL))
     inputs = {str(path.relative_to(ROOT)): digest(path) for path in (*PATCHES, *validators, *helpers)}
@@ -46,10 +53,18 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
         paths.update(path.relative_to(source).as_posix()
                      for path in (source / "gpu").rglob("*autogen*") if path.is_file())
         paths.update({".clang-format", "gpu/command_buffer/build_cmd_buffer_lib.py"})
-    if any((source / name).resolve() != source / name for name in paths):
+    cpp_paths = set()
+    if check_cpp:
+        from scripts.verify_native_identity_cpp import source_paths
+        cpp_paths = source_paths(source) - paths
+    if any((source / name).resolve() != source / name for name in paths | cpp_paths):
         raise ValueError("Batch baseline inputs must not follow links")
     before = {name: digest(source / name) for name in paths}
+    cpp_before = {name: digest(source / name) for name in cpp_paths}
+    if any(value is None for value in cpp_before.values()):
+        raise ValueError("Combined C++ consumer baseline is missing")
     env = build.environment(workspace)
+    cpp_proof = None
     with tempfile.TemporaryDirectory(prefix="glint-identity-readback-", dir=report.parent) as private:
         private = Path(private)
         identity_proof = identity.verify(workspace, private / "identity.json",
@@ -62,9 +77,9 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
             raise ValueError("Component proofs do not cover the exact combined source scope")
         if before != {name: digest(source / name) for name in paths}:
             raise ValueError("Active source changed before combined replay")
-        overlay = private / "combined"
-        overlay.mkdir()
-        for name, existing in before.items():
+        overlay = private / "combined/src"
+        overlay.mkdir(parents=True)
+        for name, existing in (before | cpp_before).items():
             if existing is not None:
                 target = overlay / name
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -80,15 +95,32 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
         composed = {name: digest(overlay / name) for name in paths}
         if composed != expected:
             raise ValueError("Combined replay differs from reviewed component source")
+        if check_cpp:
+            from scripts.verify_native_identity_cpp import verify_cpp as verify_identity_cpp
+            from scripts.verify_native_gpu_cpp import verify_cpp as verify_gpu_cpp
+            bindings = identity.verify_bindings(source, overlay, env)
+            commands = gpu.verify_codegen(overlay, source / "buildtools/win-format/clang-format.exe", env)
+            cpp_proof = {
+                "identity": verify_identity_cpp(source, overlay, Path(str(report) + ".identity.cpp.log"), env),
+                "gpu": verify_gpu_cpp(source, overlay, Path(str(report) + ".gpu.cpp.log"), env),
+                "bindings": bindings, "generated_command_files": commands,
+            }
+            if (composed != {name: digest(overlay / name) for name in paths}
+                    or cpp_before != {name: digest(overlay / name) for name in cpp_paths}):
+                raise ValueError("Combined source changed during C++ checking")
     if before != {name: digest(source / name) for name in paths}:
         raise ValueError("Active source changed during combined replay")
+    if cpp_before != {name: digest(source / name) for name in cpp_paths}:
+        raise ValueError("Active C++ consumers changed during combined checking")
     if inputs != {name: digest(ROOT / name) for name in inputs}:
         raise ValueError("Canonical batch or validator inputs changed during replay")
-    result = {"passed": True, "compiled": False, "mode_enabled": False,
+    result = {"passed": cpp_proof is None or all(cpp_proof[name]["passed"] for name in ("identity", "gpu")),
+              "compiled": False, "mode_enabled": False,
               "privacy_admitted": False, "active_source_unchanged": True,
               "patch_order": [str(path.relative_to(ROOT)) for path in PATCHES],
               "inputs": inputs, "composed_source": composed,
-              "identity": identity_proof, "gpu": gpu_proof}
+              "identity": identity_proof, "gpu": gpu_proof,
+              "cpp_syntax": cpp_proof, "cpp_consumer_baseline": cpp_before}
     with report.open("x", encoding="utf-8") as output:
         json.dump(result, output, indent=2)
     return result
@@ -100,10 +132,12 @@ def main() -> int:
     parser.add_argument("--report", required=True, type=Path)
     parser.add_argument("--check-codegen", action="store_true",
                         help="Also check pinned isolated Mojo bindings and GPU command generation")
+    parser.add_argument("--check-cpp", action="store_true",
+                        help="Type-check identity and GPU units in the same composed tree; no linking or admission")
     args = parser.parse_args()
-    result = verify(args.workspace, args.report, check_codegen=args.check_codegen)
+    result = verify(args.workspace, args.report, check_codegen=args.check_codegen, check_cpp=args.check_cpp)
     print(json.dumps({key: result[key] for key in ("passed", "compiled", "mode_enabled")}))
-    return 0
+    return 0 if result["passed"] else 1
 
 
 if __name__ == "__main__":

@@ -224,6 +224,29 @@ GPU output. Both candidate sets remain unregistered and feature admission stays
 blocked. WebGPU readback, floating-point/HDR surfaces and believable OS/GPU/mobile
 presets are not implemented by this combined gate.
 
+Use `--check-cpp` to check the **same combined tree**, not just the components
+separately. This regenerates its Mojo bindings and GPU commands, then type-checks
+22 identity/consumer/generated units and six GPU/client/passthrough-fixture units
+with actual target flags. Compiler failures reject the gate; source/core/GN and
+unchanged consumers are guarded. Logs stay beside the private report.
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_identity_readback_batch.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-readback-combined-cpp.json --check-cpp
+```
+
+This still does not execute native fixtures or link a browser, and does not admit
+identity mode, attachment metadata or protected GPU output. The current GN
+configuration disables the validating decoder; parsing its translation unit
+does not establish coverage of that backend's excluded code or fixtures.
+
+The first complete combined C++ attempt on source 001-048 **failed**:
+`identity-readback-combined-cpp-001-048-v2.json` on D. GPU's six units passed;
+identity stopped at `document_loader.cc` with `LLVM ERROR: out of memory`
+after 17 successful units. Remaining identity units were not checked in this
+composition. Source/core/GN remained unchanged and the CLI returned failure.
+The standalone 22-unit identity success does not replace this combined gate.
+Repeat it without another heavy native build running; do not disable diagnostics.
+
 The full twelve-patch composition was rechecked against registered source 001-040
 across 113 paths, including isolated Mojo and GPU command generation:
 `identity-readback-001-040-batch-v1.json` on D. Active source/core/GN remained

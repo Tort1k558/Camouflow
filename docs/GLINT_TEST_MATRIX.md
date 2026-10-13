@@ -86,13 +86,14 @@ The receipt binds all 47 exact patch hashes, EXE/DLL core and GN configuration.
 | --- | --- | --- |
 | Protected WebGL readback | **Passed: six phases** | Baseline and two independent profiles before/after restart in eight document/worker contexts; CPU/PBO clipping, untouched padding, renderbuffer resize, exports, errors and profile isolation |
 | Eight-gate suite | **Passed: 160 checks** | All eight gates completed on the unchanged 001-047 EXE/DLL core |
-| Combined Canvas/OfflineAudio | **Passed: 7/7** | Restart/profile/context consistency and exact missing-policy document abort; older intermittent timeout is not proven fixed |
+| Combined Canvas/OfflineAudio | **Passed: three consecutive 7/7 runs** | Same measured EXE/DLL core, restart/profile/context consistency, exact missing-policy abort and completed cleanup; older intermittent timeout remains unexplained |
 | Worker startup/restart/shared clients | **Passed: 40/40** | Default contract, surfaces bootstrap |
 | Extended nested dedicated workers | **Passed: 60/60** | Includes default 40 and 20 additional classic/module parent/child combinations across modes and restart; not independent child-policy denial or protected child pixels |
 | Native readback fixtures | Not executed; C++ preflight failed | Pack-copy and region fixtures misuse typed results; clipped-publication fixture parsed successfully. Exact 31-case execution remains required |
 | External detectors and CAPTCHA | Not rerun | No third-party acceptance claim |
 
 Private evidence: `browser-verification-001-047-v1/gpu-readback.json`,
+`combined-surfaces-001-047-v2.json`, `combined-surfaces-001-047-v3.json`,
 `halo-expected-compilation-001-047-v2/proof.json` and
 `nested-fixture-validation-001-047-v1/proof.json` on D:. Source replay is
 `clipped-readback-replay-001-047-v2.json`; the earlier failed build is

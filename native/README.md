@@ -25,7 +25,7 @@ patch chain; they do not transfer automatically to newer binaries.
 | Current linked Windows candidate | 001-047 | Corrected incremental j4 build succeeded in **12m46s** |
 | Complete eight-gate runtime suite | 001-047 | **160 checks passed** on unchanged runtime core |
 | Worker startup/restart | 001-047 | Default **40/40**; extended **60/60**, including 20 nested classic/module cases |
-| Combined Canvas/OfflineAudio | 001-047 | **7/7 passed**; historical 001-045 profile-B timeout is not explained by this passing run |
+| Combined Canvas/OfflineAudio | 001-047 | **Three consecutive 7/7 runs passed** on unchanged core; historical 001-045 profile-B timeout remains unexplained |
 | Protected WebGL readback | 001-047 | **Six phases passed**, including clipped CPU/PBO reads, state/errors, exports, restart and profile isolation; wider admission remains blocked |
 | Branding | Prepared | Product/logo patch not applied to verified binary |
 | Linux/macOS | Deferred | No current own-fork runtime admission |
@@ -54,7 +54,13 @@ does not prove the intermittent failure is fixed.
 All four owned 001-047 browser gates passed on one measured EXE/DLL core:
 `browser-verification-001-047-v1/verification.json`. The extended worker run
 also passed all 60 cases: `worker-nested-001-047-v1.json`. The older failed
-runs remain recorded. The 31-case native readback gate is still unexecuted:
+runs remain recorded. Combined surface repeats also passed:
+`combined-surfaces-001-047-v2.json` and `combined-surfaces-001-047-v3.json`.
+Both completed cleanup; passing repeats do not establish the old timeout's cause.
+The 31-case native readback gate is still unexecuted:
+its first full test-binary build stopped after 302 steps with LLVM out-of-memory
+in upstream `style_scope_test.cc`. The retry retains cached objects and `j4`,
+without a concurrent candidate C++ checker.
 its initial C++ preflight found typed-result errors in pack-copy and region
 fixtures. Fixture-only patch 0048 preserves every case and checks `.has_value()`
 explicitly. All three fixture translation units now pass actual-target C++
