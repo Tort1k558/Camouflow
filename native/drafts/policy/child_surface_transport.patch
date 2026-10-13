@@ -1,0 +1,369 @@
+diff --git a/content/browser/camouflow_native/glint/child_surface_transport_unittest.cc b/content/browser/camouflow_native/glint/child_surface_transport_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..72b01a54384f3440475719f8b640cf695fac0a26
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/child_surface_transport_unittest.cc
+@@ -0,0 +1,152 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/renderer_host/render_frame_host_impl.h"
++
++#include <utility>
++
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/test/bind.h"
++#include "base/test/scoped_command_line.h"
++#include "content/browser/camouflow_native/glint/document_surface_commit_producer.h"
++#include "content/public/browser/native_privacy_context.h"
++#include "content/public/test/test_renderer_host.h"
++#include "content/test/test_render_frame_host.h"
++#include "services/metrics/public/cpp/ukm_source_id.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
++#include "url/gurl.h"
++
++namespace content {
++namespace {
++class GlintChildSurfaceTransportTest : public RenderViewHostTestHarness {
++ protected:
++  void SetUp() override {
++    command_line_.GetProcessCommandLine()->RemoveSwitch(
++        "glint-document-surface-bootstrap-test");
++    command_line_.GetProcessCommandLine()->RemoveSwitch(
++        "glint-document-canvas-bootstrap-test");
++    RenderViewHostTestHarness::SetUp();
++    NavigateAndCommit(GURL("https://child.test/"));
++    ASSERT_TRUE(owned_.CreateUniqueTempDir());
++    ASSERT_TRUE(base::WriteFile(
++        owned_.GetPath().AppendASCII("camouflow-native-privacy.json"),
++        R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})"));
++  }
++  void TearDown() override {
++    ShutdownNativePrivacyContext(browser_context());
++    task_environment()->RunUntilIdle();
++    RenderViewHostTestHarness::TearDown();
++  }
++  void Initialize() {
++    ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(
++        browser_context(), owned_.GetPath()));
++    ASSERT_TRUE(IsNativePrivacyContextReady(browser_context()));
++  }
++  void RequestFeatureOff(
++      RenderFrameHostImpl::CreateChildFrameWithGlintPolicyCallback callback) {
++    auto* parent = static_cast<RenderFrameHostImpl*>(main_rfh());
++    parent->CreateChildFrameWithGlintPolicy(
++        blink::LocalFrameToken(), TestRenderFrameHost::CreateStubFrameRemote(),
++        TestRenderFrameHost::CreateStubBrowserInterfaceBrokerReceiver(),
++        TestRenderFrameHost::CreateStubPolicyContainerBindParams(),
++        TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
++        blink::mojom::TreeScopeType::kDocument, "child", "child-unique", false,
++        blink::FramePolicy(), blink::mojom::FrameOwnerProperties::New(),
++        blink::FrameOwnerElementType::kIframe, ukm::kInvalidSourceId,
++        std::move(callback));
++  }
++  base::test::ScopedCommandLine command_line_;
++  base::ScopedTempDir owned_;
++};
++
++TEST_F(GlintChildSurfaceTransportTest,
++       FeatureOffRejectsBeforeTokenConsumption) {
++  int calls = 0;
++  RequestFeatureOff(base::BindLambdaForTesting(
++      [&](bool created, blink::mojom::GlintSurfacePolicyCommitPtr policy) {
++        EXPECT_FALSE(created);
++        EXPECT_FALSE(policy);
++        ++calls;
++      }));
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(GlintChildSurfaceTransportTest,
++       FeatureOffNeverExposesReadyProfilePolicy) {
++  Initialize();
++  int calls = 0;
++  RequestFeatureOff(base::BindLambdaForTesting(
++      [&](bool created, blink::mojom::GlintSurfacePolicyCommitPtr policy) {
++        EXPECT_FALSE(created);
++        EXPECT_FALSE(policy);
++        ++calls;
++      }));
++  EXPECT_EQ(calls, 1);
++  EXPECT_TRUE(IsNativePrivacyContextReady(browser_context()));
++}
++
++TEST_F(GlintChildSurfaceTransportTest, FeatureOffCallbackCanDestroyFrameOwner) {
++  int calls = 0;
++  RequestFeatureOff(base::BindLambdaForTesting(
++      [&](bool created, blink::mojom::GlintSurfacePolicyCommitPtr policy) {
++        EXPECT_FALSE(created);
++        EXPECT_FALSE(policy);
++        ++calls;
++        DeleteContents();
++      }));
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(GlintChildSurfaceTransportTest,
++       ActualInitialChildKeyMatchesItsFourBrowserDerivations) {
++  Initialize();
++  auto* child = RenderFrameHostTester::For(main_rfh())->AppendChild("child");
++  ASSERT_TRUE(child);
++  auto* selected = static_cast<RenderFrameHostImpl*>(child);
++  auto wire = glint::candidate::CreateDocumentSurfacePolicyCommit(
++      browser_context(), selected->GetStorageKey(),
++      selected->GetLastCommittedOrigin());
++  ASSERT_TRUE(wire);
++  auto policy = glint::candidate::DecodeOwnedDocumentSurfacePolicy(
++      *wire, selected->GetStorageKey(), selected->GetLastCommittedOrigin(),
++      false);
++  ASSERT_TRUE(policy);
++  EXPECT_TRUE(glint::candidate::ValidateDocumentSurfacePolicy(
++      policy, selected->GetStorageKey(), true, false));
++  EXPECT_EQ(policy->policy.canvas,
++            DeriveNativePrivacyKey(browser_context(), selected->GetStorageKey(),
++                                   "canvas"));
++  EXPECT_EQ(policy->policy.webgl,
++            DeriveNativePrivacyKey(browser_context(), selected->GetStorageKey(),
++                                   "webgl"));
++  EXPECT_EQ(policy->policy.webgpu,
++            DeriveNativePrivacyKey(browser_context(), selected->GetStorageKey(),
++                                   "webgpu"));
++  EXPECT_EQ(policy->policy.audio,
++            DeriveNativePrivacyKey(browser_context(), selected->GetStorageKey(),
++                                   "audio"));
++}
++
++TEST_F(GlintChildSurfaceTransportTest,
++       SamePartitionParentAndChildUseSamePolicyNotCopiedState) {
++  Initialize();
++  auto* parent = static_cast<RenderFrameHostImpl*>(main_rfh());
++  auto* child = static_cast<RenderFrameHostImpl*>(
++      RenderFrameHostTester::For(parent)->AppendChild("child"));
++  ASSERT_TRUE(child);
++  ASSERT_EQ(parent->GetStorageKey(), child->GetStorageKey());
++  auto first = glint::candidate::CreateDocumentSurfacePolicyCommit(
++      browser_context(), parent->GetStorageKey(),
++      parent->GetLastCommittedOrigin());
++  auto second = glint::candidate::CreateDocumentSurfacePolicyCommit(
++      browser_context(), child->GetStorageKey(),
++      child->GetLastCommittedOrigin());
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  EXPECT_EQ(first->partition_encoding, second->partition_encoding);
++  EXPECT_EQ(first->canvas_seed, second->canvas_seed);
++  EXPECT_EQ(first->audio_seed, second->audio_seed);
++}
++}  // namespace
++}  // namespace content
+diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
+index 100f157e3f131f045faf313d1a59153d5eac4053..22076a9aff88166c0279238277db82531c9c3807 100644
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -5249,6 +5249,64 @@ void RenderFrameHostImpl::CreateChildFrame(
+                      document_ukm_source_id, std::move(sandbox_origin_token));
+ }
+ 
++void RenderFrameHostImpl::CreateChildFrameWithGlintPolicy(
++    const blink::LocalFrameToken& frame_token,
++    mojo::PendingAssociatedRemote<mojom::Frame> frame_remote,
++    mojo::PendingReceiver<blink::mojom::BrowserInterfaceBroker>
++        browser_interface_broker_receiver,
++    blink::mojom::PolicyContainerBindParamsPtr policy_container_bind_params,
++    mojo::PendingAssociatedReceiver<blink::mojom::AssociatedInterfaceProvider>
++        associated_interface_provider_receiver,
++    blink::mojom::TreeScopeType scope,
++    const std::string& frame_name,
++    const std::string& frame_unique_name,
++    bool is_created_by_script,
++    const blink::FramePolicy& frame_policy,
++    blink::mojom::FrameOwnerPropertiesPtr frame_owner_properties,
++    blink::FrameOwnerElementType owner_type,
++    ukm::SourceId document_ukm_source_id,
++    CreateChildFrameWithGlintPolicyCallback callback) {
++  const auto* command = base::CommandLine::ForCurrentProcess();
++  if (!command->HasSwitch("glint-document-surface-bootstrap-test")) {
++    std::move(callback).Run(false, nullptr);
++    return;
++  }
++  const auto process_id = GetProcess()->GetDeprecatedID();
++  const auto requesting_document = GetDocumentTokenIgnoringSafetyRestrictions();
++  auto requesting_frame = render_frame_scoped_weak_ptr_factory_.GetWeakPtr();
++  // The existing path authenticates preallocated tokens, enforces inherited
++  // sandbox restrictions and creates the browser's initial origin/storage key.
++  CreateChildFrame(frame_token, std::move(frame_remote),
++                   std::move(browser_interface_broker_receiver),
++                   std::move(policy_container_bind_params),
++                   std::move(associated_interface_provider_receiver), scope,
++                   frame_name, frame_unique_name, is_created_by_script,
++                   frame_policy, std::move(frame_owner_properties), owner_type,
++                   document_ukm_source_id);
++  if (!requesting_frame ||
++      requesting_frame->GetDocumentTokenIgnoringSafetyRestrictions() !=
++          requesting_document) {
++    std::move(callback).Run(false, nullptr);
++    return;
++  }
++  auto* child = RenderFrameHostImpl::FromFrameToken(process_id, frame_token);
++  if (!child || child->GetParent() != requesting_frame.get() ||
++      child->GetBrowserContext() != requesting_frame->GetBrowserContext() ||
++      !child->frame_tree_node()->is_on_initial_empty_document()) {
++    std::move(callback).Run(false, nullptr);
++    return;
++  }
++  blink::mojom::GlintSurfacePolicyCommitPtr policy;
++  if (!command->HasSwitch("glint-document-canvas-bootstrap-test")) {
++    policy = glint::candidate::CreateDocumentSurfacePolicyCommit(
++        child->GetBrowserContext(), child->GetStorageKey(),
++        child->GetLastCommittedOrigin());
++  }
++  // Creation success does not authorize a missing/mixed policy. The renderer
++  // keeps such an initial document required-and-inert, without parent fallback.
++  std::move(callback).Run(true, std::move(policy));
++}
++
+ void RenderFrameHostImpl::DidNavigate(
+     const mojom::DidCommitProvisionalLoadParams& params,
+     NavigationRequest* navigation_request,
+diff --git a/content/browser/renderer_host/render_frame_host_impl.h b/content/browser/renderer_host/render_frame_host_impl.h
+index 5b86d87601e434aa508af4db9de09652bdea6966..18761b821dc283dd314c00d21bce71a190f9ce16 100644
+--- a/content/browser/renderer_host/render_frame_host_impl.h
++++ b/content/browser/renderer_host/render_frame_host_impl.h
+@@ -3677,6 +3677,23 @@ class CONTENT_EXPORT RenderFrameHostImpl
+       blink::mojom::FrameOwnerPropertiesPtr frame_owner_properties,
+       blink::FrameOwnerElementType owner_type,
+       ukm::SourceId document_ukm_source_id) override;
++  void CreateChildFrameWithGlintPolicy(
++      const blink::LocalFrameToken& frame_token,
++      mojo::PendingAssociatedRemote<mojom::Frame> frame_remote,
++      mojo::PendingReceiver<blink::mojom::BrowserInterfaceBroker>
++          browser_interface_broker_receiver,
++      blink::mojom::PolicyContainerBindParamsPtr policy_container_bind_params,
++      mojo::PendingAssociatedReceiver<blink::mojom::AssociatedInterfaceProvider>
++          associated_interface_provider_receiver,
++      blink::mojom::TreeScopeType scope,
++      const std::string& frame_name,
++      const std::string& frame_unique_name,
++      bool is_created_by_script,
++      const blink::FramePolicy& frame_policy,
++      blink::mojom::FrameOwnerPropertiesPtr frame_owner_properties,
++      blink::FrameOwnerElementType owner_type,
++      ukm::SourceId document_ukm_source_id,
++      CreateChildFrameWithGlintPolicyCallback callback) override;
+   void StartLoadingForAsyncNavigationApiCommit() override;
+   void DidCommitSameDocumentNavigation(
+       mojom::DidCommitProvisionalLoadParamsPtr params,
+diff --git a/content/common/frame.mojom b/content/common/frame.mojom
+index 8ee09fc883a3af5b54a57a1be1a331e6519e8a25..1b0cd792fd39e09499a78f0a37c4d7ad72ae604a 100644
+--- a/content/common/frame.mojom
++++ b/content/common/frame.mojom
+@@ -872,4 +872,25 @@ interface FrameHost {
+   // Reject only the matching policy-bearing commit owned by this frame.
+   // The renderer must send this before changing or detaching its document.
+   RejectGlintDocumentCanvasCommit(mojo_base.mojom.UnguessableToken navigation_token);
++
++  // Surface-diagnostic mode only. Reuses browser routing-token and sandbox
++  // validation, then returns the actual child's partition before local Init.
++  // Keep the ordinary asynchronous creation API and its ordinals unchanged.
++  [Sync] CreateChildFrameWithGlintPolicy(blink.mojom.LocalFrameToken child_frame_token,
++                   pending_associated_remote<content.mojom.Frame> frame,
++                   pending_receiver<blink.mojom.BrowserInterfaceBroker>
++                     browser_interface_broker,
++                   blink.mojom.PolicyContainerBindParams
++                     policy_container_bind_params,
++                   pending_associated_receiver<blink.mojom.AssociatedInterfaceProvider>
++                     associated_interface_provider,
++                   blink.mojom.TreeScopeType scope,
++                   string frame_name,
++                   string frame_unique_name,
++                   bool is_created_by_script,
++                   blink.mojom.FramePolicy frame_policy,
++                   blink.mojom.FrameOwnerProperties frame_owner_properties,
++                   ChildFrameOwnerElementType child_frame_owner_element_type,
++                   int64 document_ukm_source_id) => (bool created,
++      blink.mojom.GlintSurfacePolicyCommit? glint_initial_surface_commit);
+ };
+diff --git a/content/renderer/render_frame_impl.cc b/content/renderer/render_frame_impl.cc
+index 5f08b3fe2c27a42cd811badcd25a3034d3127a8b..23e3a80516ac31285bfa9c7866c11cba8d32584a 100644
+--- a/content/renderer/render_frame_impl.cc
++++ b/content/renderer/render_frame_impl.cc
+@@ -3747,16 +3747,41 @@ blink::WebLocalFrame* RenderFrameImpl::CreateChildFrame(
+   mojo::PendingAssociatedRemote<blink::mojom::AssociatedInterfaceProvider>
+       associated_interface_provider;
+ 
+-  // Now create the child frame in the browser via an asynchronous call.
+-  GetFrameHost()->CreateChildFrame(
+-      frame_token, pending_frame_receiver.InitWithNewEndpointAndPassRemote(),
+-      browser_interface_broker.InitWithNewPipeAndPassReceiver(),
+-      blink::mojom::PolicyContainerBindParams::New(
+-          std::move(policy_container_bind_params.receiver)),
+-      associated_interface_provider.InitWithNewEndpointAndPassReceiver(), scope,
+-      name.Utf8(), frame_unique_name, is_created_by_script, frame_policy,
+-      blink::mojom::FrameOwnerProperties::From(frame_owner_properties),
+-      frame_owner_element_type, document_ukm_source_id);
++  const auto* command = base::CommandLine::ForCurrentProcess();
++  const bool glint_child_required =
++      command->HasSwitch("glint-document-surface-bootstrap-test");
++  blink::mojom::GlintSurfacePolicyCommitPtr glint_child_policy;
++  if (glint_child_required) {
++    // The local child initial document is synchronous. Obtain the actual
++    // browser-owned origin/partition before CreateLocalChild, never afterward.
++    bool created = false;
++    if (!GetFrameHost()->CreateChildFrameWithGlintPolicy(
++            frame_token,
++            pending_frame_receiver.InitWithNewEndpointAndPassRemote(),
++            browser_interface_broker.InitWithNewPipeAndPassReceiver(),
++            blink::mojom::PolicyContainerBindParams::New(
++                std::move(policy_container_bind_params.receiver)),
++            associated_interface_provider.InitWithNewEndpointAndPassReceiver(),
++            scope, name.Utf8(), frame_unique_name, is_created_by_script,
++            frame_policy,
++            blink::mojom::FrameOwnerProperties::From(frame_owner_properties),
++            frame_owner_element_type, document_ukm_source_id, &created,
++            &glint_child_policy) ||
++        !created) {
++      return nullptr;
++    }
++  } else {
++    GetFrameHost()->CreateChildFrame(
++        frame_token, pending_frame_receiver.InitWithNewEndpointAndPassRemote(),
++        browser_interface_broker.InitWithNewPipeAndPassReceiver(),
++        blink::mojom::PolicyContainerBindParams::New(
++            std::move(policy_container_bind_params.receiver)),
++        associated_interface_provider.InitWithNewEndpointAndPassReceiver(),
++        scope, name.Utf8(), frame_unique_name, is_created_by_script,
++        frame_policy,
++        blink::mojom::FrameOwnerProperties::From(frame_owner_properties),
++        frame_owner_element_type, document_ukm_source_id);
++  }
+ 
+   // Create the RenderFrame and WebLocalFrame, linking the two.
+   RenderFrameImpl* child_render_frame = RenderFrameImpl::Create(
+@@ -3764,6 +3789,15 @@ blink::WebLocalFrame* RenderFrameImpl::CreateChildFrame(
+       std::move(pending_frame_receiver),
+       std::move(associated_interface_provider), devtools_frame_token,
+       /*is_for_nested_main_frame=*/false);
++  child_render_frame->glint_initial_surface_required_ = glint_child_required;
++  if (glint_child_required &&
++      !command->HasSwitch("glint-document-canvas-bootstrap-test") &&
++      glint_child_policy) {
++    const auto& wire = *glint_child_policy;
++    child_render_frame->glint_initial_surface_policy_ =
++        glint::candidate::DecodeOwnedDocumentSurfacePolicy(
++            wire, wire.partition, wire.partition.origin(), false);
++  }
+   child_render_frame->SetLoaderFactoryBundle(CloneLoaderFactories());
+   child_render_frame->unique_name_helper_.set_propagated_name(
+       frame_unique_name);
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+index e74b58447d2db348a1ba2f3446836ded73cd6b33..c1e12d9290df3383eaba960c558fb8f40751309f 100644
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2564,6 +2564,7 @@ test("content_unittests") {
+     "../../third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc",
+     "../browser/camouflow_native/glint/document_surface_commit_producer_unittest.cc",
+     "../browser/camouflow_native/glint/window_privacy_readiness_unittest.cc",
++    "../browser/camouflow_native/glint/child_surface_transport_unittest.cc",
+     "../browser/camouflow_native/privacy_context_unittest.cc",
+     "../browser/camouflow_native/privacy_document_commit_unittest.cc",
+     "../browser/camouflow_native/privacy_navigation_throttle_unittest.cc",

@@ -320,3 +320,40 @@ sources, GN inputs, build receipt and linked runtime core unchanged:
 Before promotion, the context unit verifier must require the existing 20 cases
 plus all six named startup cases. Its active-build definition is deliberately
 unchanged while the current unit target compiles.
+
+## Authenticated initial-child transport candidate
+
+`child_surface_transport.patch` adds a separate synchronous FrameHost method
+only for surface diagnostic mode. The existing asynchronous child API and its
+method ordering remain unchanged. The browser reuses its original routing-token
+authentication, sandbox restrictions and child-creation path; only afterward
+does it return the actual child's StorageKey/origin-derived policy.
+
+The reply requires the same live requesting-frame generation and document token,
+the expected parent, the same BrowserContext and an initial-empty child. Missing
+or mixed-mode policy does not authorize a raw initial document. The renderer
+owns and validates the reply before `CreateLocalChild`, then uses the existing
+single-consumption, script-forbidden initial-document handoff. No parent seed,
+renderer-derived opaque identity or root key is substituted. The loader retains
+its creator/sandbox checks and final StorageKey validation.
+
+Five native fixtures are prepared, **not compiled or executed**: feature-off
+rejection without token consumption, no policy disclosure despite a Ready key,
+callback-time owner destruction and actual child/parent derivation checks. They
+do not prove authenticated routing-token processing or the full Mojo round trip.
+Pinned Mojo parsing and all four C++ binding generation modes passed in
+`child-surface-bindings-v1/proof.json` on D; that is not C++ compilation.
+The generated binding contract check also passed: all pre-existing method
+ordinals in that configuration remain unchanged, and the new synchronous reply
+uses a bool plus an owned typed policy with a one-shot callback
+(`child-binding-contract-v1.json`). Ordered replay of 26 public patches across
+113 paths passed with active source/GN/receipt/runtime unchanged:
+`child-surfaces-public-replay-v2.json`. Four aggregate patches on D independently
+reproduce that exact source (`surface-promotion-v5/proof.json`); they remain
+unregistered and unapplied.
+
+This synchronous opt-in protocol is not a production performance admission.
+Nested creation, iframe removal/reparenting, parent navigation/process exit,
+prerender, credentialless/fenced partitions, opaque sandbox origins with the
+sandbox-token feature both on and off, invalid tokens and associated endpoint
+ordering need actual browser tests. No active build source has changed.

@@ -172,11 +172,14 @@ The combined gate also measures Canvas and OfflineAudio from the owned page's
 first inline parser script, rather than injecting the first measurement after
 load. All six baseline/profile/restart phases require `readyState == loading`,
 one fetched fixture, one completed execution beacon and matching settled-document
-results. Audio float bits remain bound to their digest; render durations are not
-identity. The 001–027 unprotected baseline passed this fixture on actual initial
-and restarted browsers (`first-script-001-027-baseline-v1.json` on D). This checks
-the probe, not v2 protection. Initial about:blank, popup and sandboxed child
-first-script delivery still require separate lifecycle tests.
+results. The parser script also creates a connected iframe and starts a read in
+its initial `about:blank` immediately, without awaiting a navigation or readiness
+event; that same-partition child must match both readings. Audio float bits remain
+bound to their digest; render durations are not identity. The 001–027 unprotected
+baseline passed the expanded fixture on actual initial/restarted browsers
+(`first-script-initial-child-001-027-baseline-v2.json` on D). This checks the probe,
+not v2 protection. Root-initial about:blank, popup and sandboxed child first-script
+delivery still require separate lifecycle tests.
 
 ## Distribution
 

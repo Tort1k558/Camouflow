@@ -96,10 +96,17 @@ class SurfaceFixtureHandler(CanvasFixtureHandler):
             body = (
                 "<!doctype html><script>"
                 "const glintParserState = document.readyState;"
-                f"window.__glintFirstSurfaceRead = ({COMBINED_READ})().then(async observed => {{"
+                f"const glintParserRead = ({COMBINED_READ})();"
+                "const glintFirstChild = document.createElement('iframe');"
+                "document.documentElement.appendChild(glintFirstChild);"
+                "const glintInitialChildURL = glintFirstChild.contentWindow.location.href;"
+                f"const glintChildRead = glintFirstChild.contentWindow.eval('(' + {json.dumps(COMBINED_READ)} + ')()');"
+                "window.__glintFirstSurfaceRead = Promise.all([glintParserRead, glintChildRead])"
+                ".then(async ([observed, initialChild]) => {"
                 f"const response = await fetch('/surface-executed?id={identifier}');"
                 "if (!response.ok) throw new Error('First-script execution beacon failed');"
-                "return {parserState: glintParserState, observed};});"
+                "return {parserState: glintParserState, observed, initialChild,"
+                "initialChildURL: glintInitialChildURL};});"
                 "</script>"
             ).encode()
         else:
@@ -188,20 +195,24 @@ def validate_isolation(baseline: dict, first: dict, second: dict) -> None:
 
 
 def validate_first_script(result: dict, document: dict, counts: dict) -> None:
-    if (not isinstance(result, dict) or set(result) != {"parserState", "observed"}
+    if (not isinstance(result, dict)
+            or set(result) != {"parserState", "observed", "initialChild", "initialChildURL"}
             or result["parserState"] != "loading"):
         raise ValueError("Surface measurement did not start in the first parser script")
-    observed = result["observed"]
-    if not isinstance(observed, dict) or set(observed) != {"canvas", "audio"}:
-        raise ValueError("First-script surface observations are incomplete")
+    if result["initialChildURL"] != "about:blank":
+        raise ValueError("Initial child surface measurement was taken after navigation")
     if counts != {"requests": 1, "executions": 1}:
         raise ValueError("First-script fixture lacks one fetched document and completed execution")
-    if observed["canvas"] != document["canvas"]:
-        raise ValueError("Canvas policy changed between the first script and settled document")
-    first_audio = strip_quality({"document": observed["audio"]})
     settled_audio = strip_quality({"document": document["audio"]})
-    if first_audio != settled_audio:
-        raise ValueError("Audio policy changed between the first script and settled document")
+    for context in ("observed", "initialChild"):
+        observed = result[context]
+        if not isinstance(observed, dict) or set(observed) != {"canvas", "audio"}:
+            raise ValueError("First-script surface observations are incomplete: " + context)
+        if observed["canvas"] != document["canvas"]:
+            raise ValueError("Canvas policy changed between the first script and settled document: " + context)
+        first_audio = strip_quality({"document": observed["audio"]})
+        if first_audio != settled_audio:
+            raise ValueError("Audio policy changed between the first script and settled document: " + context)
 
 
 def probe_inputs() -> dict[str, str]:

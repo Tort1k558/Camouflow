@@ -47,6 +47,8 @@ def test_next_batch_patch_coverage_and_canonical_sources():
                                  "third_party/blink/renderer/core/workers/worker_global_scope.h",
                                  "third_party/blink/renderer/core/loader/document_loader_test.cc",
                                  "content/renderer/render_frame_impl.cc",
+                                 "content/browser/renderer_host/render_frame_host_impl.h",
+                                 "content/common/frame.mojom",
                                  "content/browser/renderer_host/render_frame_host_impl.cc",
                                  "third_party/blink/renderer/core/loader/document_loader.cc",
                                  "third_party/blink/renderer/core/workers/worker_thread_test.cc"})
@@ -78,6 +80,28 @@ def test_startup_preload_settles_before_profile_publication_without_event_loop()
     assert "RunLoop" not in production[0]
     fixtures = re.findall(r"\+TEST_F\(NativePrivacyBrowserContextTest, (Startup\w+)\)", text)
     assert len(fixtures) == len(set(fixtures)) == 6
+
+
+def test_child_policy_is_authenticated_before_local_initial_document_creation():
+    text = (DRAFTS / "policy/child_surface_transport.patch").read_text(encoding="utf-8-sig")
+    assert "+  [Sync] CreateChildFrameWithGlintPolicy(" in text
+    assert "+  auto requesting_frame = render_frame_scoped_weak_ptr_factory_.GetWeakPtr();" in text
+    assert "+    std::move(callback).Run(false, nullptr);" in text
+    assert "+  if (!child || child->GetParent() != requesting_frame.get() ||" in text
+    assert "+      child->GetBrowserContext() != requesting_frame->GetBrowserContext() ||" in text
+    assert "+      !child->frame_tree_node()->is_on_initial_empty_document()) {" in text
+    assert "+        child->GetBrowserContext(), child->GetStorageKey()," in text
+    assert "+        child->GetLastCommittedOrigin());" in text
+    assert "+  child_render_frame->glint_initial_surface_required_ = glint_child_required;" in text
+    assert "CloneGlint" not in text
+    renderer = text.split("diff --git a/content/renderer/render_frame_impl.cc", 1)[1]
+    assert renderer.index("+    if (!GetFrameHost()->CreateChildFrameWithGlintPolicy(") < renderer.index(
+        "   RenderFrameImpl* child_render_frame = RenderFrameImpl::Create(")
+    fixtures = (DRAFTS / "policy/child_surface_transport_unittest.cc").read_text(encoding="utf-8-sig")
+    names = re.findall(r"TEST_F\(\s*GlintChildSurfaceTransportTest,\s*(\w+)\s*\)", fixtures)
+    assert len(names) == len(set(names)) == 5
+    assert "bool created, auto policy" not in fixtures
+    assert "FeatureOffCallbackCanDestroyFrameOwner" in names
 
 
 def test_initial_main_policy_is_browser_owned_and_consumed_before_frame_creation():

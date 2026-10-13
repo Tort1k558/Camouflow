@@ -90,14 +90,18 @@ def test_first_parser_script_matches_settled_policy_without_timing_identity():
     document = observation("b", "c")["document"]
     first = copy.deepcopy(document)
     first["audio"]["signal"]["renderMilliseconds"] = 100.0
-    surfaces.validate_first_script({"parserState": "loading", "observed": first}, document,
+    result = {"parserState": "loading", "observed": first, "initialChild": copy.deepcopy(first),
+              "initialChildURL": "about:blank"}
+    surfaces.validate_first_script(result, document,
                                   {"requests": 1, "executions": 1})
 
 
-@pytest.mark.parametrize("mutation", ["late", "missing", "canvas", "audio", "unbound_bits", "beacon"])
+@pytest.mark.parametrize("mutation", ["late", "missing", "canvas", "audio", "unbound_bits", "beacon",
+                                      "child_navigation", "child_missing", "child_canvas", "child_audio"])
 def test_first_parser_script_rejects_late_incomplete_or_changed_policy(mutation):
     document = observation("b", "c")["document"]
-    result = {"parserState": "loading", "observed": copy.deepcopy(document)}
+    result = {"parserState": "loading", "observed": copy.deepcopy(document),
+              "initialChild": copy.deepcopy(document), "initialChildURL": "about:blank"}
     counts = {"requests": 1, "executions": 1}
     if mutation == "late":
         result["parserState"] = "complete"
@@ -107,6 +111,13 @@ def test_first_parser_script_rejects_late_incomplete_or_changed_policy(mutation)
         result["observed"][mutation] = observation("d", "e")["document"][mutation]
     elif mutation == "unbound_bits":
         result["observed"]["audio"]["signal"]["sampleBits"][0] ^= 1
+    elif mutation == "child_navigation":
+        result["initialChildURL"] = "https://child.test/"
+    elif mutation == "child_missing":
+        del result["initialChild"]
+    elif mutation in {"child_canvas", "child_audio"}:
+        surface = mutation.removeprefix("child_")
+        result["initialChild"][surface] = observation("d", "e")["document"][surface]
     else:
         counts["executions"] = 0
     with pytest.raises(ValueError):
@@ -174,6 +185,8 @@ def test_owned_denial_fixture_counts_requests_and_execution_separately():
             body = response.read().decode("utf-8")
             assert "const glintParserState = document.readyState;" in body
             assert f"({surfaces.COMBINED_READ})()" in body
+            assert "glintFirstChild.contentWindow.eval(" in body
+            assert "glintInitialChildURL" in body
             assert "window.__glintFirstSurfaceRead" in body
         assert server.counts(first_identifier) == {"requests": 1, "executions": 0}
     finally:
