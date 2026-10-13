@@ -12,13 +12,12 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 
 ## Source layout
 
-Current Windows development source is **001-038**. Patches 0031-0034 jointly
+Current Windows development source is **001-039**. Patches 0031-0034 jointly
 promote browser-owned document/worker surface policy, startup/child transport,
 Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
-replay passed across 125 paths; this batch is **not yet fully compiled or runtime
-verified**. The preceding document-commit binary passed all 12 NavigationSimulator
-cases. The last verified browser remains 001-027; no new privacy capability or
-anti-bot result is admitted by this promotion.
+replay passed across 125 paths for 001-038. That Windows browser compiled, but
+its full runtime gate failed on missing-policy cancellation. The last fully
+verified baseline remains 001-027; no anti-bot result is admitted by this promotion.
 
 Patch 0035 fixes initial-origin calculation; its translation unit compiled.
 The full build remains pending. Two j4 attempts and the following j2 attempt
@@ -44,9 +43,18 @@ its actual `is_null()` API when checking the legacy Canvas carrier. The failed
 renderer translation unit compiled with the pinned build flags in a separate
 owned output; source/core/GN guards passed
 (`renderer-pointer-compilation-001-038-v1/proof.json` on D). Full source replay
-passed across 125 paths. The main browser is still not rebuilt or admitted.
-Existing objects are preserved; the new browser remains unverified.
-Compilation is not runtime admission.
+passed across 125 paths. The 001-038 j4 browser build succeeded in 31m11s.
+Its receipt binds all 38 patches and the measured EXE/DLL core.
+
+Actual 001-038 worker startup checks passed **40/40**. Combined Canvas/OfflineAudio
+checks passed six baseline/profile/restart phases and cross-profile isolation,
+but the missing-policy phase crashed: failure processing attempted an illegal
+`READY_TO_COMMIT` state transition. The combined gate remains **failed**, not admitted.
+Patch 0039 cancels through the owning RenderFrameHost, records `ERR_ABORTED` and
+cleans the speculative host without rewinding state or committing unprotected
+content. This repair still requires a new build and runtime rerun.
+Private evidence on D: `worker-surfaces-startup-001-038-v1.json` and
+`combined-surfaces-001-038-v1.json`. These are owned fixtures, not CAPTCHA results.
 
 The identity verifier now compares document HTTP User-Agent, primary
 Accept-Language and platform/mobile Client Hints against JavaScript, not just

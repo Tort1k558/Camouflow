@@ -1508,7 +1508,8 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
                  "0035-native-initial-origin-calculation.patch",
                  "0036-native-worker-complete-surface-type.patch",
                  "0037-native-webgl-readback-compilation.patch",
-                 "0038-native-renderer-struct-pointer-presence.patch"):
+                 "0038-native-renderer-struct-pointer-presence.patch",
+                 "0039-native-document-ready-commit-cancellation.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1

@@ -106,7 +106,19 @@ stateless callback с `WrapPersistent(this)`, сохраняя восстано�
 `D:\CamouFlowNative\renderer-pointer-compilation-001-038-v1\proof.json`.
 Replay цепочки 001–038 прошёл по 125 путям. Следующая полная попытка — j4,
 с сохранением уже собранных объектов; runtime 001–038 ещё не подтверждён.
-Текущий лог: `D:\CamouFlowNative\surface-batch-001-038-chrome-j4-v9.log`.
+Лог завершённой сборки: `D:\CamouFlowNative\surface-batch-001-038-chrome-j4-v9.log`.
+Сборка 001–038 успешно завершилась на j4 за 31 минуту 11 секунд.
+Реальные worker startup проверки прошли **40/40**. Комбинированная проверка
+Canvas/OfflineAudio подтвердила шесть фаз baseline/профилей/перезапусков и изоляцию,
+но общий результат **FAIL**: отсутствие политики вызвало краш при запрещённом
+переходе из `READY_TO_COMMIT`. Патч 0039 отменяет запрос через владеющий им
+RenderFrameHost, сохраняет `ERR_ABORTED` и очищает speculative host без ослабления
+политики. Требуются пересборка и повторный runtime-прогон.
+Доказательства на D: `worker-surfaces-startup-001-038-v1.json`,
+`combined-surfaces-001-038-v1.json`. Это не результаты CAPTCHA/антибот-сайтов.
+Replay 001–039 прошёл по 125 путям; Python-проверки: **1949 passed**, Ruff F — clean.
+Следующая инкрементальная сборка остаётся на j4, без удаления кэша:
+`D:\CamouFlowNative\surface-batch-001-039-chrome-j4-v10.log`.
 В следующем GPU-пакете подготовлен четырнадцатый passthrough fixture:
 multisample metadata сравнивается с фактическим `GL_RENDERBUFFER_SAMPLES`,
 а не с запрошенным числом samples. Формат RGBA8 сам по себе не означает

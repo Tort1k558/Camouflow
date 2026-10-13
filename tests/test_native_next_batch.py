@@ -83,7 +83,7 @@ def test_registered_replay_preserves_reviewed_successor_order(followups):
 
 
 @pytest.mark.parametrize("names", [batch.PROMOTED[:2], batch.FOLLOWUPS,
-                                   (*batch.PROMOTED, "0039-unreviewed.patch")])
+                                   (*batch.PROMOTED, "0040-unreviewed.patch")])
 def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
     with pytest.raises(ValueError):
         batch.registered_replay_chain([{"name": name} for name in names])
@@ -112,6 +112,21 @@ def test_renderer_presence_fix_uses_actual_mojo_pointer_api():
     assert "!commit_params->glint_document_canvas_commit.is_null()" in additions
     assert "!= nullptr" not in additions
     assert "DecodeOwnedDocumentSurfacePolicy" in patch
+
+
+def test_document_policy_abort_uses_ready_request_owner_without_state_rewind():
+    patch = (batch.ROOT / "native/patches/0039-native-document-ready-commit-cancellation.patch").read_text(encoding="utf-8-sig")
+    additions = "\n".join(line[1:] for line in patch.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert "net_error_ = net::ERR_ABORTED;" in additions
+    assert "FrameTreeNode* node = frame_tree_node_;" in additions
+    assert "GetRenderFrameHost()->NavigationRequestCancelled(" in additions
+    assert "node->render_manager()->DiscardSpeculativeRFHIfUnused(" in additions
+    assert additions.count("abort_privacy_commit();") == 3
+    assert "OnRequestFailedInternal" not in additions
+    assert "SetState(" not in additions
+    assert "DCHECK" not in additions
+    assert additions.index("FrameTreeNode* node") < additions.index("NavigationRequestCancelled(")
 
 
 def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():
