@@ -1,6 +1,15 @@
 # GPU attachment metadata transport — candidate
 
-**Unregistered; command/decoder/Blink integration is uncompiled and not a verified browser capability.**
+**Canonical candidates promoted exactly as patches 0055–0058. Command/decoder/Blink
+integration is not yet a verified linked browser capability.**
+
+Registered source is now 001-058; current verified browser remains 001-047.
+The full package matched the reviewed source composition and passed ordered
+58-patch replay without changing browser core/GN/receipt:
+`identity-gpu-source-integration-0049-0058-v1/proof.json` on D.
+Draft replay commands below are historical pre-promotion checks; do not reapply
+the candidates to the integrated source. Decoder/protocol/attachment execution
+and combined browser admission remain required.
 
 ## Executed metadata codec fixtures
 

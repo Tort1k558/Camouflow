@@ -197,6 +197,7 @@ REQUIRED_GPU_READBACK_TESTS = {
 }
 
 NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "worker-surfaces")
+IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
 
 DELIVERY_SOURCE_FILES = {
     f"{name}{suffix}": f"{directory}/{name}{suffix}"
@@ -225,6 +226,33 @@ def require_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target in IDENTITY_TARGETS:
+        from scripts import verify_native_profile_identity_draft as identity
+        if target == "identity-keys":
+            return {**REQUIRED_TESTS,
+                    "NativePrivacyKeyServiceTest": REQUIRED_TESTS["NativePrivacyKeyServiceTest"]
+                    | set(identity.SERVICE_FIXTURES) | set(identity.MODE_FIXTURES),
+                    "NativeProfileIdentityKeyTest": set(identity.DERIVATION_FIXTURES)}
+        if target == "identity-contexts":
+            return {"NativePrivacyBrowserContextTest": REQUIRED_CONTEXT_TESTS["NativePrivacyBrowserContextTest"]
+                    | set(identity.CONTEXT_FIXTURES) | set(identity.LAUNCH_FIXTURES)}
+        if target == "identity-handoff":
+            document, worker = identity.HANDOFF_FIXTURES.values()
+            return {"DocumentLoaderTest/DocumentLoaderTest": {f"{case}/{index}" for case in document for index in range(4)},
+                    "GlintWorkerSurfaceThreadTest": set(worker)}
+        return {
+            "GlintSurfacePolicyProducerTest": {
+                "MissingAndUnreadyContextRejectsSnapshot", "ReadySnapshotUsesFourIndependentDomains",
+                "ChangingReturnedSnapshotDoesNotChangeIdentity", "ShutdownRejectsSnapshot",
+            } | set(identity.TRANSPORT_FIXTURES[identity.PRODUCER + "surface_policy_producer_unittest.cc"]),
+            "GlintSurfacePolicyPreflightTest": {
+                "ReturnsOwnedSnapshot", "RejectsEveryShortAndLongSeedBeforeCopy", "RejectsWrongVersionAndHugeEncoding",
+                "ResolvesInheritedProvisionalOrigin", "RejectsWrongBrowserOriginAndReusedSurface",
+                "WireRoundtripRetainsBinaryEncodingAndOwnedSeeds", "WireRejectsMalformedSeedAndWrongPartition",
+                "WorkerDecoderPreservesExactOpaqueIdentity", "WorkerDecoderCannotReplaceNoncePartition",
+                "BrowserOwnedWorkerPartitionMatchesFinalOrigin", "WirePartitionCannotDisagreeWithBinaryCommitment",
+            } | set(identity.TRANSPORT_FIXTURES[identity.COMMON + "surface_policy_preflight_unittest.cc"]),
+        }
     if target == "gpu-metadata-codec":
         return {"GlintReadbackMetadataTest": {
             "ByteColourRoundTripPreservesNativeDimensions", "NonByteAndMultisampleInformationIsNotFabricated",
@@ -327,6 +355,16 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     build.require_stage(workspace / "chromium", "hooks")
     patches = build.source_patches(source, env) + build.v8_source_patches(source, env)
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
+    if target in IDENTITY_TARGETS:
+        required_patches.update({"0049-native-profile-identity-derivation.patch",
+                                 "0050-native-immutable-fingerprint-mode.patch",
+                                 "0051-native-identity-context-tests.patch",
+                                 "0052-native-surface-identity-v3-transport.patch",
+                                 "0053-native-identity-handoff-tests.patch",
+                                 "0054-native-profile-identity-launch.patch"})
+    if target == "identity-handoff":
+        from scripts.verify_native_profile_identity_draft import require_document_identity_parameters
+        require_document_identity_parameters((source / "third_party/blink/renderer/core/loader/document_loader_test.cc").read_text(encoding="utf-8-sig"))
     if (any(item["name"] == "0032-native-document-surface-policy.patch" for item in patches)
             and target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces"}):
         required_patches.add("0042-native-initial-policy-fixture-scheme-lifetime.patch")
@@ -374,7 +412,9 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("Surface v2 NavigationSimulator/readiness units; not actual Blink or browser admission"
+    scope = ("Selected identity and legacy policy units; not an enabled browser identity or capability admission"
+             if target in IDENTITY_TARGETS else
+             "Surface NavigationSimulator/readiness units; not actual Blink or browser admission"
              if target == "surface-navigation" else
              "Canvas and surface worker Mojo endpoints/bootstrap units; not worker-host startup, first-script delivery or admission"
              if target == "worker-surfaces" else
@@ -393,8 +433,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
              "Actual content-layer BrowserContext bridge/lifecycle/readiness units; not Chrome ProfileImpl startup, IPC, Canvas or admission"
              if target == "contexts" else
              "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission")
-    build_target = ("blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback"} else
-                    "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces"} else "camouflow_native_privacy_unittests")
+    build_target = ("blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff"} else
+                    "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
     proof = {"passed": False, "scope": scope, "target": target,
              "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path)}
     with log_path.open("x", encoding="utf-8", newline="\n") as log:
@@ -404,8 +444,7 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                            ["-C", "out/CamouFlowNative", "-j", str(jobs), build_target],
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             executable = output / (build_target + ".exe")
-            test_filter = (":".join(f"{suite}.{case}" for suite, cases in required.items() for case in sorted(cases))
-                           if target in {"worker-handoff", "document-partition", "document-navigation", *NEW_TARGETS} else ":".join(name + ".*" for name in required))
+            test_filter = ":".join(f"{suite}.{case}" for suite, cases in required.items() for case in sorted(cases))
             subprocess.run([str(executable), "--gtest_filter=" + test_filter,
                             "--single-process-tests", "--gtest_output=json:" + str(results)],
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
@@ -440,7 +479,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--vs-installation", type=Path)
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
-    parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", *NEW_TARGETS), default="keys")
+    parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS), default="keys")
     args = parser.parse_args()
     try:
         report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs, target=args.target)

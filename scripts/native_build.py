@@ -244,7 +244,17 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0045-native-navigation-observer-fixture-lifetime.patch",
         "0046-native-webgl-bounded-readback.patch",
         "0047-native-webgl-clipped-publication.patch",
-        "0048-native-readback-fixture-result-api.patch"))
+        "0048-native-readback-fixture-result-api.patch",
+        "0049-native-profile-identity-derivation.patch",
+        "0050-native-immutable-fingerprint-mode.patch",
+        "0051-native-identity-context-tests.patch",
+        "0052-native-surface-identity-v3-transport.patch",
+        "0053-native-identity-handoff-tests.patch",
+        "0054-native-profile-identity-launch.patch",
+        "0055-native-gpu-readback-metadata-transport.patch",
+        "0056-native-gpu-metadata-protocol-tests.patch",
+        "0057-native-gpu-metadata-attachment-tests.patch",
+        "0058-native-gpu-passthrough-attachment-tests.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:

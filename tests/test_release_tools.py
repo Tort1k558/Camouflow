@@ -1007,12 +1007,14 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
 
 @pytest.mark.parametrize("mutation", [None, "duplicate", "missing", "skip", "failure", "incomplete", "foreign", "disabled", "malformed"])
 @pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation",
-                                    "surface-navigation", "window-transport", "gpu-pack-copy", "worker-surfaces", "gpu-metadata-codec"])
+                                    "surface-navigation", "window-transport", "gpu-pack-copy", "worker-surfaces", "gpu-metadata-codec",
+                                    "identity-keys", "identity-contexts", "identity-transport", "identity-handoff"])
 def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, target):
     from scripts.verify_native_privacy_units import required_tests, validate_results
 
     report = {"tests": {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12,
-                        "surface-navigation": 42, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55, "gpu-metadata-codec": 14}[target], "failures": 0, "disabled": 0, "testsuites": [
+                        "surface-navigation": 42, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55, "gpu-metadata-codec": 14,
+                        "identity-keys": 62, "identity-contexts": 37, "identity-transport": 20, "identity-handoff": 15}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
         for suite, cases in required_tests(target).items()]}
@@ -1538,7 +1540,17 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
                  "0045-native-navigation-observer-fixture-lifetime.patch",
                  "0046-native-webgl-bounded-readback.patch",
                  "0047-native-webgl-clipped-publication.patch",
-                 "0048-native-readback-fixture-result-api.patch"):
+                 "0048-native-readback-fixture-result-api.patch",
+                 "0049-native-profile-identity-derivation.patch",
+                 "0050-native-immutable-fingerprint-mode.patch",
+                 "0051-native-identity-context-tests.patch",
+                 "0052-native-surface-identity-v3-transport.patch",
+                 "0053-native-identity-handoff-tests.patch",
+                 "0054-native-profile-identity-launch.patch",
+                 "0055-native-gpu-readback-metadata-transport.patch",
+                 "0056-native-gpu-metadata-protocol-tests.patch",
+                 "0057-native-gpu-metadata-attachment-tests.patch",
+                 "0058-native-gpu-passthrough-attachment-tests.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1

@@ -1,0 +1,140 @@
+diff --git a/third_party/blink/renderer/core/loader/document_loader_test.cc b/third_party/blink/renderer/core/loader/document_loader_test.cc
+index 982ca7d..e7a5133 100644
+--- a/third_party/blink/renderer/core/loader/document_loader_test.cc
++++ b/third_party/blink/renderer/core/loader/document_loader_test.cc
+@@ -780,6 +780,72 @@ class GlintSurfaceBeforeScriptClient final : public frame_test_helpers::TestWebF
+ };
+ }  // namespace
+ 
++TEST_P(DocumentLoaderTest, GlintIdentityModeOwnedBeforeFirstInlineScript) {
++  GlintSurfaceBeforeScriptClient client;
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize(&client);
++  auto* frame = helper.LocalMainFrame();
++  client.Observe(frame);
++  auto params = GlintSurfaceFixtureParams();
++  ASSERT_TRUE(params->glint_document_surface_policy);
++  params->glint_document_surface_policy->policy.identity_mode =
++      glint::candidate::SurfaceIdentityMode::kProfileIdentity;
++  const auto expected = *params->glint_document_surface_policy;
++  CommitGlintSurfaceFixture(frame, std::move(params));
++  ASSERT_FALSE(client.snapshots.empty());
++  ASSERT_EQ(client.snapshots.size(), client.titles.size());
++  ASSERT_EQ(client.snapshots.size(), client.readiness.size());
++  for (size_t i = 0; i < client.snapshots.size(); ++i) {
++    EXPECT_TRUE(client.readiness[i]);
++    EXPECT_TRUE(client.titles[i].empty());
++    EXPECT_EQ(client.snapshots[i].policy.identity_mode,
++              glint::candidate::SurfaceIdentityMode::kProfileIdentity);
++    EXPECT_EQ(client.snapshots[i].policy.canvas, expected.policy.canvas);
++    EXPECT_EQ(client.snapshots[i].policy.audio, expected.policy.audio);
++  }
++  EXPECT_EQ(frame->GetFrame()->GetDocument()->title(),
++            "glint-surface-inline-ok");
++  client.Observe(nullptr);
++}
++
++TEST_P(DocumentLoaderTest,
++       GlintIdentityModeCloneCannotMutateInstalledDocument) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  auto params = GlintSurfaceFixtureParams();
++  ASSERT_TRUE(params->glint_document_surface_policy);
++  params->glint_document_surface_policy->policy.identity_mode =
++      glint::candidate::SurfaceIdentityMode::kProfileIdentity;
++  CommitGlintSurfaceFixture(frame, std::move(params));
++  auto* document = frame->GetFrame()->GetDocument();
++  ASSERT_TRUE(document->GlintSurfacePolicy());
++  const auto expected = document->GlintSurfacePolicy()->policy.audio;
++  auto clone = frame->GetFrame()
++                   ->Loader()
++                   .GetDocumentLoader()
++                   ->CreateWebNavigationParamsToCloneDocument();
++  ASSERT_TRUE(clone->glint_document_surface_policy);
++  EXPECT_EQ(clone->glint_document_surface_policy->policy.identity_mode,
++            glint::candidate::SurfaceIdentityMode::kProfileIdentity);
++  clone->glint_document_surface_policy->policy.identity_mode =
++      glint::candidate::SurfaceIdentityMode::kPartitionedPrivacy;
++  clone->glint_document_surface_policy->policy.audio.fill(255);
++  EXPECT_EQ(document->GlintSurfacePolicy()->policy.identity_mode,
++            glint::candidate::SurfaceIdentityMode::kProfileIdentity);
++  EXPECT_EQ(document->GlintAudioPartitionSeed(), std::optional(expected));
++}
++
++TEST_P(DocumentLoaderTest, GlintUnknownIdentityModeCannotRunInlineScript) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto params = GlintSurfaceFixtureParams();
++  ASSERT_TRUE(params->glint_document_surface_policy);
++  params->glint_document_surface_policy->policy.identity_mode =
++      static_cast<glint::candidate::SurfaceIdentityMode>(99);
++  ExpectRejectedGlintSurfaceFixture(helper.LocalMainFrame(), std::move(params));
++}
++
+ TEST_P(DocumentLoaderTest, GlintSurfacesOwnAllSeedsBeforeFirstInlineScript) {
+   GlintSurfaceBeforeScriptClient client;
+   frame_test_helpers::WebViewHelper helper;
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test.cc b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+index 81b93a5..a8844f6 100644
+--- a/third_party/blink/renderer/core/workers/worker_thread_test.cc
++++ b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+@@ -253,6 +253,58 @@ class GlintWorkerSurfaceThreadTest : public WorkerThreadTest {
+   }
+ };
+ 
++TEST_F(GlintWorkerSurfaceThreadTest, IdentityModeOwnedBeforeFirstEvaluation) {
++  auto policy = SurfacePolicy();
++  policy.policy.identity_mode =
++      glint::candidate::SurfaceIdentityMode::kProfileIdentity;
++  const auto expected = policy;
++  testing::InSequence sequence;
++  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++      .WillOnce([expected](WorkerOrWorkletGlobalScope* scope) {
++        auto* worker = To<WorkerGlobalScope>(scope);
++        ASSERT_TRUE(worker->GlintSurfacePolicy());
++        EXPECT_EQ(worker->GlintSurfacePolicy()->policy.identity_mode,
++                  glint::candidate::SurfaceIdentityMode::kProfileIdentity);
++        EXPECT_EQ(worker->GlintSurfacePolicy()->partition, expected.partition);
++        EXPECT_EQ(worker->GlintCanvasPartitionSeed(),
++                  std::optional(expected.policy.canvas));
++        EXPECT_EQ(worker->GlintAudioPartitionSeed(),
++                  std::optional(expected.policy.audio));
++      });
++  EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScript(true)).Times(1);
++  EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++  worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
++                                      KURL("http://fake.url/"), nullptr,
++                                      std::nullopt, policy, true);
++  policy.policy.identity_mode =
++      glint::candidate::SurfaceIdentityMode::kPartitionedPrivacy;
++  policy.policy.audio.fill(255);
++  worker_thread_->WaitForInit();
++  worker_thread_->Terminate();
++  worker_thread_->WaitForShutdownForTesting();
++}
++
++TEST_F(GlintWorkerSurfaceThreadTest, UnknownIdentityModeRejectsEvaluation) {
++  auto policy = SurfacePolicy();
++  policy.policy.identity_mode =
++      static_cast<glint::candidate::SurfaceIdentityMode>(99);
++  ExpectRejectedSurface(std::move(policy));
++}
++
++TEST_F(GlintWorkerSurfaceThreadTest,
++       StableIdentityModeCannotReplaceFinalOrigin) {
++  auto policy = SurfacePolicy();
++  policy.policy.identity_mode =
++      glint::candidate::SurfaceIdentityMode::kProfileIdentity;
++  policy.partition = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test/")));
++  policy.policy.partition_encoding =
++      *policy.partition.SerializeForNativePrivacy();
++  ExpectRejectedSurface(std::move(policy));
++}
++
+ TEST_F(GlintWorkerSurfaceThreadTest, AllSeedsOwnedBeforeFirstScript) {
+   auto policy = SurfacePolicy();
+   const auto expected = policy;

@@ -17,14 +17,14 @@ patch chain; they do not transfer automatically to newer binaries.
 
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
-| Registered Windows source | 001-048 | Ordered replay passed across 130 paths; 0048 changes only native test fixtures |
+| Registered Windows source | 001-058 | Complete Identity/GPU source integration matched the reviewed composition and passed ordered replay; current browser remains 001-047 |
 | Native navigation/readiness | 001-045 | **42/42** cases passed: missing/conflicting policy, late policy loss, recovery and observer-driven closure |
 | Native BrowserContext isolation | 001-045 | **26/26** cases passed |
 | Native window/child transport | 001-045 | **13/13** cases passed |
 | Native worker surfaces | 001-045 | **55/55** cases passed |
 | Native bounded/clipped readback | 001-048 | **31/31** cases passed: pack copy 14, region planner 11, clipped publication 6; browser core 001-047 remained unchanged |
-| Future identity/GPU package | Unregistered | **22 identity + six GPU C++ units** type-checked in one composed tree with fresh generators; native fixtures/link/runtime and identity admission still required |
-| Future GPU metadata codec | Unregistered | **14/14** actual codec fixtures executed with standalone MSVC/GoogleTest; not GN decoder/attachment execution or browser admission |
+| Identity/GPU package | Registered 0049-0058 | **22 identity + six GPU C++ units** type-checked before integration in one composed tree with fresh generators; native fixtures/link/runtime and identity admission still required |
+| GPU metadata codec | Registered 0055 | **14/14** actual codec fixtures executed with standalone MSVC/GoogleTest; not GN decoder/attachment execution or browser admission |
 | Current linked Windows candidate | 001-047 | Corrected incremental j4 build succeeded in **12m46s** |
 | Complete eight-gate runtime suite | 001-047 | **160 checks passed** on unchanged runtime core |
 | Worker startup/restart | 001-047 | Default **40/40**; extended **60/60**, including 20 nested classic/module cases |

@@ -1,0 +1,292 @@
+diff --git a/content/browser/camouflow_native/glint/surface_policy_producer.cc b/content/browser/camouflow_native/glint/surface_policy_producer.cc
+index dd7d35a..6a9a50f 100644
+--- a/content/browser/camouflow_native/glint/surface_policy_producer.cc
++++ b/content/browser/camouflow_native/glint/surface_policy_producer.cc
+@@ -21,15 +21,39 @@ std::optional<SurfacePolicy> CreateSurfacePolicy(
+   if (!encoding || encoding->empty() || encoding->size() > 8192) {
+     return std::nullopt;
+   }
+-  auto canvas = content::DeriveNativePrivacyKey(context, trusted_partition, "canvas");
+-  auto webgl = content::DeriveNativePrivacyKey(context, trusted_partition, "webgl");
+-  auto webgpu = content::DeriveNativePrivacyKey(context, trusted_partition, "webgpu");
+-  auto audio = content::DeriveNativePrivacyKey(context, trusted_partition, "audio");
++  const auto mode = content::GetNativeFingerprintDerivationMode(context);
++  if (!mode) {
++    return std::nullopt;
++  }
++  SurfaceIdentityMode selected_mode;
++  switch (*mode) {
++    case content::NativeFingerprintDerivationMode::kPartitionedPrivacy:
++      selected_mode = SurfaceIdentityMode::kPartitionedPrivacy;
++      break;
++    case content::NativeFingerprintDerivationMode::kProfileIdentity:
++      selected_mode = SurfaceIdentityMode::kProfileIdentity;
++      break;
++    default:
++      return std::nullopt;
++  }
++  auto canvas = content::DeriveNativeSelectedFingerprintKey(
++      context, trusted_partition, "canvas");
++  auto webgl = content::DeriveNativeSelectedFingerprintKey(
++      context, trusted_partition, "webgl");
++  auto webgpu = content::DeriveNativeSelectedFingerprintKey(
++      context, trusted_partition, "webgpu");
++  auto audio = content::DeriveNativeSelectedFingerprintKey(
++      context, trusted_partition, "audio");
+   if (!canvas || !webgl || !webgpu || !audio) {
+     return std::nullopt;
+   }
+-  SurfacePolicy policy{kSurfacePolicyVersion, std::move(*encoding),
+-                       *canvas, *webgl, *webgpu, *audio};
++  SurfacePolicy policy{kSurfacePolicyVersion,
++                       std::move(*encoding),
++                       *canvas,
++                       *webgl,
++                       *webgpu,
++                       *audio,
++                       selected_mode};
+   if (!HasIndependentSurfaceSeeds(policy)) {
+     return std::nullopt;
+   }
+diff --git a/content/browser/camouflow_native/glint/surface_policy_producer_unittest.cc b/content/browser/camouflow_native/glint/surface_policy_producer_unittest.cc
+index d31b308..19fbb75 100644
+--- a/content/browser/camouflow_native/glint/surface_policy_producer_unittest.cc
++++ b/content/browser/camouflow_native/glint/surface_policy_producer_unittest.cc
+@@ -75,5 +75,46 @@ TEST_F(GlintSurfacePolicyProducerTest, ShutdownRejectsSnapshot) {
+   content::ShutdownNativePrivacyContext(browser_context());
+   EXPECT_FALSE(CreateSurfacePolicy(browser_context(), Partition()));
+ }
++
++TEST_F(GlintSurfacePolicyProducerTest,
++       IdentityModeSelectsStableSeedsWithExactPartition) {
++  ASSERT_TRUE(content::InitializeNativePrivacyContext(
++      browser_context(), owned_.GetPath(),
++      content::NativeFingerprintDerivationMode::kProfileIdentity));
++  task_environment()->RunUntilIdle();
++  const auto other = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test")));
++  auto first = CreateSurfacePolicy(browser_context(), Partition());
++  auto second = CreateSurfacePolicy(browser_context(), other);
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  EXPECT_EQ(first->identity_mode, SurfaceIdentityMode::kProfileIdentity);
++  EXPECT_EQ(first->canvas, second->canvas);
++  EXPECT_EQ(first->webgl, second->webgl);
++  EXPECT_EQ(first->webgpu, second->webgpu);
++  EXPECT_EQ(first->audio, second->audio);
++  EXPECT_NE(first->partition_encoding, second->partition_encoding);
++  EXPECT_TRUE(ValidateSurfacePolicy(*first, Partition()));
++  EXPECT_FALSE(ValidateSurfacePolicy(*first, other));
++  EXPECT_EQ(first->canvas, content::DeriveNativeSelectedFingerprintKey(
++                               browser_context(), Partition(), "canvas"));
++}
++
++TEST_F(GlintSurfacePolicyProducerTest,
++       DefaultModeRetainsPartitionDependentSeeds) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  auto first = CreateSurfacePolicy(browser_context(), Partition());
++  const auto other = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test")));
++  auto second = CreateSurfacePolicy(browser_context(), other);
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  EXPECT_EQ(first->identity_mode, SurfaceIdentityMode::kPartitionedPrivacy);
++  EXPECT_NE(first->canvas, second->canvas);
++  EXPECT_EQ(first->canvas, content::DeriveNativePrivacyKey(
++                               browser_context(), Partition(), "canvas"));
++}
++
+ }  // namespace
+ }  // namespace glint::candidate
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy.h b/third_party/blink/public/common/native_privacy/glint/surface_policy.h
+index 23f78da..6c1d335 100644
+--- a/third_party/blink/public/common/native_privacy/glint/surface_policy.h
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy.h
+@@ -9,7 +9,15 @@
+ 
+ namespace glint::candidate {
+ using PartitionSeed = std::array<uint8_t, 32>;
+-constexpr uint32_t kSurfacePolicyVersion = 2;
++constexpr uint32_t kSurfacePolicyVersion = 3;
++enum class SurfaceIdentityMode : uint32_t {
++  kPartitionedPrivacy = 0,
++  kProfileIdentity = 1,
++};
++inline bool IsValidSurfaceIdentityMode(SurfaceIdentityMode mode) {
++  return mode == SurfaceIdentityMode::kPartitionedPrivacy ||
++         mode == SurfaceIdentityMode::kProfileIdentity;
++}
+ 
+ // Browser-owned snapshot for one exact trusted StorageKey. No profile root key.
+ struct SurfacePolicy {
+@@ -19,6 +27,7 @@ struct SurfacePolicy {
+   PartitionSeed webgl{};
+   PartitionSeed webgpu{};
+   PartitionSeed audio{};
++  SurfaceIdentityMode identity_mode = SurfaceIdentityMode::kPartitionedPrivacy;
+ };
+ 
+ inline bool HasIndependentSurfaceSeeds(const SurfacePolicy& policy) {
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight.h b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight.h
+index e5cf23f..10faf09 100644
+--- a/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight.h
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight.h
+@@ -19,11 +19,16 @@ struct SurfacePolicyView {
+   std::span<const uint8_t> webgl;
+   std::span<const uint8_t> webgpu;
+   std::span<const uint8_t> audio;
++  uint32_t identity_mode =
++      static_cast<uint32_t>(SurfaceIdentityMode::kPartitionedPrivacy);
+ };
+ 
+ inline bool HasValidSurfacePolicyPayload(const SurfacePolicyView& incoming) {
+   return incoming.version == kSurfacePolicyVersion &&
+-         !incoming.partition_encoding.empty() && incoming.partition_encoding.size() <= 8192 &&
++         IsValidSurfaceIdentityMode(
++             static_cast<SurfaceIdentityMode>(incoming.identity_mode)) &&
++         !incoming.partition_encoding.empty() &&
++         incoming.partition_encoding.size() <= 8192 &&
+          incoming.canvas.size() == 32 && incoming.webgl.size() == 32 &&
+          incoming.webgpu.size() == 32 && incoming.audio.size() == 32;
+ }
+@@ -37,6 +42,8 @@ inline std::optional<SurfacePolicy> PreflightSurfacePolicyForPartition(
+     return std::nullopt;
+   }
+   SurfacePolicy owned;
++  owned.identity_mode =
++      static_cast<SurfaceIdentityMode>(incoming.identity_mode);
+   owned.partition_encoding = incoming.partition_encoding;
+   std::ranges::copy(incoming.canvas, owned.canvas.begin());
+   std::ranges::copy(incoming.webgl, owned.webgl.begin());
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc
+index 4a5381b..29d6b36 100644
+--- a/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc
+@@ -129,5 +129,67 @@ TEST_F(GlintSurfacePolicyPreflightTest, WirePartitionCannotDisagreeWithBinaryCom
+   EXPECT_FALSE(DecodeOwnedWorkerSurfacePolicy(*wire, wire->partition.origin()));
+   EXPECT_FALSE(DecodeSurfacePolicyCommit(*wire, partition_, origin_));
+ }
++
++TEST_F(GlintSurfacePolicyPreflightTest,
++       IdentityModeRoundtripSurvivesDocumentAndWorkerDecode) {
++  auto incoming = Incoming();
++  incoming.identity_mode =
++      static_cast<uint32_t>(SurfaceIdentityMode::kProfileIdentity);
++  auto policy = PreflightSurfacePolicyForPartition(incoming, partition_);
++  ASSERT_TRUE(policy);
++  EXPECT_EQ(policy->identity_mode, SurfaceIdentityMode::kProfileIdentity);
++  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
++  ASSERT_TRUE(wire);
++  EXPECT_EQ(wire->version, 3u);
++  EXPECT_EQ(wire->identity_mode, 1u);
++  auto document = DecodeSurfacePolicyCommit(*wire, partition_, origin_);
++  auto worker = DecodeWorkerSurfacePolicy(*wire, partition_);
++  ASSERT_TRUE(document);
++  ASSERT_TRUE(worker);
++  EXPECT_EQ(document->identity_mode, SurfaceIdentityMode::kProfileIdentity);
++  EXPECT_EQ(worker->identity_mode, SurfaceIdentityMode::kProfileIdentity);
++  wire->identity_mode = 0u;
++  EXPECT_EQ(document->identity_mode, SurfaceIdentityMode::kProfileIdentity);
++}
++
++TEST_F(GlintSurfacePolicyPreflightTest,
++       UnknownModeAndLegacyVersionRejectBeforeCopy) {
++  auto incoming = Incoming();
++  incoming.identity_mode = 99u;
++  EXPECT_FALSE(HasValidSurfacePolicyPayload(incoming));
++  EXPECT_FALSE(PreflightSurfacePolicyForPartition(incoming, partition_));
++  incoming = Incoming();
++  incoming.version = 2;
++  EXPECT_FALSE(PreflightSurfacePolicyForPartition(incoming, partition_));
++  auto policy = PreflightSurfacePolicyForPartition(Incoming(), partition_);
++  ASSERT_TRUE(policy);
++  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
++  ASSERT_TRUE(wire);
++  wire->identity_mode = 99u;
++  EXPECT_FALSE(DecodeSurfacePolicyCommit(*wire, partition_, origin_));
++  EXPECT_FALSE(DecodeWorkerSurfacePolicy(*wire, partition_));
++  wire->identity_mode = 0u;
++  wire->version = 2;
++  EXPECT_FALSE(DecodeSurfacePolicyCommit(*wire, partition_, origin_));
++  EXPECT_FALSE(DecodeWorkerSurfacePolicy(*wire, partition_));
++  policy->identity_mode = static_cast<SurfaceIdentityMode>(99);
++  EXPECT_FALSE(EncodeSurfacePolicyCommit(*policy, partition_));
++}
++
++TEST_F(GlintSurfacePolicyPreflightTest,
++       StableIdentityDoesNotAuthorizeAnotherPartition) {
++  auto incoming = Incoming();
++  incoming.identity_mode = 1u;
++  auto policy = PreflightSurfacePolicyForPartition(incoming, partition_);
++  ASSERT_TRUE(policy);
++  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
++  ASSERT_TRUE(wire);
++  const auto other = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test")));
++  EXPECT_FALSE(EncodeSurfacePolicyCommit(*policy, other));
++  EXPECT_FALSE(DecodeWorkerSurfacePolicy(*wire, other));
++  EXPECT_FALSE(DecodeSurfacePolicyCommit(*wire, other, other.origin()));
++}
++
+ }  // namespace
+ }  // namespace glint::candidate
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h b/third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h
+index 4fe308d..ee04cfc 100644
+--- a/third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h
+@@ -11,8 +11,11 @@ namespace glint::candidate {
+ // IPC sender authentication and safe pre-teardown cancellation are separate gates.
+ inline bool ValidateSurfacePolicy(const SurfacePolicy& policy,
+                                   const blink::StorageKey& selected_partition) {
+-  if (policy.version != kSurfacePolicyVersion || policy.partition_encoding.empty() ||
+-      policy.partition_encoding.size() > 8192 || !HasIndependentSurfaceSeeds(policy)) {
++  if (policy.version != kSurfacePolicyVersion ||
++      !IsValidSurfaceIdentityMode(policy.identity_mode) ||
++      policy.partition_encoding.empty() ||
++      policy.partition_encoding.size() > 8192 ||
++      !HasIndependentSurfaceSeeds(policy)) {
+     return false;
+   }
+   const auto encoding = selected_partition.SerializeForNativePrivacy();
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h b/third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h
+index bd00105..3e7c282 100644
+--- a/third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h
+@@ -11,8 +11,9 @@
+ 
+ namespace glint::candidate {
+ inline SurfacePolicyView SurfacePolicyWireView(const blink::mojom::GlintSurfacePolicyCommit& wire) {
+-  return {wire.version, wire.partition_encoding, wire.canvas_seed, wire.webgl_seed,
+-          wire.webgpu_seed, wire.audio_seed};
++  return {wire.version,      wire.partition_encoding, wire.canvas_seed,
++          wire.webgl_seed,   wire.webgpu_seed,        wire.audio_seed,
++          wire.identity_mode};
+ }
+ 
+ inline bool HasMatchingWirePartition(const blink::mojom::GlintSurfacePolicyCommit& wire) {
+@@ -31,6 +32,7 @@ inline blink::mojom::GlintSurfacePolicyCommitPtr EncodeSurfacePolicyCommit(
+   }
+   auto wire = blink::mojom::GlintSurfacePolicyCommit::New();
+   wire->version = policy.version;
++  wire->identity_mode = static_cast<uint32_t>(policy.identity_mode);
+   wire->partition = trusted_partition;
+   wire->partition_encoding = policy.partition_encoding;
+   wire->canvas_seed.assign(policy.canvas.begin(), policy.canvas.end());
+diff --git a/third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom b/third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom
+index e31dc9f..ce68e86 100644
+--- a/third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom
++++ b/third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom
+@@ -7,9 +7,11 @@ import "third_party/blink/public/mojom/storage_key/storage_key.mojom";
+ 
+ // One browser-owned partition snapshot; never reachable through a Web API.
+ // ByteString retains embedded nulls in native StorageKey serialization.
+-// This schema is not yet connected to document commits or worker endpoints.
++// Consumers reject unsupported versions and unknown modes before seed copies.
+ struct GlintSurfacePolicyCommit {
+   uint32 version;
++  // v3: chosen by the browser-owned key service; never selected by a renderer.
++  uint32 identity_mode;
+   // Supplied only by the lifetime-bound browser endpoint. Needed for workers
+   // whose renderer creation API does not carry the authoritative StorageKey.
+   StorageKey partition;

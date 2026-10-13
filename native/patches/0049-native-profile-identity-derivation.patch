@@ -1,0 +1,332 @@
+diff --git a/content/browser/camouflow_native/privacy_context.cc b/content/browser/camouflow_native/privacy_context.cc
+index e1c9664..690e887 100644
+--- a/content/browser/camouflow_native/privacy_context.cc
++++ b/content/browser/camouflow_native/privacy_context.cc
+@@ -79,4 +79,15 @@ std::optional<std::array<uint8_t, 32>> DeriveNativePrivacyKey(
+   }
+   return PrivacyKeyService::GetForOwner(*context)->Derive(trusted_partition, surface);
+ }
++std::optional<std::array<uint8_t, 32>> DeriveNativeProfileIdentityKey(
++    BrowserContext* context,
++    const blink::StorageKey& trusted_partition,
++    std::string_view surface) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!IsNativePrivacyContextReady(context)) {
++    return std::nullopt;
++  }
++  return PrivacyKeyService::GetForOwner(*context)->DeriveProfileIdentity(
++      trusted_partition, surface);
++}
+ }  // namespace content
+diff --git a/content/browser/camouflow_native/privacy_key_derivation.cc b/content/browser/camouflow_native/privacy_key_derivation.cc
+index 5bca1a4..f7f858d 100644
+--- a/content/browser/camouflow_native/privacy_key_derivation.cc
++++ b/content/browser/camouflow_native/privacy_key_derivation.cc
+@@ -22,4 +22,19 @@ std::optional<std::array<uint8_t, 32>> DerivePrivacyPartitionKey(
+   return crypto::hmac::SignSha256(profile_key, base::as_byte_span(*message));
+ }
+ 
++std::optional<std::array<uint8_t, 32>> DeriveProfileIdentityKey(
++    base::span<const uint8_t, 32> profile_key,
++    const blink::StorageKey& trusted_partition,
++    std::string_view surface) {
++  const auto partition = trusted_partition.SerializeForNativePrivacy();
++  if (!partition || partition->empty() || partition->size() > 8192) {
++    return std::nullopt;
++  }
++  const auto message = ProfileIdentityDerivationMessage(surface);
++  if (!message) {
++    return std::nullopt;
++  }
++  return crypto::hmac::SignSha256(profile_key, base::as_byte_span(*message));
++}
++
+ }  // namespace camouflow::native
+diff --git a/content/browser/camouflow_native/privacy_key_derivation.h b/content/browser/camouflow_native/privacy_key_derivation.h
+index 246ef6d..34c7854 100644
+--- a/content/browser/camouflow_native/privacy_key_derivation.h
++++ b/content/browser/camouflow_native/privacy_key_derivation.h
+@@ -18,6 +18,12 @@ std::optional<std::array<uint8_t, 32>> DerivePrivacyPartitionKey(
+     const blink::StorageKey& storage_key,
+     std::string_view surface);
+ 
++// Validates the browser-owned partition but excludes it from the identity HMAC.
++std::optional<std::array<uint8_t, 32>> DeriveProfileIdentityKey(
++    base::span<const uint8_t, 32> profile_key,
++    const blink::StorageKey& trusted_partition,
++    std::string_view surface);
++
+ }  // namespace camouflow::native
+ 
+ #endif  // CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_KEY_DERIVATION_H_
+diff --git a/content/browser/camouflow_native/privacy_key_derivation_unittest.cc b/content/browser/camouflow_native/privacy_key_derivation_unittest.cc
+index 67b7972..226dc27 100644
+--- a/content/browser/camouflow_native/privacy_key_derivation_unittest.cc
++++ b/content/browser/camouflow_native/privacy_key_derivation_unittest.cc
+@@ -103,4 +103,67 @@ TEST(NativePrivacyKeyTest, UnknownSurfaceIsRejected) {
+ }
+ 
+ }  // namespace
++TEST(NativeProfileIdentityKeyTest, CanvasMatchesIndependentVector) {
++  const auto key =
++      DeriveProfileIdentityKey(ProfileKey(), TrustedKey(), "canvas");
++  ASSERT_TRUE(key);
++  EXPECT_EQ(base::HexEncodeLower(*key),
++            "20dce1593e6c4c336c2fd3d3d280bbb25897e5535eb281995f1e258a92dd57f2");
++}
++
++TEST(NativeProfileIdentityKeyTest, WebglMatchesIndependentVector) {
++  const auto key =
++      DeriveProfileIdentityKey(ProfileKey(), TrustedKey(), "webgl");
++  ASSERT_TRUE(key);
++  EXPECT_EQ(base::HexEncodeLower(*key),
++            "2d9d6bba187081cec70f0cfb691f45f0edbdf6102225ebbdc0ead57d6e5f0ef3");
++}
++
++TEST(NativeProfileIdentityKeyTest, WebgpuMatchesIndependentVector) {
++  const auto key =
++      DeriveProfileIdentityKey(ProfileKey(), TrustedKey(), "webgpu");
++  ASSERT_TRUE(key);
++  EXPECT_EQ(base::HexEncodeLower(*key),
++            "c06c3fb80ba7ff2d923ae600f5bec7177a82629b0e2d1154794b9b2bc26e3fbd");
++}
++
++TEST(NativeProfileIdentityKeyTest, AudioMatchesIndependentVector) {
++  const auto key =
++      DeriveProfileIdentityKey(ProfileKey(), TrustedKey(), "audio");
++  ASSERT_TRUE(key);
++  EXPECT_EQ(base::HexEncodeLower(*key),
++            "967498cf8b7b8528a376c6e8b2579e22f9b476d87171ac51527da8e07733ef17");
++}
++
++TEST(NativeProfileIdentityKeyTest, DifferentPartitionsShareIdentityNotPrivacy) {
++  const auto first = TrustedKey();
++  const auto second = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test")));
++  const auto identity = DeriveProfileIdentityKey(ProfileKey(), first, "canvas");
++  ASSERT_TRUE(identity);
++  EXPECT_EQ(identity, DeriveProfileIdentityKey(ProfileKey(), second, "canvas"));
++  const auto privacy = DerivePrivacyPartitionKey(ProfileKey(), first, "canvas");
++  ASSERT_TRUE(privacy);
++  EXPECT_NE(privacy, DerivePrivacyPartitionKey(ProfileKey(), second, "canvas"));
++  EXPECT_NE(identity, privacy);
++}
++
++TEST(NativeProfileIdentityKeyTest, IndependentRootsAndSurfacesDoNotShareKeys) {
++  auto other = ProfileKey();
++  other[0] ^= 1;
++  const auto identity =
++      DeriveProfileIdentityKey(ProfileKey(), TrustedKey(), "canvas");
++  ASSERT_TRUE(identity);
++  EXPECT_NE(identity, DeriveProfileIdentityKey(other, TrustedKey(), "canvas"));
++  EXPECT_NE(identity,
++            DeriveProfileIdentityKey(ProfileKey(), TrustedKey(), "audio"));
++}
++
++TEST(NativeProfileIdentityKeyTest, UnsupportedSurfacesAreRejected) {
++  EXPECT_FALSE(DeriveProfileIdentityKey(ProfileKey(), TrustedKey(), ""));
++  EXPECT_FALSE(DeriveProfileIdentityKey(ProfileKey(), TrustedKey(), "Canvas"));
++  EXPECT_FALSE(DeriveProfileIdentityKey(
++      ProfileKey(), TrustedKey(), std::string_view("canvas\0audio", 12)));
++}
++
+ }  // namespace camouflow::native
+diff --git a/content/browser/camouflow_native/privacy_key_service.cc b/content/browser/camouflow_native/privacy_key_service.cc
+index 2711478..d0a9179 100644
+--- a/content/browser/camouflow_native/privacy_key_service.cc
++++ b/content/browser/camouflow_native/privacy_key_service.cc
+@@ -116,6 +116,16 @@ std::optional<std::array<uint8_t, 32>> PrivacyKeyService::Derive(
+   return key_->Derive(trusted_partition, surface);
+ }
+ 
++std::optional<std::array<uint8_t, 32>> PrivacyKeyService::DeriveProfileIdentity(
++    const blink::StorageKey& trusted_partition,
++    std::string_view surface) const {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (state_ != State::kReady || !key_) {
++    return std::nullopt;
++  }
++  return key_->DeriveProfileIdentity(trusted_partition, surface);
++}
++
+ void PrivacyKeyService::WhenReady(base::OnceCallback<void(bool)> callback) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   CHECK(callback);
+diff --git a/content/browser/camouflow_native/privacy_key_service.h b/content/browser/camouflow_native/privacy_key_service.h
+index 75f2f50..06ff20c 100644
+--- a/content/browser/camouflow_native/privacy_key_service.h
++++ b/content/browser/camouflow_native/privacy_key_service.h
+@@ -44,6 +44,11 @@ class PrivacyKeyService : public base::SupportsUserData::Data {
+   void WhenReady(base::OnceCallback<void(bool)> callback);
+   void Shutdown();
+ 
++  // Explicit stable-identity purpose; never substitutes for Derive().
++  std::optional<std::array<uint8_t, 32>> DeriveProfileIdentity(
++      const blink::StorageKey& trusted_partition,
++      std::string_view surface) const;
++
+  private:
+   void Loaded(std::unique_ptr<PrivacyProfileKey> key);
+   void NotifyReadiness();
+diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/content/browser/camouflow_native/privacy_key_service_unittest.cc
+index 907da3a..5a80711 100644
+--- a/content/browser/camouflow_native/privacy_key_service_unittest.cc
++++ b/content/browser/camouflow_native/privacy_key_service_unittest.cc
+@@ -352,4 +352,57 @@ TEST_F(NativePrivacyKeyServiceTest, ReadinessQueueHasExplicitBound) {
+ }
+ 
+ }  // namespace
++
++TEST_F(NativePrivacyKeyServiceTest,
++       ProfileIdentityRequiresReadyAndRejectsShutdown) {
++  PrivacyKeyService service;
++  EXPECT_FALSE(service.DeriveProfileIdentity(Partition(), "canvas"));
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  EXPECT_EQ(service.state(), State::kLoading);
++  EXPECT_FALSE(service.DeriveProfileIdentity(Partition(), "canvas"));
++  tasks_.RunUntilIdle();
++  ASSERT_EQ(service.state(), State::kReady);
++  EXPECT_TRUE(service.DeriveProfileIdentity(Partition(), "canvas"));
++  service.Shutdown();
++  EXPECT_FALSE(service.DeriveProfileIdentity(Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyKeyServiceTest,
++       ProfileIdentityFailureDoesNotRegenerateAKey) {
++  ASSERT_TRUE(base::DeleteFile(
++      owned_.GetPath().AppendASCII("camouflow-native-privacy.json")));
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(service.state(), State::kFailed);
++  EXPECT_FALSE(service.DeriveProfileIdentity(Partition(), "canvas"));
++  EXPECT_FALSE(base::PathExists(
++      owned_.GetPath().AppendASCII("camouflow-native-privacy.json")));
++}
++
++TEST_F(NativePrivacyKeyServiceTest,
++       ProfileIdentityEphemeralOwnersAreIndependent) {
++  PrivacyKeyService first;
++  PrivacyKeyService second;
++  ASSERT_TRUE(first.InitializeEphemeral());
++  ASSERT_TRUE(second.InitializeEphemeral());
++  const auto identity = first.DeriveProfileIdentity(Partition(), "canvas");
++  ASSERT_TRUE(identity);
++  EXPECT_NE(identity, second.DeriveProfileIdentity(Partition(), "canvas"));
++  EXPECT_EQ(identity, first.DeriveProfileIdentity(Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyKeyServiceTest, ProfileIdentityOwnedReloadPreservesTheKey) {
++  PrivacyKeyService first;
++  ASSERT_TRUE(first.InitializeOwnedProfile(owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  const auto identity = first.DeriveProfileIdentity(Partition(), "canvas");
++  ASSERT_TRUE(identity);
++  first.Shutdown();
++  PrivacyKeyService restarted;
++  ASSERT_TRUE(restarted.InitializeOwnedProfile(owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(identity, restarted.DeriveProfileIdentity(Partition(), "canvas"));
++}
++
+ }  // namespace camouflow::native
+diff --git a/content/browser/camouflow_native/privacy_partition.h b/content/browser/camouflow_native/privacy_partition.h
+index 30f7c35..2463ada 100644
+--- a/content/browser/camouflow_native/privacy_partition.h
++++ b/content/browser/camouflow_native/privacy_partition.h
+@@ -3,19 +3,41 @@
+ #ifndef CAMOUFLOW_NATIVE_CORE_PRIVACY_PARTITION_H_
+ #define CAMOUFLOW_NATIVE_CORE_PRIVACY_PARTITION_H_
+ 
++#include <cstddef>
+ #include <optional>
+ #include <string>
+ #include <string_view>
+ 
+ namespace camouflow::native {
+ 
++inline bool IsNativeFingerprintSurface(std::string_view surface) {
++  return surface == "canvas" || surface == "webgl" || surface == "webgpu" ||
++         surface == "audio";
++}
++
++// Stable profile-identity purpose, distinct from the existing privacy/v1
++// domain. This does not authorize a document or change the partitioned privacy
++// policy.
++inline std::optional<std::string> ProfileIdentityDerivationMessage(
++    std::string_view surface) {
++  if (!IsNativeFingerprintSurface(surface)) {
++    return std::nullopt;
++  }
++  std::string message("Glint/profile-identity/v1");
++  message.push_back('\0');
++  for (int shift = 24; shift >= 0; shift -= 8) {
++    message.push_back(static_cast<char>((surface.size() >> shift) & 0xff));
++  }
++  message.append(surface);
++  return message;
++}
++
+ // The browser must supply its canonical storage partition, not a caller URL.
+ // Sign this message with crypto::hmac::SignSha256 and the private profile key.
+ inline std::optional<std::string> PrivacyDerivationMessage(
+     std::string_view partition, std::string_view surface) {
+   if (partition.empty() || partition.size() > 8192 ||
+-      (surface != "canvas" && surface != "webgl" && surface != "webgpu" &&
+-       surface != "audio")) {
++      !IsNativeFingerprintSurface(surface)) {
+     return std::nullopt;
+   }
+   std::string message("CamouFlowNative/privacy/v1");
+diff --git a/content/browser/camouflow_native/privacy_profile_key.cc b/content/browser/camouflow_native/privacy_profile_key.cc
+index 3b38dc2..c0bb8b3 100644
+--- a/content/browser/camouflow_native/privacy_profile_key.cc
++++ b/content/browser/camouflow_native/privacy_profile_key.cc
+@@ -76,6 +76,12 @@ std::optional<std::array<uint8_t, 32>> PrivacyProfileKey::Derive(
+   return DerivePrivacyPartitionKey(key_, storage_key, surface);
+ }
+ 
++std::optional<std::array<uint8_t, 32>> PrivacyProfileKey::DeriveProfileIdentity(
++    const blink::StorageKey& trusted_partition,
++    std::string_view surface) const {
++  return DeriveProfileIdentityKey(key_, trusted_partition, surface);
++}
++
+ std::unique_ptr<PrivacyProfileKey> PrivacyProfileKey::LoadOwnedProfile(const base::FilePath& profile) {
+ #if BUILDFLAG(IS_WIN)
+   base::ScopedBlockingCall blocking(FROM_HERE, base::BlockingType::MAY_BLOCK);
+diff --git a/content/browser/camouflow_native/privacy_profile_key.h b/content/browser/camouflow_native/privacy_profile_key.h
+index ebd185e..d90d7f2 100644
+--- a/content/browser/camouflow_native/privacy_profile_key.h
++++ b/content/browser/camouflow_native/privacy_profile_key.h
+@@ -29,6 +29,11 @@ class PrivacyProfileKey {
+   std::optional<std::array<uint8_t, 32>> Derive(
+       const blink::StorageKey& storage_key, std::string_view surface) const;
+ 
++  // Explicit stable-identity purpose; never substitutes for Derive().
++  std::optional<std::array<uint8_t, 32>> DeriveProfileIdentity(
++      const blink::StorageKey& trusted_partition,
++      std::string_view surface) const;
++
+  private:
+   explicit PrivacyProfileKey(const std::array<uint8_t, 32>& key);
+   std::array<uint8_t, 32> key_;
+diff --git a/content/public/browser/native_privacy_context.h b/content/public/browser/native_privacy_context.h
+index 88cb4ae..bdf19cf 100644
+--- a/content/public/browser/native_privacy_context.h
++++ b/content/public/browser/native_privacy_context.h
+@@ -39,6 +39,14 @@ CONTENT_EXPORT void WhenNativePrivacyContextReady(
+ CONTENT_EXPORT std::optional<std::array<uint8_t, 32>> DeriveNativePrivacyKey(
+     BrowserContext* context, const blink::StorageKey& trusted_partition,
+     std::string_view surface);
++// Browser/UI sequence only, explicit profile-identity purpose. The trusted
++// partition must still be authorized and bound to IPC by its browser producer.
++// Does not enable a mode, export the root key or replace
++// DeriveNativePrivacyKey.
++CONTENT_EXPORT std::optional<std::array<uint8_t, 32>>
++DeriveNativeProfileIdentityKey(BrowserContext* context,
++                               const blink::StorageKey& trusted_partition,
++                               std::string_view surface);
+ }  // namespace content
+ 
+ #endif  // CONTENT_PUBLIC_BROWSER_NATIVE_PRIVACY_CONTEXT_H_

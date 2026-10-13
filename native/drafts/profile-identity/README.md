@@ -1,6 +1,17 @@
 # Stable profile identity — derivation candidate
 
-**Unregistered and uncompiled. No identity mode is enabled.**
+**Canonical candidates promoted exactly as patches 0049–0054. Native execution
+and a linked identity-mode browser remain unverified; no manager capability is admitted.**
+
+The complete Identity/GPU package is integrated into registered source 001-058.
+Private proof: `identity-gpu-source-integration-0049-0058-v1/proof.json` on D.
+The source matched the reviewed combined composition, all 58 patches replayed,
+and existing browser core/GN/receipt remained unchanged. Source-before copies
+are retained for rollback. Historical draft commands/results below describe
+pre-promotion checks against source 001-048; do not reapply them to 001-058.
+Run the registered native targets `identity-keys` (62), `identity-contexts` (37),
+`identity-transport` (20) and `identity-handoff` (15), then the actual browser gates.
+These 134 cases include 50 new identity cases and 84 legacy regressions.
 
 ## Exact fixture inventory
 

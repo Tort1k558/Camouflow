@@ -23,6 +23,7 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | `scripts/verify_native_cpp.py` | Standalone native policy primitives |
 | `scripts/verify_native_gpu_metadata_codec.py` | 14 actual candidate codec cases on standalone MSVC/GoogleTest; not a Chromium GN target, decoder/driver test or browser capability |
 | `scripts/verify_native_privacy_units.py` | Keys: 43; contexts: 26; surface navigation: 42; window transport: 13; worker surfaces: 55; GPU readback: 31/31 passed on 001-048. Legacy delivery remains a separate 34-case target |
+| `scripts/verify_native_privacy_units.py --target identity-*` | Registered package targets: keys 62, contexts 37, transport 20, handoff 15; 50 new cases and 84 legacy cases. Prepared execution gates, not yet passing native results |
 | `scripts/verify_native_suite.py` | Runtime, hardware, WebRTC, automation, fonts, identity, CDP and combined gates |
 | `scripts/verify_native_storage_paths.py` | Windows path-depth/storage probes |
 | `scripts/verify_native_canvas.py` | Canvas verification tooling, not an implemented protection claim |
@@ -34,6 +35,14 @@ Run commands as documented in the [build guide](../native/BUILDING.md). Use fres
 report paths outside source/application repositories. Keep raw outputs and
 measured executable/core-DLL hashes; a count without exact names and successful
 completion is insufficient. Failed or skipped cases are not a passing gate.
+
+Source integration 0049–0058 is recorded privately in
+`D:\CamouFlowNative\identity-gpu-source-integration-0049-0058-v1\proof.json`.
+All 58 patches replayed and source matched the reviewed composition; browser
+001-047 core, GN and receipt stayed unchanged. Native test filters enumerate
+exact suite/case names, including all four DocumentLoader parameter variants.
+Registration does not admit identity mode; historical unregistered draft replay
+commands must not be reapplied to the integrated 001-058 checkout.
 
 The strict identity extension preserves the existing gate by default:
 

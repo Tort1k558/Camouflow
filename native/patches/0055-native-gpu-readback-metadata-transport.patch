@@ -1,0 +1,1167 @@
+diff --git a/gpu/BUILD.gn b/gpu/BUILD.gn
+index 2f916f0..d15855c 100644
+--- a/gpu/BUILD.gn
++++ b/gpu/BUILD.gn
+@@ -429,6 +429,7 @@ test("gpu_unittests") {
+     "command_buffer/common/gles2_cmd_format_test.cc",
+     "command_buffer/common/gles2_cmd_format_test_autogen.h",
+     "command_buffer/common/gles2_cmd_utils_unittest.cc",
++    "command_buffer/common/glint_readback_metadata_unittest.cc",
+     "command_buffer/common/id_allocator_test.cc",
+     "command_buffer/common/raster_cmd_format_test.cc",
+     "command_buffer/common/raster_cmd_format_test_autogen.h",
+diff --git a/gpu/GLES2/gl2chromium_autogen.h b/gpu/GLES2/gl2chromium_autogen.h
+index 8e1b498..4aff45a 100644
+--- a/gpu/GLES2/gl2chromium_autogen.h
++++ b/gpu/GLES2/gl2chromium_autogen.h
+@@ -388,5 +388,7 @@
+ #define glClipControlEXT GLES2_GET_FUN(ClipControlEXT)
+ #define glPolygonModeANGLE GLES2_GET_FUN(PolygonModeANGLE)
+ #define glPolygonOffsetClampEXT GLES2_GET_FUN(PolygonOffsetClampEXT)
++#define glGetGlintReadFramebufferMetadataCHROMIUM \
++  GLES2_GET_FUN(GetGlintReadFramebufferMetadataCHROMIUM)
+ 
+ #endif  // GPU_GLES2_GL2CHROMIUM_AUTOGEN_H_
+diff --git a/gpu/command_buffer/build_gles2_cmd_buffer.py b/gpu/command_buffer/build_gles2_cmd_buffer.py
+index 450d0ce..482abd3 100644
+--- a/gpu/command_buffer/build_gles2_cmd_buffer.py
++++ b/gpu/command_buffer/build_gles2_cmd_buffer.py
+@@ -2305,6 +2305,15 @@ _FUNCTION_INFO = {
+     'decoder_func': 'DoGetFloatv',
+     'gl_test_func': 'glGetIntegerv',
+   },
++  'GetGlintReadFramebufferMetadataCHROMIUM': {
++    'type': 'Custom',
++    'data_transfer_methods': ['shm'],
++    'result': ['SizedResult<GLint>'],
++    'extension': True,
++    'impl_func': False,
++    'client_test': False,
++    'unit_test': False,
++  },
+   'GetFramebufferAttachmentParameteriv': {
+     'type': 'GETn',
+     'decoder_func': 'DoGetFramebufferAttachmentParameteriv',
+diff --git a/gpu/command_buffer/client/gles2_c_lib_autogen.h b/gpu/command_buffer/client/gles2_c_lib_autogen.h
+index 503e5db..11edf65 100644
+--- a/gpu/command_buffer/client/gles2_c_lib_autogen.h
++++ b/gpu/command_buffer/client/gles2_c_lib_autogen.h
+@@ -1733,6 +1733,9 @@ void GL_APIENTRY GLES2PolygonOffsetClampEXT(GLfloat factor,
+                                             GLfloat clamp) {
+   gles2::GetGLContext()->PolygonOffsetClampEXT(factor, units, clamp);
+ }
++void GL_APIENTRY GLES2GetGlintReadFramebufferMetadataCHROMIUM(GLint* params) {
++  gles2::GetGLContext()->GetGlintReadFramebufferMetadataCHROMIUM(params);
++}
+ 
+ namespace gles2 {
+ 
+@@ -3118,6 +3121,11 @@ extern const NameToFunc g_gles2_function_table[] = {
+         "glPolygonOffsetClampEXT",
+         reinterpret_cast<GLES2FunctionPointer>(glPolygonOffsetClampEXT),
+     },
++    {
++        "glGetGlintReadFramebufferMetadataCHROMIUM",
++        reinterpret_cast<GLES2FunctionPointer>(
++            glGetGlintReadFramebufferMetadataCHROMIUM),
++    },
+     {
+         nullptr,
+         nullptr,
+diff --git a/gpu/command_buffer/client/gles2_cmd_helper_autogen.h b/gpu/command_buffer/client/gles2_cmd_helper_autogen.h
+index 40957f9..cf0820e 100644
+--- a/gpu/command_buffer/client/gles2_cmd_helper_autogen.h
++++ b/gpu/command_buffer/client/gles2_cmd_helper_autogen.h
+@@ -3283,4 +3283,13 @@ void PolygonOffsetClampEXT(GLfloat factor, GLfloat units, GLfloat clamp) {
+   }
+ }
+ 
++void GetGlintReadFramebufferMetadataCHROMIUM(uint32_t params_shm_id,
++                                             uint32_t params_shm_offset) {
++  gles2::cmds::GetGlintReadFramebufferMetadataCHROMIUM* c =
++      GetCmdSpace<gles2::cmds::GetGlintReadFramebufferMetadataCHROMIUM>();
++  if (c) {
++    c->Init(params_shm_id, params_shm_offset);
++  }
++}
++
+ #endif  // GPU_COMMAND_BUFFER_CLIENT_GLES2_CMD_HELPER_AUTOGEN_H_
+diff --git a/gpu/command_buffer/client/gles2_implementation.cc b/gpu/command_buffer/client/gles2_implementation.cc
+index 0005699..13aa084 100644
+--- a/gpu/command_buffer/client/gles2_implementation.cc
++++ b/gpu/command_buffer/client/gles2_implementation.cc
+@@ -54,6 +54,7 @@
+ #include "gpu/command_buffer/client/vertex_array_object_manager.h"
+ #include "gpu/command_buffer/common/context_creation_attribs.h"
+ #include "gpu/command_buffer/common/gles2_cmd_utils.h"
++#include "gpu/command_buffer/common/glint_readback_metadata.h"
+ #include "gpu/command_buffer/common/id_allocator.h"
+ #include "gpu/command_buffer/common/swap_buffers_complete_params.h"
+ #include "gpu/command_buffer/common/sync_token.h"
+@@ -7095,6 +7096,35 @@ void GLES2Implementation::SetActiveURLCHROMIUM(const char* url) {
+   helper_->SetBucketSize(kResultBucketId, 0);
+ }
+ 
++void GLES2Implementation::GetGlintReadFramebufferMetadataCHROMIUM(
++    GLint* params) {
++  GPU_CLIENT_SINGLE_THREAD_CHECK();
++  const char* function = "GetGlintReadFramebufferMetadataCHROMIUM";
++  if (!params) {
++    SetGLError(GL_INVALID_VALUE, function, "null metadata destination");
++    return;
++  }
++  std::copy(kGlintReadbackMetadataUnavailable.begin(),
++            kGlintReadbackMetadataUnavailable.end(), params);
++  using Result = cmds::GetGlintReadFramebufferMetadataCHROMIUM::Result;
++  auto result = GetResultAs<Result>();
++  if (!result) {
++    return;
++  }
++  result->SetNumResults(0);
++  helper_->GetGlintReadFramebufferMetadataCHROMIUM(GetResultShmId(),
++                                                   result.offset());
++  if (!WaitForCmd()) {
++    return;
++  }
++  if (result->GetNumResults() != kGlintReadbackMetadataValues) {
++    SetGLError(GL_INVALID_OPERATION, function, "invalid metadata result size");
++    return;
++  }
++  result->CopyResult(params);
++  CheckGLError();
++}
++
+ // Include the auto-generated part of this file. We split this because it means
+ // we can easily edit the non-auto generated parts right here in this file
+ // instead of having to edit some template or the code generator.
+diff --git a/gpu/command_buffer/client/gles2_implementation_autogen.h b/gpu/command_buffer/client/gles2_implementation_autogen.h
+index c8fa768..dfc0653 100644
+--- a/gpu/command_buffer/client/gles2_implementation_autogen.h
++++ b/gpu/command_buffer/client/gles2_implementation_autogen.h
+@@ -1217,4 +1217,6 @@ void PolygonOffsetClampEXT(GLfloat factor,
+                            GLfloat units,
+                            GLfloat clamp) override;
+ 
++void GetGlintReadFramebufferMetadataCHROMIUM(GLint* params) override;
++
+ #endif  // GPU_COMMAND_BUFFER_CLIENT_GLES2_IMPLEMENTATION_AUTOGEN_H_
+diff --git a/gpu/command_buffer/client/gles2_interface_autogen.h b/gpu/command_buffer/client/gles2_interface_autogen.h
+index 3242660..edfd206 100644
+--- a/gpu/command_buffer/client/gles2_interface_autogen.h
++++ b/gpu/command_buffer/client/gles2_interface_autogen.h
+@@ -911,4 +911,5 @@ virtual void PolygonModeANGLE(GLenum face, GLenum mode) = 0;
+ virtual void PolygonOffsetClampEXT(GLfloat factor,
+                                    GLfloat units,
+                                    GLfloat clamp) = 0;
++virtual void GetGlintReadFramebufferMetadataCHROMIUM(GLint* params) = 0;
+ #endif  // GPU_COMMAND_BUFFER_CLIENT_GLES2_INTERFACE_AUTOGEN_H_
+diff --git a/gpu/command_buffer/client/gles2_interface_stub_autogen.h b/gpu/command_buffer/client/gles2_interface_stub_autogen.h
+index 82e1a68..93ac04a 100644
+--- a/gpu/command_buffer/client/gles2_interface_stub_autogen.h
++++ b/gpu/command_buffer/client/gles2_interface_stub_autogen.h
+@@ -879,4 +879,5 @@ void PolygonModeANGLE(GLenum face, GLenum mode) override;
+ void PolygonOffsetClampEXT(GLfloat factor,
+                            GLfloat units,
+                            GLfloat clamp) override;
++void GetGlintReadFramebufferMetadataCHROMIUM(GLint* params) override;
+ #endif  // GPU_COMMAND_BUFFER_CLIENT_GLES2_INTERFACE_STUB_AUTOGEN_H_
+diff --git a/gpu/command_buffer/client/gles2_interface_stub_impl_autogen.h b/gpu/command_buffer/client/gles2_interface_stub_impl_autogen.h
+index f0564f1..885f8cb 100644
+--- a/gpu/command_buffer/client/gles2_interface_stub_impl_autogen.h
++++ b/gpu/command_buffer/client/gles2_interface_stub_impl_autogen.h
+@@ -1184,4 +1184,6 @@ void GLES2InterfaceStub::PolygonModeANGLE(GLenum /* face */,
+ void GLES2InterfaceStub::PolygonOffsetClampEXT(GLfloat /* factor */,
+                                                GLfloat /* units */,
+                                                GLfloat /* clamp */) {}
++void GLES2InterfaceStub::GetGlintReadFramebufferMetadataCHROMIUM(
++    GLint* /* params */) {}
+ #endif  // GPU_COMMAND_BUFFER_CLIENT_GLES2_INTERFACE_STUB_IMPL_AUTOGEN_H_
+diff --git a/gpu/command_buffer/client/gles2_trace_implementation_autogen.h b/gpu/command_buffer/client/gles2_trace_implementation_autogen.h
+index ea123d5..f57d250 100644
+--- a/gpu/command_buffer/client/gles2_trace_implementation_autogen.h
++++ b/gpu/command_buffer/client/gles2_trace_implementation_autogen.h
+@@ -879,4 +879,5 @@ void PolygonModeANGLE(GLenum face, GLenum mode) override;
+ void PolygonOffsetClampEXT(GLfloat factor,
+                            GLfloat units,
+                            GLfloat clamp) override;
++void GetGlintReadFramebufferMetadataCHROMIUM(GLint* params) override;
+ #endif  // GPU_COMMAND_BUFFER_CLIENT_GLES2_TRACE_IMPLEMENTATION_AUTOGEN_H_
+diff --git a/gpu/command_buffer/client/gles2_trace_implementation_impl_autogen.h b/gpu/command_buffer/client/gles2_trace_implementation_impl_autogen.h
+index f71be61..de8929b 100644
+--- a/gpu/command_buffer/client/gles2_trace_implementation_impl_autogen.h
++++ b/gpu/command_buffer/client/gles2_trace_implementation_impl_autogen.h
+@@ -2517,4 +2517,11 @@ void GLES2TraceImplementation::PolygonOffsetClampEXT(GLfloat factor,
+   gl_->PolygonOffsetClampEXT(factor, units, clamp);
+ }
+ 
++void GLES2TraceImplementation::GetGlintReadFramebufferMetadataCHROMIUM(
++    GLint* params) {
++  TRACE_EVENT_BINARY_EFFICIENT0(
++      "gpu", "GLES2Trace::GetGlintReadFramebufferMetadataCHROMIUM");
++  gl_->GetGlintReadFramebufferMetadataCHROMIUM(params);
++}
++
+ #endif  // GPU_COMMAND_BUFFER_CLIENT_GLES2_TRACE_IMPLEMENTATION_IMPL_AUTOGEN_H_
+diff --git a/gpu/command_buffer/common/BUILD.gn b/gpu/command_buffer/common/BUILD.gn
+index c33fd21..20fbc09 100644
+--- a/gpu/command_buffer/common/BUILD.gn
++++ b/gpu/command_buffer/common/BUILD.gn
+@@ -123,6 +123,7 @@ source_set("gles2_sources") {
+   sources = [
+     "gles2_cmd_format.cc",
+     "gles2_cmd_format.h",
++    "glint_readback_metadata.h",
+     "gles2_cmd_format_autogen.h",
+     "gles2_cmd_ids.h",
+     "gles2_cmd_ids_autogen.h",
+diff --git a/gpu/command_buffer/common/gles2_cmd_format_autogen.h b/gpu/command_buffer/common/gles2_cmd_format_autogen.h
+index d422f11..cf338eb 100644
+--- a/gpu/command_buffer/common/gles2_cmd_format_autogen.h
++++ b/gpu/command_buffer/common/gles2_cmd_format_autogen.h
+@@ -16154,4 +16154,48 @@ static_assert(offsetof(PolygonOffsetClampEXT, units) == 8,
+ static_assert(offsetof(PolygonOffsetClampEXT, clamp) == 12,
+               "offset of PolygonOffsetClampEXT clamp should be 12");
+ 
++struct GetGlintReadFramebufferMetadataCHROMIUM {
++  typedef GetGlintReadFramebufferMetadataCHROMIUM ValueType;
++  static const CommandId kCmdId = kGetGlintReadFramebufferMetadataCHROMIUM;
++  static const cmd::ArgFlags kArgFlags = cmd::kFixed;
++  static const uint8_t cmd_flags = CMD_FLAG_SET_TRACE_LEVEL(3);
++
++  typedef SizedResult<GLint> Result;
++
++  static uint32_t ComputeSize() {
++    return static_cast<uint32_t>(sizeof(ValueType));  // NOLINT
++  }
++
++  void SetHeader() { header.SetCmd<ValueType>(); }
++
++  void Init(uint32_t _params_shm_id, uint32_t _params_shm_offset) {
++    SetHeader();
++    params_shm_id = _params_shm_id;
++    params_shm_offset = _params_shm_offset;
++  }
++
++  void* Set(void* cmd, uint32_t _params_shm_id, uint32_t _params_shm_offset) {
++    static_cast<ValueType*>(cmd)->Init(_params_shm_id, _params_shm_offset);
++    return NextCmdAddress<ValueType>(cmd);
++  }
++
++  gpu::CommandHeader header;
++  uint32_t params_shm_id;
++  uint32_t params_shm_offset;
++};
++
++static_assert(sizeof(GetGlintReadFramebufferMetadataCHROMIUM) == 12,
++              "size of GetGlintReadFramebufferMetadataCHROMIUM should be 12");
++static_assert(
++    offsetof(GetGlintReadFramebufferMetadataCHROMIUM, header) == 0,
++    "offset of GetGlintReadFramebufferMetadataCHROMIUM header should be 0");
++static_assert(offsetof(GetGlintReadFramebufferMetadataCHROMIUM,
++                       params_shm_id) == 4,
++              "offset of GetGlintReadFramebufferMetadataCHROMIUM params_shm_id "
++              "should be 4");
++static_assert(offsetof(GetGlintReadFramebufferMetadataCHROMIUM,
++                       params_shm_offset) == 8,
++              "offset of GetGlintReadFramebufferMetadataCHROMIUM "
++              "params_shm_offset should be 8");
++
+ #endif  // GPU_COMMAND_BUFFER_COMMON_GLES2_CMD_FORMAT_AUTOGEN_H_
+diff --git a/gpu/command_buffer/common/gles2_cmd_format_test_autogen.h b/gpu/command_buffer/common/gles2_cmd_format_test_autogen.h
+index 36ac4a9..ab0cd6c 100644
+--- a/gpu/command_buffer/common/gles2_cmd_format_test_autogen.h
++++ b/gpu/command_buffer/common/gles2_cmd_format_test_autogen.h
+@@ -5388,4 +5388,18 @@ TEST_F(GLES2FormatTest, PolygonOffsetClampEXT) {
+   CheckBytesWrittenMatchesExpectedSize(next_cmd, sizeof(cmd));
+ }
+ 
++TEST_F(GLES2FormatTest, GetGlintReadFramebufferMetadataCHROMIUM) {
++  cmds::GetGlintReadFramebufferMetadataCHROMIUM& cmd =
++      *GetBufferAs<cmds::GetGlintReadFramebufferMetadataCHROMIUM>();
++  void* next_cmd =
++      cmd.Set(&cmd, static_cast<uint32_t>(11), static_cast<uint32_t>(12));
++  EXPECT_EQ(static_cast<uint32_t>(
++                cmds::GetGlintReadFramebufferMetadataCHROMIUM::kCmdId),
++            cmd.header.command);
++  EXPECT_EQ(sizeof(cmd), cmd.header.size * 4u);
++  EXPECT_EQ(static_cast<uint32_t>(11), cmd.params_shm_id);
++  EXPECT_EQ(static_cast<uint32_t>(12), cmd.params_shm_offset);
++  CheckBytesWrittenMatchesExpectedSize(next_cmd, sizeof(cmd));
++}
++
+ #endif  // GPU_COMMAND_BUFFER_COMMON_GLES2_CMD_FORMAT_TEST_AUTOGEN_H_
+diff --git a/gpu/command_buffer/common/gles2_cmd_ids_autogen.h b/gpu/command_buffer/common/gles2_cmd_ids_autogen.h
+index 5f9e46d..4910704 100644
+--- a/gpu/command_buffer/common/gles2_cmd_ids_autogen.h
++++ b/gpu/command_buffer/common/gles2_cmd_ids_autogen.h
+@@ -335,7 +335,8 @@
+   OP(GetFramebufferPixelLocalStorageParameteruivANGLE)         /* 576 */ \
+   OP(ClipControlEXT)                                           /* 577 */ \
+   OP(PolygonModeANGLE)                                         /* 578 */ \
+-  OP(PolygonOffsetClampEXT)                                    /* 579 */
++  OP(PolygonOffsetClampEXT)                                    /* 579 */ \
++  OP(GetGlintReadFramebufferMetadataCHROMIUM)                  /* 580 */
+ 
+ enum CommandId {
+   kOneBeforeStartPoint =
+diff --git a/gpu/command_buffer/common/glint_readback_metadata.h b/gpu/command_buffer/common/glint_readback_metadata.h
+new file mode 100644
+index 0000000..14ceead
+--- /dev/null
++++ b/gpu/command_buffer/common/glint_readback_metadata.h
+@@ -0,0 +1,78 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GPU_COMMAND_BUFFER_COMMON_GLINT_READBACK_METADATA_H_
++#define GPU_COMMAND_BUFFER_COMMON_GLINT_READBACK_METADATA_H_
++
++#include <array>
++#include <cstddef>
++#include <limits>
++#include <optional>
++#include <span>
++
++#include "gpu/command_buffer/common/gl2_types.h"
++
++namespace gpu::gles2 {
++inline constexpr std::size_t kGlintReadbackMetadataValues = 7;
++using GlintReadbackMetadataWire =
++    std::array<GLint, kGlintReadbackMetadataValues>;
++inline constexpr GlintReadbackMetadataWire kGlintReadbackMetadataUnavailable{
++    1, 0, 0, 0, 0, 0, 0};
++
++struct GlintReadbackMetadata {
++  GLsizei width;
++  GLsizei height;
++  GLenum internal_format;
++  GLsizei samples;
++  bool rgba8_compatible;
++};
++
++inline constexpr bool CanBeGlintByteColourFormat(GLenum format) {
++  // OpenGL wire enum values; keep API-specific GL headers out of the codec.
++  switch (format) {
++    case 0x1907:  // GL_RGB
++    case 0x1908:  // GL_RGBA
++    case 0x8051:  // GL_RGB8
++    case 0x8058:  // GL_RGBA8
++      return true;
++    default:
++      return false;
++  }
++}
++
++inline std::optional<GlintReadbackMetadata> DecodeGlintReadbackMetadata(
++    std::span<const GLint> values) {
++  if (values.size() != kGlintReadbackMetadataValues || values[0] != 1 ||
++      values[1] != 1 || values[2] <= 0 || values[3] <= 0 || values[4] <= 0 ||
++      values[5] < 0 || (values[6] != 0 && values[6] != 1) ||
++      (values[6] == 1 &&
++       !CanBeGlintByteColourFormat(static_cast<GLenum>(values[4])))) {
++    return std::nullopt;
++  }
++  return GlintReadbackMetadata{values[2], values[3],
++                               static_cast<GLenum>(values[4]), values[5],
++                               values[6] == 1};
++}
++
++inline GlintReadbackMetadataWire EncodeGlintReadbackMetadata(
++    GLsizei width,
++    GLsizei height,
++    GLenum internal_format,
++    GLsizei samples,
++    bool rgba8_compatible) {
++  if (width <= 0 || height <= 0 || internal_format == 0 ||
++      internal_format >
++          static_cast<GLenum>(std::numeric_limits<GLint>::max()) ||
++      samples < 0 ||
++      (rgba8_compatible && !CanBeGlintByteColourFormat(internal_format))) {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  return {1,
++          1,
++          width,
++          height,
++          static_cast<GLint>(internal_format),
++          samples,
++          rgba8_compatible ? 1 : 0};
++}
++}  // namespace gpu::gles2
++#endif
+diff --git a/gpu/command_buffer/common/glint_readback_metadata_unittest.cc b/gpu/command_buffer/common/glint_readback_metadata_unittest.cc
+new file mode 100644
+index 0000000..f007d69
+--- /dev/null
++++ b/gpu/command_buffer/common/glint_readback_metadata_unittest.cc
+@@ -0,0 +1,140 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "glint_readback_metadata.h"
++
++#include <GLES3/gl3.h>
++
++#include <vector>
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace gpu::gles2 {
++namespace {
++TEST(GlintReadbackMetadataTest, ByteColourRoundTripPreservesNativeDimensions) {
++  const auto wire = EncodeGlintReadbackMetadata(8192, 4096, GL_RGBA8, 0, true);
++  const auto metadata = DecodeGlintReadbackMetadata(wire);
++  ASSERT_TRUE(metadata.has_value());
++  EXPECT_EQ(metadata->width, 8192);
++  EXPECT_EQ(metadata->height, 4096);
++  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA8));
++  EXPECT_EQ(metadata->samples, 0);
++  EXPECT_TRUE(metadata->rgba8_compatible);
++}
++
++TEST(GlintReadbackMetadataTest,
++     NonByteAndMultisampleInformationIsNotFabricated) {
++  const auto metadata = DecodeGlintReadbackMetadata(
++      EncodeGlintReadbackMetadata(16, 8, GL_RGBA16F, 4, false));
++  ASSERT_TRUE(metadata.has_value());
++  EXPECT_EQ(metadata->internal_format, static_cast<GLenum>(GL_RGBA16F));
++  EXPECT_EQ(metadata->samples, 4);
++  EXPECT_FALSE(metadata->rgba8_compatible);
++}
++
++TEST(GlintReadbackMetadataTest, UnavailableCannotBecomeReady) {
++  EXPECT_FALSE(DecodeGlintReadbackMetadata(kGlintReadbackMetadataUnavailable));
++}
++
++TEST(GlintReadbackMetadataTest, TruncatedWireNeverReadsMissingFields) {
++  const auto wire = EncodeGlintReadbackMetadata(8, 8, GL_RGBA8, 0, true);
++  for (size_t length = 0; length < wire.size(); ++length) {
++    EXPECT_FALSE(DecodeGlintReadbackMetadata(std::span(wire).first(length)));
++  }
++}
++
++TEST(GlintReadbackMetadataTest, ExtraFieldsAreNotSilentlyAccepted) {
++  const auto wire = EncodeGlintReadbackMetadata(8, 8, GL_RGBA8, 0, true);
++  std::vector<GLint> extended(wire.begin(), wire.end());
++  extended.push_back(0);
++  EXPECT_FALSE(DecodeGlintReadbackMetadata(extended));
++}
++
++TEST(GlintReadbackMetadataTest, SchemaIsExact) {
++  for (GLint version : {-1, 0, 2}) {
++    auto wire = EncodeGlintReadbackMetadata(8, 8, GL_RGBA8, 0, true);
++    wire[0] = version;
++    EXPECT_FALSE(DecodeGlintReadbackMetadata(wire));
++  }
++}
++
++TEST(GlintReadbackMetadataTest, ReadyStatusIsExact) {
++  for (GLint status : {-1, 0, 2}) {
++    auto wire = EncodeGlintReadbackMetadata(8, 8, GL_RGBA8, 0, true);
++    wire[1] = status;
++    EXPECT_FALSE(DecodeGlintReadbackMetadata(wire));
++  }
++}
++
++TEST(GlintReadbackMetadataTest, DimensionsMustBePositive) {
++  for (size_t field : {2u, 3u}) {
++    for (GLint dimension : {-1, 0}) {
++      auto wire = EncodeGlintReadbackMetadata(8, 8, GL_RGBA8, 0, true);
++      wire[field] = dimension;
++      EXPECT_FALSE(DecodeGlintReadbackMetadata(wire));
++    }
++  }
++}
++
++TEST(GlintReadbackMetadataTest, InvalidFormatIsNotGuessed) {
++  for (GLint format : {-1, 0}) {
++    auto wire = EncodeGlintReadbackMetadata(8, 8, GL_RGBA8, 0, true);
++    wire[4] = format;
++    EXPECT_FALSE(DecodeGlintReadbackMetadata(wire));
++  }
++}
++
++TEST(GlintReadbackMetadataTest, NegativeSamplesAreRejected) {
++  auto wire = EncodeGlintReadbackMetadata(8, 8, GL_RGBA8, 0, true);
++  wire[5] = -1;
++  EXPECT_FALSE(DecodeGlintReadbackMetadata(wire));
++}
++
++TEST(GlintReadbackMetadataTest, ByteColourClassificationIsAnExactBoolean) {
++  for (GLint classification : {-1, 2}) {
++    auto wire = EncodeGlintReadbackMetadata(8, 8, GL_RGBA8, 0, true);
++    wire[6] = classification;
++    EXPECT_FALSE(DecodeGlintReadbackMetadata(wire));
++  }
++}
++
++TEST(GlintReadbackMetadataTest,
++     ByteColourClaimCannotPromoteFloatIntegerOrUnknownFormat) {
++  for (GLenum format : {GL_RGBA16F, GL_RGBA8UI, GL_RED, GL_RGBA4, 0x7fffffff}) {
++    auto wire = EncodeGlintReadbackMetadata(8, 8, format, 0, false);
++    ASSERT_TRUE(DecodeGlintReadbackMetadata(wire));
++    wire[6] = 1;
++    EXPECT_FALSE(DecodeGlintReadbackMetadata(wire));
++    EXPECT_EQ(EncodeGlintReadbackMetadata(8, 8, format, 0, true),
++              kGlintReadbackMetadataUnavailable);
++  }
++}
++
++TEST(GlintReadbackMetadataTest,
++     ByteColourEligibilityPreservesAllSupportedFormats) {
++  for (GLenum format : {GL_RGB, GL_RGBA, GL_RGB8, GL_RGBA8}) {
++    for (bool compatible : {false, true}) {
++      const auto metadata = DecodeGlintReadbackMetadata(
++          EncodeGlintReadbackMetadata(8, 8, format, 4, compatible));
++      ASSERT_TRUE(metadata);
++      EXPECT_EQ(metadata->internal_format, format);
++      EXPECT_EQ(metadata->samples, 4);
++      EXPECT_EQ(metadata->rgba8_compatible, compatible);
++    }
++  }
++}
++
++TEST(GlintReadbackMetadataTest, ProducerRejectsInvalidRepresentations) {
++  EXPECT_EQ(EncodeGlintReadbackMetadata(0, 8, GL_RGBA8, 0, true),
++            kGlintReadbackMetadataUnavailable);
++  EXPECT_EQ(EncodeGlintReadbackMetadata(8, -1, GL_RGBA8, 0, true),
++            kGlintReadbackMetadataUnavailable);
++  EXPECT_EQ(EncodeGlintReadbackMetadata(8, 8, 0, 0, true),
++            kGlintReadbackMetadataUnavailable);
++  EXPECT_EQ(EncodeGlintReadbackMetadata(
++                8, 8, std::numeric_limits<GLenum>::max(), 0, true),
++            kGlintReadbackMetadataUnavailable);
++  EXPECT_EQ(EncodeGlintReadbackMetadata(8, 8, GL_RGBA8, -1, true),
++            kGlintReadbackMetadataUnavailable);
++}
++}  // namespace
++}  // namespace gpu::gles2
+diff --git a/gpu/command_buffer/gles2_cmd_buffer_functions.txt b/gpu/command_buffer/gles2_cmd_buffer_functions.txt
+index f76e030..4d747ba 100644
+--- a/gpu/command_buffer/gles2_cmd_buffer_functions.txt
++++ b/gpu/command_buffer/gles2_cmd_buffer_functions.txt
+@@ -392,3 +392,6 @@ GL_APICALL void         GL_APIENTRY glPolygonModeANGLE (GLenum face, GLenum mode
+ 
+ // Extension EXT_polygon_offset_clamp
+ GL_APICALL void         GL_APIENTRY glPolygonOffsetClampEXT (GLfloat factor, GLfloat units, GLfloat clamp);
++
++// Glint private native readback metadata; not a WebGL entry point.
++GL_APICALL void GL_APIENTRY glGetGlintReadFramebufferMetadataCHROMIUM (GLint* params);
+diff --git a/gpu/command_buffer/service/gles2_cmd_decoder.cc b/gpu/command_buffer/service/gles2_cmd_decoder.cc
+index d55fb20..a9cfcb9 100644
+--- a/gpu/command_buffer/service/gles2_cmd_decoder.cc
++++ b/gpu/command_buffer/service/gles2_cmd_decoder.cc
+@@ -47,6 +47,7 @@
+ #include "gpu/command_buffer/common/gles2_cmd_copy_texture_chromium_utils.h"
+ #include "gpu/command_buffer/common/gles2_cmd_format.h"
+ #include "gpu/command_buffer/common/gles2_cmd_utils.h"
++#include "gpu/command_buffer/common/glint_readback_metadata.h"
+ #include "gpu/command_buffer/common/mailbox.h"
+ #include "gpu/command_buffer/common/sync_token.h"
+ #include "gpu/command_buffer/service/buffer_manager.h"
+@@ -1692,6 +1693,8 @@ class GLES2DecoderImpl : public GLES2Decoder,
+   void DoGetFloatv(GLenum pname, GLfloat* params, GLsizei params_size);
+ 
+   // Wrapper for glGetFramebufferAttachmentParameteriv.
++  GlintReadbackMetadataWire QueryGlintReadbackMetadata();
++
+   void DoGetFramebufferAttachmentParameteriv(GLenum target,
+                                              GLenum attachment,
+                                              GLenum pname,
+@@ -17057,6 +17060,56 @@ error::Error GLES2DecoderImpl::HandleSetActiveURLCHROMIUM(
+   return error::kNoError;
+ }
+ 
++GlintReadbackMetadataWire GLES2DecoderImpl::QueryGlintReadbackMetadata() {
++  if (!base::FeatureList::IsEnabled(
++          features::kGlintReadbackMetadataCandidate) ||
++      WasContextLost()) {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  Framebuffer* framebuffer = GetBoundReadFramebuffer();
++  if (!framebuffer ||
++      !CheckFramebufferValid(framebuffer, GetReadFramebufferTarget(),
++                             GL_INVALID_FRAMEBUFFER_OPERATION,
++                             "GetGlintReadFramebufferMetadataCHROMIUM")) {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  const auto* attachment = framebuffer->GetReadBufferAttachment();
++  if (!attachment) {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  const GLenum format = attachment->internal_format();
++  const bool byte_colour = format == GL_RGBA8 || format == GL_RGB8 ||
++                           ((format == GL_RGBA || format == GL_RGB) &&
++                            attachment->texture_type() == GL_UNSIGNED_BYTE);
++  return EncodeGlintReadbackMetadata(attachment->width(), attachment->height(),
++                                     format, attachment->samples(),
++                                     byte_colour);
++}
++
++error::Error GLES2DecoderImpl::HandleGetGlintReadFramebufferMetadataCHROMIUM(
++    uint32_t immediate_data_size,
++    const volatile void* cmd_data) {
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  const auto& command = *static_cast<const volatile Command*>(cmd_data);
++  using Result = Command::Result;
++  uint32_t size = 0;
++  if (!Result::ComputeSize(kGlintReadbackMetadataValues).AssignIfValid(&size)) {
++    return error::kOutOfBounds;
++  }
++  auto* result = GetSharedMemoryAs<Result*>(command.params_shm_id,
++                                            command.params_shm_offset, size);
++  if (!result) {
++    return error::kOutOfBounds;
++  }
++  if (result->size != 0) {
++    return error::kInvalidArguments;
++  }
++  const auto metadata = QueryGlintReadbackMetadata();
++  std::copy(metadata.begin(), metadata.end(), result->GetData());
++  result->SetNumResults(kGlintReadbackMetadataValues);
++  return error::kNoError;
++}
++
+ // Include the auto-generated part of this file. We split this because it means
+ // we can easily edit the non-auto generated parts right here in this file
+ // instead of having to edit some template or the code generator.
+diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough.h b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough.h
+index 136dd7e..d404c32 100644
+--- a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough.h
++++ b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough.h
+@@ -23,6 +23,7 @@
+ #include "gpu/command_buffer/common/discardable_handle.h"
+ #include "gpu/command_buffer/common/gles2_cmd_format.h"
+ #include "gpu/command_buffer/common/gles2_cmd_utils.h"
++#include "gpu/command_buffer/common/glint_readback_metadata.h"
+ #include "gpu/command_buffer/common/sync_token.h"
+ #include "gpu/command_buffer/service/client_service_map.h"
+ #include "gpu/command_buffer/service/context_group.h"
+@@ -694,6 +695,7 @@ class GPU_GLES2_EXPORT GLES2DecoderPassthroughImpl
+   // Checks if an error has been generated since the last call to
+   // CheckErrorCallbackState
+   bool CheckErrorCallbackState();
++  GlintReadbackMetadataWire QueryGlintReadbackMetadata();
+   bool had_error_callback_ = false;
+ 
+   struct EmulatedDefaultFramebuffer {
+diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_doers.cc b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_doers.cc
+index 6d640db..c0aa570 100644
+--- a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_doers.cc
++++ b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_doers.cc
+@@ -7,6 +7,9 @@
+ #include <memory>
+ 
+ #include "base/bits.h"
++#include "base/check.h"
++#include "base/check_op.h"
+ #include "base/compiler_specific.h"
++#include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
+@@ -14,6 +16,7 @@
+ #include "base/numerics/checked_math.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/stringprintf.h"
++#include "base/time/time.h"
+ #include "base/trace_event/trace_event.h"
+ #include "build/build_config.h"
+ #include "components/viz/common/resources/shared_image_format_utils.h"
+@@ -27,6 +30,7 @@
+ #include "gpu/command_buffer/service/shared_image/shared_image_factory.h"
+ #include "gpu/command_buffer/service/shared_image/shared_image_format_service_utils.h"
+ #include "gpu/command_buffer/service/shared_image/shared_image_representation.h"
++#include "gpu/config/gpu_finch_features.h"
+ #include "third_party/perfetto/include/perfetto/tracing/track.h"
+ #include "third_party/skia/include/core/SkYUVAInfo.h"
+ #include "third_party/skia/include/core/SkYUVAPixmaps.h"
+@@ -38,9 +42,6 @@
+ #include "ui/gl/gl_utils.h"
+ #include "ui/gl/gl_version_info.h"
+ #include "ui/gl/scoped_make_current.h"
+-#include "base/time/time.h"
+-#include "base/check_op.h"
+-#include "base/check.h"
+ 
+ namespace gpu {
+ namespace gles2 {
+@@ -5228,5 +5229,221 @@ error::Error GLES2DecoderPassthroughImpl::DoPolygonOffsetClampEXT(
+   return error::kNoError;
+ }
+ 
++GlintReadbackMetadataWire
++GLES2DecoderPassthroughImpl::QueryGlintReadbackMetadata() {
++  if (!base::FeatureList::IsEnabled(
++          features::kGlintReadbackMetadataCandidate) ||
++      WasContextLost() || bound_read_framebuffer_ == 0) {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  const bool es3 = feature_info_->IsWebGL2OrES3OrHigherContext();
++  const GLenum target = es3 ? GL_READ_FRAMEBUFFER : GL_FRAMEBUFFER;
++  CheckErrorCallbackState();
++  const GLenum status = api()->glCheckFramebufferStatusEXTFn(target);
++  if (CheckErrorCallbackState() || status != GL_FRAMEBUFFER_COMPLETE) {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  auto integer = [this](GLenum pname, GLint& value) {
++    GLsizei length = 0;
++    api()->glGetIntegervRobustANGLEFn(pname, 1, &length, &value);
++    return !CheckErrorCallbackState() && length == 1;
++  };
++  GLint selected = GL_COLOR_ATTACHMENT0;
++  if (es3 && !integer(GL_READ_BUFFER, selected)) {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  if (selected == GL_NONE) {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  auto attachment = [this, target, selected](GLenum pname, GLint& value) {
++    GLsizei length = 0;
++    const auto command_error = DoGetFramebufferAttachmentParameteriv(
++        target, selected, pname, 1, &length, &value);
++    return command_error == error::kNoError && length == 1;
++  };
++  GLint kind = 0, object = 0, width = 0, height = 0, format = 0, samples = 0;
++  bool byte_colour = false;
++  if (!attachment(GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, kind) ||
++      !attachment(GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, object) || !object) {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  GLint native_object = 0;
++  GLsizei native_length = 0;
++  api()->glGetFramebufferAttachmentParameterivRobustANGLEFn(
++      target, selected, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, 1,
++      &native_length, &native_object);
++  if (CheckErrorCallbackState() || native_length != 1 || !native_object) {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  if (kind == GL_RENDERBUFFER) {
++    GLuint service_id = 0;
++    if (!resources_->renderbuffer_id_map.GetServiceID(
++            static_cast<GLuint>(object), &service_id)) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    if (service_id != static_cast<GLuint>(native_object)) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    GLint previous = 0;
++    if (!integer(GL_RENDERBUFFER_BINDING, previous)) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    base::ScopedClosureRunner restore(base::BindOnce(
++        [](GLES2DecoderPassthroughImpl* decoder, GLint binding) {
++          decoder->api()->glBindRenderbufferEXTFn(GL_RENDERBUFFER,
++                                                  static_cast<GLuint>(binding));
++          decoder->CheckErrorCallbackState();
++        },
++        base::Unretained(this), previous));
++    api()->glBindRenderbufferEXTFn(GL_RENDERBUFFER, service_id);
++    if (CheckErrorCallbackState()) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    auto renderbuffer = [this](GLenum pname, GLint& value) {
++      GLsizei length = 0;
++      api()->glGetRenderbufferParameterivRobustANGLEFn(GL_RENDERBUFFER, pname,
++                                                       1, &length, &value);
++      return !CheckErrorCallbackState() && length == 1;
++    };
++    if (!renderbuffer(GL_RENDERBUFFER_WIDTH, width) ||
++        !renderbuffer(GL_RENDERBUFFER_HEIGHT, height) ||
++        !renderbuffer(GL_RENDERBUFFER_INTERNAL_FORMAT, format)) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    if ((es3 || context_->HasExtension("GL_ANGLE_framebuffer_multisample") ||
++         context_->HasExtension("GL_EXT_framebuffer_multisample") ||
++         context_->HasExtension("GL_APPLE_framebuffer_multisample")) &&
++        !renderbuffer(GL_RENDERBUFFER_SAMPLES, samples)) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    byte_colour = format == GL_RGBA8 || format == GL_RGB8;
++  } else if (kind == GL_TEXTURE) {
++    if (!context_->HasExtension("GL_ANGLE_get_tex_level_parameter")) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    scoped_refptr<TexturePassthrough> texture;
++    if (!resources_->texture_object_map.GetServiceID(
++            static_cast<GLuint>(object), &texture) ||
++        !texture) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    if (texture->service_id() != static_cast<GLuint>(native_object)) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    const GLenum texture_target = texture->target();
++    GLenum binding = 0;
++    switch (texture_target) {
++      case GL_TEXTURE_2D:
++        binding = GL_TEXTURE_BINDING_2D;
++        break;
++      case GL_TEXTURE_CUBE_MAP:
++        binding = GL_TEXTURE_BINDING_CUBE_MAP;
++        break;
++      case GL_TEXTURE_3D:
++        if (es3) {
++          binding = GL_TEXTURE_BINDING_3D;
++        }
++        break;
++      case GL_TEXTURE_2D_ARRAY:
++        if (es3) {
++          binding = GL_TEXTURE_BINDING_2D_ARRAY;
++        }
++        break;
++    }
++    if (!binding) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    GLint level = 0, face = 0, previous = 0, layer = 0;
++    if (!attachment(GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL, level) ||
++        level < 0 ||
++        !attachment(GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_CUBE_MAP_FACE, face) ||
++        !integer(binding, previous)) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    GLenum query_target = texture_target;
++    if (texture_target == GL_TEXTURE_CUBE_MAP) {
++      if (face < GL_TEXTURE_CUBE_MAP_POSITIVE_X ||
++          face > GL_TEXTURE_CUBE_MAP_NEGATIVE_Z) {
++        return kGlintReadbackMetadataUnavailable;
++      }
++      query_target = static_cast<GLenum>(face);
++    } else if (face != 0) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    const bool layered = texture_target == GL_TEXTURE_3D ||
++                         texture_target == GL_TEXTURE_2D_ARRAY;
++    if (layered &&
++        (!attachment(GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER, layer) ||
++         layer < 0)) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    if (context_->HasExtension("GL_OVR_multiview")) {
++      GLint views = 0;
++      if (!attachment(GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_NUM_VIEWS_OVR, views) ||
++          views != 0) {
++        return kGlintReadbackMetadataUnavailable;
++      }
++    }
++    if (context_->HasExtension("GL_EXT_multisampled_render_to_texture")) {
++      if (!attachment(GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_SAMPLES_EXT, samples)) {
++        return kGlintReadbackMetadataUnavailable;
++      }
++    } else if (context_->HasExtension(
++                   "GL_IMG_multisampled_render_to_texture")) {
++      if (!attachment(GL_TEXTURE_SAMPLES_IMG, samples)) {
++        return kGlintReadbackMetadataUnavailable;
++      }
++    }
++    base::ScopedClosureRunner restore(base::BindOnce(
++        [](GLES2DecoderPassthroughImpl* decoder, GLenum target, GLint binding) {
++          decoder->api()->glBindTextureFn(target, static_cast<GLuint>(binding));
++          decoder->CheckErrorCallbackState();
++        },
++        base::Unretained(this), texture_target, previous));
++    api()->glBindTextureFn(texture_target, texture->service_id());
++    if (CheckErrorCallbackState()) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    auto texture_parameter = [this, query_target, level](GLenum pname,
++                                                         GLint& value) {
++      GLsizei length = 0;
++      api()->glGetTexLevelParameterivRobustANGLEFn(query_target, level, pname,
++                                                   1, &length, &value);
++      return !CheckErrorCallbackState() && length == 1;
++    };
++    if (!texture_parameter(GL_TEXTURE_WIDTH, width) ||
++        !texture_parameter(GL_TEXTURE_HEIGHT, height) ||
++        !texture_parameter(GL_TEXTURE_INTERNAL_FORMAT, format)) {
++      return kGlintReadbackMetadataUnavailable;
++    }
++    if (format == GL_RGBA8 || format == GL_RGB8 || format == GL_RGBA ||
++        format == GL_RGB) {
++      GLint red_type = 0, red = 0, green = 0, blue = 0, alpha = 0;
++      if (!texture_parameter(GL_TEXTURE_RED_TYPE, red_type) ||
++          !texture_parameter(GL_TEXTURE_RED_SIZE, red) ||
++          !texture_parameter(GL_TEXTURE_GREEN_SIZE, green) ||
++          !texture_parameter(GL_TEXTURE_BLUE_SIZE, blue) ||
++          !texture_parameter(GL_TEXTURE_ALPHA_SIZE, alpha)) {
++        return kGlintReadbackMetadataUnavailable;
++      }
++      byte_colour =
++          red_type == GL_UNSIGNED_NORMALIZED && red == 8 && green == 8 &&
++          blue == 8 &&
++          ((format == GL_RGBA8 || format == GL_RGBA) ? alpha == 8 : alpha == 0);
++    }
++    if (layered) {
++      GLint depth = 0;
++      if (!texture_parameter(GL_TEXTURE_DEPTH, depth) || depth <= 0 ||
++          layer >= depth) {
++        return kGlintReadbackMetadataUnavailable;
++      }
++    }
++  } else {
++    return kGlintReadbackMetadataUnavailable;
++  }
++  return EncodeGlintReadbackMetadata(width, height, static_cast<GLenum>(format),
++                                     samples, byte_colour);
++}
++
+ }  // namespace gles2
+ }  // namespace gpu
+diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_handlers.cc b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_handlers.cc
+index 90d49da..f3dec9a 100644
+--- a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_handlers.cc
++++ b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_handlers.cc
+@@ -2,9 +2,10 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+-#include "gpu/command_buffer/service/gles2_cmd_decoder_passthrough.h"
++#include <algorithm>
+ 
+ #include "gpu/command_buffer/common/discardable_handle.h"
++#include "gpu/command_buffer/service/gles2_cmd_decoder_passthrough.h"
+ #include "gpu/command_buffer/service/multi_draw_manager.h"
+ 
+ namespace gpu {
+@@ -2410,5 +2411,30 @@ error::Error GLES2DecoderPassthroughImpl::HandleDestroyGpuFenceCHROMIUM(
+   return DoDestroyGpuFenceCHROMIUM(gpu_fence_id);
+ }
+ 
++error::Error
++GLES2DecoderPassthroughImpl::HandleGetGlintReadFramebufferMetadataCHROMIUM(
++    uint32_t immediate_data_size,
++    const volatile void* cmd_data) {
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  const auto& command = *static_cast<const volatile Command*>(cmd_data);
++  using Result = Command::Result;
++  uint32_t size = 0;
++  if (!Result::ComputeSize(kGlintReadbackMetadataValues).AssignIfValid(&size)) {
++    return error::kOutOfBounds;
++  }
++  auto* result = GetSharedMemoryAs<Result*>(command.params_shm_id,
++                                            command.params_shm_offset, size);
++  if (!result) {
++    return error::kOutOfBounds;
++  }
++  if (result->size != 0) {
++    return error::kInvalidArguments;
++  }
++  const auto metadata = QueryGlintReadbackMetadata();
++  std::copy(metadata.begin(), metadata.end(), result->GetData());
++  result->SetNumResults(kGlintReadbackMetadataValues);
++  return error::kNoError;
++}
++
+ }  // namespace gles2
+ }  // namespace gpu
+diff --git a/gpu/config/gpu_finch_features.cc b/gpu/config/gpu_finch_features.cc
+index 8a78842..61ea107 100644
+--- a/gpu/config/gpu_finch_features.cc
++++ b/gpu/config/gpu_finch_features.cc
+@@ -172,6 +172,10 @@ BASE_FEATURE(kClearGrShaderDiskCacheOnInvalidPrefix,
+ // kill-switch for working around issues with the disk cache and assessing the
+ // performance value of the disk cache. The --disable-gpu-shader-disk-cache flag
+ // overrides this feature and forces the disk cache to be disabled.
++// Private native attachment metadata transport; never a WebGL API.
++BASE_FEATURE(kGlintReadbackMetadataCandidate,
++             base::FEATURE_DISABLED_BY_DEFAULT);
++
+ BASE_FEATURE(kGpuShaderDiskCache, base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ bool IsShaderDiskCacheEnabled(const base::CommandLine* command_line) {
+diff --git a/gpu/config/gpu_finch_features.h b/gpu/config/gpu_finch_features.h
+index a822d50..d9b2457 100644
+--- a/gpu/config/gpu_finch_features.h
++++ b/gpu/config/gpu_finch_features.h
+@@ -56,6 +56,8 @@ GPU_CONFIG_EXPORT BASE_DECLARE_FEATURE(kAdjustGpuProcessPriority);
+ 
+ GPU_CONFIG_EXPORT BASE_DECLARE_FEATURE(kClearGrShaderDiskCacheOnInvalidPrefix);
+ 
++GPU_CONFIG_EXPORT BASE_DECLARE_FEATURE(kGlintReadbackMetadataCandidate);
++
+ GPU_CONFIG_EXPORT BASE_DECLARE_FEATURE(kGpuShaderDiskCache);
+ GPU_CONFIG_EXPORT bool IsShaderDiskCacheEnabled(
+     const base::CommandLine* command_line);
+diff --git a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+index 4a2d59b..4a42c78 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+@@ -911,8 +911,8 @@ void WebGL2RenderingContextBase::readPixels(GLint x,
+       width > 0 && height > 0) {
+     SkBitmap rectangle;
+     gfx::Rect copy_region;
+-    if (!PrepareGlintRgba8Readback(x, y, width, height, format, type,
+-                                   rectangle, copy_region)) {
++    if (!PrepareGlintRgba8Readback(x, y, width, height, format, type, rectangle,
++                                   copy_region)) {
+       return;
+     }
+     const auto pack = GetPackPixelStoreParams();
+@@ -932,10 +932,14 @@ void WebGL2RenderingContextBase::readPixels(GLint x,
+                   rectangle.computeByteSize());
+     const size_t column_offset = static_cast<size_t>(copy_region.x()) * 4;
+     const size_t copy_bytes = static_cast<size_t>(copy_region.width()) * 4;
+-    for (size_t row = copy_region.y(); !copy_region.IsEmpty() &&
+-         row < static_cast<size_t>(copy_region.y() + copy_region.height()); ++row) {
+-      const int64_t destination = offset + skip_bytes + row * stride + column_offset;
+-      const auto input = pixels.subspan(row * row_bytes + column_offset, copy_bytes);
++    for (size_t row = copy_region.y();
++         !copy_region.IsEmpty() &&
++         row < static_cast<size_t>(copy_region.y() + copy_region.height());
++         ++row) {
++      const int64_t destination =
++          offset + skip_bytes + row * stride + column_offset;
++      const auto input =
++          pixels.subspan(row * row_bytes + column_offset, copy_bytes);
+       BufferSubDataImpl(GL_PIXEL_PACK_BUFFER, destination, copy_bytes,
+                         input.data());
+     }
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+index 03f0f72..ce10e1c 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -30,19 +30,12 @@
+ #include <span>
+ #include <utility>
+ 
+-#include "base/functional/bind.h"
+-#include "base/functional/callback_helpers.h"
+-#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+-#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
+-#include "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h"
+-#include "third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h"
+-#include "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region.h"
+-#include "third_party/skia/include/core/SkBitmap.h"
+-
+ #include "base/bit_cast.h"
+ #include "base/byte_size.h"
+ #include "base/compiler_specific.h"
+ #include "base/feature_list.h"
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/histogram_macros.h"
+@@ -59,6 +52,7 @@
+ #include "gpu/command_buffer/client/gles2_interface.h"
+ #include "gpu/command_buffer/client/shared_image_interface.h"
+ #include "gpu/command_buffer/common/capabilities.h"
++#include "gpu/command_buffer/common/glint_readback_metadata.h"
+ #include "gpu/config/gpu_driver_bug_workaround_type.h"
+ #include "gpu/config/gpu_feature_info.h"
+ #include "media/base/format_utils.h"
+@@ -81,6 +75,9 @@
+ #include "third_party/blink/renderer/core/frame/web_feature.h"
+ #include "third_party/blink/renderer/core/geometry/dom_rect_read_only.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_host.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h"
+ #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
+ #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+ #include "third_party/blink/renderer/core/html/canvas/predefined_color_space.h"
+@@ -105,6 +102,8 @@
+ #include "third_party/blink/renderer/modules/webgl/ext_shader_texture_lod.h"
+ #include "third_party/blink/renderer/modules/webgl/ext_texture_filter_anisotropic.h"
+ #include "third_party/blink/renderer/modules/webgl/gl_string_query.h"
++#include "third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h"
++#include "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region.h"
+ #include "third_party/blink/renderer/modules/webgl/oes_element_index_uint.h"
+ #include "third_party/blink/renderer/modules/webgl/oes_standard_derivatives.h"
+ #include "third_party/blink/renderer/modules/webgl/oes_texture_float.h"
+@@ -163,6 +162,7 @@
+ #include "third_party/blink/renderer/platform/wtf/functional.h"
+ #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
+ #include "third_party/blink/renderer/platform/wtf/text/string_utf8_adaptor.h"
++#include "third_party/skia/include/core/SkBitmap.h"
+ #include "third_party/skia/include/core/SkImage.h"
+ #include "ui/gfx/geometry/size.h"
+ 
+@@ -5161,8 +5161,8 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+       width > 0 && height > 0) {
+     SkBitmap rectangle;
+     gfx::Rect copy_region;
+-    if (!PrepareGlintRgba8Readback(x, y, width, height, format, type,
+-                                   rectangle, copy_region)) {
++    if (!PrepareGlintRgba8Readback(x, y, width, height, format, type, rectangle,
++                                   copy_region)) {
+       return;
+     }
+     const auto source =
+@@ -5171,7 +5171,7 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+     const auto destination = std::span(data, buffer_size.ValueOrDie());
+     if (!glint::candidate::CopyRgba8ReadbackToPackLayout(
+             source, destination, width, height, 0, GetPackPixelStoreParams(),
+-              copy_region).has_value()) {
++            copy_region).has_value()) {
+       SynthesizeGLError(GL_INVALID_OPERATION, "readPixels",
+                         "Glint WebGL pack-copy failed.");
+     }
+@@ -5219,22 +5219,27 @@ bool WebGLRenderingContextBase::PrepareGlintRgba8Readback(
+   int frame_width = drawingBufferWidth();
+   int frame_height = drawingBufferHeight();
+   if (framebuffer) {
+-    auto* attachment =
+-        framebuffer->GetAttachmentObject(framebuffer->GetReadBuffer());
+-    if (!attachment || !attachment->IsRenderbuffer()) {
+-      return reject(
+-          "Glint WebGL texture framebuffer readback is not implemented.");
++    gpu::gles2::GlintReadbackMetadataWire wire =
++        gpu::gles2::kGlintReadbackMetadataUnavailable;
++    ContextGL()->GetGlintReadFramebufferMetadataCHROMIUM(wire.data());
++    const auto metadata = gpu::gles2::DecodeGlintReadbackMetadata(wire);
++    if (!metadata) {
++      return reject("Glint native GPU attachment metadata is unavailable.");
++    }
++    if (metadata->samples != 0 || !metadata->rgba8_compatible) {
++      return reject("Glint requires a single-sample byte-colour attachment.");
++    }
++    frame_width = metadata->width;
++    frame_height = metadata->height;
++    storage = metadata->internal_format;
++    // Unsized byte-colour formats are classified by native type/precision,
++    // not by the renderer, viewport or fabricated texture level dimensions.
++    if (storage == GL_RGBA) {
++      storage = GL_RGBA8;
+     }
+-    auto* renderbuffer = static_cast<WebGLRenderbuffer*>(attachment);
+-    if (renderbuffer->IsMultisampled()) {
+-      return reject(
+-          "Glint WebGL multisample readback requires an explicit resolve.");
++    if (storage == GL_RGB) {
++      storage = GL_RGB8;
+     }
+-    // These fields are maintained by native renderbufferStorage operations.
+-    // Never infer the attachment extent from the viewport or canvas dimensions.
+-    storage = renderbuffer->InternalFormat();
+-    frame_width = renderbuffer->Width();
+-    frame_height = renderbuffer->Height();
+   }
+   if (format != GL_RGBA || type != GL_UNSIGNED_BYTE ||
+       (storage != GL_RGBA8 && storage != GL_RGB8) ||
+@@ -5243,7 +5248,7 @@ bool WebGLRenderingContextBase::PrepareGlintRgba8Readback(
+        (pack.row_length > 0 ? pack.row_length : width))) {
+     return reject(
+         "Glint WebGL candidate supports nonoverlapping RGBA8 default/sRGB or "
+-        "single-sample RGB8/RGBA8 renderbuffer readback only.");
++        "single-sample byte-colour attachment readback only.");
+   }
+   auto seed = glint::candidate::SurfacePartitionSeed(
+       GetExecutionContext(), glint::candidate::SurfaceSeedKind::kWebGL);
+@@ -5262,11 +5267,14 @@ bool WebGLRenderingContextBase::PrepareGlintRgba8Readback(
+   }
+   const int64_t left = std::max<int64_t>(0, x);
+   const int64_t bottom = std::max<int64_t>(0, y);
+-  const int64_t right = std::min<int64_t>(frame_width, static_cast<int64_t>(x) + width);
+-  const int64_t top = std::min<int64_t>(frame_height, static_cast<int64_t>(y) + height);
++  const int64_t right =
++      std::min<int64_t>(frame_width, static_cast<int64_t>(x) + width);
++  const int64_t top =
++      std::min<int64_t>(frame_height, static_cast<int64_t>(y) + height);
+   if (left < right && bottom < top) {
+-    copy_region = gfx::Rect(static_cast<int>(left - x), static_cast<int>(bottom - y),
+-                            static_cast<int>(right - left), static_cast<int>(top - bottom));
++    copy_region = gfx::Rect(
++        static_cast<int>(left - x), static_cast<int>(bottom - y),
++        static_cast<int>(right - left), static_cast<int>(top - bottom));
+   }
+   const auto rectangle_info =
+       SkImageInfo::Make(width, height, kRGBA_8888_SkColorType,

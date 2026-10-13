@@ -263,6 +263,14 @@ Replay gate проверяет suite/name/macro и единственность 
 за один прогон, исправлять связанной группой; OOM/crash/нарушение изоляции могут
 блокировать дальнейшее исполнение и не считаются проверенными случаями.
 
+Пакет перенесён целиком в исходники как 0049–0058: точное совпадение с reviewed
+composition и ordered replay всех 58 патчей подтверждены. Сохранены source-before
+копии для отката; браузер 001–047, GN и receipt не изменились. Proof на D:
+`identity-gpu-source-integration-0049-0058-v1/proof.json`. Новые native targets:
+identity-keys 62, identity-contexts 37, identity-transport 20, identity-handoff 15
+(134 cases, включая 50 новых и 84 legacy). Регистрация не означает успешной
+линковки, исполнения этих тестов или готовности режима; admission закрыт.
+
 Команда пакетного C++ preflight:
 
 ```powershell
