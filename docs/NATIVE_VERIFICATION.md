@@ -364,8 +364,10 @@ The 001–034 full Chrome build terminated after 1,406 completed tasks with a
 immutable `origin_to_commit_` member. Registered repair 0035 instead uses a local
 effective origin inside the existing origin calculation. The commit member and
 header ABI remain unchanged; sandbox, same-origin and local-access checks remain.
-Source integrity replay of the complete repaired chain passed. The single failed
-object is being rebuilt before resuming full Chrome; no new browser is verified.
+Source integrity replay of the complete repaired chain passed. The repaired
+`document_loader.obj` compiled successfully in a bounded one-object build; full
+001–035 Chrome compilation has resumed with existing objects retained. No new
+browser or protected fingerprint capability is verified by that object result.
 
 ## Stable profile-identity derivation candidate
 
