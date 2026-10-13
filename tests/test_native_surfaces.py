@@ -359,7 +359,7 @@ def test_gpu_passthrough_attachment_fixtures_enable_feature_and_cover_native_sta
 
     text = PASSTHROUGH_ATTACHMENT_PATCH.read_text(encoding="utf-8-sig")
     assert patch_paths(text) == PASSTHROUGH_ATTACHMENT_PATHS
-    assert text.count("+TEST_F(GlintPassthroughAttachmentTest,") == 10
+    assert text.count("+TEST_F(GlintPassthroughAttachmentTest,") == 13
     assert "InitAndEnableFeature(features::kGlintReadbackMetadataCandidate)" in text
     assert "ActualRgba8ExtentsPreserveRenderbufferBinding" in text
     assert "RedefinedAttachmentUsesCurrentNativeDimensions" in text
@@ -371,6 +371,12 @@ def test_gpu_passthrough_attachment_fixtures_enable_feature_and_cover_native_sta
     assert "CubeFaceAttachmentReportsNativeExtentsAndPreservesBinding" in text
     assert "ArrayLayerAttachmentReportsNativeExtentsAndPreservesBinding" in text
     assert "ThreeDimensionalLayerReportsNativeExtentsAndPreservesBinding" in text
+    assert "SelectedReadAttachmentControlsNativeMetadata" in text
+    assert "NoReadBufferRemainsUnavailableWithoutClientErrors" in text
+    assert "IncompleteFramebufferRemainsUnavailableWithoutClientErrors" in text
+    assert "select.Init(GL_COLOR_ATTACHMENT1);" in text
+    assert "select.Init(GL_NONE);" in text
+    assert "EXPECT_FALSE(QueryAttachment());" in text
     assert "attachment.Init(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, kClientTextureId," in text
     assert "DoGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &after, 1);" in text
     assert "DoGetIntegerv(GL_TEXTURE_BINDING_3D, &after, 1);" in text

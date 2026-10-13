@@ -1,5 +1,5 @@
 diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc
-index 1a2d236..8409a92 100644
+index 1a2d236..e714b84 100644
 --- a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc
 +++ b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc
 @@ -5,8 +5,11 @@
@@ -14,7 +14,7 @@ index 1a2d236..8409a92 100644
  
  namespace gpu {
  namespace gles2 {
-@@ -416,5 +419,302 @@ TEST_F(GLES2DecoderPassthroughTest,
+@@ -416,5 +419,357 @@ TEST_F(GLES2DecoderPassthroughTest,
    EXPECT_EQ(kClientTextureId, static_cast<GLuint>(*result_value));
  }
  
@@ -312,6 +312,61 @@ index 1a2d236..8409a92 100644
 +  GLint after = 0;
 +  DoGetIntegerv(GL_TEXTURE_BINDING_3D, &after, 1);
 +  EXPECT_EQ(after, before);
++  EXPECT_EQ(GL_NO_ERROR, GetGLError());
++}
++
++TEST_F(GlintPassthroughAttachmentTest,
++       SelectedReadAttachmentControlsNativeMetadata) {
++  CreateAttachment(GL_RGBA8, 8, 4);
++  const auto first = QueryAttachment();
++  ASSERT_TRUE(first);
++  EXPECT_EQ(first->internal_format, GL_RGBA8);
++  EXPECT_TRUE(first->rgba8_compatible);
++  const GLuint other = kClientRenderbufferId + 1;
++  GenHelper<cmds::GenRenderbuffersImmediate>(other);
++  DoBindRenderbuffer(GL_RENDERBUFFER, other);
++  cmds::RenderbufferStorage storage;
++  storage.Init(GL_RENDERBUFFER, GL_RGBA8UI, 8, 4);
++  ASSERT_EQ(error::kNoError, ExecuteCmd(storage));
++  DoFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
++                            GL_RENDERBUFFER, other);
++  cmds::ReadBuffer select;
++  select.Init(GL_COLOR_ATTACHMENT1);
++  ASSERT_EQ(error::kNoError, ExecuteCmd(select));
++  ASSERT_EQ(GL_NO_ERROR, GetGLError());
++  const auto selected = QueryAttachment();
++  ASSERT_TRUE(selected);
++  EXPECT_EQ(selected->width, 8);
++  EXPECT_EQ(selected->height, 4);
++  EXPECT_EQ(selected->internal_format, GL_RGBA8UI);
++  EXPECT_FALSE(selected->rgba8_compatible);
++  GLint read_buffer = 0;
++  DoGetIntegerv(GL_READ_BUFFER, &read_buffer, 1);
++  EXPECT_EQ(read_buffer, static_cast<GLint>(GL_COLOR_ATTACHMENT1));
++  EXPECT_EQ(GL_NO_ERROR, GetGLError());
++}
++
++TEST_F(GlintPassthroughAttachmentTest,
++       NoReadBufferRemainsUnavailableWithoutClientErrors) {
++  CreateAttachment(GL_RGBA8, 8, 4);
++  cmds::ReadBuffer select;
++  select.Init(GL_NONE);
++  ASSERT_EQ(error::kNoError, ExecuteCmd(select));
++  ASSERT_EQ(GL_NO_ERROR, GetGLError());
++  EXPECT_FALSE(QueryAttachment());
++  GLint read_buffer = -1;
++  DoGetIntegerv(GL_READ_BUFFER, &read_buffer, 1);
++  EXPECT_EQ(read_buffer, static_cast<GLint>(GL_NONE));
++  EXPECT_EQ(GL_NO_ERROR, GetGLError());
++}
++
++TEST_F(GlintPassthroughAttachmentTest,
++       IncompleteFramebufferRemainsUnavailableWithoutClientErrors) {
++  CreateAttachment(GL_RGBA8, 8, 4);
++  DoFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
++                            GL_RENDERBUFFER, 0);
++  ASSERT_EQ(GL_NO_ERROR, GetGLError());
++  EXPECT_FALSE(QueryAttachment());
 +  EXPECT_EQ(GL_NO_ERROR, GetGLError());
 +}
 +
