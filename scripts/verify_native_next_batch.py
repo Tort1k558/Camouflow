@@ -20,7 +20,8 @@ PROMOTED = ("0031-native-worker-surface-policy.patch", "0032-native-document-sur
             "0033-native-surface-readback.patch", "0034-native-gpu-metadata-minimization.patch")
 FOLLOWUPS = ("0035-native-initial-origin-calculation.patch", "0036-native-worker-complete-surface-type.patch",
              "0037-native-webgl-readback-compilation.patch", "0038-native-renderer-struct-pointer-presence.patch",
-             "0039-native-document-ready-commit-cancellation.patch")
+             "0039-native-document-ready-commit-cancellation.patch",
+             "0040-native-ready-commit-observer-lifetime.patch")
 
 
 def registered_replay_chain(registered: list[dict]) -> tuple[str, ...]:

@@ -1,0 +1,128 @@
+diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
+--- a/content/browser/renderer_host/navigation_request.cc
++++ b/content/browser/renderer_host/navigation_request.cc
+@@ -6803,12 +6803,14 @@
+   // Failure processing cannot transition READY_TO_COMMIT to WILL_FAIL_REQUEST.
+   const auto abort_privacy_commit = [this] {
+     net_error_ = net::ERR_ABORTED;
+-    FrameTreeNode* node = frame_tree_node_;
++    const auto node_id = frame_tree_node_->frame_tree_node_id();
+     GetRenderFrameHost()->NavigationRequestCancelled(
+         this, NavigationDiscardReason::kInternalCancellation);
+-    // The request is destroyed; only the saved frame-tree node remains usable.
+-    node->render_manager()->DiscardSpeculativeRFHIfUnused(
+-        NavigationDiscardReason::kInternalCancellation);
++    // A finish observer may also destroy the WebContents and its frame tree.
++    if (auto* node = FrameTreeNode::GloballyFindByID(node_id)) {
++      node->render_manager()->DiscardSpeculativeRFHIfUnused(
++          NavigationDiscardReason::kInternalCancellation);
++    }
+   };
+   const auto privacy_mode = GetGlintDocumentPrivacyBootstrapMode();
+   if (privacy_mode == glint::candidate::DocumentPrivacyBootstrapMode::kConflict) {
+diff --git a/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc b/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
+--- a/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
++++ b/content/browser/camouflow_native/privacy_navigation_integration_unittest.cc
+@@ -38,6 +38,13 @@
+             base::test::TaskEnvironment::TimeSource::MOCK_TIME,
+             base::test::TaskEnvironment::ThreadPoolExecutionMode::QUEUED) {}
+ 
++  void ReadyToCommitNavigation(NavigationHandle*) override {
++    if (shutdown_policy_at_ready_) {
++      shutdown_policy_at_ready_ = false;
++      ShutdownNativePrivacyContext(browser_context());
++    }
++  }
++
+   void DidFinishNavigation(NavigationHandle* handle) override {
+     ++finished_;
+     committed_ = handle->HasCommitted();
+@@ -89,6 +96,7 @@
+   base::ScopedTempDir owned_;
+   int finished_ = 0;
+   bool committed_ = false;
++  bool shutdown_policy_at_ready_ = false;
+   bool destroy_contents_on_finish_ = false;
+   int error_ = net::OK;
+ };
+@@ -341,6 +349,80 @@
+   EXPECT_FALSE(web_contents());
+ }
+ 
++TEST_P(NativeDocumentNavigationTest, LateCanvasPolicyLossCancelsAndAllowsNextNavigation) {
++  EnablePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  shutdown_policy_at_ready_ = true;
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(finished_, 1);
++  EXPECT_FALSE(committed_);
++  EXPECT_EQ(error_, net::ERR_ABORTED);
++  ASSERT_TRUE(web_contents());
++  EXPECT_EQ(web_contents()->GetLastCommittedURL(), GURL("https://canvas.test/baseline"));
++  command_line_.GetProcessCommandLine()->RemoveSwitch(kGlintDocumentPrivacyBootstrapSwitch);
++  command_line_.GetProcessCommandLine()->RemoveSwitch(kGlintDocumentSurfaceBootstrapSwitch);
++  NavigateAndCommit(GURL("https://canvas.test/recovery"));
++  EXPECT_EQ(finished_, 2);
++  EXPECT_TRUE(committed_);
++  EXPECT_EQ(error_, net::OK);
++  EXPECT_EQ(web_contents()->GetLastCommittedURL(), GURL("https://canvas.test/recovery"));
++}
++
++TEST_P(NativeDocumentNavigationTest, LateCanvasPolicyLossObserverMayDestroyWebContents) {
++  EnablePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  shutdown_policy_at_ready_ = true;
++  destroy_contents_on_finish_ = true;
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(finished_, 1);
++  EXPECT_FALSE(committed_);
++  EXPECT_EQ(error_, net::ERR_ABORTED);
++  EXPECT_FALSE(web_contents());
++}
++
++TEST_P(NativeDocumentNavigationTest, LateSurfacePolicyLossCancelsAndAllowsNextNavigation) {
++  EnableSurfacePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  shutdown_policy_at_ready_ = true;
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(finished_, 1);
++  EXPECT_FALSE(committed_);
++  EXPECT_EQ(error_, net::ERR_ABORTED);
++  ASSERT_TRUE(web_contents());
++  EXPECT_EQ(web_contents()->GetLastCommittedURL(), GURL("https://canvas.test/baseline"));
++  command_line_.GetProcessCommandLine()->RemoveSwitch(kGlintDocumentPrivacyBootstrapSwitch);
++  command_line_.GetProcessCommandLine()->RemoveSwitch(kGlintDocumentSurfaceBootstrapSwitch);
++  NavigateAndCommit(GURL("https://canvas.test/recovery"));
++  EXPECT_EQ(finished_, 2);
++  EXPECT_TRUE(committed_);
++  EXPECT_EQ(error_, net::OK);
++  EXPECT_EQ(web_contents()->GetLastCommittedURL(), GURL("https://canvas.test/recovery"));
++}
++
++TEST_P(NativeDocumentNavigationTest, LateSurfacePolicyLossObserverMayDestroyWebContents) {
++  EnableSurfacePolicy();
++  ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  task_environment()->RunUntilIdle();
++  shutdown_policy_at_ready_ = true;
++  destroy_contents_on_finish_ = true;
++  auto simulator = NavigationSimulator::CreateBrowserInitiated(Target(), web_contents());
++  simulator->ReadyToCommit();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(finished_, 1);
++  EXPECT_FALSE(committed_);
++  EXPECT_EQ(error_, net::ERR_ABORTED);
++  EXPECT_FALSE(web_contents());
++}
++
+ INSTANTIATE_TEST_SUITE_P(WithAndWithoutUrlLoader,
+                          NativeDocumentNavigationTest,
+                          testing::Bool());

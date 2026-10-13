@@ -83,7 +83,7 @@ def test_registered_replay_preserves_reviewed_successor_order(followups):
 
 
 @pytest.mark.parametrize("names", [batch.PROMOTED[:2], batch.FOLLOWUPS,
-                                   (*batch.PROMOTED, "0040-unreviewed.patch")])
+                                   (*batch.PROMOTED, "0041-unreviewed.patch")])
 def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
     with pytest.raises(ValueError):
         batch.registered_replay_chain([{"name": name} for name in names])
@@ -152,6 +152,19 @@ def test_late_document_policy_loss_fixtures_cover_both_modes_recovery_and_destru
     assert text.count("+  EXPECT_EQ(error_, net::ERR_ABORTED);") == 4
     assert text.count("+  destroy_contents_on_finish_ = true;") == 2
     assert text.count('+  NavigateAndCommit(GURL("https://canvas.test/recovery"));') == 2
+
+
+def test_promoted_observer_patch_and_unit_gate_include_all_eight_late_cases():
+    from scripts.verify_native_privacy_units import REQUIRED_SURFACE_NAVIGATION_TESTS
+
+    expected = "".join((DRAFTS / "policy" / name).read_text(encoding="utf-8-sig") for name in (
+        "document_ready_commit_observer_guard.patch", "document_ready_commit_observer_tests.patch"))
+    patch = batch.ROOT / "native/patches/0040-native-ready-commit-observer-lifetime.patch"
+    assert patch.read_text(encoding="utf-8-sig") == expected
+    names = re.findall(r"\+TEST_P\(NativeDocumentNavigationTest, (Late\w+)\)", expected)
+    suite = REQUIRED_SURFACE_NAVIGATION_TESTS["WithAndWithoutUrlLoader/NativeDocumentNavigationTest"]
+    assert {f"{case}/{index}" for case in names for index in range(2)}.issubset(suite)
+    assert sum(map(len, REQUIRED_SURFACE_NAVIGATION_TESTS.values())) == 42
 
 
 def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():

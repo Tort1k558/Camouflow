@@ -12,7 +12,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 
 ## Source layout
 
-Current Windows development source is **001-039**. Patches 0031-0034 jointly
+Current Windows development source is **001-040**. Patches 0031-0034 jointly
 promote browser-owned document/worker surface policy, startup/child transport,
 Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
 replay passed across 125 paths for 001-038. That Windows browser compiled, but
@@ -63,8 +63,11 @@ the missing-key page is fetched once but never commits or executes, and its
 Document request reports `ERR_ABORTED`. Frame/loader/history and live-browser
 checks passed (`combined-surfaces-001-039-v2.json` on D). The first persistent-driver
 probe timeout remains recorded; it is not a passing startup-recovery check.
-The reviewed observer-lifetime follow-up and eight native cases remain pending,
-so this is not release or external anti-bot admission.
+Patch 0040 promotes the reviewed observer-lifetime follow-up and eight native
+cases. The surface-navigation gate now requires all **42** exact native cases,
+including late policy loss, recovery and observer-driven tab destruction.
+The latest linked browser is still 001-039; 0040 native execution and browser
+verification remain pending. This is not release or external anti-bot admission.
 
 The identity verifier now compares document HTTP User-Agent, primary
 Accept-Language and platform/mobile Client Hints against JavaScript, not just

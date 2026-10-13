@@ -119,6 +119,19 @@ RenderFrameHost, сохраняет `ERR_ABORTED` и очищает speculative 
 Replay 001–039 прошёл по 125 путям; Python-проверки: **1949 passed**, Ruff F — clean.
 Следующая инкрементальная сборка остаётся на j4, без удаления кэша:
 `D:\CamouFlowNative\surface-batch-001-039-chrome-j4-v10.log`.
+Сборка 001–039 завершилась на j4 за **8m15.04s**. Повторный комбинированный
+runtime-прогон v2 прошёл **7/7**: контрольная страница выполняет скрипт; при
+отсутствии политики связанный Document request получает `ERR_ABORTED`, frame,
+loader и history неизменны, commit/скрипт отсутствуют, браузер отвечает.
+Начальный persistent-driver timeout сохранён отдельно и не считается PASS.
+Доказательство: `D:\CamouFlowNative\combined-surfaces-001-039-v2.json`.
+Патч **0040** включает guard для уничтожения WebContents в finish observer и
+восемь поздних cancellation/regression случаев. Source replay прошёл по 125 путям;
+syntax/type-check обоих C++ файлов прошёл ранее. Нативный surface-navigation gate
+теперь требует **42** точных случая. Запускается сборка `content_unittests` на j4,
+без параллельного Chrome builder; затем выполнение тестов и новая проверка браузера.
+Лог: `D:\CamouFlowNative\surface-navigation-001-040-v1-build.log`.
+До этих проверок 0040 не считается runtime-готовым или релизным.
 В следующем GPU-пакете подготовлен четырнадцатый passthrough fixture:
 multisample metadata сравнивается с фактическим `GL_RENDERBUFFER_SAMPLES`,
 а не с запрошенным числом samples. Формат RGBA8 сам по себе не означает

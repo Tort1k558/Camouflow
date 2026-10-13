@@ -993,7 +993,7 @@ def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, tar
     from scripts.verify_native_privacy_units import required_tests, validate_results
 
     report = {"tests": {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12,
-                        "surface-navigation": 34, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55}[target], "failures": 0, "disabled": 0, "testsuites": [
+                        "surface-navigation": 42, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
         for suite, cases in required_tests(target).items()]}
@@ -1509,7 +1509,8 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
                  "0036-native-worker-complete-surface-type.patch",
                  "0037-native-webgl-readback-compilation.patch",
                  "0038-native-renderer-struct-pointer-presence.patch",
-                 "0039-native-document-ready-commit-cancellation.patch"):
+                 "0039-native-document-ready-commit-cancellation.patch",
+                 "0040-native-ready-commit-observer-lifetime.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1

@@ -212,7 +212,8 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0036-native-worker-complete-surface-type.patch",
         "0037-native-webgl-readback-compilation.patch",
         "0038-native-renderer-struct-pointer-presence.patch",
-        "0039-native-document-ready-commit-cancellation.patch"))
+        "0039-native-document-ready-commit-cancellation.patch",
+        "0040-native-ready-commit-observer-lifetime.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:

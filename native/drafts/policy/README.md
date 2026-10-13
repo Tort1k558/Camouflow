@@ -5,8 +5,9 @@
 `document_ready_commit_observer_guard.patch` follows registered 0039. It saves
 the frame-tree node ID and reacquires the node after cancelling the owned request:
 a navigation-finish observer may close the tab and destroy the original pointer.
-This matches the existing renderer-rejection cleanup pattern. It is unregistered
-and must be promoted before admitting the repaired cancellation path.
+This matches the existing renderer-rejection cleanup pattern. Both cancellation
+follow-ups are now promoted together in registered patch **0040**; source is
+001-040, while the latest linked browser is 001-039.
 
 `document_ready_commit_observer_tests.patch` adds eight parameterized native
 NavigationSimulator cases: Canvas and surface policy loss in the ready callback,
@@ -19,7 +20,9 @@ sources (`document-ready-observer-replay-v1/proof.json` on D). Both actual C++
 translation units passed syntax/type checking with their generated browser and
 content-unittest target flags; source/compiler/core/GN guards passed
 (`document-ready-observer-cpp-v1/proof.json`). They are **not yet optimized,
-linked or executed**. The active j4 Chrome build stays frozen.
+linked or executed**. The native surface-navigation gate requires all 42 cases
+(34 existing plus these eight); neither syntax nor source promotion substitutes
+for running that executable.
 
 ## Earlier preparation record
 

@@ -148,7 +148,9 @@ REQUIRED_SURFACE_NAVIGATION_TESTS = {
                 "SurfaceReadyRequestCarriesAllSelectedPartitionDomains", "SurfaceMissingPolicyRejectsBeforeCommitWithoutFallback",
                 "SurfaceConflictingFlagsRejectEvenReadyContext", "SurfaceSelectedFrameRejectsOnlyItsExactPendingToken",
                 "SurfaceUnknownTokenDoesNotCancelPendingCommit", "SurfaceStaleRejectedTokenCannotCancelNextNavigation",
-                "SurfaceFlagOffCannotCarryPriorNavigationEnvelope", "SurfaceRejectionObserverMayDestroyWebContents")}),
+                "SurfaceFlagOffCannotCarryPriorNavigationEnvelope", "SurfaceRejectionObserverMayDestroyWebContents",
+                "LateCanvasPolicyLossCancelsAndAllowsNextNavigation", "LateCanvasPolicyLossObserverMayDestroyWebContents",
+                "LateSurfacePolicyLossCancelsAndAllowsNextNavigation", "LateSurfacePolicyLossObserverMayDestroyWebContents")}),
     "NativeDocumentSurfaceReadinessTest": {
         "ReadyContextProceedsForBothCommitPaths", "LoadingDefersThenResumesOnlyOnce",
         "MissingContextCancelsAfterDeferInstalled", "DeadlineRejectsLateReplyWithoutCanvasFallback",
@@ -303,6 +305,9 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
         required_patches.add("0032-native-document-surface-policy.patch")
     if target in {"surface-navigation", "window-transport"}:
         required_patches.update({"0031-native-worker-surface-policy.patch", "0032-native-document-surface-policy.patch"})
+    if target == "surface-navigation":
+        required_patches.update({"0039-native-document-ready-commit-cancellation.patch",
+                                 "0040-native-ready-commit-observer-lifetime.patch"})
     if target == "worker-surfaces":
         required_patches.update({"0017-native-browser-context-tests.patch",
                                  "0018-native-document-policy-delivery.patch",
