@@ -54,12 +54,14 @@ This option currently requires the Windows checkout's formatter.
   actual RGBA8 dimensions, integer format remaining non-byte-compatible, and
   renderbuffer redefinition updating dimensions. These execute the native command,
   not just the standalone codec.
-- Compile and execute the six feature-on passthrough attachment fixture
+- Compile and execute the eight feature-on passthrough attachment fixture
   definitions: RGBA8 dimensions with restored renderbuffer binding, current
   dimensions after redefinition, integer format remaining non-byte-compatible,
   metadata querying while preserving a pending client GL error, native RGBA8
   texture dimensions with restored texture binding, and reattachment selecting
-  the new framebuffer texture rather than the currently bound texture. These use
+  the new framebuffer texture rather than the currently bound texture. The next
+  two definitions cover a complete selected mip level (not base dimensions) and
+  a selected cube face with preserved cube-map binding. These use
   the existing GLES3 passthrough context/command helpers; no skip or success
   substitute is supplied. They are prepared, not executed.
 - Test shared-memory bounds, initialized/short results, feature-off and context loss.

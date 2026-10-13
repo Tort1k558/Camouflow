@@ -1,5 +1,5 @@
 diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc
-index 1a2d236..eeda7e3 100644
+index 1a2d236..117631d 100644
 --- a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc
 +++ b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc
 @@ -5,8 +5,11 @@
@@ -14,7 +14,7 @@ index 1a2d236..eeda7e3 100644
  
  namespace gpu {
  namespace gles2 {
-@@ -416,5 +419,180 @@ TEST_F(GLES2DecoderPassthroughTest,
+@@ -416,5 +419,238 @@ TEST_F(GLES2DecoderPassthroughTest,
    EXPECT_EQ(kClientTextureId, static_cast<GLuint>(*result_value));
  }
  
@@ -190,6 +190,64 @@ index 1a2d236..eeda7e3 100644
 +  GLint bound = 0;
 +  DoGetIntegerv(GL_TEXTURE_BINDING_2D, &bound, 1);
 +  EXPECT_EQ(bound, static_cast<GLint>(kClientTextureId));
++  EXPECT_EQ(GL_NO_ERROR, GetGLError());
++}
++
++TEST_F(GlintPassthroughAttachmentTest,
++       TextureMipAttachmentReportsSelectedLevel) {
++  GenHelper<cmds::GenTexturesImmediate>(kClientTextureId);
++  DoBindTexture(GL_TEXTURE_2D, kClientTextureId);
++  DoTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 8, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE,
++               0, 0);
++  DoTexImage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 4, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE,
++               0, 0);
++  cmds::TexParameteri max_level;
++  max_level.Init(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);
++  ASSERT_EQ(error::kNoError, ExecuteCmd(max_level));
++  GenHelper<cmds::GenFramebuffersImmediate>(kClientFramebufferId);
++  DoBindFramebuffer(GL_FRAMEBUFFER, kClientFramebufferId);
++  DoFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
++                         kClientTextureId, 1);
++  ASSERT_EQ(GL_NO_ERROR, GetGLError());
++  const auto metadata = QueryAttachment();
++  ASSERT_TRUE(metadata);
++  EXPECT_EQ(metadata->width, 4);
++  EXPECT_EQ(metadata->height, 2);
++  EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++  EXPECT_EQ(metadata->samples, 0);
++  EXPECT_TRUE(metadata->rgba8_compatible);
++  EXPECT_EQ(GL_NO_ERROR, GetGLError());
++}
++
++TEST_F(GlintPassthroughAttachmentTest,
++       CubeFaceAttachmentReportsNativeExtentsAndPreservesBinding) {
++  GenHelper<cmds::GenTexturesImmediate>(kClientTextureId);
++  DoBindTexture(GL_TEXTURE_CUBE_MAP, kClientTextureId);
++  for (GLenum face = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
++       face <= GL_TEXTURE_CUBE_MAP_NEGATIVE_Z; ++face) {
++    DoTexImage2D(face, 0, GL_RGBA8, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0, 0);
++  }
++  GenHelper<cmds::GenFramebuffersImmediate>(kClientFramebufferId);
++  DoBindFramebuffer(GL_FRAMEBUFFER, kClientFramebufferId);
++  DoFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
++                         GL_TEXTURE_CUBE_MAP_POSITIVE_Y, kClientTextureId, 0);
++  const GLuint other = kClientTextureId + 1;
++  GenHelper<cmds::GenTexturesImmediate>(other);
++  DoBindTexture(GL_TEXTURE_CUBE_MAP, other);
++  GLint before = 0;
++  DoGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &before, 1);
++  ASSERT_EQ(static_cast<GLint>(other), before);
++  ASSERT_EQ(GL_NO_ERROR, GetGLError());
++  const auto metadata = QueryAttachment();
++  ASSERT_TRUE(metadata);
++  EXPECT_EQ(metadata->width, 4);
++  EXPECT_EQ(metadata->height, 4);
++  EXPECT_EQ(metadata->internal_format, GL_RGBA8);
++  EXPECT_EQ(metadata->samples, 0);
++  EXPECT_TRUE(metadata->rgba8_compatible);
++  GLint after = 0;
++  DoGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &after, 1);
++  EXPECT_EQ(after, before);
 +  EXPECT_EQ(GL_NO_ERROR, GetGLError());
 +}
 +
