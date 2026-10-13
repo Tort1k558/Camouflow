@@ -58,6 +58,9 @@ REQUIRED_CONTEXT_TESTS = {
         "ContextReadinessWaitsForKeyAndAllowsDerivation", "ContextReadinessSettlesFailedIdentity",
         "ContextShutdownSettlesQueuedReadinessOnce", "ContextDestructionNeverReportsReadinessSuccess",
         "ContextCallbackShutdownRejectsRemainingReadiness", "OffTheRecordReadinessCompletesInlineWithoutPersistentKey",
+        "StartupKeyReadyBeforeEventLoop", "StartupMissingIdentityIsTerminalWithoutCreation",
+        "StartupMalformedIdentityIsNotReplaced", "StartupCannotReplaceReadyOrLoadingOwner",
+        "StartupOffTheRecordNeverReadsPersistentIdentity", "StartupRejectsInvalidRootWithoutInstallingOwner",
     },
 }
 
@@ -115,6 +118,44 @@ REQUIRED_DOCUMENT_NAVIGATION_TESTS = {
     },
 }
 
+REQUIRED_SURFACE_NAVIGATION_TESTS = {
+    "WithAndWithoutUrlLoader/NativeDocumentNavigationTest": (
+        REQUIRED_DOCUMENT_NAVIGATION_TESTS["WithAndWithoutUrlLoader/NativeDocumentNavigationTest"] | {
+            f"{case}/{index}" for index in range(2) for case in (
+                "SurfaceReadyRequestCarriesAllSelectedPartitionDomains", "SurfaceMissingPolicyRejectsBeforeCommitWithoutFallback",
+                "SurfaceConflictingFlagsRejectEvenReadyContext", "SurfaceSelectedFrameRejectsOnlyItsExactPendingToken",
+                "SurfaceUnknownTokenDoesNotCancelPendingCommit", "SurfaceStaleRejectedTokenCannotCancelNextNavigation",
+                "SurfaceFlagOffCannotCarryPriorNavigationEnvelope", "SurfaceRejectionObserverMayDestroyWebContents")}),
+    "NativeDocumentSurfaceReadinessTest": {
+        "ReadyContextProceedsForBothCommitPaths", "LoadingDefersThenResumesOnlyOnce",
+        "MissingContextCancelsAfterDeferInstalled", "DeadlineRejectsLateReplyWithoutCanvasFallback",
+        "ConflictingFlagsRejectReadyContextWithoutWaiting", "ShutdownCancelsPendingReplyExactlyOnce"},
+}
+
+REQUIRED_WINDOW_TRANSPORT_TESTS = {
+    "GlintWindowPrivacyReadinessTest": {
+        "MissingContextRejectsInline", "UninitializedContextRejectsInline", "LoadingWaitsForActualProfileReadiness",
+        "DuplicateStartDoesNotRequestTwice", "DestructionCancelsBeforeServiceReply", "ShutdownSettlesFailureOnce",
+        "MalformedIdentityDoesNotOpenWindow", "InlineCallbackMayDestroyRequest"},
+    "GlintChildSurfaceTransportTest": {
+        "FeatureOffRejectsBeforeTokenConsumption", "FeatureOffNeverExposesReadyProfilePolicy",
+        "FeatureOffCallbackCanDestroyFrameOwner", "ActualInitialChildKeyMatchesItsFourBrowserDerivations",
+        "SamePartitionParentAndChildUseSamePolicyNotCopiedState"},
+}
+
+REQUIRED_GPU_PACK_TESTS = {
+    "GlintRgba8PackCopyTest": {
+        "TightLayoutCopiesRowsWithoutSourceMutation", "NonzeroOffsetPreservesPrefixAndSuffix",
+        "SkipsAndPaddingAreNotWritten", "AlignmentEightPreservesInterRowPadding",
+        "LastRowDoesNotRequireTrailingPadding", "OverlappingRowsUseUpstreamLayout",
+        "ShortDestinationRejectsBeforeAnyWrite", "WrongSourceSizeRejectsBeforeAnyWrite",
+        "AliasedStorageCannotMutateCanonicalSource", "NegativeDimensionsRejectBeforeAnyWrite",
+        "InvalidPackFieldsRejectWithoutUpstreamDcheck", "RowStrideOverflowRejectsBeforeAnyWrite",
+        "OversizedOffsetRejectsBeforeAnyWrite", "EmptyReadsDoNotTouchSourceOrDestination"},
+}
+
+NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy")
+
 DELIVERY_SOURCE_FILES = {
     f"{name}{suffix}": f"{directory}/{name}{suffix}"
     for name, directory in (
@@ -142,6 +183,12 @@ def require_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "surface-navigation":
+        return REQUIRED_SURFACE_NAVIGATION_TESTS
+    if target == "window-transport":
+        return REQUIRED_WINDOW_TRANSPORT_TESTS
+    if target == "gpu-pack-copy":
+        return REQUIRED_GPU_PACK_TESTS
     if target == "document-navigation":
         return REQUIRED_DOCUMENT_NAVIGATION_TESTS
     if target == "keys":
@@ -227,6 +274,12 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
     if target in {"contexts", "delivery"}:
         required_patches.add("0017-native-browser-context-tests.patch")
+    if target == "contexts":
+        required_patches.add("0032-native-document-surface-policy.patch")
+    if target in {"surface-navigation", "window-transport"}:
+        required_patches.update({"0031-native-worker-surface-policy.patch", "0032-native-document-surface-policy.patch"})
+    if target == "gpu-pack-copy":
+        required_patches.add("0034-native-gpu-metadata-minimization.patch")
     if target == "delivery":
         required_patches.update({"0018-native-document-policy-delivery.patch",
                                  "0019-native-worker-policy-delivery.patch",
@@ -245,7 +298,13 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("NavigationSimulator document commit/rejection units; simulated network/renderer, not actual Blink first-script delivery or admission"
+    scope = ("Surface v2 NavigationSimulator/readiness units; not actual Blink or browser admission"
+             if target == "surface-navigation" else
+             "Window readiness and authenticated child RFH transport units; not actual renderer IPC or admission"
+             if target == "window-transport" else
+             "Native RGBA8 pack-copy arithmetic units; not GPU/driver readback or admission"
+             if target == "gpu-pack-copy" else
+             "NavigationSimulator document commit/rejection units; simulated network/renderer, not actual Blink first-script delivery or admission"
              if target == "document-navigation" else
              "Native final-partition validator units; not navigation recovery, IPC, first-script delivery or admission"
              if target == "document-partition" else
@@ -256,8 +315,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
              "Actual content-layer BrowserContext bridge/lifecycle/readiness units; not Chrome ProfileImpl startup, IPC, Canvas or admission"
              if target == "contexts" else
              "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission")
-    build_target = ("blink_unittests" if target == "worker-handoff" else
-                    "content_unittests" if target in {"contexts", "delivery", "document-navigation"} else "camouflow_native_privacy_unittests")
+    build_target = ("blink_unittests" if target in {"worker-handoff", "gpu-pack-copy"} else
+                    "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport"} else "camouflow_native_privacy_unittests")
     proof = {"passed": False, "scope": scope, "target": target,
              "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path)}
     with log_path.open("x", encoding="utf-8", newline="\n") as log:
@@ -268,7 +327,7 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             executable = output / (build_target + ".exe")
             test_filter = (":".join(f"{suite}.{case}" for suite, cases in required.items() for case in sorted(cases))
-                           if target in {"worker-handoff", "document-partition", "document-navigation"} else ":".join(name + ".*" for name in required))
+                           if target in {"worker-handoff", "document-partition", "document-navigation", *NEW_TARGETS} else ":".join(name + ".*" for name in required))
             subprocess.run([str(executable), "--gtest_filter=" + test_filter,
                             "--single-process-tests", "--gtest_output=json:" + str(results)],
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
@@ -303,7 +362,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--vs-installation", type=Path)
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
-    parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation"), default="keys")
+    parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", *NEW_TARGETS), default="keys")
     args = parser.parse_args()
     try:
         report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs, target=args.target)

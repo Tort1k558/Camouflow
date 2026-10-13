@@ -12,6 +12,18 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 
 ## Source layout
 
+Current Windows development source is **001-034**. Patches 0031-0034 jointly
+promote browser-owned document/worker surface policy, startup/child transport,
+Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
+replay passed across 125 paths; this batch is **not yet compiled or runtime
+verified**. The preceding document-commit binary passed all 12 NavigationSimulator
+cases. The last verified browser remains 001-027; no new privacy capability or
+anti-bot result is admitted by this promotion.
+
+Prepared native gates additionally require 26 BrowserContext cases, 34 surface
+navigation/readiness cases, 13 window/child cases and 14 RGBA8 pack-copy cases.
+These new native case sets have not run yet.
+
 | Directory/file | Purpose |
 | --- | --- |
 | `patches/` | Registered, ordered Chromium/V8 patch chain |

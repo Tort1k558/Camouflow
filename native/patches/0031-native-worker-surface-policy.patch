@@ -1,0 +1,2162 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+index e6c8419762fc1683518e83713e6c3d43c1f01220..c6a34fbdbbb7cc9435847d604f4ec838d2181c67 100644
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -703,6 +703,8 @@ source_set("browser") {
+     "browser_child_process_host_impl_receiver_bindings.cc",
+     "browser_context.cc",
+     "browser_context_impl.cc",
++    "camouflow_native/glint/surface_policy_producer.cc",
++    "camouflow_native/glint/surface_policy_producer.h",
+     "camouflow_native/privacy_context.cc",
+     "camouflow_native/privacy_document_commit.cc",
+     "camouflow_native/privacy_document_commit.h",
+diff --git a/content/browser/camouflow_native/glint/surface_policy_producer.cc b/content/browser/camouflow_native/glint/surface_policy_producer.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..dd7d35a6ee5cee1d730bba4816362f6838103296
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/surface_policy_producer.cc
+@@ -0,0 +1,38 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "surface_policy_producer.h"
++
++#include <utility>
++
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/native_privacy_context.h"
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++
++namespace glint::candidate {
++std::optional<SurfacePolicy> CreateSurfacePolicy(
++    content::BrowserContext* context,
++    const blink::StorageKey& trusted_partition) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!context || context->ShutdownStarted()) {
++    return std::nullopt;
++  }
++  auto encoding = trusted_partition.SerializeForNativePrivacy();
++  if (!encoding || encoding->empty() || encoding->size() > 8192) {
++    return std::nullopt;
++  }
++  auto canvas = content::DeriveNativePrivacyKey(context, trusted_partition, "canvas");
++  auto webgl = content::DeriveNativePrivacyKey(context, trusted_partition, "webgl");
++  auto webgpu = content::DeriveNativePrivacyKey(context, trusted_partition, "webgpu");
++  auto audio = content::DeriveNativePrivacyKey(context, trusted_partition, "audio");
++  if (!canvas || !webgl || !webgpu || !audio) {
++    return std::nullopt;
++  }
++  SurfacePolicy policy{kSurfacePolicyVersion, std::move(*encoding),
++                       *canvas, *webgl, *webgpu, *audio};
++  if (!HasIndependentSurfaceSeeds(policy)) {
++    return std::nullopt;
++  }
++  return policy;
++}
++}  // namespace glint::candidate
+diff --git a/content/browser/camouflow_native/glint/surface_policy_producer.h b/content/browser/camouflow_native/glint/surface_policy_producer.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..eb008b477d055694df4edf6797d9b3730ffb9d98
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/surface_policy_producer.h
+@@ -0,0 +1,24 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_SURFACE_POLICY_PRODUCER_H_
++#define GLINT_SURFACE_POLICY_PRODUCER_H_
++
++#include <optional>
++
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy.h"
++
++namespace blink {
++class StorageKey;
++}
++namespace content {
++class BrowserContext;
++}
++
++namespace glint::candidate {
++// UI-sequence only. Unready, failed and shutting-down contexts produce nothing.
++std::optional<SurfacePolicy> CreateSurfacePolicy(
++    content::BrowserContext* context,
++    const blink::StorageKey& trusted_partition);
++}  // namespace glint::candidate
++
++#endif
+diff --git a/content/browser/camouflow_native/glint/surface_policy_producer_unittest.cc b/content/browser/camouflow_native/glint/surface_policy_producer_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..d31b30874a158411bc191d21fdff5bb9b87fc135
+--- /dev/null
++++ b/content/browser/camouflow_native/glint/surface_policy_producer_unittest.cc
+@@ -0,0 +1,79 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "surface_policy_producer.h"
++
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "content/public/browser/native_privacy_context.h"
++#include "content/public/test/test_renderer_host.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace glint::candidate {
++namespace {
++class GlintSurfacePolicyProducerTest : public content::RenderViewHostTestHarness {
++ public:
++  GlintSurfacePolicyProducerTest()
++      : RenderViewHostTestHarness(
++            base::test::TaskEnvironment::TimeSource::MOCK_TIME,
++            base::test::TaskEnvironment::ThreadPoolExecutionMode::QUEUED) {}
++
++ protected:
++  void SetUp() override {
++    RenderViewHostTestHarness::SetUp();
++    ASSERT_TRUE(owned_.CreateUniqueTempDir());
++    ASSERT_TRUE(base::WriteFile(owned_.GetPath().AppendASCII("camouflow-native-privacy.json"),
++        R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})"));
++  }
++  void TearDown() override {
++    content::ShutdownNativePrivacyContext(browser_context());
++    task_environment()->RunUntilIdle();
++    RenderViewHostTestHarness::TearDown();
++  }
++  void Initialize() {
++    ASSERT_TRUE(content::InitializeNativePrivacyContext(browser_context(), owned_.GetPath()));
++  }
++  blink::StorageKey Partition() {
++    return blink::StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://policy.test/")));
++  }
++  base::ScopedTempDir owned_;
++};
++
++TEST_F(GlintSurfacePolicyProducerTest, MissingAndUnreadyContextRejectsSnapshot) {
++  EXPECT_FALSE(CreateSurfacePolicy(nullptr, Partition()));
++  EXPECT_FALSE(CreateSurfacePolicy(browser_context(), Partition()));
++  Initialize();
++  EXPECT_FALSE(CreateSurfacePolicy(browser_context(), Partition()));
++}
++TEST_F(GlintSurfacePolicyProducerTest, ReadySnapshotUsesFourIndependentDomains) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  auto policy = CreateSurfacePolicy(browser_context(), Partition());
++  ASSERT_TRUE(policy);
++  EXPECT_TRUE(ValidateSurfacePolicy(*policy, Partition()));
++  EXPECT_EQ(policy->canvas, content::DeriveNativePrivacyKey(browser_context(), Partition(), "canvas"));
++  EXPECT_EQ(policy->webgl, content::DeriveNativePrivacyKey(browser_context(), Partition(), "webgl"));
++  EXPECT_EQ(policy->webgpu, content::DeriveNativePrivacyKey(browser_context(), Partition(), "webgpu"));
++  EXPECT_EQ(policy->audio, content::DeriveNativePrivacyKey(browser_context(), Partition(), "audio"));
++}
++TEST_F(GlintSurfacePolicyProducerTest, ChangingReturnedSnapshotDoesNotChangeIdentity) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  auto first = CreateSurfacePolicy(browser_context(), Partition());
++  ASSERT_TRUE(first);
++  const auto expected = first->audio;
++  first->audio.fill(0);
++  auto second = CreateSurfacePolicy(browser_context(), Partition());
++  ASSERT_TRUE(second);
++  EXPECT_EQ(second->audio, expected);
++}
++TEST_F(GlintSurfacePolicyProducerTest, ShutdownRejectsSnapshot) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  content::ShutdownNativePrivacyContext(browser_context());
++  EXPECT_FALSE(CreateSurfacePolicy(browser_context(), Partition()));
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/content/browser/camouflow_native/privacy_worker_service.cc b/content/browser/camouflow_native/privacy_worker_service.cc
+index 38df736528dd05bd2d3be22f78c83c87c96098b2..09774c34096f42310a386ec8826ccddc3004df61 100644
+--- a/content/browser/camouflow_native/privacy_worker_service.cc
++++ b/content/browser/camouflow_native/privacy_worker_service.cc
+@@ -6,6 +6,8 @@
+ 
+ #include "base/functional/bind.h"
+ #include "base/time/time.h"
++#include "content/browser/camouflow_native/glint/surface_policy_producer.h"
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h"
+ #include "content/public/browser/browser_context.h"
+ #include "content/public/browser/native_privacy_context.h"
+ 
+@@ -30,14 +32,33 @@ PrivacyWorkerService::PrivacyWorkerService(
+ 
+ PrivacyWorkerService::~PrivacyWorkerService() = default;
+ 
+-void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
++bool PrivacyWorkerService::BeginRequest() {
+   if (requested_) {
+     // Removes the receiver before destroying this service and its replies.
+     receivers_->ReportBadMessage("Glint worker policy requested twice on one pipe");
+-    return;
++    return false;
+   }
+   requested_ = true;
++  return true;
++}
++
++void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
++  if (!BeginRequest()) {
++    return;
++  }
+   pending_reply_ = std::move(callback);
++  WaitForReadiness();
++}
++
++void PrivacyWorkerService::GetSurfacePolicy(GetSurfacePolicyCallback callback) {
++  if (!BeginRequest()) {
++    return;
++  }
++  pending_surface_reply_ = std::move(callback);
++  WaitForReadiness();
++}
++
++void PrivacyWorkerService::WaitForReadiness() {
+   // Unpartitioned shared/service workers can serve multiple top-level sites.
+   // Do not invent a single client's site or silently use its document identity.
+   if (!context_ || context_->ShutdownStarted() || !origin_matches_partition_ ||
+@@ -55,7 +76,7 @@ void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
+ }
+ 
+ void PrivacyWorkerService::OnReady(bool ready) {
+-  if (!pending_reply_) {
++  if (!pending_reply_ && !pending_surface_reply_) {
+     return;
+   }
+   if (!ready || !context_ || context_->ShutdownStarted() || !origin_matches_partition_ ||
+@@ -64,6 +85,14 @@ void PrivacyWorkerService::OnReady(bool ready) {
+     Complete(Status::kUnavailable, nullptr);
+     return;
+   }
++  if (pending_surface_reply_) {
++    auto snapshot = glint::candidate::CreateSurfacePolicy(context_.get(), partition_);
++    auto wire = snapshot ? glint::candidate::EncodeSurfacePolicyCommit(*snapshot, partition_)
++                         : nullptr;
++    const auto status = wire ? Status::kReady : Status::kUnavailable;
++    Complete(status, nullptr, std::move(wire));
++    return;
++  }
+   auto seed = DeriveNativePrivacyKey(context_.get(), partition_, "canvas");
+   if (!seed) {
+     Complete(Status::kUnavailable, nullptr);
+@@ -80,9 +109,14 @@ void PrivacyWorkerService::OnTimeout() {
+ }
+ 
+ void PrivacyWorkerService::Complete(
+-    Status status, blink::mojom::NativePrivacyCanvasPolicyPtr policy) {
++    Status status, blink::mojom::NativePrivacyCanvasPolicyPtr policy,
++    blink::mojom::GlintSurfacePolicyCommitPtr surfaces) {
+   timer_.Stop();
+   weak_factory_.InvalidateWeakPtrs();
++  if (pending_surface_reply_) {
++    std::move(pending_surface_reply_).Run(status, std::move(surfaces));
++    return;
++  }
+   if (pending_reply_) {
+     std::move(pending_reply_).Run(status, std::move(policy));
+   }
+diff --git a/content/browser/camouflow_native/privacy_worker_service.h b/content/browser/camouflow_native/privacy_worker_service.h
+index fa74b77429f60389fb7cdef65d043e633bf00838..abae1244f2b3ee4056f91f2333937f3fccad0db8 100644
+--- a/content/browser/camouflow_native/privacy_worker_service.h
++++ b/content/browser/camouflow_native/privacy_worker_service.h
+@@ -29,12 +29,16 @@ class PrivacyWorkerService final : public blink::mojom::NativePrivacyWorker {
+   PrivacyWorkerService& operator=(const PrivacyWorkerService&) = delete;
+ 
+   void GetCanvasPolicy(GetCanvasPolicyCallback callback) override;
++  void GetSurfacePolicy(GetSurfacePolicyCallback callback) override;
+ 
+  private:
++  bool BeginRequest();
++  void WaitForReadiness();
+   void OnReady(bool ready);
+   void OnTimeout();
+   void Complete(blink::mojom::NativePrivacyDeliveryStatus status,
+-                blink::mojom::NativePrivacyCanvasPolicyPtr policy);
++                blink::mojom::NativePrivacyCanvasPolicyPtr policy,
++                blink::mojom::GlintSurfacePolicyCommitPtr surfaces = nullptr);
+ 
+   const raw_ref<mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>> receivers_;
+   const base::WeakPtr<BrowserContext> context_;
+@@ -43,6 +47,7 @@ class PrivacyWorkerService final : public blink::mojom::NativePrivacyWorker {
+   const bool origin_matches_partition_;
+   bool requested_ = false;
+   GetCanvasPolicyCallback pending_reply_;
++  GetSurfacePolicyCallback pending_surface_reply_;
+   base::OneShotTimer timer_;
+   base::WeakPtrFactory<PrivacyWorkerService> weak_factory_{this};
+ };
+diff --git a/content/browser/camouflow_native/privacy_worker_service_unittest.cc b/content/browser/camouflow_native/privacy_worker_service_unittest.cc
+index 7efc38dba4982731c05acc896b5f1825dc5fb7d1..100db86b8cc430bcef5ec8c44d21f9a712516d30 100644
+--- a/content/browser/camouflow_native/privacy_worker_service_unittest.cc
++++ b/content/browser/camouflow_native/privacy_worker_service_unittest.cc
+@@ -21,6 +21,7 @@
+ #include "net/base/features.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ #include "third_party/blink/public/common/features.h"
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h"
+ #include "url/gurl.h"
+ #include "url/origin.h"
+ 
+@@ -296,5 +297,136 @@ TEST_F(NativePrivacyWorkerServiceTest, DuplicateRequestCancelsPendingDelivery) {
+   EXPECT_EQ(replies, 0);
+ }
+ 
++
++class NativePrivacyWorkerSurfaceServiceTest : public NativePrivacyWorkerServiceTest {};
++using SurfacePolicy = blink::mojom::GlintSurfacePolicyCommitPtr;
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, MissingServiceReturnsNoSnapshot) {
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++    ++replies;
++    EXPECT_EQ(status, Status::kUnavailable);
++    EXPECT_FALSE(policy);
++  }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, ReadySnapshotMatchesEveryDomainForAllWorkerKinds) {
++  Initialize();
++  tasks_.RunUntilIdle();
++  for (auto kind : {Kind::kDedicated, Kind::kShared, Kind::kService}) {
++    auto remote = Connect(kind);
++    int replies = 0;
++    remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++      ++replies;
++      EXPECT_EQ(status, Status::kReady);
++      ASSERT_TRUE(policy);
++      auto decoded = glint::candidate::DecodeWorkerSurfacePolicy(*policy, Partition());
++      ASSERT_TRUE(decoded);
++      EXPECT_EQ(decoded->canvas, DeriveNativePrivacyKey(context_.get(), Partition(), "canvas"));
++      EXPECT_EQ(decoded->webgl, DeriveNativePrivacyKey(context_.get(), Partition(), "webgl"));
++      EXPECT_EQ(decoded->webgpu, DeriveNativePrivacyKey(context_.get(), Partition(), "webgpu"));
++      EXPECT_EQ(decoded->audio, DeriveNativePrivacyKey(context_.get(), Partition(), "audio"));
++    }));
++    remote.FlushForTesting();
++    EXPECT_EQ(replies, 1);
++  }
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, LoadingDoesNotReplyWithPrematureSnapshot) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++    ++replies;
++    EXPECT_EQ(status, Status::kReady);
++    EXPECT_TRUE(policy);
++  }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, WrongWorkerOriginCannotGetSnapshot) {
++  Initialize();
++  tasks_.RunUntilIdle();
++  auto remote = ConnectForPartition(Partition(), url::Origin::Create(GURL("https://other.test/")));
++  int replies = 0;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++    ++replies;
++    EXPECT_EQ(status, Status::kUnavailable);
++    EXPECT_FALSE(policy);
++  }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, ShutdownDuringReadinessReturnsNoSnapshot) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++    ++replies;
++    EXPECT_EQ(status, Status::kUnavailable);
++    EXPECT_FALSE(policy);
++  }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  ShutdownNativePrivacyContext(context_.get());
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, SurfaceThenCanvasCannotRequestTwice) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status, SurfacePolicy) { ++replies; }));
++  remote.FlushForTesting();
++  ASSERT_EQ(replies, 0);
++  mojo::test::BadMessageObserver observer;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting([&](Status, Policy) { ++replies; }));
++  EXPECT_EQ(observer.WaitForBadMessage(), "Glint worker policy requested twice on one pipe");
++  EXPECT_TRUE(receivers_.empty());
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(replies, 0);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, CanvasThenSurfaceCannotRequestTwice) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting([&](Status, Policy) { ++replies; }));
++  remote.FlushForTesting();
++  ASSERT_EQ(replies, 0);
++  mojo::test::BadMessageObserver observer;
++  remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status, SurfacePolicy) { ++replies; }));
++  EXPECT_EQ(observer.WaitForBadMessage(), "Glint worker policy requested twice on one pipe");
++  EXPECT_TRUE(receivers_.empty());
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(replies, 0);
++}
++
++TEST_F(NativePrivacyWorkerSurfaceServiceTest, UnpartitionedSharedServiceWorkersRejectSnapshot) {
++  base::test::ScopedFeatureList disabled;
++  disabled.InitAndDisableFeature(net::features::kThirdPartyStoragePartitioning);
++  Initialize();
++  tasks_.RunUntilIdle();
++  for (auto kind : {Kind::kShared, Kind::kService}) {
++    auto remote = Connect(kind);
++    int replies = 0;
++    remote->GetSurfacePolicy(base::BindLambdaForTesting([&](Status status, SurfacePolicy policy) {
++      ++replies;
++      EXPECT_EQ(status, Status::kUnavailable);
++      EXPECT_FALSE(policy);
++    }));
++    remote.FlushForTesting();
++    EXPECT_EQ(replies, 1);
++  }
++}
++
+ }  // namespace
+ }  // namespace content
+diff --git a/content/renderer/service_worker/embedded_worker_instance_client_impl.cc b/content/renderer/service_worker/embedded_worker_instance_client_impl.cc
+index 277f79f69bd36ede68ad70b05abe6f64004aeaba..fea7739e5e11f847592640d5be3cc6d4e22f55f9 100644
+--- a/content/renderer/service_worker/embedded_worker_instance_client_impl.cc
++++ b/content/renderer/service_worker/embedded_worker_instance_client_impl.cc
+@@ -66,8 +66,12 @@ void EmbeddedWorkerInstanceClientImpl::StartWorker(
+   DCHECK(initiator_thread_task_runner_->BelongsToCurrentThread());
+   CHECK(!service_worker_context_client_ && !privacy_bootstrap_);
+   start_worker_received_time_ = base::TimeTicks::Now();
+-  if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
+-          "glint-worker-canvas-bootstrap-test")) {
++  const auto mode = GetWorkerPrivacyBootstrapMode();
++  if (mode == WorkerPrivacyBootstrapMode::kConflict) {
++    OnError();
++    return;
++  }
++  if (mode == WorkerPrivacyBootstrapMode::kOff) {
+     ContinueStartWorker(std::move(params), std::nullopt);
+     return;
+   }
+@@ -77,6 +81,15 @@ void EmbeddedWorkerInstanceClientImpl::StartWorker(
+   broker->GetInterface(endpoint.InitWithNewPipeAndPassReceiver());
+   params->provider_info->browser_interface_broker = broker.Unbind();
+   privacy_bootstrap_ = std::make_unique<PrivacyWorkerBootstrap>(std::move(endpoint));
++  if (mode == WorkerPrivacyBootstrapMode::kSurfaces) {
++    // Copy before BindOnce moves params; function argument evaluation may move
++    // the unique pointer before another argument dereferences it.
++    const auto partition = params->storage_key;
++    privacy_bootstrap_->StartSurfacePolicy(partition, base::BindOnce(
++        &EmbeddedWorkerInstanceClientImpl::OnSurfacePrivacyBootstrap,
++        weak_factory_.GetWeakPtr(), std::move(params)));
++    return;
++  }
+   privacy_bootstrap_->Start(base::BindOnce(
+       &EmbeddedWorkerInstanceClientImpl::OnPrivacyBootstrap,
+       weak_factory_.GetWeakPtr(), std::move(params)));
+@@ -94,9 +107,23 @@ void EmbeddedWorkerInstanceClientImpl::OnPrivacyBootstrap(
+   ContinueStartWorker(std::move(params), std::move(result).value());
+ }
+ 
++void EmbeddedWorkerInstanceClientImpl::OnSurfacePrivacyBootstrap(
++    blink::mojom::EmbeddedWorkerStartParamsPtr params,
++    PrivacyWorkerBootstrap::SurfaceResult result) {
++  DCHECK(initiator_thread_task_runner_->BelongsToCurrentThread());
++  privacy_bootstrap_.reset();
++  if (!result.has_value()) {
++    OnError();
++    return;
++  }
++  ContinueStartWorker(std::move(params), std::nullopt, std::move(result).value(), true);
++}
++
+ void EmbeddedWorkerInstanceClientImpl::ContinueStartWorker(
+     blink::mojom::EmbeddedWorkerStartParamsPtr params,
+-    std::optional<std::array<uint8_t, 32>> canvas_partition_seed) {
++    std::optional<std::array<uint8_t, 32>> canvas_partition_seed,
++    std::optional<glint::candidate::WorkerSurfacePolicy> surface_policy,
++    bool surface_policy_required) {
+   DCHECK(initiator_thread_task_runner_->BelongsToCurrentThread());
+   DCHECK(!service_worker_context_client_);
+   TRACE_EVENT0("ServiceWorker",
+@@ -115,6 +142,8 @@ void EmbeddedWorkerInstanceClientImpl::ContinueStartWorker(
+   std::unique_ptr<blink::WebEmbeddedWorkerStartData> start_data =
+       BuildStartData(*params);
+   start_data->glint_canvas_partition_seed = std::move(canvas_partition_seed);
++  start_data->glint_surface_policy_required = surface_policy_required;
++  start_data->glint_surface_policy = std::move(surface_policy);
+   if (params->main_script_load_params) {
+     start_data->main_script_load_params =
+         std::make_unique<blink::WorkerMainScriptLoadParameters>();
+diff --git a/content/renderer/service_worker/embedded_worker_instance_client_impl.h b/content/renderer/service_worker/embedded_worker_instance_client_impl.h
+index 244028ccf77a3d0c5d6ff0f9d1909ce0cd9fa1db..9119fa5fb9aa5cc8f7cb69dfa14dcc29749b1301 100644
+--- a/content/renderer/service_worker/embedded_worker_instance_client_impl.h
++++ b/content/renderer/service_worker/embedded_worker_instance_client_impl.h
+@@ -73,9 +73,13 @@ class EmbeddedWorkerInstanceClientImpl
+   void StartWorker(blink::mojom::EmbeddedWorkerStartParamsPtr params) override;
+   void ContinueStartWorker(
+       blink::mojom::EmbeddedWorkerStartParamsPtr params,
+-      std::optional<std::array<uint8_t, 32>> canvas_partition_seed);
++      std::optional<std::array<uint8_t, 32>> canvas_partition_seed,
++      std::optional<glint::candidate::WorkerSurfacePolicy> surface_policy = std::nullopt,
++      bool surface_policy_required = false);
+   void OnPrivacyBootstrap(blink::mojom::EmbeddedWorkerStartParamsPtr params,
+                           PrivacyWorkerBootstrap::Result result);
++  void OnSurfacePrivacyBootstrap(blink::mojom::EmbeddedWorkerStartParamsPtr params,
++                                 PrivacyWorkerBootstrap::SurfaceResult result);
+ 
+   // Handler of connection error bound to |receiver_|.
+   void OnError();
+diff --git a/content/renderer/worker/dedicated_worker_host_factory_client.cc b/content/renderer/worker/dedicated_worker_host_factory_client.cc
+index 2d5976a855b3b38e8b5ea8956002fcd64f8e923a..4f4fd1395e5a70fcd30db2158bd91efaf28466de 100644
+--- a/content/renderer/worker/dedicated_worker_host_factory_client.cc
++++ b/content/renderer/worker/dedicated_worker_host_factory_client.cc
+@@ -107,8 +107,12 @@ void DedicatedWorkerHostFactoryClient::OnWorkerHostCreated(
+     mojo::PendingRemote<blink::mojom::DedicatedWorkerHost>
+         dedicated_worker_host,
+     const url::Origin& origin) {
+-  privacy_bootstrap_required_ = base::CommandLine::ForCurrentProcess()->HasSwitch(
+-      "glint-worker-canvas-bootstrap-test");
++  privacy_bootstrap_mode_ = GetWorkerPrivacyBootstrapMode();
++  privacy_bootstrap_required_ = privacy_bootstrap_mode_ != WorkerPrivacyBootstrapMode::kOff;
++  if (privacy_bootstrap_mode_ == WorkerPrivacyBootstrapMode::kConflict) {
++    OnScriptLoadStartFailed();
++    return;
++  }
+   if (!privacy_bootstrap_required_) {
+     worker_->OnWorkerHostCreated(std::move(browser_interface_broker),
+                                  std::move(dedicated_worker_host), origin);
+@@ -120,6 +124,13 @@ void DedicatedWorkerHostFactoryClient::OnWorkerHostCreated(
+   broker->GetInterface(endpoint.InitWithNewPipeAndPassReceiver());
+   privacy_bootstrap_ = std::make_unique<PrivacyWorkerBootstrap>(std::move(endpoint));
+   worker_->OnWorkerHostCreated(broker.Unbind(), std::move(dedicated_worker_host), origin);
++  if (privacy_bootstrap_mode_ == WorkerPrivacyBootstrapMode::kSurfaces) {
++    // The browser host provides the authoritative worker origin, not its full
++    // StorageKey. The authenticated endpoint supplies that owned partition.
++    privacy_bootstrap_->StartSurfacePolicy(origin, base::BindOnce(
++        &DedicatedWorkerHostFactoryClient::OnSurfacePrivacyBootstrap, weak_factory_.GetWeakPtr()));
++    return;
++  }
+   privacy_bootstrap_->Start(base::BindOnce(
+       &DedicatedWorkerHostFactoryClient::OnPrivacyBootstrap, weak_factory_.GetWeakPtr()));
+ }
+@@ -139,7 +150,11 @@ void DedicatedWorkerHostFactoryClient::OnScriptLoadStarted(
+         coep_reporting_observer,
+     mojo::PendingReceiver<blink::mojom::ReportingObserver>
+         dip_reporting_observer) {
+-  if (privacy_bootstrap_required_ && !canvas_partition_seed_) {
++  if (privacy_bootstrap_failed_) {
++    return;
++  }
++  if (privacy_bootstrap_required_ && !IsWorkerPrivacyBootstrapReady(
++          privacy_bootstrap_mode_, canvas_partition_seed_.has_value(), surface_policy_.has_value())) {
+     CHECK(!pending_script_start_);
+     pending_script_start_ = base::BindOnce(
+         &DedicatedWorkerHostFactoryClient::ContinueScriptLoad,
+@@ -202,6 +217,9 @@ void DedicatedWorkerHostFactoryClient::ContinueScriptLoad(
+   auto worker_main_script_load_params =
+       std::make_unique<blink::WorkerMainScriptLoadParameters>();
+   worker_main_script_load_params->glint_canvas_partition_seed = canvas_partition_seed_;
++  worker_main_script_load_params->glint_surface_policy_required =
++      privacy_bootstrap_mode_ == WorkerPrivacyBootstrapMode::kSurfaces;
++  worker_main_script_load_params->glint_surface_policy = surface_policy_;
+   worker_main_script_load_params->request_id =
+       main_script_load_params->request_id;
+   worker_main_script_load_params->response_head =
+@@ -221,6 +239,7 @@ void DedicatedWorkerHostFactoryClient::ContinueScriptLoad(
+ }
+ 
+ void DedicatedWorkerHostFactoryClient::OnScriptLoadStartFailed() {
++  privacy_bootstrap_failed_ = true;
+   pending_script_start_.Reset();
+   privacy_bootstrap_.reset();
+   weak_factory_.InvalidateWeakPtrs();
+@@ -242,4 +261,18 @@ void DedicatedWorkerHostFactoryClient::OnPrivacyBootstrap(
+   }
+ }
+ 
++void DedicatedWorkerHostFactoryClient::OnSurfacePrivacyBootstrap(
++    PrivacyWorkerBootstrap::SurfaceResult result) {
++  privacy_bootstrap_.reset();
++  if (!result.has_value()) {
++    OnScriptLoadStartFailed();
++    return;
++  }
++  surface_policy_ = std::move(result).value();
++  if (pending_script_start_) {
++    // The continuation may destroy its factory client.
++    std::move(pending_script_start_).Run();
++  }
++}
++
+ }  // namespace content
+diff --git a/content/renderer/worker/dedicated_worker_host_factory_client.h b/content/renderer/worker/dedicated_worker_host_factory_client.h
+index 39b992cbc2c64391db3760ee5f8788349d8e0373..7b1602260d734c798efe513390b45352ce69af48 100644
+--- a/content/renderer/worker/dedicated_worker_host_factory_client.h
++++ b/content/renderer/worker/dedicated_worker_host_factory_client.h
+@@ -112,6 +112,7 @@ class DedicatedWorkerHostFactoryClient final
+       mojo::PendingReceiver<blink::mojom::ReportingObserver>
+           dip_reporting_observer);
+   void OnPrivacyBootstrap(PrivacyWorkerBootstrap::Result result);
++  void OnSurfacePrivacyBootstrap(PrivacyWorkerBootstrap::SurfaceResult result);
+ 
+   // |worker_| owns |this|.
+   raw_ptr<blink::WebDedicatedWorker> worker_;
+@@ -127,6 +128,9 @@ class DedicatedWorkerHostFactoryClient final
+   mojo::Receiver<blink::mojom::DedicatedWorkerHostFactoryClient> receiver_{
+       this};
+   bool privacy_bootstrap_required_ = false;
++  bool privacy_bootstrap_failed_ = false;
++  WorkerPrivacyBootstrapMode privacy_bootstrap_mode_ = WorkerPrivacyBootstrapMode::kOff;
++  std::optional<glint::candidate::WorkerSurfacePolicy> surface_policy_;
+   std::optional<std::array<uint8_t, 32>> canvas_partition_seed_;
+   std::unique_ptr<PrivacyWorkerBootstrap> privacy_bootstrap_;
+   base::OnceClosure pending_script_start_;
+diff --git a/content/renderer/worker/embedded_shared_worker_stub.cc b/content/renderer/worker/embedded_shared_worker_stub.cc
+index d8405ab93a64d35768527967537a8511fff4df9c..f1d18b96413c6dcb6a9b1c5b208cf4082cb1bfa4 100644
+--- a/content/renderer/worker/embedded_shared_worker_stub.cc
++++ b/content/renderer/worker/embedded_shared_worker_stub.cc
+@@ -131,9 +131,8 @@ EmbeddedSharedWorkerStub::EmbeddedSharedWorkerStub(
+   // If the host drops its connection, then self-destruct.
+   receiver_.set_disconnect_handler(base::BindOnce(
+       &EmbeddedSharedWorkerStub::Terminate, base::Unretained(this)));
+-  const bool privacy_required =
+-      base::CommandLine::ForCurrentProcess()->HasSwitch(
+-          "glint-worker-canvas-bootstrap-test");
++  const auto privacy_mode = GetWorkerPrivacyBootstrapMode();
++  const bool privacy_required = privacy_mode != WorkerPrivacyBootstrapMode::kOff;
+   mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint;
+   if (privacy_required) {
+     mojo::Remote<blink::mojom::BrowserInterfaceBroker> broker(
+@@ -162,12 +161,13 @@ EmbeddedSharedWorkerStub::EmbeddedSharedWorkerStub(
+              coep_reporting_observer,
+          mojo::PendingReceiver<blink::mojom::ReportingObserver>
+              dip_reporting_observer,
+-         bool cross_origin_isolated, bool privacy_required,
+-         std::optional<std::array<uint8_t, 32>> seed) {
++         bool cross_origin_isolated, WorkerPrivacyBootstrapMode privacy_mode,
++         std::optional<std::array<uint8_t, 32>> seed,
++         std::optional<glint::candidate::WorkerSurfacePolicy> surface_policy) {
+         if (!self) {
+           return;
+         }
+-        if (privacy_required && !seed) {
++        if (!IsWorkerPrivacyBootstrapReady(privacy_mode, seed.has_value(), surface_policy.has_value())) {
+           mojo::Remote<blink::mojom::SharedWorkerHost> failure_host(std::move(host));
+           failure_host->OnScriptLoadFailed("Glint worker privacy policy unavailable");
+           self->Terminate();
+@@ -175,6 +175,9 @@ EmbeddedSharedWorkerStub::EmbeddedSharedWorkerStub(
+         }
+         worker_main_script_load_params->glint_canvas_partition_seed =
+             std::move(seed);
++        worker_main_script_load_params->glint_surface_policy_required =
++            privacy_mode == WorkerPrivacyBootstrapMode::kSurfaces;
++        worker_main_script_load_params->glint_surface_policy = std::move(surface_policy);
+         auto impl = blink::WebSharedWorker::CreateAndStart(
+             token, info->url, info->options->type, info->options->credentials,
+             blink::WebString::FromUTF8(info->options->name),
+@@ -210,25 +213,45 @@ EmbeddedSharedWorkerStub::EmbeddedSharedWorkerStub(
+       std::move(host),
+       ukm_source_id, require_cross_site_request_for_cookies,
+       std::move(coep_reporting_observer), std::move(dip_reporting_observer),
+-      cross_origin_isolated, privacy_required);
+-  if (!privacy_required) {
+-    std::move(start_worker).Run(std::nullopt);
++      cross_origin_isolated, privacy_mode);
++  if (!privacy_required || privacy_mode == WorkerPrivacyBootstrapMode::kConflict) {
++    std::move(start_worker).Run(std::nullopt, std::nullopt);
+     return;
+   }
+   privacy_bootstrap_ = std::make_unique<PrivacyWorkerBootstrap>(std::move(endpoint));
++  if (privacy_mode == WorkerPrivacyBootstrapMode::kSurfaces) {
++    // constructor_key is the creator key, not the authoritative worker key.
++    // Only compare the browser-selected worker origin here; the endpoint owns
++    // its partition, and Blink validates the final origin before first script.
++    privacy_bootstrap_->StartSurfacePolicy(origin, base::BindOnce(
++        [](base::WeakPtr<EmbeddedSharedWorkerStub> self,
++           base::OnceCallback<void(std::optional<std::array<uint8_t, 32>>,
++                                   std::optional<glint::candidate::WorkerSurfacePolicy>)> start_worker,
++           PrivacyWorkerBootstrap::SurfaceResult result) {
++          if (!self) return;
++          self->privacy_bootstrap_.reset();
++          if (!result.has_value()) {
++            std::move(start_worker).Run(std::nullopt, std::nullopt);
++            return;
++          }
++          std::move(start_worker).Run(std::nullopt, std::move(result).value());
++        }, weak_factory_.GetWeakPtr(), std::move(start_worker)));
++    return;
++  }
+   privacy_bootstrap_->Start(base::BindOnce(
+       [](base::WeakPtr<EmbeddedSharedWorkerStub> self,
+-         base::OnceCallback<void(std::optional<std::array<uint8_t, 32>>)> start_worker,
++         base::OnceCallback<void(std::optional<std::array<uint8_t, 32>>,
++                                 std::optional<glint::candidate::WorkerSurfacePolicy>)> start_worker,
+          PrivacyWorkerBootstrap::Result result) {
+         if (!self) {
+           return;
+         }
+         self->privacy_bootstrap_.reset();
+         if (!result.has_value()) {
+-          std::move(start_worker).Run(std::nullopt);
++          std::move(start_worker).Run(std::nullopt, std::nullopt);
+           return;
+         }
+-        std::move(start_worker).Run(std::move(result).value());
++        std::move(start_worker).Run(std::move(result).value(), std::nullopt);
+       },
+       weak_factory_.GetWeakPtr(), std::move(start_worker)));
+ }
+diff --git a/content/renderer/worker/privacy_worker_bootstrap.cc b/content/renderer/worker/privacy_worker_bootstrap.cc
+index d7cb39eb431dbeec667fef6bbbdfc1472c92e7f6..4359aaa2d8010e2cb000472fd769ab479a033321 100644
+--- a/content/renderer/worker/privacy_worker_bootstrap.cc
++++ b/content/renderer/worker/privacy_worker_bootstrap.cc
+@@ -6,8 +6,10 @@
+ #include <utility>
+ 
+ #include "base/check.h"
++#include "base/command_line.h"
+ #include "base/functional/bind.h"
+ #include "base/time/time.h"
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h"
+ 
+ namespace content {
+ namespace {
+@@ -17,6 +19,13 @@ constexpr uint32_t kSupportedCanvasPolicyVersion = 1;
+ constexpr base::TimeDelta kBootstrapDeadline = base::Seconds(10);
+ }  // namespace
+ 
++WorkerPrivacyBootstrapMode GetWorkerPrivacyBootstrapMode() {
++  const auto* command = base::CommandLine::ForCurrentProcess();
++  return SelectWorkerPrivacyBootstrapMode(
++      command->HasSwitch("glint-worker-canvas-bootstrap-test"),
++      command->HasSwitch("glint-worker-surface-bootstrap-test"));
++}
++
+ PrivacyWorkerBootstrap::PrivacyWorkerBootstrap(
+     mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint) {
+   if (endpoint.is_valid()) {
+@@ -32,11 +41,49 @@ void PrivacyWorkerBootstrap::Start(Callback callback) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   CHECK(!started_);
+   CHECK(callback);
+-  started_ = true;
+   callback_ = std::move(callback);
++  if (!PrepareRequest()) {
++    return;
++  }
++  endpoint_->GetCanvasPolicy(base::BindOnce(
++      &PrivacyWorkerBootstrap::OnReply, weak_factory_.GetWeakPtr()));
++}
++
++void PrivacyWorkerBootstrap::StartSurfacePolicy(
++    const blink::StorageKey& selected_worker_partition,
++    SurfaceCallback callback) {
++  StartSurfaceRequest(selected_worker_partition.origin(), selected_worker_partition, std::move(callback));
++}
++
++void PrivacyWorkerBootstrap::StartSurfacePolicy(
++    const url::Origin& browser_worker_origin,
++    SurfaceCallback callback) {
++  StartSurfaceRequest(browser_worker_origin, std::nullopt, std::move(callback));
++}
++
++void PrivacyWorkerBootstrap::StartSurfaceRequest(
++    const url::Origin& browser_worker_origin,
++    std::optional<blink::StorageKey> expected_partition,
++    SurfaceCallback callback) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  CHECK(!started_);
++  CHECK(callback);
++  surface_callback_ = std::move(callback);
++  selected_worker_partition_ = std::move(expected_partition);
++  browser_worker_origin_ = browser_worker_origin;
++  if (!PrepareRequest()) {
++    return;
++  }
++  endpoint_->GetSurfacePolicy(base::BindOnce(
++      &PrivacyWorkerBootstrap::OnSurfaceReply, weak_factory_.GetWeakPtr()));
++}
++
++bool PrivacyWorkerBootstrap::PrepareRequest() {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  started_ = true;
+   if (!endpoint_.is_bound()) {
+     Fail(Error::kDisconnected);
+-    return;
++    return false;
+   }
+   endpoint_.set_disconnect_handler(base::BindOnce(
+       &PrivacyWorkerBootstrap::Fail, weak_factory_.GetWeakPtr(),
+@@ -44,8 +91,7 @@ void PrivacyWorkerBootstrap::Start(Callback callback) {
+   timer_.Start(FROM_HERE, kBootstrapDeadline,
+                base::BindOnce(&PrivacyWorkerBootstrap::Fail,
+                               weak_factory_.GetWeakPtr(), Error::kTimedOut));
+-  endpoint_->GetCanvasPolicy(base::BindOnce(
+-      &PrivacyWorkerBootstrap::OnReply, weak_factory_.GetWeakPtr()));
++  return true;
+ }
+ 
+ void PrivacyWorkerBootstrap::OnReply(
+@@ -76,15 +122,61 @@ void PrivacyWorkerBootstrap::OnReply(
+   Complete(seed);
+ }
+ 
++void PrivacyWorkerBootstrap::OnSurfaceReply(
++    Status status, blink::mojom::GlintSurfacePolicyCommitPtr policy) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if ((status != Status::kReady && policy) || (status == Status::kReady && !policy)) {
++    Fail(Error::kMalformedPolicy);
++    return;
++  }
++  if (status == Status::kUnavailable) {
++    Fail(Error::kUnavailable);
++    return;
++  }
++  if (status == Status::kTimedOut) {
++    Fail(Error::kTimedOut);
++    return;
++  }
++  if (status != Status::kReady || !browser_worker_origin_) {
++    Fail(Error::kMalformedPolicy);
++    return;
++  }
++  auto owned = glint::candidate::DecodeOwnedWorkerSurfacePolicy(
++      *policy, *browser_worker_origin_, selected_worker_partition_);
++  if (!owned) {
++    Fail(Error::kMalformedPolicy);
++    return;
++  }
++  CompleteSurface(std::move(*owned));
++}
++
+ void PrivacyWorkerBootstrap::Fail(Error error) {
++  if (surface_callback_) {
++    CompleteSurface(base::unexpected(error));
++    return;
++  }
+   Complete(base::unexpected(error));
+ }
+ 
+-void PrivacyWorkerBootstrap::Complete(Result result) {
++void PrivacyWorkerBootstrap::ResetRequest() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   timer_.Stop();
+   weak_factory_.InvalidateWeakPtrs();
+   endpoint_.reset();
++  selected_worker_partition_.reset();
++  browser_worker_origin_.reset();
++}
++
++void PrivacyWorkerBootstrap::CompleteSurface(SurfaceResult result) {
++  ResetRequest();
++  if (surface_callback_) {
++    // The startup continuation may destroy this object; never touch it again.
++    std::move(surface_callback_).Run(std::move(result));
++  }
++}
++
++void PrivacyWorkerBootstrap::Complete(Result result) {
++  ResetRequest();
+   if (callback_) {
+     // The owner may destroy this object from its startup continuation.
+     std::move(callback_).Run(std::move(result));
+diff --git a/content/renderer/worker/privacy_worker_bootstrap.h b/content/renderer/worker/privacy_worker_bootstrap.h
+index f27965b255d3de863336fd73a403669e1214b407..95a517300292877bd9c7510bf39de1f19e360180 100644
+--- a/content/renderer/worker/privacy_worker_bootstrap.h
++++ b/content/renderer/worker/privacy_worker_bootstrap.h
+@@ -5,6 +5,7 @@
+ 
+ #include <array>
+ #include <cstdint>
++#include <optional>
+ 
+ #include "base/functional/callback.h"
+ #include "base/memory/weak_ptr.h"
+@@ -12,10 +13,30 @@
+ #include "base/timer/timer.h"
+ #include "base/types/expected.h"
+ #include "mojo/public/cpp/bindings/remote.h"
++#include "third_party/blink/public/common/native_privacy/glint/worker_surface_policy.h"
++#include "third_party/blink/public/common/storage_key/storage_key.h"
+ #include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
+ 
+ namespace content {
+ 
++enum class WorkerPrivacyBootstrapMode { kOff, kCanvas, kSurfaces, kConflict };
++inline WorkerPrivacyBootstrapMode SelectWorkerPrivacyBootstrapMode(bool canvas, bool surfaces) {
++  if (canvas && surfaces) return WorkerPrivacyBootstrapMode::kConflict;
++  if (surfaces) return WorkerPrivacyBootstrapMode::kSurfaces;
++  return canvas ? WorkerPrivacyBootstrapMode::kCanvas : WorkerPrivacyBootstrapMode::kOff;
++}
++inline bool IsWorkerPrivacyBootstrapReady(WorkerPrivacyBootstrapMode mode,
++                                         bool canvas, bool surfaces) {
++  switch (mode) {
++    case WorkerPrivacyBootstrapMode::kOff: return !canvas && !surfaces;
++    case WorkerPrivacyBootstrapMode::kCanvas: return canvas && !surfaces;
++    case WorkerPrivacyBootstrapMode::kSurfaces: return surfaces && !canvas;
++    case WorkerPrivacyBootstrapMode::kConflict: return false;
++  }
++  return false;
++}
++WorkerPrivacyBootstrapMode GetWorkerPrivacyBootstrapMode();
++
+ enum class PrivacyWorkerBootstrapError {
+   kUnavailable,
+   kTimedOut,
+@@ -29,6 +50,8 @@ class PrivacyWorkerBootstrap final {
+  public:
+   using Result = base::expected<std::array<uint8_t, 32>, PrivacyWorkerBootstrapError>;
+   using Callback = base::OnceCallback<void(Result)>;
++  using SurfaceResult = base::expected<glint::candidate::WorkerSurfacePolicy, PrivacyWorkerBootstrapError>;
++  using SurfaceCallback = base::OnceCallback<void(SurfaceResult)>;
+ 
+   explicit PrivacyWorkerBootstrap(
+       mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint);
+@@ -38,16 +61,33 @@ class PrivacyWorkerBootstrap final {
+ 
+   // Call once on the creating sequence. A missing pipe may complete inline.
+   void Start(Callback callback);
++  // Explicit v2 request: never substitutes a Canvas-only response. The
++  // worker scope must revalidate its final partition before installation.
++  void StartSurfacePolicy(const blink::StorageKey& selected_worker_partition,
++                          SurfaceCallback callback);
++  void StartSurfacePolicy(const url::Origin& browser_worker_origin,
++                          SurfaceCallback callback);
+ 
+  private:
++  bool PrepareRequest();
+   void OnReply(blink::mojom::NativePrivacyDeliveryStatus status,
+                blink::mojom::NativePrivacyCanvasPolicyPtr policy);
++  void StartSurfaceRequest(const url::Origin& browser_worker_origin,
++                           std::optional<blink::StorageKey> expected_partition,
++                           SurfaceCallback callback);
++  void OnSurfaceReply(blink::mojom::NativePrivacyDeliveryStatus status,
++                      blink::mojom::GlintSurfacePolicyCommitPtr policy);
+   void Fail(PrivacyWorkerBootstrapError error);
+   void Complete(Result result);
++  void CompleteSurface(SurfaceResult result);
++  void ResetRequest();
+ 
+   mojo::Remote<blink::mojom::NativePrivacyWorker> endpoint_;
+   bool started_ = false;
+   Callback callback_;
++  SurfaceCallback surface_callback_;
++  std::optional<blink::StorageKey> selected_worker_partition_;
++  std::optional<url::Origin> browser_worker_origin_;
+   base::OneShotTimer timer_;
+   SEQUENCE_CHECKER(sequence_checker_);
+   base::WeakPtrFactory<PrivacyWorkerBootstrap> weak_factory_{this};
+diff --git a/content/renderer/worker/privacy_worker_bootstrap_unittest.cc b/content/renderer/worker/privacy_worker_bootstrap_unittest.cc
+index 1c495f4c0b0312273417b7764152664c3dbd741b..4425d1a185a8325cdf783955283bababe91fc54d 100644
+--- a/content/renderer/worker/privacy_worker_bootstrap_unittest.cc
++++ b/content/renderer/worker/privacy_worker_bootstrap_unittest.cc
+@@ -10,6 +10,9 @@
+ #include "base/time/time.h"
+ #include "mojo/public/cpp/bindings/receiver.h"
+ #include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h"
++#include "url/gurl.h"
++#include "url/origin.h"
+ 
+ namespace content {
+ namespace {
+@@ -26,6 +29,11 @@ class NativePrivacyWorkerBootstrapTest
+     reply_ = std::move(callback);
+   }
+ 
++  void GetSurfacePolicy(GetSurfacePolicyCallback callback) override {
++    ADD_FAILURE() << "Canvas-only fixture must not request a surface bundle";
++    std::move(callback).Run(Status::kUnavailable, nullptr);
++  }
++
+   void Start(bool destroy_on_completion = false) {
+     mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint;
+     receiver_.Bind(endpoint.InitWithNewPipeAndPassReceiver());
+@@ -186,5 +194,224 @@ TEST_F(NativePrivacyWorkerBootstrapTest, DeadlineCallbackCanDestroyConsumer) {
+   EXPECT_EQ(completions_, 1);
+ }
+ 
++
++class NativePrivacyWorkerSurfaceBootstrapTest : public NativePrivacyWorkerBootstrapTest {
++ protected:
++  using SurfacePolicy = blink::mojom::GlintSurfacePolicyCommitPtr;
++  void GetCanvasPolicy(GetCanvasPolicyCallback callback) override {
++    ADD_FAILURE() << "Surface bootstrap must not fall back to Canvas-only delivery";
++    std::move(callback).Run(Status::kUnavailable, nullptr);
++  }
++  void GetSurfacePolicy(GetSurfacePolicyCallback callback) override {
++    ++requests_;
++    surface_reply_ = std::move(callback);
++  }
++  void StartSurface(bool destroy_on_completion = false, bool origin_only = false) {
++    mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint;
++    receiver_.Bind(endpoint.InitWithNewPipeAndPassReceiver());
++    bootstrap_ = std::make_unique<PrivacyWorkerBootstrap>(std::move(endpoint));
++    auto callback = base::BindLambdaForTesting(
++        [&, destroy_on_completion](PrivacyWorkerBootstrap::SurfaceResult result) {
++          ++completions_;
++          surface_result_ = std::move(result);
++          if (destroy_on_completion) {
++            bootstrap_.reset();
++          }
++        });
++    if (origin_only) {
++      bootstrap_->StartSurfacePolicy(selected_partition_.origin(), std::move(callback));
++    } else {
++      bootstrap_->StartSurfacePolicy(selected_partition_, std::move(callback));
++    }
++    tasks_.RunUntilIdle();
++    ASSERT_EQ(requests_, 1);
++    ASSERT_EQ(completions_, 0);
++  }
++  SurfacePolicy ValidSurfacePolicy() {
++    glint::candidate::SurfacePolicy snapshot;
++    snapshot.partition_encoding = *selected_partition_.SerializeForNativePrivacy();
++    snapshot.canvas.fill(1);
++    snapshot.webgl.fill(2);
++    snapshot.webgpu.fill(3);
++    snapshot.audio.fill(4);
++    return glint::candidate::EncodeSurfacePolicyCommit(snapshot, selected_partition_);
++  }
++  void ReplySurface(Status status, SurfacePolicy policy) {
++    ASSERT_TRUE(surface_reply_);
++    std::move(surface_reply_).Run(status, std::move(policy));
++    tasks_.RunUntilIdle();
++  }
++  void ExpectSurfaceError(Error error) {
++    ASSERT_EQ(completions_, 1);
++    ASSERT_TRUE(surface_result_);
++    ASSERT_FALSE(surface_result_->has_value());
++    EXPECT_EQ(surface_result_->error(), error);
++  }
++  blink::StorageKey selected_partition_ = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://surface-worker.test/")));
++  GetSurfacePolicyCallback surface_reply_;
++  std::optional<PrivacyWorkerBootstrap::SurfaceResult> surface_result_;
++};
++
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, ReadyReturnsOwnedIndependentSnapshotOnce) {
++  StartSurface();
++  ReplySurface(Status::kReady, ValidSurfacePolicy());
++  ASSERT_EQ(completions_, 1);
++  ASSERT_TRUE(surface_result_);
++  ASSERT_TRUE(surface_result_->has_value());
++  const auto& policy = surface_result_->value().policy;
++  EXPECT_TRUE(glint::candidate::ValidateSurfacePolicy(policy, selected_partition_));
++  EXPECT_EQ(policy.canvas[0], 1u);
++  EXPECT_EQ(policy.webgl[0], 2u);
++  EXPECT_EQ(policy.webgpu[0], 3u);
++  EXPECT_EQ(policy.audio[0], 4u);
++  tasks_.FastForwardBy(base::Seconds(11));
++  EXPECT_EQ(completions_, 1);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, UnavailableReturnsNoSnapshot) {
++  StartSurface();
++  ReplySurface(Status::kUnavailable, nullptr);
++  ExpectSurfaceError(Error::kUnavailable);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, BrowserTimeoutReturnsNoSnapshot) {
++  StartSurface();
++  ReplySurface(Status::kTimedOut, nullptr);
++  ExpectSurfaceError(Error::kTimedOut);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, CanvasVersionCannotSatisfySurfaceRequest) {
++  StartSurface();
++  auto policy = ValidSurfacePolicy();
++  policy->version = 1;
++  ReplySurface(Status::kReady, std::move(policy));
++  ExpectSurfaceError(Error::kMalformedPolicy);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, ReadyWithoutSnapshotIsRejected) {
++  StartSurface();
++  ReplySurface(Status::kReady, nullptr);
++  ExpectSurfaceError(Error::kMalformedPolicy);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, FailureWithSnapshotIsRejected) {
++  StartSurface();
++  ReplySurface(Status::kUnavailable, ValidSurfacePolicy());
++  ExpectSurfaceError(Error::kMalformedPolicy);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, DifferentPartitionCannotInstallSnapshot) {
++  StartSurface();
++  auto policy = ValidSurfacePolicy();
++  policy->partition_encoding = *blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://different.test/"))).SerializeForNativePrivacy();
++  ReplySurface(Status::kReady, std::move(policy));
++  ExpectSurfaceError(Error::kMalformedPolicy);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, ReusedSurfaceSeedIsRejected) {
++  StartSurface();
++  auto policy = ValidSurfacePolicy();
++  policy->audio_seed = policy->canvas_seed;
++  ReplySurface(Status::kReady, std::move(policy));
++  ExpectSurfaceError(Error::kMalformedPolicy);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, PeerDisconnectSettlesOnce) {
++  StartSurface();
++  receiver_.reset();
++  tasks_.RunUntilIdle();
++  ExpectSurfaceError(Error::kDisconnected);
++  tasks_.FastForwardBy(base::Seconds(11));
++  EXPECT_EQ(completions_, 1);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, DeadlineRejectsLateSnapshot) {
++  StartSurface();
++  tasks_.FastForwardBy(base::Seconds(11));
++  ExpectSurfaceError(Error::kTimedOut);
++  ReplySurface(Status::kReady, ValidSurfacePolicy());
++  EXPECT_EQ(completions_, 1);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, DestructionDropsPendingReply) {
++  StartSurface();
++  bootstrap_.reset();
++  ReplySurface(Status::kReady, ValidSurfacePolicy());
++  tasks_.FastForwardBy(base::Seconds(11));
++  EXPECT_EQ(completions_, 0);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, MissingPipeReturnsTypedFailure) {
++  PrivacyWorkerBootstrap bootstrap{mojo::PendingRemote<blink::mojom::NativePrivacyWorker>()};
++  bootstrap.StartSurfacePolicy(selected_partition_, base::BindLambdaForTesting(
++      [&](PrivacyWorkerBootstrap::SurfaceResult result) {
++        ++completions_;
++        surface_result_ = std::move(result);
++      }));
++  ExpectSurfaceError(Error::kDisconnected);
++  EXPECT_EQ(requests_, 0);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, ReadyCallbackCanDestroyConsumer) {
++  StartSurface(true);
++  ReplySurface(Status::kReady, ValidSurfacePolicy());
++  EXPECT_FALSE(bootstrap_);
++  ASSERT_TRUE(surface_result_);
++  EXPECT_TRUE(surface_result_->has_value());
++  tasks_.FastForwardBy(base::Seconds(11));
++  EXPECT_EQ(completions_, 1);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, FailureCallbackCanDestroyConsumer) {
++  StartSurface(true);
++  ReplySurface(Status::kUnavailable, nullptr);
++  EXPECT_FALSE(bootstrap_);
++  ExpectSurfaceError(Error::kUnavailable);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, DeadlineCallbackCanDestroyConsumer) {
++  StartSurface(true);
++  tasks_.FastForwardBy(base::Seconds(11));
++  EXPECT_FALSE(bootstrap_);
++  ExpectSurfaceError(Error::kTimedOut);
++  ReplySurface(Status::kReady, ValidSurfacePolicy());
++  EXPECT_EQ(completions_, 1);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, OpaquePartitionPreservesOwnedIdentity) {
++  selected_partition_ = blink::StorageKey::CreateFirstParty(url::Origin());
++  StartSurface();
++  ReplySurface(Status::kReady, ValidSurfacePolicy());
++  ASSERT_TRUE(surface_result_);
++  ASSERT_TRUE(surface_result_->has_value());
++  EXPECT_TRUE(glint::candidate::ValidateSurfacePolicy(surface_result_->value().policy, selected_partition_));
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, OriginOnlyRequestOwnsBrowserPartition) {
++  StartSurface(false, true);
++  ReplySurface(Status::kReady, ValidSurfacePolicy());
++  ASSERT_TRUE(surface_result_);
++  ASSERT_TRUE(surface_result_->has_value());
++  EXPECT_EQ(surface_result_->value().partition.SerializeForNativePrivacy(),
++            selected_partition_.SerializeForNativePrivacy());
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, FlagsSelectExactlyOneExplicitMode) {
++  using Mode = WorkerPrivacyBootstrapMode;
++  EXPECT_EQ(SelectWorkerPrivacyBootstrapMode(false, false), Mode::kOff);
++  EXPECT_EQ(SelectWorkerPrivacyBootstrapMode(true, false), Mode::kCanvas);
++  EXPECT_EQ(SelectWorkerPrivacyBootstrapMode(false, true), Mode::kSurfaces);
++  EXPECT_EQ(SelectWorkerPrivacyBootstrapMode(true, true), Mode::kConflict);
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, OffModeRejectsUnexpectedBootstrapData) {
++  using Mode = WorkerPrivacyBootstrapMode;
++  EXPECT_TRUE(IsWorkerPrivacyBootstrapReady(Mode::kOff, false, false));
++  EXPECT_FALSE(IsWorkerPrivacyBootstrapReady(Mode::kOff, true, false));
++  EXPECT_FALSE(IsWorkerPrivacyBootstrapReady(Mode::kOff, false, true));
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, CanvasModeCannotUseSurfaceFallback) {
++  using Mode = WorkerPrivacyBootstrapMode;
++  EXPECT_TRUE(IsWorkerPrivacyBootstrapReady(Mode::kCanvas, true, false));
++  EXPECT_FALSE(IsWorkerPrivacyBootstrapReady(Mode::kCanvas, false, true));
++  EXPECT_FALSE(IsWorkerPrivacyBootstrapReady(Mode::kCanvas, true, true));
++  EXPECT_FALSE(IsWorkerPrivacyBootstrapReady(Mode::kCanvas, false, false));
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, SurfaceModeCannotUseCanvasFallback) {
++  using Mode = WorkerPrivacyBootstrapMode;
++  EXPECT_TRUE(IsWorkerPrivacyBootstrapReady(Mode::kSurfaces, false, true));
++  EXPECT_FALSE(IsWorkerPrivacyBootstrapReady(Mode::kSurfaces, true, false));
++  EXPECT_FALSE(IsWorkerPrivacyBootstrapReady(Mode::kSurfaces, true, true));
++  EXPECT_FALSE(IsWorkerPrivacyBootstrapReady(Mode::kSurfaces, false, false));
++}
++TEST_F(NativePrivacyWorkerSurfaceBootstrapTest, ConflictAndUnknownModeNeverBecomeReady) {
++  EXPECT_FALSE(IsWorkerPrivacyBootstrapReady(WorkerPrivacyBootstrapMode::kConflict, true, true));
++  EXPECT_FALSE(IsWorkerPrivacyBootstrapReady(static_cast<WorkerPrivacyBootstrapMode>(255), false, false));
++}
++
+ }  // namespace
+ }  // namespace content
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+index 543c89fdda2c2ba9aad480a28b490b11f2db4c2d..da23b3f032c2d0cccad27c152d03f82d6eecccf1 100644
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2557,6 +2557,9 @@ test("content_unittests") {
+ 
+   defines = []
+   sources = [
++    "../browser/camouflow_native/glint/surface_policy_producer_unittest.cc",
++    "../../third_party/blink/public/common/native_privacy/glint/surface_policy_validation_unittest.cc",
++    "../../third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc",
+     "../browser/camouflow_native/privacy_context_unittest.cc",
+     "../browser/camouflow_native/privacy_document_commit_unittest.cc",
+     "../browser/camouflow_native/privacy_navigation_throttle_unittest.cc",
+diff --git a/third_party/blink/public/common/loader/worker_main_script_load_parameters.h b/third_party/blink/public/common/loader/worker_main_script_load_parameters.h
+index 5e90ce05b59accbcc890dde1159520e2a5dead19..1a1cadd086f63c24d3569dce347d6af238c228dc 100644
+--- a/third_party/blink/public/common/loader/worker_main_script_load_parameters.h
++++ b/third_party/blink/public/common/loader/worker_main_script_load_parameters.h
+@@ -7,6 +7,8 @@
+ 
+ #include <array>
+ #include <optional>
++
++#include "third_party/blink/public/common/native_privacy/glint/worker_surface_policy.h"
+ #include <vector>
+ 
+ #include "net/url_request/redirect_info.h"
+@@ -25,6 +27,8 @@ struct BLINK_COMMON_EXPORT WorkerMainScriptLoadParameters {
+ 
+   // Internal, owned surface seed; not yet consumed by the global scope.
+   std::optional<std::array<uint8_t, 32>> glint_canvas_partition_seed;
++  bool glint_surface_policy_required = false;
++  std::optional<glint::candidate::WorkerSurfacePolicy> glint_surface_policy;
+ 
+   int request_id;
+   network::mojom::URLResponseHeadPtr response_head;
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy.h b/third_party/blink/public/common/native_privacy/glint/surface_policy.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..23f78da518fb88090fdb680e2461de6eef342ce1
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy.h
+@@ -0,0 +1,31 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_SURFACE_POLICY_H_
++#define GLINT_SURFACE_POLICY_H_
++
++#include <array>
++#include <cstdint>
++#include <string>
++
++namespace glint::candidate {
++using PartitionSeed = std::array<uint8_t, 32>;
++constexpr uint32_t kSurfacePolicyVersion = 2;
++
++// Browser-owned snapshot for one exact trusted StorageKey. No profile root key.
++struct SurfacePolicy {
++  uint32_t version = kSurfacePolicyVersion;
++  std::string partition_encoding;
++  PartitionSeed canvas{};
++  PartitionSeed webgl{};
++  PartitionSeed webgpu{};
++  PartitionSeed audio{};
++};
++
++inline bool HasIndependentSurfaceSeeds(const SurfacePolicy& policy) {
++  return policy.canvas != policy.webgl && policy.canvas != policy.webgpu &&
++         policy.canvas != policy.audio && policy.webgl != policy.webgpu &&
++         policy.webgl != policy.audio && policy.webgpu != policy.audio;
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight.h b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..e5cf23f949bb633c02d723dcf1184319bb0af425
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight.h
+@@ -0,0 +1,61 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_SURFACE_POLICY_PREFLIGHT_H_
++#define GLINT_SURFACE_POLICY_PREFLIGHT_H_
++
++#include <algorithm>
++#include <optional>
++#include <span>
++#include <string_view>
++
++#include "surface_policy_validation.h"
++#include "third_party/blink/public/common/native_privacy/document_storage_key_resolution.h"
++
++namespace glint::candidate {
++struct SurfacePolicyView {
++  uint32_t version;
++  std::string_view partition_encoding;
++  std::span<const uint8_t> canvas;
++  std::span<const uint8_t> webgl;
++  std::span<const uint8_t> webgpu;
++  std::span<const uint8_t> audio;
++};
++
++inline bool HasValidSurfacePolicyPayload(const SurfacePolicyView& incoming) {
++  return incoming.version == kSurfacePolicyVersion &&
++         !incoming.partition_encoding.empty() && incoming.partition_encoding.size() <= 8192 &&
++         incoming.canvas.size() == 32 && incoming.webgl.size() == 32 &&
++         incoming.webgpu.size() == 32 && incoming.audio.size() == 32;
++}
++
++// Validate all lengths before allocation/copy. The returned snapshot owns bytes.
++// Final Blink partition validation must still occur before installation.
++inline std::optional<SurfacePolicy> PreflightSurfacePolicyForPartition(
++    const SurfacePolicyView& incoming,
++    const blink::StorageKey& selected_partition) {
++  if (!HasValidSurfacePolicyPayload(incoming)) {
++    return std::nullopt;
++  }
++  SurfacePolicy owned;
++  owned.partition_encoding = incoming.partition_encoding;
++  std::ranges::copy(incoming.canvas, owned.canvas.begin());
++  std::ranges::copy(incoming.webgl, owned.webgl.begin());
++  std::ranges::copy(incoming.webgpu, owned.webgpu.begin());
++  std::ranges::copy(incoming.audio, owned.audio.begin());
++  if (!ValidateSurfacePolicy(owned, selected_partition)) {
++    return std::nullopt;
++  }
++  return owned;
++}
++
++inline std::optional<SurfacePolicy> PreflightSurfacePolicyCommit(
++    const SurfacePolicyView& incoming,
++    const blink::StorageKey& provisional_partition,
++    const url::Origin& browser_origin_to_commit) {
++  return PreflightSurfacePolicyForPartition(
++      incoming, blink::ResolveGlintDocumentStorageKey(
++                    provisional_partition, browser_origin_to_commit));
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..4a5381bd14d09aabe879761da5b44eacb86284e4
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc
+@@ -0,0 +1,133 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "surface_policy_preflight.h"
++#include "surface_policy_wire.h"
++#include "worker_surface_policy_validation.h"
++
++#include "base/unguessable_token.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace glint::candidate {
++namespace {
++class GlintSurfacePolicyPreflightTest : public testing::Test {
++ protected:
++  const url::Origin origin_ = url::Origin::Create(GURL("https://preflight.test/"));
++  const blink::StorageKey partition_ = blink::StorageKey::CreateFirstParty(origin_);
++  std::string encoding_ = *partition_.SerializeForNativePrivacy();
++  PartitionSeed canvas_{1}, webgl_{2}, webgpu_{3}, audio_{4};
++
++  SurfacePolicyView Incoming() {
++    return {kSurfacePolicyVersion, encoding_, canvas_, webgl_, webgpu_, audio_};
++  }
++};
++
++TEST_F(GlintSurfacePolicyPreflightTest, ReturnsOwnedSnapshot) {
++  auto result = PreflightSurfacePolicyCommit(Incoming(), partition_, origin_);
++  ASSERT_TRUE(result);
++  encoding_.clear();
++  audio_.fill(1);
++  EXPECT_TRUE(ValidateSurfacePolicy(*result, partition_));
++  EXPECT_EQ(result->audio[0], 4u);
++}
++TEST_F(GlintSurfacePolicyPreflightTest, RejectsEveryShortAndLongSeedBeforeCopy) {
++  std::array<uint8_t, 33> oversized{};
++  for (unsigned index = 0; index < 4; ++index) {
++    for (unsigned size : {0u, 31u, 33u}) {
++      auto incoming = Incoming();
++      std::array<std::span<const uint8_t>*, 4> seeds{
++          &incoming.canvas, &incoming.webgl, &incoming.webgpu, &incoming.audio};
++      *seeds[index] = std::span<const uint8_t>(oversized).first(size);
++      EXPECT_FALSE(PreflightSurfacePolicyCommit(incoming, partition_, origin_));
++    }
++  }
++}
++TEST_F(GlintSurfacePolicyPreflightTest, RejectsWrongVersionAndHugeEncoding) {
++  auto incoming = Incoming();
++  incoming.version = 1;
++  EXPECT_FALSE(PreflightSurfacePolicyCommit(incoming, partition_, origin_));
++  encoding_.assign(8193, 'x');
++  EXPECT_FALSE(PreflightSurfacePolicyCommit(Incoming(), partition_, origin_));
++}
++TEST_F(GlintSurfacePolicyPreflightTest, ResolvesInheritedProvisionalOrigin) {
++  const auto provisional = blink::StorageKey::CreateFirstParty(url::Origin());
++  EXPECT_TRUE(PreflightSurfacePolicyCommit(Incoming(), provisional, origin_));
++}
++TEST_F(GlintSurfacePolicyPreflightTest, RejectsWrongBrowserOriginAndReusedSurface) {
++  const auto wrong = url::Origin::Create(GURL("https://wrong.test/"));
++  EXPECT_FALSE(PreflightSurfacePolicyCommit(Incoming(), partition_, wrong));
++  auto incoming = Incoming();
++  incoming.audio = incoming.canvas;
++  EXPECT_FALSE(PreflightSurfacePolicyCommit(incoming, partition_, origin_));
++}
++TEST_F(GlintSurfacePolicyPreflightTest, WireRoundtripRetainsBinaryEncodingAndOwnedSeeds) {
++  auto policy = PreflightSurfacePolicyCommit(Incoming(), partition_, origin_);
++  ASSERT_TRUE(policy);
++  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
++  ASSERT_TRUE(wire);
++  auto decoded = DecodeSurfacePolicyCommit(*wire, partition_, origin_);
++  ASSERT_TRUE(decoded);
++  EXPECT_EQ(decoded->partition_encoding, encoding_);
++  EXPECT_NE(decoded->partition_encoding.find('\0'), std::string::npos);
++  EXPECT_EQ(decoded->audio, audio_);
++  wire->audio_seed.assign(32, 0);
++  EXPECT_EQ(decoded->audio, audio_);
++}
++TEST_F(GlintSurfacePolicyPreflightTest, WireRejectsMalformedSeedAndWrongPartition) {
++  auto policy = PreflightSurfacePolicyCommit(Incoming(), partition_, origin_);
++  ASSERT_TRUE(policy);
++  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
++  ASSERT_TRUE(wire);
++  wire->audio_seed.pop_back();
++  EXPECT_FALSE(DecodeSurfacePolicyCommit(*wire, partition_, origin_));
++  const auto other = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test/")));
++  EXPECT_FALSE(EncodeSurfacePolicyCommit(*policy, other));
++}
++TEST_F(GlintSurfacePolicyPreflightTest, WorkerDecoderPreservesExactOpaqueIdentity) {
++  const auto first = blink::StorageKey::CreateFirstParty(url::Origin());
++  const auto second = blink::StorageKey::CreateFirstParty(url::Origin());
++  encoding_ = *first.SerializeForNativePrivacy();
++  auto policy = PreflightSurfacePolicyForPartition(Incoming(), first);
++  ASSERT_TRUE(policy);
++  auto wire = EncodeSurfacePolicyCommit(*policy, first);
++  ASSERT_TRUE(wire);
++  EXPECT_TRUE(DecodeWorkerSurfacePolicy(*wire, first));
++  EXPECT_FALSE(DecodeWorkerSurfacePolicy(*wire, second));
++}
++TEST_F(GlintSurfacePolicyPreflightTest, WorkerDecoderCannotReplaceNoncePartition) {
++  const auto first = blink::StorageKey::CreateWithNonce(origin_, base::UnguessableToken::Create());
++  const auto second = blink::StorageKey::CreateWithNonce(origin_, base::UnguessableToken::Create());
++  encoding_ = *first.SerializeForNativePrivacy();
++  auto policy = PreflightSurfacePolicyForPartition(Incoming(), first);
++  ASSERT_TRUE(policy);
++  auto wire = EncodeSurfacePolicyCommit(*policy, first);
++  ASSERT_TRUE(wire);
++  EXPECT_TRUE(DecodeWorkerSurfacePolicy(*wire, first));
++  EXPECT_FALSE(DecodeWorkerSurfacePolicy(*wire, second));
++  EXPECT_FALSE(DecodeWorkerSurfacePolicy(*wire, partition_));
++}
++TEST_F(GlintSurfacePolicyPreflightTest, BrowserOwnedWorkerPartitionMatchesFinalOrigin) {
++  auto policy = PreflightSurfacePolicyCommit(Incoming(), partition_, origin_);
++  ASSERT_TRUE(policy);
++  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
++  ASSERT_TRUE(wire);
++  auto owned = DecodeOwnedWorkerSurfacePolicy(*wire, origin_);
++  ASSERT_TRUE(owned);
++  EXPECT_TRUE(ValidateWorkerSurfacePolicy(owned, origin_, false));
++  EXPECT_FALSE(ValidateWorkerSurfacePolicy(owned, origin_, true));
++  EXPECT_FALSE(ValidateWorkerSurfacePolicy(owned,
++      url::Origin::Create(GURL("https://wrong.test/")), false));
++}
++TEST_F(GlintSurfacePolicyPreflightTest, WirePartitionCannotDisagreeWithBinaryCommitment) {
++  auto policy = PreflightSurfacePolicyCommit(Incoming(), partition_, origin_);
++  ASSERT_TRUE(policy);
++  auto wire = EncodeSurfacePolicyCommit(*policy, partition_);
++  ASSERT_TRUE(wire);
++  wire->partition = blink::StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://wrong.test/")));
++  EXPECT_FALSE(DecodeOwnedWorkerSurfacePolicy(*wire, wire->partition.origin()));
++  EXPECT_FALSE(DecodeSurfacePolicyCommit(*wire, partition_, origin_));
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h b/third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..4fe308d7c133b2bb20cee32b4dde7c27b100313e
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_validation.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_SURFACE_POLICY_VALIDATION_H_
++#define GLINT_SURFACE_POLICY_VALIDATION_H_
++
++#include "surface_policy.h"
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++
++namespace glint::candidate {
++// Must be checked against the final Blink-selected partition before installation.
++// IPC sender authentication and safe pre-teardown cancellation are separate gates.
++inline bool ValidateSurfacePolicy(const SurfacePolicy& policy,
++                                  const blink::StorageKey& selected_partition) {
++  if (policy.version != kSurfacePolicyVersion || policy.partition_encoding.empty() ||
++      policy.partition_encoding.size() > 8192 || !HasIndependentSurfaceSeeds(policy)) {
++    return false;
++  }
++  const auto encoding = selected_partition.SerializeForNativePrivacy();
++  return encoding && *encoding == policy.partition_encoding;
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_validation_unittest.cc b/third_party/blink/public/common/native_privacy/glint/surface_policy_validation_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..374acd129b41c0dc90297cedf1cdb7b50830fcea
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_validation_unittest.cc
+@@ -0,0 +1,101 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "surface_policy_validation.h"
++
++#include "base/unguessable_token.h"
++#include "net/base/schemeful_site.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace glint::candidate {
++namespace {
++blink::StorageKey Partition() {
++  return blink::StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://policy.test/")));
++}
++SurfacePolicy Policy() {
++  SurfacePolicy policy;
++  policy.partition_encoding = *Partition().SerializeForNativePrivacy();
++  policy.canvas.fill(1);
++  policy.webgl.fill(2);
++  policy.webgpu.fill(3);
++  policy.audio.fill(4);
++  return policy;
++}
++
++TEST(GlintSurfacePolicyTest, ValidIndependentSnapshot) {
++  EXPECT_TRUE(ValidateSurfacePolicy(Policy(), Partition()));
++}
++TEST(GlintSurfacePolicyTest, RejectsUnsupportedVersion) {
++  auto policy = Policy();
++  policy.version = 1;
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++  policy.version = 3;
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++}
++TEST(GlintSurfacePolicyTest, RejectsEmptyAndOversizedEncoding) {
++  auto policy = Policy();
++  policy.partition_encoding.clear();
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++  policy.partition_encoding.assign(8193, 'x');
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++}
++TEST(GlintSurfacePolicyTest, RejectsAnotherOrigin) {
++  EXPECT_FALSE(ValidateSurfacePolicy(Policy(), blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test/")))));
++}
++TEST(GlintSurfacePolicyTest, RejectsEveryPairOfReusedSeeds) {
++  for (unsigned left = 0; left < 4; ++left) {
++    for (unsigned right = left + 1; right < 4; ++right) {
++      auto policy = Policy();
++      std::array<PartitionSeed*, 4> seeds{
++          &policy.canvas, &policy.webgl, &policy.webgpu, &policy.audio};
++      *seeds[right] = *seeds[left];
++      EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++    }
++  }
++}
++TEST(GlintSurfacePolicyTest, SnapshotOwnsSeedsAndEncoding) {
++  auto original = Policy();
++  auto copy = original;
++  original.audio.fill(1);
++  original.partition_encoding.clear();
++  EXPECT_TRUE(ValidateSurfacePolicy(copy, Partition()));
++  EXPECT_FALSE(ValidateSurfacePolicy(original, Partition()));
++}
++TEST(GlintSurfacePolicyTest, RejectsDifferentOpaquePartition) {
++  EXPECT_FALSE(ValidateSurfacePolicy(Policy(), blink::StorageKey::CreateFirstParty(url::Origin())));
++}
++TEST(GlintSurfacePolicyTest, NonceIdentityIsExact) {
++  const auto origin = url::Origin::Create(GURL("https://policy.test/"));
++  const auto first = blink::StorageKey::CreateWithNonce(origin, base::UnguessableToken::Create());
++  const auto second = blink::StorageKey::CreateWithNonce(origin, base::UnguessableToken::Create());
++  auto policy = Policy();
++  policy.partition_encoding = *first.SerializeForNativePrivacy();
++  EXPECT_TRUE(ValidateSurfacePolicy(policy, first));
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, second));
++}
++TEST(GlintSurfacePolicyTest, RetainedTopLevelSiteCannotBeDropped) {
++  const auto origin = url::Origin::Create(GURL("https://policy.test/"));
++  const auto first = blink::StorageKey::Create(origin, net::SchemefulSite(GURL("https://one.test/")),
++      blink::mojom::AncestorChainBit::kCrossSite, false);
++  const auto second = blink::StorageKey::Create(origin, net::SchemefulSite(GURL("https://two.test/")),
++      blink::mojom::AncestorChainBit::kCrossSite, false);
++  ASSERT_EQ(first, second);
++  auto policy = Policy();
++  policy.partition_encoding = *first.SerializeForNativePrivacy();
++  EXPECT_TRUE(ValidateSurfacePolicy(policy, first));
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, second));
++}
++TEST(GlintSurfacePolicyTest, RejectsEmbeddedNullTruncationAndTrailingData) {
++  auto policy = Policy();
++  const auto null_position = policy.partition_encoding.find('\0');
++  ASSERT_NE(null_position, std::string::npos);
++  policy.partition_encoding.resize(null_position);
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++  policy = Policy();
++  policy.partition_encoding.push_back('\0');
++  EXPECT_FALSE(ValidateSurfacePolicy(policy, Partition()));
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h b/third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..bd001059569705aa205e6407f5321e2160ae75eb
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/surface_policy_wire.h
+@@ -0,0 +1,84 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_SURFACE_POLICY_WIRE_H_
++#define GLINT_SURFACE_POLICY_WIRE_H_
++
++#include <utility>
++
++#include "surface_policy_preflight.h"
++#include "worker_surface_policy.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom.h"
++
++namespace glint::candidate {
++inline SurfacePolicyView SurfacePolicyWireView(const blink::mojom::GlintSurfacePolicyCommit& wire) {
++  return {wire.version, wire.partition_encoding, wire.canvas_seed, wire.webgl_seed,
++          wire.webgpu_seed, wire.audio_seed};
++}
++
++inline bool HasMatchingWirePartition(const blink::mojom::GlintSurfacePolicyCommit& wire) {
++  if (!HasValidSurfacePolicyPayload(SurfacePolicyWireView(wire))) {
++    return false;
++  }
++  const auto encoding = wire.partition.SerializeForNativePrivacy();
++  return encoding && *encoding == wire.partition_encoding;
++}
++
++inline blink::mojom::GlintSurfacePolicyCommitPtr EncodeSurfacePolicyCommit(
++    const SurfacePolicy& policy,
++    const blink::StorageKey& trusted_partition) {
++  if (!ValidateSurfacePolicy(policy, trusted_partition)) {
++    return nullptr;
++  }
++  auto wire = blink::mojom::GlintSurfacePolicyCommit::New();
++  wire->version = policy.version;
++  wire->partition = trusted_partition;
++  wire->partition_encoding = policy.partition_encoding;
++  wire->canvas_seed.assign(policy.canvas.begin(), policy.canvas.end());
++  wire->webgl_seed.assign(policy.webgl.begin(), policy.webgl.end());
++  wire->webgpu_seed.assign(policy.webgpu.begin(), policy.webgpu.end());
++  wire->audio_seed.assign(policy.audio.begin(), policy.audio.end());
++  return wire;
++}
++
++inline std::optional<SurfacePolicy> DecodeSurfacePolicyCommit(
++    const blink::mojom::GlintSurfacePolicyCommit& wire,
++    const blink::StorageKey& provisional_partition,
++    const url::Origin& browser_origin_to_commit) {
++  if (!HasMatchingWirePartition(wire)) {
++    return std::nullopt;
++  }
++  return PreflightSurfacePolicyCommit(
++      SurfacePolicyWireView(wire),
++      provisional_partition, browser_origin_to_commit);
++}
++
++inline std::optional<SurfacePolicy> DecodeWorkerSurfacePolicy(
++    const blink::mojom::GlintSurfacePolicyCommit& wire,
++    const blink::StorageKey& selected_worker_partition) {
++  if (!HasMatchingWirePartition(wire)) {
++    return std::nullopt;
++  }
++  // A worker has no provisional document-origin normalization. Preserve its
++  // selected opaque/nonce/retained-site identity exactly.
++  return PreflightSurfacePolicyForPartition(
++      SurfacePolicyWireView(wire),
++      selected_worker_partition);
++}
++
++inline std::optional<WorkerSurfacePolicy> DecodeOwnedWorkerSurfacePolicy(
++    const blink::mojom::GlintSurfacePolicyCommit& wire,
++    const url::Origin& browser_worker_origin,
++    const std::optional<blink::StorageKey>& expected_partition = std::nullopt) {
++  if (wire.partition.origin() != browser_worker_origin) {
++    return std::nullopt;
++  }
++  auto policy = DecodeWorkerSurfacePolicy(
++      wire, expected_partition ? *expected_partition : wire.partition);
++  if (!policy) {
++    return std::nullopt;
++  }
++  return WorkerSurfacePolicy{wire.partition, std::move(*policy)};
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/worker_surface_policy.h b/third_party/blink/public/common/native_privacy/glint/worker_surface_policy.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..590dc1ca6420930a883ee791cff716594a5c25f7
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/worker_surface_policy.h
+@@ -0,0 +1,18 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_WORKER_SURFACE_POLICY_H_
++#define GLINT_WORKER_SURFACE_POLICY_H_
++
++#include "surface_policy.h"
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++
++namespace glint::candidate {
++// The browser endpoint owns the authoritative worker partition. Never derive it
++// from a creator document URL or deserialize the commitment as a StorageKey.
++struct WorkerSurfacePolicy {
++  blink::StorageKey partition;
++  SurfacePolicy policy;
++};
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/worker_surface_policy_validation.h b/third_party/blink/public/common/native_privacy/glint/worker_surface_policy_validation.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..e1aad6a0a1cd568b472cbbd519c1548774a3b49a
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/worker_surface_policy_validation.h
+@@ -0,0 +1,28 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_WORKER_SURFACE_POLICY_VALIDATION_H_
++#define GLINT_WORKER_SURFACE_POLICY_VALIDATION_H_
++
++#include <optional>
++#include <utility>
++
++#include "surface_policy_validation.h"
++#include "worker_surface_policy.h"
++
++namespace glint::candidate {
++// The partition is browser-owned. Blink independently selects the actual worker
++// origin; a mismatch rejects startup rather than normalizing away its identity.
++inline std::optional<WorkerSurfacePolicy> ValidateWorkerSurfacePolicy(
++    std::optional<WorkerSurfacePolicy> incoming,
++    const url::Origin& final_worker_origin,
++    bool has_legacy_canvas_seed) {
++  if (!incoming || has_legacy_canvas_seed ||
++      incoming->partition.origin() != final_worker_origin ||
++      !ValidateSurfacePolicy(incoming->policy, incoming->partition)) {
++    return std::nullopt;
++  }
++  return incoming;
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/mojom/BUILD.gn b/third_party/blink/public/mojom/BUILD.gn
+index cc3b98b71c8cb75b533bbad4bcd800107dd98a9b..2d9c8e9dad2c6b0dd27be4b38b10c6aefe5cd714 100644
+--- a/third_party/blink/public/mojom/BUILD.gn
++++ b/third_party/blink/public/mojom/BUILD.gn
+@@ -112,6 +112,7 @@ mojom("mojom_platform") {
+     "hid/hid.mojom",
+     "hyphenation/hyphenation.mojom",
+     "native_privacy/native_privacy_document.mojom",
++    "native_privacy/native_privacy_surface_policy.mojom",
+     "idle/idle_manager.mojom",
+     "image_downloader/image_downloader.mojom",
+     "image_replacement/image_replacement.mojom",
+diff --git a/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom b/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom
+index 8431c857171fecdc4ee777aea94ae750b6f4000f..5ae5d253c884e53959e8b798b9e3753a16b2dd68 100644
+--- a/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom
++++ b/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom
+@@ -2,6 +2,8 @@
+ // SPDX-License-Identifier: MIT
+ module blink.mojom;
+ 
++import "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom";
++
+ enum NativePrivacyDeliveryStatus {
+   kReady,
+   kUnavailable,
+@@ -24,4 +26,7 @@ interface NativePrivacyDocument {
+ interface NativePrivacyWorker {
+   GetCanvasPolicy() => (NativePrivacyDeliveryStatus status,
+                        NativePrivacyCanvasPolicy? policy);
++  // Exactly one policy request per pipe, shared with the Canvas-only method.
++  GetSurfacePolicy() => (NativePrivacyDeliveryStatus status,
++                        GlintSurfacePolicyCommit? policy);
+ };
+diff --git a/third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom b/third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom
+new file mode 100644
+index 0000000000000000000000000000000000000000..e31dc9f4de2d834bcf8156722e8d65516e0f5766
+--- /dev/null
++++ b/third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom
+@@ -0,0 +1,21 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++module blink.mojom;
++
++import "mojo/public/mojom/base/byte_string.mojom";
++import "third_party/blink/public/mojom/storage_key/storage_key.mojom";
++
++// One browser-owned partition snapshot; never reachable through a Web API.
++// ByteString retains embedded nulls in native StorageKey serialization.
++// This schema is not yet connected to document commits or worker endpoints.
++struct GlintSurfacePolicyCommit {
++  uint32 version;
++  // Supplied only by the lifetime-bound browser endpoint. Needed for workers
++  // whose renderer creation API does not carry the authoritative StorageKey.
++  StorageKey partition;
++  mojo_base.mojom.ByteString partition_encoding;
++  array<uint8, 32> canvas_seed;
++  array<uint8, 32> webgl_seed;
++  array<uint8, 32> webgpu_seed;
++  array<uint8, 32> audio_seed;
++};
+diff --git a/third_party/blink/public/web/web_embedded_worker_start_data.h b/third_party/blink/public/web/web_embedded_worker_start_data.h
+index cdbcb14ad5950be2c6103544ff8e91a28d6c5dbe..947afe07868b912d0c0af0749185908efa2decaf 100644
+--- a/third_party/blink/public/web/web_embedded_worker_start_data.h
++++ b/third_party/blink/public/web/web_embedded_worker_start_data.h
+@@ -35,6 +35,8 @@
+ #include <cstdint>
+ #include <optional>
+ 
++#include "third_party/blink/public/common/native_privacy/glint/worker_surface_policy.h"
++
+ #include "base/unguessable_token.h"
+ #include "services/metrics/public/cpp/ukm_source_id.h"
+ #include "third_party/blink/public/common/fingerprinting_protection/noise_token.h"
+@@ -79,6 +81,8 @@ struct WebEmbeddedWorkerStartData {
+ 
+   // Owned bootstrap policy, also present for installed-script startup.
+   std::optional<std::array<uint8_t, 32>> glint_canvas_partition_seed;
++  bool glint_surface_policy_required = false;
++  std::optional<glint::candidate::WorkerSurfacePolicy> glint_surface_policy;
+ 
+   std::unique_ptr<WebPolicyContainer> policy_container;
+ 
+diff --git a/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc b/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
+index 2b7d00051aa43f4d90571840487dd17e1d5ca9a4..2bf5c80fec5551460931c8b88ee12d2824051e25 100644
+--- a/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
++++ b/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
+@@ -309,6 +309,10 @@ void WebSharedWorkerImpl::StartWorkerContext(
+   if (worker_main_script_load_params) {
+     creation_params->glint_canvas_partition_seed =
+         std::move(worker_main_script_load_params->glint_canvas_partition_seed);
++    creation_params->glint_surface_policy_required =
++        worker_main_script_load_params->glint_surface_policy_required;
++    creation_params->glint_surface_policy =
++        std::move(worker_main_script_load_params->glint_surface_policy);
+   }
+ 
+   auto thread_startup_data = WorkerBackingThreadStartupData::CreateDefault();
+diff --git a/third_party/blink/renderer/core/workers/dedicated_worker.cc b/third_party/blink/renderer/core/workers/dedicated_worker.cc
+index 8014518cf93a3729b02fb0fa6acb7f3b0c38d531..3c553ce1376fcb9b22939155f528a7b48757c6c6 100644
+--- a/third_party/blink/renderer/core/workers/dedicated_worker.cc
++++ b/third_party/blink/renderer/core/workers/dedicated_worker.cc
+@@ -520,6 +520,10 @@ void DedicatedWorker::ContinueStartInternal(
+   if (worker_main_script_load_params) {
+     creation_params->glint_canvas_partition_seed =
+         std::move(worker_main_script_load_params->glint_canvas_partition_seed);
++    creation_params->glint_surface_policy_required =
++        worker_main_script_load_params->glint_surface_policy_required;
++    creation_params->glint_surface_policy =
++        std::move(worker_main_script_load_params->glint_surface_policy);
+   }
+   context_proxy_->StartWorkerGlobalScope(
+       std::move(creation_params),
+diff --git a/third_party/blink/renderer/core/workers/global_scope_creation_params.h b/third_party/blink/renderer/core/workers/global_scope_creation_params.h
+index ffbc6314c1f887596b3ed355f872b82eb9d761f2..84a0bdcc9dc84301ae78d4e07e306175bbc404ec 100644
+--- a/third_party/blink/renderer/core/workers/global_scope_creation_params.h
++++ b/third_party/blink/renderer/core/workers/global_scope_creation_params.h
+@@ -10,6 +10,8 @@
+ #include <memory>
+ #include <optional>
+ 
++#include "third_party/blink/public/common/native_privacy/glint/worker_surface_policy.h"
++
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/unguessable_token.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+@@ -275,6 +277,8 @@ struct CORE_EXPORT GlobalScopeCreationParams final {
+ 
+   // Owned bootstrap data transported before the worker thread starts.
+   std::optional<std::array<uint8_t, 32>> glint_canvas_partition_seed;
++  bool glint_surface_policy_required = false;
++  std::optional<glint::candidate::WorkerSurfacePolicy> glint_surface_policy;
+ };
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/core/workers/worker_global_scope.cc b/third_party/blink/renderer/core/workers/worker_global_scope.cc
+index d390459ea9455c76c7b4f585d89e9ed1a26fad35..7cf3d63558f0f651f02127893d6e0f4e47b24c22 100644
+--- a/third_party/blink/renderer/core/workers/worker_global_scope.cc
++++ b/third_party/blink/renderer/core/workers/worker_global_scope.cc
+@@ -27,6 +27,8 @@
+ 
+ #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
+ 
++#include "third_party/blink/public/common/native_privacy/glint/worker_surface_policy_validation.h"
++
+ #include "base/memory/scoped_refptr.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/trace_event/typed_macros.h"
+@@ -540,8 +542,10 @@ void WorkerGlobalScope::RunWorkerScript() {
+ 
+   // Step 24. If script is a classic script, then run the classic script script.
+   // Otherwise, it is a module script; run the module script script. [spec text]
++  const bool privacy_rejected = glint_surface_policy_required_ && !glint_surface_policy_;
+   bool is_success = false;
+-  if (ScriptState* script_state = ScriptController()->GetScriptState()) {
++  if (ScriptState* script_state = ScriptController()->GetScriptState();
++      script_state && !privacy_rejected) {
+     v8::HandleScope handle_scope(script_state->GetIsolate());
+     ScriptEvaluationResult result =
+         std::move(worker_script_)
+@@ -588,6 +592,12 @@ void WorkerGlobalScope::RunWorkerScript() {
+     debugger->ExternalAsyncTaskFinished(*stack_id_);
+ 
+   script_eval_state_ = ScriptEvalState::kEvaluated;
++  if (privacy_rejected) {
++    // No V8 script ran. Preserve evaluation/debugger notifications, then use
++    // normal worker close/teardown rather than crashing the renderer.
++    worker_script_.Clear();
++    close();
++  }
+   if (auto* controller = GetThread()->GetWorkerInspectorController()) {
+     controller->WorkerScriptLoaded();
+   }
+@@ -711,7 +721,12 @@ WorkerGlobalScope::WorkerGlobalScope(
+       top_level_frame_security_origin_(
+           std::move(creation_params->top_level_frame_security_origin)),
+       glint_canvas_partition_seed_(
+-          std::move(creation_params->glint_canvas_partition_seed)) {
++          std::move(creation_params->glint_canvas_partition_seed)),
++      glint_surface_policy_required_(creation_params->glint_surface_policy_required ||
++                                     creation_params->glint_surface_policy.has_value()),
++      glint_surface_policy_(glint::candidate::ValidateWorkerSurfacePolicy(
++          std::move(creation_params->glint_surface_policy),
++          GetSecurityOrigin()->ToUrlOrigin(), glint_canvas_partition_seed_.has_value())) {
+   // Workers should always maintain the default world of an isolate.
+   CHECK(creation_params->is_default_world_of_isolate);
+   TRACE_EVENT("blink.worker", "WorkerGlobalScope::WorkerGlobalScope");
+diff --git a/third_party/blink/renderer/core/workers/worker_global_scope.h b/third_party/blink/renderer/core/workers/worker_global_scope.h
+index 7ee460a20376be5b364354e0463371783f0d59e4..d6da561b5be99aaf6dae7df8d6f0e7d9b6275b22 100644
+--- a/third_party/blink/renderer/core/workers/worker_global_scope.h
++++ b/third_party/blink/renderer/core/workers/worker_global_scope.h
+@@ -31,6 +31,9 @@
+ #include <cstdint>
+ 
+ #include <memory>
++#include <optional>
++
++#include "third_party/blink/public/common/native_privacy/glint/worker_surface_policy.h"
+ 
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/time/time.h"
+@@ -141,10 +144,38 @@ class CORE_EXPORT WorkerGlobalScope
+   const KURL& Url() const final;
+ 
+   // Internal C++ only. Captures an owned surface seed for readback work.
++  bool GlintSurfacePolicyRequired() const {
++    DCHECK(IsContextThread());
++    return glint_surface_policy_required_;
++  }
++  bool GlintSurfacePolicyReady() const {
++    DCHECK(IsContextThread());
++    return !glint_surface_policy_required_ || glint_surface_policy_.has_value();
++  }
++  const std::optional<glint::candidate::WorkerSurfacePolicy>& GlintSurfacePolicy() const {
++    DCHECK(IsContextThread());
++    return glint_surface_policy_;
++  }
+   std::optional<std::array<uint8_t, 32>> GlintCanvasPartitionSeed() const {
+     DCHECK(IsContextThread());
++    if (glint_surface_policy_required_) {
++      return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.canvas)
++                                   : std::nullopt;
++    }
+     return glint_canvas_partition_seed_;
+   }
++  std::optional<std::array<uint8_t, 32>> GlintWebGLPartitionSeed() const {
++    DCHECK(IsContextThread());
++    return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.webgl) : std::nullopt;
++  }
++  std::optional<std::array<uint8_t, 32>> GlintWebGPUPartitionSeed() const {
++    DCHECK(IsContextThread());
++    return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.webgpu) : std::nullopt;
++  }
++  std::optional<std::array<uint8_t, 32>> GlintAudioPartitionSeed() const {
++    DCHECK(IsContextThread());
++    return glint_surface_policy_ ? std::optional(glint_surface_policy_->policy.audio) : std::nullopt;
++  }
+   KURL CompleteURL(const String&) const final;
+   bool IsWorkerGlobalScope() const final { return true; }
+   bool IsContextThread() const final;
+@@ -407,6 +438,8 @@ class CORE_EXPORT WorkerGlobalScope
+   // origin.
+   scoped_refptr<const SecurityOrigin> top_level_frame_security_origin_;
+   const std::optional<std::array<uint8_t, 32>> glint_canvas_partition_seed_;
++  const bool glint_surface_policy_required_;
++  const std::optional<glint::candidate::WorkerSurfacePolicy> glint_surface_policy_;
+ };
+ 
+ template <>
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test.cc b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+index 4c997ff40a3017ca7129a18943728c8a2a0345b4..aa484ce98673f789340eaff0d481e764c123134c 100644
+--- a/third_party/blink/renderer/core/workers/worker_thread_test.cc
++++ b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+@@ -208,6 +208,87 @@ class WorkerThreadTest : public testing::Test {
+   std::unique_ptr<WorkerThreadForTest> worker_thread_;
+ };
+ 
++
++class GlintWorkerSurfaceThreadTest : public WorkerThreadTest {
++ protected:
++  glint::candidate::WorkerSurfacePolicy SurfacePolicy() {
++    auto partition = blink::StorageKey::CreateFirstParty(security_origin_->ToUrlOrigin());
++    glint::candidate::SurfacePolicy policy;
++    policy.partition_encoding = *partition.SerializeForNativePrivacy();
++    policy.canvas.fill(1);
++    policy.webgl.fill(2);
++    policy.webgpu.fill(3);
++    policy.audio.fill(4);
++    return {partition, std::move(policy)};
++  }
++  void ExpectRejectedSurface(std::optional<glint::candidate::WorkerSurfacePolicy> policy,
++                             std::optional<std::array<uint8_t, 32>> legacy = std::nullopt) {
++    base::WaitableEvent evaluated;
++    EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++        .WillOnce([](WorkerOrWorkletGlobalScope* scope) {
++          auto* worker = To<WorkerGlobalScope>(scope);
++          EXPECT_FALSE(worker->GlintCanvasPartitionSeed());
++          EXPECT_FALSE(worker->GlintWebGLPartitionSeed());
++          EXPECT_FALSE(worker->GlintWebGPUPartitionSeed());
++          EXPECT_FALSE(worker->GlintAudioPartitionSeed());
++        });
++    EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++    EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScript(_))
++        .WillOnce([&evaluated](bool success) { EXPECT_FALSE(success); evaluated.Signal(); });
++    EXPECT_CALL(*reporting_proxy_, DidCloseWorkerGlobalScope()).Times(AtMost(1));
++    EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++    EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++    worker_thread_->StartWithSourceCode(security_origin_.get(), "globalThis.glintFixtureRan = true;",
++        KURL("http://fake.url/"), nullptr, legacy, std::move(policy), true);
++    const bool reported = evaluated.TimedWait(base::Seconds(10));
++    worker_thread_->Terminate();
++    worker_thread_->WaitForShutdownForTesting();
++    EXPECT_TRUE(reported);
++    EXPECT_EQ(ExitCode::kGracefullyTerminated, GetExitCode());
++  }
++};
++
++TEST_F(GlintWorkerSurfaceThreadTest, AllSeedsOwnedBeforeFirstScript) {
++  auto policy = SurfacePolicy();
++  const auto expected = policy;
++  testing::InSequence sequence;
++  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++      .WillOnce([expected](WorkerOrWorkletGlobalScope* scope) {
++        auto* worker = To<WorkerGlobalScope>(scope);
++        EXPECT_EQ(worker->GlintCanvasPartitionSeed(), std::optional(expected.policy.canvas));
++        EXPECT_EQ(worker->GlintWebGLPartitionSeed(), std::optional(expected.policy.webgl));
++        EXPECT_EQ(worker->GlintWebGPUPartitionSeed(), std::optional(expected.policy.webgpu));
++        EXPECT_EQ(worker->GlintAudioPartitionSeed(), std::optional(expected.policy.audio));
++        auto copy = worker->GlintAudioPartitionSeed();
++        ASSERT_TRUE(copy);
++        copy->fill(255);
++        EXPECT_EQ(worker->GlintAudioPartitionSeed(), std::optional(expected.policy.audio));
++      });
++  EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScript(true)).Times(1);
++  EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++  worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
++      KURL("http://fake.url/"), nullptr, std::nullopt, policy, true);
++  policy.policy.audio.fill(255);
++  worker_thread_->WaitForInit();
++  worker_thread_->Terminate();
++  worker_thread_->WaitForShutdownForTesting();
++}
++TEST_F(GlintWorkerSurfaceThreadTest, RequiredMissingBundleDoesNotEvaluateScript) {
++  ExpectRejectedSurface(std::nullopt);
++}
++TEST_F(GlintWorkerSurfaceThreadTest, DifferentFinalOriginDoesNotEvaluateScript) {
++  auto policy = SurfacePolicy();
++  policy.partition = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://wrong.test/")));
++  policy.policy.partition_encoding = *policy.partition.SerializeForNativePrivacy();
++  ExpectRejectedSurface(std::move(policy));
++}
++TEST_F(GlintWorkerSurfaceThreadTest, LegacySeedCannotSubstituteForSurfaceBundle) {
++  ExpectRejectedSurface(SurfacePolicy(), SurfacePolicy().policy.canvas);
++}
++
+ TEST_F(WorkerThreadTest, GlintCanvasSeedArrivesBeforeEvaluation) {
+   std::array<uint8_t, 32> seed{};
+   for (uint8_t i = 0; i < seed.size(); ++i) {
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test_helper.h b/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
+index 3012f35e98ed7a490a985cd6c66b147437224c58..d41cb28cbfe89a3715959db3f184913da2068cbd 100644
+--- a/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
++++ b/third_party/blink/renderer/core/workers/worker_thread_test_helper.h
+@@ -160,7 +160,10 @@ class WorkerThreadForTest : public WorkerThread {
+                            const KURL& script_url = KURL("http://fake.url/"),
+                            WorkerClients* worker_clients = nullptr,
+                            std::optional<std::array<uint8_t, 32>> canvas_seed =
+-                               std::nullopt) {
++                               std::nullopt,
++                           std::optional<glint::candidate::WorkerSurfacePolicy> surface_policy =
++                               std::nullopt,
++                           bool surface_policy_required = false) {
+     auto creation_params = std::make_unique<GlobalScopeCreationParams>(
+         script_url, mojom::blink::ScriptType::kClassic,
+         "fake global scope name", "fake user agent", UserAgentMetadata(),
+@@ -180,6 +183,8 @@ class WorkerThreadForTest : public WorkerThread {
+     // Create a dummy parent context.
+     creation_params->parent_context_token = LocalFrameToken();
+     creation_params->glint_canvas_partition_seed = std::move(canvas_seed);
++    creation_params->glint_surface_policy_required = surface_policy_required;
++    creation_params->glint_surface_policy = std::move(surface_policy);
+ 
+     Start(std::move(creation_params),
+           WorkerBackingThreadStartupData::CreateDefault(),
+diff --git a/third_party/blink/renderer/modules/exported/web_embedded_worker_impl.cc b/third_party/blink/renderer/modules/exported/web_embedded_worker_impl.cc
+index 5bac3aaa9e4004e4774938ab9767a20d11480e9e..cc61fdbb83631e37a3f75894723b8ae3e945b111 100644
+--- a/third_party/blink/renderer/modules/exported/web_embedded_worker_impl.cc
++++ b/third_party/blink/renderer/modules/exported/web_embedded_worker_impl.cc
+@@ -247,6 +247,10 @@ void WebEmbeddedWorkerImpl::StartWorkerThread(
+ 
+   global_scope_creation_params->glint_canvas_partition_seed =
+       std::move(worker_start_data->glint_canvas_partition_seed);
++  global_scope_creation_params->glint_surface_policy_required =
++      worker_start_data->glint_surface_policy_required;
++  global_scope_creation_params->glint_surface_policy =
++      std::move(worker_start_data->glint_surface_policy);
+ 
+   worker_thread_ = std::make_unique<ServiceWorkerThread>(
+       std::make_unique<ServiceWorkerGlobalScopeProxy>(

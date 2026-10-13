@@ -190,6 +190,16 @@ def verify(workspace: Path, report: Path) -> dict:
                 destination.write_text(original.read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
         build.run(["git", "init", "-q"], overlay, env)
         build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
+        promoted = ("0031-native-worker-surface-policy.patch", "0032-native-document-surface-policy.patch",
+                    "0033-native-surface-readback.patch", "0034-native-gpu-metadata-minimization.patch")
+        names = {item["name"] for item in registered}
+        if names.intersection(promoted) and not set(promoted).issubset(names):
+            raise ValueError("Surface batch registration is incomplete")
+        if set(promoted).issubset(names):
+            for name in reversed(promoted):
+                patch = ROOT / "native/patches" / name
+                build.run(["git", "apply", "--reverse", "--check", str(patch)], overlay, env)
+                build.run(["git", "apply", "--reverse", str(patch)], overlay, env)
         for name in PATCHES:
             build.run(["git", "apply", "--check", str(DRAFTS / name)], overlay, env)
             build.run(["git", "apply", str(DRAFTS / name)], overlay, env)
@@ -197,6 +207,8 @@ def verify(workspace: Path, report: Path) -> dict:
             if (overlay / relative).read_text(encoding="utf-8-sig") != (DRAFTS / name).read_text(encoding="utf-8-sig"):
                 raise ValueError(f"Composed source differs from canonical candidate: {name}")
         composed = {relative: digest(overlay / relative) for relative in paths}
+        if set(promoted).issubset(names) and composed != before:
+            raise ValueError("Promoted batch differs from the ordered canonical candidates")
     if before != {relative: digest(source / relative) for relative in paths}:
         raise ValueError("Active Chromium inputs changed during verification")
     if inputs != {name: digest(DRAFTS / name) for name in inputs} or digest(Path(__file__)) != verifier_hash:

@@ -1,0 +1,874 @@
+diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
+index d6348e10bb171dae1ad6ec3b19b2ecfec2bd4c5c..9d23d440113b5f232f5a11d2499a102e687a9eda 100644
+--- a/third_party/blink/common/features.cc
++++ b/third_party/blink/common/features.cc
+@@ -1006,6 +1006,9 @@ BASE_FEATURE(kGMSCoreEmoji, base::FEATURE_ENABLED_BY_DEFAULT);
+ BASE_FEATURE(kGetDisplayMediaIgnoreAudioPermissionFailures,
+              base::FEATURE_ENABLED_BY_DEFAULT);
+ 
++BASE_FEATURE(kGlintGpuMetadataMinimization, base::FEATURE_DISABLED_BY_DEFAULT);
++BASE_FEATURE(kGlintWebGLReadbackCandidate, base::FEATURE_DISABLED_BY_DEFAULT);
++
+ BASE_FEATURE_PARAM(std::string,
+                    kHTMLParserYieldEventNameForPause,
+                    &kHTMLParserYieldByUserTiming,
+diff --git a/third_party/blink/public/common/features.h b/third_party/blink/public/common/features.h
+index 0345abb5a0cf14aacf9a87295d0226147440da55..c474904bc6fc043d83767d46dcc7ff090c8a42f8 100644
+--- a/third_party/blink/public/common/features.h
++++ b/third_party/blink/public/common/features.h
+@@ -705,6 +705,11 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGMSCoreEmoji);
+ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
+     kGetDisplayMediaIgnoreAudioPermissionFailures);
+ 
++// Developer opt-in only; this minimizes metadata, not GPU capabilities.
++BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGlintGpuMetadataMinimization);
++// Experimental default-RGBA8 framebuffer readback; no capability admission.
++BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGlintWebGLReadbackCandidate);
++
+ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
+     std::string,
+     kHTMLParserYieldEventNameForPause);
+diff --git a/third_party/blink/renderer/core/html/build.gni b/third_party/blink/renderer/core/html/build.gni
+index 8861bf8a7c4cb66f363fb3c2682fa2968bde19ec..11799977666c127536002c900b391035a2314974 100644
+--- a/third_party/blink/renderer/core/html/build.gni
++++ b/third_party/blink/renderer/core/html/build.gni
+@@ -35,6 +35,8 @@ blink_core_sources_html = [
+   "canvas/element_image.h",
+   "canvas/glint/canvas_partition_seed.cc",
+   "canvas/glint/canvas_partition_seed.h",
++  "canvas/glint/readback_export_seed.h",
++  "canvas/glint/readback_export_seed.cc",
+   "canvas/glint/canvas_readback_candidate.cc",
+   "canvas/glint/canvas_readback_candidate.h",
+   "canvas/glint/canvas_readback_copy.cc",
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.cc b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..6ea08c683c64c3d18d0012401de12d2e3a9349ff
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.cc
+@@ -0,0 +1,13 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "readback_export_seed.h"
++
++namespace glint::candidate {
++bool ProtectWebGLCanonicalPixels(
++    std::span<uint8_t> rgba,
++    uint32_t width,
++    uint32_t height,
++    const std::array<uint8_t, 32>& partition_seed) {
++  return TransformEdgeCoherentCanvas(rgba, width, height, partition_seed);
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..f309ca834752a353af65ef7351ac53f4e152951d
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h
+@@ -0,0 +1,33 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_READBACK_EXPORT_SEED_H_
++#define GLINT_READBACK_EXPORT_SEED_H_
++
++#include "base/feature_list.h"
++#include "canvas_partition_seed.h"
++#include "canvas_readback_candidate.h"
++#include "third_party/blink/public/common/features.h"
++
++namespace glint::candidate {
++// Component-safe bridge: the transform implementation belongs to blink_core.
++CORE_EXPORT bool ProtectWebGLCanonicalPixels(
++    std::span<uint8_t> rgba,
++    uint32_t width,
++    uint32_t height,
++    const std::array<uint8_t, 32>& partition_seed);
++
++inline SurfaceSeedResult CanvasExportPartitionSeed(
++    blink::ExecutionContext* context,
++    bool webgl_context) {
++  if (!webgl_context || !base::FeatureList::IsEnabled(
++                            blink::features::kGlintWebGLReadbackCandidate)) {
++    return CanvasPartitionSeed(context);
++  }
++  auto seed = SurfacePartitionSeed(context, SurfaceSeedKind::kWebGL);
++  if (seed.has_value() && !seed.value()) {
++    return base::unexpected(SurfaceSeedError::kInvalidPolicy);
++  }
++  return seed;
++}
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+index 2d970b5416d75e7b5f8faade14b31ade15d065c0..92d85c1cc4d2e6f6aab4404a98643a6f432f7f05 100644
+--- a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
++++ b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+@@ -83,6 +83,7 @@
+ #include "third_party/blink/renderer/core/html/canvas/element_image.h"
+ #include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ #include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h"
+ #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+ #include "third_party/blink/renderer/core/html/canvas/predefined_color_space.h"
+ #include "third_party/blink/renderer/core/html/canvas/unique_font_selector.h"
+@@ -1311,7 +1312,9 @@ String HTMLCanvasElement::ToDataURLInternal(
+ 
+   scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(source_buffer);
+   if (image_bitmap && export_exception) {
+-    const auto seed = glint::candidate::CanvasPartitionSeed(GetExecutionContext());
++    const auto seed = glint::candidate::CanvasExportPartitionSeed(
++        GetExecutionContext(),
++        RenderingContext() && RenderingContext()->IsWebGL());
+     if (!seed.has_value()) {
+       export_exception->ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+@@ -1442,7 +1445,9 @@ void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
+   CanvasAsyncBlobCreator* async_creator = nullptr;
+   scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(kBackBuffer);
+   if (image_bitmap) {
+-    const auto seed = glint::candidate::CanvasPartitionSeed(GetExecutionContext());
++    const auto seed = glint::candidate::CanvasExportPartitionSeed(
++        GetExecutionContext(),
++        RenderingContext() && RenderingContext()->IsWebGL());
+     if (!seed.has_value()) {
+       exception_state.ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+diff --git a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+index ac7e0897b6d05cb54bd6c140222fadde3fa8f8eb..bf1f925b0228e4f1e6f6fdcb2b1cd4b35769273b 100644
+--- a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
++++ b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+@@ -28,7 +28,9 @@
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_factory.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_resource_tracker.h"
+ #include "third_party/blink/renderer/core/html/canvas/element_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ #include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h"
+ #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+ #include "third_party/blink/renderer/core/html/canvas/ukm_parameters.h"
+ #include "third_party/blink/renderer/core/html/canvas/unique_font_selector.h"
+@@ -36,7 +38,6 @@
+ #include "third_party/blink/renderer/core/inspector/console_message.h"
+ #include "third_party/blink/renderer/core/probe/core_probes.h"
+ #include "third_party/blink/renderer/core/workers/dedicated_worker_global_scope.h"
+-#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ 
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ #include "third_party/blink/renderer/platform/fonts/plain_text_painter.h"
+@@ -427,7 +428,8 @@ ScriptPromise<Blob> OffscreenCanvas::convertToBlob(
+   scoped_refptr<StaticBitmapImage> image_bitmap = context_->GetImage();
+   if (image_bitmap) {
+     auto* execution_context = ExecutionContext::From(script_state);
+-    const auto seed = glint::candidate::CanvasPartitionSeed(execution_context);
++    const auto seed = glint::candidate::CanvasExportPartitionSeed(
++        execution_context, context_ && context_->IsWebGL());
+     if (!seed.has_value()) {
+       exception_state.ThrowDOMException(
+           DOMExceptionCode::kNotReadableError,
+diff --git a/third_party/blink/renderer/modules/BUILD.gn b/third_party/blink/renderer/modules/BUILD.gn
+index 0d19e8e7b9049a9fc49879e2293201a8588715eb..ed61ac3161ba421b42252a205826c1a68565497d 100644
+--- a/third_party/blink/renderer/modules/BUILD.gn
++++ b/third_party/blink/renderer/modules/BUILD.gn
+@@ -631,6 +631,7 @@ source_set("unit_tests") {
+     "wake_lock/wake_lock_test_utils.h",
+     "webaudio/glint/offline_audio_candidate_unittest.cc",
+     "webaudio/glint/offline_audio_buffer_unittest.cc",
++    "webgl/glint/rgba8_pack_copy_unittest.cc",
+     "webaudio/audio_context_autoplay_test.cc",
+     "webaudio/audio_context_test.cc",
+     "webaudio/audio_node_input_test.cc",
+diff --git a/third_party/blink/renderer/modules/webgl/BUILD.gn b/third_party/blink/renderer/modules/webgl/BUILD.gn
+index d6112079449f9ee9f75565297e79aef4eddc2045..308fa2f647858c998242cd7c81b3c339c56f3d96 100644
+--- a/third_party/blink/renderer/modules/webgl/BUILD.gn
++++ b/third_party/blink/renderer/modules/webgl/BUILD.gn
+@@ -7,6 +7,8 @@ import("//ui/gl/features.gni")
+ 
+ blink_modules_sources("webgl") {
+   sources = [
++    "glint/rgba8_pack_copy.h",
++    "glint/rgba8_pack_copy.cc",
+     "angle_instanced_arrays.cc",
+     "angle_instanced_arrays.h",
+     "ext_blend_min_max.cc",
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..997539bd844f478c710f56be645def86d958c806
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.cc
+@@ -0,0 +1,67 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "rgba8_pack_copy.h"
++
++#include <algorithm>
++#include <functional>
++
++#include "base/numerics/checked_math.h"
++
++namespace glint::candidate {
++base::expected<void, Rgba8PackCopyError> CopyRgba8ReadbackToPackLayout(
++    std::span<const uint8_t> source,
++    std::span<uint8_t> destination,
++    GLsizei width,
++    GLsizei height,
++    size_t destination_offset,
++    const blink::WebGLImageConversion::PixelStoreParams& params) {
++  if (width < 0 || height < 0 ||
++      (params.alignment != 1 && params.alignment != 2 &&
++       params.alignment != 4 && params.alignment != 8) ||
++      params.row_length < 0 || params.skip_rows < 0 || params.skip_pixels < 0 ||
++      params.image_height != 0 || params.skip_images != 0) {
++    return base::unexpected(Rgba8PackCopyError::kInvalidLayout);
++  }
++  if (destination_offset > destination.size()) {
++    return base::unexpected(Rgba8PackCopyError::kDestinationTooSmall);
++  }
++  unsigned image_bytes = 0, padding = 0, skip_bytes = 0;
++  if (blink::WebGLImageConversion::ComputeImageSizeInBytes(
++          GL_RGBA, GL_UNSIGNED_BYTE, width, height, 1, params, &image_bytes,
++          &padding, &skip_bytes) != GL_NO_ERROR) {
++    return base::unexpected(Rgba8PackCopyError::kInvalidLayout);
++  }
++  if (!width || !height) {
++    return {};
++  }
++  base::CheckedNumeric<size_t> tight_bytes = width;
++  tight_bytes *= height;
++  tight_bytes *= 4;
++  if (!tight_bytes.IsValid() || source.size() != tight_bytes.ValueOrDie()) {
++    return base::unexpected(Rgba8PackCopyError::kInvalidSource);
++  }
++  base::CheckedNumeric<size_t> end = destination_offset;
++  end += skip_bytes;
++  end += image_bytes;
++  if (!end.IsValid() || end.ValueOrDie() > destination.size()) {
++    return base::unexpected(Rgba8PackCopyError::kDestinationTooSmall);
++  }
++  const std::less<const uint8_t*> less;
++  if (less(source.data(), destination.last(0).data()) &&
++      less(destination.data(), source.last(0).data())) {
++    return base::unexpected(Rgba8PackCopyError::kAliasedStorage);
++  }
++  // Reuse upstream's padding and skip calculation, including overlapping
++  // row layouts. Do not demand padding after the last row or invent GL errors.
++  const size_t row_bytes = static_cast<size_t>(width) * 4;
++  const size_t row_pixels = params.row_length > 0 ? params.row_length : width;
++  const size_t stride = row_pixels * 4 + padding;
++  const size_t start = destination_offset + skip_bytes;
++  for (size_t row = 0; row < static_cast<size_t>(height); ++row) {
++    const auto input = source.subspan(row * row_bytes, row_bytes);
++    auto output = destination.subspan(start + row * stride, row_bytes);
++    std::copy(input.begin(), input.end(), output.begin());
++  }
++  return {};
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..dd0f6be058a309233b88875ddea5b070b65f3c30
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h
+@@ -0,0 +1,33 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_RGBA8_PACK_COPY_H_
++#define GLINT_RGBA8_PACK_COPY_H_
++
++#include <cstddef>
++#include <cstdint>
++#include <span>
++
++#include "base/types/expected.h"
++#include "third_party/blink/renderer/platform/graphics/gpu/webgl_image_conversion.h"
++
++namespace glint::candidate {
++enum class Rgba8PackCopyError {
++  kInvalidLayout,
++  kInvalidSource,
++  kDestinationTooSmall,
++  kAliasedStorage,
++};
++
++// Scatter an already protected, tightly packed RGBA8 read rectangle into its
++// validated WebGL destination layout. No allocation, masking or GPU access.
++// Preserve row order, skips, padding and bytes outside the requested rectangle.
++// All validation precedes writes; source and destination must not overlap.
++base::expected<void, Rgba8PackCopyError> CopyRgba8ReadbackToPackLayout(
++    std::span<const uint8_t> source,
++    std::span<uint8_t> destination,
++    GLsizei width,
++    GLsizei height,
++    size_t destination_offset,
++    const blink::WebGLImageConversion::PixelStoreParams& params);
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy_unittest.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..64b8508b8431761408e04dccafe6a767b326284c
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy_unittest.cc
+@@ -0,0 +1,195 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "rgba8_pack_copy.h"
++
++#include <array>
++#include <limits>
++#include <vector>
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace glint::candidate {
++namespace {
++constexpr std::array<uint8_t, 16> kPixels{1, 2, 3, 255, 4,  5,  6,  255,
++                                          7, 8, 9, 255, 10, 11, 12, 255};
++
++TEST(GlintRgba8PackCopyTest, TightLayoutCopiesRowsWithoutSourceMutation) {
++  auto source = kPixels;
++  std::array<uint8_t, 16> destination{};
++  blink::WebGLImageConversion::PixelStoreParams params;
++  ASSERT_TRUE(
++      CopyRgba8ReadbackToPackLayout(source, destination, 2, 2, 0, params));
++  EXPECT_EQ(destination, kPixels);
++  EXPECT_EQ(source, kPixels);
++}
++
++TEST(GlintRgba8PackCopyTest, NonzeroOffsetPreservesPrefixAndSuffix) {
++  std::array<uint8_t, 28> destination;
++  destination.fill(165);
++  blink::WebGLImageConversion::PixelStoreParams params;
++  ASSERT_TRUE(
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 8, params));
++  for (size_t i = 0; i < destination.size(); ++i) {
++    EXPECT_EQ(destination[i], i >= 8 && i < 24 ? kPixels[i - 8] : 165);
++  }
++}
++
++TEST(GlintRgba8PackCopyTest, SkipsAndPaddingAreNotWritten) {
++  std::array<uint8_t, 68> destination;
++  destination.fill(165);
++  blink::WebGLImageConversion::PixelStoreParams params;
++  params.row_length = 4;
++  params.skip_rows = 1;
++  params.skip_pixels = 1;
++  ASSERT_TRUE(
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 8, params));
++  auto expected = destination;
++  expected.fill(165);
++  for (size_t row = 0; row < 2; ++row) {
++    for (size_t byte = 0; byte < 8; ++byte) {
++      expected[28 + row * 16 + byte] = kPixels[row * 8 + byte];
++    }
++  }
++  EXPECT_EQ(destination, expected);
++}
++
++TEST(GlintRgba8PackCopyTest, AlignmentEightPreservesInterRowPadding) {
++  std::array<uint8_t, 24> destination;
++  destination.fill(165);
++  blink::WebGLImageConversion::PixelStoreParams params;
++  params.alignment = 8;
++  const auto source = std::span(kPixels).first(12);
++  ASSERT_TRUE(
++      CopyRgba8ReadbackToPackLayout(source, destination, 1, 3, 0, params));
++  for (size_t i = 0; i < destination.size(); ++i) {
++    EXPECT_EQ(destination[i],
++              i % 8 < 4 && i < 20 ? source[(i / 8) * 4 + i % 8] : 165);
++  }
++}
++
++TEST(GlintRgba8PackCopyTest, LastRowDoesNotRequireTrailingPadding) {
++  std::array<uint8_t, 12> destination{};
++  blink::WebGLImageConversion::PixelStoreParams params;
++  params.alignment = 8;
++  ASSERT_TRUE(CopyRgba8ReadbackToPackLayout(std::span(kPixels).first(8),
++                                            destination, 1, 2, 0, params));
++  EXPECT_EQ(destination[8], kPixels[4]);
++  EXPECT_EQ(destination[11], kPixels[7]);
++}
++
++TEST(GlintRgba8PackCopyTest, OverlappingRowsUseUpstreamLayout) {
++  std::array<uint8_t, 12> destination{};
++  blink::WebGLImageConversion::PixelStoreParams params;
++  params.row_length = 1;
++  ASSERT_TRUE(
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 0, params));
++  EXPECT_EQ(destination, (std::array<uint8_t, 12>{1, 2, 3, 255, 7, 8, 9, 255,
++                                                  10, 11, 12, 255}));
++}
++
++TEST(GlintRgba8PackCopyTest, ShortDestinationRejectsBeforeAnyWrite) {
++  std::array<uint8_t, 15> destination;
++  destination.fill(165);
++  const auto before = destination;
++  blink::WebGLImageConversion::PixelStoreParams params;
++  auto result =
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 0, params);
++  ASSERT_FALSE(result);
++  EXPECT_EQ(result.error(), Rgba8PackCopyError::kDestinationTooSmall);
++  EXPECT_EQ(destination, before);
++}
++
++TEST(GlintRgba8PackCopyTest, WrongSourceSizeRejectsBeforeAnyWrite) {
++  std::array<uint8_t, 16> destination;
++  destination.fill(165);
++  const auto before = destination;
++  blink::WebGLImageConversion::PixelStoreParams params;
++  auto result = CopyRgba8ReadbackToPackLayout(std::span(kPixels).first(15),
++                                              destination, 2, 2, 0, params);
++  ASSERT_FALSE(result);
++  EXPECT_EQ(result.error(), Rgba8PackCopyError::kInvalidSource);
++  EXPECT_EQ(destination, before);
++}
++
++TEST(GlintRgba8PackCopyTest, AliasedStorageCannotMutateCanonicalSource) {
++  auto data = kPixels;
++  blink::WebGLImageConversion::PixelStoreParams params;
++  auto result = CopyRgba8ReadbackToPackLayout(data, data, 2, 2, 0, params);
++  ASSERT_FALSE(result);
++  EXPECT_EQ(result.error(), Rgba8PackCopyError::kAliasedStorage);
++  EXPECT_EQ(data, kPixels);
++}
++
++TEST(GlintRgba8PackCopyTest, NegativeDimensionsRejectBeforeAnyWrite) {
++  std::array<uint8_t, 16> destination{};
++  const auto before = destination;
++  blink::WebGLImageConversion::PixelStoreParams params;
++  EXPECT_FALSE(
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, -1, 2, 0, params));
++  EXPECT_FALSE(
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, -1, 0, params));
++  EXPECT_EQ(destination, before);
++}
++
++TEST(GlintRgba8PackCopyTest, InvalidPackFieldsRejectWithoutUpstreamDcheck) {
++  std::array<uint8_t, 16> destination{};
++  const auto before = destination;
++  for (int field = 0; field < 6; ++field) {
++    blink::WebGLImageConversion::PixelStoreParams params;
++    if (field == 0)
++      params.alignment = 3;
++    if (field == 1)
++      params.row_length = -1;
++    if (field == 2)
++      params.skip_rows = -1;
++    if (field == 3)
++      params.skip_pixels = -1;
++    if (field == 4)
++      params.skip_images = 1;
++    if (field == 5)
++      params.image_height = 1;
++    auto result =
++        CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 0, params);
++    ASSERT_FALSE(result);
++    EXPECT_EQ(result.error(), Rgba8PackCopyError::kInvalidLayout);
++  }
++  EXPECT_EQ(destination, before);
++}
++
++TEST(GlintRgba8PackCopyTest, RowStrideOverflowRejectsBeforeAnyWrite) {
++  std::array<uint8_t, 16> destination{};
++  const auto before = destination;
++  blink::WebGLImageConversion::PixelStoreParams params;
++  params.row_length = std::numeric_limits<int>::max();
++  auto result =
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 0, params);
++  ASSERT_FALSE(result);
++  EXPECT_EQ(result.error(), Rgba8PackCopyError::kInvalidLayout);
++  EXPECT_EQ(destination, before);
++}
++
++TEST(GlintRgba8PackCopyTest, OversizedOffsetRejectsBeforeAnyWrite) {
++  std::array<uint8_t, 16> destination{};
++  const auto before = destination;
++  blink::WebGLImageConversion::PixelStoreParams params;
++  auto result = CopyRgba8ReadbackToPackLayout(
++      kPixels, destination, 2, 2, std::numeric_limits<size_t>::max(), params);
++  ASSERT_FALSE(result);
++  EXPECT_EQ(result.error(), Rgba8PackCopyError::kDestinationTooSmall);
++  EXPECT_EQ(destination, before);
++}
++
++TEST(GlintRgba8PackCopyTest, EmptyReadsDoNotTouchSourceOrDestination) {
++  std::array<uint8_t, 16> destination;
++  destination.fill(165);
++  const auto before = destination;
++  blink::WebGLImageConversion::PixelStoreParams params;
++  params.skip_rows = 5;
++  ASSERT_TRUE(
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 0, 2, 16, params));
++  ASSERT_TRUE(
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 0, 16, params));
++  EXPECT_EQ(destination, before);
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+index 18aaa25ad71c65f717ca58a936bd1c78a6a537ec..f37679fe17895b3f1e3b59064a4acf642351d858 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+@@ -3,8 +3,12 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.h"
++#include "base/feature_list.h"
++#include "third_party/blink/public/common/features.h"
++#include "third_party/skia/include/core/SkBitmap.h"
+ 
+ #include <memory>
++#include <span>
+ 
+ #include "base/compiler_specific.h"
+ #include "base/containers/heap_array.h"
+@@ -903,6 +907,36 @@ void WebGL2RenderingContextBase::readPixels(GLint x,
+ 
+   ClearIfComposited(kClearCallerOther);
+ 
++  if (base::FeatureList::IsEnabled(features::kGlintWebGLReadbackCandidate) &&
++      width > 0 && height > 0) {
++    SkBitmap rectangle;
++    if (!PrepareGlintRgba8Readback(x, y, width, height, format, type,
++                                   rectangle)) {
++      return;
++    }
++    const auto pack = GetPackPixelStoreParams();
++    unsigned image_bytes = 0, padding = 0, skip_bytes = 0;
++    if (WebGLImageConversion::ComputeImageSizeInBytes(
++            GL_RGBA, GL_UNSIGNED_BYTE, width, height, 1, pack, &image_bytes,
++            &padding, &skip_bytes) != GL_NO_ERROR) {
++      SynthesizeGLError(GL_INVALID_OPERATION, "readPixels",
++                        "Glint WebGL PBO layout changed.");
++      return;
++    }
++    const size_t row_bytes = static_cast<size_t>(width) * 4;
++    const size_t row_pixels = pack.row_length > 0 ? pack.row_length : width;
++    const size_t stride = row_pixels * 4 + padding;
++    const auto pixels =
++        std::span(static_cast<const uint8_t*>(rectangle.getPixels()),
++                  rectangle.computeByteSize());
++    for (size_t row = 0; row < static_cast<size_t>(height); ++row) {
++      const int64_t destination = offset + skip_bytes + row * stride;
++      const auto input = pixels.subspan(row * row_bytes, row_bytes);
++      BufferSubDataImpl(GL_PIXEL_PACK_BUFFER, destination, row_bytes,
++                        input.data());
++    }
++    return;
++  }
+   {
+     ScopedDrawingBufferBinder binder(GetDrawingBuffer(), framebuffer);
+     if (!binder.Succeeded()) {
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc b/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
+index 0871be88f2db0bf5beaa40806eff5b37e3f3f343..9de22b7a8c14c6ead29cb5449b70d39e68d2d6a4 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
+@@ -25,6 +25,9 @@
+ 
+ #include "third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.h"
+ 
++#include "base/feature_list.h"
++#include "third_party/blink/public/common/features.h"
++
+ namespace blink {
+ 
+ WebGLDebugRendererInfo::WebGLDebugRendererInfo(
+@@ -37,7 +40,7 @@ WebGLExtensionName WebGLDebugRendererInfo::GetName() const {
+ }
+ 
+ bool WebGLDebugRendererInfo::Supported(WebGLRenderingContextBase*) {
+-  return true;
++  return !base::FeatureList::IsEnabled(features::kGlintGpuMetadataMinimization);
+ }
+ 
+ const char* WebGLDebugRendererInfo::ExtensionName() {
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc b/third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc
+index 0bd94e997dc906d0dd79784c1dbceba9e21e4c41..2b82204b51ebb52dc77f3cc87e66efc3ec7c74df 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc
+@@ -25,6 +25,8 @@
+ 
+ #include "third_party/blink/renderer/modules/webgl/webgl_debug_shaders.h"
+ 
++#include "base/feature_list.h"
++#include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/renderer/modules/webgl/gl_string_query.h"
+ #include "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h"
+ #include "third_party/blink/renderer/modules/webgl/webgl_shader.h"
+@@ -56,6 +58,9 @@ String WebGLDebugShaders::getTranslatedShaderSource(WebGLShader* shader) {
+ }
+ 
+ bool WebGLDebugShaders::Supported(WebGLRenderingContextBase* context) {
++  if (base::FeatureList::IsEnabled(features::kGlintGpuMetadataMinimization)) {
++    return false;
++  }
+   return context->ExtensionsUtil()->SupportsExtension(
+       "GL_ANGLE_translated_shader_source");
+ }
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h b/third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h
+index 5b338b43e408e2d9f872e9dd6f9a8982034b1e6a..0bbcd904cc8feccc6dc0aed4c963bfe633e325be 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h
++++ b/third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h
+@@ -48,6 +48,7 @@ class WebGLRenderbuffer final : public WebGLObject {
+   }
+   GLsizei Width() const { return width_; }
+   GLsizei Height() const { return height_; }
++  bool IsMultisampled() const { return is_multisampled_; }
+ 
+   // Returns:
+   //   -1 if the renderbuffer *used to be* multisampled and *is now*
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+index e3f40494b329dd99664439f3134d80b29e4688d7..d79999a18788c6280dcd27bd07855208145f2dd2 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -25,9 +25,19 @@
+ 
+ #include "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h"
+ 
++#include <algorithm>
+ #include <memory>
++#include <span>
+ #include <utility>
+ 
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h"
++#include "third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h"
++#include "third_party/skia/include/core/SkBitmap.h"
++
+ #include "base/bit_cast.h"
+ #include "base/byte_size.h"
+ #include "base/compiler_specific.h"
+@@ -5146,6 +5156,24 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+   if (isContextLost() || !GetDrawingBuffer())
+     return;
+ 
++  if (base::FeatureList::IsEnabled(features::kGlintWebGLReadbackCandidate) &&
++      width > 0 && height > 0) {
++    SkBitmap rectangle;
++    if (!PrepareGlintRgba8Readback(x, y, width, height, format, type,
++                                   rectangle)) {
++      return;
++    }
++    const auto source =
++        std::span(static_cast<const uint8_t*>(rectangle.getPixels()),
++                  rectangle.computeByteSize());
++    const auto destination = std::span(data, buffer_size.ValueOrDie());
++    if (!glint::candidate::CopyRgba8ReadbackToPackLayout(
++            source, destination, width, height, 0, GetPackPixelStoreParams())) {
++      SynthesizeGLError(GL_INVALID_OPERATION, "readPixels",
++                        "Glint WebGL pack-copy failed.");
++    }
++    return;
++  }
+   {
+     ScopedDrawingBufferBinder binder(GetDrawingBuffer(), framebuffer);
+     if (!binder.Succeeded()) {
+@@ -5155,6 +5183,151 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+   }
+ }
+ 
++bool WebGLRenderingContextBase::PrepareGlintRgba8Readback(
++    GLint x,
++    GLint y,
++    GLsizei width,
++    GLsizei height,
++    GLenum format,
++    GLenum type,
++    SkBitmap& protected_rectangle) {
++  const auto reject = [this](const char* reason) {
++    SynthesizeGLError(GL_INVALID_OPERATION, "readPixels", reason);
++    return false;
++  };
++  if (isContextLost() || !GetDrawingBuffer()) {
++    return false;
++  }
++  WebGLFramebuffer* framebuffer = nullptr;
++  if (!ValidateReadBufferAndGetInfo("readPixels", framebuffer)) {
++    return false;
++  }
++  if (framebuffer && ContextGL()->CheckFramebufferStatus(
++                         IsWebGL2() ? GL_READ_FRAMEBUFFER : GL_FRAMEBUFFER) !=
++                         GL_FRAMEBUFFER_COMPLETE) {
++    SynthesizeGLError(GL_INVALID_FRAMEBUFFER_OPERATION, "readPixels",
++                      "framebuffer incomplete");
++    return false;
++  }
++  const auto pack = GetPackPixelStoreParams();
++  auto storage = GetDrawingBuffer()->StorageFormat();
++  int frame_width = drawingBufferWidth();
++  int frame_height = drawingBufferHeight();
++  if (framebuffer) {
++    auto* attachment =
++        framebuffer->GetAttachmentObject(framebuffer->GetReadBuffer());
++    if (!attachment || !attachment->IsRenderbuffer()) {
++      return reject(
++          "Glint WebGL texture framebuffer readback is not implemented.");
++    }
++    auto* renderbuffer = static_cast<WebGLRenderbuffer*>(attachment);
++    if (renderbuffer->IsMultisampled()) {
++      return reject(
++          "Glint WebGL multisample readback requires an explicit resolve.");
++    }
++    // These fields are maintained by native renderbufferStorage operations.
++    // Never infer the attachment extent from the viewport or canvas dimensions.
++    storage = renderbuffer->InternalFormat();
++    frame_width = renderbuffer->Width();
++    frame_height = renderbuffer->Height();
++  }
++  if (format != GL_RGBA || type != GL_UNSIGNED_BYTE ||
++      (storage != GL_RGBA8 && storage != GL_RGB8) ||
++      (!framebuffer && GetColorSpace() != gfx::ColorSpace::CreateSRGB()) ||
++      (static_cast<int64_t>(pack.skip_pixels) + width >
++       (pack.row_length > 0 ? pack.row_length : width))) {
++    return reject(
++        "Glint WebGL candidate supports nonoverlapping RGBA8 default/sRGB or "
++        "single-sample RGB8/RGBA8 renderbuffer readback only.");
++  }
++  auto seed = glint::candidate::SurfacePartitionSeed(
++      GetExecutionContext(), glint::candidate::SurfaceSeedKind::kWebGL);
++  if (!seed.has_value() || !seed.value()) {
++    return reject("Glint WebGL policy is unavailable.");
++  }
++  if (frame_width <= 0 || frame_height <= 0 || width <= 0 || height <= 0) {
++    return reject("Glint WebGL readback dimensions are unavailable.");
++  }
++  base::CheckedNumeric<size_t> frame_bytes = frame_width;
++  frame_bytes *= frame_height;
++  frame_bytes *= 4;
++  base::CheckedNumeric<size_t> rectangle_bytes = width;
++  rectangle_bytes *= height;
++  rectangle_bytes *= 4;
++  auto total_bytes = frame_bytes + rectangle_bytes;
++  if (!total_bytes.IsValid() ||
++      total_bytes.ValueOrDie() >
++          glint::candidate::kCandidateAdditionalPixelBudget) {
++    return reject("Glint WebGL detached readback budget exceeded.");
++  }
++  SkBitmap frame;
++  const auto frame_info =
++      SkImageInfo::Make(frame_width, frame_height, kRGBA_8888_SkColorType,
++                        kUnpremul_SkAlphaType, SkColorSpace::MakeSRGB());
++  const auto rectangle_info = frame_info.makeWH(width, height);
++  if (!frame.tryAllocPixels(frame_info, static_cast<size_t>(frame_width) * 4) ||
++      !protected_rectangle.tryAllocPixels(rectangle_info,
++                                          static_cast<size_t>(width) * 4)) {
++    return reject("Glint WebGL detached allocation failed.");
++  }
++  auto canonical = std::span(static_cast<uint8_t*>(frame.getPixels()),
++                             frame_bytes.ValueOrDie());
++  auto rectangle =
++      std::span(static_cast<uint8_t*>(protected_rectangle.getPixels()),
++                rectangle_bytes.ValueOrDie());
++  std::fill(canonical.begin(), canonical.end(), 0);
++  std::fill(rectangle.begin(), rectangle.end(), 0);
++  ScopedDrawingBufferBinder binder(GetDrawingBuffer(), framebuffer);
++  if (!binder.Succeeded()) {
++    return false;
++  }
++  base::ScopedClosureRunner restore(base::BindOnce([this] {
++    DrawingBufferClientRestorePixelPackParameters();
++    DrawingBufferClientRestorePixelPackBufferBinding();
++  }));
++  // Only the service-side GL state changes. Keep WebGL's cached pack/buffer
++  // bindings intact so the existing virtual restorers restore the real state.
++  ContextGL()->PixelStorei(GL_PACK_ALIGNMENT, 1);
++  if (IsWebGL2()) {
++    ContextGL()->BindBuffer(GL_PIXEL_PACK_BUFFER, 0);
++    ContextGL()->PixelStorei(GL_PACK_ROW_LENGTH, 0);
++    ContextGL()->PixelStorei(GL_PACK_SKIP_PIXELS, 0);
++    ContextGL()->PixelStorei(GL_PACK_SKIP_ROWS, 0);
++  }
++  // Preserve the driver's requested-rectangle/out-of-bounds behavior privately.
++  // Never publish an unprotected intermediate, including SharedArrayBuffer.
++  ContextGL()->ReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE,
++                          rectangle.data());
++  ContextGL()->ReadPixels(0, 0, frame_width, frame_height, GL_RGBA,
++                          GL_UNSIGNED_BYTE, canonical.data());
++  if (isContextLost() ||
++      ContextGL()->GetGraphicsResetStatusKHR() != GL_NO_ERROR) {
++    return false;
++  }
++  if (!glint::candidate::ProtectWebGLCanonicalPixels(
++          canonical, frame_width, frame_height, *seed.value())) {
++    return reject("Glint WebGL canonical readback could not be protected.");
++  }
++  for (int row = 0; row < height; ++row) {
++    const int64_t source_y = static_cast<int64_t>(y) + row;
++    if (source_y < 0 || source_y >= frame_height)
++      continue;
++    for (int column = 0; column < width; ++column) {
++      const int64_t source_x = static_cast<int64_t>(x) + column;
++      if (source_x < 0 || source_x >= frame_width)
++        continue;
++      const size_t input =
++          (static_cast<size_t>(source_y) * frame_width + source_x) * 4;
++      const size_t output = (static_cast<size_t>(row) * width + column) * 4;
++      const auto pixel = canonical.subspan(input, 4);
++      auto target = rectangle.subspan(output, 4);
++      std::copy(pixel.begin(), pixel.end(), target.begin());
++    }
++  }
++  protected_rectangle.setImmutable();
++  return true;
++}
++
+ void WebGLRenderingContextBase::RenderbufferStorageImpl(
+     GLenum target,
+     GLsizei samples,
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+index 1ff87239e6a75354cd8f52ec26e7325a0182b7b6..c78874a6753d57106a7d4ea9f11c143684d73053 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+@@ -71,6 +71,8 @@ namespace media {
+ class PaintCanvasVideoRenderer;
+ }
+ 
++class SkBitmap;
++
+ namespace blink {
+ 
+ class AcceleratedStaticBitmapImage;
+@@ -1959,6 +1961,13 @@ class MODULES_EXPORT WebGLRenderingContextBase
+   gfx::Rect GetImageDataSize(ImageData*);
+ 
+   // Helper implementing readPixels for WebGL 1.0 and 2.0.
++  bool PrepareGlintRgba8Readback(GLint x,
++                                 GLint y,
++                                 GLsizei width,
++                                 GLsizei height,
++                                 GLenum format,
++                                 GLenum type,
++                                 SkBitmap& protected_rectangle);
+   void ReadPixelsHelper(GLint x,
+                         GLint y,
+                         GLsizei width,
+diff --git a/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc b/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
+index 4e4ca8dcb4febd1fc8eb132e24cbf1d98b41aef7..ba655055a373d1619da5423c39dd8102d19b98d8 100644
+--- a/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
++++ b/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc
+@@ -4,6 +4,9 @@
+ 
+ #include "third_party/blink/renderer/modules/webgpu/gpu_adapter.h"
+ 
++#include "base/feature_list.h"
++#include "third_party/blink/public/common/features.h"
++
+ #include "services/metrics/public/cpp/ukm_builders.h"
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+ #include "third_party/blink/renderer/bindings/core/v8/v8_object_builder.h"
+@@ -126,7 +129,13 @@ GPUAdapterInfo* GPUAdapter::CreateAdapterInfoForAdapter() {
+   bool is_fallback_adapter = adapter_type_ == wgpu::AdapterType::CPU;
+ 
+   GPUAdapterInfo* info;
+-  if (RuntimeEnabledFeatures::WebGPUDeveloperFeaturesEnabled()) {
++  if (base::FeatureList::IsEnabled(features::kGlintGpuMetadataMinimization)) {
++    // Retain real subgroup and fallback facts. Do not invent a different GPU or
++    // change the backend, device features, limits or rendering behavior.
++    info = MakeGarbageCollected<GPUAdapterInfo>(
++        String(), String(), subgroup_min_size_, subgroup_max_size_,
++        is_fallback_adapter);
++  } else if (RuntimeEnabledFeatures::WebGPUDeveloperFeaturesEnabled()) {
+     // If WebGPU developer features have been enabled then provide all available
+     // adapter info values.
+     info = MakeGarbageCollected<GPUAdapterInfo>(

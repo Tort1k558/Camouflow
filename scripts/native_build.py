@@ -203,7 +203,11 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0027-native-shared-worker-bootstrap-failure.patch",
         "0028-native-worker-handoff-fixture-lifetime.patch",
         "0029-native-document-partition-validator-tests.patch",
-        "0030-native-document-commit-prototype.patch"))
+        "0030-native-document-commit-prototype.patch",
+        "0031-native-worker-surface-policy.patch",
+        "0032-native-document-surface-policy.patch",
+        "0033-native-surface-readback.patch",
+        "0034-native-gpu-metadata-minimization.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
