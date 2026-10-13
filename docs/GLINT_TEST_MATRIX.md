@@ -71,6 +71,32 @@ external green tiles do not replace them.
 
 ## Build history
 
+### Windows development candidate 001-045 — 2026-10-13
+
+j4 incremental build succeeded in **5m29.58s**, four executed build steps.
+The receipt now directly binds EXE and both core DLLs. Measured `chrome.dll`
+SHA-256: `0e2e217ebcfe59adf15da09ec6d95ac7c65e9258d77bca523c96036f7340e894`.
+EXE and `chrome_elf.dll` hashes are unchanged from 001-039; the engine code
+changed in `chrome.dll`.
+
+| Owned check | Result | Boundary |
+| --- | --- | --- |
+| Eight-gate ordinary runtime suite | **Passed: 160 checks** | Runtime, hardware, WebRTC, automation, fonts, HTTP/JS identity, CDP and combined existing policies; unchanged EXE/DLL core |
+| Classic/module worker startup/restart | **Passed: 40/40** | Surface bootstrap, shared clients and unavailable-policy rejection; not nested-worker or early-termination admission |
+| Combined Canvas/OfflineAudio, initial run | **Failed: timeout** | Four phases passed; profile-B initial frame evaluation timed out; cleanup completed |
+| Combined Canvas/OfflineAudio, v2 retry | **Passed: 7/7** | Includes cross-profile/restart checks and exact missing-policy abort; does not resolve initial intermittent timeout |
+| Native fixtures | **Passed: 136/136** | Navigation 42, contexts 26, window/child 13, worker surfaces 55 on one test binary; distinct from browser runtime |
+| External detectors, proxy routes and CAPTCHA | Not rerun | No third-party result or acceptance claim for this build |
+| Next identity/readback batch | Source checks passed | Twelve unregistered patches, 113 paths, isolated Mojo/GPU generation; not compiled or enabled |
+
+Private evidence on D: `browser-verification-001-045-v1/suite/suite.json`,
+`browser-verification-001-045-v1/worker-startup.json`,
+`browser-verification-001-045-v1/surfaces.json` (failed run),
+`combined-surfaces-001-045-v2.json` (passing retry) and
+`identity-readback-001-045-batch-v1.json`. All failures remain recorded.
+The overall first browser-verification run remains failed; no release or
+surface capability is admitted from a passing retry alone.
+
 ### Windows development candidate 001-039 — 2026-10-13
 
 j4 incremental build succeeded in **8m15.04s**, five executed build steps.

@@ -213,6 +213,11 @@ across 113 paths, including isolated Mojo and GPU command generation:
 `identity-readback-001-040-batch-v1.json` on D. Active source/core/GN remained
 unchanged; `compiled=false`, `mode_enabled=false`, `privacy_admitted=false`.
 
+The same twelve-patch composition also passed against registered 001-045:
+`identity-readback-001-045-batch-v1.json` on D, including isolated Mojo and
+GPU command generation. This does not register the candidates or validate
+their optimized code, linked fixtures or browser behavior.
+
 ## Still required
 
 - Execute native fixtures, including unchanged legacy privacy vectors.

@@ -22,9 +22,10 @@ patch chain; they do not transfer automatically to newer binaries.
 | Native BrowserContext isolation | 001-045 | **26/26** cases passed |
 | Native window/child transport | 001-045 | **13/13** cases passed |
 | Native worker surfaces | 001-045 | **55/55** cases passed |
-| Last browser with runtime evidence | 001-039 | Combined Canvas/OfflineAudio owned gate **7/7**; general runtime gate **18/18** |
-| Last complete eight-gate suite | 001-027 | Historical baseline: **160 checks**, not admission of later patches |
-| Browser verification for 001-045 | Pending | Native fixtures do not prove actual renderer/worker execution |
+| Current linked Windows browser | 001-045 | Incremental j4 build succeeded in **5m30s**, with EXE/DLL-bound receipt |
+| Complete eight-gate runtime suite | 001-045 | **160 checks passed** on unchanged runtime core |
+| Worker startup/restart | 001-045 | **40/40** classic/module, shared-client and unavailable-policy checks passed |
+| Combined Canvas/OfflineAudio | 001-045 | Retry **7/7 passed**; initial run timed out on profile B, repeatability investigation remains open |
 | Branding | Prepared | Product/logo patch not applied to verified binary |
 | Linux/macOS | Deferred | No current own-fork runtime admission |
 | Mobile Web | Emulation | Desktop viewport/touch mode, not Android/iOS |
@@ -35,16 +36,18 @@ Raw Gtest results and guarded proof reports remain outside public source:
 `window-transport-001-045-v1` and `worker-surfaces-001-045-v1` on D:.
 These are C++ fixtures, not CAPTCHA or external anti-bot results.
 
-The 001-039 runtime gate covers persistent storage, concurrent-profile locks,
+The 001-045 runtime gate covers persistent storage, concurrent-profile locks,
 crash/restart recovery, permissions, an owned authenticated HTTP proxy,
-scenarios, Recorder and Mobile Web Emulation. Only this gate was requested,
-not the full eight-gate suite. The combined surface gate covers consistency
+scenarios, Recorder and Mobile Web Emulation. All eight suite gates passed.
+The combined surface gate covers consistency
 after restart, cross-profile isolation and exact missing-policy document
 abort without commit or script execution.
 
-Evidence on D: `owned-runtime-suite-001-039-v1/runtime.json` and
-`combined-surfaces-001-039-v2.json`. The earlier startup-probe timeout remains
-a failed attempt, not a passing recovery check.
+Evidence on D: `browser-verification-001-045-v1/suite/suite.json`,
+`browser-verification-001-045-v1/worker-startup.json` and
+`combined-surfaces-001-045-v2.json`. The initial combined timeout remains
+recorded in `browser-verification-001-045-v1/surfaces.json`; a passing retry
+does not prove the intermittent failure is fixed.
 
 ## Source layout
 
@@ -71,7 +74,8 @@ Registered patches 0031-0034 introduce browser-owned document/worker surface
 policy, startup/child transport, Canvas/OfflineAudio modules and partial
 native WebGL readback. Follow-ups 0035-0045 repair compilation, cancellation,
 throttle registration and fixture lifetimes. Native tests are passing;
-the current browser chain still needs its own runtime gates before enabling
+the current browser chain passes its ordinary runtime suite, but combined
+surface repeatability and remaining GPU gates are required before enabling
 capabilities or publishing a release.
 
 Next coherent candidates: [profile policy](drafts/policy/README.md),

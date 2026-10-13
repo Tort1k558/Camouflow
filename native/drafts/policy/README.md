@@ -6,8 +6,11 @@
 the frame-tree node ID and reacquires the node after cancelling the owned request:
 a navigation-finish observer may close the tab and destroy the original pointer.
 This matches the existing renderer-rejection cleanup pattern. Both cancellation
-follow-ups are now promoted together in registered patch **0040**; source is
-001-040, while the latest linked browser is 001-039.
+follow-ups are now promoted together in registered patch **0040**. Current
+registered source and the newly linked Windows browser are 001-045;
+its full ordinary runtime suite and worker startup checks have passed.
+Combined surface repeatability remains under investigation after an initial
+timeout and a passing retry.
 
 `document_ready_commit_observer_tests.patch` adds eight parameterized native
 NavigationSimulator cases: Canvas and surface policy loss in the ready callback,
@@ -19,10 +22,12 @@ Both patches replayed in an owned overlay against 001-039 without changing activ
 sources (`document-ready-observer-replay-v1/proof.json` on D). Both actual C++
 translation units passed syntax/type checking with their generated browser and
 content-unittest target flags; source/compiler/core/GN guards passed
-(`document-ready-observer-cpp-v1/proof.json`). They are **not yet optimized,
-linked or executed**. The native surface-navigation gate requires all 42 cases
-(34 existing plus these eight); neither syntax nor source promotion substitutes
-for running that executable.
+(`document-ready-observer-cpp-v1/proof.json`). Subsequent fixture repairs
+0041/0042/0044/0045 and throttle registration repair 0043 are registered.
+The native surface-navigation executable now passes all **42 cases**
+(34 existing plus these eight) on 001-045, without skipped or disabled cases:
+`surface-navigation-001-045-v6.json` and its raw Gtest JSON on D:.
+This proves native fixture execution, not actual Blink/browser admission.
 
 ## Earlier preparation record
 
