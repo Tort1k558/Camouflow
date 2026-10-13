@@ -29,11 +29,35 @@ ephemeral ownership. **They have not been compiled or executed.**
 Use a new private report path. Source replay and Python reference-vector matching
 are not native cryptographic/runtime proof.
 
-## Required next
+## Immutable browser-mode candidate
+
+`immutable_identity_mode_candidate.patch` applies **after** the derivation
+candidate. It adds an immutable, browser-owned derivation selection per key
+service: partitioned privacy (unchanged compatibility default) or stable profile
+identity. Invalid modes reject installation and both initialization paths;
+loading, failure and shutdown still reject derivation. Existing explicit privacy
+and identity APIs remain separate. No setter or renderer-controlled selection
+is introduced.
+
+Eight additional C++ fixtures cover default compatibility, cross-partition
+identity, readiness/shutdown, invalid modes, owner replacement rejection,
+persisted reload and ephemeral isolation. **Prepared, not executed.**
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\immutable-mode-replay.json --include-mode
+```
+
+This is a source/API component, **not an enabled fingerprint mode**. Producers,
+wire-mode delivery, renderer/worker consumption, launch settings and UI admission
+are not integrated. The default is preserved for existing callers, not a product
+decision to use partitioned noise as an ordinary browser identity.
+
+## Remaining gates
 
 - Execute native fixtures, including unchanged legacy privacy vectors.
 - Verify real BrowserContext/OTR lifetime and persisted profile restart.
-- Introduce an explicit versioned browser-owned mode and trusted policy selection.
+- Integrate the immutable browser-owned mode into trusted policy production and
+  versioned delivery; reject unknown wire modes before consuming any seeds.
 - Preserve final-partition authorization and renderer/worker IPC binding regardless
   of the entropy mode; a renderer must never choose another profile or mode.
 - Validate cross-context, cross-origin and cross-API consistency before using

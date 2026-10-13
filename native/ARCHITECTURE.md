@@ -30,6 +30,14 @@ strings while retaining contradictory driver capabilities. Cross-OS and mobile
 identities remain unverified until their complete observable environment agrees.
 Current Mobile Web remains desktop Chromium viewport/touch emulation.
 
+The unregistered `drafts/profile-identity` sequence separates partitioned privacy
+derivation from stable profile identity and prepares an immutable browser-owned
+selection per key service. Invalid selections reject initialization; installed
+owners cannot switch modes. Source replay covers both dependent patches; nineteen
+native fixture definitions are prepared, not executed. Policy producers, wire
+delivery, renderer/worker consumption and UI selection remain unintegrated.
+This does not enable an identity mode in the currently compiling browser.
+
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy
 requests before startup. Unsupported requests fail rather than silently falling
 back. Diagnostics observe actual document/worker browser values; they do not

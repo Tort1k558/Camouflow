@@ -208,3 +208,19 @@ def test_profile_identity_candidate_keeps_privacy_api_and_prepares_native_lifecy
     assert '+  message.push_back(\'\\0\');' in text
     assert '+  std::string message("Glint/profile-identity/v1");' in text
     assert all(value in text for value in reference_vectors().values())
+
+
+def test_immutable_identity_mode_candidate_preserves_default_and_rejects_invalid_modes():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_profile_identity_draft import MODE_FIXTURES, MODE_PATCH, MODE_PATHS
+
+    text = MODE_PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == MODE_PATHS
+    assert text.count("+TEST_F(NativePrivacyKeyServiceTest,") == len(MODE_FIXTURES)
+    assert all(name in text for name in MODE_FIXTURES)
+    assert "+  const content::NativeFingerprintDerivationMode derivation_mode_;" in text
+    assert "kPartitionedPrivacy" in text
+    assert "return key_->Derive(trusted_partition, surface);" in text
+    assert "return key_->DeriveProfileIdentity(trusted_partition, surface);" in text
+    assert text.count("IsValidNativeFingerprintDerivationMode(derivation_mode_)") == 2
+    assert "+  struct Owner : base::SupportsUserData {};" in text
