@@ -234,6 +234,16 @@ unchanged consumers are guarded. Logs stay beside the private report.
 .venv\Scripts\python.exe scripts/verify_native_identity_readback_batch.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-readback-combined-cpp.json --check-cpp
 ```
 
+For the next linked package, use `--collect-cpp-errors` (implies `--check-cpp`).
+Ordinary compiler diagnostics accumulate across all 22 identity and six GPU
+units in the composed tree instead of stopping at the first syntax/type error.
+Any failed unit still rejects the entire package. Timeout, compiler crash or
+LLVM allocation failure stop further compilation; `not_checked` explicitly
+lists the remaining units. An aborted identity checker or changed active inputs
+also prevents starting the GPU checker. Checks remain sequential, not additional
+parallel builders. This mode is prepared and tested with controlled failures,
+not yet executed on the actual combined candidate.
+
 This still does not execute native fixtures or link a browser, and does not admit
 identity mode, attachment metadata or protected GPU output. The current GN
 configuration disables the validating decoder; parsing its translation unit

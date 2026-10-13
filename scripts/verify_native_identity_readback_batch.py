@@ -28,7 +28,9 @@ def _merge_composed_sources(first: dict, second: dict) -> dict:
     return first | second
 
 
-def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_cpp: bool = False) -> dict:
+def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_cpp: bool = False,
+           collect_cpp_errors: bool = False) -> dict:
+    check_cpp = check_cpp or collect_cpp_errors
     check_codegen = check_codegen or check_cpp
     source = workspace / "chromium/src"
     if source != source.resolve() or not source.is_dir():
@@ -97,12 +99,19 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_
             raise ValueError("Combined replay differs from reviewed component source")
         if check_cpp:
             from scripts.verify_native_identity_cpp import verify_cpp as verify_identity_cpp
-            from scripts.verify_native_gpu_cpp import verify_cpp as verify_gpu_cpp
+            from scripts.verify_native_gpu_cpp import TARGETS as gpu_targets, verify_cpp as verify_gpu_cpp
             bindings = identity.verify_bindings(source, overlay, env)
             commands = gpu.verify_codegen(overlay, source / "buildtools/win-format/clang-format.exe", env)
+            options = {"collect_errors": True} if collect_cpp_errors else {}
+            identity_cpp = verify_identity_cpp(source, overlay, Path(str(report) + ".identity.cpp.log"), env, **options)
+            if collect_cpp_errors and (identity_cpp["aborted"] or not identity_cpp["active_core_and_inputs_unchanged"]):
+                gpu_cpp = {"passed": False, "compiled": False, "privacy_admitted": False, "units": {},
+                           "aborted": True, "not_checked": list(gpu_targets),
+                           "reason": "Identity compiler aborted or active inputs changed; GPU checks not started"}
+            else:
+                gpu_cpp = verify_gpu_cpp(source, overlay, Path(str(report) + ".gpu.cpp.log"), env, **options)
             cpp_proof = {
-                "identity": verify_identity_cpp(source, overlay, Path(str(report) + ".identity.cpp.log"), env),
-                "gpu": verify_gpu_cpp(source, overlay, Path(str(report) + ".gpu.cpp.log"), env),
+                "identity": identity_cpp, "gpu": gpu_cpp,
                 "bindings": bindings, "generated_command_files": commands,
             }
             if (composed != {name: digest(overlay / name) for name in paths}
@@ -121,6 +130,7 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_
               "inputs": inputs, "composed_source": composed,
               "identity": identity_proof, "gpu": gpu_proof,
               "cpp_syntax": cpp_proof, "cpp_consumer_baseline": cpp_before}
+    result["collect_cpp_errors"] = collect_cpp_errors
     with report.open("x", encoding="utf-8") as output:
         json.dump(result, output, indent=2)
     return result
@@ -134,8 +144,11 @@ def main() -> int:
                         help="Also check pinned isolated Mojo bindings and GPU command generation")
     parser.add_argument("--check-cpp", action="store_true",
                         help="Type-check identity and GPU units in the same composed tree; no linking or admission")
+    parser.add_argument("--collect-cpp-errors", action="store_true",
+                        help="Check all units after ordinary compiler errors; stop on crash, timeout or OOM; implies --check-cpp")
     args = parser.parse_args()
-    result = verify(args.workspace, args.report, check_codegen=args.check_codegen, check_cpp=args.check_cpp)
+    result = verify(args.workspace, args.report, check_codegen=args.check_codegen, check_cpp=args.check_cpp,
+                    collect_cpp_errors=args.collect_cpp_errors)
     print(json.dumps({key: result[key] for key in ("passed", "compiled", "mode_enabled")}))
     return 0 if result["passed"] else 1
 

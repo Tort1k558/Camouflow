@@ -30,6 +30,22 @@ def evidence_directory(log: Path) -> Path:
     return checks
 
 
+def compiler_failure_is_fatal(log: Path, offset: int, exit_code: int | None) -> bool:
+    if exit_code not in {0, 1}:
+        return True
+    markers = (b"LLVM ERROR:", b"Allocation failed", b"Exception Code:",
+               b"clang frontend command failed due to signal")
+    with log.open("rb") as stream:
+        stream.seek(offset)
+        tail = b""
+        while chunk := stream.read(65536):
+            diagnostic = tail + chunk
+            if any(marker in diagnostic for marker in markers):
+                return True
+            tail = diagnostic[-128:]
+    return False
+
+
 def syntax_flags(ninja: str, toolchain: str, relative: str, *, generated: bool = False) -> str:
     prefix = "gen/" if generated else "../../"
     if not re.search(r"^build [^\n]+: cxx " + re.escape(prefix + relative) + r"(?: \||$)", ninja, re.M):
@@ -51,7 +67,7 @@ def syntax_flags(ninja: str, toolchain: str, relative: str, *, generated: bool =
     return prefix + flags
 
 
-def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
+def verify_cpp(source: Path, overlay: Path, log: Path, env: dict, *, collect_errors: bool = False) -> dict:
     if sys.platform != "win32":
         raise ValueError("GPU candidate C++ syntax checking currently supports Windows only")
     output = source / "out/CamouFlowNative"
@@ -66,6 +82,7 @@ def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
     arguments = digest(output / "args.gn")
     checks = evidence_directory(log)
     units = {}
+    aborted = False
     with log.open("x", encoding="utf-8") as stream:
         for name, (unit, target) in TARGETS.items():
             relative = "gpu/command_buffer/" + unit
@@ -80,18 +97,32 @@ def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
                                 encoding="utf-8", newline="\n")
             stream.write(f"\n=== {name}: {relative} ===\n")
             stream.flush()
-            result = subprocess.run([str(compiler), "@" + str(response)], cwd=output, env=env,
-                                    stdout=stream, stderr=subprocess.STDOUT, timeout=180)
-            units[name] = {"source": relative, "exit_code": result.returncode,
+            offset = stream.tell()
+            try:
+                result = subprocess.run([str(compiler), "@" + str(response)], cwd=output, env=env,
+                                        stdout=stream, stderr=subprocess.STDOUT, timeout=180)
+                exit_code = result.returncode
+            except subprocess.TimeoutExpired:
+                if not collect_errors:
+                    raise
+                exit_code = None
+            stream.flush()
+            units[name] = {"source": relative, "exit_code": exit_code,
                            "response_sha256": digest(response), "candidate_sha256": digest(candidate)}
-            if result.returncode:
-                raise ValueError(f"GPU candidate C++ syntax failed: {name}; see {log}")
+            if exit_code != 0:
+                if not collect_errors:
+                    raise ValueError(f"GPU candidate C++ syntax failed: {name}; see {log}")
+                if compiler_failure_is_fatal(log, offset, exit_code):
+                    aborted = True
+                    break
     if before != {str(path): digest(path) for path in inputs}:
         raise ValueError("Generated compiler/target inputs changed during syntax checking")
     if measure_runtime_core(output / "chrome.exe") != core or digest(output / "args.gn") != arguments:
         raise ValueError("Active browser/GN changed during C++ syntax checking")
-    return {"passed": True, "compiled": False, "privacy_admitted": False,
+    return {"passed": len(units) == len(TARGETS) and all(unit["exit_code"] == 0 for unit in units.values()),
+            "compiled": False, "privacy_admitted": False,
             "scope": "C++ parsing/type-checking only; no optimization, link, native test or browser execution",
             "units": units, "inputs": before, "baseline_runtime_core_sha256": core,
             "active_core_and_gn_unchanged": True, "args_sha256": arguments,
-            "diagnostic_artifacts": str(checks)}
+            "diagnostic_artifacts": str(checks), "collect_errors": collect_errors,
+            "aborted": aborted, "not_checked": [name for name in TARGETS if name not in units]}

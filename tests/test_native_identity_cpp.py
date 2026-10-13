@@ -90,3 +90,30 @@ def test_identity_cpp_sources_include_consumers_and_generated_implementations():
     assert "third_party/blink/renderer/modules/service_worker/service_worker_global_scope.cc" in checker.TARGETS
     assert any(name.endswith(".mojom.cc") for name in checker.GENERATED_TARGETS)
     assert any(name.endswith(".mojom-shared.cc") for name in checker.GENERATED_TARGETS)
+
+
+@pytest.mark.parametrize("failure", ["syntax", "oom", "timeout"])
+def test_identity_cpp_batch_collects_ordinary_errors_but_aborts_resource_failures(tmp_path, monkeypatch, failure):
+    source, overlay, log = prepare_inputs(tmp_path)
+    monkeypatch.setattr(checker.sys, "platform", "win32")
+    monkeypatch.setattr(checker, "measure_runtime_core", lambda executable: {"chrome.exe": "a" * 64})
+    monkeypatch.setattr(checker, "syntax_flags", lambda *args, **kwargs: "ACTUAL_TARGET_FLAGS")
+    commands = []
+
+    def run(command, **kwargs):
+        commands.append(command)
+        if len(commands) in {3, 5}:
+            if failure == "timeout":
+                raise checker.subprocess.TimeoutExpired(command, 180)
+            kwargs["stdout"].write("LLVM ERROR: out of memory\n" if failure == "oom" else "error: undeclared symbol\n")
+            return SimpleNamespace(returncode=1)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(checker.subprocess, "run", run)
+    proof = checker.verify_cpp(source, overlay, log, {}, collect_errors=True)
+    assert not proof["passed"] and proof["compiled"] is False
+    assert proof["active_core_and_inputs_unchanged"]
+    assert len(commands) == (22 if failure == "syntax" else 3)
+    assert proof["aborted"] is (failure != "syntax")
+    assert len(proof["not_checked"]) == (0 if failure == "syntax" else 19)
+    assert sum(unit["exit_code"] != 0 for unit in proof["units"].values()) == (2 if failure == "syntax" else 1)

@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 from scripts.verify_native_document_drafts import digest
-from scripts.verify_native_gpu_cpp import evidence_directory, syntax_flags
+from scripts.verify_native_gpu_cpp import compiler_failure_is_fatal, evidence_directory, syntax_flags
 from scripts.verify_native_runtime import measure_runtime_core
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,7 +49,7 @@ def source_paths(source: Path) -> set[str]:
     return paths
 
 
-def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
+def verify_cpp(source: Path, overlay: Path, log: Path, env: dict, *, collect_errors: bool = False) -> dict:
     if sys.platform != "win32":
         raise ValueError("Identity C++ checking currently supports Windows only")
     output = source / "out/CamouFlowNative"
@@ -77,6 +77,7 @@ def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
         raise ValueError("Identity candidate source or fresh generated implementation is missing")
     candidate_hashes = {relative: digest(path) for relative, path in candidates.items()}
     units = {}
+    aborted = False
     with log.open("x", encoding="utf-8") as stream:
         for index, (relative, target) in enumerate(targets.items()):
             flags = syntax_flags((output / "obj" / (target + ".ninja")).read_text(encoding="utf-8-sig"),
@@ -88,14 +89,18 @@ def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
                                 f'"{candidates[relative]}"\n', encoding="utf-8", newline="\n")
             stream.write("\n=== " + relative + " ===\n")
             stream.flush()
+            offset = stream.tell()
             try:
                 result = subprocess.run([str(compiler), "@" + str(response)], cwd=output, env=env,
                                         stdout=stream, stderr=subprocess.STDOUT, timeout=180, check=False)
                 units[relative] = {"exit_code": result.returncode, "response_sha256": digest(response)}
             except subprocess.TimeoutExpired:
                 units[relative] = {"exit_code": None, "error": "C++ checker timed out", "response_sha256": digest(response)}
+            stream.flush()
             if units[relative]["exit_code"] != 0:
-                break
+                aborted = compiler_failure_is_fatal(log, offset, units[relative]["exit_code"])
+                if not collect_errors or aborted:
+                    break
     unchanged = (before == {str(path): digest(path) for path in inputs}
                  and candidate_hashes == {relative: digest(path) for relative, path in candidates.items()}
                  and measure_runtime_core(output / "chrome.exe") == core
@@ -105,4 +110,5 @@ def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
             "scope": "Actual target C++ parsing/type checks; not optimizer, linker, fixture or browser execution",
             "units": units, "inputs": before, "candidate_sources": candidate_hashes,
             "active_core_and_inputs_unchanged": unchanged, "baseline_runtime_core_sha256": core,
-            "diagnostic_artifacts": str(checks)}
+            "diagnostic_artifacts": str(checks), "collect_errors": collect_errors,
+            "aborted": aborted, "not_checked": [name for name in targets if name not in units]}

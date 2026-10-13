@@ -241,6 +241,27 @@ Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчам
 
 ## Приоритеты и обязательные gates
 
+### Связанные пакеты вместо пересборки после каждого исправления
+
+Следующий пакет: стабильная profile identity, доставка в documents/iframe/workers
+и GPU metadata/readback. Готовить его в изолированной копии, не меняя активную
+сборку. Source/codegen/C++ preflight выполнять для всей композиции, затем одну
+сборку пакета и полный набор нативных/runtime-проверок. Обычные ошибки собирать
+за один прогон, исправлять связанной группой; OOM/crash/нарушение изоляции могут
+блокировать дальнейшее исполнение и не считаются проверенными случаями.
+
+Команда пакетного C++ preflight:
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_identity_readback_batch.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-readback-package-new.json --collect-cpp-errors
+```
+
+Она собирает обычные ошибки по 22 identity и шести GPU единицам, но останавливает
+компиляцию при crash/timeout/OOM и перечисляет `not_checked`. Режим подготовлен;
+успешного полного комбинированного C++ прогона пока нет. Тяжёлые preflight и
+сборки запускать последовательно, сохраняя запрошенный `j4` и готовый кэш.
+Отдельный успешный модуль не заменяет проверку связанного пакета.
+
 | Приоритет | Работа | Условие завершения |
 | --- | --- | --- |
 | P0 — выполнено | Blink handoff target | Четыре точных cases прошли без skipped; хеш тестового бинарника и неизменность browser core/receipt/GN подтверждены. Отчёт: worker-handoff-001-028-fixture-lifetime-j4.json |
