@@ -41,7 +41,7 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
     helpers = (*(gpu.DRAFTS / name for name in gpu.RAW),
                *(gpu.READBACK / name for name in gpu.CANONICAL | gpu.CLIPPED_CANONICAL))
     inputs = {str(path.relative_to(ROOT)): digest(path) for path in (*PATCHES, *validators, *helpers)}
-    paths = set().union(*(patch_paths(path.read_text(encoding="utf-8-sig")) for path in PATCHES))
+    paths = set().union(*(patch_paths(path.read_text(encoding="utf-8-sig")) for path in PATCHES)) | gpu.FIXTURE_PATHS
     if check_codegen:
         paths.update(path.relative_to(source).as_posix()
                      for path in (source / "gpu").rglob("*autogen*") if path.is_file())
@@ -76,6 +76,7 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
         for patch in PATCHES:
             build.run(["git", "apply", "--check", str(patch)], overlay, env)
             build.run(["git", "apply", str(patch)], overlay, env)
+        gpu.apply_registered_fixture_followup(overlay, identity_proof["registered_patches"], env)
         composed = {name: digest(overlay / name) for name in paths}
         if composed != expected:
             raise ValueError("Combined replay differs from reviewed component source")

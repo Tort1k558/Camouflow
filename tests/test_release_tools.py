@@ -1537,7 +1537,8 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
                  "0044-native-inline-navigation-rejection-fixture.patch",
                  "0045-native-navigation-observer-fixture-lifetime.patch",
                  "0046-native-webgl-bounded-readback.patch",
-                 "0047-native-webgl-clipped-publication.patch"):
+                 "0047-native-webgl-clipped-publication.patch",
+                 "0048-native-readback-fixture-result-api.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1

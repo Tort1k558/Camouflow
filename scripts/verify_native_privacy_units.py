@@ -345,7 +345,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
         required_patches.add("0034-native-gpu-metadata-minimization.patch")
     if target == "gpu-readback":
         required_patches.update({"0046-native-webgl-bounded-readback.patch",
-                                 "0047-native-webgl-clipped-publication.patch"})
+                                 "0047-native-webgl-clipped-publication.patch",
+                                 "0048-native-readback-fixture-result-api.patch"})
     if target == "delivery":
         required_patches.update({"0018-native-document-policy-delivery.patch",
                                  "0019-native-worker-policy-delivery.patch",

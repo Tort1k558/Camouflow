@@ -83,7 +83,7 @@ def test_registered_replay_preserves_reviewed_successor_order(followups):
 
 
 @pytest.mark.parametrize("names", [batch.PROMOTED[:2], batch.FOLLOWUPS,
-                                   (*batch.PROMOTED, "0048-unreviewed.patch"),
+                                   (*batch.PROMOTED, "0049-unreviewed.patch"),
                                    (*batch.PROMOTED, batch.FOLLOWUPS[-2]),
                                    (*batch.PROMOTED, batch.FOLLOWUPS[-1])])
 def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
@@ -93,6 +93,46 @@ def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
 
 def test_unpromoted_baseline_has_no_registered_reversal():
     assert batch.registered_replay_chain([{"name": "0030-native-document-commit-prototype.patch"}]) == ()
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("failure", [None, "hash", "scope", "pair"])
+def test_readback_fixture_followup_rejects_unreviewed_inputs_before_mutation(tmp_path, monkeypatch, reverse, failure):
+    from scripts import verify_native_halo_draft as halo
+    root = tmp_path / "public"
+    patches = root / "native/patches"
+    patches.mkdir(parents=True)
+    paths = halo.FIXTURE_PATHS if failure != "scope" else {"content/unknown.cc"}
+    patch = patches / halo.FIXTURE_PATCH
+    patch.write_text("".join(f"diff --git a/{path} b/{path}\n" for path in sorted(paths)), encoding="utf-8")
+    registered = [{"name": name} for name in halo.PROMOTED] if failure != "pair" else []
+    registered.append({"name": halo.FIXTURE_PATCH, "sha256": "wrong" if failure == "hash" else halo.digest(patch)})
+    monkeypatch.setattr(halo, "ROOT", root)
+    commands = []
+    monkeypatch.setattr(halo.build, "run", lambda command, *args, **kwargs: commands.append(command))
+    if failure:
+        with pytest.raises(ValueError):
+            halo.apply_registered_fixture_followup(tmp_path, registered, {}, reverse=reverse)
+        assert commands == []
+    else:
+        halo.apply_registered_fixture_followup(tmp_path, registered, {}, reverse=reverse)
+        command = ["git", "apply"] + (["--reverse"] if reverse else [])
+        assert commands == [[*command, "--check", str(patch)], [*command, str(patch)]]
+
+
+def test_readback_fixture_followup_is_fixture_only_and_keeps_all_cases():
+    import re
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_halo_draft import FIXTURE_PATCH, FIXTURE_PATHS
+    patch = batch.ROOT / "native/patches" / FIXTURE_PATCH
+    text = patch.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == FIXTURE_PATHS
+    added = [line[1:] for line in text.splitlines() if line.startswith("+") and not line.startswith("+++")]
+    removed = [line[1:] for line in text.splitlines() if line.startswith("-") and not line.startswith("---")]
+    assert added and all(".has_value()" in line for line in added)
+    assert all("TEST(" not in line and "DISABLED_" not in line and "GTEST_SKIP" not in line for line in added + removed)
+    assert all(re.sub(r"\.has_value\(\)", "", after) == before for before, after in zip(removed, added))
+    assert len(added) == len(removed)
 
 
 def test_native_readback_gate_covers_exact_registered_fixtures():

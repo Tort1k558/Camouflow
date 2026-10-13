@@ -34,18 +34,38 @@ CLIPPED_EXISTING = {"third_party/blink/renderer/modules/webgl/webgl_rendering_co
 
 PROMOTED = ("0046-native-webgl-bounded-readback.patch",
             "0047-native-webgl-clipped-publication.patch")
+FIXTURE_PATCH = "0048-native-readback-fixture-result-api.patch"
+FIXTURE_PATHS = {PREFIX + name for name in ("rgba8_pack_copy_unittest.cc", "rgba8_readback_region_unittest.cc")}
+
+
+def apply_registered_fixture_followup(overlay: Path, registered: list[dict], env: dict, *, reverse: bool = False) -> None:
+    entry = next((item for item in registered if item["name"] == FIXTURE_PATCH), None)
+    if entry is None:
+        return
+    if not set(PROMOTED).issubset(item["name"] for item in registered):
+        raise ValueError("Fixture follow-up requires the complete readback pair")
+    patch = ROOT / "native/patches" / FIXTURE_PATCH
+    if (digest(patch) != entry.get("sha256")
+            or patch_paths(patch.read_text(encoding="utf-8-sig")) != FIXTURE_PATHS):
+        raise ValueError("Fixture follow-up differs from its registered scope or hash")
+    command = ["git", "apply"] + (["--reverse"] if reverse else [])
+    build.run([*command, "--check", str(patch)], overlay, env)
+    build.run([*command, str(patch)], overlay, env)
 
 
 def restore_registered_baseline(overlay: Path, registered: list[dict], env: dict) -> None:
     """Reverse only the reviewed pair in an owned copy before candidate replay."""
     present = {item["name"] for item in registered}.intersection(PROMOTED)
     if not present:
+        if any(item["name"] == FIXTURE_PATCH for item in registered):
+            raise ValueError("Fixture follow-up requires the complete readback pair")
         return
     if present != set(PROMOTED):
         raise ValueError("Readback promotion requires the complete reviewed pair")
     for name, canonical in zip(PROMOTED, (PATCH, CLIPPED_PATCH)):
         if (ROOT / "native/patches" / name).read_bytes() != canonical.read_bytes():
             raise ValueError("Registered readback patch differs from its canonical candidate")
+    apply_registered_fixture_followup(overlay, registered, env, reverse=True)
     for name in reversed(PROMOTED):
         patch = ROOT / "native/patches" / name
         build.run(["git", "apply", "--reverse", "--check", str(patch)], overlay, env)
@@ -69,7 +89,7 @@ def verify(workspace: Path, report: Path) -> dict:
         raise ValueError("Clipped publication source coverage is incomplete or contains unknown paths")
     canonical = CANONICAL | CLIPPED_CANONICAL
     existing = EXISTING | CLIPPED_EXISTING | {PREFIX + "rgba8_pack_copy.h", PREFIX + "rgba8_pack_copy.cc"}
-    paths = existing | set(canonical.values())
+    paths = existing | set(canonical.values()) | FIXTURE_PATHS
     inputs = {name: digest(DRAFTS / name) for name in (*canonical, PATCH.name, CLIPPED_PATCH.name)}
     verifier_hash = digest(Path(__file__))
     if any(value is None for value in inputs.values()):
@@ -96,6 +116,7 @@ def verify(workspace: Path, report: Path) -> dict:
         for name, relative in canonical.items():
             if (overlay / relative).read_bytes() != (DRAFTS / name).read_bytes():
                 raise ValueError("Composed halo source differs from its canonical helper")
+        apply_registered_fixture_followup(overlay, registered, env)
         composed = {name: digest(overlay / name) for name in paths}
     if (before != {name: digest(source / name) for name in paths}
             or inputs != {name: digest(DRAFTS / name) for name in inputs}

@@ -17,7 +17,7 @@ patch chain; they do not transfer automatically to newer binaries.
 
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
-| Registered Windows source | 001-047 | Ordered replay passed across 130 paths |
+| Registered Windows source | 001-048 | Ordered replay passed across 130 paths; 0048 changes only native test fixtures |
 | Native navigation/readiness | 001-045 | **42/42** cases passed: missing/conflicting policy, late policy loss, recovery and observer-driven closure |
 | Native BrowserContext isolation | 001-045 | **26/26** cases passed |
 | Native window/child transport | 001-045 | **13/13** cases passed |
@@ -55,9 +55,11 @@ All four owned 001-047 browser gates passed on one measured EXE/DLL core:
 `browser-verification-001-047-v1/verification.json`. The extended worker run
 also passed all 60 cases: `worker-nested-001-047-v1.json`. The older failed
 runs remain recorded. The 31-case native readback gate is still unexecuted:
-its C++ preflight found typed-result errors in the pack-copy and region fixtures,
-while the clipped-publication fixture passed. These need repair and execution
-before broader admission; browser checks are not substitutes for native tests.
+its initial C++ preflight found typed-result errors in pack-copy and region
+fixtures. Fixture-only patch 0048 preserves every case and checks `.has_value()`
+explicitly. All three fixture translation units now pass actual-target C++
+checks (`readback-fixture-cpp-001-048-v2/proof.json` on D); linkage and execution
+are still required. Browser checks are not substitutes for native tests.
 
 ## Source layout
 

@@ -18,6 +18,8 @@ from scripts.verify_native_halo_draft import (
     CANONICAL,
     CLIPPED_CANONICAL,
     CLIPPED_PATCH,
+    FIXTURE_PATHS,
+    apply_registered_fixture_followup,
     restore_registered_baseline,
 )
 from scripts.verify_native_halo_draft import (
@@ -125,7 +127,7 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_
         raise ValueError("GPU attachment fixture coverage differs from the reviewed candidate")
     if patch_paths(PASSTHROUGH_ATTACHMENT_PATCH.read_text(encoding="utf-8-sig")) != PASSTHROUGH_ATTACHMENT_PATHS:
         raise ValueError("GPU passthrough attachment fixture coverage differs from the reviewed candidate")
-    paths = set().union(*(patch_paths(item.read_text(encoding="utf-8-sig")) for item in patches))
+    paths = set().union(*(patch_paths(item.read_text(encoding="utf-8-sig")) for item in patches)) | FIXTURE_PATHS
     formatter = source / "buildtools/win-format/clang-format.exe"
     if check_codegen:
         if not formatter.is_file() or formatter.resolve() != formatter:
@@ -170,6 +172,7 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_
             for name, relative in canonical.items():
                 if (overlay / relative).read_bytes() != (directory / name).read_bytes():
                     raise ValueError("Composed source differs from its canonical helper")
+        apply_registered_fixture_followup(overlay, registered, env)
         current_ids = command_ids((overlay / ids_path).read_text(encoding="utf-8-sig"))
         if (len(previous_ids) != 324 or current_ids[:-1] != previous_ids
                 or current_ids[-1] != ("GetGlintReadFramebufferMetadataCHROMIUM", 580)):

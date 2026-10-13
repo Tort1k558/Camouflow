@@ -58,6 +58,15 @@ candidates; partial promotion or different canonical bytes reject.
 The native `--target gpu-readback` gate requires 31 exact cases: 14 pack-copy,
 11 region-planner and 6 clipped-publication cases. These have not executed yet.
 
+Fixture-only follow-up 0048 corrects typed `base::expected` assertions in the
+14 pack-copy and 11 region tests, retaining their names, rejection/error checks
+and destination-preservation assertions. All three fixture translation units
+passed actual generated-target C++ checks without changing the verified 001-047
+browser core: `readback-fixture-cpp-001-048-v2/proof.json` on D. The complete
+001-048 source chain replay passed across 130 paths; fixture execution remains
+pending. Future overlays reverse this follow-up before canonical comparison
+and reapply it afterwards, checking its exact registered hash and two-file scope.
+
 The first full build exposed a typed-result error in the Blink halo call.
 The unverified 0046 patch and its canonical candidate now explicitly check
 `base::expected::has_value()`. The previously failed implementation compiled

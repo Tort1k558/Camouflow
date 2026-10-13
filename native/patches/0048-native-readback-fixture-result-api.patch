@@ -1,0 +1,228 @@
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy_unittest.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy_unittest.cc
+--- a/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy_unittest.cc
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy_unittest.cc
+@@ -18,7 +18,7 @@
+   std::array<uint8_t, 16> destination{};
+   blink::WebGLImageConversion::PixelStoreParams params;
+   ASSERT_TRUE(
+-      CopyRgba8ReadbackToPackLayout(source, destination, 2, 2, 0, params));
++      CopyRgba8ReadbackToPackLayout(source, destination, 2, 2, 0, params).has_value());
+   EXPECT_EQ(destination, kPixels);
+   EXPECT_EQ(source, kPixels);
+ }
+@@ -28,7 +28,7 @@
+   destination.fill(165);
+   blink::WebGLImageConversion::PixelStoreParams params;
+   ASSERT_TRUE(
+-      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 8, params));
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 8, params).has_value());
+   for (size_t i = 0; i < destination.size(); ++i) {
+     EXPECT_EQ(destination[i], i >= 8 && i < 24 ? kPixels[i - 8] : 165);
+   }
+@@ -42,7 +42,7 @@
+   params.skip_rows = 1;
+   params.skip_pixels = 1;
+   ASSERT_TRUE(
+-      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 8, params));
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 8, params).has_value());
+   auto expected = destination;
+   expected.fill(165);
+   for (size_t row = 0; row < 2; ++row) {
+@@ -60,7 +60,7 @@
+   params.alignment = 8;
+   const auto source = std::span(kPixels).first(12);
+   ASSERT_TRUE(
+-      CopyRgba8ReadbackToPackLayout(source, destination, 1, 3, 0, params));
++      CopyRgba8ReadbackToPackLayout(source, destination, 1, 3, 0, params).has_value());
+   for (size_t i = 0; i < destination.size(); ++i) {
+     EXPECT_EQ(destination[i],
+               i % 8 < 4 && i < 20 ? source[(i / 8) * 4 + i % 8] : 165);
+@@ -72,7 +72,7 @@
+   blink::WebGLImageConversion::PixelStoreParams params;
+   params.alignment = 8;
+   ASSERT_TRUE(CopyRgba8ReadbackToPackLayout(std::span(kPixels).first(8),
+-                                            destination, 1, 2, 0, params));
++                                            destination, 1, 2, 0, params).has_value());
+   EXPECT_EQ(destination[8], kPixels[4]);
+   EXPECT_EQ(destination[11], kPixels[7]);
+ }
+@@ -82,7 +82,7 @@
+   blink::WebGLImageConversion::PixelStoreParams params;
+   params.row_length = 1;
+   ASSERT_TRUE(
+-      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 0, params));
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 0, params).has_value());
+   EXPECT_EQ(destination, (std::array<uint8_t, 12>{1, 2, 3, 255, 7, 8, 9, 255,
+                                                   10, 11, 12, 255}));
+ }
+@@ -94,7 +94,7 @@
+   blink::WebGLImageConversion::PixelStoreParams params;
+   auto result =
+       CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 0, params);
+-  ASSERT_FALSE(result);
++  ASSERT_FALSE(result.has_value());
+   EXPECT_EQ(result.error(), Rgba8PackCopyError::kDestinationTooSmall);
+   EXPECT_EQ(destination, before);
+ }
+@@ -106,7 +106,7 @@
+   blink::WebGLImageConversion::PixelStoreParams params;
+   auto result = CopyRgba8ReadbackToPackLayout(std::span(kPixels).first(15),
+                                               destination, 2, 2, 0, params);
+-  ASSERT_FALSE(result);
++  ASSERT_FALSE(result.has_value());
+   EXPECT_EQ(result.error(), Rgba8PackCopyError::kInvalidSource);
+   EXPECT_EQ(destination, before);
+ }
+@@ -115,7 +115,7 @@
+   auto data = kPixels;
+   blink::WebGLImageConversion::PixelStoreParams params;
+   auto result = CopyRgba8ReadbackToPackLayout(data, data, 2, 2, 0, params);
+-  ASSERT_FALSE(result);
++  ASSERT_FALSE(result.has_value());
+   EXPECT_EQ(result.error(), Rgba8PackCopyError::kAliasedStorage);
+   EXPECT_EQ(data, kPixels);
+ }
+@@ -125,9 +125,9 @@
+   const auto before = destination;
+   blink::WebGLImageConversion::PixelStoreParams params;
+   EXPECT_FALSE(
+-      CopyRgba8ReadbackToPackLayout(kPixels, destination, -1, 2, 0, params));
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, -1, 2, 0, params).has_value());
+   EXPECT_FALSE(
+-      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, -1, 0, params));
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, -1, 0, params).has_value());
+   EXPECT_EQ(destination, before);
+ }
+ 
+@@ -150,7 +150,7 @@
+       params.image_height = 1;
+     auto result =
+         CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 0, params);
+-    ASSERT_FALSE(result);
++    ASSERT_FALSE(result.has_value());
+     EXPECT_EQ(result.error(), Rgba8PackCopyError::kInvalidLayout);
+   }
+   EXPECT_EQ(destination, before);
+@@ -163,7 +163,7 @@
+   params.row_length = std::numeric_limits<int>::max();
+   auto result =
+       CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 2, 0, params);
+-  ASSERT_FALSE(result);
++  ASSERT_FALSE(result.has_value());
+   EXPECT_EQ(result.error(), Rgba8PackCopyError::kInvalidLayout);
+   EXPECT_EQ(destination, before);
+ }
+@@ -174,7 +174,7 @@
+   blink::WebGLImageConversion::PixelStoreParams params;
+   auto result = CopyRgba8ReadbackToPackLayout(
+       kPixels, destination, 2, 2, std::numeric_limits<size_t>::max(), params);
+-  ASSERT_FALSE(result);
++  ASSERT_FALSE(result.has_value());
+   EXPECT_EQ(result.error(), Rgba8PackCopyError::kDestinationTooSmall);
+   EXPECT_EQ(destination, before);
+ }
+@@ -186,9 +186,9 @@
+   blink::WebGLImageConversion::PixelStoreParams params;
+   params.skip_rows = 5;
+   ASSERT_TRUE(
+-      CopyRgba8ReadbackToPackLayout(kPixels, destination, 0, 2, 16, params));
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 0, 2, 16, params).has_value());
+   ASSERT_TRUE(
+-      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 0, 16, params));
++      CopyRgba8ReadbackToPackLayout(kPixels, destination, 2, 0, 16, params).has_value());
+   EXPECT_EQ(destination, before);
+ }
+ }  // namespace
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
+--- a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
+@@ -21,7 +21,7 @@
+   EXPECT_EQ(region->height, 3);
+   EXPECT_EQ(region->rectangle_bytes, 4u);
+   EXPECT_EQ(region->tile_bytes, 36u);
+-  EXPECT_FALSE(PlanRgba8ReadbackRegion({4096, 4096, 100, 100, 1, 1}, 39));
++  EXPECT_FALSE(PlanRgba8ReadbackRegion({4096, 4096, 100, 100, 1, 1}, 39).has_value());
+ }
+ 
+ TEST(GlintRgba8ReadbackRegionTest, ExactFullFrameNeedsOnePrivateAllocation) {
+@@ -33,7 +33,7 @@
+   EXPECT_EQ(region->rectangle_bytes, kBudget);
+   EXPECT_EQ(region->tile_bytes, 0u);
+   EXPECT_FALSE(
+-      PlanRgba8ReadbackRegion({4096, 4096, 0, 0, 4096, 4096}, kBudget - 1));
++      PlanRgba8ReadbackRegion({4096, 4096, 0, 0, 4096, 4096}, kBudget - 1).has_value());
+ }
+ 
+ TEST(GlintRgba8ReadbackRegionTest, CanvasBoundaryClipsHalo) {
+@@ -54,7 +54,7 @@
+   rectangle.fill(165);
+   const auto before = rectangle;
+   EXPECT_TRUE(
+-      OverlayProtectedRgba8ReadbackRegion({}, rectangle, request, *region));
++      OverlayProtectedRgba8ReadbackRegion({}, rectangle, request, *region).has_value());
+   EXPECT_EQ(rectangle, before);
+ }
+ 
+@@ -70,10 +70,10 @@
+ }
+ 
+ TEST(GlintRgba8ReadbackRegionTest, InvalidDimensionsAndUnboundedMemoryReject) {
+-  EXPECT_FALSE(PlanRgba8ReadbackRegion({0, 6, 0, 0, 1, 1}, 1024));
+-  EXPECT_FALSE(PlanRgba8ReadbackRegion({8, 6, 0, 0, -1, 1}, 1024));
++  EXPECT_FALSE(PlanRgba8ReadbackRegion({0, 6, 0, 0, 1, 1}, 1024).has_value());
++  EXPECT_FALSE(PlanRgba8ReadbackRegion({8, 6, 0, 0, -1, 1}, 1024).has_value());
+   const auto max = std::numeric_limits<int32_t>::max();
+-  EXPECT_FALSE(PlanRgba8ReadbackRegion({max, max, 1, 1, max, max}, 1024));
++  EXPECT_FALSE(PlanRgba8ReadbackRegion({max, max, 1, 1, max, max}, 1024).has_value());
+ }
+ 
+ TEST(GlintRgba8ReadbackRegionTest, EmptyReadHasNoTileOrStorage) {
+@@ -82,7 +82,7 @@
+   ASSERT_TRUE(region.has_value());
+   EXPECT_EQ(region->rectangle_bytes, 0u);
+   EXPECT_EQ(region->tile_bytes, 0u);
+-  EXPECT_TRUE(OverlayProtectedRgba8ReadbackRegion({}, {}, request, *region));
++  EXPECT_TRUE(OverlayProtectedRgba8ReadbackRegion({}, {}, request, *region).has_value());
+ }
+ 
+ TEST(GlintRgba8ReadbackRegionTest,
+@@ -93,7 +93,7 @@
+   std::array<uint8_t, 4> rectangle{1, 2, 3, 255};
+   const auto before = rectangle;
+   EXPECT_FALSE(
+-      OverlayProtectedRgba8ReadbackRegion({}, rectangle, request, *region));
++      OverlayProtectedRgba8ReadbackRegion({}, rectangle, request, *region).has_value());
+   EXPECT_EQ(rectangle, before);
+ }
+ 
+@@ -105,10 +105,10 @@
+   std::array<uint8_t, 4> rectangle{165, 165, 165, 165};
+   const auto before = rectangle;
+   EXPECT_FALSE(OverlayProtectedRgba8ReadbackRegion(
+-      std::span(tile).first(32), rectangle, request, *region));
++      std::span(tile).first(32), rectangle, request, *region).has_value());
+   region->x = 1;
+   EXPECT_FALSE(
+-      OverlayProtectedRgba8ReadbackRegion(tile, rectangle, request, *region));
++      OverlayProtectedRgba8ReadbackRegion(tile, rectangle, request, *region).has_value());
+   EXPECT_EQ(rectangle, before);
+ }
+ 
+@@ -119,7 +119,7 @@
+   std::array<uint8_t, 36> tile{};
+   const auto before = tile;
+   EXPECT_FALSE(OverlayProtectedRgba8ReadbackRegion(
+-      tile, std::span(tile).subspan(8, 4), request, *region));
++      tile, std::span(tile).subspan(8, 4), request, *region).has_value());
+   EXPECT_EQ(tile, before);
+ }
+ 
+@@ -179,7 +179,7 @@
+             }
+           }
+           ASSERT_TRUE(OverlayProtectedRgba8ReadbackRegion(tile, rectangle,
+-                                                          request, *region));
++                                                          request, *region).has_value());
+           EXPECT_EQ(rectangle, expected);
+           EXPECT_EQ(tile, protected_tile);
+         }

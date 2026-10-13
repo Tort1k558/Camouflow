@@ -28,7 +28,8 @@ FOLLOWUPS = ("0035-native-initial-origin-calculation.patch", "0036-native-worker
              "0044-native-inline-navigation-rejection-fixture.patch",
              "0045-native-navigation-observer-fixture-lifetime.patch",
              "0046-native-webgl-bounded-readback.patch",
-             "0047-native-webgl-clipped-publication.patch")
+             "0047-native-webgl-clipped-publication.patch",
+             "0048-native-readback-fixture-result-api.patch")
 
 
 def registered_replay_chain(registered: list[dict]) -> tuple[str, ...]:
@@ -36,9 +37,11 @@ def registered_replay_chain(registered: list[dict]) -> tuple[str, ...]:
     if names.intersection(PROMOTED) and not set(PROMOTED).issubset(names):
         raise ValueError("Surface batch registration is incomplete")
     successors = {name for name in names if name[:4].isdigit() and int(name[:4]) > 34}
-    readback = set(FOLLOWUPS[-2:])
+    readback = {"0046-native-webgl-bounded-readback.patch", "0047-native-webgl-clipped-publication.patch"}
     if names.intersection(readback) and not readback.issubset(names):
         raise ValueError("Readback follow-up requires the complete reviewed pair")
+    if "0048-native-readback-fixture-result-api.patch" in names and not readback.issubset(names):
+        raise ValueError("Readback fixture follow-up requires the complete reviewed pair")
     if successors - set(FOLLOWUPS):
         raise ValueError("Registered successor requires reviewed next-batch replay support")
     if successors and not set(PROMOTED).issubset(names):
