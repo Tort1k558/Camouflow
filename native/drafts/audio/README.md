@@ -1,7 +1,8 @@
 # Offline audio candidate
 
-Unregistered and uncompiled. Helper and OfflineAudio API integration candidates
-are prepared below; none is an enabled or verified browser protection.
+Unregistered. The scalar/budget helper has passed isolated native compilation;
+the Blink adapter and OfflineAudio API integration remain uncompiled. None is
+an enabled or verified browser protection.
 
 `OfflineAudioMasker` takes an independently derived **audio** partition seed.
 It must not reuse Canvas seed or touch a live AudioContext. The scalar candidate
@@ -12,7 +13,8 @@ absolute amplitudes >= 1 retain their original bits. A fixed cache recomputes on
 collision rather than aliasing samples; HMAC failure returns no value.
 
 Eleven scalar/budget fixture definitions and four detached AudioBuffer fixtures
-cover the candidate. None has compiled or executed. The detached adapter keeps
+cover the candidate. All eleven scalar/budget cases compiled and executed;
+the four detached AudioBuffer cases have not. The detached adapter keeps
 the original channels untouched, preserves format and normal result mutability,
 caps the additional sample allocation at 64 MiB with overflow-safe arithmetic,
 and returns no result on invalid views/allocation/transform failure. A caller
@@ -68,7 +70,7 @@ APIs and sample-rate behavior are unchanged and not protected by this candidate.
 
 `offline_audio_surface_guard_tests.patch` prepares two native fixtures checking
 missing-policy and allocation-budget rejection before a resolver/thread. They
-have **not executed**. Neither have the fifteen scalar/buffer fixture cases or
+have **not executed**. Neither have the four detached-buffer fixture cases or
 the integrated completion path. Event/Promise identity, bit compatibility,
 numerical error, performance and real browser operation remain mandatory gates.
 
@@ -76,6 +78,22 @@ The 22-patch combined replay passed across 92 paths:
 `canvas-audio-surface-guards-public-replay-v1.json` on D. This confirms source
 composition and unchanged active sources/GN/receipt/browser core, not C++
 compilation or Audio privacy.
+
+## Native scalar evidence
+
+`offline-audio-scalar-native-v3.json` on D records **11/11 actual C++ Gtest
+cases passed**, with exact case names independently checked. This used the
+pinned checkout's clang-cl, real built BoringSSL objects and its actual libc++
+verbose-abort dependency copied to an isolated temporary directory. The scalar
+and Gtest translation units use the VS standard library; this is not a full
+Chromium ABI or Blink integration check. No crypto replacement or stub was used.
+
+The checks cover exceptional float bits, signed silence, subnormals, peaks,
+one-bit bounds, idempotence, equal stereo samples, different seeds, cache
+collisions and allocation-budget arithmetic. Canonical sources, original crypto
+objects, active browser binaries and GN settings remained unchanged.
+`privacy_admitted` remains **false**. Failed v1/v2 probe logs are retained;
+they were toolchain/archive-linking failures, not passing runtime evidence.
 
 ## Prepared numerical runtime gate
 
