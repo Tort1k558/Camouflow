@@ -1,0 +1,205 @@
+diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_commands.cc b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_commands.cc
+index e3c5179..2c6e081 100644
+--- a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_commands.cc
++++ b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_commands.cc
+@@ -4,6 +4,13 @@
+ 
+ #include <stdint.h>
+ 
++#include <algorithm>
++#include <array>
++
++#include "base/test/scoped_feature_list.h"
++#include "gpu/command_buffer/common/glint_readback_metadata.h"
++#include "gpu/config/gpu_finch_features.h"
++
+ #include "gpu/command_buffer/service/gles2_cmd_decoder.h"
+ #include "gpu/command_buffer/service/gles2_cmd_decoder_unittest.h"
+ 
+@@ -156,5 +163,86 @@ INSTANTIATE_TYPED_TEST_SUITE_P(
+     GLES2DecoderPassthroughImmediateSizeArgCommandTest,
+     ES3ImmediateSizeArgCommandTypes0);
+ 
++TEST_F(GLES2DecoderPassthroughTest,
++       GlintMetadataInvalidSharedMemoryDoesNotWrite) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndDisableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  Command command;
++  command.Init(kInvalidSharedMemoryId, kSharedMemoryOffset);
++  std::array<uint8_t, kSharedBufferSize> before;
++  const auto* memory = static_cast<const uint8_t*>(shared_memory_base_.get());
++  std::copy_n(memory, before.size(), before.begin());
++  EXPECT_EQ(error::kOutOfBounds, ExecuteCmd(command));
++  EXPECT_TRUE(std::equal(before.begin(), before.end(), memory));
++}
++
++TEST_F(GLES2DecoderPassthroughTest,
++       GlintMetadataOverflowingOffsetDoesNotWrite) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndDisableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  Command command;
++  command.Init(shared_memory_id_, 0xfffffffcu);
++  std::array<uint8_t, kSharedBufferSize> before;
++  const auto* memory = static_cast<const uint8_t*>(shared_memory_base_.get());
++  std::copy_n(memory, before.size(), before.begin());
++  EXPECT_EQ(error::kOutOfBounds, ExecuteCmd(command));
++  EXPECT_TRUE(std::equal(before.begin(), before.end(), memory));
++}
++
++TEST_F(GLES2DecoderPassthroughTest,
++       GlintMetadataTruncatedResultStorageDoesNotWrite) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndDisableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  Command command;
++  command.Init(shared_memory_id_, kSharedBufferSize - 7 * sizeof(GLint));
++  std::array<uint8_t, kSharedBufferSize> before;
++  const auto* memory = static_cast<const uint8_t*>(shared_memory_base_.get());
++  std::copy_n(memory, before.size(), before.begin());
++  EXPECT_EQ(error::kOutOfBounds, ExecuteCmd(command));
++  EXPECT_TRUE(std::equal(before.begin(), before.end(), memory));
++}
++
++TEST_F(GLES2DecoderPassthroughTest,
++       GlintMetadataInitializedResultDoesNotWrite) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndDisableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  Command command;
++  auto* result = GetSharedMemoryAs<Command::Result*>();
++  result->SetNumResults(1);
++  command.Init(shared_memory_id_, kSharedMemoryOffset);
++  std::array<uint8_t, kSharedBufferSize> before;
++  const auto* memory = static_cast<const uint8_t*>(shared_memory_base_.get());
++  std::copy_n(memory, before.size(), before.begin());
++  EXPECT_EQ(error::kInvalidArguments, ExecuteCmd(command));
++  EXPECT_TRUE(std::equal(before.begin(), before.end(), memory));
++}
++
++TEST_F(GLES2DecoderPassthroughTest,
++       GlintMetadataFeatureOffPublishesOnlyUnavailable) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndDisableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  auto* result = GetSharedMemoryAs<Command::Result*>();
++  result->SetNumResults(0);
++  result->GetData()[kGlintReadbackMetadataValues] = 0x4c;
++  Command command;
++  command.Init(shared_memory_id_, kSharedMemoryOffset);
++  ASSERT_EQ(error::kNoError, ExecuteCmd(command));
++  ASSERT_EQ(result->GetNumResults(), kGlintReadbackMetadataValues);
++  EXPECT_TRUE(std::equal(kGlintReadbackMetadataUnavailable.begin(),
++                         kGlintReadbackMetadataUnavailable.end(),
++                         result->GetData()));
++  EXPECT_EQ(result->GetData()[kGlintReadbackMetadataValues], 0x4c);
++}
++
+ }  // namespace gles2
+ }  // namespace gpu
+diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_unittest_extensions.cc b/gpu/command_buffer/service/gles2_cmd_decoder_unittest_extensions.cc
+index 6ef19e8..600e3a4 100644
+--- a/gpu/command_buffer/service/gles2_cmd_decoder_unittest_extensions.cc
++++ b/gpu/command_buffer/service/gles2_cmd_decoder_unittest_extensions.cc
+@@ -7,6 +7,13 @@
+ #include <stddef.h>
+ #include <stdint.h>
+ 
++#include <algorithm>
++#include <array>
++
++#include "base/test/scoped_feature_list.h"
++#include "gpu/command_buffer/common/glint_readback_metadata.h"
++#include "gpu/config/gpu_finch_features.h"
++
+ #include "base/command_line.h"
+ #include "gpu/command_buffer/common/gles2_cmd_format.h"
+ #include "gpu/command_buffer/common/gles2_cmd_utils.h"
+@@ -78,5 +85,81 @@ TEST_P(GLES3DecoderTestWithEXTWindowRectangles,
+ 
+ #include "gpu/command_buffer/service/gles2_cmd_decoder_unittest_extensions_autogen.h"
+ 
++TEST_P(GLES2DecoderTest, GlintMetadataInvalidSharedMemoryDoesNotWrite) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndDisableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  Command command;
++  command.Init(kInvalidSharedMemoryId, kSharedMemoryOffset);
++  std::array<uint8_t, kSharedBufferSize> before;
++  const auto* memory = static_cast<const uint8_t*>(shared_memory_base_.get());
++  std::copy_n(memory, before.size(), before.begin());
++  EXPECT_EQ(error::kOutOfBounds, ExecuteCmd(command));
++  EXPECT_TRUE(std::equal(before.begin(), before.end(), memory));
++}
++
++TEST_P(GLES2DecoderTest, GlintMetadataOverflowingOffsetDoesNotWrite) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndDisableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  Command command;
++  command.Init(shared_memory_id_, 0xfffffffcu);
++  std::array<uint8_t, kSharedBufferSize> before;
++  const auto* memory = static_cast<const uint8_t*>(shared_memory_base_.get());
++  std::copy_n(memory, before.size(), before.begin());
++  EXPECT_EQ(error::kOutOfBounds, ExecuteCmd(command));
++  EXPECT_TRUE(std::equal(before.begin(), before.end(), memory));
++}
++
++TEST_P(GLES2DecoderTest, GlintMetadataTruncatedResultStorageDoesNotWrite) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndDisableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  Command command;
++  command.Init(shared_memory_id_, kSharedBufferSize - 7 * sizeof(GLint));
++  std::array<uint8_t, kSharedBufferSize> before;
++  const auto* memory = static_cast<const uint8_t*>(shared_memory_base_.get());
++  std::copy_n(memory, before.size(), before.begin());
++  EXPECT_EQ(error::kOutOfBounds, ExecuteCmd(command));
++  EXPECT_TRUE(std::equal(before.begin(), before.end(), memory));
++}
++
++TEST_P(GLES2DecoderTest, GlintMetadataInitializedResultDoesNotWrite) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndDisableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  Command command;
++  auto* result = GetSharedMemoryAs<Command::Result*>();
++  result->SetNumResults(1);
++  command.Init(shared_memory_id_, kSharedMemoryOffset);
++  std::array<uint8_t, kSharedBufferSize> before;
++  const auto* memory = static_cast<const uint8_t*>(shared_memory_base_.get());
++  std::copy_n(memory, before.size(), before.begin());
++  EXPECT_EQ(error::kInvalidArguments, ExecuteCmd(command));
++  EXPECT_TRUE(std::equal(before.begin(), before.end(), memory));
++}
++
++TEST_P(GLES2DecoderTest, GlintMetadataFeatureOffPublishesOnlyUnavailable) {
++  base::test::ScopedFeatureList scoped_features;
++  scoped_features.InitAndDisableFeature(
++      features::kGlintReadbackMetadataCandidate);
++  using Command = cmds::GetGlintReadFramebufferMetadataCHROMIUM;
++  auto* result = GetSharedMemoryAs<Command::Result*>();
++  result->SetNumResults(0);
++  result->GetData()[kGlintReadbackMetadataValues] = 0x4c;
++  Command command;
++  command.Init(shared_memory_id_, kSharedMemoryOffset);
++  ASSERT_EQ(error::kNoError, ExecuteCmd(command));
++  ASSERT_EQ(result->GetNumResults(), kGlintReadbackMetadataValues);
++  EXPECT_TRUE(std::equal(kGlintReadbackMetadataUnavailable.begin(),
++                         kGlintReadbackMetadataUnavailable.end(),
++                         result->GetData()));
++  EXPECT_EQ(result->GetData()[kGlintReadbackMetadataValues], 0x4c);
++}
++
+ }  // namespace gles2
+ }  // namespace gpu

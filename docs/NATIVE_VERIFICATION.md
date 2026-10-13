@@ -365,11 +365,14 @@ implementations and the Blink consumer. It queries the actual selected attachmen
 including supported texture levels, instead of deriving dimensions from a viewport.
 The new feature defaults off and adds no WebGL JavaScript API.
 
-Source replay of all three candidate patches passed with canonical helper matching,
+Source replay of all four candidate patches passed with canonical helper matching,
 324 legacy command IDs preserved and new command ID 580. An isolated rerun of the
 pinned upstream command generator reproduced all 59 copied generated headers.
 Neither check compiled C++, executed the command or admitted protected readback.
-The 12 codec fixtures and real decoder/texture/error/binding checks remain pending.
+The 12 codec fixtures and 10 decoder command fixtures remain uncompiled. The
+decoder fixtures cover unavailable responses, invalid shared memory, overflow,
+truncated buffers and initialized results on both backends; they are not proof
+of those invariants until executed. Real texture/error/binding checks remain pending.
 The active 001–034 Chromium build was not changed by these checks.
 
 ## Current WebGL clipping compatibility gate

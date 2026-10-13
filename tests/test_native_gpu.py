@@ -584,6 +584,47 @@ def test_future_gpu_transport_patch_covers_both_decoders_without_advertising_web
     assert not any(path.endswith(".idl") for path in EXPECTED)
 
 
+def test_future_gpu_protocol_fixtures_cover_both_real_decoders_and_guard_writes():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_gpu_transport_draft import PROTOCOL_PATCH, PROTOCOL_PATHS
+
+    text = PROTOCOL_PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == PROTOCOL_PATHS
+    assert text.count("+TEST_P(GLES2DecoderTest,") == 5
+    assert text.count("+TEST_F(GLES2DecoderPassthroughTest,") == 5
+    assert text.count("+  EXPECT_TRUE(std::equal(before.begin(), before.end(), memory));") == 8
+    assert "GlintMetadataTruncatedResultStorageDoesNotWrite" in text
+    assert "GlintMetadataInitializedResultDoesNotWrite" in text
+    assert text.count("+  ASSERT_EQ(error::kNoError, ExecuteCmd(command));") == 2
+
+
+@pytest.mark.parametrize("mutate", [False, True])
+def test_future_gpu_codegen_gate_rejects_generated_source_drift(tmp_path, monkeypatch, mutate):
+    from scripts import verify_native_gpu_transport_draft as transport
+
+    overlay = tmp_path / "chromium/src"
+    header = overlay / "gpu/command_buffer/common/example_autogen.h"
+    header.parent.mkdir(parents=True)
+    header.write_text("exact generated input\n", encoding="utf-8")
+    formatter = tmp_path / "clang-format.exe"
+
+    def generate(command, cwd, env):
+        assert command[1] == "-c"
+        assert command[-2:] == [str(overlay), str(formatter)]
+        assert cwd == overlay
+        assert "subprocess.run([str(formatter)" in command[2]
+        assert "module.main(['--output-dir', str(owned)])" in command[2]
+        if mutate:
+            header.write_text("unexpected generated output\n", encoding="utf-8")
+
+    monkeypatch.setattr(transport.build, "run", generate)
+    if mutate:
+        with pytest.raises(ValueError, match="Regenerated GPU source differs"):
+            transport.verify_codegen(overlay, formatter, {})
+    else:
+        assert transport.verify_codegen(overlay, formatter, {}) == 1
+
+
 def test_future_gpu_command_id_parser_ignores_macro_footer():
     from scripts.verify_native_gpu_transport_draft import command_ids
 
