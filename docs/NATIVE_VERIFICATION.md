@@ -26,6 +26,12 @@ proof that a driver identity is plausible.
 
 ## Public gates
 
+Health checks delete disposable profiles only after the runtime releases its
+tracked resources. SDK teardown errors or a close that leaves ownership active
+retain the owned directory and report its path, rather than returning success
+or deleting live profile files. Released-resource errors still propagate; this
+cleanup rule does not replace actual orphan-process/crash verification.
+
 | Tool | Scope |
 | --- | --- |
 | `scripts/verify_release.py --build --runtime` | Desktop package and packaged legacy-engine checks |

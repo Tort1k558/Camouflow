@@ -1,5 +1,6 @@
 """Headless binary startup checks using owned disposable profiles."""
 
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -51,19 +52,31 @@ async def _probe(executable: Path, configuration: NativeConfiguration, work_dir:
     if not executable.is_file():
         raise ValueError("Configure an installed Native Chromium executable")
     work_dir.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="native-health-", dir=work_dir.resolve()) as owned:
-        runtime = NativeRuntime(Path(owned), executable, configuration)
+    owned = Path(tempfile.mkdtemp(prefix="native-health-", dir=work_dir.resolve()))
+    runtime = NativeRuntime(owned, executable, configuration)
+    try:
+        context = await runtime.start(headless=True)
+        version = context.browser.version
+        if not isinstance(version, str) or not version.strip():
+            raise ValueError("Native browser did not report its version")
+        if inspect_values:
+            page = await _prepare_diagnostic_page(context)
+            return await inspect_native_profile(page, configuration, version)
+        return {"browser_version": version}
+    finally:
         try:
-            context = await runtime.start(headless=True)
-            version = context.browser.version
-            if not isinstance(version, str) or not version.strip():
-                raise ValueError("Native browser did not report its version")
-            if inspect_values:
-                page = await _prepare_diagnostic_page(context)
-                return await inspect_native_profile(page, configuration, version)
-            return {"browser_version": version}
-        finally:
             await runtime.close()
+            if runtime.has_resources:
+                raise RuntimeError("Native health runtime still owns resources after close")
+        except Exception as error:
+            if runtime.has_resources:
+                raise RuntimeError(f"Native health cleanup failed; owned profile retained: {owned}") from error
+            raise
+        finally:
+            if not runtime.has_resources:
+                if owned != owned.resolve() or not owned.is_relative_to(work_dir.resolve()):
+                    raise ValueError("Refusing Native health cleanup outside its owned workspace")
+                shutil.rmtree(owned)
 
 
 async def probe_native_binary(executable: Path, configuration: NativeConfiguration, work_dir: Path) -> str:

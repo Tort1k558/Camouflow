@@ -1162,7 +1162,7 @@ def test_native_binary_health_uses_disposable_storage_and_verifies_teardown(tmp_
         profiles.append(profile)
         assert binary == executable
         return SimpleNamespace(start=AsyncMock(return_value=SimpleNamespace(browser=SimpleNamespace(version="148.0.7778.96"))),
-                               close=closed)
+                               close=closed, has_resources=False)
 
     monkeypatch.setattr(health, "NativeRuntime", runtime)
     assert asyncio.run(health.probe_native_binary(executable, NativeConfiguration(), work)) == "148.0.7778.96"
@@ -1181,9 +1181,39 @@ def test_native_binary_health_does_not_call_failed_teardown_success(tmp_path, mo
     executable.touch()
     monkeypatch.setattr(health, "NativeRuntime", lambda *args: SimpleNamespace(
         start=AsyncMock(return_value=SimpleNamespace(browser=SimpleNamespace(version="148.0.7778.96"))),
-        close=AsyncMock(side_effect=RuntimeError("owned close failed"))))
-    with pytest.raises(RuntimeError, match="owned close failed"):
+        close=AsyncMock(side_effect=RuntimeError("owned close failed")), has_resources=True))
+    work = tmp_path / "health"
+    with pytest.raises(RuntimeError, match="owned profile retained") as caught:
+        asyncio.run(health.probe_native_binary(executable, NativeConfiguration(), work))
+    assert str(caught.value.__cause__) == "owned close failed"
+    assert len(list(work.glob("native-health-*"))) == 1
+
+
+@pytest.mark.parametrize("state", ["close-failed-retained", "close-failed-released", "close-returned-retained"])
+def test_native_health_preserves_profile_until_runtime_releases_resources(tmp_path, monkeypatch, state):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from app.core.native import health
+
+    executable = tmp_path / "owned.exe"
+    executable.touch()
+    profiles = []
+    def runtime(profile, *_):
+        profiles.append(profile)
+        (profile / "owned.txt").write_text("owned diagnostic state", encoding="utf-8")
+        return SimpleNamespace(start=AsyncMock(return_value=SimpleNamespace(browser=SimpleNamespace(version="148.0.7778.96"))),
+            close=AsyncMock(side_effect=RuntimeError("owned cleanup error") if state.startswith("close-failed") else None),
+            has_resources=state != "close-failed-released")
+    monkeypatch.setattr(health, "NativeRuntime", runtime)
+    with pytest.raises(RuntimeError) as caught:
         asyncio.run(health.probe_native_binary(executable, NativeConfiguration(), tmp_path / "health"))
+    if state == "close-failed-released":
+        assert not profiles[0].exists()
+        assert str(caught.value) == "owned cleanup error"
+    else:
+        assert (profiles[0] / "owned.txt").read_text(encoding="utf-8") == "owned diagnostic state"
+        assert str(profiles[0]) in str(caught.value)
+        assert caught.value.__cause__ is not None
 
 
 @pytest.mark.parametrize("failed", [False, True])
@@ -1197,7 +1227,8 @@ def test_native_profile_probe_observes_owned_page_and_always_verifies_teardown(t
     page = SimpleNamespace(goto=AsyncMock())
     context = SimpleNamespace(browser=SimpleNamespace(version="148.0.7778.96"), pages=[page], route=AsyncMock())
     closed = AsyncMock()
-    monkeypatch.setattr(health, "NativeRuntime", lambda *args: SimpleNamespace(start=AsyncMock(return_value=context), close=closed))
+    monkeypatch.setattr(health, "NativeRuntime", lambda *args: SimpleNamespace(start=AsyncMock(return_value=context), close=closed,
+                                                                            has_resources=False))
     expected = {"browser_version": "148.0.7778.96", "mismatches": []}
     inspect = AsyncMock(return_value=expected, side_effect=RuntimeError("owned observation failed") if failed else None)
     monkeypatch.setattr(health, "inspect_native_profile", inspect)
@@ -1298,7 +1329,7 @@ def test_native_health_navigation_failure_still_releases_owned_runtime(tmp_path,
                               pages=[page], route=AsyncMock())
     close = AsyncMock()
     monkeypatch.setattr(health, "NativeRuntime", lambda *args: SimpleNamespace(
-        start=AsyncMock(return_value=context), close=close))
+        start=AsyncMock(return_value=context), close=close, has_resources=False))
     with pytest.raises(RuntimeError, match="owned navigation failed"):
         asyncio.run(health.probe_native_profile(executable, NativeConfiguration(), tmp_path / "health"))
     close.assert_awaited_once()
