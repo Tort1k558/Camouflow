@@ -394,6 +394,9 @@ def test_native_identity_audit_preserves_known_chromium_platform_reduction(
     ("Linux x86_64", "Linux", "Windows NT 10.0"),
     ("Win32", "Windows", "Macintosh"),
     ("Linux x86_64", "Linux", "CrOS x86_64"),
+    ("Win32", "Windows", "X11; Linux x86_64"),
+    ("MacIntel", "macOS", "Linux; Android 10; K"),
+    ("Linux x86_64", "Chrome OS", "X11; Linux x86_64"),
 ])
 def test_native_identity_audit_rejects_os_contradictions(
         scope, navigator_platform, hint_platform, ua_marker):

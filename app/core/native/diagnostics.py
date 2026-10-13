@@ -246,7 +246,8 @@ def audit_observed_identity(observed: dict, browser_version: str) -> list[str]:
                 issues.append(f"{prefix} navigator platform disagrees with Client Hints OS")
         if isinstance(ua, str) and isinstance(hint_platform, str):
             for marker, platforms in (("Windows NT", {"Windows"}), ("Macintosh", {"macOS"}),
-                                      ("CrOS", {"Chrome OS", "Chromium OS"})):
+                                      ("CrOS", {"Chrome OS", "Chromium OS"}),
+                                      ("Linux", {"Linux", "Android"})):
                 if marker in ua and hint_platform not in platforms:
                     issues.append(f"{prefix} UA operating system disagrees with Client Hints OS")
         if type(hints.get("mobile")) is not bool:
