@@ -26,11 +26,26 @@ struct GlintReadbackMetadata {
   bool rgba8_compatible;
 };
 
+inline constexpr bool CanBeGlintByteColourFormat(GLenum format) {
+  // OpenGL wire enum values; keep API-specific GL headers out of the codec.
+  switch (format) {
+    case 0x1907:  // GL_RGB
+    case 0x1908:  // GL_RGBA
+    case 0x8051:  // GL_RGB8
+    case 0x8058:  // GL_RGBA8
+      return true;
+    default:
+      return false;
+  }
+}
+
 inline std::optional<GlintReadbackMetadata> DecodeGlintReadbackMetadata(
     std::span<const GLint> values) {
   if (values.size() != kGlintReadbackMetadataValues || values[0] != 1 ||
       values[1] != 1 || values[2] <= 0 || values[3] <= 0 || values[4] <= 0 ||
-      values[5] < 0 || (values[6] != 0 && values[6] != 1)) {
+      values[5] < 0 || (values[6] != 0 && values[6] != 1) ||
+      (values[6] == 1 &&
+       !CanBeGlintByteColourFormat(static_cast<GLenum>(values[4])))) {
     return std::nullopt;
   }
   return GlintReadbackMetadata{values[2], values[3],
@@ -47,7 +62,8 @@ inline GlintReadbackMetadataWire EncodeGlintReadbackMetadata(
   if (width <= 0 || height <= 0 || internal_format == 0 ||
       internal_format >
           static_cast<GLenum>(std::numeric_limits<GLint>::max()) ||
-      samples < 0) {
+      samples < 0 ||
+      (rgba8_compatible && !CanBeGlintByteColourFormat(internal_format))) {
     return kGlintReadbackMetadataUnavailable;
   }
   return {1,

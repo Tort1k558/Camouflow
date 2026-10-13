@@ -97,6 +97,32 @@ TEST(GlintReadbackMetadataTest, ByteColourClassificationIsAnExactBoolean) {
   }
 }
 
+TEST(GlintReadbackMetadataTest,
+     ByteColourClaimCannotPromoteFloatIntegerOrUnknownFormat) {
+  for (GLenum format : {GL_RGBA16F, GL_RGBA8UI, GL_RED, GL_RGBA4, 0x7fffffff}) {
+    auto wire = EncodeGlintReadbackMetadata(8, 8, format, 0, false);
+    ASSERT_TRUE(DecodeGlintReadbackMetadata(wire));
+    wire[6] = 1;
+    EXPECT_FALSE(DecodeGlintReadbackMetadata(wire));
+    EXPECT_EQ(EncodeGlintReadbackMetadata(8, 8, format, 0, true),
+              kGlintReadbackMetadataUnavailable);
+  }
+}
+
+TEST(GlintReadbackMetadataTest,
+     ByteColourEligibilityPreservesAllSupportedFormats) {
+  for (GLenum format : {GL_RGB, GL_RGBA, GL_RGB8, GL_RGBA8}) {
+    for (bool compatible : {false, true}) {
+      const auto metadata = DecodeGlintReadbackMetadata(
+          EncodeGlintReadbackMetadata(8, 8, format, 4, compatible));
+      ASSERT_TRUE(metadata);
+      EXPECT_EQ(metadata->internal_format, format);
+      EXPECT_EQ(metadata->samples, 4);
+      EXPECT_EQ(metadata->rgba8_compatible, compatible);
+    }
+  }
+}
+
 TEST(GlintReadbackMetadataTest, ProducerRejectsInvalidRepresentations) {
   EXPECT_EQ(EncodeGlintReadbackMetadata(0, 8, GL_RGBA8, 0, true),
             kGlintReadbackMetadataUnavailable);

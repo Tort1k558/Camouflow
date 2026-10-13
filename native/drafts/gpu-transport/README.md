@@ -45,12 +45,18 @@ This option currently requires the Windows checkout's formatter.
 
 ## Required before promotion
 
-The 12 standalone codec fixtures compiled with the checkout's `clang-cl` and
+The 14 standalone codec fixtures compiled with the checkout's `clang-cl` and
 executed successfully on Windows. This uses the VS C++ runtime/standard library,
 not the full Chromium build/link configuration. Strict verification rejects
 missing, duplicate, skipped, foreign and failed cases; inputs and the active
 browser/GN files are checked for changes. Private proof:
-`D:\CamouFlowNative\gpu-metadata-codec-native-v3.json`.
+`D:\CamouFlowNative\gpu-metadata-codec-classification-native-v1.json`.
+
+The codec now rejects a byte-colour claim attached to float, integer, packed
+low-bit or unknown formats, in both encoding and decoding. Only RGB/RGBA and
+RGB8/RGBA8 can carry that claim; actual native channel/type measurements still
+decide whether it is true. A false claim and real multisample count are preserved,
+not promoted into a compatible single-sample attachment.
 
 ```powershell
 .venv\Scripts\python.exe scripts/verify_native_gpu_codec.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\gpu-codec-new-report.json --vs-installation D:\CamouFlowNative\toolchain\BuildTools

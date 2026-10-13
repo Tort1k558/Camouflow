@@ -306,10 +306,10 @@ index 5f9e46d..4910704 100644
    kOneBeforeStartPoint =
 diff --git a/gpu/command_buffer/common/glint_readback_metadata.h b/gpu/command_buffer/common/glint_readback_metadata.h
 new file mode 100644
-index 0000000..9f80ef0
+index 0000000..14ceead
 --- /dev/null
 +++ b/gpu/command_buffer/common/glint_readback_metadata.h
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,78 @@
 +// Copyright 2026 CamouFlow contributors.
 +// SPDX-License-Identifier: MIT
 +#ifndef GPU_COMMAND_BUFFER_COMMON_GLINT_READBACK_METADATA_H_
@@ -338,11 +338,26 @@ index 0000000..9f80ef0
 +  bool rgba8_compatible;
 +};
 +
++inline constexpr bool CanBeGlintByteColourFormat(GLenum format) {
++  // OpenGL wire enum values; keep API-specific GL headers out of the codec.
++  switch (format) {
++    case 0x1907:  // GL_RGB
++    case 0x1908:  // GL_RGBA
++    case 0x8051:  // GL_RGB8
++    case 0x8058:  // GL_RGBA8
++      return true;
++    default:
++      return false;
++  }
++}
++
 +inline std::optional<GlintReadbackMetadata> DecodeGlintReadbackMetadata(
 +    std::span<const GLint> values) {
 +  if (values.size() != kGlintReadbackMetadataValues || values[0] != 1 ||
 +      values[1] != 1 || values[2] <= 0 || values[3] <= 0 || values[4] <= 0 ||
-+      values[5] < 0 || (values[6] != 0 && values[6] != 1)) {
++      values[5] < 0 || (values[6] != 0 && values[6] != 1) ||
++      (values[6] == 1 &&
++       !CanBeGlintByteColourFormat(static_cast<GLenum>(values[4])))) {
 +    return std::nullopt;
 +  }
 +  return GlintReadbackMetadata{values[2], values[3],
@@ -359,7 +374,8 @@ index 0000000..9f80ef0
 +  if (width <= 0 || height <= 0 || internal_format == 0 ||
 +      internal_format >
 +          static_cast<GLenum>(std::numeric_limits<GLint>::max()) ||
-+      samples < 0) {
++      samples < 0 ||
++      (rgba8_compatible && !CanBeGlintByteColourFormat(internal_format))) {
 +    return kGlintReadbackMetadataUnavailable;
 +  }
 +  return {1,
@@ -374,10 +390,10 @@ index 0000000..9f80ef0
 +#endif
 diff --git a/gpu/command_buffer/common/glint_readback_metadata_unittest.cc b/gpu/command_buffer/common/glint_readback_metadata_unittest.cc
 new file mode 100644
-index 0000000..ad423d9
+index 0000000..f007d69
 --- /dev/null
 +++ b/gpu/command_buffer/common/glint_readback_metadata_unittest.cc
-@@ -0,0 +1,114 @@
+@@ -0,0 +1,140 @@
 +// Copyright 2026 CamouFlow contributors.
 +// SPDX-License-Identifier: MIT
 +#include "glint_readback_metadata.h"
@@ -474,6 +490,32 @@ index 0000000..ad423d9
 +    auto wire = EncodeGlintReadbackMetadata(8, 8, GL_RGBA8, 0, true);
 +    wire[6] = classification;
 +    EXPECT_FALSE(DecodeGlintReadbackMetadata(wire));
++  }
++}
++
++TEST(GlintReadbackMetadataTest,
++     ByteColourClaimCannotPromoteFloatIntegerOrUnknownFormat) {
++  for (GLenum format : {GL_RGBA16F, GL_RGBA8UI, GL_RED, GL_RGBA4, 0x7fffffff}) {
++    auto wire = EncodeGlintReadbackMetadata(8, 8, format, 0, false);
++    ASSERT_TRUE(DecodeGlintReadbackMetadata(wire));
++    wire[6] = 1;
++    EXPECT_FALSE(DecodeGlintReadbackMetadata(wire));
++    EXPECT_EQ(EncodeGlintReadbackMetadata(8, 8, format, 0, true),
++              kGlintReadbackMetadataUnavailable);
++  }
++}
++
++TEST(GlintReadbackMetadataTest,
++     ByteColourEligibilityPreservesAllSupportedFormats) {
++  for (GLenum format : {GL_RGB, GL_RGBA, GL_RGB8, GL_RGBA8}) {
++    for (bool compatible : {false, true}) {
++      const auto metadata = DecodeGlintReadbackMetadata(
++          EncodeGlintReadbackMetadata(8, 8, format, 4, compatible));
++      ASSERT_TRUE(metadata);
++      EXPECT_EQ(metadata->internal_format, format);
++      EXPECT_EQ(metadata->samples, 4);
++      EXPECT_EQ(metadata->rgba8_compatible, compatible);
++    }
 +  }
 +}
 +

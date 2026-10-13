@@ -16,6 +16,7 @@ CASES = {
     "UnavailableCannotBecomeReady", "TruncatedWireNeverReadsMissingFields", "ExtraFieldsAreNotSilentlyAccepted",
     "SchemaIsExact", "ReadyStatusIsExact", "DimensionsMustBePositive", "InvalidFormatIsNotGuessed",
     "NegativeSamplesAreRejected", "ByteColourClassificationIsAnExactBoolean", "ProducerRejectsInvalidRepresentations",
+    "ByteColourClaimCannotPromoteFloatIntegerOrUnknownFormat", "ByteColourEligibilityPreservesAllSupportedFormats",
 }
 
 

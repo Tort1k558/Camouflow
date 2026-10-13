@@ -686,7 +686,7 @@ def test_future_gpu_transport_patch_covers_both_decoders_without_advertising_web
     assert 'GetGlintReadFramebufferMetadataCHROMIUM' in text
     assert 'GL_ANGLE_get_tex_level_parameter' in text
     fixtures = (DRAFTS / "glint_readback_metadata_unittest.cc").read_text(encoding="utf-8-sig")
-    assert fixtures.count("TEST(GlintReadbackMetadataTest,") == 12
+    assert fixtures.count("TEST(GlintReadbackMetadataTest,") == 14
     assert not any(path.endswith(".idl") for path in EXPECTED)
 
 
@@ -783,7 +783,7 @@ def test_standalone_gpu_codec_requires_every_real_completed_case(mutation):
     from scripts.verify_native_gpu_codec import CASES, validate_results
 
     cases = [{"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(CASES)]
-    results = {"tests": 12, "failures": 0, "disabled": 0,
+    results = {"tests": 14, "failures": 0, "disabled": 0,
                "testsuites": [{"name": "GlintReadbackMetadataTest", "testsuite": cases}]}
     if mutation == "duplicate":
         cases[1] = dict(cases[0])
