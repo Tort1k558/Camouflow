@@ -24,6 +24,15 @@ FLAG = "--camouflow-native-user-agent"
 HINTS = ("Sec-CH-UA", "Sec-CH-UA-Mobile", "Sec-CH-UA-Platform", "Sec-CH-UA-Arch",
          "Sec-CH-UA-Bitness", "Sec-CH-UA-Platform-Version", "Sec-CH-UA-Full-Version-List",
          "Sec-CH-UA-Model", "Sec-CH-UA-WoW64", "Sec-CH-UA-Form-Factors")
+HINT_POLICY_FEATURES = tuple(name.lower().removeprefix("sec-") for name in HINTS)
+
+
+def delegated_hint_policy(port: int) -> str:
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise ValueError("Identity fixture requires an actual owned server port")
+    return ", ".join(f'{feature}=(self "http://localhost:{port}")' for feature in HINT_POLICY_FEATURES)
+
+
 READ = """async () => {
   const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(navigator), 'userAgent');
   let illegalInvocation = false;
@@ -67,6 +76,8 @@ class IdentityFixtureHandler(FixtureHandler):
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Accept-CH", ", ".join(HINTS))
+        if self.server.strict_client_hints:
+            self.send_header("Permissions-Policy", delegated_hint_policy(self.server.server_port))
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         try:
@@ -122,13 +133,14 @@ async def verify(executable: Path, work_dir: Path, origin: str, checks: list, *,
                     version = context.browser.version
                     page = context.pages[0]
                     await page.goto(origin)
-                    await page.evaluate("""async origin => {
+                    await page.evaluate("""async ({origin, allow}) => {
                       for (const url of [origin, origin.replace('127.0.0.1', 'localhost')]) {
                         const frame = document.createElement('iframe');
+                        if (allow) frame.allow = allow;
                         const loaded = new Promise(resolve => frame.onload = resolve);
                         frame.src = url; document.body.append(frame); await loaded;
                       }
-                    }""", origin)
+                    }""", {"origin": origin, "allow": "; ".join(HINT_POLICY_FEATURES) if strict_client_hints else ""})
                     if len(page.frames) != 3:
                         raise ValueError("Both owned identity frames must be observed")
                     popup = await context.new_page()
@@ -191,6 +203,7 @@ def main() -> int:
         parser.error("Refusing to overwrite native identity evidence")
     checks = []
     server = FixtureServer(("127.0.0.1", 0), IdentityFixtureHandler)
+    server.strict_client_hints = args.strict_client_hints
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:

@@ -241,8 +241,14 @@ Any failed unit still rejects the entire package. Timeout, compiler crash or
 LLVM allocation failure stop further compilation; `not_checked` explicitly
 lists the remaining units. An aborted identity checker or changed active inputs
 also prevents starting the GPU checker. Checks remain sequential, not additional
-parallel builders. This mode is prepared and tested with controlled failures,
-not yet executed on the actual combined candidate.
+parallel builders.
+
+The complete combined candidate passed this mode on source 001-048:
+`identity-readback-combined-cpp-001-048-v3.json` on D. All **22 identity + six GPU
+units** returned success; no unit was omitted, and source/core/GN remained
+unchanged. Fresh Mojo and GPU generation ran in that same composed tree.
+This replaces the failed combined type-check attempt as the latest C++ evidence,
+but does not execute the 41 identity fixtures, link a new browser or enable a mode.
 
 This still does not execute native fixtures or link a browser, and does not admit
 identity mode, attachment metadata or protected GPU output. The current GN

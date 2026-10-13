@@ -243,6 +243,15 @@ Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчам
 
 ### Связанные пакеты вместо пересборки после каждого исправления
 
+Контрольная точка 14 октября: на неизменённом браузере 001–047 прошли семь фаз
+combined surfaces и 24 nested Canvas cases; строгий HTTP/JS Client Hints gate
+прошёл 18 проверок (восемь document/frame, шесть worker JS, четыре отказа
+некорректного UA). Cross-origin fixture получил явную delegation только для
+своего localhost origin; это исправление тестового opt-in, не подмена API.
+На source 001–048 выполнены 31 нативный readback case и C++ preflight всей
+Identity/GPU-композиции (22 + 6 единиц). Новые 41 identity fixtures, линковка
+пакета и его browser runtime всё ещё впереди; прежние сбои сохранены.
+
 Следующий пакет: стабильная profile identity, доставка в documents/iframe/workers
 и GPU metadata/readback. Готовить его в изолированной копии, не меняя активную
 сборку. Source/codegen/C++ preflight выполнять для всей композиции, затем одну
@@ -257,8 +266,10 @@ Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчам
 ```
 
 Она собирает обычные ошибки по 22 identity и шести GPU единицам, но останавливает
-компиляцию при crash/timeout/OOM и перечисляет `not_checked`. Режим подготовлен;
-успешного полного комбинированного C++ прогона пока нет. Тяжёлые preflight и
+компиляцию при crash/timeout/OOM и перечисляет `not_checked`. Полная композиция
+прошла этот C++ режим на 001-048: 22 + 6 единиц, без пропусков; proof на D:
+`identity-readback-combined-cpp-001-048-v3.json`. Это проверка типов, не линковка,
+исполнение 41 identity fixture или включение режима. Тяжёлые preflight и
 сборки запускать последовательно, сохраняя запрошенный `j4` и готовый кэш.
 Отдельный успешный модуль не заменяет проверку связанного пакета.
 

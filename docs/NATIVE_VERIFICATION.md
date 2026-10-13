@@ -21,13 +21,13 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | --- | --- |
 | `scripts/verify_release.py --build --runtime` | Desktop package and packaged legacy-engine checks |
 | `scripts/verify_native_cpp.py` | Standalone native policy primitives |
-| `scripts/verify_native_privacy_units.py` | Keys: 43; contexts: 26; surface navigation: 42; window transport: 13; worker surfaces: 55; GPU readback: 31 prepared cases. Legacy delivery remains a separate 34-case target |
+| `scripts/verify_native_privacy_units.py` | Keys: 43; contexts: 26; surface navigation: 42; window transport: 13; worker surfaces: 55; GPU readback: 31/31 passed on 001-048. Legacy delivery remains a separate 34-case target |
 | `scripts/verify_native_suite.py` | Runtime, hardware, WebRTC, automation, fonts, identity, CDP and combined gates |
 | `scripts/verify_native_storage_paths.py` | Windows path-depth/storage probes |
 | `scripts/verify_native_canvas.py` | Canvas verification tooling, not an implemented protection claim |
 | `scripts/verify_native_worker_startup.py` | Default: 40 owned startup/restart/shared-client cases; `--include-nested` adds 20 nested dedicated-worker cases; no Canvas admission |
-| `scripts/verify_native_surfaces.py --include-nested-canvas` | Prepared: 24 parent/child Canvas cases across baseline/two profiles and restart, including first-script/repeated readback and separate fetch/body counters; not yet executed against a browser |
-| `scripts/verify_native_identity.py --strict-client-hints` | Prepared: document/frame HTTP brand/version lists, architecture, bitness, model, platform version, WoW64 and form factors versus measured JS after owned Accept-CH; not yet run on a browser |
+| `scripts/verify_native_surfaces.py --include-nested-canvas` | Passed on browser 001-047: 7 existing phases and 24 parent/child Canvas cases across baseline/two profiles and restart, including first-script/repeated readback and separate fetch/body counters |
+| `scripts/verify_native_identity.py --strict-client-hints` | Passed on browser 001-047: 8 strict document/frame HTTP-versus-JS comparisons, 6 worker JS-preservation checks and 4 invalid-UA rejection checks; 18 total |
 
 Run commands as documented in the [build guide](../native/BUILDING.md). Use fresh
 report paths outside source/application repositories. Keep raw outputs and
@@ -47,9 +47,13 @@ Chromium brand/version field, not arbitrary HTTP Structured Fields. High-entropy
 HTTP hints need server opt-in: see the [UA-CH specification](https://wicg.github.io/ua-client-hints/).
 Worker request hints are not inferred from document headers; this strict HTTP
 extension covers documents/frames only. EXE/DLL hashes must remain unchanged
-and existing reports cannot be overwritten. Existing 18-case identity results
-do not establish this newly prepared stricter contract; TLS and cross-platform
-identity are not covered.
+and existing reports cannot be overwritten. The actual strict run is recorded in
+`D:\CamouFlowNative\identity-strict-001-047-v2.json`: all 18 checks passed with
+unchanged browser core hashes. This is not TLS or cross-platform identity proof.
+The initial strict run failed cross-origin HTTP hint comparisons because the
+owned fixture omitted Permissions-Policy delegation. Strict mode now delegates
+only the exact owned localhost origin and iframe features; legacy mode is
+unchanged. The failed report is retained, not reclassified as passing.
 
 The combined surface gate has an optional nested Canvas extension:
 
@@ -65,8 +69,10 @@ body and main script fetch must occur once. Across baseline and two independent
 profiles before/after restart this adds 24 cases to the existing seven phases;
 raw failed observations are retained and missing coverage rejects the gate.
 Independent child-policy denial, nested Audio and early termination are not
-covered. This extension is prepared: Python/fixture/JavaScript syntax checks
-do not establish protected nested readback in a linked browser.
+covered. Actual browser evidence is
+`D:\CamouFlowNative\combined-surfaces-nested-001-047-v4.json`: all seven phases
+and 24 nested cases passed, with unchanged browser core hashes and no cleanup
+error. This establishes that scoped execution, not future identity-mode behavior.
 Run heavy C++ candidate checks separately from native builds after the observed
 out-of-memory failure; do not silently lower the requested four build jobs.
 

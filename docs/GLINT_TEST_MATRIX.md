@@ -71,6 +71,38 @@ external green tiles do not replace them.
 
 ## Build history
 
+### Additional owned browser gates 001-047 — 2026-10-14
+
+| Gate | Result | Scope and limits |
+| --- | --- | --- |
+| Nested Canvas | **24/24 + 7/7 phases passed** | Four classic/module parent-child combinations across baseline/two profiles and restart; first-script and repeated pixel/PNG reads, exact fetch/body counts. No nested Audio, independent child denial or early-termination claim |
+| Strict Client Hints | **18/18 passed** | Eight document/frame HTTP-versus-JS comparisons, six worker JS checks, four invalid-UA rejections. Worker HTTP hints, TLS and cross-platform identity are not covered |
+| Combined future Identity/GPU C++ preflight | **22 + 6 units passed** | One composed tree with fresh Mojo/GPU generation and no omitted units; parsing/type checks only, not fixture execution or a linked identity-mode browser |
+
+Private reports on D: `combined-surfaces-nested-001-047-v4.json`,
+`identity-strict-001-047-v2.json` and
+`identity-readback-combined-cpp-001-048-v3.json`. Browser EXE/DLL core hashes
+remained unchanged; candidate preflight also preserved active source and GN.
+Strict v1 failed cross-origin HTTP hints because the owned fixture lacked
+Permissions-Policy delegation. The fixture now grants only its exact localhost
+origin and iframe features in strict mode; the failed evidence remains retained.
+These are controlled gates, not external detector or CAPTCHA acceptance.
+
+### Windows native readback units 001-048 — 2026-10-14
+
+The cached j4 retry linked `blink_unittests.exe` in **1h30m44.64s**, 654 executed
+steps, then passed **31/31 cases** across pack copy (14), region planning (11)
+and clipped publication (6). Zero failures, disabled cases or errors; 176 ms
+test execution. Source, GN, receipt and the 001-047 browser EXE/DLL core stayed
+unchanged. Test binary SHA-256:
+`44ac3b7c8e178db08130c62762e323e73077af6f4b9b7e30f5c47bebfb0c90c0`.
+
+Private proof/raw tests/log: `gpu-readback-units-001-048-v2.json`,
+`gpu-readback-units-001-048-v2-tests.json` and `-build.log` on D.
+The first build failed with LLVM OOM after 302 steps; its evidence remains.
+This proves the selected native copy/planner fixtures, not a new browser build,
+GPU-driver execution, WebGPU, identity mode or external detector acceptance.
+
 ### Windows development candidate 001-047 — 2026-10-13
 
 Corrected j4 incremental build succeeded in **12m46.29s**, 76 executed steps.

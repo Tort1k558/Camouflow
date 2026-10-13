@@ -1,5 +1,7 @@
 from copy import deepcopy
 import json
+import threading
+from urllib.request import urlopen
 
 import pytest
 
@@ -113,3 +115,36 @@ def test_native_identity_runner_strict_mode_checks_real_echo_against_metadata(co
             validate_observation(observed, baseline, protected=True, worker=False, strict_client_hints=True)
     else:
         validate_observation(observed, baseline, protected=True, worker=False, strict_client_hints=True)
+
+
+@pytest.mark.parametrize("strict", [False, True])
+def test_owned_identity_fixture_delegates_http_hints_only_when_requested(strict):
+    from scripts.verify_native_identity import HINT_POLICY_FEATURES, IdentityFixtureHandler, delegated_hint_policy
+    from scripts.verify_native_runtime import FixtureServer
+
+    server = FixtureServer(("127.0.0.1", 0), IdentityFixtureHandler)
+    server.strict_client_hints = strict
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with urlopen(f"http://127.0.0.1:{server.server_port}/", timeout=5) as response:
+            policy = response.headers.get("Permissions-Policy")
+            assert response.headers["Accept-CH"]
+            if strict:
+                assert policy == delegated_hint_policy(server.server_port)
+                assert "*" not in policy
+                assert policy.count(f'"http://localhost:{server.server_port}"') == len(HINT_POLICY_FEATURES)
+            else:
+                assert policy is None
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+@pytest.mark.parametrize("port", [True, 0, 65536, "80\r\nInjected"])
+def test_hint_delegation_rejects_invalid_or_injectable_origins(port):
+    from scripts.verify_native_identity import delegated_hint_policy
+
+    with pytest.raises(ValueError):
+        delegated_hint_policy(port)

@@ -1,6 +1,6 @@
 # WebGL readback: bounded halo candidate
 
-**Registered as 0046/0047; complete browser build and runtime verification pending.**
+**Registered as 0046/0047; limited browser checks passed on 001-047 and native fixtures passed on 001-048.**
 This paired repair follows registered 001–045. It changes private readback allocation, not the fingerprint
 algorithm, GPU identity, live framebuffer or JavaScript API.
 
@@ -16,7 +16,7 @@ The halo is valid **only** for the existing quantized-colour, four-neighbour
 algorithm. Coordinate-dependent or global transforms cannot reuse this planner.
 The CPU publication path retains patch 0037's explicit `base::expected`
 `has_value()` check. All seven native clipped-copy fixture assertions use that
-same typed result; the fixtures are still not compiled or executed.
+same typed result; the six clipped-publication cases have now executed successfully.
 Attachment dimensions remain native; a viewport is not an attachment extent.
 Checked arithmetic, a combined memory budget and pre-write alias/plan validation
 bound the extra storage. CPU and PBO callers retain their existing pack/state
@@ -29,19 +29,21 @@ retained even when the intersection is small or empty.
 
 The owned feature-off 001–027 browser confirmed unchanged sentinel bytes for
 negative, partially clipped, entirely outside and zero-sized reads, on both CPU
-and PBO paths in eight contexts before/after restart. The registered 0034 source
-currently copies its whole zero-initialized private rectangle back, so that
-candidate has a known clipping-compatibility issue. Its active build is untouched;
-the correction is prepared here, **not yet verified in a protected browser**.
+and PBO paths in eight contexts before/after restart. The unrepaired 0034
+implementation copied its whole zero-initialized private rectangle back,
+causing the clipping-compatibility issue observed on 001-045;
+the correction is registered as 0046/0047. The later 001-047 protected browser
+passed all six owned baseline/profile/restart phases, including the boundary
+cases that failed on 001-045. This is limited owned-runtime evidence, not broad
+GPU-driver compatibility or external acceptance.
 
 The linked 001-045 browser now confirms this failure with protection enabled:
 `gpu-readback-001-045-v1.json` on D. Its feature-off initial/restart phases
 passed, but protected profile-A reads replaced out-of-bounds CPU sentinel bytes
 with zero in all eight document/worker contexts, on initial and resized
 attachments. GL error state remained clear and bindings remained intact.
-The boundary contract must not be relaxed to accept this output. The prepared
-clipped-publication patch still needs optimized compilation, native execution
-and a new protected browser run before claiming the defect is repaired.
+The boundary contract was not relaxed. The later 001-047 optimized/browser
+checks and 001-048 native cases passed; the old failed observations remain.
 
 For a 1×1 crop inside a 4096×4096 attachment, planned storage is 40 bytes
 (4-byte rectangle + 36-byte halo), rather than a whole-frame copy. An exact
@@ -56,15 +58,18 @@ receipt and GN arguments remained unchanged. Draft composition tools reverse
 the exact promoted pair only in their owned overlays before replaying future
 candidates; partial promotion or different canonical bytes reject.
 The native `--target gpu-readback` gate requires 31 exact cases: 14 pack-copy,
-11 region-planner and 6 clipped-publication cases. These have not executed yet.
+11 region-planner and 6 clipped-publication cases. All 31 passed on 001-048:
+`gpu-readback-units-001-048-v2.json` and its raw `-tests.json` on D, with zero
+failed/disabled/error cases and unchanged 001-047 browser core, source, GN and
+receipt. The cached j4 test-target build took 1h30m44.64s; tests took 176 ms.
 
 Fixture-only follow-up 0048 corrects typed `base::expected` assertions in the
 14 pack-copy and 11 region tests, retaining their names, rejection/error checks
 and destination-preservation assertions. All three fixture translation units
 passed actual generated-target C++ checks without changing the verified 001-047
 browser core: `readback-fixture-cpp-001-048-v2/proof.json` on D. The complete
-001-048 source chain replay passed across 130 paths; fixture execution remains
-pending. Future overlays reverse this follow-up before canonical comparison
+001-048 source chain replay passed across 130 paths; fixture execution has now
+passed. Future overlays reverse this follow-up before canonical comparison
 and reapply it afterwards, checking its exact registered hash and two-file scope.
 
 The first full build exposed a typed-result error in the Blink halo call.
@@ -79,8 +84,8 @@ the failed first build log remains recorded.
 | :-- | :-- |
 | Apply/replay against exact registered 001–034 source, without modifying it | Passed |
 | Independent Python full-frame/crop reference | 58,860 comparisons passed |
-| Native helper fixtures | 11 halo + 6 clipped-publication cases prepared; not compiled or run |
-| Real CPU/PBO reads, exports, errors, contexts and restart | Pending new binary |
+| Native helper fixtures | 14 pack-copy + 11 region-planner + 6 clipped-publication cases passed on 001-048 |
+| Real CPU/PBO reads, exports, errors, contexts and restart | Six owned phases passed on 001-047; not future-package admission |
 | Large attachments, memory use and GPU latency | Pending runtime measurements |
 
 Fixtures cover clipped edges, transparency, unchanged out-of-bounds bytes,
@@ -98,9 +103,10 @@ the active source tree:
 .venv\Scripts\python.exe scripts/verify_native_readback_regions.py --report D:\CamouFlowNative\halo-model-new.json
 ```
 
-After the current build finishes: run its strict unit/browser gates,
-compile and execute the 31-case native gate, then repeat
-full-frame/crop/export equivalence and normal browser compatibility checks.
+Next: verify the coherent identity/GPU metadata package, then repeat
+full-frame/crop/export equivalence and normal browser compatibility checks
+against its exact linked binary. The 31-case success is not transferred to
+future patches without the matching checks.
 Apply `webgl_halo_readback_candidate.patch` before
 `webgl_clipped_publication_candidate.patch`; the public replay command checks
 both in order against an owned copy, including their canonical helper sources.

@@ -22,11 +22,14 @@ patch chain; they do not transfer automatically to newer binaries.
 | Native BrowserContext isolation | 001-045 | **26/26** cases passed |
 | Native window/child transport | 001-045 | **13/13** cases passed |
 | Native worker surfaces | 001-045 | **55/55** cases passed |
+| Native bounded/clipped readback | 001-048 | **31/31** cases passed: pack copy 14, region planner 11, clipped publication 6; browser core 001-047 remained unchanged |
+| Future identity/GPU package | Unregistered | **22 identity + six GPU C++ units** type-checked in one composed tree with fresh generators; native fixtures/link/runtime and identity admission still required |
 | Current linked Windows candidate | 001-047 | Corrected incremental j4 build succeeded in **12m46s** |
 | Complete eight-gate runtime suite | 001-047 | **160 checks passed** on unchanged runtime core |
 | Worker startup/restart | 001-047 | Default **40/40**; extended **60/60**, including 20 nested classic/module cases |
 | Combined Canvas/OfflineAudio | 001-047 | **Three consecutive 7/7 runs passed** on unchanged core; historical 001-045 profile-B timeout remains unexplained |
-| Nested worker Canvas | Prepared | Optional 24-case first-script/repeat/restart probe; no linked-runtime result yet |
+| Nested worker Canvas | 001-047 | **24/24** first-script/repeat/restart cases passed alongside all seven combined phases |
+| Strict HTTP/JS Client Hints | 001-047 | **18/18** checks passed: eight strict document/frame comparisons, six worker JS checks, four invalid-UA rejections; worker HTTP hints and TLS are not covered |
 | Protected WebGL readback | 001-047 | **Six phases passed**, including clipped CPU/PBO reads, state/errors, exports, restart and profile isolation; wider admission remains blocked |
 | Branding | Prepared | Product/logo patch not applied to verified binary |
 | Linux/macOS | Deferred | No current own-fork runtime admission |
@@ -58,15 +61,20 @@ also passed all 60 cases: `worker-nested-001-047-v1.json`. The older failed
 runs remain recorded. Combined surface repeats also passed:
 `combined-surfaces-001-047-v2.json` and `combined-surfaces-001-047-v3.json`.
 Both completed cleanup; passing repeats do not establish the old timeout's cause.
-The 31-case native readback gate is still unexecuted:
-its first full test-binary build stopped after 302 steps with LLVM out-of-memory
-in upstream `style_scope_test.cc`. The retry retains cached objects and `j4`,
-without a concurrent candidate C++ checker.
-its initial C++ preflight found typed-result errors in pack-copy and region
-fixtures. Fixture-only patch 0048 preserves every case and checks `.has_value()`
-explicitly. All three fixture translation units now pass actual-target C++
-checks (`readback-fixture-cpp-001-048-v2/proof.json` on D); linkage and execution
-are still required. Browser checks are not substitutes for native tests.
+The nested Canvas extension also passed: all seven phases and 24 parent/child
+cases in `combined-surfaces-nested-001-047-v4.json`, with unchanged core and no
+cleanup error. Strict Client Hints passed all 18 checks in
+`identity-strict-001-047-v2.json`; cross-origin delegation is explicit and limited
+to the owned fixture. Neither result admits the future profile-identity mode.
+The 31-case native readback gate passed on 001-048 with zero failed, disabled or
+error cases: `gpu-readback-units-001-048-v2.json` and its raw `-tests.json` on D.
+The j4 retry retained cached objects and completed the test-target build in **1h30m44.64s**, 654 executed
+steps; selected tests ran in 176 ms. Source, GN, receipt and all browser core
+hashes remained unchanged. Test EXE SHA-256:
+`44ac3b7c8e178db08130c62762e323e73077af6f4b9b7e30f5c47bebfb0c90c0`.
+The first build's LLVM OOM and initial typed-result preflight failures remain
+recorded. These native byte-copy/planning cases do not prove GPU-driver,
+WebGPU, future identity mode or third-party acceptance.
 
 ## Source layout
 
