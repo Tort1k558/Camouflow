@@ -53,6 +53,11 @@ in Python tests; existing partitioned privacy vectors remain unchanged. It does
 not activate either mode or replace native BrowserContext/IPC checks.
 This does not enable an identity mode in the currently compiling browser.
 
+Manager diagnostics also compare measured WebGL/WebGL2 extensions, six limits and
+context attributes between document and dedicated worker. A feature-off 001-027
+browser passed en-US/de-DE loopback checks with unchanged core hashes; these
+observations do not validate metadata spoofing, the new policy batch or presets.
+
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy
 requests before startup. Unsupported requests fail rather than silently falling
 back. Diagnostics observe actual document/worker browser values; they do not

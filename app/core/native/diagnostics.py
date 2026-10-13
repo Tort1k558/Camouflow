@@ -75,6 +75,15 @@ OBSERVE = """async () => {
                 context = new OffscreenCanvas(16, 16).getContext(kind);
                 if (!context) throw new Error('Native graphics context unavailable');
                 const debug = context.getExtension('WEBGL_debug_renderer_info');
+                const extensions = context.getSupportedExtensions();
+                const contextAttributes = context.getContextAttributes();
+                if (extensions === null || contextAttributes === null) throw new Error('Native graphics context was lost');
+                const limits = {};
+                for (const name of ['MAX_TEXTURE_SIZE', 'MAX_CUBE_MAP_TEXTURE_SIZE',
+                                    'MAX_RENDERBUFFER_SIZE', 'MAX_VERTEX_ATTRIBS',
+                                    'MAX_TEXTURE_IMAGE_UNITS', 'MAX_VERTEX_TEXTURE_IMAGE_UNITS']) {
+                    limits[name] = context.getParameter(context[name]);
+                }
                 result[kind] = {
                     available: true,
                     vendor: context.getParameter(context.VENDOR),
@@ -84,8 +93,10 @@ OBSERVE = """async () => {
                     unmaskedVendor: debug ? context.getParameter(debug.UNMASKED_VENDOR_WEBGL) : null,
                     unmaskedRenderer: debug ? context.getParameter(debug.UNMASKED_RENDERER_WEBGL) : null,
                     maxTextureSize: context.getParameter(context.MAX_TEXTURE_SIZE),
-                    maxViewportDimensions: Array.from(context.getParameter(context.MAX_VIEWPORT_DIMS))
+                    maxViewportDimensions: Array.from(context.getParameter(context.MAX_VIEWPORT_DIMS)),
+                    extensions: extensions.slice().sort(), limits, contextAttributes
                 };
+                if (context.getError() !== context.NO_ERROR) throw new Error('Native graphics metadata query failed');
             } catch (error) {
                 result[kind] = {available: false, error: String(error.message)};
             } finally { context?.getExtension('WEBGL_lose_context')?.loseContext(); }
@@ -176,7 +187,8 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
                     mismatches.append(f"Document and dedicated worker disagree on {kind} availability")
                 elif first.get("available"):
                     for key in ("vendor", "renderer", "version", "shadingLanguage", "unmaskedVendor",
-                                "unmaskedRenderer", "maxTextureSize", "maxViewportDimensions"):
+                                "unmaskedRenderer", "maxTextureSize", "maxViewportDimensions",
+                                "extensions", "limits", "contextAttributes"):
                         if first.get(key) != second.get(key):
                             mismatches.append(f"Document and dedicated worker disagree on {kind} {key}")
     for scope in ("document", "worker"):

@@ -441,7 +441,8 @@ def test_native_diagnostics_reports_denied_client_hints_without_inventing_values
 
 
 @pytest.mark.parametrize("key", ["vendor", "renderer", "version", "shadingLanguage", "unmaskedVendor",
-                                "unmaskedRenderer", "maxTextureSize", "maxViewportDimensions"])
+                                "unmaskedRenderer", "maxTextureSize", "maxViewportDimensions",
+                                "extensions", "limits", "contextAttributes"])
 def test_native_graphics_diagnostics_detects_document_worker_disagreement(key):
     from app.core.native.diagnostics import compare_observed
 
