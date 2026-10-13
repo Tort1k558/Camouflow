@@ -50,6 +50,11 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_
     helpers = (*(gpu.DRAFTS / name for name in gpu.RAW),
                *(gpu.READBACK / name for name in gpu.CANONICAL | gpu.CLIPPED_CANONICAL))
     inputs = {str(path.relative_to(ROOT)): digest(path) for path in (*PATCHES, *validators, *helpers)}
+    promoted = (*identity.PROMOTED_PATCHES, *gpu.PROMOTED_PATCHES)
+    for name, _ in promoted:
+        public = ROOT / "native/patches" / name
+        if public.is_file():
+            inputs[str(public.relative_to(ROOT))] = digest(public)
     paths = set().union(*(patch_paths(path.read_text(encoding="utf-8-sig")) for path in PATCHES)) | gpu.FIXTURE_PATHS
     if check_codegen:
         paths.update(path.relative_to(source).as_posix()
@@ -89,7 +94,9 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_
                                   encoding="utf-8", newline="\n")
         build.run(["git", "init", "-q"], overlay, env)
         build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
+        gpu.restore_registered_gpu_transport(overlay, identity_proof["registered_patches"], env)
         gpu.restore_registered_baseline(overlay, identity_proof["registered_patches"], env)
+        identity.restore_registered_identity(overlay, identity_proof["registered_patches"], env)
         for patch in PATCHES:
             build.run(["git", "apply", "--check", str(patch)], overlay, env)
             build.run(["git", "apply", str(patch)], overlay, env)

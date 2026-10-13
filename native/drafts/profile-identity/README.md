@@ -8,8 +8,12 @@ The complete Identity/GPU package is integrated into registered source 001-058.
 Private proof: `identity-gpu-source-integration-0049-0058-v1/proof.json` on D.
 The source matched the reviewed combined composition, all 58 patches replayed,
 and existing browser core/GN/receipt remained unchanged. Source-before copies
-are retained for rollback. Historical draft commands/results below describe
-pre-promotion checks against source 001-048; do not reapply them to 001-058.
+are retained for rollback. Public replay now also supports integrated 001-058:
+registered patch bytes must match their canonical candidates, and reversal
+happens only in the owned temporary copy. Never manually reapply the candidates
+to the active source. Post-promotion combined replay and fresh Mojo/GPU generation
+passed: `identity-readback-post-promotion-001-058-v1.json` on D; active source
+remained unchanged. This is not additional native/runtime execution.
 Run the registered native targets `identity-keys` (62), `identity-contexts` (37),
 `identity-transport` (20) and `identity-handoff` (15), then the actual browser gates.
 These 134 cases include 50 new identity cases and 84 legacy regressions.

@@ -54,8 +54,12 @@ Source integration 0049–0058 is recorded privately in
 All 58 patches replayed and source matched the reviewed composition; browser
 001-047 core, GN and receipt stayed unchanged. Native test filters enumerate
 exact suite/case names, including all four DocumentLoader parameter variants.
-Registration does not admit identity mode; historical unregistered draft replay
-commands must not be reapplied to the integrated 001-058 checkout.
+Registration does not admit identity mode. The public Identity/GPU replay gates
+now accept registered 001-058 by verifying promoted/canonical hashes and
+reversing exact promotions only inside their owned temporary copy. The combined
+source/fresh-generation gate passed after promotion:
+`D:\CamouFlowNative\identity-readback-post-promotion-001-058-v1.json`.
+Manual candidate application to the integrated checkout remains incorrect.
 
 The strict identity extension preserves the existing gate by default:
 

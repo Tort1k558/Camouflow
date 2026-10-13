@@ -34,6 +34,25 @@ PATCH = DRAFTS / "gpu_readback_metadata_candidate.patch"
 PROTOCOL_PATCH = DRAFTS / "gpu_readback_metadata_protocol_tests.patch"
 ATTACHMENT_PATCH = DRAFTS / "gpu_readback_metadata_attachment_tests.patch"
 PASSTHROUGH_ATTACHMENT_PATCH = DRAFTS / "gpu_readback_metadata_passthrough_attachment_tests.patch"
+PROMOTED_PATCHES = (
+    ("0055-native-gpu-readback-metadata-transport.patch", PATCH),
+    ("0056-native-gpu-metadata-protocol-tests.patch", PROTOCOL_PATCH),
+    ("0057-native-gpu-metadata-attachment-tests.patch", ATTACHMENT_PATCH),
+    ("0058-native-gpu-passthrough-attachment-tests.patch", PASSTHROUGH_ATTACHMENT_PATCH),
+)
+
+
+def restore_registered_gpu_transport(overlay: Path, registered: list[dict], env: dict) -> None:
+    installed = {item["name"]: item["sha256"] for item in registered}
+    for name, canonical in reversed(PROMOTED_PATCHES):
+        if name not in installed:
+            continue
+        public = ROOT / "native/patches" / name
+        if (digest(public) != installed[name] or digest(public) != digest(canonical)
+                or public.is_symlink() or public != public.resolve()):
+            raise ValueError("Registered GPU patch differs from its canonical candidate")
+        build.run(["git", "apply", "--reverse", "--check", str(public)], overlay, env)
+        build.run(["git", "apply", "--reverse", str(public)], overlay, env)
 PASSTHROUGH_ATTACHMENT_PATHS = {
     "gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc"}
 ATTACHMENT_PATHS = {"gpu/command_buffer/service/gles2_cmd_decoder_unittest_framebuffers.cc"}
@@ -141,6 +160,9 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_
     inputs = {str(item.relative_to(ROOT)): digest(item) for item in (
         *patches, *(DRAFTS / name for name in RAW),
         *(READBACK / name for name in CANONICAL | CLIPPED_CANONICAL), Path(__file__))}
+    for name, _ in PROMOTED_PATCHES:
+        if any(item["name"] == name for item in registered):
+            inputs[str((ROOT / "native/patches" / name).relative_to(ROOT))] = digest(ROOT / "native/patches" / name)
     if any(value is None for value in inputs.values()):
         raise ValueError("A canonical candidate input is missing")
     ids_path = COMMON + "gles2_cmd_ids_autogen.h"
@@ -164,7 +186,9 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_
                                   encoding="utf-8", newline="\n")
         build.run(["git", "init", "-q"], overlay, env)
         build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
+        restore_registered_gpu_transport(overlay, registered, env)
         restore_registered_baseline(overlay, registered, env)
+        previous_ids = command_ids((overlay / ids_path).read_text(encoding="utf-8-sig"))
         for patch in patches:
             build.run(["git", "apply", "--check", str(patch)], overlay, env)
             build.run(["git", "apply", str(patch)], overlay, env)

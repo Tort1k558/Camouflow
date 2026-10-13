@@ -101,6 +101,34 @@ LAUNCH_FIXTURES = (
     "IdentityLaunchRequiresBothFullSurfacePolicies",
     "IdentityLaunchRejectsEitherLegacyCanvasConflict",
 )
+PROMOTED_PATCHES = (
+    ("0049-native-profile-identity-derivation.patch", PATCH),
+    ("0050-native-immutable-fingerprint-mode.patch", MODE_PATCH),
+    ("0051-native-identity-context-tests.patch", CONTEXT_PATCH),
+    ("0052-native-surface-identity-v3-transport.patch", TRANSPORT_PATCH),
+    ("0053-native-identity-handoff-tests.patch", HANDOFF_PATCH),
+    ("0054-native-profile-identity-launch.patch", LAUNCH_PATCH),
+)
+
+
+def registered_identity_patches(registered: list[dict]) -> list[Path]:
+    installed = {item["name"]: item["sha256"] for item in registered}
+    patches = []
+    for name, canonical in PROMOTED_PATCHES:
+        if name not in installed:
+            continue
+        public = ROOT / "native/patches" / name
+        if (digest(public) != installed[name] or digest(public) != digest(canonical)
+                or public.is_symlink() or public != public.resolve()):
+            raise ValueError("Registered identity patch differs from its canonical candidate")
+        patches.append(public)
+    return patches
+
+
+def restore_registered_identity(overlay: Path, registered: list[dict], env: dict) -> None:
+    for patch in reversed(registered_identity_patches(registered)):
+        build.run(["git", "apply", "--reverse", "--check", str(patch)], overlay, env)
+        build.run(["git", "apply", "--reverse", str(patch)], overlay, env)
 
 
 def require_fixture_definitions(text: str, suite: str, names: tuple[str, ...], *,
@@ -224,12 +252,16 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False,
     if check_cpp:
         from scripts.verify_native_identity_cpp import source_paths
         paths.update(source_paths(source))
+    promoted = registered_identity_patches(registered)
+    for patch in promoted:
+        paths.update(patch_paths(patch.read_text(encoding="utf-8-sig")))
     if any((source / name).resolve() != source / name for name in paths):
         raise ValueError("Profile identity inputs must not follow links")
     before = {name: digest(source / name) for name in paths}
     if any(value is None for value in before.values()):
         raise ValueError("A profile identity baseline input is missing")
-    inputs = {str(path.relative_to(ROOT)): digest(path) for path in (*patches, Path(__file__))}
+    extra_candidates = [canonical for name, canonical in PROMOTED_PATCHES if any(path.name == name for path in promoted)]
+    inputs = {str(path.relative_to(ROOT)): digest(path) for path in (*patches, *promoted, *extra_candidates, Path(__file__))}
     if check_cpp:
         inputs["scripts/verify_native_identity_cpp.py"] = digest(ROOT / "scripts/verify_native_identity_cpp.py")
         inputs["scripts/verify_native_gpu_cpp.py"] = digest(ROOT / "scripts/verify_native_gpu_cpp.py")
@@ -244,6 +276,7 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False,
             target.write_text((source / name).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
         build.run(["git", "init", "-q"], overlay, env)
         build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
+        restore_registered_identity(overlay, registered, env)
         for patch in patches:
             build.run(["git", "apply", "--check", str(patch)], overlay, env)
             build.run(["git", "apply", str(patch)], overlay, env)

@@ -109,6 +109,31 @@ def observation(digest="a", cross=None):
     return rows
 
 
+@pytest.mark.parametrize("kind", ["identity", "gpu"])
+def test_registered_candidate_replay_reverses_exact_promotions_only_in_owned_tree(tmp_path, monkeypatch, kind):
+    from scripts import verify_native_profile_identity_draft as identity
+    from scripts import verify_native_gpu_transport_draft as gpu
+
+    module = identity if kind == "identity" else gpu
+    restore = module.restore_registered_identity if kind == "identity" else module.restore_registered_gpu_transport
+    registered = [{"name": name, "sha256": hashlib.sha256((module.ROOT / "native/patches" / name).read_bytes()).hexdigest()}
+                  for name, _ in module.PROMOTED_PATCHES]
+    calls = []
+    monkeypatch.setattr(module.build, "run", lambda args, cwd, env: calls.append((args, cwd)))
+    restore(tmp_path, registered, {})
+    expected = list(reversed([module.ROOT / "native/patches" / name for name, _ in module.PROMOTED_PATCHES]))
+    assert [Path(command[-1]) for command, _ in calls] == [patch for patch in expected for _ in range(2)]
+    assert all(cwd == tmp_path and "--reverse" in command for command, cwd in calls)
+    assert all("--check" in calls[index][0] for index in range(0, len(calls), 2))
+    calls.clear()
+    restore(tmp_path, [], {})
+    assert not calls
+    registered[-1]["sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="canonical candidate"):
+        restore(tmp_path, registered, {})
+    assert not calls
+
+
 def test_combined_baseline_protected_restart_and_isolation():
     baseline, first, second = observation(), observation("b", "c"), observation("d", "e")
     surfaces.validate_combined(first, copy.deepcopy(first), protected=True)

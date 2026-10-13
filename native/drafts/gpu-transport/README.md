@@ -7,8 +7,12 @@ Registered source is now 001-058; current verified browser remains 001-047.
 The full package matched the reviewed source composition and passed ordered
 58-patch replay without changing browser core/GN/receipt:
 `identity-gpu-source-integration-0049-0058-v1/proof.json` on D.
-Draft replay commands below are historical pre-promotion checks; do not reapply
-the candidates to the integrated source. Decoder/protocol/attachment execution
+Public replay supports integrated 001-058 by checking promoted/canonical byte
+identity and reversing promotions only in its own temporary tree. Existing
+command IDs are counted from that restored baseline, not from already-promoted
+headers. Combined replay and fresh generators passed on 001-058:
+`identity-readback-post-promotion-001-058-v1.json` on D. Never manually reapply
+the candidates to the active source. Decoder/protocol/attachment execution
 and combined browser admission remain required.
 
 ## Executed metadata codec fixtures
