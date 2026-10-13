@@ -133,7 +133,21 @@ reference and the C++ candidate literals, plus cross-partition stability, surfac
 root separation and persisted reload. Legacy privacy derivation remains unchanged.
 This is executable manager-side reference evidence, **not native execution**.
 
-## Browser admission gates
+## Combined observation contract
+
+The existing `verify_native_surfaces` validators accept an explicit
+`derivation_mode="profile-identity"` for prepared owned runners. This requires
+equal Canvas observations across documents/workers and equal Offline Audio across
+all available document contexts, while still rejecting profile reuse, restart
+drift, silent-buffer changes and malformed observations. The compatibility default
+remains `partitioned-privacy`, including mandatory cross-site differences.
+Unknown modes reject rather than relaxing checks.
+
+Synthetic validator tests passed for both contracts. **The public runtime CLI
+still tests registered partitioned privacy only**: identity launch/receipt admission
+is not enabled merely because the observation validator supports that mode.
+
+## Remaining browser gates
 
 - Execute native fixtures, including unchanged legacy privacy vectors.
 - Verify real BrowserContext/OTR lifetime and persisted profile restart.

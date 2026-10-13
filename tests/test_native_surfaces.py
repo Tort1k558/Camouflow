@@ -50,6 +50,53 @@ def test_combined_baseline_protected_restart_and_isolation():
     surfaces.validate_isolation(baseline, first, second)
 
 
+def test_combined_profile_identity_is_stable_across_sites_restart_and_independent_profiles():
+    baseline, first, second = observation(), observation("b"), observation("d")
+    surfaces.validate_combined(first, copy.deepcopy(first), protected=True,
+                               derivation_mode="profile-identity")
+    surfaces.validate_isolation(baseline, first, second, derivation_mode="profile-identity")
+    with pytest.raises(ValueError, match="Cross-origin"):
+        surfaces.validate_combined(first, protected=True)
+
+
+@pytest.mark.parametrize("surface", ["canvas", "audio"])
+@pytest.mark.parametrize("context", sorted(surfaces.DOCUMENT_CONTEXTS))
+def test_profile_identity_rejects_inconsistent_document_surfaces(surface, context):
+    first = observation("b")
+    first[context][surface] = observation("d")["document"][surface]
+    with pytest.raises(ValueError):
+        surfaces.validate_combined(first, protected=True, derivation_mode="profile-identity")
+
+
+@pytest.mark.parametrize("context", sorted(surfaces.CONTEXTS - surfaces.DOCUMENT_CONTEXTS))
+def test_profile_identity_rejects_worker_canvas_disagreement(context):
+    first = observation("b")
+    first[context]["canvas"] = observation("d")[context]["canvas"]
+    with pytest.raises(ValueError):
+        surfaces.validate_combined(first, protected=True, derivation_mode="profile-identity")
+
+
+def test_profile_identity_rejects_partitioned_entropy_restart_drift_and_reused_root():
+    with pytest.raises(ValueError):
+        surfaces.validate_combined(observation("b", "c"), protected=True,
+                                   derivation_mode="profile-identity")
+    with pytest.raises(ValueError, match="restart"):
+        surfaces.validate_combined(observation("b"), observation("d"), protected=True,
+                                   derivation_mode="profile-identity")
+    with pytest.raises(ValueError, match="both profiles"):
+        surfaces.validate_isolation(observation(), observation("b"), observation("b"),
+                                    derivation_mode="profile-identity")
+
+
+@pytest.mark.parametrize("mode", ["", "unknown", "PROFILE-IDENTITY", None, [], True])
+def test_combined_unknown_derivation_mode_cannot_downgrade_validation(mode):
+    with pytest.raises(ValueError, match="derivation mode"):
+        surfaces.validate_combined(observation("b"), protected=True, derivation_mode=mode)
+    with pytest.raises(ValueError, match="derivation mode"):
+        surfaces.validate_isolation(observation(), observation("b"), observation("d"),
+                                    derivation_mode=mode)
+
+
 @pytest.mark.parametrize("context", sorted(surfaces.CONTEXTS))
 def test_missing_context_cannot_pass(context):
     observed = observation("b", "c")

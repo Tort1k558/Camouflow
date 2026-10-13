@@ -151,7 +151,11 @@ def validate_receipt(executable: Path, core: dict) -> bytes:
     return raw
 
 
-def validate_combined(observed: dict, previous: dict | None = None, *, protected: bool) -> None:
+def validate_combined(observed: dict, previous: dict | None = None, *, protected: bool,
+                      derivation_mode: str = "partitioned-privacy") -> None:
+    if not isinstance(derivation_mode, str) or derivation_mode not in {
+            "partitioned-privacy", "profile-identity"}:
+        raise ValueError("Unknown combined surface derivation mode")
     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
         raise ValueError("Combined probe must observe every document and worker")
     if any(not isinstance(value, dict) or set(value) != {"canvas", "audio"}
@@ -159,30 +163,34 @@ def validate_combined(observed: dict, previous: dict | None = None, *, protected
         raise ValueError("Combined surface observations are incomplete")
     canvas = {name: value["canvas"] for name, value in observed.items()}
     audio = strip_quality({name: value["audio"] for name, value in observed.items()})
-    validate_canvas(canvas, require_context_equality=not protected)
+    stable_identity = derivation_mode == "profile-identity"
+    validate_canvas(canvas, require_context_equality=not protected or stable_identity)
     coverage = validate_audio(audio)
     if set(coverage["available"]) != DOCUMENT_CONTEXTS:
         raise ValueError("Offline Audio must be measured in all five document contexts")
     if protected:
-        for surface, names, field in ((canvas, SAME_PARTITION, "pixels"),
-                                      (audio, SAME_PARTITION & DOCUMENT_CONTEXTS, "signal")):
+        names = CONTEXTS if stable_identity else SAME_PARTITION
+        for surface, contexts, field in ((canvas, names, "pixels"),
+                                         (audio, names & DOCUMENT_CONTEXTS, "signal")):
             reference = surface["document"][field]
-            if any(surface[name][field] != reference for name in names):
-                raise ValueError("Same-partition surface reads disagree")
-            if surface["cross_origin_frame"][field] == reference:
+            if any(surface[name][field] != reference for name in contexts):
+                raise ValueError("Profile identity surface reads disagree" if stable_identity
+                                 else "Same-partition surface reads disagree")
+            if not stable_identity and surface["cross_origin_frame"][field] == reference:
                 raise ValueError("Cross-origin partition did not isolate the surface")
     if previous is not None:
-        validate_combined(previous, protected=protected)
+        validate_combined(previous, protected=protected, derivation_mode=derivation_mode)
         previous_canvas = {name: value["canvas"] for name, value in previous.items()}
         previous_audio = strip_quality({name: value["audio"] for name, value in previous.items()})
         if canvas != previous_canvas or audio != previous_audio:
             raise ValueError("Combined surface reads changed across profile restart")
 
 
-def validate_isolation(baseline: dict, first: dict, second: dict) -> None:
-    validate_combined(baseline, protected=False)
-    validate_combined(first, protected=True)
-    validate_combined(second, protected=True)
+def validate_isolation(baseline: dict, first: dict, second: dict, *,
+                       derivation_mode: str = "partitioned-privacy") -> None:
+    validate_combined(baseline, protected=False, derivation_mode=derivation_mode)
+    validate_combined(first, protected=True, derivation_mode=derivation_mode)
+    validate_combined(second, protected=True, derivation_mode=derivation_mode)
     for name in CONTEXTS:
         if len({row[name]["canvas"]["pixels"] for row in (baseline, first, second)}) != 3:
             raise ValueError("Canvas must change from baseline and isolate both profiles")
