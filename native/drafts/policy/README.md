@@ -317,3 +317,6 @@ This is the 25th unregistered patch; it does not modify the active build.
 Ordered replay of all 25 public patches across 112 paths passed with the active
 sources, GN inputs, build receipt and linked runtime core unchanged:
 `startup-preload-public-replay-v2.json` on D. This is source evidence only.
+Before promotion, the context unit verifier must require the existing 20 cases
+plus all six named startup cases. Its active-build definition is deliberately
+unchanged while the current unit target compiles.
