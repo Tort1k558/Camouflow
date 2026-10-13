@@ -84,6 +84,12 @@ contexts; the default partitioned-privacy contract still requires cross-site
 differences. Both retain PNG/pixel agreement, CPU/PBO padding, GL state/errors,
 context loss, upper colour bits and alpha checks. Unknown modes reject.
 
+Passing `previous=` validates both observations before requiring restart-stable
+readback, export and metadata. Only translated shader debug-source length is
+excluded from identity comparison because ANGLE may reuse its shader cache;
+the existing GPU validator still checks that field's presence/type/semantics.
+The registered runtime runner uses this same restart check.
+
 `validate_profile_isolation` validates the baseline and both protected profiles
 before comparing their WebGL and renderbuffer outputs. Both profiles must differ
 from the baseline and each other in every context. The registered runtime runner

@@ -292,6 +292,35 @@ def test_profile_identity_gpu_gate_requires_equal_site_outputs_without_relaxing_
                           derivation_mode="profile-identity")
 
 
+@pytest.mark.parametrize("mode", ["partitioned-privacy", "profile-identity"])
+def test_gpu_restart_gate_preserves_identity_without_binding_translated_shader_cache_length(mode):
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    previous = (profile_identity_readback_observation() if mode == "profile-identity"
+                else readback_observation(protected=True))
+    observed = copy.deepcopy(previous)
+    for row in observed.values():
+        for gl in row["webgl"].values():
+            gl["translatedShaderLength"] += 1
+    baseline = validate_readback(readback_observation(), protected=False, derivation_mode=mode)
+    validate_readback(observed, protected=True, baseline=baseline, previous=previous, derivation_mode=mode)
+    previous["document"]["webgl"]["webgl2"]["scene"]["packed"][0] = 0
+    with pytest.raises(ValueError):
+        validate_readback(observed, protected=True, baseline=baseline, previous=previous, derivation_mode=mode)
+
+
+def test_profile_identity_gpu_restart_gate_rejects_another_valid_profile():
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    previous = profile_identity_readback_observation()
+    cross = readback_observation(protected=True)["cross_origin_frame"]
+    observed = {context: copy.deepcopy(cross) for context in CONTEXTS}
+    baseline = validate_readback(readback_observation(), protected=False)
+    with pytest.raises(ValueError, match="changed across profile restart"):
+        validate_readback(observed, protected=True, baseline=baseline, previous=previous,
+                          derivation_mode="profile-identity")
+
+
 def test_profile_identity_gpu_gate_requires_independent_profile_and_renderbuffer_outputs():
     from scripts.verify_native_gpu_readback import validate_profile_isolation
 

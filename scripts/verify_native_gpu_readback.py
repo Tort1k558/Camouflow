@@ -273,7 +273,7 @@ def decode_png(value: list[int]) -> list[int]:
 
 
 def validate_readback(observed: dict, *, protected: bool, baseline: dict | None = None,
-                      derivation_mode: str = "partitioned-privacy") -> dict:
+                      derivation_mode: str = "partitioned-privacy", previous: dict | None = None) -> dict:
     if not isinstance(derivation_mode, str) or derivation_mode not in {
             "partitioned-privacy", "profile-identity"}:
         raise ValueError("Unknown WebGL readback derivation mode")
@@ -354,6 +354,10 @@ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None 
                                  else "Same-partition renderbuffer contexts disagree")
             if not stable_identity and pixels["cross_origin_frame"] == reference:
                 raise ValueError("Cross-origin renderbuffer partition was not isolated")
+    if previous is not None:
+        validate_readback(previous, protected=protected, baseline=baseline, derivation_mode=derivation_mode)
+        if restart_state(observed) != restart_state(previous):
+            raise ValueError("Readback/export/metadata changed across profile restart")
     return normalized
 
 
@@ -538,9 +542,7 @@ async def verify(executable: Path, owned: Path, server: FixtureServer, report: d
                 observed = await observe(context, f"http://127.0.0.1:{server.server_port}", read=READBACK_READ)
                 check = {"name": f"{name}-{phase}", "passed": False, "observed": observed}
                 report["checks"].append(check)
-                normalized = validate_readback(observed, protected=protected, baseline=baseline)
-                if previous is not None and restart_state(observed) != restart_state(previous):
-                    raise ValueError("Readback/export/metadata changed across profile restart")
+                normalized = validate_readback(observed, protected=protected, baseline=baseline, previous=previous)
                 previous = observed
                 if baseline is None:
                     baseline = normalized
