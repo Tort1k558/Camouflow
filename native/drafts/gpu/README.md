@@ -232,5 +232,7 @@ all 30 public candidates passed ordered replay across 125 paths
 predate the origin fix and renderbuffer extension and cannot authorize this
 promotion. Actual renderer/worker/browser execution remains pending.
 The refreshed four aggregate patches reproduce that exact 125-path source
-(`surface-promotion-v10/proof.json`); registration waits for the corrected
-NavigationSimulator gate to pass all 12 cases.
+(`surface-promotion-v10/proof.json`). The corrected NavigationSimulator binary
+passed all 12 cases (`document-navigation-001-030-j4-v3.json`); this prerequisite
+is satisfied, but the four aggregate patches still require registration,
+compilation and the prepared protected-browser gates.

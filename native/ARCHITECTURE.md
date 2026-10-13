@@ -140,7 +140,9 @@ stored in the commit parameters. Recomputing an opaque origin can change its
 nonce. The corrected source binds both the Canvas prototype and prepared v2
 policy to the exact final wire origin, after upstream weak-lifetime and selected
 frame checks. It does not change Chromium's origin selection or weaken the test.
-The complete 12-case rerun is in progress; successful execution is not yet proven.
+The corrected binary passed all 12 cases (`document-navigation-001-030-j4-v3.json`
+on D). This proves simulated content-layer commit/rejection behavior, not actual
+Blink first-script execution, full renderer/worker policy or browser admission.
 
 ## Combined surface runtime gate
 
