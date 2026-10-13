@@ -1,0 +1,445 @@
+diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
+index 0c3d68f8f62b7f6879064425c2a5c9119bfae995..90ec3cafb9025342752dced557cef7ca7e889424 100644
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/renderer_host/render_frame_host_impl.h"
++#include "content/browser/camouflow_native/glint/document_surface_commit_producer.h"
+ 
+ #include <algorithm>
+ #include <cstdint>
+@@ -10452,7 +10453,20 @@ void RenderFrameHostImpl::CreateNewWindow(
+       new_main_rfh->GetSiteInstance()->browsing_instance_token(),
+       delegate_->GetColorProviderColorMaps(),
+       /*widget_screen_rect=*/std::nullopt,
+-      /*window_screen_rect=*/std::nullopt);
++      /*window_screen_rect=*/std::nullopt,
++      /*glint_initial_surface_policy_required=*/false,
++      /*glint_initial_surface_commit=*/nullptr);
++  const auto* command = base::CommandLine::ForCurrentProcess();
++  reply->glint_initial_surface_policy_required =
++      command->HasSwitch("glint-document-surface-bootstrap-test");
++  if (reply->glint_initial_surface_policy_required &&
++      !command->HasSwitch("glint-document-canvas-bootstrap-test")) {
++    reply->glint_initial_surface_commit =
++        glint::candidate::CreateDocumentSurfacePolicyCommit(
++            new_main_rfh->GetBrowserContext(), new_main_rfh->GetStorageKey(),
++            new_main_rfh->GetLastCommittedOrigin());
++  }
++
+ 
+   new_main_rfh->render_view_host()->RenderViewCreated(new_main_rfh);
+ 
+diff --git a/content/browser/renderer_host/render_view_host_impl.cc b/content/browser/renderer_host/render_view_host_impl.cc
+index 6b881f610932eacd5412accd61431e6a59124e71..b39f4f256b368fb29f7709d8711e43fe3bc33d41 100644
+--- a/content/browser/renderer_host/render_view_host_impl.cc
++++ b/content/browser/renderer_host/render_view_host_impl.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/renderer_host/render_view_host_impl.h"
++#include "content/browser/camouflow_native/glint/document_surface_commit_producer.h"
+ 
+ #include <algorithm>
+ #include <optional>
+@@ -486,6 +487,17 @@ bool RenderViewHostImpl::CreateRenderView(
+ 
+   if (main_rfh) {
+     auto local_frame_params = mojom::CreateLocalMainFrameParams::New();
++    const auto* command = base::CommandLine::ForCurrentProcess();
++    local_frame_params->glint_initial_surface_policy_required =
++        command->HasSwitch("glint-document-surface-bootstrap-test");
++    if (local_frame_params->glint_initial_surface_policy_required &&
++        !command->HasSwitch("glint-document-canvas-bootstrap-test") &&
++        main_rfh->frame_tree_node()->is_on_initial_empty_document()) {
++      local_frame_params->glint_initial_surface_commit =
++          glint::candidate::CreateDocumentSurfacePolicyCommit(
++              main_rfh->GetBrowserContext(), main_rfh->GetStorageKey(),
++              main_rfh->GetLastCommittedOrigin());
++    }
+     local_frame_params->frame_token = main_rfh->GetFrameToken();
+     local_frame_params->routing_id = main_frame_routing_id_;
+     mojo::PendingAssociatedRemote<mojom::Frame> pending_frame_remote;
+diff --git a/content/common/frame.mojom b/content/common/frame.mojom
+index 0f4860a0510f6db6f191a325a57ba1c3e7938229..8ee09fc883a3af5b54a57a1be1a331e6519e8a25 100644
+--- a/content/common/frame.mojom
++++ b/content/common/frame.mojom
+@@ -4,6 +4,8 @@
+ 
+ module content.mojom;
+ 
++import "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom";
++
+ import "cc/mojom/browser_controls_state.mojom";
+ import "content/common/frame_messages.mojom";
+ import "content/common/navigation_client.mojom";
+@@ -230,6 +232,9 @@ struct CreateLocalMainFrameParams {
+   // Subresource loader factories to be used by the initial empty document.
+   blink.mojom.URLLoaderFactoryBundle subresource_loader_factories;
+ 
++  // Browser-owned policy for the initial document, before script evaluation.
++  bool glint_initial_surface_policy_required = false;
++  blink.mojom.GlintSurfacePolicyCommit? glint_initial_surface_commit;
+ };
+ 
+ // Parameters used for browser-initiated provisional local main frame creation.
+@@ -690,6 +695,9 @@ struct CreateNewWindowReply {
+   // Initial window geometry.
+   gfx.mojom.Rect? widget_screen_rect;
+   gfx.mojom.Rect? window_screen_rect;
++  // Browser-owned policy for the initial document, before script evaluation.
++  bool glint_initial_surface_policy_required = false;
++  blink.mojom.GlintSurfacePolicyCommit? glint_initial_surface_commit;
+ };
+ 
+ // A per-navigation interface passed along with the BeginNavigation call, used
+diff --git a/content/renderer/render_frame_impl.cc b/content/renderer/render_frame_impl.cc
+index d7788bff7adf7c1deba6d5a4a71b2e68aafb43eb..5f08b3fe2c27a42cd811badcd25a3034d3127a8b 100644
+--- a/content/renderer/render_frame_impl.cc
++++ b/content/renderer/render_frame_impl.cc
+@@ -1627,6 +1627,23 @@ RenderFrameImpl* RenderFrameImpl::CreateMainFrame(
+       std::move(params->associated_interface_provider_remote),
+       devtools_frame_token, is_for_nested_main_frame);
+ 
++  const auto* command = base::CommandLine::ForCurrentProcess();
++  const bool surfaces_requested =
++      command->HasSwitch("glint-document-surface-bootstrap-test");
++  render_frame->glint_initial_surface_required_ = surfaces_requested ||
++      params->glint_initial_surface_policy_required ||
++      params->glint_initial_surface_commit;
++  if (surfaces_requested &&
++      !command->HasSwitch("glint-document-canvas-bootstrap-test") &&
++      params->is_on_initial_empty_document &&
++      params->glint_initial_surface_policy_required &&
++      params->glint_initial_surface_commit) {
++    const auto& wire = *params->glint_initial_surface_commit;
++    render_frame->glint_initial_surface_policy_ =
++        glint::candidate::DecodeOwnedDocumentSurfacePolicy(
++            wire, wire.partition, wire.partition.origin(), false);
++  }
++
+   WebLocalFrame* web_frame = WebLocalFrame::CreateMainFrame(
+       web_view, render_frame, render_frame->blink_interface_registry_.get(),
+       std::move(params->interface_broker), params->frame_token,
+@@ -3878,6 +3895,14 @@ void RenderFrameImpl::DidAddMessageToConsole(
+   }
+ }
+ 
++void RenderFrameImpl::PopulateGlintInitialDocument(
++    blink::WebNavigationParams& params) {
++  params.glint_document_surface_policy_required = glint_initial_surface_required_;
++  params.glint_document_surface_policy = std::move(glint_initial_surface_policy_);
++  glint_initial_surface_policy_.reset();
++  glint_initial_surface_required_ = false;
++}
++
+ void RenderFrameImpl::DidCreateDocumentLoader(
+     blink::WebDocumentLoader* document_loader) {
+   DocumentState* document_state =
+@@ -7014,6 +7039,10 @@ WebView* RenderFrameImpl::CreateNewWindow(
+   main_frame_params->interface_broker = std::move(browser_interface_broker);
+   main_frame_params->document_token = reply->document_token;
+   main_frame_params->sandbox_origin_token = reply->sandbox_origin_token;
++  main_frame_params->glint_initial_surface_policy_required =
++      reply->glint_initial_surface_policy_required;
++  main_frame_params->glint_initial_surface_commit =
++      std::move(reply->glint_initial_surface_commit);
+   main_frame_params->policy_container = std::move(reply->policy_container);
+   main_frame_params->associated_interface_provider_remote =
+       std::move(associated_interface_provider);
+diff --git a/content/renderer/render_frame_impl.h b/content/renderer/render_frame_impl.h
+index 1733f28e69b331b33f36084391f1d3ddb47c8e14..0eece7d3b94176e8d7c3efddccf068fa900dfb54 100644
+--- a/content/renderer/render_frame_impl.h
++++ b/content/renderer/render_frame_impl.h
+@@ -78,6 +78,7 @@
+ #include "third_party/blink/public/common/frame/frame_owner_element_type.h"
+ #include "third_party/blink/public/common/loader/loading_behavior_flag.h"
+ #include "third_party/blink/public/common/loader/url_loader_factory_bundle.h"
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
+ #include "third_party/blink/public/common/permissions_policy/document_policy.h"
+ #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
+ #include "third_party/blink/public/common/subresource_load_metrics.h"
+@@ -527,6 +528,7 @@ class CONTENT_EXPORT RenderFrameImpl
+                               unsigned source_line,
+                               const blink::WebString& stack_trace) override;
+   void BeginNavigation(std::unique_ptr<blink::WebNavigationInfo> info) override;
++  void PopulateGlintInitialDocument(blink::WebNavigationParams& params) override;
+   void DidCreateDocumentLoader(
+       blink::WebDocumentLoader* document_loader) override;
+   bool SwapIn(blink::WebFrame* previous_web_frame) override;
+@@ -1599,6 +1601,9 @@ class CONTENT_EXPORT RenderFrameImpl
+   // browser startup, e.g. the reload button.
+   bool is_initial_webui_ = false;
+ 
++  bool glint_initial_surface_required_ = false;
++  std::optional<glint::candidate::DocumentSurfacePolicy> glint_initial_surface_policy_;
++
+   base::WeakPtrFactory<RenderFrameImpl> weak_factory_{this};
+ };
+ 
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+index 2c6fe1fca7c36eeab040e4efd5e3cde48975ce51..51f6f581a0c2531854b7e82d39485496dbafc56e 100644
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2561,6 +2561,7 @@ test("content_unittests") {
+     "../../third_party/blink/public/common/native_privacy/glint/surface_policy_validation_unittest.cc",
+     "../../third_party/blink/public/common/native_privacy/glint/surface_policy_preflight_unittest.cc",
+     "../../third_party/blink/public/common/native_privacy/glint/document_surface_policy_unittest.cc",
++    "../../third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc",
+     "../browser/camouflow_native/glint/document_surface_commit_producer_unittest.cc",
+     "../browser/camouflow_native/privacy_context_unittest.cc",
+     "../browser/camouflow_native/privacy_document_commit_unittest.cc",
+diff --git a/third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy.h b/third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..a73c0a886dfd8d9fd00417e1f75e119ae8876bf3
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy.h
+@@ -0,0 +1,29 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_INITIAL_DOCUMENT_SURFACE_POLICY_H_
++#define GLINT_INITIAL_DOCUMENT_SURFACE_POLICY_H_
++
++#include <optional>
++
++#include "document_surface_policy.h"
++
++namespace glint::candidate {
++// Check before CalculateOrigin: a tuple origin in an origin-sandboxed window
++// would violate upstream invariants rather than merely failing final policy.
++inline bool CanAdoptInitialDocumentSurfacePolicy(
++    const std::optional<DocumentSurfacePolicy>& owned,
++    const std::optional<url::Origin>& owner_origin,
++    bool origin_sandboxed) {
++  if (!owned ||
++      !ValidateDocumentSurfacePolicy(owned, owned->partition, true, false)) {
++    return false;
++  }
++  const auto& origin = owned->partition.origin();
++  if (origin_sandboxed) {
++    return origin.opaque();
++  }
++  return !owner_origin || origin == *owner_origin;
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc b/third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..480633b9b82eed2d4f3358f9c7778b9f031905b2
+--- /dev/null
++++ b/third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc
+@@ -0,0 +1,90 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "initial_document_surface_policy.h"
++
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++
++namespace glint::candidate {
++namespace {
++std::optional<DocumentSurfacePolicy> Owned(const url::Origin& origin) {
++  const auto key = blink::StorageKey::CreateFirstParty(origin);
++  SurfacePolicy policy;
++  policy.partition_encoding = *key.SerializeForNativePrivacy();
++  policy.canvas.fill(1);
++  policy.webgl.fill(2);
++  policy.webgpu.fill(3);
++  policy.audio.fill(4);
++  return DocumentSurfacePolicy{key, policy};
++}
++const url::Origin kOrigin = url::Origin::Create(GURL("https://initial.test/"));
++}  // namespace
++
++TEST(GlintInitialDocumentSurfacePolicyTest, RootWithoutCreatorAcceptsBrowserOrigin) {
++  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(kOrigin), std::nullopt, false));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, RootPreservesBrowserOpaqueIdentity) {
++  const url::Origin opaque;
++  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(opaque), std::nullopt, false));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, PopupAcceptsExactCreatorOrigin) {
++  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(kOrigin), kOrigin, false));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, PopupRejectsDifferentCreatorOrigin) {
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(
++      Owned(kOrigin), url::Origin::Create(GURL("https://other.test/")), false));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, OpaqueCreatorAcceptsExactNonce) {
++  const url::Origin opaque;
++  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(opaque), opaque, false));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, OpaqueCreatorRejectsDifferentNonce) {
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(Owned(url::Origin()), url::Origin(), false));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, SandboxRequiresOpaqueBrowserOrigin) {
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(Owned(kOrigin), kOrigin, true));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, SandboxUsesBrowserOpaqueNotCreatorTuple) {
++  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(url::Origin()), kOrigin, true));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, SandboxMissingPayloadIsRejected) {
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(std::nullopt, kOrigin, true));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, RootMissingPayloadIsRejected) {
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(std::nullopt, std::nullopt, false));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, UnsupportedPolicyVersionIsRejected) {
++  auto owned = Owned(kOrigin);
++  owned->policy.version = 0;
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(owned, kOrigin, false));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, ReusedSurfaceSeedIsRejected) {
++  auto owned = Owned(kOrigin);
++  owned->policy.audio = owned->policy.canvas;
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(owned, kOrigin, false));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, ChangedPartitionCommitmentIsRejected) {
++  auto owned = Owned(kOrigin);
++  owned->policy.partition_encoding.back() ^= 1;
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(owned, kOrigin, false));
++}
++
++TEST(GlintInitialDocumentSurfacePolicyTest, FinalDifferentKeyStillRejectsAdoptedPolicy) {
++  const auto owned = Owned(kOrigin);
++  ASSERT_TRUE(CanAdoptInitialDocumentSurfacePolicy(owned, kOrigin, false));
++  EXPECT_FALSE(ValidateDocumentSurfacePolicy(owned,
++      blink::StorageKey::CreateFirstParty(url::Origin()), true, false));
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/public/web/web_local_frame_client.h b/third_party/blink/public/web/web_local_frame_client.h
+index 0f218d3f96f0c3a3a5773937e50ba9e8d7df0498..4f306160028f259c76234682099fb3718d51dc80 100644
+--- a/third_party/blink/public/web/web_local_frame_client.h
++++ b/third_party/blink/public/web/web_local_frame_client.h
+@@ -128,6 +128,7 @@ class WebBackgroundResourceFetchAssets;
+ class WebContentDecryptionModule;
+ class WebDedicatedWorkerHostFactoryClient;
+ class WebDocumentLoader;
++struct WebNavigationParams;
+ class WebEncryptedMediaClient;
+ class WebLocalFrame;
+ class WebMediaPlayer;
+@@ -376,6 +377,7 @@ class BLINK_EXPORT WebLocalFrameClient {
+ 
+   // A datasource has been created for a new navigation.  The given
+   // datasource will become the provisional datasource for the frame.
++  virtual void PopulateGlintInitialDocument(WebNavigationParams&) {}
+   virtual void DidCreateDocumentLoader(WebDocumentLoader*) {}
+ 
+   // A navigation is about to commit in a new frame that is still provisional
+diff --git a/third_party/blink/renderer/core/frame/local_frame_client.h b/third_party/blink/renderer/core/frame/local_frame_client.h
+index a68832975b5d359f7eddaf2326bd47ff1e7e18df..63c428d03f634e4f2c760614b1e32911ca22684a 100644
+--- a/third_party/blink/renderer/core/frame/local_frame_client.h
++++ b/third_party/blink/renderer/core/frame/local_frame_client.h
+@@ -88,6 +88,7 @@ namespace blink {
+ class AssociatedInterfaceProvider;
+ class ChildURLLoaderFactoryBundle;
+ class DocumentLoader;
++struct WebNavigationParams;
+ class HTMLFencedFrameElement;
+ class HTMLFormElement;
+ class HTMLFrameOwnerElement;
+@@ -267,6 +268,7 @@ class CORE_EXPORT LocalFrameClient : public FrameClient {
+       const Vector<String>& added_selectors,
+       const Vector<String>& removed_selectors) = 0;
+ 
++  virtual void PopulateGlintInitialDocument(WebNavigationParams&) {}
+   virtual void DidCreateDocumentLoader(DocumentLoader*) = 0;
+ 
+   virtual String UserAgentOverride() = 0;
+diff --git a/third_party/blink/renderer/core/frame/local_frame_client_impl.cc b/third_party/blink/renderer/core/frame/local_frame_client_impl.cc
+index 5e5e43e204f006989a859a6077dcb56c81a08e60..e7dd74e1b1c4884fddf69bcc5cbc643640ad3d2a 100644
+--- a/third_party/blink/renderer/core/frame/local_frame_client_impl.cc
++++ b/third_party/blink/renderer/core/frame/local_frame_client_impl.cc
+@@ -932,6 +932,11 @@ void LocalFrameClientImpl::SelectorMatchChanged(
+   }
+ }
+ 
++void LocalFrameClientImpl::PopulateGlintInitialDocument(
++    WebNavigationParams& params) {
++  web_frame_->Client()->PopulateGlintInitialDocument(params);
++}
++
+ void LocalFrameClientImpl::DidCreateDocumentLoader(
+     DocumentLoader* document_loader) {
+   web_frame_->Client()->DidCreateDocumentLoader(document_loader);
+diff --git a/third_party/blink/renderer/core/frame/local_frame_client_impl.h b/third_party/blink/renderer/core/frame/local_frame_client_impl.h
+index b00211cf215fb820b3fe49139b8ef95be6a10d21..ca73c2ea7133a5d8f47e43806c08f8e903203bd2 100644
+--- a/third_party/blink/renderer/core/frame/local_frame_client_impl.h
++++ b/third_party/blink/renderer/core/frame/local_frame_client_impl.h
+@@ -180,6 +180,7 @@ class CORE_EXPORT LocalFrameClientImpl final : public LocalFrameClient {
+   void SelectorMatchChanged(const Vector<String>& added_selectors,
+                             const Vector<String>& removed_selectors) override;
+ 
++  void PopulateGlintInitialDocument(WebNavigationParams&) override;
+   void DidCreateDocumentLoader(DocumentLoader*) override;
+ 
+   String UserAgentOverride() override;
+diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
+index 9be6734e540f7a8b77c1f91ef67b92f5ea0cb81f..e7cf29fefeb54d7b951e81f84eef779d5c279c66 100644
+--- a/third_party/blink/renderer/core/loader/document_loader.cc
++++ b/third_party/blink/renderer/core/loader/document_loader.cc
+@@ -32,6 +32,7 @@
+ #include <algorithm>
+ #include "third_party/blink/public/common/native_privacy/document_canvas_policy_validation.h"
+ #include "third_party/blink/public/common/native_privacy/document_storage_key_resolution.h"
++#include "third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy.h"
+ #include <memory>
+ #include <optional>
+ #include <utility>
+@@ -2705,6 +2706,28 @@ void DocumentLoader::InitializeWindow(Document* owner_document) {
+ 
+   ContentSecurityPolicy* csp = CreateCSP();
+ 
++  if (commit_reason_ == CommitReason::kInitialization &&
++      glint_document_surface_payload_required_) {
++    const bool sandboxed =
++        (policy_container_->GetPolicies().sandbox_flags &
++         network::mojom::blink::WebSandboxFlags::kOrigin) !=
++        network::mojom::blink::WebSandboxFlags::kNone;
++    std::optional<url::Origin> owner_origin;
++    if (owner_document && owner_document->domWindow()) {
++      owner_origin = owner_document->domWindow()->GetSecurityOrigin()->ToUrlOrigin();
++    }
++    if (!frame_->IsProvisional() &&
++        glint::candidate::CanAdoptInitialDocumentSurfacePolicy(
++            glint_document_surface_policy_, owner_origin, sandboxed)) {
++      origin_to_commit_ = SecurityOrigin::CreateFromUrlOrigin(
++          glint_document_surface_policy_->partition.origin());
++      storage_key_ = glint_document_surface_policy_->partition;
++    } else {
++      // Keep required=true: invalid initial data must never borrow owner policy.
++      glint_document_surface_policy_.reset();
++    }
++  }
++
+   scoped_refptr<SecurityOrigin> security_origin;
+   if (frame_->IsProvisional()) {
+     // Provisional frames shouldn't be doing anything other than act as a
+diff --git a/third_party/blink/renderer/core/loader/frame_loader.cc b/third_party/blink/renderer/core/loader/frame_loader.cc
+index a7ede73f530a4d6976e22ff445459c26107c7241..daba59a70b79318aeba11f9ccdfbcaaacff699af 100644
+--- a/third_party/blink/renderer/core/loader/frame_loader.cc
++++ b/third_party/blink/renderer/core/loader/frame_loader.cc
+@@ -259,6 +259,7 @@ void FrameLoader::Init(
+   }
+   navigation_params->storage_key = storage_key;
+   navigation_params->document_token = document_token;
++  Client()->PopulateGlintInitialDocument(*navigation_params);
+   navigation_params->frame_policy =
+       frame_->Owner() ? frame_->Owner()->GetFramePolicy() : FramePolicy();
+   navigation_params->document_ukm_source_id = document_ukm_source_id;

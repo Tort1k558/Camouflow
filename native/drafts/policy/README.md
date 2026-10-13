@@ -227,3 +227,40 @@ translation-unit compilation, linking or browser execution. The document
 stage has 112 planned native cases (30 helpers/producer + 60 handoff + 22
 readiness/navigation); none of these new cases has run. The active 0030 build
 still uses its unchanged, older twelve-case navigation gate.
+
+## Initial main-frame and popup delivery candidate
+
+`initial_main_surface_transport.patch` prepares authenticated policy delivery
+for initial main documents and `window.open()` replies. The selected browser
+RFH supplies its own BrowserContext, StorageKey and origin. Popup data is
+captured before `ShowCreatedWindow`, which can destroy the RFH. No root key is
+sent to a renderer.
+
+The renderer decodes an owned snapshot before `WebLocalFrame::CreateMainFrame`.
+A native client callback consumes it exactly once inside `FrameLoader::Init`'s
+script-forbidden scope, before constructing the initial DocumentLoader.
+Missing, mixed-mode or invalid required data remains required-and-inert; it
+cannot borrow an opener policy. Flag-off initial documents retain upstream
+behavior.
+
+Before `CalculateOrigin`, the loader verifies the actual creator origin and
+sandbox flags. An origin-sandboxed window requires an opaque browser origin;
+an ordinary local creator must match exactly. Valid data supplies the browser
+origin and key through existing loader fields while preserving upstream origin
+aliasing, trust/local-resource inheritance and the final partition check.
+Invalid or provisional state drops the snapshot without adding a renderer
+CHECK or making the required document executable.
+
+Fourteen native helper fixtures are prepared, **not compiled or executed**.
+The 23-patch/102-path public replay passed with active inputs unchanged:
+`initial-main-surfaces-public-replay-v3.json` on D. Initial-main/popup Mojo
+parsing and C++ binding generation passed:
+`initial-main-surface-bindings-v2/proof.json`. Neither proves runtime operation.
+
+**Still incomplete:** a cold/loading key service needs a browser readiness
+barrier before initial-frame creation. This candidate alone deliberately leaves
+missing policy inert; it does not make cold startup ready. Authenticated child
+sandbox delivery, first-script/browser-context tests, popup/creator lifecycle
+regressions and XSLT/discard behavior also remain unverified. The earlier
+four-patch promotion snapshot predates this new source and must be regenerated
+before any promotion. Nothing here is registered or active in the current build.

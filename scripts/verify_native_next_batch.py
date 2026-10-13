@@ -26,7 +26,8 @@ PATCHES = ("gpu/gpu_metadata_minimization.patch", "audio/audio_helpers_integrati
            "policy/worker_surface_scope_state.patch", "canvas/core_helpers_integration.patch",
            "canvas/get_image_data_candidate_hook.patch", "canvas/html_export_candidate_hook.patch",
            "canvas/offscreen_candidate_hook.patch", "canvas/surface_seed_reader_tests.patch",
-           "audio/offline_audio_surface_hook.patch", "audio/offline_audio_surface_guard_tests.patch")
+           "audio/offline_audio_surface_hook.patch", "audio/offline_audio_surface_guard_tests.patch",
+           "policy/initial_main_surface_transport.patch")
 CANONICAL = {
     **{"canvas/" + name: "third_party/blink/renderer/core/html/canvas/glint/" + name for name in (
         "canvas_partition_seed.h", "canvas_partition_seed.cc", "canvas_readback_candidate.h",
@@ -40,7 +41,8 @@ CANONICAL = {
         "surface_policy.h", "surface_policy_validation.h", "surface_policy_validation_unittest.cc",
         "surface_policy_preflight.h", "surface_policy_preflight_unittest.cc", "surface_policy_wire.h",
         "worker_surface_policy.h", "worker_surface_policy_validation.h",
-        "document_surface_policy.h", "document_surface_policy_unittest.cc")},
+        "document_surface_policy.h", "document_surface_policy_unittest.cc",
+        "initial_document_surface_policy.h", "initial_document_surface_policy_unittest.cc")},
     **{"policy/" + name: "content/browser/camouflow_native/glint/" + name for name in (
         "surface_policy_producer.h", "surface_policy_producer.cc", "surface_policy_producer_unittest.cc",
         "document_surface_commit_producer.h", "document_surface_commit_producer.cc",
@@ -48,6 +50,14 @@ CANONICAL = {
     "policy/native_privacy_surface_policy.mojom": "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom",
 }
 EXISTING_PATHS = {
+    "content/common/frame.mojom",
+    "content/browser/renderer_host/render_view_host_impl.cc",
+    "content/renderer/render_frame_impl.h",
+    "third_party/blink/public/web/web_local_frame_client.h",
+    "third_party/blink/renderer/core/frame/local_frame_client.h",
+    "third_party/blink/renderer/core/frame/local_frame_client_impl.h",
+    "third_party/blink/renderer/core/frame/local_frame_client_impl.cc",
+    "third_party/blink/renderer/core/loader/frame_loader.cc",
     "third_party/blink/public/common/features.h", "third_party/blink/common/features.cc",
     "third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc",
     "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",

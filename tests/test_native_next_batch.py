@@ -46,6 +46,9 @@ def test_next_batch_patch_coverage_and_canonical_sources():
                                  "content/test/BUILD.gn", "content/browser/BUILD.gn",
                                  "third_party/blink/renderer/core/workers/worker_global_scope.h",
                                  "third_party/blink/renderer/core/loader/document_loader_test.cc",
+                                 "content/renderer/render_frame_impl.cc",
+                                 "content/browser/renderer_host/render_frame_host_impl.cc",
+                                 "third_party/blink/renderer/core/loader/document_loader.cc",
                                  "third_party/blink/renderer/core/workers/worker_thread_test.cc"})
         paths.update(current_paths)
         additions.update(added_sources(text))
@@ -60,6 +63,33 @@ def test_owned_replay_disables_machine_specific_crlf_conversion():
     configure = 'build.run(["git", "config", "core.autocrlf", "false"], overlay, env)'
     apply = 'build.run(["git", "apply", "--check", str(DRAFTS / name)], overlay, env)'
     assert text.index(configure) < text.index(apply)
+
+
+def test_initial_main_policy_is_browser_owned_and_consumed_before_frame_creation():
+    text = (DRAFTS / "policy/initial_main_surface_transport.patch").read_text(encoding="utf-8-sig")
+    assert text.count("+  blink.mojom.GlintSurfacePolicyCommit? glint_initial_surface_commit;") == 2
+    assert "+              main_rfh->GetBrowserContext(), main_rfh->GetStorageKey()," in text
+    assert "+            new_main_rfh->GetBrowserContext(), new_main_rfh->GetStorageKey()," in text
+    assert "+    render_frame->glint_initial_surface_policy_ =" in text
+    assert "+  params.glint_document_surface_policy = std::move(glint_initial_surface_policy_);" in text
+    assert "+  glint_initial_surface_policy_.reset();" in text
+    assert "+  Client()->PopulateGlintInitialDocument(*navigation_params);" in text
+    assert "+    CHECK(" not in text
+
+
+def test_initial_policy_origin_guard_precedes_upstream_calculation_and_cannot_borrow():
+    text = (DRAFTS / "policy/initial_main_surface_transport.patch").read_text(encoding="utf-8-sig")
+    assert "+      glint_document_surface_payload_required_) {" in text
+    assert "+      glint_document_surface_policy_.reset();" in text
+    assert "+      origin_to_commit_ = SecurityOrigin::CreateFromUrlOrigin(" in text
+    assert "+      storage_key_ = glint_document_surface_policy_->partition;" in text
+    helper = (DRAFTS / "policy/initial_document_surface_policy.h").read_text(encoding="utf-8-sig")
+    assert "return origin.opaque();" in helper
+    assert "return !owner_origin || origin == *owner_origin;" in helper
+    fixtures = (DRAFTS / "policy/initial_document_surface_policy_unittest.cc").read_text(encoding="utf-8-sig")
+    names = re.findall(r"TEST\(GlintInitialDocumentSurfacePolicyTest, (\w+)\)", fixtures)
+    assert len(names) == len(set(names)) == 14
+    assert "FinalDifferentKeyStillRejectsAdoptedPolicy" in names
 
 
 @pytest.mark.parametrize("relative", [
