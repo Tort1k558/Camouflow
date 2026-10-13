@@ -826,6 +826,28 @@ def test_standalone_gpu_codec_matches_canonical_fixture_names():
     assert set(re.findall(r"TEST\(GlintReadbackMetadataTest,\s*(\w+)\)", text)) == CASES
 
 
+def test_future_gpu_binding_restorers_use_stateless_callbacks():
+    from scripts.verify_native_gpu_transport_draft import PATCH
+
+    text = PATCH.read_text(encoding="utf-8-sig")
+    assert "base::BindOnce([" not in text
+    assert text.count("+        base::Unretained(this),") == 2
+    assert '+#include "base/functional/bind.h"' in text
+    assert "decoder->api()->glBindRenderbufferEXTFn" in text
+    assert "decoder->api()->glBindTextureFn" in text
+    assert text.count("+          decoder->CheckErrorCallbackState();") == 2
+
+
+def test_future_clipped_publication_checks_expected_explicitly():
+    from scripts.verify_native_halo_draft import CLIPPED_PATCH, DRAFTS
+
+    patch = CLIPPED_PATCH.read_text(encoding="utf-8-sig")
+    assert "-            source, destination, width, height, 0, GetPackPixelStoreParams()).has_value())" in patch
+    assert "+              copy_region).has_value())" in patch
+    fixture = (DRAFTS / "rgba8_clipped_publication_unittest.cc").read_text(encoding="utf-8-sig")
+    assert fixture.count(".has_value()") == 7
+
+
 def test_future_gpu_attachment_fixtures_use_native_command_and_actual_renderbuffer_state():
     from scripts.verify_native_document_drafts import patch_paths
     from scripts.verify_native_gpu_transport_draft import ATTACHMENT_PATCH, ATTACHMENT_PATHS
@@ -858,7 +880,7 @@ def test_future_clipped_publication_patch_preserves_cpu_pbo_destination_contract
     text = CLIPPED_PATCH.read_text(encoding="utf-8-sig")
     assert patch_paths(text) == CLIPPED_EXISTING | set(CLIPPED_CANONICAL.values())
     assert "+    gfx::Rect copy_region;" in text
-    assert "+              copy_region))" in text
+    assert "+              copy_region).has_value())" in text
     assert "+      BufferSubDataImpl(GL_PIXEL_PACK_BUFFER, destination, copy_bytes," in text
     source = (DRAFTS / "rgba8_pack_copy_clipped.cc").read_text(encoding="utf-8-sig")
     assert "source.subspan(row * row_bytes + column_offset, copy_bytes)" in source

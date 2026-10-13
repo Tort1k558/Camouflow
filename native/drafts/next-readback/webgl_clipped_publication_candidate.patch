@@ -12,10 +12,9 @@ index 25905aa7b7ff8a146b0df5ba859ee548d90b3542..e566054f6f1554dc29bccf9be68dca05
      "webaudio/audio_node_input_test.cc",
 diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_clipped_publication_unittest.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_clipped_publication_unittest.cc
 new file mode 100644
-index 0000000000000000000000000000000000000000..ed300dbd6ba3b79a552279259f16c97405f22ea6
 --- /dev/null
 +++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_clipped_publication_unittest.cc
-@@ -0,0 +1,85 @@
+@@ -0,0 +1,92 @@
 +// Copyright 2026 CamouFlow contributors.
 +// SPDX-License-Identifier: MIT
 +#include "rgba8_pack_copy.h"
@@ -42,7 +41,8 @@ index 0000000000000000000000000000000000000000..ed300dbd6ba3b79a552279259f16c974
 +    for (size_t byte = 0; byte < 8; ++byte)
 +      expected[12 + 28 + row * 24 + 4 + byte] = source[row * 16 + 4 + byte];
 +  EXPECT_TRUE(CopyRgba8ReadbackToPackLayout(source, destination, 4, 4, 12, pack,
-+                                            gfx::Rect(1, 1, 2, 2)));
++                                            gfx::Rect(1, 1, 2, 2))
++                  .has_value());
 +  EXPECT_EQ(destination, expected);
 +}
 +
@@ -52,7 +52,8 @@ index 0000000000000000000000000000000000000000..ed300dbd6ba3b79a552279259f16c974
 +  destination.fill(165);
 +  const auto before = destination;
 +  EXPECT_TRUE(CopyRgba8ReadbackToPackLayout(source, destination, 4, 4, 0, {},
-+                                            gfx::Rect()));
++                                            gfx::Rect())
++                  .has_value());
 +  EXPECT_EQ(destination, before);
 +}
 +
@@ -63,8 +64,9 @@ index 0000000000000000000000000000000000000000..ed300dbd6ba3b79a552279259f16c974
 +  const auto before = destination;
 +  for (const auto& region :
 +       {gfx::Rect(-1, 0, 1, 1), gfx::Rect(3, 0, 2, 1), gfx::Rect(0, 3, 1, 2)}) {
-+    EXPECT_FALSE(CopyRgba8ReadbackToPackLayout(source, destination, 4, 4, 0, {},
-+                                               region));
++    EXPECT_FALSE(
++        CopyRgba8ReadbackToPackLayout(source, destination, 4, 4, 0, {}, region)
++            .has_value());
 +    EXPECT_EQ(destination, before);
 +  }
 +}
@@ -75,7 +77,8 @@ index 0000000000000000000000000000000000000000..ed300dbd6ba3b79a552279259f16c974
 +  std::array<uint8_t, 4> destination{165, 165, 165, 165};
 +  const auto before = destination;
 +  EXPECT_FALSE(CopyRgba8ReadbackToPackLayout(source, destination, 4, 4, 0, {},
-+                                             gfx::Rect(0, 0, 1, 1)));
++                                             gfx::Rect(0, 0, 1, 1))
++                   .has_value());
 +  EXPECT_EQ(destination, before);
 +}
 +
@@ -83,9 +86,10 @@ index 0000000000000000000000000000000000000000..ed300dbd6ba3b79a552279259f16c974
 +  std::array<uint8_t, 80> storage;
 +  storage.fill(165);
 +  const auto before = storage;
-+  EXPECT_FALSE(CopyRgba8ReadbackToPackLayout(
-+      std::span(storage).first(64), std::span(storage).subspan(8, 64), 4, 4, 0,
-+      {}, gfx::Rect(1, 1, 2, 2)));
++  EXPECT_FALSE(CopyRgba8ReadbackToPackLayout(std::span(storage).first(64),
++                                             std::span(storage).subspan(8, 64),
++                                             4, 4, 0, {}, gfx::Rect(1, 1, 2, 2))
++                   .has_value());
 +  EXPECT_EQ(storage, before);
 +}
 +
@@ -94,9 +98,11 @@ index 0000000000000000000000000000000000000000..ed300dbd6ba3b79a552279259f16c974
 +  for (size_t index = 0; index < source.size(); ++index)
 +    source[index] = static_cast<uint8_t>(index);
 +  std::array<uint8_t, 64> legacy{}, clipped{};
-+  ASSERT_TRUE(CopyRgba8ReadbackToPackLayout(source, legacy, 4, 4, 0, {}));
++  ASSERT_TRUE(
++      CopyRgba8ReadbackToPackLayout(source, legacy, 4, 4, 0, {}).has_value());
 +  ASSERT_TRUE(CopyRgba8ReadbackToPackLayout(source, clipped, 4, 4, 0, {},
-+                                            gfx::Rect(0, 0, 4, 4)));
++                                            gfx::Rect(0, 0, 4, 4))
++                  .has_value());
 +  EXPECT_EQ(clipped, legacy);
 +}
 +}  // namespace
@@ -240,9 +246,9 @@ index 5beeb1681e735c8093a39d20c8b03477f774ee6c..03f0f720cd5799cbea73d4ea27c83fef
                    rectangle.computeByteSize());
      const auto destination = std::span(data, buffer_size.ValueOrDie());
      if (!glint::candidate::CopyRgba8ReadbackToPackLayout(
--            source, destination, width, height, 0, GetPackPixelStoreParams())) {
+-            source, destination, width, height, 0, GetPackPixelStoreParams()).has_value()) {
 +            source, destination, width, height, 0, GetPackPixelStoreParams(),
-+              copy_region)) {
++              copy_region).has_value()) {
        SynthesizeGLError(GL_INVALID_OPERATION, "readPixels",
                          "Glint WebGL pack-copy failed.");
      }

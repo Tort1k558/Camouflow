@@ -1,7 +1,7 @@
 # WebGL readback: bounded halo candidate
 
 **Unregistered, uncompiled; no runtime privacy capability is admitted.**
-This two-patch batch follows registered 001–034 and must not be applied during
+This two-patch batch follows registered 001–037 and must not be applied during
 its active build. It changes private readback allocation, not the fingerprint
 algorithm, GPU identity, live framebuffer or JavaScript API.
 
@@ -15,6 +15,9 @@ algorithm, GPU identity, live framebuffer or JavaScript API.
 
 The halo is valid **only** for the existing quantized-colour, four-neighbour
 algorithm. Coordinate-dependent or global transforms cannot reuse this planner.
+The CPU publication path retains patch 0037's explicit `base::expected`
+`has_value()` check. All seven native clipped-copy fixture assertions use that
+same typed result; the fixtures are still not compiled or executed.
 Attachment dimensions remain native; a viewport is not an attachment extent.
 Checked arithmetic, a combined memory budget and pre-write alias/plan validation
 bound the extra storage. CPU and PBO callers retain their existing pack/state

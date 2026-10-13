@@ -647,13 +647,14 @@ diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_doers.cc b
 index 6d640db..c0aa570 100644
 --- a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_doers.cc
 +++ b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_doers.cc
-@@ -7,6 +7,8 @@
+@@ -7,6 +7,9 @@
  #include <memory>
  
  #include "base/bits.h"
 +#include "base/check.h"
 +#include "base/check_op.h"
  #include "base/compiler_specific.h"
++#include "base/functional/bind.h"
  #include "base/functional/callback_helpers.h"
  #include "base/memory/raw_ptr.h"
 @@ -14,6 +16,7 @@
@@ -682,7 +683,7 @@ index 6d640db..c0aa570 100644
  
  namespace gpu {
  namespace gles2 {
-@@ -5228,5 +5229,218 @@ error::Error GLES2DecoderPassthroughImpl::DoPolygonOffsetClampEXT(
+@@ -5228,5 +5229,221 @@ error::Error GLES2DecoderPassthroughImpl::DoPolygonOffsetClampEXT(
    return error::kNoError;
  }
  
@@ -745,11 +746,13 @@ index 6d640db..c0aa570 100644
 +    if (!integer(GL_RENDERBUFFER_BINDING, previous)) {
 +      return kGlintReadbackMetadataUnavailable;
 +    }
-+    base::ScopedClosureRunner restore(base::BindOnce([this, previous] {
-+      api()->glBindRenderbufferEXTFn(GL_RENDERBUFFER,
-+                                     static_cast<GLuint>(previous));
-+      CheckErrorCallbackState();
-+    }));
++    base::ScopedClosureRunner restore(base::BindOnce(
++        [](GLES2DecoderPassthroughImpl* decoder, GLint binding) {
++          decoder->api()->glBindRenderbufferEXTFn(GL_RENDERBUFFER,
++                                                  static_cast<GLuint>(binding));
++          decoder->CheckErrorCallbackState();
++        },
++        base::Unretained(this), previous));
 +    api()->glBindRenderbufferEXTFn(GL_RENDERBUFFER, service_id);
 +    if (CheckErrorCallbackState()) {
 +      return kGlintReadbackMetadataUnavailable;
@@ -849,11 +852,12 @@ index 6d640db..c0aa570 100644
 +        return kGlintReadbackMetadataUnavailable;
 +      }
 +    }
-+    base::ScopedClosureRunner restore(
-+        base::BindOnce([this, texture_target, previous] {
-+          api()->glBindTextureFn(texture_target, static_cast<GLuint>(previous));
-+          CheckErrorCallbackState();
-+        }));
++    base::ScopedClosureRunner restore(base::BindOnce(
++        [](GLES2DecoderPassthroughImpl* decoder, GLenum target, GLint binding) {
++          decoder->api()->glBindTextureFn(target, static_cast<GLuint>(binding));
++          decoder->CheckErrorCallbackState();
++        },
++        base::Unretained(this), texture_target, previous));
 +    api()->glBindTextureFn(texture_target, texture->service_id());
 +    if (CheckErrorCallbackState()) {
 +      return kGlintReadbackMetadataUnavailable;
@@ -1086,8 +1090,8 @@ index 03f0f72..ce10e1c 100644
      const auto destination = std::span(data, buffer_size.ValueOrDie());
      if (!glint::candidate::CopyRgba8ReadbackToPackLayout(
              source, destination, width, height, 0, GetPackPixelStoreParams(),
--              copy_region)) {
-+            copy_region)) {
+-              copy_region).has_value()) {
++            copy_region).has_value()) {
        SynthesizeGLError(GL_INVALID_OPERATION, "readPixels",
                          "Glint WebGL pack-copy failed.");
      }

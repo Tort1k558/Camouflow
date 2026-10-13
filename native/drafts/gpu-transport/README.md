@@ -2,6 +2,17 @@
 
 **Unregistered; command/decoder/Blink integration is uncompiled and not a verified browser capability.**
 
+The current draft follows registered 001–037. It preserves explicit expected-result
+checks in CPU publication and uses stateless `base::BindOnce` cleanup callbacks
+with separately bound native decoder/binding arguments. The callbacks restore
+renderbuffer/texture bindings on every exit and retain error-state checking;
+they run synchronously within the query, not after decoder destruction.
+
+Combined identity/readback replay and isolated Mojo/GPU code generation passed:
+`identity-readback-001-037-batch-v3.json` on D. Active registered sources stayed
+unchanged. This is source/bindings evidence, **not C++ decoder compilation or
+browser execution**; older reports predate the 0037-compatible draft.
+
 Apply after the two candidates in `../next-readback/`, in order:
 
 1. `webgl_halo_readback_candidate.patch`
