@@ -75,6 +75,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
       QT_QUICK_BACKEND: software
       QT_QUICK_CONTROLS_STYLE: Basic
+      PYTHONFAULTHANDLER: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -106,7 +107,8 @@ jobs:
           os.environ["QT_QPA_PLATFORM"] = "offscreen"
           os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
           os.environ["CAMOUFLOW_DATA_DIR"] = tempfile.mkdtemp(prefix="camouflow-ci-")
-          from PyQt6.QtCore import QMetaObject, QObject, QUrl
+          from PyQt6 import sip
+          from PyQt6.QtCore import QMetaObject, QObject, QTimer, QUrl
           from PyQt6.QtQuick import QQuickWindow
           from app.storage.db import init_db, db_set_setting
           init_db()
@@ -120,17 +122,33 @@ jobs:
           market_client = Mock()
           market_client.market_scenarios.return_value = []
           ui.scenarios._public_client = lambda: market_client
-          from threading import Event
+          from threading import Event, get_ident
           market_gate = Event()
+          market_entered = Event()
+          market_ui_pulse = Event()
+          market_gate_timed_out = Event()
           market_requests = []
+          market_threads = []
+          ui_thread = get_ident()
           def delayed_market(query, category, sort):
               market_requests.append(query)
-              assert market_gate.wait(5), "Marketplace worker stalled"
+              market_threads.append(get_ident())
+              market_entered.set()
+              if not market_gate.wait(5):
+                  market_gate_timed_out.set()
+                  raise AssertionError("Marketplace worker stalled")
               return []
           market_client.market_scenarios.side_effect = delayed_market
-          started = time.monotonic()
           ui.scenarios.ensureMarketLoaded()
-          assert time.monotonic() - started < 0.2, "Marketplace blocked the UI"
+          QTimer.singleShot(0, market_ui_pulse.set)
+          deadline = time.monotonic() + 3
+          while not (market_entered.is_set() and market_ui_pulse.is_set()) and time.monotonic() < deadline:
+              ui.app.processEvents()
+              time.sleep(0.01)
+          assert market_entered.is_set() and market_ui_pulse.is_set(), "Marketplace blocked UI events"
+          assert market_threads and all(thread != ui_thread for thread in market_threads), "Marketplace ran on UI thread"
+          assert ui.scenarios.marketLoading and not market_gate_timed_out.is_set()
+          assert not market_gate.is_set(), "Marketplace completed before the responsiveness check"
           ui.scenarios.ensureMarketLoaded()
           ui.scenarios.searchMarket("old")
           ui.scenarios.searchMarket("latest")
@@ -141,6 +159,7 @@ jobs:
               time.sleep(0.01)
           assert not ui.scenarios.marketLoading
           assert market_requests == ["", "latest"], market_requests
+          assert all(thread != ui_thread for thread in market_threads), "Search ran on UI thread"
           ui.scenarios.ensureMarketLoaded()
           assert market_requests == ["", "latest"], "Cached page refetched"
           market_client.market_scenarios.side_effect = None
@@ -243,6 +262,8 @@ jobs:
           assert client.heartbeat_profile_lock.call_count == 2
           ui.profiles._heartbeat_timer.stop()
           ui.engine.rootObjects()[0].close()
+          # Match QmlApplication.exec(): release bindings before their Python bridges.
+          sip.delete(ui.engine)
 
   native-package:
     needs: qml-smoke
