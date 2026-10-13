@@ -350,6 +350,25 @@ def test_identity_readback_batch_rejects_conflicting_sources_instead_of_picking_
         _merge_composed_sources({"shared.h": "identity"}, {"shared.h": "gpu"})
 
 
+def test_gpu_passthrough_attachment_fixtures_enable_feature_and_cover_native_state():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_gpu_transport_draft import (
+        PASSTHROUGH_ATTACHMENT_PATCH, PASSTHROUGH_ATTACHMENT_PATHS,
+    )
+    from scripts.verify_native_identity_readback_batch import PATCHES
+
+    text = PASSTHROUGH_ATTACHMENT_PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == PASSTHROUGH_ATTACHMENT_PATHS
+    assert text.count("+TEST_F(GlintPassthroughAttachmentTest,") == 4
+    assert "InitAndEnableFeature(features::kGlintReadbackMetadataCandidate)" in text
+    assert "ActualRgba8ExtentsPreserveRenderbufferBinding" in text
+    assert "RedefinedAttachmentUsesCurrentNativeDimensions" in text
+    assert "IntegerAttachmentIsNotByteColourCompatible" in text
+    assert "MetadataQueryPreservesPendingClientError" in text
+    assert "GTEST_SKIP" not in text
+    assert PATCHES[-1] == PASSTHROUGH_ATTACHMENT_PATCH
+
+
 @pytest.mark.parametrize("destination", ["relative", "existing", "source", "public"])
 def test_identity_readback_batch_rejects_unsafe_evidence_before_source_validation(tmp_path, destination):
     from scripts.verify_native_identity_readback_batch import ROOT, verify

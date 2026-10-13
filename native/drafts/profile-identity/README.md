@@ -149,10 +149,10 @@ is not enabled merely because the observation validator supports that mode.
 
 ## Combined identity/readback source gate
 
-The next build batch combines the six identity patches above with the five
+The next build batch combines the six identity patches above with the six
 GPU/readback patches in `../gpu-transport/README.md`. The combined verifier runs
 both reviewed component validators, rejects conflicting overlapping edits, and
-replays all eleven patches into one fresh owned copy. Every resulting file must
+replays all twelve patches into one fresh owned copy. Every resulting file must
 match the component proofs; the active checkout and canonical inputs must remain
 unchanged. Optional code generation covers pinned Mojo bindings and GPU command
 headers without invoking a compiler or GN.

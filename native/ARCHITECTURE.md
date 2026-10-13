@@ -64,7 +64,7 @@ proof of desktop Linux: Android and Chrome/Chromium OS also use that family.
 Windows en-US/de-DE observations passed on the unchanged 001-027 baseline;
 synthetic platform cases are not Linux/macOS/Android runtime validation.
 `verify_native_identity_readback_batch.py` composes all six identity candidates
-with the five halo/clipping/GPU metadata candidates in one isolated source tree.
+with the six halo/clipping/GPU metadata candidates in one isolated source tree.
 The exact combined source and pinned Mojo/GPU generation passed; no native
 compilation, protection admission or change to the active build was performed.
 

@@ -30,6 +30,9 @@ DRAFTS = ROOT / "native/drafts/gpu-transport"
 PATCH = DRAFTS / "gpu_readback_metadata_candidate.patch"
 PROTOCOL_PATCH = DRAFTS / "gpu_readback_metadata_protocol_tests.patch"
 ATTACHMENT_PATCH = DRAFTS / "gpu_readback_metadata_attachment_tests.patch"
+PASSTHROUGH_ATTACHMENT_PATCH = DRAFTS / "gpu_readback_metadata_passthrough_attachment_tests.patch"
+PASSTHROUGH_ATTACHMENT_PATHS = {
+    "gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc"}
 ATTACHMENT_PATHS = {"gpu/command_buffer/service/gles2_cmd_decoder_unittest_framebuffers.cc"}
 PROTOCOL_PATHS = {"gpu/command_buffer/service/" + name for name in (
     "gles2_cmd_decoder_unittest_extensions.cc",
@@ -110,13 +113,16 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
     registered = build.source_patches(source, env) + build.v8_source_patches(source, env)
     if "0034-native-gpu-metadata-minimization.patch" not in {item["name"] for item in registered}:
         raise ValueError("The exact registered 001-034 baseline is required")
-    patches = (HALO_PATCH, CLIPPED_PATCH, PATCH, PROTOCOL_PATCH, ATTACHMENT_PATCH)
+    patches = (HALO_PATCH, CLIPPED_PATCH, PATCH, PROTOCOL_PATCH, ATTACHMENT_PATCH,
+               PASSTHROUGH_ATTACHMENT_PATCH)
     if patch_paths(PATCH.read_text(encoding="utf-8-sig")) != EXPECTED:
         raise ValueError("GPU transport source coverage differs from the reviewed candidate")
     if patch_paths(PROTOCOL_PATCH.read_text(encoding="utf-8-sig")) != PROTOCOL_PATHS:
         raise ValueError("GPU decoder fixture coverage differs from the reviewed candidate")
     if patch_paths(ATTACHMENT_PATCH.read_text(encoding="utf-8-sig")) != ATTACHMENT_PATHS:
         raise ValueError("GPU attachment fixture coverage differs from the reviewed candidate")
+    if patch_paths(PASSTHROUGH_ATTACHMENT_PATCH.read_text(encoding="utf-8-sig")) != PASSTHROUGH_ATTACHMENT_PATHS:
+        raise ValueError("GPU passthrough attachment fixture coverage differs from the reviewed candidate")
     paths = set().union(*(patch_paths(item.read_text(encoding="utf-8-sig")) for item in patches))
     formatter = source / "buildtools/win-format/clang-format.exe"
     if check_codegen:

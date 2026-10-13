@@ -19,7 +19,7 @@ from scripts.verify_native_document_drafts import digest, patch_paths
 PATCHES = (identity.PATCH, identity.MODE_PATCH, identity.CONTEXT_PATCH,
            identity.TRANSPORT_PATCH, identity.HANDOFF_PATCH, identity.LAUNCH_PATCH,
            gpu.HALO_PATCH, gpu.CLIPPED_PATCH, gpu.PATCH, gpu.PROTOCOL_PATCH,
-           gpu.ATTACHMENT_PATCH)
+           gpu.ATTACHMENT_PATCH, gpu.PASSTHROUGH_ATTACHMENT_PATCH)
 
 
 def _merge_composed_sources(first: dict, second: dict) -> dict:

@@ -9,6 +9,7 @@ Apply after the two candidates in `../next-readback/`, in order:
 3. `gpu_readback_metadata_candidate.patch`
 4. `gpu_readback_metadata_protocol_tests.patch`
 5. `gpu_readback_metadata_attachment_tests.patch`
+6. `gpu_readback_metadata_passthrough_attachment_tests.patch`
 
 ## Native path
 
@@ -35,7 +36,7 @@ From the CamouFlow repository with the exact applied 001–034 checkout:
 .venv\Scripts\python.exe scripts/verify_native_gpu_transport_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\gpu-transport-replay.json --check-codegen
 ```
 
-Use a new private report path. The verifier applies all five patches to an
+Use a new private report path. The verifier applies all six patches to an
 isolated copy, compares canonical helpers, checks command IDs, and verifies that
 active sources remain unchanged. `--check-codegen` also reruns the pinned GPU
 generator and formatter in that copy and checks every copied generated header.
@@ -52,7 +53,13 @@ This option currently requires the Windows checkout's formatter.
 - Execute the three prepared feature-on validating-decoder attachment fixtures:
   actual RGBA8 dimensions, integer format remaining non-byte-compatible, and
   renderbuffer redefinition updating dimensions. These execute the native command,
-  not just the standalone codec. Passthrough attachment coverage remains pending.
+  not just the standalone codec.
+- Compile and execute the four feature-on passthrough attachment fixture
+  definitions: RGBA8 dimensions with restored renderbuffer binding, current
+  dimensions after redefinition, integer format remaining non-byte-compatible,
+  and metadata querying while preserving a pending client GL error. These use
+  the existing GLES3 passthrough context/command helpers; no skip or success
+  substitute is supplied. They are prepared, not executed.
 - Test shared-memory bounds, initialized/short results, feature-off and context loss.
 - Verify real renderbuffer, 2D/cube/array/3D texture levels and attachment changes.
 - Verify completeness, native object ownership and unsupported formats/layers.
