@@ -1,0 +1,115 @@
+from copy import deepcopy
+import json
+
+import pytest
+
+from app.core.native.diagnostics import _hint_brands, audit_observed_request_identity
+
+
+def coherent_request():
+    brands = [{"brand": "Chromium", "version": "148"}, {"brand": 'Not"A\\Brand', "version": "99"}]
+    versions = [{"brand": value["brand"], "version": "148.0.7778.96" if value["brand"] == "Chromium" else "99.0.0.0"}
+                for value in brands]
+    document = {"userAgent": "Chrome/148.0.0.0", "language": "en-US",
+                "userAgentData": {"platform": "Windows", "mobile": False, "brands": brands},
+                "userAgentHighEntropy": {"architecture": "x86", "bitness": "64", "model": "",
+                    "platformVersion": "19.0.0", "wow64": False, "formFactors": ["Desktop"],
+                    "fullVersionList": versions}}
+    headers = {"User-Agent": document["userAgent"], "Accept-Language": "en-US,en;q=0.9",
+               "Sec-CH-UA-Platform": '"Windows"', "Sec-CH-UA-Mobile": "?0"}
+    for name, values in (("Sec-CH-UA", brands), ("Sec-CH-UA-Full-Version-List", versions)):
+        headers[name] = ", ".join(f'{json.dumps(value["brand"])};v={json.dumps(value["version"])}' for value in values)
+    for header, key in (("Sec-CH-UA-Arch", "architecture"), ("Sec-CH-UA-Bitness", "bitness"),
+                        ("Sec-CH-UA-Model", "model"), ("Sec-CH-UA-Platform-Version", "platformVersion")):
+        headers[header] = json.dumps(document["userAgentHighEntropy"][key])
+    headers["Sec-CH-UA-WoW64"] = "?0"
+    headers["Sec-CH-UA-Form-Factors"] = '"Desktop"'
+    return headers, {"document": document}
+
+
+def test_strict_request_hints_accept_native_values_and_escaped_grease_without_order_assumptions():
+    headers, observed = coherent_request()
+    assert audit_observed_request_identity(headers, observed, strict_client_hints=True) == []
+    observed["document"]["userAgentData"]["brands"].reverse()
+    observed["document"]["userAgentHighEntropy"]["fullVersionList"].reverse()
+    assert audit_observed_request_identity(headers, observed, strict_client_hints=True) == []
+
+
+@pytest.mark.parametrize("header", ["Sec-CH-UA", "Sec-CH-UA-Full-Version-List", "Sec-CH-UA-Arch",
+    "Sec-CH-UA-Bitness", "Sec-CH-UA-Model", "Sec-CH-UA-Platform-Version", "Sec-CH-UA-WoW64", "Sec-CH-UA-Form-Factors"])
+@pytest.mark.parametrize("missing", [False, True])
+def test_strict_request_hints_require_each_measured_header_and_reject_contradictions(header, missing):
+    headers, observed = coherent_request()
+    if missing:
+        del headers[header]
+    else:
+        headers[header] = "invented"
+    assert audit_observed_request_identity(headers, observed, strict_client_hints=True)
+
+
+@pytest.mark.parametrize("invalid", ['"Chromium"', '"Chromium";v="148",', '"Chromium";v="148" junk',
+    '"Chromium";v=148', '"Chromium";v="148";v="99"', '"bad\\q";v="148"',
+    '"bad\nbrand";v="148"', '"badé";v="148"', '"Chromium";v="148"' * 1000])
+def test_hint_brand_parser_rejects_ambiguous_unbounded_or_non_structured_values(invalid):
+    with pytest.raises(ValueError):
+        _hint_brands(invalid)
+
+
+def test_hint_brand_parser_preserves_multiplicity_and_observation_budget():
+    assert _hint_brands('"Chromium"; v="148", "Chromium";v="148"') == [("Chromium", "148")] * 2
+    with pytest.raises(ValueError):
+        _hint_brands(", ".join('"Chromium";v="148"' for _ in range(17)))
+    headers, observed = coherent_request()
+    headers["Sec-CH-UA"] += ', "Chromium";v="148"'
+    assert audit_observed_request_identity(headers, observed, strict_client_hints=True)
+
+
+@pytest.mark.parametrize("mutation", ["missing-high", "invalid-brands", "non-ascii", "invalid-wow64", "invalid-form-factors"])
+def test_strict_request_hints_do_not_invent_missing_or_malformed_js_observations(mutation):
+    headers, observed = coherent_request()
+    document = observed["document"]
+    if mutation == "missing-high":
+        del document["userAgentHighEntropy"]
+    elif mutation == "invalid-brands":
+        document["userAgentData"]["brands"] = [{"brand": "Chromium", "version": 148}]
+    elif mutation == "non-ascii":
+        document["userAgentHighEntropy"]["model"] = "é"
+    elif mutation == "invalid-wow64":
+        document["userAgentHighEntropy"]["wow64"] = 0
+    else:
+        document["userAgentHighEntropy"]["formFactors"] = "Desktop"
+    assert audit_observed_request_identity(headers, observed, strict_client_hints=True)
+
+
+def test_strict_request_hint_audit_preserves_inputs_and_legacy_default_scope():
+    headers, observed = coherent_request()
+    before = deepcopy((headers, observed))
+    assert audit_observed_request_identity(headers, observed, strict_client_hints=True) == []
+    assert (headers, observed) == before
+    for name in list(headers):
+        if name.lower() not in {"user-agent", "accept-language", "sec-ch-ua-platform", "sec-ch-ua-mobile"}:
+            del headers[name]
+    assert audit_observed_request_identity(headers, observed) == []
+    assert audit_observed_request_identity(headers, observed, strict_client_hints=True)
+
+
+@pytest.mark.parametrize("contradiction", [False, True])
+def test_native_identity_runner_strict_mode_checks_real_echo_against_metadata(contradiction):
+    from scripts.verify_native_identity import validate_observation
+
+    headers, values = coherent_request()
+    document = values["document"]
+    baseline = {"userAgent": "HeadlessChrome/148.0.0.0", "language": "en-US",
+        "userAgentData": document["userAgentData"], "metadata": document["userAgentHighEntropy"],
+        "headers": {name.lower(): value for name, value in headers.items()},
+        "getter": "function get userAgent() { [native code] }", "ownProperty": False,
+        "illegalInvocation": True, "plugins": ["PDF Viewer"], "chromeType": "object"}
+    baseline["headers"]["user-agent"] = baseline["userAgent"]
+    observed = deepcopy(baseline)
+    observed["userAgent"] = observed["headers"]["user-agent"] = "Chrome/148.0.0.0"
+    if contradiction:
+        observed["headers"]["sec-ch-ua-arch"] = '"arm"'
+        with pytest.raises(ValueError, match="request/JS identity contradictions"):
+            validate_observation(observed, baseline, protected=True, worker=False, strict_client_hints=True)
+    else:
+        validate_observation(observed, baseline, protected=True, worker=False, strict_client_hints=True)

@@ -27,11 +27,29 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | `scripts/verify_native_canvas.py` | Canvas verification tooling, not an implemented protection claim |
 | `scripts/verify_native_worker_startup.py` | Default: 40 owned startup/restart/shared-client cases; `--include-nested` adds 20 nested dedicated-worker cases; no Canvas admission |
 | `scripts/verify_native_surfaces.py --include-nested-canvas` | Prepared: 24 parent/child Canvas cases across baseline/two profiles and restart, including first-script/repeated readback and separate fetch/body counters; not yet executed against a browser |
+| `scripts/verify_native_identity.py --strict-client-hints` | Prepared: document/frame HTTP brand/version lists, architecture, bitness, model, platform version, WoW64 and form factors versus measured JS after owned Accept-CH; not yet run on a browser |
 
 Run commands as documented in the [build guide](../native/BUILDING.md). Use fresh
 report paths outside source/application repositories. Keep raw outputs and
 measured executable/core-DLL hashes; a count without exact names and successful
 completion is insufficient. Failed or skipped cases are not a passing gate.
+
+The strict identity extension preserves the existing gate by default:
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_identity.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative --report D:\CamouFlowNative\identity-strict-new.json --strict-client-hints
+```
+
+It compares every advertised brand/version, including escaped GREASE values,
+without assuming brand order or discarding duplicates. Missing or malformed
+observations reject rather than invent values. The bounded parser handles the
+Chromium brand/version field, not arbitrary HTTP Structured Fields. High-entropy
+HTTP hints need server opt-in: see the [UA-CH specification](https://wicg.github.io/ua-client-hints/).
+Worker request hints are not inferred from document headers; this strict HTTP
+extension covers documents/frames only. EXE/DLL hashes must remain unchanged
+and existing reports cannot be overwritten. Existing 18-case identity results
+do not establish this newly prepared stricter contract; TLS and cross-platform
+identity are not covered.
 
 The combined surface gate has an optional nested Canvas extension:
 

@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 from playwright.async_api import Error as PlaywrightError, async_playwright  # noqa: E402
 from app.core.native.diagnostics import audit_observed_request_identity  # noqa: E402
 from scripts.verify_native_hardware import WORKERS  # noqa: E402
-from scripts.verify_native_runtime import FixtureHandler, FixtureServer  # noqa: E402
+from scripts.verify_native_runtime import FixtureHandler, FixtureServer, measure_runtime_core  # noqa: E402
 
 FLAG = "--camouflow-native-user-agent"
 HINTS = ("Sec-CH-UA", "Sec-CH-UA-Mobile", "Sec-CH-UA-Platform", "Sec-CH-UA-Arch",
@@ -75,14 +75,18 @@ class IdentityFixtureHandler(FixtureHandler):
             pass
 
 
-def validate_observation(observed: dict, baseline: dict, *, protected: bool, worker: bool) -> None:
+def validate_observation(observed: dict, baseline: dict, *, protected: bool, worker: bool,
+                         strict_client_hints: bool = False) -> None:
     if not worker:
         for values in (baseline, observed):
             headers = values.get("headers")
-            identity_headers = ({name: headers.get(name) for name in (
-                "user-agent", "accept-language", "sec-ch-ua-platform", "sec-ch-ua-mobile")}
+            names = ("user-agent", "accept-language", *(name.lower() for name in HINTS)) if strict_client_hints else (
+                "user-agent", "accept-language", "sec-ch-ua-platform", "sec-ch-ua-mobile")
+            identity_headers = ({name: headers.get(name) for name in names}
                 if isinstance(headers, dict) else headers)
-            issues = audit_observed_request_identity(identity_headers, {"document": values})
+            issues = audit_observed_request_identity(identity_headers,
+                {"document": {**values, "userAgentHighEntropy": values.get("metadata")}},
+                strict_client_hints=strict_client_hints)
             if issues:
                 raise ValueError("Native request/JS identity contradictions: " + "; ".join(issues))
     if baseline["userAgent"].count("HeadlessChrome/") != 1:
@@ -106,7 +110,8 @@ def validate_observation(observed: dict, baseline: dict, *, protected: bool, wor
         raise ValueError("Native policy changed genuine plugins or window.chrome")
 
 
-async def verify(executable: Path, work_dir: Path, origin: str, checks: list) -> dict:
+async def verify(executable: Path, work_dir: Path, origin: str, checks: list, *, strict_client_hints: bool = False) -> dict:
+    core = measure_runtime_core(executable)
     baselines = {}
     async with async_playwright() as driver:
         for name, args in (("native-default", []), ("native-identity", [FLAG])):
@@ -143,7 +148,8 @@ async def verify(executable: Path, work_dir: Path, origin: str, checks: list) ->
                             raise ValueError("Native Client Hints disagree across document and worker/frame contexts")
                         check = {"mode": name, "context": scope, "observed": observed, "passed": False}
                         checks.append(check)
-                        validate_observation(observed, baseline, protected=name == "native-identity", worker=scope in workers)
+                        validate_observation(observed, baseline, protected=name == "native-identity", worker=scope in workers,
+                                             strict_client_hints=strict_client_hints)
                         check["passed"] = True
                 finally:
                     await context.close()
@@ -164,7 +170,11 @@ async def verify(executable: Path, work_dir: Path, origin: str, checks: list) ->
                 check["passed"] = True
     with executable.open("rb") as stream:
         checksum = hashlib.file_digest(stream, "sha256").hexdigest()
+    if measure_runtime_core(executable) != core:
+        raise ValueError("Native identity browser core changed during verification")
     return {"passed": True, "platform": platform.system(), "version": version,
+            "strict_client_hints": strict_client_hints,
+            "runtime_core_sha256_measured": core,
             "binary_sha256_measured": checksum, "checks": checks,
             "scope": "Native UA HTTP/JavaScript coherence and preserved Client Hints/plugins; not CAPTCHA, TLS or CDP invisibility"}
 
@@ -174,14 +184,19 @@ def main() -> int:
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--strict-client-hints", action="store_true",
+                        help="Compare document/frame low/high-entropy HTTP hints with JS after owned Accept-CH")
     args = parser.parse_args()
+    if args.report.exists() or args.report.is_symlink():
+        parser.error("Refusing to overwrite native identity evidence")
     checks = []
     server = FixtureServer(("127.0.0.1", 0), IdentityFixtureHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
         args.work_dir.mkdir(parents=True, exist_ok=True)
-        report = asyncio.run(verify(args.executable.resolve(), args.work_dir, f"http://127.0.0.1:{server.server_port}", checks))
+        report = asyncio.run(verify(args.executable.resolve(), args.work_dir, f"http://127.0.0.1:{server.server_port}", checks,
+                                   strict_client_hints=args.strict_client_hints))
     except Exception as error:
         report = {"passed": False, "platform": platform.system(), "checks": checks,
                   "error_type": type(error).__name__, "error": str(error)}

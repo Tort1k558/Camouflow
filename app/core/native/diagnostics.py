@@ -1,6 +1,7 @@
 """Read actual Native browser values; never replace fingerprint APIs."""
 
 from dataclasses import asdict
+import json
 import re
 
 from .configuration import NativeConfiguration
@@ -322,7 +323,28 @@ def audit_observed_identity(observed: dict, browser_version: str) -> list[str]:
     return issues
 
 
-def audit_observed_request_identity(headers: dict, observed: dict) -> list[str]:
+def _hint_string(value: str) -> str:
+    if not isinstance(value, str) or any(not 32 <= ord(character) <= 126 for character in value):
+        raise ValueError("Client Hints strings require printable ASCII")
+    return json.dumps(value, ensure_ascii=False)
+
+
+HINT_QUOTED_STRING = r'"(?:[\x20-\x21\x23-\x5b\x5d-\x7e]|\\["\\])*"'
+
+
+def _hint_brands(value: str) -> list[tuple[str, str]]:
+    """Parse the Chromium brand/version field, not arbitrary Structured Fields."""
+    member = f'({HINT_QUOTED_STRING})[ \t]*;[ \t]*v[ \t]*=[ \t]*({HINT_QUOTED_STRING})'
+    if (not isinstance(value, str) or not 1 <= len(value) <= 8192
+            or not re.fullmatch(f'[ \t]*{member}(?:[ \t]*,[ \t]*{member})*[ \t]*', value)):
+        raise ValueError("Client Hints brand/version header is malformed")
+    brands = [(json.loads(match[0]), json.loads(match[1])) for match in re.findall(member, value)]
+    if len(brands) > 16:
+        raise ValueError("Client Hints brand/version header exceeds the observation budget")
+    return sorted(brands)
+
+
+def audit_observed_request_identity(headers: dict, observed: dict, *, strict_client_hints: bool = False) -> list[str]:
     """Compare one document request with JS; not TLS or full Client Hints proof."""
     if (not isinstance(headers, dict) or any(not isinstance(key, str) or not isinstance(value, str)
                                            for key, value in headers.items())):
@@ -353,6 +375,48 @@ def audit_observed_request_identity(headers: dict, observed: dict) -> list[str]:
     mobile = hints.get("mobile")
     if type(mobile) is not bool or normalized.get("sec-ch-ua-mobile") != ("?1" if mobile else "?0"):
         issues.append("Document request Client Hints mobile flag disagrees with JS identity")
+    if strict_client_hints:
+        high = document.get("userAgentHighEntropy")
+        for header, values in (("sec-ch-ua", hints.get("brands")),
+                               ("sec-ch-ua-full-version-list", high.get("fullVersionList") if isinstance(high, dict) else None)):
+            try:
+                if (not isinstance(values, list) or not 1 <= len(values) <= 16
+                        or any(not isinstance(value, dict) or set(value) != {"brand", "version"}
+                               for value in values)):
+                    raise ValueError("JS brands unavailable")
+                expected = _hint_brands(", ".join(f'{_hint_string(value["brand"])};v={_hint_string(value["version"])}'
+                                                 for value in values))
+                if _hint_brands(normalized.get(header)) != expected:
+                    raise ValueError("Brand/version mismatch")
+            except ValueError:
+                issues.append(f"Document request {header} disagrees with measured JS brands/versions")
+        for header, key in (("sec-ch-ua-arch", "architecture"), ("sec-ch-ua-bitness", "bitness"),
+                            ("sec-ch-ua-model", "model"), ("sec-ch-ua-platform-version", "platformVersion")):
+            try:
+                if not isinstance(high, dict) or normalized.get(header) != _hint_string(high.get(key)):
+                    raise ValueError("High-entropy mismatch")
+            except ValueError:
+                issues.append(f"Document request {header} disagrees with measured high-entropy JS identity")
+        wow64 = high.get("wow64") if isinstance(high, dict) else None
+        if type(wow64) is not bool or normalized.get("sec-ch-ua-wow64") != ("?1" if wow64 else "?0"):
+            issues.append("Document request sec-ch-ua-wow64 disagrees with measured high-entropy JS identity")
+        factors = high.get("formFactors") if isinstance(high, dict) else None
+        emitted = normalized.get("sec-ch-ua-form-factors")
+        try:
+            if (not isinstance(factors, list) or len(factors) > 16 or not isinstance(emitted, str)
+                    or len(emitted) > 8192):
+                raise ValueError("Form factors unavailable")
+            expected = sorted(_hint_string(value) for value in factors)
+            if not emitted.strip(" \t") and not expected:
+                actual = []
+            elif re.fullmatch(f'[ \t]*{HINT_QUOTED_STRING}(?:[ \t]*,[ \t]*{HINT_QUOTED_STRING})*[ \t]*', emitted):
+                actual = sorted(_hint_string(json.loads(value)) for value in re.findall(HINT_QUOTED_STRING, emitted))
+            else:
+                raise ValueError("Form factors malformed")
+            if actual != expected:
+                raise ValueError("Form factors mismatch")
+        except ValueError:
+            issues.append("Document request sec-ch-ua-form-factors disagrees with measured high-entropy JS identity")
     return issues
 
 
