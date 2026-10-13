@@ -4,6 +4,7 @@ import json
 import struct
 import sys
 import threading
+from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import urlopen
 
@@ -337,3 +338,30 @@ def test_identity_launch_candidate_requires_full_surfaces_and_keeps_renderer_sel
     added = " ".join(line[1:].strip() for line in text.splitlines()
                      if line.startswith("+") and not line.startswith("+++"))
     assert "this, base::FilePath(), *native_mode" in added
+
+
+def test_identity_readback_batch_rejects_conflicting_sources_instead_of_picking_a_winner():
+    from scripts.verify_native_identity_readback_batch import _merge_composed_sources
+
+    assert _merge_composed_sources({"owned.cc": "one", "same.h": "same"},
+                                   {"gpu.cc": "two", "same.h": "same"}) == {
+        "owned.cc": "one", "gpu.cc": "two", "same.h": "same"}
+    with pytest.raises(ValueError, match="overlapping source edits"):
+        _merge_composed_sources({"shared.h": "identity"}, {"shared.h": "gpu"})
+
+
+@pytest.mark.parametrize("destination", ["relative", "existing", "source", "public"])
+def test_identity_readback_batch_rejects_unsafe_evidence_before_source_validation(tmp_path, destination):
+    from scripts.verify_native_identity_readback_batch import ROOT, verify
+
+    workspace = tmp_path / "workspace"
+    source = workspace / "chromium/src"
+    source.mkdir(parents=True)
+    existing = tmp_path / "existing.json"
+    existing.write_text("retain", encoding="utf-8")
+    reports = {"relative": Path("relative.json"), "existing": existing,
+               "source": source / "report.json", "public": ROOT / "report.json"}
+    with pytest.raises(ValueError, match="new private report"):
+        verify(workspace, reports[destination])
+    assert existing.read_text(encoding="utf-8") == "retain"
+    assert not list(source.iterdir())

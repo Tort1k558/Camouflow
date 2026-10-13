@@ -147,7 +147,26 @@ Synthetic validator tests passed for both contracts. **The public runtime CLI
 still tests registered partitioned privacy only**: identity launch/receipt admission
 is not enabled merely because the observation validator supports that mode.
 
-## Remaining browser gates
+## Combined identity/readback source gate
+
+The next build batch combines the six identity patches above with the five
+GPU/readback patches in `../gpu-transport/README.md`. The combined verifier runs
+both reviewed component validators, rejects conflicting overlapping edits, and
+replays all eleven patches into one fresh owned copy. Every resulting file must
+match the component proofs; the active checkout and canonical inputs must remain
+unchanged. Optional code generation covers pinned Mojo bindings and GPU command
+headers without invoking a compiler or GN.
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_identity_readback_batch.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-readback-batch.json --check-codegen
+```
+
+Source composition is not evidence of linking, API compatibility or protected
+GPU output. Both candidate sets remain unregistered and feature admission stays
+blocked. WebGPU readback, floating-point/HDR surfaces and believable OS/GPU/mobile
+presets are not implemented by this combined gate.
+
+## Still required
 
 - Execute native fixtures, including unchanged legacy privacy vectors.
 - Verify real BrowserContext/OTR lifetime and persisted profile restart.

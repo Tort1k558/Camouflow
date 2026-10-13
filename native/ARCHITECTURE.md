@@ -57,6 +57,10 @@ Manager diagnostics also compare measured WebGL/WebGL2 extensions, six limits an
 context attributes between document and dedicated worker. A feature-off 001-027
 browser passed en-US/de-DE loopback checks with unchanged core hashes; these
 observations do not validate metadata spoofing, the new policy batch or presets.
+`verify_native_identity_readback_batch.py` composes all six identity candidates
+with the five halo/clipping/GPU metadata candidates in one isolated source tree.
+The exact combined source and pinned Mojo/GPU generation passed; no native
+compilation, protection admission or change to the active build was performed.
 
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy
 requests before startup. Unsupported requests fail rather than silently falling
