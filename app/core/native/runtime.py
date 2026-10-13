@@ -47,6 +47,13 @@ class NativeRuntime:
                 raise NativeRuntimeError("Native Chromium executable is not installed")
             if not self.profile_dir.is_absolute() or self.profile_dir != self.profile_dir.resolve() or self.profile_dir.is_symlink() or self.profile_dir.is_junction():
                 raise NativeRuntimeError("Native profile directory must be absolute and not a link")
+            if proxy is not None and (not isinstance(proxy, dict)
+                    or set(proxy) - {"server", "username", "password", "bypass"}
+                    or any(not isinstance(value, str) for value in proxy.values())
+                    or not proxy.get("server", "").strip()):
+                raise ValueError("Invalid Native proxy configuration")
+            if proxy is not None:
+                proxy = dict(proxy)
             self.profile_dir.mkdir(parents=True, exist_ok=True)
             marker = self.profile_dir / "camouflow-native.json"
             if marker.is_symlink() or (self.profile_dir / "native-runtime.lock").is_symlink():
@@ -60,8 +67,6 @@ class NativeRuntime:
                     raise NativeRuntimeError("Native profile identity is invalid") from None
                 if identity != {"engine": "camouflow-native", "schema": 1}:
                     raise NativeRuntimeError("Native profile identity is incompatible")
-            if proxy is not None and (not isinstance(proxy, dict) or not proxy.get("server") or set(proxy) - {"server", "username", "password", "bypass"}):
-                raise ValueError("Invalid Native proxy configuration")
             lock = QLockFile(str(self.profile_dir / "native-runtime.lock"))
             lock.setStaleLockTime(0)
             if not lock.tryLock(0):

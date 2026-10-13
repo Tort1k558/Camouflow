@@ -627,6 +627,65 @@ def test_native_canvas_diagnostics_does_not_invent_pixels_for_unavailable_contex
         "Document and dedicated worker disagree on canvas availability"]
 
 
+@pytest.mark.parametrize("proxy", [
+    [], "http://127.0.0.1:8080", {}, {"server": []}, {"server": "   "},
+    {"server": "http://127.0.0.1:8080", "username": 1},
+    {"server": "http://127.0.0.1:8080", "password": None},
+    {"server": "http://127.0.0.1:8080", "bypass": []},
+    {"server": "http://127.0.0.1:8080", "unknown": "private-value"},
+])
+def test_native_invalid_proxy_does_not_create_profile_or_start_driver(tmp_path, monkeypatch, proxy):
+    from unittest.mock import Mock
+
+    from app.core.native import runtime as module
+
+    driver = Mock()
+    monkeypatch.setattr(module, "async_playwright", driver)
+    profile = tmp_path / "not-created"
+    runtime = NativeRuntime(profile, Path(__file__), NativeConfiguration())
+    with pytest.raises(ValueError, match="^Invalid Native proxy configuration$"):
+        asyncio.run(runtime.start(proxy=proxy))
+    driver.assert_not_called()
+    assert not runtime.has_resources and not profile.exists()
+
+
+@pytest.mark.parametrize("proxy", [
+    {"server": "http://127.0.0.1:8080"},
+    {"server": "127.0.0.1:8080"},
+    {"server": "http://127.0.0.1:8080", "username": "owned-user", "password": "owned:value",
+     "bypass": "localhost,127.0.0.1"},
+    {"server": "socks5://127.0.0.1:1080", "username": "", "password": "", "bypass": ""},
+])
+def test_native_valid_proxy_values_remain_owned_across_async_driver_start(tmp_path, monkeypatch, proxy):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.core.native import runtime as module
+
+    context = SimpleNamespace(close=AsyncMock())
+    launch = AsyncMock(return_value=context)
+    driver = SimpleNamespace(chromium=SimpleNamespace(launch_persistent_context=launch), stop=AsyncMock())
+    expected = dict(proxy)
+
+    async def start_driver():
+        proxy["server"] = "changed-after-validation"
+        return driver
+
+    monkeypatch.setattr(module, "async_playwright", lambda: SimpleNamespace(start=AsyncMock(side_effect=start_driver)))
+    runtime = NativeRuntime(tmp_path / "owned", Path(__file__), NativeConfiguration())
+
+    async def check():
+        try:
+            assert await runtime.start(proxy=proxy) is context
+            assert launch.await_args.kwargs["proxy"] == expected
+            assert launch.await_args.kwargs["proxy"] is not proxy
+        finally:
+            await runtime.close()
+
+    asyncio.run(check())
+    assert not runtime.has_resources
+
+
 def test_native_missing_binary_does_not_touch_profile(tmp_path):
     profile = tmp_path / "profile"
     runtime = NativeRuntime(profile, tmp_path / "missing.exe", NativeConfiguration())
