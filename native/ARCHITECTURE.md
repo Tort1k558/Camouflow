@@ -150,8 +150,16 @@ names 0031 (worker policy), 0032 (document policy) and 0033 (surface readback)
 are promotion prerequisites, **not currently registered or compiled patches**.
 The current 001–027 browser is deliberately rejected before launch.
 
-These are prepared checks, not executed protected-browser results. Numerical
-Audio error/SNR, performance budgets, GPU readback, malformed-policy injection,
+Measured float32 bit arrays are bound to each Audio digest. The combined gate
+compares them against the unprotected baseline: at most the lowest mantissa bit
+may change, signed silence/subnormals/out-of-range samples remain exact, a signal
+must actually change, and measured signal-to-noise must be at least 130 dB.
+Render durations are retained separately and excluded from restart identity;
+they do not prove a performance budget. The baseline Audio runner accepts
+`--sample-quality` to capture the same bits and durations without enabling policy.
+
+These are prepared checks, not executed protected-browser results. Performance
+budgets, GPU readback, malformed-policy injection,
 root-initial/sandbox delivery and public anti-bot diagnostics remain separate
 work. `privacy_admitted` stays false even if this functional gate passes.
 

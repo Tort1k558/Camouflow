@@ -1,5 +1,7 @@
 import copy
+import hashlib
 import json
+import struct
 import sys
 import threading
 from urllib.error import HTTPError
@@ -23,14 +25,20 @@ def observation(digest="a", cross=None):
             canvas.update(htmlBlob=None, htmlDataUrl=None)
             audio = {"available": False, "reason": "API unavailable"}
         else:
-            signal = {"hash": value, "copiedHash": value, "rightHash": value,
+            samples = [0x3e800000 + int(value[0], 16) * 2] * 4096
+            sample_hash = hashlib.sha256(struct.pack("<4096I", *samples)).hexdigest()
+            silent_hash = hashlib.sha256(bytes(4096 * 4)).hexdigest()
+            signal = {"hash": sample_hash, "copiedHash": sample_hash, "rightHash": sample_hash,
+                "sampleBits": samples, "renderMilliseconds": 1.0,
                 "finite": True, "silence": None, "signal": True, "eventSameBuffer": True,
                 "liveMutation": True, "copyFromSeesMutation": True, "copyToSeesMutation": True,
                 "invalidChannel": "IndexSizeError", "sampleRate": 44100, "channels": 2,
                 "frames": 4096, "closed": True}
-            silence = {**signal, "hash": "f" * 64, "copiedHash": "f" * 64,
-                       "rightHash": "f" * 64, "silence": True, "signal": None}
-            audio = {"available": True, "signal": signal, "repeat": copy.deepcopy(signal),
+            silence = {**signal, "hash": silent_hash, "copiedHash": silent_hash,
+                       "rightHash": silent_hash, "silence": True, "signal": None,
+                       "sampleBits": [0] * 4096}
+            audio = {"available": True, "completionMutationVisible": True,
+                     "signal": signal, "repeat": copy.deepcopy(signal),
                      "silence": silence}
         rows[name] = {"canvas": canvas, "audio": audio}
     return rows
@@ -69,6 +77,13 @@ def test_restart_drift_and_reused_profile_cannot_pass():
         surfaces.validate_combined(first, observation("d", "e"), protected=True)
     with pytest.raises(ValueError, match="both profiles"):
         surfaces.validate_isolation(observation(), first, first)
+
+
+def test_restart_durations_are_measured_not_fingerprint_identity():
+    previous = observation("b", "c")
+    observed = copy.deepcopy(previous)
+    observed["document"]["audio"]["signal"]["renderMilliseconds"] = 2.5
+    surfaces.validate_combined(observed, previous, protected=True)
 
 
 def test_unavailable_document_audio_cannot_pass():

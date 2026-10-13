@@ -75,5 +75,33 @@ numerical error, performance and real browser operation remain mandatory gates.
 The 22-patch combined replay passed across 92 paths:
 `canvas-audio-surface-guards-public-replay-v1.json` on D. This confirms source
 composition and unchanged active sources/GN/receipt/browser core, not C++
-compilation or Audio privacy. The existing Audio probe still measures only an
-unprotected compatibility baseline unless a separate protected gate is added.
+compilation or Audio privacy.
+
+## Prepared numerical runtime gate
+
+`scripts/verify_native_surfaces.py` combines Canvas and Audio in one owned run
+for two independent protected profiles, baseline, restarts and missing-policy
+rejection. It rejects the old browser before launch. Protected runtime results
+have **not been obtained**.
+
+`scripts/verify_native_audio_quality.py` checks 4096 actual float32 sample bits
+against their measured SHA-256, then compares protected and baseline signals.
+Only one least-significant mantissa bit may change; signed silence, subnormals
+and samples at/above unit magnitude remain exact. Unchanged nonzero output is
+not masking. The signal must satisfy a 130-dB SNR budget. Reports retain changed
+sample count, maximum absolute error, SNR and measured render durations.
+Durations are observations, not a passing performance threshold.
+
+The baseline command accepts `--sample-quality` to retain bits and timings
+without enabling protection. The existing 001–027 browser passed this capture
+in five document contexts over initial/restart phases: 30 measured offline
+renders plus ten independent completion-listener mutation checks. The mutation
+must be visible through the Promise's buffer; quality signals are not modified
+by this separate check. Sample hashes and API semantics stayed stable.
+Measured render durations were 1.1–17 ms (median 1.75 ms) during the concurrent j4 build; this is an
+**unprotected baseline**, not transform overhead or a portable performance claim.
+Evidence: `audio-001-027-quality-baseline-v4.json` on D.
+
+Realtime playback/analyser quality, longer clips,
+protected completion-listener mutation and full workload performance remain
+separate gates. Python validator fixtures do not execute the C++ transform.

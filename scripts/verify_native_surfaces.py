@@ -25,6 +25,7 @@ from playwright.async_api import Error as BrowserError
 from app.core.native.runtime import NativeRuntime
 from scripts.verify_native_audio import AUDIO_READ
 from scripts.verify_native_audio import validate_observations as validate_audio
+from scripts.verify_native_audio_quality import compare_quality, strip_quality
 from scripts.verify_native_canvas import (
     CONTEXTS,
     READ,
@@ -53,7 +54,7 @@ REQUIRED_PATCHES = (
     "0032-native-document-surface-policy.patch",
     "0033-native-surface-readback.patch",
 )
-COMBINED_READ = f"async () => ({{canvas: await ({READ})(), audio: await ({AUDIO_READ})()}})"
+COMBINED_READ = f"async () => ({{canvas: await ({READ})(), audio: await ({AUDIO_READ})(true)}})"
 DOCUMENT_CONTEXTS = CONTEXTS - {"dedicated", "shared", "service"}
 SAME_PARTITION = CONTEXTS - {"cross_origin_frame"}
 
@@ -137,7 +138,7 @@ def validate_combined(observed: dict, previous: dict | None = None, *, protected
            for value in observed.values()):
         raise ValueError("Combined surface observations are incomplete")
     canvas = {name: value["canvas"] for name, value in observed.items()}
-    audio = {name: value["audio"] for name, value in observed.items()}
+    audio = strip_quality({name: value["audio"] for name, value in observed.items()})
     validate_canvas(canvas, require_context_equality=not protected)
     coverage = validate_audio(audio)
     if set(coverage["available"]) != DOCUMENT_CONTEXTS:
@@ -150,8 +151,12 @@ def validate_combined(observed: dict, previous: dict | None = None, *, protected
                 raise ValueError("Same-partition surface reads disagree")
             if surface["cross_origin_frame"][field] == reference:
                 raise ValueError("Cross-origin partition did not isolate the surface")
-    if previous is not None and observed != previous:
-        raise ValueError("Combined surface reads changed across profile restart")
+    if previous is not None:
+        validate_combined(previous, protected=protected)
+        previous_canvas = {name: value["canvas"] for name, value in previous.items()}
+        previous_audio = strip_quality({name: value["audio"] for name, value in previous.items()})
+        if canvas != previous_canvas or audio != previous_audio:
+            raise ValueError("Combined surface reads changed across profile restart")
 
 
 def validate_isolation(baseline: dict, first: dict, second: dict) -> None:
@@ -164,7 +169,7 @@ def validate_isolation(baseline: dict, first: dict, second: dict) -> None:
     for name in DOCUMENT_CONTEXTS:
         if len({row[name]["audio"]["signal"]["hash"] for row in (baseline, first, second)}) != 3:
             raise ValueError("Audio must change from baseline and isolate both profiles")
-        if any(row[name]["audio"]["silence"] != baseline[name]["audio"]["silence"]
+        if any(row[name]["audio"]["silence"]["hash"] != baseline[name]["audio"]["silence"]["hash"]
                for row in (first, second)):
             raise ValueError("Protected Audio changed silent samples or buffer semantics")
 
@@ -172,6 +177,7 @@ def validate_isolation(baseline: dict, first: dict, second: dict) -> None:
 def probe_inputs() -> dict[str, str]:
     names = ("scripts/verify_native_surfaces.py", "scripts/verify_native_canvas.py",
              "scripts/verify_native_audio.py", "scripts/verify_native_worker_startup.py",
+             "scripts/verify_native_audio_quality.py",
              "scripts/verify_native_runtime.py", "app/core/native/runtime.py",
              "app/core/native/configuration.py", "app/core/native/identity.py")
     return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in names}
@@ -225,6 +231,10 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
                 await runtime.close()
     validate_isolation(results["baseline"], results["profile-a"], results["profile-b"])
     report["cross_profile_isolation_passed"] = True
+    report["audio_quality"] = {
+        name: compare_quality({context: row["audio"] for context, row in results["baseline"].items()},
+                              {context: row["audio"] for context, row in results[name].items()})
+        for name in ("profile-a", "profile-b")}
     configuration = SurfaceConfiguration(probe_mode="unavailable",
         disabled_features_argument=replacement, ignored_driver_argument=original)
     runtime = NativeRuntime(owned / "missing-policy", executable, configuration)
@@ -261,7 +271,7 @@ def main() -> int:
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite surface evidence")
     report = {"schema": 1, "passed": False, "privacy_admitted": False, "checks": [],
-              "platform": platform.platform(), "scope": "Combined Canvas/OfflineAudio owned-context isolation, restart and missing-document-policy rejection; no GPU, numerical quality or anti-bot admission"}
+              "platform": platform.platform(), "scope": "Combined Canvas/OfflineAudio isolation, restart, float32 error/SNR and missing-policy rejection; render durations measured, not a performance admission; no GPU or anti-bot admission"}
     server = thread = owned = None
     runtimes = []
     try:

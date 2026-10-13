@@ -16,7 +16,7 @@ def observation():
               "invalidChannel": "IndexSizeError", "sampleRate": 44100, "channels": 2,
               "frames": 4096, "closed": True}
     silence = {**signal, "silence": True, "signal": None}
-    return {name: {"available": True, "signal": copy.deepcopy(signal),
+    return {name: {"available": True, "completionMutationVisible": True, "signal": copy.deepcopy(signal),
                    "repeat": copy.deepcopy(signal), "silence": copy.deepcopy(silence)}
             for name in CONTEXTS}
 
@@ -37,6 +37,13 @@ def test_offline_baseline_and_restart():
 def test_bad_audio_semantics_are_rejected(field, value):
     observed = observation()
     observed["document"]["signal"][field] = value
+    with pytest.raises(ValueError):
+        validate_observations(observed)
+
+
+def test_completion_event_mutation_must_reach_promise_result():
+    observed = observation()
+    observed["document"]["completionMutationVisible"] = False
     with pytest.raises(ValueError):
         validate_observations(observed)
 

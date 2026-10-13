@@ -18,14 +18,15 @@ sys.path.insert(0, str(ROOT))
 
 from playwright.async_api import async_playwright
 
+from scripts.verify_native_audio_quality import strip_quality
 from scripts.verify_native_canvas import CONTEXTS, CanvasFixtureHandler, observe
 from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
 
-AUDIO_READ = """async () => {
+AUDIO_READ = """async (includeSampleBits = false) => {
   if (typeof OfflineAudioContext === 'undefined') return {available: false, reason: 'API unavailable'};
   const hash = async values => Array.from(new Uint8Array(await crypto.subtle.digest(
     'SHA-256', values)), value => value.toString(16).padStart(2, '0')).join('');
-  const render = async silent => {
+  const render = async (silent, testEventMutation = false) => {
     const context = new OfflineAudioContext(2, 4096, 44100);
     const source = context.createBufferSource();
     const input = context.createBuffer(2, 4096, 44100);
@@ -39,9 +40,19 @@ AUDIO_READ = """async () => {
     const compressor = context.createDynamicsCompressor();
     source.connect(compressor); compressor.connect(context.destination); source.start();
     let eventBuffer = null;
-    context.oncomplete = event => { eventBuffer = event.renderedBuffer; };
+    context.oncomplete = event => {
+      eventBuffer = event.renderedBuffer;
+      if (testEventMutation) {
+        eventBuffer.getChannelData(0)[0] = 0.125;
+        eventBuffer.getChannelData(1)[0] = 0.125;
+      }
+    };
+    const renderStarted = performance.now();
     const result = await context.startRendering();
+    const renderMilliseconds = performance.now() - renderStarted;
     const left = result.getChannelData(0), right = result.getChannelData(1);
+    if (testEventMutation) return {eventMutationVisible:
+      eventBuffer === result && left[0] === 0.125 && right[0] === 0.125};
     const digest = await hash(left);
     const copied = new Float32Array(left.length);
     result.copyFromChannel(copied, 0);
@@ -54,14 +65,18 @@ AUDIO_READ = """async () => {
     left[0] = before;
     let invalidChannel = null;
     try { result.getChannelData(2); } catch (error) { invalidChannel = error.name; }
-    return {hash: digest, copiedHash: await hash(copied), rightHash: await hash(right),
+    return {...(includeSampleBits ? {
+        sampleBits: Array.from(new Uint32Array(copied.buffer)), renderMilliseconds} : {}),
+      hash: digest, copiedHash: await hash(copied), rightHash: await hash(right),
       finite: copied.every(Number.isFinite), silence: silent ? copied.every(value => value === 0) : null,
       signal: silent ? null : copied.some(value => value !== 0),
       eventSameBuffer: eventBuffer === result, liveMutation, copyFromSeesMutation, copyToSeesMutation,
       invalidChannel, sampleRate: result.sampleRate, channels: result.numberOfChannels,
       frames: result.length, closed: context.state === 'closed'};
   };
-  return {available: true, signal: await render(false), repeat: await render(false), silence: await render(true)};
+  const mutation = await render(true, true);
+  return {available: true, completionMutationVisible: mutation.eventMutationVisible,
+    signal: await render(false), repeat: await render(false), silence: await render(true)};
 }"""
 
 
@@ -71,7 +86,7 @@ class AudioFixtureHandler(CanvasFixtureHandler):
 
 def probe_inputs() -> dict[str, str]:
     return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in (
-        "scripts/verify_native_audio.py", "scripts/verify_native_canvas.py",
+        "scripts/verify_native_audio.py", "scripts/verify_native_audio_quality.py", "scripts/verify_native_canvas.py",
         "scripts/verify_native_hardware.py", "scripts/verify_native_runtime.py")}
 
 
@@ -92,7 +107,8 @@ def validate_observations(observed: dict, previous: dict | None = None) -> dict:
             coverage["unavailable"].append(name)
             continue
         coverage["available"].append(name)
-        if set(values) != {"available", "signal", "repeat", "silence"}:
+        if (set(values) != {"available", "completionMutationVisible", "signal", "repeat", "silence"}
+                or values["completionMutationVisible"] is not True):
             raise ValueError(f"Missing Audio render phases: {name}")
         for phase in ("signal", "repeat", "silence"):
             result = values[phase]
@@ -123,8 +139,10 @@ def validate_observations(observed: dict, previous: dict | None = None) -> dict:
     return {key: sorted(value) for key, value in coverage.items()}
 
 
-async def verify(executable: Path, profile: Path, origin: str, report: dict) -> None:
+async def verify(executable: Path, profile: Path, origin: str, report: dict, *,
+                 sample_quality: bool = False) -> None:
     previous = None
+    read = f"async () => await ({AUDIO_READ})(true)" if sample_quality else AUDIO_READ
     async with async_playwright() as driver:
         for phase in ("initial", "persistent-profile-restart"):
             context = await driver.chromium.launch_persistent_context(
@@ -132,12 +150,13 @@ async def verify(executable: Path, profile: Path, origin: str, report: dict) -> 
                 chromium_sandbox=True, timeout=30000)
             try:
                 report["browser_version"] = context.browser.version
-                observed = await observe(context, origin, read=AUDIO_READ)
+                observed = await observe(context, origin, read=read)
                 check = {"name": phase, "observed": observed, "passed": False}
                 report["checks"].append(check)
-                check["coverage"] = validate_observations(observed, previous)
+                clean = strip_quality(observed) if sample_quality else observed
+                check["coverage"] = validate_observations(clean, previous)
                 check["passed"] = True
-                previous = observed
+                previous = clean
             finally:
                 await context.close()
 
@@ -148,11 +167,14 @@ def main() -> int:
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--windows-library-directory", type=Path)
+    parser.add_argument("--sample-quality", action="store_true",
+                        help="Retain float32 sample bits and measured render durations; no protection claim")
     args = parser.parse_args()
     if args.report.exists():
         parser.error("Refusing to overwrite existing Audio evidence")
     report = {"schema": 1, "platform": platform.platform(), "passed": False, "checks": [],
               "privacy_admitted": False, "contexts": sorted(CONTEXTS),
+              "sample_quality": args.sample_quality,
               "scope": "Unprotected offline AudioBuffer semantics baseline; no masking or anti-bot claim"}
     server = None
     thread = None
@@ -164,13 +186,16 @@ def main() -> int:
         report["runtime_core_sha256_measured"] = core
         inputs = probe_inputs()
         report["probe_inputs_sha256"] = inputs
-        report["javascript_sha256"] = hashlib.sha256(AUDIO_READ.encode("utf-8")).hexdigest()
+        read = f"async () => await ({AUDIO_READ})(true)" if args.sample_quality else AUDIO_READ
+        report["javascript_sha256"] = hashlib.sha256(read.encode("utf-8")).hexdigest()
         args.work_dir.mkdir(parents=True, exist_ok=True)
-        server = FixtureServer(("127.0.0.1", 0), AudioFixtureHandler)
+        handler = type("OwnedAudioHandler", (AudioFixtureHandler,), {"worker_read": read})
+        server = FixtureServer(("127.0.0.1", 0), handler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         with tempfile.TemporaryDirectory(prefix="glint-audio-owned-", dir=args.work_dir.resolve()) as owned:
-            asyncio.run(verify(executable, Path(owned), f"http://127.0.0.1:{server.server_port}", report))
+            asyncio.run(verify(executable, Path(owned), f"http://127.0.0.1:{server.server_port}", report,
+                               sample_quality=args.sample_quality))
         if measure_runtime_core(executable, args.windows_library_directory) != core:
             raise ValueError("Chromium runtime core changed during Audio verification")
         if probe_inputs() != inputs:
