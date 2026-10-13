@@ -84,7 +84,24 @@ compilation, first-script document/worker handoff, renderer retention, launch/UI
 selection and combined runtime remain required. It must not be mixed with v2
 consumers or admitted as a tested fingerprint feature.
 
-## Runtime admission gates
+## Blink handoff fixtures
+
+`identity_handoff_tests_candidate.patch` is the fifth patch, adding six fixture
+definitions to the existing document loader and worker thread test targets:
+identity mode before first script/evaluation, owned document clones, rejection of
+unknown modes, and final worker-origin binding. It reuses existing fixture
+lifecycle and rejection helpers. **None has been compiled or executed.**
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-handoff-replay.json --include-handoff --check-bindings
+```
+
+Source replay validates composition, not browser or Blink execution. The worker
+fixture exercises a worker global scope, not independent production coverage of
+all dedicated/shared/service-worker launchers. Chrome launch selection and
+manager capability admission still remain to be implemented and verified.
+
+## Outstanding runtime gates
 
 - Execute native fixtures, including unchanged legacy privacy vectors.
 - Verify real BrowserContext/OTR lifetime and persisted profile restart.

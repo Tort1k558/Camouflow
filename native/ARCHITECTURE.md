@@ -40,6 +40,9 @@ wire mode with five more fixture definitions. Unknown modes and v2 reject before
 seed copies; final-partition validation remains mandatory. Pinned Mojo parsing
 and C++ binding generation passed in an isolated copy. Native compilation,
 first-script renderer/worker handoff and launch/UI selection remain unverified.
+The fifth candidate adds six Blink fixture definitions for before-script mode
+retention, independent document clones, invalid mode rejection and worker-origin
+binding. Their source composition is checked, not their native execution.
 This does not enable an identity mode in the currently compiling browser.
 
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy

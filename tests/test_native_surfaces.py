@@ -258,3 +258,16 @@ def test_identity_transport_v3_carries_mode_without_weakening_partition_validati
     assert added.count("content::DeriveNativeSelectedFingerprintKey( context,") == 4
     assert "IsValidSurfaceIdentityMode" in text
     assert all(name in text for names in TRANSPORT_FIXTURES.values() for name in names)
+
+
+def test_identity_blink_handoff_fixtures_cover_first_script_clone_and_rejection():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_profile_identity_draft import HANDOFF_FIXTURES, HANDOFF_PATCH
+
+    text = HANDOFF_PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == set(HANDOFF_FIXTURES)
+    assert text.count("+TEST_P(DocumentLoaderTest,") == 3
+    assert text.count("+TEST_F(GlintWorkerSurfaceThreadTest,") == 3
+    assert all(name in text for names in HANDOFF_FIXTURES.values() for name in names)
+    assert "+    EXPECT_TRUE(client.titles[i].empty());" in text
+    assert "clone->glint_document_surface_policy->policy.identity_mode" in text
