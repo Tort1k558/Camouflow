@@ -1,5 +1,25 @@
 # Surface policy v2 candidate
 
+## Ready-commit cancellation follow-up
+
+`document_ready_commit_observer_guard.patch` follows registered 0039. It saves
+the frame-tree node ID and reacquires the node after cancelling the owned request:
+a navigation-finish observer may close the tab and destroy the original pointer.
+This matches the existing renderer-rejection cleanup pattern. It is unregistered
+and must be promoted before admitting the repaired cancellation path.
+
+`document_ready_commit_observer_tests.patch` adds eight parameterized native
+NavigationSimulator cases: Canvas and surface policy loss in the ready callback,
+both URL-loader paths, subsequent-navigation recovery and WebContents destruction
+from the finish observer. The earlier missing-service throttle tests do not reach
+this late cancellation point.
+
+Both patches replayed in an owned overlay against 001-039 without changing active
+sources (`document-ready-observer-replay-v1/proof.json` on D). They are **not yet
+compiled or executed**. The active j4 Chrome build stays frozen.
+
+## Earlier preparation record
+
 Unregistered, uncompiled and not transported into Blink. Existing Canvas v1 IPC
 and active 0030 build sources are unchanged.
 

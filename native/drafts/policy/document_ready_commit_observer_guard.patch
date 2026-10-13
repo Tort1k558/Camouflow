@@ -1,0 +1,22 @@
+diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
+--- a/content/browser/renderer_host/navigation_request.cc
++++ b/content/browser/renderer_host/navigation_request.cc
+@@ -6803,12 +6803,14 @@
+   // Failure processing cannot transition READY_TO_COMMIT to WILL_FAIL_REQUEST.
+   const auto abort_privacy_commit = [this] {
+     net_error_ = net::ERR_ABORTED;
+-    FrameTreeNode* node = frame_tree_node_;
++    const auto node_id = frame_tree_node_->frame_tree_node_id();
+     GetRenderFrameHost()->NavigationRequestCancelled(
+         this, NavigationDiscardReason::kInternalCancellation);
+-    // The request is destroyed; only the saved frame-tree node remains usable.
+-    node->render_manager()->DiscardSpeculativeRFHIfUnused(
+-        NavigationDiscardReason::kInternalCancellation);
++    // A finish observer may also destroy the WebContents and its frame tree.
++    if (auto* node = FrameTreeNode::GloballyFindByID(node_id)) {
++      node->render_manager()->DiscardSpeculativeRFHIfUnused(
++          NavigationDiscardReason::kInternalCancellation);
++    }
+   };
+   const auto privacy_mode = GetGlintDocumentPrivacyBootstrapMode();
+   if (privacy_mode == glint::candidate::DocumentPrivacyBootstrapMode::kConflict) {

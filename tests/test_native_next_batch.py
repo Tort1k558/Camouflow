@@ -129,6 +129,31 @@ def test_document_policy_abort_uses_ready_request_owner_without_state_rewind():
     assert additions.index("FrameTreeNode* node") < additions.index("NavigationRequestCancelled(")
 
 
+def test_ready_cancellation_followup_reacquires_frame_tree_after_finish_observers():
+    text = (DRAFTS / "policy/document_ready_commit_observer_guard.patch").read_text(encoding="utf-8-sig")
+    additions = "\n".join(line[1:] for line in text.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert "const auto node_id = frame_tree_node_->frame_tree_node_id();" in additions
+    assert "if (auto* node = FrameTreeNode::GloballyFindByID(node_id))" in additions
+    assert "FrameTreeNode* node = frame_tree_node_;" not in additions
+    assert "NavigationRequestCancelled(" in text
+
+
+def test_late_document_policy_loss_fixtures_cover_both_modes_recovery_and_destruction():
+    text = (DRAFTS / "policy/document_ready_commit_observer_tests.patch").read_text(encoding="utf-8-sig")
+    names = re.findall(r"\+TEST_P\(NativeDocumentNavigationTest, (Late\w+)\)", text)
+    assert set(names) == {
+        f"Late{mode}PolicyLoss{outcome}" for mode in ("Canvas", "Surface")
+        for outcome in ("CancelsAndAllowsNextNavigation", "ObserverMayDestroyWebContents")}
+    assert len(names) == 4
+    assert "+  void ReadyToCommitNavigation(NavigationHandle*) override {" in text
+    assert "+      ShutdownNativePrivacyContext(browser_context());" in text
+    assert text.count("+  shutdown_policy_at_ready_ = true;") == 4
+    assert text.count("+  EXPECT_EQ(error_, net::ERR_ABORTED);") == 4
+    assert text.count("+  destroy_contents_on_finish_ = true;") == 2
+    assert text.count('+  NavigateAndCommit(GURL("https://canvas.test/recovery"));') == 2
+
+
 def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():
     text = (DRAFTS / "gpu/webgl_default_readback_candidate.patch").read_text(encoding="utf-8-sig")
     assert "+BASE_FEATURE(kGlintWebGLReadbackCandidate, base::FEATURE_DISABLED_BY_DEFAULT);" in text
