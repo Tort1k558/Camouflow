@@ -615,6 +615,25 @@ def test_native_webgpu_diagnostics_preserves_unavailable_adapters_without_fake_v
         "WebGPU observations could not be compared"]
 
 
+@pytest.mark.parametrize("screen,expected", [
+    ({"width": 1366, "height": 768, "availWidth": 1366, "availHeight": 728}, []),
+    ({"width": 1920, "height": 768}, ["Document screen width differs from configured 1366"]),
+    ({"width": 1366, "height": 768, "availWidth": 1920},
+     ["Document screen availWidth is inconsistent with width"]),
+    ({"width": 1366, "height": 768, "availHeight": -1},
+     ["Document screen availHeight is inconsistent with height"]),
+    ({"width": 1366, "height": 768, "availHeight": "768"},
+     ["Document screen availHeight is inconsistent with height"]),
+    (None, ["Document screen geometry could not be observed"]),
+])
+def test_native_screen_diagnostics_reports_geometry_contradictions(screen, expected):
+    from app.core.native.diagnostics import compare_observed
+
+    document = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC",
+                "screen": screen}
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": dict(document)}) == expected
+
+
 def test_native_canvas_diagnostics_does_not_invent_pixels_for_unavailable_contexts():
     from app.core.native.diagnostics import compare_observed
 

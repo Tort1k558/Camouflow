@@ -154,7 +154,9 @@ OBSERVE = """async () => {
         width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
         touch: navigator.maxTouchPoints, webdriver: navigator.webdriver,
         secureContext: isSecureContext,
-        screen: {width: screen.width, height: screen.height, colorDepth: screen.colorDepth},
+        screen: {width: screen.width, height: screen.height, colorDepth: screen.colorDepth,
+            pixelDepth: screen.pixelDepth, availWidth: screen.availWidth, availHeight: screen.availHeight,
+            orientation: {type: screen.orientation.type, angle: screen.orientation.angle}},
         graphics: graphicsValues(), webgpu: await webGPUValues(), canvas: await canvasValues(),
         audio: await audioValues(), media: await mediaValues()
     };
@@ -189,6 +191,18 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
         mismatches.append("Document timezone differs from configured identifier; check IANA aliases")
     if configuration.environment == "mobile_web" and not document.get("touch"):
         mismatches.append("Mobile Web touch capability is unavailable")
+    if "screen" in document:
+        screen = document["screen"]
+        if not isinstance(screen, dict):
+            mismatches.append("Document screen geometry could not be observed")
+        else:
+            for key, expected in (("width", configuration.width), ("height", configuration.height)):
+                if type(screen.get(key)) is not int or screen[key] != expected:
+                    mismatches.append(f"Document screen {key} differs from configured {expected}")
+            for available, size in (("availWidth", "width"), ("availHeight", "height")):
+                if available in screen and (type(screen.get(available)) is not int
+                        or type(screen.get(size)) is not int or not 0 <= screen[available] <= screen[size]):
+                    mismatches.append(f"Document screen {available} is inconsistent with {size}")
     worker = observed.get("worker")
     if worker is None:
         mismatches.append(observed.get("workerError") or "Worker values could not be observed")

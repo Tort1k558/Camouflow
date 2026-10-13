@@ -48,6 +48,11 @@ diagnostic inputs. This is evidence for observation, not for a protected GPU.
 Profile health checks use a separate owned loopback page with page-scoped routing
 and guaranteed close. The original profile page and its network requests remain
 untouched; this was verified on the same old runtime in both locales.
+Screen diagnostics observe available dimensions, pixel depth and orientation,
+and check configured screen geometry and available-area bounds. The same old
+runtime passed two desktop locales and a 390x844/DPR3 Mobile Web case with
+unchanged inputs/core. This verifies SDK geometry, not a physical monitor identity
+or an Android browser.
 
 Prepared native gates additionally require 26 BrowserContext cases, 34 surface
 navigation/readiness cases, 13 window/child cases and 14 RGBA8 pack-copy cases.
