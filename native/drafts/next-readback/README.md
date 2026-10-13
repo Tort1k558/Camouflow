@@ -1,7 +1,7 @@
 # WebGL readback: bounded halo candidate
 
 **Unregistered, uncompiled; no runtime privacy capability is admitted.**
-This patch follows the registered 001–034 batch and must not be applied during
+This two-patch batch follows registered 001–034 and must not be applied during
 its active build. It changes private readback allocation, not the fingerprint
 algorithm, GPU identity, live framebuffer or JavaScript API.
 
@@ -20,6 +20,18 @@ Checked arithmetic, a combined memory budget and pre-write alias/plan validation
 bound the extra storage. CPU and PBO callers retain their existing pack/state
 handling, validation and required-policy rejection.
 
+The second patch fixes **publication of clipped reads**: protected CPU/PBO writes
+cover only the actual in-bounds intersection. An outside read must not overwrite
+the caller's existing destination bytes. Full request buffer-size validation is
+retained even when the intersection is small or empty.
+
+The owned feature-off 001–027 browser confirmed unchanged sentinel bytes for
+negative, partially clipped, entirely outside and zero-sized reads, on both CPU
+and PBO paths in eight contexts before/after restart. The registered 0034 source
+currently copies its whole zero-initialized private rectangle back, so that
+candidate has a known clipping-compatibility issue. Its active build is untouched;
+the correction is prepared here, **not yet verified in a protected browser**.
+
 For a 1×1 crop inside a 4096×4096 attachment, planned storage is 40 bytes
 (4-byte rectangle + 36-byte halo), rather than a whole-frame copy. An exact
 4096×4096 RGBA8 read fits the existing 64 MiB budget in one private allocation.
@@ -31,7 +43,7 @@ These are allocation calculations, **not measured performance improvements**.
 | :-- | :-- |
 | Apply/replay against exact registered 001–034 source, without modifying it | Passed |
 | Independent Python full-frame/crop reference | 58,860 comparisons passed |
-| Native helper fixtures | 11 prepared; not compiled or run |
+| Native helper fixtures | 11 halo + 6 clipped-publication cases prepared; not compiled or run |
 | Real CPU/PBO reads, exports, errors, contexts and restart | Pending new binary |
 | Large attachments, memory use and GPU latency | Pending runtime measurements |
 
@@ -53,3 +65,6 @@ the active source tree:
 After the current build finishes: run its strict unit/browser gates first,
 review and promote this separate patch, compile its native fixtures, then repeat
 full-frame/crop/export equivalence and normal browser compatibility checks.
+Apply `webgl_halo_readback_candidate.patch` before
+`webgl_clipped_publication_candidate.patch`; the public replay command checks
+both in order against an owned copy, including their canonical helper sources.

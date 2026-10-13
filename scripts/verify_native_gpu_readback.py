@@ -136,6 +136,24 @@ RENDERBUFFER_READ = """
           gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
           gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, repeat);
           gl.readPixels(1, 1, 2, 2, gl.RGBA, gl.UNSIGNED_BYTE, crop);
+          const boundaryReads = [];
+          for (const bounds of [[0, 0, 1, 1], [-1, -1, 2, 2], [width - 1, height - 1, 2, 2],
+                                [-4, -4, 2, 2], [width + 1, height + 1, 2, 2], [1, 1, 0, 2]]) {
+            const [x, y, w, h] = bounds, size = Math.max(4, w * h * 4);
+            const cpu = new Uint8Array(size).fill(165), buffer = gl.createBuffer();
+            if (!buffer) throw new Error('Boundary PBO allocation failed');
+            let pbo, bound;
+            gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, cpu);
+            try {
+              gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buffer);
+              gl.bufferData(gl.PIXEL_PACK_BUFFER, new Uint8Array(size + 32).fill(165), gl.STREAM_READ);
+              gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, 12);
+              bound = gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING) === buffer;
+              const output = new Uint8Array(size + 32);
+              gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, output); pbo = Array.from(output);
+            } finally { gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null); gl.deleteBuffer(buffer); }
+            boundaryReads.push({bounds, cpu: Array.from(cpu), pbo, bound, error: gl.getError(), nextError: gl.getError()});
+          }
           gl.pixelStorei(gl.PACK_ROW_LENGTH, 10); gl.pixelStorei(gl.PACK_SKIP_ROWS, 1); gl.pixelStorei(gl.PACK_SKIP_PIXELS, 1);
           const packed = new Uint8Array(400).fill(165);
           gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, packed);
@@ -154,7 +172,7 @@ RENDERBUFFER_READ = """
           return {width: gl.getRenderbufferParameter(gl.RENDERBUFFER, gl.RENDERBUFFER_WIDTH),
             height: gl.getRenderbufferParameter(gl.RENDERBUFFER, gl.RENDERBUFFER_HEIGHT),
             pixels: Array.from(pixels), repeat: Array.from(repeat), crop: Array.from(crop),
-            packed: Array.from(packed), pbo, packBinding,
+            packed: Array.from(packed), pbo, packBinding, boundaryReads,
             bindings: {read: gl.getParameter(gl.READ_FRAMEBUFFER_BINDING) === framebuffer,
               draw: gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING) === framebuffer,
               selected: gl.getParameter(gl.READ_BUFFER) === gl.COLOR_ATTACHMENT1}, error: gl.getError()};
@@ -325,7 +343,7 @@ def validate_renderbuffer(observed: dict, *, protected: bool) -> None:
     palette = {}
     for name, width, height in (("initial", 8, 8), ("resized", 6, 5)):
         frame = observed[name]
-        fields = {"width", "height", "pixels", "repeat", "crop", "packed", "pbo", "packBinding", "bindings", "error"}
+        fields = {"width", "height", "pixels", "repeat", "crop", "packed", "pbo", "packBinding", "bindings", "error", "boundaryReads"}
         if (not isinstance(frame, dict) or set(frame) != fields or type(frame["width"]) is not int or frame["width"] != width
                 or type(frame["height"]) is not int or frame["height"] != height or type(frame["error"]) is not int or frame["error"] != 0
                 or frame["packBinding"] is not True or not isinstance(frame["bindings"], dict)
@@ -350,6 +368,7 @@ def validate_renderbuffer(observed: dict, *, protected: bool) -> None:
                 raise ValueError("Renderbuffer repeat/crop/PBO/pack padding mismatch: " + field)
         if protected and full == reference:
             raise ValueError("Renderbuffer readback was not protected")
+        validate_boundary_reads(frame["boundaryReads"], full, width, height)
         if protected:
             # Every pixel in this opaque two-pixel colour-cell gradient has a
             # different quantized neighbour. The candidate therefore selects
@@ -367,6 +386,30 @@ def validate_renderbuffer(observed: dict, *, protected: bool) -> None:
             or not isinstance(multi["pixels"], list) or any(type(byte) is not int for byte in multi["pixels"])
             or multi != {"error": 1282, "nextError": 0, "pixels": [165] * 4}):
         raise ValueError("Multisample read did not preserve native rejection and destination")
+
+
+def validate_boundary_reads(observed: list, full: list[int], width: int, height: int) -> None:
+    bounds = [[0, 0, 1, 1], [-1, -1, 2, 2], [width - 1, height - 1, 2, 2],
+              [-4, -4, 2, 2], [width + 1, height + 1, 2, 2], [1, 1, 0, 2]]
+    if not isinstance(observed, list) or len(observed) != len(bounds):
+        raise ValueError("Framebuffer boundary cases are incomplete")
+    for actual, request in zip(observed, bounds):
+        x, y, w, h = request
+        expected = [165] * max(4, w * h * 4)
+        for row in range(h):
+            for column in range(w):
+                target = (row * w + column) * 4
+                if 0 <= x + column < width and 0 <= y + row < height:
+                    source = ((y + row) * width + x + column) * 4
+                    expected[target:target + 4] = full[source:source + 4]
+        if (not isinstance(actual, dict) or set(actual) != {"bounds", "cpu", "pbo", "bound", "error", "nextError"}
+                or actual["bound"] is not True or type(actual["error"]) is not int or actual["error"] != 0
+                or type(actual["nextError"]) is not int or actual["nextError"] != 0
+                or any(not isinstance(actual[field], list) or any(type(value) is not int for value in actual[field])
+                       for field in ("bounds", "cpu", "pbo"))
+                or actual["bounds"] != request or actual["cpu"] != expected
+                or actual["pbo"] != [165] * 12 + expected + [165] * 20):
+            raise ValueError("Framebuffer boundary read changed pixels, padding, binding or errors")
 
 
 def validate_errors(observed: dict, api: str, first_pixel: list[int], lost: dict) -> None:

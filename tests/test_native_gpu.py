@@ -237,8 +237,26 @@ def renderbuffer_observation(*, protected=False, cross=False):
         result[name] = {"width": width, "height": height, "error": 0, "pixels": full,
             "repeat": full.copy(), "crop": full[row_bytes + 4:row_bytes + 12] + full[2 * row_bytes + 4:2 * row_bytes + 12],
             "pbo": [165] * 12 + full + [165] * 20, "packed": packed, "packBinding": True,
-            "bindings": {"read": True, "draw": True, "selected": True}}
+            "bindings": {"read": True, "draw": True, "selected": True},
+            "boundaryReads": boundary_observation(full, width, height)}
     return result
+
+
+def boundary_observation(full, width, height):
+    results = []
+    for bounds in ([0, 0, 1, 1], [-1, -1, 2, 2], [width - 1, height - 1, 2, 2],
+                   [-4, -4, 2, 2], [width + 1, height + 1, 2, 2], [1, 1, 0, 2]):
+        x, y, w, h = bounds
+        pixels = [165] * max(4, w * h * 4)
+        for row in range(h):
+            for column in range(w):
+                offset = (row * w + column) * 4
+                source = ((y + row) * width + x + column) * 4
+                pixels[offset:offset + 4] = (full[source:source + 4]
+                    if 0 <= x + column < width and 0 <= y + row < height else [165] * 4)
+        results.append({"bounds": bounds, "cpu": pixels, "pbo": [165] * 12 + pixels + [165] * 20,
+                        "bound": True, "error": 0, "nextError": 0})
+    return results
 
 
 def test_readback_gate_checks_native_png_without_canvas_remasking():
@@ -406,6 +424,7 @@ def synchronize_renderbuffer_reads(frame):
     full = frame["pixels"]
     row_bytes = frame["width"] * 4
     frame.update(repeat=full.copy(), pbo=[165] * 12 + full + [165] * 20,
+                 boundaryReads=boundary_observation(full, frame["width"], frame["height"]),
                  crop=full[row_bytes + 4:row_bytes + 12] + full[2 * row_bytes + 4:2 * row_bytes + 12],
                  packed=[165] * 400)
     for row in range(frame["height"]):
@@ -462,6 +481,38 @@ def test_renderbuffer_gate_rejects_missing_multisample_or_modified_uniform_attac
         validate_renderbuffer(observed, protected=True)
 
 
+@pytest.mark.parametrize("phase", ["initial", "resized"])
+@pytest.mark.parametrize("index", range(6))
+@pytest.mark.parametrize("field", ["cpu", "pbo", "bounds"])
+def test_renderbuffer_boundary_gate_rejects_crops_outside_writes_padding_and_wrong_requests(phase, index, field):
+    from scripts.verify_native_gpu_readback import validate_renderbuffer
+
+    observed = renderbuffer_observation(protected=True)
+    observed[phase]["boundaryReads"][index][field][0] ^= 1
+    with pytest.raises(ValueError, match="boundary read"):
+        validate_renderbuffer(observed, protected=True)
+
+
+@pytest.mark.parametrize("field,value", [("bound", False), ("bound", 1), ("error", 1282),
+                                        ("error", False), ("nextError", 1280), ("nextError", False)])
+def test_renderbuffer_boundary_gate_requires_native_bindings_and_error_semantics(field, value):
+    from scripts.verify_native_gpu_readback import validate_renderbuffer
+
+    observed = renderbuffer_observation(protected=True)
+    observed["initial"]["boundaryReads"][0][field] = value
+    with pytest.raises(ValueError, match="boundary read"):
+        validate_renderbuffer(observed, protected=True)
+
+
+def test_renderbuffer_boundary_gate_requires_all_cases_in_both_extents():
+    from scripts.verify_native_gpu_readback import validate_renderbuffer
+
+    observed = renderbuffer_observation(protected=True)
+    observed["resized"]["boundaryReads"].pop()
+    with pytest.raises(ValueError, match="incomplete"):
+        validate_renderbuffer(observed, protected=True)
+
+
 def test_future_halo_reference_memory_modes_are_explicit_and_bounded():
     from scripts.verify_native_readback_regions import plan
 
@@ -509,3 +560,25 @@ def test_future_halo_hook_and_fixtures_remain_unregistered_and_canonical():
     assert source.index("ReadbackRegionError::kAliasedStorage") < source.index("std::copy(")
     fixtures = (DRAFTS / "rgba8_readback_region_unittest.cc").read_text(encoding="utf-8-sig")
     assert fixtures.count("TEST(GlintRgba8ReadbackRegionTest,") == 11
+
+
+def test_future_clipped_publication_patch_preserves_cpu_pbo_destination_contract():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_halo_draft import (
+        CLIPPED_CANONICAL,
+        CLIPPED_EXISTING,
+        CLIPPED_PATCH,
+        DRAFTS,
+    )
+
+    text = CLIPPED_PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == CLIPPED_EXISTING | set(CLIPPED_CANONICAL.values())
+    assert "+    gfx::Rect copy_region;" in text
+    assert "+              copy_region))" in text
+    assert "+      BufferSubDataImpl(GL_PIXEL_PACK_BUFFER, destination, copy_bytes," in text
+    source = (DRAFTS / "rgba8_pack_copy_clipped.cc").read_text(encoding="utf-8-sig")
+    assert "source.subspan(row * row_bytes + column_offset, copy_bytes)" in source
+    assert source.index("Rgba8PackCopyError::kAliasedStorage") < source.index("std::copy(")
+    assert "gfx::Rect(0, 0, width, height)" in source
+    fixtures = (DRAFTS / "rgba8_clipped_publication_unittest.cc").read_text(encoding="utf-8-sig")
+    assert fixtures.count("TEST(GlintRgba8ClippedPublicationTest,") == 6

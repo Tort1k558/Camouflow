@@ -21,6 +21,16 @@ CANONICAL = {name: PREFIX + name for name in (
     "rgba8_readback_region.h", "rgba8_readback_region.cc", "rgba8_readback_region_unittest.cc")}
 EXISTING = {"third_party/blink/renderer/modules/webgl/BUILD.gn", "third_party/blink/renderer/modules/BUILD.gn",
             "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc"}
+CLIPPED_PATCH = DRAFTS / "webgl_clipped_publication_candidate.patch"
+CLIPPED_CANONICAL = {
+    "rgba8_pack_copy_clipped.h": PREFIX + "rgba8_pack_copy.h",
+    "rgba8_pack_copy_clipped.cc": PREFIX + "rgba8_pack_copy.cc",
+    "rgba8_clipped_publication_unittest.cc": PREFIX + "rgba8_clipped_publication_unittest.cc",
+}
+CLIPPED_EXISTING = {"third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h",
+                   "third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc",
+                   "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
+                   "third_party/blink/renderer/modules/BUILD.gn"}
 
 
 def verify(workspace: Path, report: Path) -> dict:
@@ -34,10 +44,14 @@ def verify(workspace: Path, report: Path) -> dict:
     registered = build.source_patches(source, env) + build.v8_source_patches(source, env)
     if "0034-native-gpu-metadata-minimization.patch" not in {item["name"] for item in registered}:
         raise ValueError("The exact registered 001-034 baseline is required")
-    paths = EXISTING | set(CANONICAL.values())
-    if patch_paths(PATCH.read_text(encoding="utf-8-sig")) != paths:
+    if patch_paths(PATCH.read_text(encoding="utf-8-sig")) != EXISTING | set(CANONICAL.values()):
         raise ValueError("Halo candidate source coverage is incomplete or contains unknown paths")
-    inputs = {name: digest(DRAFTS / name) for name in (*CANONICAL, PATCH.name)}
+    if patch_paths(CLIPPED_PATCH.read_text(encoding="utf-8-sig")) != CLIPPED_EXISTING | set(CLIPPED_CANONICAL.values()):
+        raise ValueError("Clipped publication source coverage is incomplete or contains unknown paths")
+    canonical = CANONICAL | CLIPPED_CANONICAL
+    existing = EXISTING | CLIPPED_EXISTING | {PREFIX + "rgba8_pack_copy.h", PREFIX + "rgba8_pack_copy.cc"}
+    paths = existing | set(canonical.values())
+    inputs = {name: digest(DRAFTS / name) for name in (*canonical, PATCH.name, CLIPPED_PATCH.name)}
     verifier_hash = digest(Path(__file__))
     if any(value is None for value in inputs.values()):
         raise ValueError("A canonical halo input is missing")
@@ -47,7 +61,7 @@ def verify(workspace: Path, report: Path) -> dict:
             raise ValueError("Halo inputs must not follow source links")
     with tempfile.TemporaryDirectory(prefix="glint-halo-replay-", dir=report.parent) as owned:
         overlay = Path(owned)
-        for name in EXISTING:
+        for name in existing:
             target = overlay / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text((source / name).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
@@ -55,7 +69,9 @@ def verify(workspace: Path, report: Path) -> dict:
         build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
         build.run(["git", "apply", "--check", str(PATCH)], overlay, env)
         build.run(["git", "apply", str(PATCH)], overlay, env)
-        for name, relative in CANONICAL.items():
+        build.run(["git", "apply", "--check", str(CLIPPED_PATCH)], overlay, env)
+        build.run(["git", "apply", str(CLIPPED_PATCH)], overlay, env)
+        for name, relative in canonical.items():
             if (overlay / relative).read_bytes() != (DRAFTS / name).read_bytes():
                 raise ValueError("Composed halo source differs from its canonical helper")
         composed = {name: digest(overlay / name) for name in paths}
