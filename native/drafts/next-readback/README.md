@@ -35,6 +35,15 @@ currently copies its whole zero-initialized private rectangle back, so that
 candidate has a known clipping-compatibility issue. Its active build is untouched;
 the correction is prepared here, **not yet verified in a protected browser**.
 
+The linked 001-045 browser now confirms this failure with protection enabled:
+`gpu-readback-001-045-v1.json` on D. Its feature-off initial/restart phases
+passed, but protected profile-A reads replaced out-of-bounds CPU sentinel bytes
+with zero in all eight document/worker contexts, on initial and resized
+attachments. GL error state remained clear and bindings remained intact.
+The boundary contract must not be relaxed to accept this output. The prepared
+clipped-publication patch still needs optimized compilation, native execution
+and a new protected browser run before claiming the defect is repaired.
+
 For a 1×1 crop inside a 4096×4096 attachment, planned storage is 40 bytes
 (4-byte rectangle + 36-byte halo), rather than a whole-frame copy. An exact
 4096×4096 RGBA8 read fits the existing 64 MiB budget in one private allocation.

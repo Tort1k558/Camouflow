@@ -85,6 +85,8 @@ changed in `chrome.dll`.
 | Classic/module worker startup/restart | **Passed: 40/40** | Surface bootstrap, shared clients and unavailable-policy rejection; not nested-worker or early-termination admission |
 | Combined Canvas/OfflineAudio, initial run | **Failed: timeout** | Four phases passed; profile-B initial frame evaluation timed out; cleanup completed |
 | Combined Canvas/OfflineAudio, v2 retry | **Passed: 7/7** | Includes cross-profile/restart checks and exact missing-policy abort; does not resolve initial intermittent timeout |
+| Combined Canvas/OfflineAudio, v3 retry | **Passed: 7/7** | Second consecutive passing retry on unchanged core; first failure remains open |
+| Protected WebGL readback | **Failed** | Baseline initial/restart passed; profile-A initial failed boundary semantics: out-of-bounds CPU bytes changed from sentinel 165 to zero across all eight contexts, before/after attachment resize |
 | Native fixtures | **Passed: 136/136** | Navigation 42, contexts 26, window/child 13, worker surfaces 55 on one test binary; distinct from browser runtime |
 | External detectors, proxy routes and CAPTCHA | Not rerun | No third-party result or acceptance claim for this build |
 | Next identity/readback batch | Source checks passed | Twelve unregistered patches, 113 paths, isolated Mojo/GPU generation; not compiled or enabled |
@@ -93,6 +95,8 @@ Private evidence on D: `browser-verification-001-045-v1/suite/suite.json`,
 `browser-verification-001-045-v1/worker-startup.json`,
 `browser-verification-001-045-v1/surfaces.json` (failed run),
 `combined-surfaces-001-045-v2.json` (passing retry) and
+`combined-surfaces-001-045-v3.json` (second passing retry),
+`gpu-readback-001-045-v1.json` (protected readback failure) and
 `identity-readback-001-045-batch-v1.json`. All failures remain recorded.
 The overall first browser-verification run remains failed; no release or
 surface capability is admitted from a passing retry alone.

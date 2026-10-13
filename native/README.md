@@ -25,7 +25,8 @@ patch chain; they do not transfer automatically to newer binaries.
 | Current linked Windows browser | 001-045 | Incremental j4 build succeeded in **5m30s**, with EXE/DLL-bound receipt |
 | Complete eight-gate runtime suite | 001-045 | **160 checks passed** on unchanged runtime core |
 | Worker startup/restart | 001-045 | **40/40** classic/module, shared-client and unavailable-policy checks passed |
-| Combined Canvas/OfflineAudio | 001-045 | Retry **7/7 passed**; initial run timed out on profile B, repeatability investigation remains open |
+| Combined Canvas/OfflineAudio | 001-045 | Two retries **7/7 passed**; initial profile-B timeout remains unresolved |
+| Protected WebGL readback | 001-045 | **Failed**: clipped reads overwrite out-of-bounds destination bytes; capability not admitted |
 | Branding | Prepared | Product/logo patch not applied to verified binary |
 | Linux/macOS | Deferred | No current own-fork runtime admission |
 | Mobile Web | Emulation | Desktop viewport/touch mode, not Android/iOS |
@@ -45,7 +46,8 @@ abort without commit or script execution.
 
 Evidence on D: `browser-verification-001-045-v1/suite/suite.json`,
 `browser-verification-001-045-v1/worker-startup.json` and
-`combined-surfaces-001-045-v2.json`. The initial combined timeout remains
+`combined-surfaces-001-045-v2.json` and `combined-surfaces-001-045-v3.json`.
+Protected GPU failure: `gpu-readback-001-045-v1.json`. The initial combined timeout remains
 recorded in `browser-verification-001-045-v1/surfaces.json`; a passing retry
 does not prove the intermittent failure is fixed.
 
