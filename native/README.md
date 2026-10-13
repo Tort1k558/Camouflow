@@ -41,6 +41,9 @@ no GPU device and does not spoof adapter data or provide WebGPU readback protect
 The feature-off 001-027 runtime passed this manager probe in en-US and de-DE:
 document/worker WebGPU observations matched, with unchanged runtime core and
 diagnostic inputs. This is evidence for observation, not for a protected GPU.
+Profile health checks use a separate owned loopback page with page-scoped routing
+and guaranteed close. The original profile page and its network requests remain
+untouched; this was verified on the same old runtime in both locales.
 
 Prepared native gates additionally require 26 BrowserContext cases, 34 surface
 navigation/readiness cases, 13 window/child cases and 14 RGBA8 pack-copy cases.

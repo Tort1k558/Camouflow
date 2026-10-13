@@ -1500,9 +1500,9 @@ class ProfilesBridge(QObject):
                         })""")
                         if engine == "native":
                             from app.core.native.configuration import NativeConfiguration
-                            from app.core.native.diagnostics import inspect_native_profile
-                            signals["native"] = await inspect_native_profile(
-                                browser.page, NativeConfiguration.from_settings(browser._browser_settings),
+                            from app.core.native.health import inspect_native_context
+                            signals["native"] = await inspect_native_context(
+                                browser.context, NativeConfiguration.from_settings(browser._browser_settings),
                                 browser.browser.version)
                         webrtc_candidates = await browser.page.evaluate("""async () => {
                             if (!window.RTCPeerConnection) return [];

@@ -8,7 +8,7 @@ from .diagnostics import inspect_native_profile
 from .runtime import NativeRuntime
 
 
-async def _prepare_diagnostic_page(context):
+async def _prepare_diagnostic_page(context, *, page=None):
     url = "http://127.0.0.1/glint-native-health"
 
     async def respond(route):
@@ -23,10 +23,21 @@ async def _prepare_diagnostic_page(context):
             headers={"Content-Security-Policy": "default-src 'none'; worker-src blob:",
                      "Cache-Control": "no-store"})
 
-    await context.route("**/*", respond)
-    page = context.pages[0]
+    target = context if page is None else page
+    await target.route("**/*", respond)
+    if page is None:
+        page = context.pages[0]
     await page.goto(url, wait_until="load", timeout=10000)
     return page
+
+
+async def inspect_native_context(context, configuration: NativeConfiguration, browser_version: str) -> dict:
+    page = await context.new_page()
+    try:
+        await _prepare_diagnostic_page(context, page=page)
+        return await inspect_native_profile(page, configuration, browser_version)
+    finally:
+        await page.close()
 
 
 async def _probe(executable: Path, configuration: NativeConfiguration, work_dir: Path, *, inspect_values: bool) -> dict:

@@ -1088,6 +1088,35 @@ def test_native_profile_probe_observes_owned_page_and_always_verifies_teardown(t
     assert not list((tmp_path / "health").iterdir())
 
 
+@pytest.mark.parametrize("failure", ["", "navigate", "inspect"])
+def test_native_context_health_owns_only_diagnostic_page_and_closes_on_failure(monkeypatch, failure):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.core.native import health
+
+    page = SimpleNamespace(route=AsyncMock(), goto=AsyncMock(), close=AsyncMock())
+    context = SimpleNamespace(new_page=AsyncMock(return_value=page), route=AsyncMock())
+    expected = {"mismatches": [], "native_patch_capabilities": []}
+    inspect = AsyncMock(return_value=expected)
+    if failure == "navigate":
+        page.goto.side_effect = RuntimeError("Owned navigation failed")
+    elif failure == "inspect":
+        inspect.side_effect = RuntimeError("Owned inspection failed")
+    monkeypatch.setattr(health, "inspect_native_profile", inspect)
+    configuration = NativeConfiguration()
+    if failure:
+        with pytest.raises(RuntimeError, match="Owned"):
+            asyncio.run(health.inspect_native_context(context, configuration, "148.0.7778.96"))
+    else:
+        assert asyncio.run(health.inspect_native_context(context, configuration, "148.0.7778.96")) is expected
+    context.route.assert_not_awaited()
+    page.route.assert_awaited_once()
+    page.close.assert_awaited_once()
+    if failure != "navigate":
+        inspect.assert_awaited_once_with(page, configuration, "148.0.7778.96")
+
+
 def test_native_health_fixture_blocks_other_requests_without_network_fallback():
     import asyncio
     from types import SimpleNamespace
