@@ -99,6 +99,14 @@ Private proof, log and saved Clang reproducer:
 `identity-contexts-001-058-v2.json`; object compilation is not a passing
 BrowserContext gate or linked browser result.
 
+The full v2 retry also stopped on memory exhaustion after **56.39s**, five
+completed steps. This time `core_probes_impl.cc` failed with LLVM OOM; another
+compiler reported Windows **0x5AF** (insufficient paging capacity). The 37
+BrowserContext cases still did not execute. Failed v2 evidence is retained.
+Known heavy `core_probes_impl` and generated `shorthands` objects are being
+scheduled as separate single-object targets with the original `j4` option and
+unchanged flags, rather than suppressing diagnostics or changing system paging.
+
 ### Additional owned browser gates 001-047 — 2026-10-14
 
 | Gate | Result | Scope and limits |
