@@ -26,6 +26,7 @@ patch chain; they do not transfer automatically to newer binaries.
 | Complete eight-gate runtime suite | 001-047 | **160 checks passed** on unchanged runtime core |
 | Worker startup/restart | 001-047 | Default **40/40**; extended **60/60**, including 20 nested classic/module cases |
 | Combined Canvas/OfflineAudio | 001-047 | **Three consecutive 7/7 runs passed** on unchanged core; historical 001-045 profile-B timeout remains unexplained |
+| Nested worker Canvas | Prepared | Optional 24-case first-script/repeat/restart probe; no linked-runtime result yet |
 | Protected WebGL readback | 001-047 | **Six phases passed**, including clipped CPU/PBO reads, state/errors, exports, restart and profile isolation; wider admission remains blocked |
 | Branding | Prepared | Product/logo patch not applied to verified binary |
 | Linux/macOS | Deferred | No current own-fork runtime admission |

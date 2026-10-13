@@ -26,11 +26,31 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | `scripts/verify_native_storage_paths.py` | Windows path-depth/storage probes |
 | `scripts/verify_native_canvas.py` | Canvas verification tooling, not an implemented protection claim |
 | `scripts/verify_native_worker_startup.py` | Default: 40 owned startup/restart/shared-client cases; `--include-nested` adds 20 nested dedicated-worker cases; no Canvas admission |
+| `scripts/verify_native_surfaces.py --include-nested-canvas` | Prepared: 24 parent/child Canvas cases across baseline/two profiles and restart, including first-script/repeated readback and separate fetch/body counters; not yet executed against a browser |
 
 Run commands as documented in the [build guide](../native/BUILDING.md). Use fresh
 report paths outside source/application repositories. Keep raw outputs and
 measured executable/core-DLL hashes; a count without exact names and successful
 completion is insufficient. Failed or skipped cases are not a passing gate.
+
+The combined surface gate has an optional nested Canvas extension:
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_surfaces.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --work-dir D:\CamouFlowNative --report D:\CamouFlowNative\surfaces-nested-new.json --include-nested-canvas
+```
+
+It starts the existing OffscreenCanvas read in both parent and child script
+bodies, before awaiting a message/network event, then repeats after messaging.
+All four classic/module combinations must match the validated same-partition
+dedicated worker, including PNG/pixel agreement, geometry and API errors. Each
+body and main script fetch must occur once. Across baseline and two independent
+profiles before/after restart this adds 24 cases to the existing seven phases;
+raw failed observations are retained and missing coverage rejects the gate.
+Independent child-policy denial, nested Audio and early termination are not
+covered. This extension is prepared: Python/fixture/JavaScript syntax checks
+do not establish protected nested readback in a linked browser.
+Run heavy C++ candidate checks separately from native builds after the observed
+out-of-memory failure; do not silently lower the requested four build jobs.
 
 Nested worker coverage is opt-in and preserves the existing 40-case contract:
 

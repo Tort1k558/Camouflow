@@ -27,6 +27,7 @@ from app.core.native.runtime import NativeRuntime
 from scripts.verify_native_audio import AUDIO_READ
 from scripts.verify_native_audio import validate_observations as validate_audio
 from scripts.verify_native_audio_quality import compare_quality, strip_quality
+from scripts import verify_native_nested_canvas as nested_canvas
 from scripts.verify_native_canvas import (
     CONTEXTS,
     READ,
@@ -218,6 +219,8 @@ class SurfaceFixtureHandler(CanvasFixtureHandler):
     worker_read = COMBINED_READ
 
     def do_GET(self) -> None:
+        if nested_canvas.serve_fixture(self):
+            return
         parsed = urlsplit(self.path)
         if parsed.path not in {"/surface-startup", "/surface-first-script", "/surface-executed"}:
             return super().do_GET()
@@ -366,13 +369,14 @@ def probe_inputs() -> dict[str, str]:
     names = ("scripts/verify_native_surfaces.py", "scripts/verify_native_canvas.py",
              "scripts/verify_native_audio.py", "scripts/verify_native_worker_startup.py",
              "scripts/verify_native_audio_quality.py",
+             "scripts/verify_native_nested_canvas.py",
              "scripts/verify_native_runtime.py", "app/core/native/runtime.py",
              "app/core/native/configuration.py", "app/core/native/identity.py")
     return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in names}
 
 
 async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, report: dict,
-                 runtimes: list[NativeRuntime]) -> None:
+                 runtimes: list[NativeRuntime], *, include_nested_canvas: bool = False) -> None:
     origin = f"http://127.0.0.1:{server.server_port}"
     discovery = NativeRuntime(owned / "driver-arguments", executable, SurfaceConfiguration())
     runtimes.append(discovery)
@@ -393,6 +397,7 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
         runtime = NativeRuntime(owned / name, executable, configuration)
         runtimes.append(runtime)
         previous = None
+        previous_nested = None
         for phase in ("initial", "restart"):
             try:
                 context = await runtime.start(headless=True)
@@ -421,6 +426,13 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
                 check["first_script"] = first_script
                 check["first_script_counts"] = counts
                 validate_first_script(first_script, observed["document"], counts)
+                if include_nested_canvas:
+                    check["nested_canvas_evidence"] = {}
+                    check["nested_canvas"] = await nested_canvas.observe(
+                        page, server, observed["dedicated"]["canvas"], check["nested_canvas_evidence"])
+                    if previous_nested is not None and check["nested_canvas"] != previous_nested:
+                        raise ValueError("Nested worker Canvas changed across profile restart")
+                    previous_nested = check["nested_canvas"]
                 check["passed"] = True
                 previous = observed
                 results[name] = observed
@@ -443,11 +455,16 @@ def main() -> int:
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--include-nested-canvas", action="store_true",
+                        help="Also check first-script/repeated Canvas in classic/module parent/child workers")
     args = parser.parse_args()
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite surface evidence")
     report = {"schema": 1, "passed": False, "privacy_admitted": False, "checks": [],
               "platform": platform.platform(), "scope": "Combined Canvas/OfflineAudio isolation, first-parser-script consistency, restart, float32 error/SNR and missing-policy rejection; render durations measured, not a performance admission; no GPU or anti-bot admission"}
+    report["include_nested_canvas"] = args.include_nested_canvas
+    if args.include_nested_canvas:
+        report["scope"] += "; nested classic/module dedicated-worker first-script/repeated Canvas and restart; not independent child-policy denial or nested Audio"
     server = thread = owned = None
     runtimes = []
     try:
@@ -465,7 +482,8 @@ def main() -> int:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         owned = Path(tempfile.mkdtemp(prefix="glint-surfaces-", dir=args.work_dir.resolve()))
-        asyncio.run(verify(executable, owned, server, report, runtimes))
+        asyncio.run(verify(executable, owned, server, report, runtimes,
+                           include_nested_canvas=args.include_nested_canvas))
         if (measure_runtime_core(executable) != core or validate_receipt(executable, core) != receipt
                 or probe_inputs() != inputs):
             raise ValueError("Surface runtime, receipt or probe code changed during verification")
@@ -475,6 +493,15 @@ def main() -> int:
         if ({check["name"] for check in report["checks"]} != expected
                 or len(report["checks"]) != len(expected)):
             raise ValueError("Combined surface phases are incomplete")
+        if args.include_nested_canvas:
+            cases = {f"{parent}-{child}" for parent, child in nested_canvas.NESTED_CASES}
+            nested_checks = [check for check in report["checks"] if check["name"] != "missing-document-policy"]
+            if any(set(check.get("nested_canvas", {})) != cases
+                   or set(check.get("nested_canvas_evidence", {})) != cases
+                   or any(entry.get("passed") is not True for entry in check["nested_canvas_evidence"].values())
+                   for check in nested_checks):
+                raise ValueError("Nested Canvas phase coverage is incomplete")
+            report["nested_canvas_case_count"] = sum(len(check["nested_canvas"]) for check in nested_checks)
         report["passed"] = True
     except Exception as error:  # noqa: BLE001 - retain failed evidence
         report.update(error=str(error), traceback=traceback.format_exc())
