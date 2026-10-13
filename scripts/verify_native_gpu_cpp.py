@@ -20,8 +20,9 @@ TARGETS = {
 }
 
 
-def syntax_flags(ninja: str, toolchain: str, relative: str) -> str:
-    if not re.search(r"^build [^\n]+: cxx " + re.escape("../../" + relative) + r"(?: \||$)", ninja, re.M):
+def syntax_flags(ninja: str, toolchain: str, relative: str, *, generated: bool = False) -> str:
+    prefix = "gen/" if generated else "../../"
+    if not re.search(r"^build [^\n]+: cxx " + re.escape(prefix + relative) + r"(?: \||$)", ninja, re.M):
         raise ValueError("Requested source is absent from its generated C++ target")
     variables = dict(re.findall(r"^(\w+) = (.*)$", ninja, re.M))
     if not all(key in variables for key in ("defines", "include_dirs", "cflags", "cflags_cc")):

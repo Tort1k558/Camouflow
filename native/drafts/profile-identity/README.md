@@ -15,6 +15,7 @@ headers. No active Chromium source, browser core or GN configuration changed.
 | V3 transport | `surface_policy_producer.cc`, its fixture file and `surface_policy_preflight_unittest.cc`, with freshly generated candidate Mojo headers | `profile-identity-transport-syntax-001-038-v3/proof.json` |
 | First-evaluation fixture definitions | `document_loader_test.cc`, `worker_thread_test.cc`, with the same v3 candidate bindings | `profile-identity-handoff-syntax-001-038-v1/proof.json` |
 | Chrome launch integration | `profile_impl.cc`, `off_the_record_profile_impl.cc`, using candidate context APIs | `profile-identity-launch-syntax-001-038-v1/proof.json` |
+| Generated V3 implementations | Fresh candidate `native_privacy_surface_policy.mojom.cc` and `.mojom-shared.cc`, using exact generated-source Ninja target flags | `profile-identity-generated-cpp-001-040-v1/proof.json` |
 
 This does **not** execute cryptography, service/context/transport fixtures,
 generated serialization implementations, first-script delivery or browser
@@ -22,7 +23,7 @@ behavior. Optimized objects and
 linkage remain unverified; `privacy_admitted` is false. The regular privacy
 unit target currently links 6754 cached inputs, so its isolated future-mode
 link/run must wait for resource headroom rather than compete with the active
-four-job Chrome build. Do not replace that gate with stubbed crypto or owners.
+four-job native build. Do not replace that gate with stubbed crypto or owners.
 
 The handoff check parses real test target files, including the six new identity
 cases, without suppressing compiler diagnostics or reusing old PCH state.
@@ -103,8 +104,10 @@ document/worker roundtrip, unsupported versions/modes and cross-partition
 rejection. Pinned Mojo parsing and isolated C++ binding generation passed,
 including the mode, typed partition and four seed arrays. The producer and two
 transport fixture translation units subsequently passed C++ syntax checks with
-those candidate headers. Generated `.cc` implementations, optimized objects,
-linkage and fixture execution remain unverified.
+those candidate headers. Both freshly generated regular/shared `.cc`
+implementations subsequently passed type checking with pinned target flags on
+001-040. Optimized objects, linkage, serialization execution and fixture
+execution remain unverified.
 
 ```powershell
 .venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-transport-replay.json --include-transport
@@ -197,6 +200,11 @@ Source composition is not evidence of linking, API compatibility or protected
 GPU output. Both candidate sets remain unregistered and feature admission stays
 blocked. WebGPU readback, floating-point/HDR surfaces and believable OS/GPU/mobile
 presets are not implemented by this combined gate.
+
+The full twelve-patch composition was rechecked against registered source 001-040
+across 113 paths, including isolated Mojo and GPU command generation:
+`identity-readback-001-040-batch-v1.json` on D. Active source/core/GN remained
+unchanged; `compiled=false`, `mode_enabled=false`, `privacy_admitted=false`.
 
 ## Still required
 

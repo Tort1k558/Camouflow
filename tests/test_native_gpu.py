@@ -872,6 +872,19 @@ def test_gpu_cpp_syntax_retains_diagnostics_but_not_old_pch():
     assert "clang-crashreports" not in flags
 
 
+def test_cpp_syntax_generated_source_requires_explicit_exact_target_binding():
+    from scripts.verify_native_gpu_cpp import syntax_flags
+
+    relative = "third_party/blink/public/mojom/native_privacy/policy.mojom.cc"
+    target = gpu_syntax_target().replace("../../gpu/command_buffer/service/fixture.cc", "gen/" + relative)
+    flags = syntax_flags(target, gpu_syntax_rule(), relative, generated=True)
+    assert "/WX" in flags and "-DFIXTURE" in flags and "-imsvcSDK" in flags
+    with pytest.raises(ValueError, match="absent"):
+        syntax_flags(target, gpu_syntax_rule(), relative)
+    with pytest.raises(ValueError, match="absent"):
+        syntax_flags(target, gpu_syntax_rule(), relative.replace("policy", "foreign"), generated=True)
+
+
 @pytest.mark.parametrize("mutation", ["missing-source", "missing-flags", "unresolved", "missing-rule"])
 def test_gpu_cpp_syntax_rejects_unverified_generated_targets(mutation):
     from scripts.verify_native_gpu_cpp import syntax_flags
