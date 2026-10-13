@@ -81,7 +81,7 @@ compilation or Audio privacy.
 
 ## Native scalar evidence
 
-`offline-audio-scalar-quality-native-v2.json` on D records **13/13 actual C++ Gtest
+`audio-scalar-public-native-v2.json` on D records **13/13 actual C++ Gtest
 cases passed**, with exact case names independently checked. This used the
 pinned checkout's clang-cl, real built BoringSSL objects and its actual libc++
 verbose-abort dependency copied to an isolated temporary directory. The scalar
@@ -98,6 +98,23 @@ Canonical sources, original crypto
 objects, active browser binaries and GN settings remained unchanged.
 `privacy_admitted` remains **false**. Failed v1/v2 probe logs are retained;
 they were toolchain/archive-linking failures, not passing runtime evidence.
+
+The public repeatable gate snapshots actual COFF `.obj` and assembly `.o`
+members from both existing BoringSSL archives; all members must be measured,
+ordinary files inside their source directory. It records hashes of compiler,
+linker, headers, fixtures, dependencies and active runtime/GN. All thirteen
+exact case names must complete; skipped, duplicate or foreign cases fail.
+Compilation happens in an owned temporary folder, not the active build output.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_audio_scalar.py `
+  --workspace D:\CamouFlowNative `
+  --vs-installation D:\CamouFlowNative\toolchain\BuildTools `
+  --report D:\CamouFlowNative\audio-scalar-new.json
+```
+
+Requires the pinned checkout's previously built BoringSSL and libc++ abort
+objects; the gate does not launch another Chromium builder or download tools.
 
 The integration patch includes the updated fixtures. The initial full replay
 against registered 001-036 failed because the historical reversal omitted

@@ -5,6 +5,7 @@ import struct
 import pytest
 
 from scripts.verify_native_audio_quality import FRAMES, compare_samples, strip_quality
+from scripts import verify_native_audio_scalar as scalar
 
 
 def row(bits, elapsed=2):
@@ -12,6 +13,57 @@ def row(bits, elapsed=2):
     return {"document": {"available": True, **{
         phase: {"hash": digest, "sampleBits": list(bits), "renderMilliseconds": elapsed}
         for phase in ("signal", "repeat", "silence")}}}
+
+
+@pytest.mark.parametrize("mutation", [None, "missing", "duplicate", "skip", "failure", "foreign", "boolean"])
+def test_audio_scalar_requires_exact_completed_native_cases(mutation):
+    cases = [{"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(scalar.CASES)]
+    result = {"tests": len(cases), "failures": 0, "disabled": 0,
+              "testsuites": [{"name": scalar.SUITE, "testsuite": cases}]}
+    if mutation == "missing":
+        cases.pop()
+    elif mutation == "duplicate":
+        cases[-1] = cases[0]
+    elif mutation == "skip":
+        cases[0]["result"] = "SKIPPED"
+    elif mutation == "failure":
+        cases[0]["failures"] = [{"failure": "actual error"}]
+    elif mutation == "foreign":
+        result["testsuites"][0]["name"] = "GlintReadbackMetadataTest"
+    elif mutation == "boolean":
+        result["failures"] = False
+    if mutation:
+        with pytest.raises(ValueError):
+            scalar.validate_results(result, required_cases=scalar.CASES, suite_name=scalar.SUITE, label="Audio scalar")
+    else:
+        scalar.validate_results(result, required_cases=scalar.CASES, suite_name=scalar.SUITE, label="Audio scalar")
+
+
+@pytest.mark.parametrize("suffix", [".obj", ".o"])
+def test_audio_crypto_snapshot_accepts_measured_native_objects(tmp_path, suffix):
+    crypto = tmp_path / "crypto"
+    crypto.mkdir()
+    member = crypto / ("native" + suffix)
+    member.write_bytes(b"COFF")
+    assert scalar.archive_member_path(crypto, member.name) == member
+
+
+@pytest.mark.parametrize("name", ["../outside.obj", "nested/../native.obj", "native.lib", "", "missing.obj"])
+def test_audio_crypto_snapshot_rejects_escape_and_nonobjects(tmp_path, name):
+    crypto = tmp_path / "crypto"
+    crypto.mkdir()
+    (crypto / "native.obj").write_bytes(b"COFF")
+    (crypto / "native.lib").write_bytes(b"archive")
+    (tmp_path / "outside.obj").write_bytes(b"COFF")
+    with pytest.raises(ValueError):
+        scalar.archive_member_path(crypto, name)
+
+
+def test_audio_crypto_snapshot_rejects_absolute_member(tmp_path):
+    member = tmp_path / "native.obj"
+    member.write_bytes(b"COFF")
+    with pytest.raises(ValueError):
+        scalar.archive_member_path(tmp_path, str(member))
 
 
 def test_measured_one_bit_error_and_snr():

@@ -20,26 +20,27 @@ CASES = {
 }
 
 
-def validate_results(results: dict) -> None:
+def validate_results(results: dict, *, required_cases: set[str] = CASES,
+                     suite_name: str = "GlintReadbackMetadataTest", label: str = "GPU codec") -> None:
     if (not isinstance(results, dict) or any(type(results.get(key)) is not int
                                            for key in ("tests", "failures", "disabled"))
-            or results["tests"] != len(CASES) or results.get("failures") != 0 or results.get("disabled") != 0):
-        raise ValueError("GPU codec test totals are incomplete or failed")
+            or results["tests"] != len(required_cases) or results.get("failures") != 0 or results.get("disabled") != 0):
+        raise ValueError(f"{label} test totals are incomplete or failed")
     suites = results.get("testsuites")
     if (not isinstance(suites, list) or len(suites) != 1 or not isinstance(suites[0], dict)
-            or suites[0].get("name") != "GlintReadbackMetadataTest"):
-        raise ValueError("GPU codec suite is missing or foreign")
+            or suites[0].get("name") != suite_name):
+        raise ValueError(f"{label} suite is missing or foreign")
     cases = suites[0].get("testsuite")
-    if not isinstance(cases, list) or len(cases) != len(CASES):
-        raise ValueError("GPU codec cases are incomplete")
+    if not isinstance(cases, list) or len(cases) != len(required_cases):
+        raise ValueError(f"{label} cases are incomplete")
     observed = []
     for case in cases:
         if (not isinstance(case, dict) or not isinstance(case.get("name"), str)
                 or case.get("status") != "RUN" or case.get("result") != "COMPLETED" or case.get("failures")):
-            raise ValueError("GPU codec case did not complete successfully")
+            raise ValueError(f"{label} case did not complete successfully")
         observed.append(case["name"])
-    if len(set(observed)) != len(observed) or set(observed) != CASES:
-        raise ValueError("GPU codec cases differ from the required fixtures")
+    if len(set(observed)) != len(observed) or set(observed) != required_cases:
+        raise ValueError(f"{label} cases differ from the required fixtures")
 
 
 def hashes(paths: list[Path]) -> dict[str, str]:
