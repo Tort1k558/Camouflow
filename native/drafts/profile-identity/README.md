@@ -16,6 +16,7 @@ headers. No active Chromium source, browser core or GN configuration changed.
 | First-evaluation fixture definitions | `document_loader_test.cc`, `worker_thread_test.cc`, with the same v3 candidate bindings | `profile-identity-handoff-syntax-001-038-v1/proof.json` |
 | Chrome launch integration | `profile_impl.cc`, `off_the_record_profile_impl.cc`, using candidate context APIs | `profile-identity-launch-syntax-001-038-v1/proof.json` |
 | Generated V3 implementations | Fresh candidate `native_privacy_surface_policy.mojom.cc` and `.mojom-shared.cc`, using exact generated-source Ninja target flags | `profile-identity-generated-cpp-001-040-v1/proof.json` |
+| Production V3 consumers | Worker service/bootstrap, `render_frame_impl.cc`, `document_loader.cc`, `worker_thread.cc` and `service_worker_global_scope.cc`, with fresh candidate bindings | `profile-identity-consumers-cpp-001-040-v1/proof.json` |
 
 This does **not** execute cryptography, service/context/transport fixtures,
 generated serialization implementations, first-script delivery or browser
@@ -32,6 +33,12 @@ mode/seed delivery happens before the first script. Those remain runtime gates.
 The launch check likewise parses the regular and off-the-record profile paths;
 it does not prove startup, persisted mode, incognito isolation or flag rejection
 in an actual browser process.
+
+The six production consumer units were checked separately from fixtures against
+001-040: actual browser/renderer/Blink target flags, candidate v3 headers first,
+no old PCH and no disabled diagnostics. This closes the parsing/type-compatibility
+gap between fixture definitions and production consumers. It still does not
+execute worker startup, document commits, IPC or any fingerprint surface.
 
 This candidate adds an explicit browser-owned profile-identity derivation API
 alongside the existing partitioned privacy API. It does not replace that API,
