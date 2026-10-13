@@ -12,8 +12,8 @@ intended to be idempotent. Signed silence, subnormals, non-finite values and
 absolute amplitudes >= 1 retain their original bits. A fixed cache recomputes on
 collision rather than aliasing samples; HMAC failure returns no value.
 
-Eleven scalar/budget fixture definitions and four detached AudioBuffer fixtures
-cover the candidate. All eleven scalar/budget cases compiled and executed;
+Thirteen scalar/budget fixture definitions and four detached AudioBuffer fixtures
+cover the candidate. All thirteen scalar/budget cases compiled and executed;
 the four detached AudioBuffer cases have not. The detached adapter keeps
 the original channels untouched, preserves format and normal result mutability,
 caps the additional sample allocation at 64 MiB with overflow-safe arithmetic,
@@ -81,7 +81,7 @@ compilation or Audio privacy.
 
 ## Native scalar evidence
 
-`offline-audio-scalar-native-v3.json` on D records **11/11 actual C++ Gtest
+`offline-audio-scalar-quality-native-v2.json` on D records **13/13 actual C++ Gtest
 cases passed**, with exact case names independently checked. This used the
 pinned checkout's clang-cl, real built BoringSSL objects and its actual libc++
 verbose-abort dependency copied to an isolated temporary directory. The scalar
@@ -90,10 +90,21 @@ Chromium ABI or Blink integration check. No crypto replacement or stub was used.
 
 The checks cover exceptional float bits, signed silence, subnormals, peaks,
 one-bit bounds, idempotence, equal stereo samples, different seeds, cache
-collisions and allocation-budget arithmetic. Canonical sources, original crypto
+collisions and allocation-budget arithmetic. Two additional cases verify six
+independently calculated HMAC vectors and the one-bit bound plus **130-dB SNR**
+on a 4096-sample generated signal. This numerical scalar check does not measure
+WebAudio rendering, audible compatibility or runtime performance.
+Canonical sources, original crypto
 objects, active browser binaries and GN settings remained unchanged.
 `privacy_admitted` remains **false**. Failed v1/v2 probe logs are retained;
 they were toolchain/archive-linking failures, not passing runtime evidence.
+
+The integration patch includes the updated fixtures. A fresh full next-batch
+replay against registered 001-036 did **not** complete: its historical promoted
+batch reversal fails at `document_loader.cc` in patch 0032. This failure occurs
+before the Audio patch is applied; the old replay receipt is not proof of the
+updated composition. The replay tool needs alignment with the newer registered
+source chain before this batch can be promoted.
 
 ## Prepared numerical runtime gate
 
