@@ -87,3 +87,35 @@ The combined 27-candidate source stack replay passed across 115 paths after the
 registered renderer mock repair, with active sources/GN/receipt/core unchanged:
 `gpu-shader-child-mock-public-replay-v2.json`. This is source composition, not
 execution of the GPU metadata feature.
+
+## RGBA8 pack-copy foundation
+
+`rgba8_pack_copy_integration.patch` prepares an allocation-free native helper
+for scattering an **already protected** tightly packed RGBA8 read rectangle
+into a WebGL/PBO destination layout. It reuses Chromium's
+`WebGLImageConversion::ComputeImageSizeInBytes` rather than duplicating pack
+alignment, row-length and skip arithmetic. Checked sizes, exact source length,
+capacity and disjoint storage are verified before any write. Only requested
+pixel spans are copied; prefix/suffix, padding and skipped rows remain intact.
+Zero-size reads are no-ops. This does not mask pixels, read a GPU, change GL
+state, process arbitrary mapped buffers or activate a browser hook.
+
+Fourteen C++ fixtures are prepared, **not compiled or executed**. They cover
+offsets, skips, alignment-eight padding, exact last-row capacity, overlapping
+layout arithmetic, source immutability, aliased storage, insufficient capacity,
+invalid fields, overflows and empty reads. Layout arithmetic is not proof of
+driver acceptance or GL error semantics; those belong to the caller's original
+validation/read path and actual browser tests.
+
+The next required integration is a bounded full-frame canonical readback,
+surface-owned WebGL seed, crop/layout handling and row-wise PBO upload. It must
+preserve framebuffer/pack bindings and all upstream failures, avoid mutation of
+the live render target, and reconcile exports with the same canonical pixels.
+Float/integer formats, custom framebuffers, context loss and Canvas colour-space
+conversion remain explicit unfinished work, not raw fallbacks or admission.
+
+Ordered replay of all 28 public candidates passed across 119 paths with active
+sources, GN, receipt and linked core unchanged:
+`rgba8-pack-copy-public-replay-v1.json` on D. Four aggregate candidate patches
+independently reproduce that exact source (`surface-promotion-v7/proof.json`).
+Neither run invokes a compiler or activates the helper in the current build.

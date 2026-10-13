@@ -49,6 +49,7 @@ def test_next_batch_patch_coverage_and_canonical_sources():
                                  "content/renderer/render_frame_impl.cc",
                                  "content/browser/renderer_host/render_frame_host_impl.h",
                                  "content/common/frame.mojom",
+                                 "third_party/blink/renderer/modules/BUILD.gn",
                                  "content/browser/renderer_host/render_frame_host_impl.cc",
                                  "third_party/blink/renderer/core/loader/document_loader.cc",
                                  "third_party/blink/renderer/core/workers/worker_thread_test.cc"})
@@ -73,6 +74,23 @@ def test_gpu_shader_debug_metadata_is_gated_at_extension_support_boundary():
     assert "+    return false;" in text
     assert "GL_ANGLE_translated_shader_source" in text
     assert not any(line.startswith("+") and "getTranslatedShaderSource" in line for line in text.splitlines())
+
+
+def test_rgba8_pack_copy_reuses_upstream_layout_and_validates_before_writes():
+    text = (DRAFTS / "gpu/rgba8_pack_copy.cc").read_text(encoding="utf-8-sig")
+    assert "WebGLImageConversion::ComputeImageSizeInBytes(" in text
+    assert "GL_RGBA, GL_UNSIGNED_BYTE" in text
+    assert "std::less<const uint8_t*>" in text
+    assert "destination.last(0).data()" in text
+    assert text.index("Rgba8PackCopyError::kAliasedStorage") < text.index("std::copy(")
+    assert text.index("Rgba8PackCopyError::kDestinationTooSmall") < text.index("std::copy(")
+    assert "GetBufferSubData" not in text
+    assert "HMAC" not in text
+    fixtures = (DRAFTS / "gpu/rgba8_pack_copy_unittest.cc").read_text(encoding="utf-8-sig")
+    names = re.findall(r"TEST\(\s*GlintRgba8PackCopyTest,\s*(\w+)\s*\)", fixtures)
+    assert len(names) == len(set(names)) == 14
+    assert "AliasedStorageCannotMutateCanonicalSource" in names
+    assert "ShortDestinationRejectsBeforeAnyWrite" in names
 
 
 def test_startup_preload_settles_before_profile_publication_without_event_loop():
