@@ -141,7 +141,9 @@ def reference_vectors() -> dict[str, str]:
 
 def verify(workspace: Path, report: Path, *, include_mode: bool = False,
            include_transport: bool = False, check_bindings: bool = False,
-           include_handoff: bool = False, include_launch: bool = False) -> dict:
+           include_handoff: bool = False, include_launch: bool = False, check_cpp: bool = False) -> dict:
+    include_launch = include_launch or check_cpp
+    check_bindings = check_bindings or check_cpp
     include_handoff = include_handoff or include_launch
     include_transport = include_transport or check_bindings or include_handoff
     include_mode = include_mode or include_transport
@@ -182,14 +184,21 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False,
             raise ValueError("Identity launch candidate source coverage differs")
         patches.append(LAUNCH_PATCH)
         paths.update(LAUNCH_PATHS)
+    if check_cpp:
+        from scripts.verify_native_identity_cpp import source_paths
+        paths.update(source_paths(source))
     if any((source / name).resolve() != source / name for name in paths):
         raise ValueError("Profile identity inputs must not follow links")
     before = {name: digest(source / name) for name in paths}
     if any(value is None for value in before.values()):
         raise ValueError("A profile identity baseline input is missing")
     inputs = {str(path.relative_to(ROOT)): digest(path) for path in (*patches, Path(__file__))}
+    if check_cpp:
+        inputs["scripts/verify_native_identity_cpp.py"] = digest(ROOT / "scripts/verify_native_identity_cpp.py")
+        inputs["scripts/verify_native_gpu_cpp.py"] = digest(ROOT / "scripts/verify_native_gpu_cpp.py")
     vectors = reference_vectors()
     bindings = None
+    cpp = None
     with tempfile.TemporaryDirectory(prefix="glint-profile-identity-replay-", dir=report.parent) as owned:
         overlay = Path(owned)
         for name in paths:
@@ -228,18 +237,22 @@ def verify(workspace: Path, report: Path, *, include_mode: bool = False,
                 raise ValueError("Identity launch native fixture coverage differs")
         if check_bindings:
             bindings = verify_bindings(source, overlay, env)
+        if check_cpp:
+            from scripts.verify_native_identity_cpp import verify_cpp
+            cpp = verify_cpp(source, overlay, Path(str(report) + ".cpp.log"), env)
         composed = {name: digest(overlay / name) for name in paths}
     if before != {name: digest(source / name) for name in paths}:
         raise ValueError("Active profile identity source changed during replay")
     if inputs != {name: digest(ROOT / name) for name in inputs}:
         raise ValueError("Canonical identity candidate inputs changed during replay")
-    result = {"passed": True, "compiled": False, "mode_enabled": False, "privacy_admitted": False,
+    result = {"passed": cpp is None or cpp["passed"], "compiled": False, "mode_enabled": False, "privacy_admitted": False,
               "immutable_mode_candidate_replayed": include_mode,
               "context_mode_fixtures_replayed": include_mode,
               "identity_transport_candidate_replayed": include_transport,
               "identity_handoff_fixtures_replayed": include_handoff,
               "identity_launch_candidate_replayed": include_launch,
               "bindings": bindings,
+              "cpp_syntax": cpp,
               "active_source_unchanged": True, "inputs": inputs, "composed_source": composed,
               "independent_reference_vectors": vectors, "registered_patches": registered}
     report.write_text(json.dumps(result, indent=2), encoding="utf-8")
@@ -260,12 +273,14 @@ def main() -> int:
                         help="Also replay Blink mode handoff fixtures after the v3 candidate")
     parser.add_argument("--include-launch", action="store_true",
                         help="Also replay strict Chrome launch selection and all preceding candidates")
+    parser.add_argument("--check-cpp", action="store_true",
+                        help="Check all 22 actual target translation units with fresh v3 Mojo bindings; no execution")
     args = parser.parse_args()
     result = verify(args.workspace, args.report, include_mode=args.include_mode,
                     include_transport=args.include_transport, check_bindings=args.check_bindings,
-                    include_handoff=args.include_handoff, include_launch=args.include_launch)
+                    include_handoff=args.include_handoff, include_launch=args.include_launch, check_cpp=args.check_cpp)
     print(json.dumps({key: result[key] for key in ("passed", "compiled", "mode_enabled")}))
-    return 0
+    return 0 if result["passed"] else 1
 
 
 if __name__ == "__main__":

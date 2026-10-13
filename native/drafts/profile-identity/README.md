@@ -4,6 +4,22 @@
 
 ## Native C++ type checks
 
+The complete six-patch identity candidate now has a reproducible public gate:
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-cpp-new.json --check-cpp
+```
+
+On registered 001-048, all **22 actual-target translation units passed** with
+fresh v3 Mojo implementations/headers, no old PCH reuse and unchanged active
+source/core/GN: `profile-identity-public-cpp-001-048-v1.json` on D. Coverage is
+four core implementations, three key/context fixtures, three producer/preflight
+units, two first-evaluation fixtures, two Chrome launch units, six production
+consumers and two generated implementations. Compiler failure, timeout, missing
+fresh implementations or input drift reject; raw diagnostics remain beside the
+private report. This does not optimize/link code, execute the 41 identity
+fixtures, enable the mode or admit protected browser behavior.
+
 The current six-patch candidate passed real clang syntax checks with actual
 generated target flags, in an isolated overlay without reusing old precompiled
 headers. No active Chromium source, browser core or GN configuration changed.
