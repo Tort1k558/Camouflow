@@ -287,3 +287,33 @@ Mojo's endpoint client CHECKs calls before interface association. A main-view
 barrier must precede that creation/lifecycle boundary; it cannot be implemented
 as a postponed send or a sleep. That integration, true timeout execution and
 full RFH/popup lifecycle regressions remain mandatory before activation.
+
+## Startup identity preload candidate
+
+`startup_privacy_preload.patch` closes the source-level cold-main readiness gap
+before profile publication and associated frame endpoint creation. Only the
+surface-policy diagnostic mode uses this path; feature-off and legacy Canvas
+initialization keep the existing asynchronous implementation.
+
+It reads the existing validated identity file inside the established profile
+startup blocking exemption. The service is Ready or Failed before returning.
+Missing or malformed identity is never regenerated, duplicate installation
+cannot replace a Ready/Loading owner, and off-the-record contexts use their own
+ephemeral key without reading the persistent root. An accepted installation is
+not a readiness guarantee: callers must still query the service.
+
+The identity reader bounds file **size** (256 bytes), not I/O duration. Slow storage can
+delay synchronous profile startup; no timeout or nonblocking guarantee is
+claimed. Real startup latency, first-script policy delivery, failure behavior
+and synchronous/asynchronous profile creation must pass before activation.
+There is no nested event loop, deferred `CreateView` or second identity format.
+The existing browser trace category measures this scoped startup read as
+`Glint.ReadOnlyStartupIdentityPreload`, without recording paths or key bytes.
+
+Six BrowserContext fixtures are prepared, **not compiled or executed**. They
+cover readiness before pumping tasks, missing/malformed identity, refusal to
+replace an existing owner, ephemeral isolation and invalid-root rejection.
+This is the 25th unregistered patch; it does not modify the active build.
+Ordered replay of all 25 public patches across 112 paths passed with the active
+sources, GN inputs, build receipt and linked runtime core unchanged:
+`startup-preload-public-replay-v2.json` on D. This is source evidence only.

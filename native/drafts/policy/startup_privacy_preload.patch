@@ -1,0 +1,216 @@
+diff --git a/chrome/browser/profiles/profile_impl.cc b/chrome/browser/profiles/profile_impl.cc
+index 149760e15048021f5bb636a9db066bca05d8dde9..0fbc850c51b774e88183e5f439a66f02b813e83a 100644
+--- a/chrome/browser/profiles/profile_impl.cc
++++ b/chrome/browser/profiles/profile_impl.cc
+@@ -681,7 +681,17 @@ void ProfileImpl::DoFinalInit(CreateMode create_mode) {
+     CHECK_EQ(native_command->GetSwitchValueASCII(content::kNativePrivacyKeyServiceSwitch), "1");
+     base::FilePath native_owned_root;
+     CHECK(base::PathService::Get(chrome::DIR_USER_DATA, &native_owned_root));
+-    CHECK(content::InitializeNativePrivacyContext(this, native_owned_root));
++    if (native_command->HasSwitch("glint-document-surface-bootstrap-test") &&
++        !native_command->HasSwitch("glint-document-canvas-bootstrap-test")) {
++      // Profile creation is synchronous for some callers. Settle the existing
++      // small, read-only identity file before publishing a profile or creating
++      // associated frame endpoints; never pump a nested loop or delay CreateView.
++      TRACE_EVENT0("browser", "Glint.ReadOnlyStartupIdentityPreload");
++      ScopedAllowBlockingForProfile allow_native_identity_read;
++      CHECK(content::InitializeNativePrivacyContextBeforeFirstFrame(this, native_owned_root));
++    } else {
++      CHECK(content::InitializeNativePrivacyContext(this, native_owned_root));
++    }
+   }
+   TRACE_EVENT0("browser", "ProfileImpl::DoFinalInit");
+ 
+diff --git a/content/browser/camouflow_native/privacy_context.cc b/content/browser/camouflow_native/privacy_context.cc
+index 6e5b5849f7372ddcd9e747444f1222e0d70bef4f..e1c9664421d012aa4666ba8e2b677a8eea62f306 100644
+--- a/content/browser/camouflow_native/privacy_context.cc
++++ b/content/browser/camouflow_native/privacy_context.cc
+@@ -25,6 +25,19 @@ bool InitializeNativePrivacyContext(BrowserContext* context,
+   return PrivacyKeyService::InstallOwnedProfile(*context, owned_root);
+ }
+ 
++bool InitializeNativePrivacyContextBeforeFirstFrame(
++    BrowserContext* context,
++    const base::FilePath& owned_root) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!context || context->ShutdownStarted()) {
++    return false;
++  }
++  if (context->IsOffTheRecord()) {
++    return owned_root.empty() && PrivacyKeyService::InstallEphemeral(*context);
++  }
++  return PrivacyKeyService::InstallOwnedProfileBeforeFirstFrame(*context, owned_root);
++}
++
+ void ShutdownNativePrivacyContext(BrowserContext* context) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   if (context) {
+diff --git a/content/browser/camouflow_native/privacy_context_unittest.cc b/content/browser/camouflow_native/privacy_context_unittest.cc
+index 26c7d5b72f06a728119540540053f5eac3a824af..cf5239715eef7c526cc9ab1ca2949ff765560d7c 100644
+--- a/content/browser/camouflow_native/privacy_context_unittest.cc
++++ b/content/browser/camouflow_native/privacy_context_unittest.cc
+@@ -53,6 +53,106 @@ class NativePrivacyBrowserContextTest : public testing::Test {
+   base::ScopedTempDir owned_;
+ };
+ 
++TEST_F(NativePrivacyBrowserContextTest, StartupKeyReadyBeforeEventLoop) {
++  auto context = NewContext("Startup");
++  ASSERT_TRUE(context);
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(context.get(), owned_.GetPath()));
++  ASSERT_TRUE(IsNativePrivacyContextReady(context.get()));
++  const auto key = DeriveNativePrivacyKey(context.get(), Partition(), "canvas");
++  ASSERT_TRUE(key);
++  int calls = 0;
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
++    EXPECT_TRUE(ready);
++    ++calls;
++  }));
++  EXPECT_EQ(calls, 1);
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(calls, 1);
++  EXPECT_EQ(key, DeriveNativePrivacyKey(context.get(), Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyBrowserContextTest, StartupMissingIdentityIsTerminalWithoutCreation) {
++  ASSERT_TRUE(base::DeleteFile(IdentityPath()));
++  auto context = NewContext("Startup");
++  ASSERT_TRUE(context);
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(context.get(), owned_.GetPath()));
++  EXPECT_FALSE(IsNativePrivacyContextReady(context.get()));
++  EXPECT_FALSE(DeriveNativePrivacyKey(context.get(), Partition(), "canvas"));
++  EXPECT_FALSE(base::PathExists(IdentityPath()));
++  int calls = 0;
++  WhenNativePrivacyContextReady(context.get(), base::BindLambdaForTesting([&](bool ready) {
++    EXPECT_FALSE(ready);
++    ++calls;
++  }));
++  EXPECT_EQ(calls, 1);
++  ASSERT_TRUE(base::WriteFile(IdentityPath(), kIdentity));
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(context.get(), owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_FALSE(IsNativePrivacyContextReady(context.get()));
++  EXPECT_EQ(calls, 1);
++}
++
++TEST_F(NativePrivacyBrowserContextTest, StartupMalformedIdentityIsNotReplaced) {
++  ASSERT_TRUE(base::WriteFile(IdentityPath(), "invalid"));
++  auto context = NewContext("Startup");
++  ASSERT_TRUE(context);
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(context.get(), owned_.GetPath()));
++  EXPECT_FALSE(IsNativePrivacyContextReady(context.get()));
++  std::string unchanged;
++  ASSERT_TRUE(base::ReadFileToString(IdentityPath(), &unchanged));
++  EXPECT_EQ(unchanged, "invalid");
++}
++
++TEST_F(NativePrivacyBrowserContextTest, StartupCannotReplaceReadyOrLoadingOwner) {
++  auto ready = NewContext("Ready");
++  auto loading = NewContext("Loading");
++  ASSERT_TRUE(ready);
++  ASSERT_TRUE(loading);
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(ready.get(), owned_.GetPath()));
++  const auto key = DeriveNativePrivacyKey(ready.get(), Partition(), "canvas");
++  ASSERT_TRUE(key);
++  ASSERT_TRUE(InitializeNativePrivacyContext(loading.get(), owned_.GetPath()));
++  EXPECT_FALSE(IsNativePrivacyContextReady(loading.get()));
++  ASSERT_TRUE(base::WriteFile(IdentityPath(), kOtherIdentity));
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(ready.get(), owned_.GetPath()));
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(loading.get(), owned_.GetPath()));
++  EXPECT_FALSE(IsNativePrivacyContextReady(loading.get()));
++  EXPECT_EQ(key, DeriveNativePrivacyKey(ready.get(), Partition(), "canvas"));
++  tasks_.RunUntilIdle();
++  EXPECT_TRUE(IsNativePrivacyContextReady(loading.get()));
++  EXPECT_NE(key, DeriveNativePrivacyKey(loading.get(), Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyBrowserContextTest, StartupOffTheRecordNeverReadsPersistentIdentity) {
++  auto first = NewContext("First");
++  auto second = NewContext("Second");
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  first->set_is_off_the_record(true);
++  second->set_is_off_the_record(true);
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(first.get(), owned_.GetPath()));
++  ASSERT_TRUE(base::DeleteFile(IdentityPath()));
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(first.get(), base::FilePath()));
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(second.get(), base::FilePath()));
++  const auto key = DeriveNativePrivacyKey(first.get(), Partition(), "canvas");
++  ASSERT_TRUE(key);
++  EXPECT_NE(key, DeriveNativePrivacyKey(second.get(), Partition(), "canvas"));
++  EXPECT_FALSE(base::PathExists(IdentityPath()));
++}
++
++TEST_F(NativePrivacyBrowserContextTest, StartupRejectsInvalidRootWithoutInstallingOwner) {
++  auto context = NewContext("Startup");
++  ASSERT_TRUE(context);
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(nullptr, owned_.GetPath()));
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(context.get(), base::FilePath()));
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(
++      context.get(), base::FilePath(FILE_PATH_LITERAL("relative"))));
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(
++      context.get(), owned_.GetPath().AppendASCII("..").AppendASCII("other")));
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(context.get(), owned_.GetPath()));
++  EXPECT_TRUE(IsNativePrivacyContextReady(context.get()));
++}
++
+ TEST_F(NativePrivacyBrowserContextTest, PersistentLoadingGatesReadinessAndDerivation) {
+   auto context = NewContext("Default");
+   ASSERT_TRUE(context);
+diff --git a/content/browser/camouflow_native/privacy_key_service.cc b/content/browser/camouflow_native/privacy_key_service.cc
+index 51deb877937decd6c1827df8f4d7a84f3d88baed..271147897bcabcd52ad67480c6d59559c3ea1222 100644
+--- a/content/browser/camouflow_native/privacy_key_service.cc
++++ b/content/browser/camouflow_native/privacy_key_service.cc
+@@ -31,6 +31,21 @@ bool PrivacyKeyService::InstallOwnedProfile(base::SupportsUserData& owner,
+   return true;
+ }
+ 
++bool PrivacyKeyService::InstallOwnedProfileBeforeFirstFrame(
++    base::SupportsUserData& owner,
++    const base::FilePath& owned_profile) {
++  if (GetForOwner(owner) || !owned_profile.IsAbsolute() ||
++      owned_profile.ReferencesParent()) {
++    return false;
++  }
++  auto service = std::make_unique<PrivacyKeyService>();
++  service->state_ = State::kLoading;
++  service->Loaded(PrivacyProfileKey::LoadOwnedProfile(owned_profile));
++  owner.SetUserData(&kPrivacyKeyServiceUserDataKey, std::move(service));
++  // As with async initialization, installation success is not key readiness.
++  return true;
++}
++
+ bool PrivacyKeyService::InstallEphemeral(base::SupportsUserData& owner) {
+   if (GetForOwner(owner)) {
+     return false;
+diff --git a/content/browser/camouflow_native/privacy_key_service.h b/content/browser/camouflow_native/privacy_key_service.h
+index bcf5e758163beebcf88f1eb56fb8e05da08608c4..75f2f500c3de181d8ee29851ad16e413249360ca 100644
+--- a/content/browser/camouflow_native/privacy_key_service.h
++++ b/content/browser/camouflow_native/privacy_key_service.h
+@@ -26,6 +26,10 @@ class PrivacyKeyService : public base::SupportsUserData::Data {
+   static PrivacyKeyService* GetForOwner(base::SupportsUserData& owner);
+   static bool InstallOwnedProfile(base::SupportsUserData& owner,
+                                   const base::FilePath& owned_profile);
++  // Startup-only: caller explicitly permits bounded identity-file I/O before
++  // exposing the profile or creating its first renderer. Failure installs Failed.
++  static bool InstallOwnedProfileBeforeFirstFrame(
++      base::SupportsUserData& owner, const base::FilePath& owned_profile);
+   static bool InstallEphemeral(base::SupportsUserData& owner);
+   // Each service must be owned by one BrowserContext; no redirect to original.
+   bool InitializeOwnedProfile(const base::FilePath& owned_profile);
+diff --git a/content/public/browser/native_privacy_context.h b/content/public/browser/native_privacy_context.h
+index ea35449563282402e5290cbf6eced98b562af6b5..88cb4ae14f2e3ac5bea0b6733bceb293cc07f16f 100644
+--- a/content/public/browser/native_privacy_context.h
++++ b/content/public/browser/native_privacy_context.h
+@@ -22,6 +22,12 @@ inline constexpr char kNativePrivacyKeyServiceSwitch[] = "camouflow-native-priva
+ // Off-the-record contexts require an empty root and never read the persistent key.
+ CONTENT_EXPORT bool InitializeNativePrivacyContext(BrowserContext* context,
+                                                    const base::FilePath& owned_root);
++// Startup-only UI-sequence initialization before profile publication/frames.
++// Caller must explicitly permit the existing bounded identity-file read. No
++// nested event loop, identity regeneration or async fallback. Ready or Failed
++// is installed before returning; query readiness separately.
++CONTENT_EXPORT bool InitializeNativePrivacyContextBeforeFirstFrame(
++    BrowserContext* context, const base::FilePath& owned_root);
+ CONTENT_EXPORT void ShutdownNativePrivacyContext(BrowserContext* context);
+ CONTENT_EXPORT bool IsNativePrivacyContextReady(BrowserContext* context);
+ // UI thread only. Initialization must precede waiting. Terminal results run

@@ -65,6 +65,21 @@ def test_owned_replay_disables_machine_specific_crlf_conversion():
     assert text.index(configure) < text.index(apply)
 
 
+def test_startup_preload_settles_before_profile_publication_without_event_loop():
+    text = (DRAFTS / "policy/startup_privacy_preload.patch").read_text(encoding="utf-8-sig")
+    assert "+      ScopedAllowBlockingForProfile allow_native_identity_read;" in text
+    assert '+      TRACE_EVENT0("browser", "Glint.ReadOnlyStartupIdentityPreload");' in text
+    assert '+        !native_command->HasSwitch("glint-document-canvas-bootstrap-test")) {' in text
+    assert "+  service->Loaded(PrivacyProfileKey::LoadOwnedProfile(owned_profile));" in text
+    assert text.index("+  service->Loaded(") < text.index("+  owner.SetUserData(")
+    assert "+    return owned_root.empty() && PrivacyKeyService::InstallEphemeral(*context);" in text
+    assert "+  if (!context || context->ShutdownStarted()) {" in text
+    production = text.split("diff --git a/content/browser/camouflow_native/privacy_context_unittest.cc", 1)
+    assert "RunLoop" not in production[0]
+    fixtures = re.findall(r"\+TEST_F\(NativePrivacyBrowserContextTest, (Startup\w+)\)", text)
+    assert len(fixtures) == len(set(fixtures)) == 6
+
+
 def test_initial_main_policy_is_browser_owned_and_consumed_before_frame_creation():
     text = (DRAFTS / "policy/initial_main_surface_transport.patch").read_text(encoding="utf-8-sig")
     assert text.count("+  blink.mojom.GlintSurfacePolicyCommit? glint_initial_surface_commit;") == 2

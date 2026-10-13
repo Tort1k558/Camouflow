@@ -27,7 +27,8 @@ PATCHES = ("gpu/gpu_metadata_minimization.patch", "audio/audio_helpers_integrati
            "canvas/get_image_data_candidate_hook.patch", "canvas/html_export_candidate_hook.patch",
            "canvas/offscreen_candidate_hook.patch", "canvas/surface_seed_reader_tests.patch",
            "audio/offline_audio_surface_hook.patch", "audio/offline_audio_surface_guard_tests.patch",
-           "policy/initial_main_surface_transport.patch", "policy/window_privacy_readiness.patch")
+           "policy/initial_main_surface_transport.patch", "policy/window_privacy_readiness.patch",
+           "policy/startup_privacy_preload.patch")
 CANONICAL = {
     **{"canvas/" + name: "third_party/blink/renderer/core/html/canvas/glint/" + name for name in (
         "canvas_partition_seed.h", "canvas_partition_seed.cc", "canvas_readback_candidate.h",
@@ -51,6 +52,12 @@ CANONICAL = {
     "policy/native_privacy_surface_policy.mojom": "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom",
 }
 EXISTING_PATHS = {
+    "chrome/browser/profiles/profile_impl.cc",
+    "content/browser/camouflow_native/privacy_key_service.h",
+    "content/browser/camouflow_native/privacy_key_service.cc",
+    "content/browser/camouflow_native/privacy_context.cc",
+    "content/browser/camouflow_native/privacy_context_unittest.cc",
+    "content/public/browser/native_privacy_context.h",
     "content/common/frame.mojom",
     "content/browser/renderer_host/render_view_host_impl.cc",
     "content/browser/renderer_host/render_frame_host_impl.h",
