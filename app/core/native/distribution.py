@@ -5,6 +5,7 @@ import hashlib
 import json
 import platform
 import re
+import shutil
 import sys
 import tarfile
 import tempfile
@@ -243,6 +244,11 @@ class NativeBinaryStore:
             target = self._child("releases/" + digest)
             if target.exists():
                 return self.inspect(digest)
+            archive_size = Path(archive).stat().st_size
+            if archive_size > MAX_ARCHIVE_BYTES:
+                raise ValueError("Native archive exceeds download size limit")
+            if shutil.disk_usage(self.root).free < archive_size:
+                raise OSError("Insufficient disk space to stage Native archive")
             with tempfile.TemporaryDirectory(prefix="native-install-", dir=self.root) as owned:
                 stage = Path(owned)
                 copied = stage / "bundle.tar.gz"
@@ -262,6 +268,7 @@ class NativeBinaryStore:
                 names = set()
                 unpacked = 0
                 with tarfile.open(copied, "r:gz") as bundle:
+                    members = []
                     for member in bundle:
                         name = checked_archive_name(member.name).as_posix().casefold()
                         if name in names:
@@ -274,6 +281,10 @@ class NativeBinaryStore:
                             raise ValueError("Unsupported Native archive sparse file")
                         if (member.issym() or member.islnk()) and not archive_links_supported():
                             raise ValueError("Native archive links require a patched Unix Python runtime; Windows bundles must not contain links")
+                        members.append(member)
+                    if shutil.disk_usage(stage).free < unpacked:
+                        raise OSError("Insufficient disk space to unpack Native archive")
+                    for member in members:
                         bundle.extract(member, payload, filter="data")
                 metadata = self._inspect_directory(payload, digest)
                 if payload.resolve() != payload or not payload.is_relative_to(self.root) or target.resolve() != target:

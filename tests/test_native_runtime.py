@@ -1369,6 +1369,34 @@ def test_native_binary_installations_are_versioned_and_never_overwrite_old_relea
     assert not list(store.root.glob("native-install-*"))
 
 
+@pytest.mark.parametrize("phase", ["stage", "unpack"])
+def test_native_binary_install_rejects_insufficient_space_without_changing_active_release(tmp_path, monkeypatch, phase):
+    from types import SimpleNamespace
+
+    from app.core.native import distribution
+
+    store = distribution.NativeBinaryStore(tmp_path / "native-binaries")
+    archive, digest = _native_release_archive(tmp_path)
+    previous = store.install_archive(archive, digest)
+    current = store.root / "current.json"
+    current.write_text('{"active":"' + digest + '","previous":null}', encoding="utf-8")
+    before = current.read_bytes()
+    archive, candidate = _native_release_archive(tmp_path, "0.2.0-dev")
+    free = iter([0] if phase == "stage" else [distribution.MAX_ARCHIVE_BYTES, 0])
+    monkeypatch.setattr(distribution.shutil, "disk_usage", lambda path: SimpleNamespace(free=next(free)))
+
+    def unexpected_extract(*args, **kwargs):
+        pytest.fail("Disk preflight must fail before any payload extraction")
+
+    monkeypatch.setattr(distribution.tarfile.TarFile, "extract", unexpected_extract)
+    with pytest.raises(OSError, match="Insufficient disk space"):
+        store.install_archive(archive, candidate)
+    assert current.read_bytes() == before
+    assert store.inspect(digest) == previous
+    assert not (store.root / "releases" / candidate).exists()
+    assert not list(store.root.glob("native-install-*"))
+
+
 def test_native_binary_install_checks_archive_integrity_before_extracting(tmp_path):
     from app.core.native.distribution import NativeBinaryStore
 
