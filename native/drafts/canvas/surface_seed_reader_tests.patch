@@ -1,0 +1,193 @@
+diff --git a/third_party/blink/renderer/core/loader/document_loader_test.cc b/third_party/blink/renderer/core/loader/document_loader_test.cc
+--- a/third_party/blink/renderer/core/loader/document_loader_test.cc
++++ b/third_party/blink/renderer/core/loader/document_loader_test.cc
+@@ -30,6 +30,7 @@
+ #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ #include "third_party/blink/renderer/core/html/html_iframe_element.h"
+ #include "third_party/blink/renderer/core/inspector/console_message.h"
+ #include "third_party/blink/renderer/core/page/page.h"
+@@ -967,6 +968,103 @@
+   EXPECT_TRUE(child->GetDocument()->title().empty());
+ }
+ 
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderPreservesFlagOffForEveryKind) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_surface_policy_required = false;
++  params->glint_document_surface_policy.reset();
++  CommitGlintSurfaceFixture(frame, std::move(params));
++  for (auto kind : {glint::candidate::SurfaceSeedKind::kCanvas,
++                    glint::candidate::SurfaceSeedKind::kWebGL,
++                    glint::candidate::SurfaceSeedKind::kWebGPU,
++                    glint::candidate::SurfaceSeedKind::kAudio}) {
++    auto result = glint::candidate::SurfacePartitionSeed(frame->GetFrame()->DomWindow(), kind);
++    ASSERT_TRUE(result.has_value());
++    EXPECT_FALSE(result.value());
++  }
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderOwnsAllFourIndependentDomains) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  CommitGlintSurfaceFixture(frame, GlintSurfaceFixtureParams());
++  const std::array kinds{glint::candidate::SurfaceSeedKind::kCanvas,
++                         glint::candidate::SurfaceSeedKind::kWebGL,
++                         glint::candidate::SurfaceSeedKind::kWebGPU,
++                         glint::candidate::SurfaceSeedKind::kAudio};
++  for (unsigned index = 0; index < kinds.size(); ++index) {
++    auto result = glint::candidate::SurfacePartitionSeed(frame->GetFrame()->DomWindow(), kinds[index]);
++    ASSERT_TRUE(result.has_value());
++    ASSERT_TRUE(result.value());
++    std::array<uint8_t, 32> expected;
++    expected.fill(index + 1);
++    EXPECT_EQ(*result.value(), expected);
++    result.value()->fill(255);
++    auto repeated = glint::candidate::SurfacePartitionSeed(frame->GetFrame()->DomWindow(), kinds[index]);
++    ASSERT_TRUE(repeated.has_value());
++    EXPECT_EQ(repeated.value(), std::optional(expected));
++  }
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderNeverTreatsRequiredMissingAsFlagOff) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_surface_policy.reset();
++  CommitGlintSurfaceFixture(frame, std::move(params));
++  for (auto kind : {glint::candidate::SurfaceSeedKind::kCanvas,
++                    glint::candidate::SurfaceSeedKind::kWebGL,
++                    glint::candidate::SurfaceSeedKind::kWebGPU,
++                    glint::candidate::SurfaceSeedKind::kAudio}) {
++    auto result = glint::candidate::SurfacePartitionSeed(frame->GetFrame()->DomWindow(), kind);
++    ASSERT_FALSE(result.has_value());
++    EXPECT_EQ(result.error(), glint::candidate::SurfaceSeedError::kInvalidPolicy);
++  }
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderRejectsNullContext) {
++  auto result = glint::candidate::CanvasPartitionSeed(nullptr);
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), glint::candidate::SurfaceSeedError::kUnavailableContext);
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderRejectsUnknownDomain) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto result = glint::candidate::SurfacePartitionSeed(helper.LocalMainFrame()->GetFrame()->DomWindow(),
++      static_cast<glint::candidate::SurfaceSeedKind>(255));
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), glint::candidate::SurfaceSeedError::kUnsupportedKind);
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderKeepsLegacyCanvasOnlyExplicit) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_surface_policy_required = false;
++  params->glint_document_surface_policy.reset();
++  std::array<uint8_t, 32> expected;
++  expected.fill(61);
++  const auto encoding = params->storage_key.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  params->glint_document_canvas_commit = std::make_unique<GlintDocumentCanvasCommit>(
++      GlintDocumentCanvasCommit{1, *encoding, expected});
++  CommitGlintSurfaceFixture(frame, std::move(params));
++  auto canvas = glint::candidate::CanvasPartitionSeed(frame->GetFrame()->DomWindow());
++  ASSERT_TRUE(canvas.has_value());
++  EXPECT_EQ(canvas.value(), std::optional(expected));
++  auto audio = glint::candidate::SurfacePartitionSeed(frame->GetFrame()->DomWindow(),
++      glint::candidate::SurfaceSeedKind::kAudio);
++  ASSERT_TRUE(audio.has_value());
++  EXPECT_FALSE(audio.value());
++}
++
+ TEST_P(DocumentLoaderTest, GlintCanvasCommitInstallsOwnedDocumentSeed) {
+   WebViewImpl* view =
+       web_view_helper_.InitializeAndLoad("https://example.com/foo.html");
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test.cc b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+--- a/third_party/blink/renderer/core/workers/worker_thread_test.cc
++++ b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+@@ -3,10 +3,13 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/core/workers/worker_thread.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ 
+ #include <memory>
+ #include <utility>
+ 
++#include "base/functional/bind.h"
++#include "base/functional/callback.h"
+ #include "base/run_loop.h"
+ #include "base/synchronization/lock.h"
+ #include "base/synchronization/waitable_event.h"
+@@ -222,15 +225,17 @@
+     return {partition, std::move(policy)};
+   }
+   void ExpectRejectedSurface(std::optional<glint::candidate::WorkerSurfacePolicy> policy,
+-                             std::optional<std::array<uint8_t, 32>> legacy = std::nullopt) {
++                             std::optional<std::array<uint8_t, 32>> legacy = std::nullopt,
++                             base::OnceCallback<void(WorkerOrWorkletGlobalScope*)> check = {}) {
+     base::WaitableEvent evaluated;
+     EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
+-        .WillOnce([](WorkerOrWorkletGlobalScope* scope) {
++        .WillOnce([check = std::move(check)](WorkerOrWorkletGlobalScope* scope) mutable {
+           auto* worker = To<WorkerGlobalScope>(scope);
+           EXPECT_FALSE(worker->GlintCanvasPartitionSeed());
+           EXPECT_FALSE(worker->GlintWebGLPartitionSeed());
+           EXPECT_FALSE(worker->GlintWebGPUPartitionSeed());
+           EXPECT_FALSE(worker->GlintAudioPartitionSeed());
++          if (check) std::move(check).Run(scope);
+         });
+     EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
+     EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScript(_))
+@@ -287,6 +292,40 @@
+ }
+ TEST_F(GlintWorkerSurfaceThreadTest, LegacySeedCannotSubstituteForSurfaceBundle) {
+   ExpectRejectedSurface(SurfacePolicy(), SurfacePolicy().policy.canvas);
++}
++
++
++TEST_F(GlintWorkerSurfaceThreadTest, SurfaceReaderUsesOwnedDomainsBeforeEvaluation) {
++  const auto policy = SurfacePolicy();
++  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++      .WillOnce([policy](WorkerOrWorkletGlobalScope* scope) {
++        auto* worker = To<WorkerGlobalScope>(scope);
++        auto canvas = glint::candidate::CanvasPartitionSeed(worker);
++        auto audio = glint::candidate::SurfacePartitionSeed(worker, glint::candidate::SurfaceSeedKind::kAudio);
++        EXPECT_TRUE(canvas.has_value());
++        EXPECT_TRUE(audio.has_value());
++        if (canvas.has_value()) EXPECT_EQ(canvas.value(), std::optional(policy.policy.canvas));
++        if (audio.has_value()) EXPECT_EQ(audio.value(), std::optional(policy.policy.audio));
++      });
++  EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScript(true)).Times(1);
++  EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++  worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
++      KURL("http://fake.url/"), nullptr, std::nullopt, policy, true);
++  worker_thread_->WaitForInit();
++  worker_thread_->Terminate();
++  worker_thread_->WaitForShutdownForTesting();
++}
++
++TEST_F(GlintWorkerSurfaceThreadTest, SurfaceReaderRejectsRequiredMissingBeforeEvaluation) {
++  ExpectRejectedSurface(std::nullopt, std::nullopt,
++      base::BindOnce([](WorkerOrWorkletGlobalScope* scope) {
++        auto* worker = To<WorkerGlobalScope>(scope);
++        auto result = glint::candidate::CanvasPartitionSeed(worker);
++        EXPECT_FALSE(result.has_value());
++        if (!result.has_value()) EXPECT_EQ(result.error(), glint::candidate::SurfaceSeedError::kInvalidPolicy);
++      }));
+ }
+ 
+ TEST_F(WorkerThreadTest, GlintCanvasSeedArrivesBeforeEvaluation) {

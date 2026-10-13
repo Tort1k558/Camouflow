@@ -1,0 +1,81 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+@@ -4,6 +4,16 @@
+ 
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_context.h"
+ 
++#include <memory>
++#include <utility>
++
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
++#include "third_party/blink/public/web/web_navigation_params.h"
++#include "third_party/blink/renderer/core/loader/frame_loader.h"
++#include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
++#include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
++#include "url/gurl.h"
++#include "url/origin.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ #include "third_party/blink/public/platform/web_runtime_features.h"
+ #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
+@@ -96,4 +106,60 @@
+       "WebAudioConfigurableRenderQuantum", false);
+ }
+ 
++
++namespace {
++std::unique_ptr<DummyPageHolder> GlintOfflineAudioPolicyHolder(bool ready) {
++  auto holder = std::make_unique<DummyPageHolder>();
++  const KURL url(NullUrl(), "https://audio-surface.test/");
++  auto params = WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
++  params->origin_to_commit = WebSecurityOrigin::Create(WebURL(url));
++  params->storage_key = StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://audio-surface.test/")));
++  params->glint_document_surface_policy_required = true;
++  if (ready) {
++    const auto encoding = params->storage_key.SerializeForNativePrivacy();
++    if (!encoding) return nullptr;
++    glint::candidate::SurfacePolicy policy;
++    policy.partition_encoding = *encoding;
++    policy.canvas.fill(1);
++    policy.webgl.fill(2);
++    policy.webgpu.fill(3);
++    policy.audio.fill(4);
++    params->glint_document_surface_policy = glint::candidate::DocumentSurfacePolicy{
++        params->storage_key, std::move(policy)};
++  }
++  holder->GetFrame().Loader().CommitNavigation(std::move(params), nullptr);
++  test::RunPendingTasks();
++  return holder;
++}
++}  // namespace
++
++TEST_F(OfflineAudioContextTest, GlintMissingPolicyRejectsBeforeResolverOrRenderThread) {
++  auto holder = GlintOfflineAudioPolicyHolder(false);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1, 128, 44100,
++                                            ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  DummyExceptionStateForTesting exception;
++  // nullptr is intentional: rejection must precede a ScriptPromiseResolver.
++  auto promise = context->startOfflineRendering(nullptr, exception);
++  EXPECT_TRUE(promise.IsEmpty());
++  EXPECT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(), DOMExceptionCode::kNotReadableError);
++  EXPECT_EQ(context->state().AsStringView(), "suspended");
++}
++
++TEST_F(OfflineAudioContextTest, GlintCopyBudgetRejectsBeforeAllocationOrRenderThread) {
++  auto holder = GlintOfflineAudioPolicyHolder(true);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 2, 8388609, 44100,
++                                            ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  DummyExceptionStateForTesting exception;
++  auto promise = context->startOfflineRendering(nullptr, exception);
++  EXPECT_TRUE(promise.IsEmpty());
++  EXPECT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(), DOMExceptionCode::kNotReadableError);
++  EXPECT_EQ(context->state().AsStringView(), "suspended");
++}
++
+ }  // namespace blink

@@ -43,7 +43,9 @@ def test_next_batch_patch_coverage_and_canonical_sources():
         overlap = paths & current_paths
         assert overlap.issubset({"content/renderer/worker/privacy_worker_bootstrap_unittest.cc",
                                  "content/test/BUILD.gn", "content/browser/BUILD.gn",
-                                 "third_party/blink/renderer/core/workers/worker_global_scope.h"})
+                                 "third_party/blink/renderer/core/workers/worker_global_scope.h",
+                                 "third_party/blink/renderer/core/loader/document_loader_test.cc",
+                                 "third_party/blink/renderer/core/workers/worker_thread_test.cc"})
         paths.update(current_paths)
         additions.update(added_sources(text))
     assert paths == EXISTING_PATHS | set(CANONICAL.values())
@@ -231,3 +233,63 @@ def test_worker_surface_consumers_can_distinguish_flag_off_from_missing_required
     assert "+  bool GlintSurfacePolicyReady() const {" in text
     assert "+    return !glint_surface_policy_required_ || glint_surface_policy_.has_value();" in text
     assert text.count("+    DCHECK(IsContextThread());") == 3
+
+
+def test_canvas_seed_consumer_distinguishes_unavailable_from_flag_off_for_every_surface():
+    header = (DRAFTS / "canvas/canvas_partition_seed.h").read_text(encoding="utf-8-sig")
+    source = (DRAFTS / "canvas/canvas_partition_seed.cc").read_text(encoding="utf-8-sig")
+    assert "base::expected<std::optional<std::array<uint8_t, 32>>, SurfaceSeedError>" in header
+    for kind in ("Canvas", "WebGL", "WebGPU", "Audio"):
+        assert "SurfaceSeedKind::k" + kind in source
+        assert "Glint" + kind + "PartitionSeed()" in source
+    assert "if (!scope.GlintSurfacePolicyReady())" in source
+    assert "base::unexpected(SurfaceSeedError::kInvalidPolicy)" in source
+    assert "base::unexpected(SurfaceSeedError::kUnavailableContext)" in source
+    assert "value_or(" not in source
+
+
+def test_all_four_canvas_api_hooks_reject_seed_errors_without_raw_fallback():
+    count = 0
+    for name in ("get_image_data_candidate_hook.patch", "html_export_candidate_hook.patch",
+                 "offscreen_candidate_hook.patch"):
+        text = (DRAFTS / "canvas" / name).read_text(encoding="utf-8-sig")
+        count += text.count('+          "Glint Canvas policy is unavailable.");')
+        assert "+    if (!seed.has_value()) {" in text
+        assert "+    if (const auto& partition_seed = seed.value()) {" in text
+        assert "+          " in text
+        assert "if (const auto seed = glint::candidate::CanvasPartitionSeed(" not in text
+    assert count == 4
+
+
+def test_surface_seed_reader_fixtures_use_actual_scope_creation_and_keep_bounded_cleanup():
+    text = (DRAFTS / "canvas/surface_seed_reader_tests.patch").read_text(encoding="utf-8-sig")
+    document = re.findall(r"\+TEST_P\(DocumentLoaderTest, (GlintSurfaceSeedReader\w+)\)", text)
+    worker = re.findall(r"\+TEST_F\(GlintWorkerSurfaceThreadTest, (SurfaceReader\w+)\)", text)
+    assert len(document) == len(set(document)) == 6
+    assert len(worker) == len(set(worker)) == 2
+    assert "SetGlintScopeObserverForTesting" not in text
+    assert "+  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))" in text
+    assert "+  ExpectRejectedSurface(std::nullopt, std::nullopt," in text
+
+
+def test_offline_audio_hook_captures_before_allocation_and_exposes_one_detached_result():
+    text = (DRAFTS / "audio/offline_audio_surface_hook.patch").read_text(encoding="utf-8-sig")
+    assert "+  const auto seed = glint::candidate::SurfacePartitionSeed(" in text
+    assert "+  glint_audio_partition_seed_ = seed.value();" in text
+    assert text.index("glint_audio_partition_seed_ = seed.value()") < text.index(
+        "complete_resolver_ = MakeGarbageCollected<ScriptPromiseResolver<AudioBuffer>>")
+    assert "+      !glint::candidate::CanCopyOfflineAudio(number_of_channels, total_render_frames_)) {" in text
+    assert "+      rendered_buffer = glint::candidate::CopyOfflineAudioBuffer(" in text
+    assert "+      DispatchEvent(*OfflineAudioCompletionEvent::Create(rendered_buffer));" in text
+    assert "+      complete_resolver_->Resolve(rendered_buffer);" in text
+    assert "+      complete_resolver_->Reject(MakeGarbageCollected<DOMException>(" in text
+
+
+def test_offline_audio_guard_fixtures_cannot_allocate_a_resolver_on_early_failure():
+    text = (DRAFTS / "audio/offline_audio_surface_guard_tests.patch").read_text(encoding="utf-8-sig")
+    names = re.findall(r"\+TEST_F\(OfflineAudioContextTest, (Glint\w+)\)", text)
+    assert len(names) == len(set(names)) == 2
+    assert "GlintMissingPolicyRejectsBeforeResolverOrRenderThread" in names
+    assert "GlintCopyBudgetRejectsBeforeAllocationOrRenderThread" in names
+    assert text.count("+  auto promise = context->startOfflineRendering(nullptr, exception);") == 2
+    assert text.count("+  EXPECT_TRUE(promise.IsEmpty());") == 2

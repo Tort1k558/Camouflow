@@ -423,3 +423,38 @@ hash is `61e97ba3335f64836b3abcf93d67af0d6ddd0d06c291b4592b1448643b35e222`.
 The temporary profiles and browser processes were closed by the verifier.
 This confirms upstream API behavior in the existing binary, **not execution of
 the inactive readback hooks, policy bootstrap or fingerprinting protection**.
+
+## Combined surface-policy API batch
+
+The current seed reader returns an explicit `expected<optional<seed>, error>`:
+a successful empty result is an upstream flag-off context; a missing/invalid
+required policy is an error. One thread-aware document/worker reader selects
+Canvas, WebGL, WebGPU or Audio's independent owned seed. It never derives from
+renderer URLs, reuses Canvas for Audio or silently substitutes an absent seed.
+
+All four candidate entry points (`getImageData`, `toDataURL`, `toBlob`, worker
+and window `OffscreenCanvas.convertToBlob`) reject a seed error before exposing
+raw output. They consume the same detached, full-image **edge-coherent** adapter
+and then crop/encode its canonical raster. The original rejected coordinate
+candidate is not selected by these hooks. Uniform-fill preservation does not
+establish fingerprint resistance or full image-editor compatibility.
+
+`surface_seed_reader_tests.patch` prepares six DocumentLoader definitions in
+four existing modes plus two worker scope fixtures: **26 unexecuted cases**.
+They cover flag-off, four owned domains, invalid required state, null/unknown
+contexts/domains, explicit v1 Canvas-only behavior and before-evaluation worker
+access. Worker assertions use the actual `DidCreateWorkerGlobalScope` callback
+and existing bounded rejection/termination cleanup, not a made-up observer API.
+
+The 22-patch source batch includes document/worker delivery, Canvas hooks and an
+OfflineAudio completion hook. Public replay passed across **92 paths**:
+`canvas-audio-surface-guards-public-replay-v1.json` on D. All canonical helper
+copies match; active source, browser core, receipt and GN arguments are unchanged.
+No new compiler, linker or GN generation ran beside the active 0030 build.
+
+These hooks remain **unregistered, uncompiled and inactive**. The RGBA8/sRGB
+adapter does not yet support every ImageData/color-space format; its explicit
+rejection is not compatibility proof. Root initial/sandboxed-scope delivery,
+whole-profile consent/configuration, protected restart/profile-isolation runs,
+all API exception/security/crop/export checks and real rendering measurements
+must pass before admission. No anti-bot/CAPTCHA result follows from source replay.

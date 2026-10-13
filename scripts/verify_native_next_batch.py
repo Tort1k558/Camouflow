@@ -23,8 +23,15 @@ PATCHES = ("gpu/gpu_metadata_minimization.patch", "audio/audio_helpers_integrati
            "policy/document_surface_validation.patch", "policy/surface_bootstrap_switches.patch",
            "policy/document_surface_transport.patch", "policy/document_surface_handoff.patch",
            "policy/document_surface_handoff_tests.patch", "policy/document_surface_navigation_tests.patch",
-           "policy/worker_surface_scope_state.patch")
+           "policy/worker_surface_scope_state.patch", "canvas/core_helpers_integration.patch",
+           "canvas/get_image_data_candidate_hook.patch", "canvas/html_export_candidate_hook.patch",
+           "canvas/offscreen_candidate_hook.patch", "canvas/surface_seed_reader_tests.patch",
+           "audio/offline_audio_surface_hook.patch", "audio/offline_audio_surface_guard_tests.patch")
 CANONICAL = {
+    **{"canvas/" + name: "third_party/blink/renderer/core/html/canvas/glint/" + name for name in (
+        "canvas_partition_seed.h", "canvas_partition_seed.cc", "canvas_readback_candidate.h",
+        "canvas_readback_candidate.cc", "canvas_readback_copy.h", "canvas_readback_copy.cc",
+        "canvas_readback_image.h", "canvas_readback_image.cc")},
     **{"audio/" + name: "third_party/blink/renderer/modules/webaudio/glint/" + name for name in (
         "offline_audio_candidate.h", "offline_audio_candidate.cc", "offline_audio_limits.h",
         "offline_audio_buffer.h", "offline_audio_buffer.cc", "offline_audio_candidate_unittest.cc",
@@ -89,6 +96,15 @@ EXISTING_PATHS = {
     "third_party/blink/renderer/core/loader/document_loader_test.cc",
     "content/browser/camouflow_native/privacy_navigation_throttle_unittest.cc",
     "content/browser/camouflow_native/privacy_navigation_integration_unittest.cc",
+    "third_party/blink/renderer/core/BUILD.gn",
+    "third_party/blink/renderer/core/html/build.gni",
+    "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc",
+    "third_party/blink/renderer/core/html/canvas/html_canvas_element.h",
+    "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+    "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc",
+    "third_party/blink/renderer/modules/webaudio/offline_audio_context.h",
+    "third_party/blink/renderer/modules/webaudio/offline_audio_context.cc",
+    "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc",
 }
 
 

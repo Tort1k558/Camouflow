@@ -17,12 +17,19 @@ diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_c
  #include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_2d_recorder_context.h"
  #include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_rendering_context_2d_state.h"
  #include "third_party/blink/renderer/modules/canvas/htmlcanvas/canvas_context_creation_attributes_helpers.h"
-@@ -523,10 +525,39 @@
+@@ -523,10 +525,46 @@
      }
  
      SkPixmap image_data_pixmap = image_data->GetSkPixmap();
 +    bool glint_candidate_readback = false;
-+    if (const auto seed = glint::candidate::CanvasPartitionSeed(GetTopExecutionContext())) {
++    const auto seed = glint::candidate::CanvasPartitionSeed(GetTopExecutionContext());
++    if (!seed.has_value()) {
++      exception_state.ThrowDOMException(
++          DOMExceptionCode::kNotReadableError,
++          "Glint Canvas policy is unavailable.");
++      return nullptr;
++    }
++    if (const auto& partition_seed = seed.value()) {
 +      const auto& info = image_data_pixmap.info();
 +      if (info.colorType() != kRGBA_8888_SkColorType ||
 +          info.alphaType() != kUnpremul_SkAlphaType || !info.colorSpace() ||
@@ -33,7 +40,7 @@ diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_c
 +        return nullptr;
 +      }
 +      auto protected_image = glint::candidate::CreateProtectedCanvasImage(
-+          snapshot, *seed, glint::candidate::kCandidateAdditionalPixelBudget);
++          snapshot, *partition_seed, glint::candidate::kCandidateAdditionalPixelBudget);
 +      if (!protected_image.has_value()) {
 +        exception_state.ThrowDOMException(
 +            DOMExceptionCode::kNotReadableError,

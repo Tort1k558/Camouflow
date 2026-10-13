@@ -1,0 +1,91 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.h b/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
+@@ -25,6 +25,10 @@
+ 
+ #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_OFFLINE_AUDIO_CONTEXT_H_
+ #define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_OFFLINE_AUDIO_CONTEXT_H_
++
++#include <array>
++#include <cstdint>
++#include <optional>
+ 
+ #include "base/synchronization/lock.h"
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
+@@ -143,6 +147,8 @@
+       GUARDED_BY(suspend_frames_lock_);
+ 
+   Member<ScriptPromiseResolver<AudioBuffer>> complete_resolver_;
++  // Captured on the main thread before rendering; completion never reseeds.
++  std::optional<std::array<uint8_t, 32>> glint_audio_partition_seed_;
+ 
+   // This flag is necessary to indicate the rendering has actually started or
+   // running. Note that initial state of context is 'Suspended', which is the
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+@@ -38,6 +38,9 @@
+ #include "third_party/blink/renderer/modules/webaudio/audio_listener.h"
+ #include "third_party/blink/renderer/modules/webaudio/deferred_task_handler.h"
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_completion_event.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
++#include "third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer.h"
++#include "third_party/blink/renderer/modules/webaudio/glint/offline_audio_limits.h"
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_destination_node.h"
+ #include "third_party/blink/renderer/platform/audio/audio_utilities.h"
+ #include "third_party/blink/renderer/platform/bindings/exception_messages.h"
+@@ -232,12 +235,27 @@
+ 
+   DCHECK(!is_rendering_started_);
+ 
++  const auto seed = glint::candidate::SurfacePartitionSeed(
++      GetExecutionContext(), glint::candidate::SurfaceSeedKind::kAudio);
++  if (!seed.has_value()) {
++    exception_state.ThrowDOMException(DOMExceptionCode::kNotReadableError,
++                                     "Glint offline Audio policy is unavailable.");
++    return EmptyPromise();
++  }
++  glint_audio_partition_seed_ = seed.value();
++  float sample_rate = DestinationHandler().SampleRate();
++  unsigned number_of_channels = DestinationHandler().NumberOfChannels();
++  if (glint_audio_partition_seed_ &&
++      !glint::candidate::CanCopyOfflineAudio(number_of_channels, total_render_frames_)) {
++    exception_state.ThrowDOMException(DOMExceptionCode::kNotReadableError,
++                                     "Glint offline Audio copy exceeds its allocation budget.");
++    return EmptyPromise();
++  }
++
+   complete_resolver_ = MakeGarbageCollected<ScriptPromiseResolver<AudioBuffer>>(
+       script_state, exception_state.GetContext());
+ 
+   // Allocate the AudioBuffer to hold the rendered result.
+-  float sample_rate = DestinationHandler().SampleRate();
+-  unsigned number_of_channels = DestinationHandler().NumberOfChannels();
+ 
+   AudioBuffer* render_target = AudioBuffer::CreateUninitialized(
+       number_of_channels, total_render_frames_, sample_rate);
+@@ -419,10 +437,20 @@
+       return;
+     }
+ 
+-    // Call the offline rendering completion event listener and resolve the
+-    // promise too.
+-    DispatchEvent(*OfflineAudioCompletionEvent::Create(rendered_buffer));
+-    complete_resolver_->Resolve(rendered_buffer);
++    if (glint_audio_partition_seed_) {
++      // Transform a detached result once, before either observable exposure.
++      rendered_buffer = glint::candidate::CopyOfflineAudioBuffer(
++          *rendered_buffer, *glint_audio_partition_seed_);
++    }
++    if (!rendered_buffer) {
++      complete_resolver_->Reject(MakeGarbageCollected<DOMException>(
++          DOMExceptionCode::kNotReadableError,
++          "Glint offline Audio readback could not be completed."));
++    } else {
++      // Keep the same live mutable AudioBuffer for the event and the Promise.
++      DispatchEvent(*OfflineAudioCompletionEvent::Create(rendered_buffer));
++      complete_resolver_->Resolve(rendered_buffer);
++    }
+   } else {
+     // The resolver should be rejected when the execution context is gone.
+     complete_resolver_->Reject(MakeGarbageCollected<DOMException>(

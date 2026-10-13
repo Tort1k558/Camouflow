@@ -79,7 +79,8 @@ separate checks. Source registration is not browser linkage or privacy admission
 Canonical public source and unregistered integration patches live under
 `drafts/policy`, `drafts/gpu` and `drafts/audio`. These candidates do not edit
 the active 0030 build. Document/worker v2 transport and final-owner handoff have
-candidate code, not compiled/runtime proof. Audio API admission and GPU readback
+candidate code, not compiled/runtime proof. Canvas and OfflineAudio API candidates
+consume explicit owned seed results; API admission and GPU readback
 protection remain unfinished. Existing profile-key derivation domains must stay
 stable across a transport-version change.
 
@@ -88,7 +89,7 @@ diagnostics before enabling new hooks. Their successful 001-027 baseline runs
 do not verify the drafts or claim anti-bot acceptance. Worker APIs unavailable
 in upstream remain explicit exclusions, not fabricated coverage.
 
-`verify_native_next_batch.py` replays the fifteen unregistered integration patches
+`verify_native_next_batch.py` replays the twenty-two unregistered integration patches
 in an owned temporary overlay, checks exact canonical copies and rejects source,
 receipt, GN-input or browser-core drift. Run it with a new evidence path outside
 both repositories; it never runs GN, compilation or modifies active sources.
@@ -108,6 +109,15 @@ and srcdoc inheritance requires exact partition matching. Root initial empty
 documents and different-partition children need authenticated delivery rather
 than parent-key borrowing. No document v2 policy or new readback hook is admitted
 by source replay or generated bindings.
+
+The shared surface reader treats flag-off and invalid required policy as
+different results. All candidate Canvas web entry points reject the latter;
+they do not export an unprotected image. OfflineAudio captures its independent
+seed before rendering starts, checks the additional-copy budget and produces
+one detached mutable buffer before both completion event and Promise. Native
+seed-reader and startRendering rejection fixtures are prepared, not executed.
+No realtime Audio or analyser protection, complete ImageData-format support,
+GPU readback protection or verified fingerprint-resistance claim is implied.
 
 `scripts/native_build.py` pins upstream revisions, records sync/hooks dependency
 snapshots and checks applied changes by replaying registered patches into a

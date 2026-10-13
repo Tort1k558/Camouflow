@@ -18,15 +18,22 @@ diff --git a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
  #include "third_party/blink/renderer/platform/bindings/exception_state.h"
  #include "third_party/blink/renderer/platform/fonts/plain_text_painter.h"
  #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
-@@ -423,11 +426,23 @@
+@@ -423,11 +426,30 @@
    base::TimeTicks start_time = base::TimeTicks::Now();
    scoped_refptr<StaticBitmapImage> image_bitmap = context_->GetImage();
    if (image_bitmap) {
 +    auto* execution_context = ExecutionContext::From(script_state);
-+    if (const auto seed = glint::candidate::CanvasPartitionSeed(execution_context)) {
++    const auto seed = glint::candidate::CanvasPartitionSeed(execution_context);
++    if (!seed.has_value()) {
++      exception_state.ThrowDOMException(
++          DOMExceptionCode::kNotReadableError,
++          "Glint Canvas policy is unavailable.");
++      return EmptyPromise();
++    }
++    if (const auto& partition_seed = seed.value()) {
 +      // Developer bootstrap only; this candidate is not admitted protection.
 +      auto protected_image = glint::candidate::CreateProtectedCanvasImage(
-+          image_bitmap, *seed, glint::candidate::kCandidateAdditionalPixelBudget);
++          image_bitmap, *partition_seed, glint::candidate::kCandidateAdditionalPixelBudget);
 +      if (!protected_image.has_value()) {
 +        exception_state.ThrowDOMException(
 +            DOMExceptionCode::kNotReadableError,
