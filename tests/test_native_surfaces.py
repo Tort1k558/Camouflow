@@ -275,6 +275,42 @@ def test_surface_flags_do_not_enable_protection_in_baseline():
     assert surfaces.DOCUMENT_ARGUMENT in surfaces.SurfaceConfiguration(probe_mode="ready").launch_arguments()
 
 
+@pytest.mark.parametrize("mode", surfaces.DERIVATION_MODES)
+@pytest.mark.parametrize("phase", ["baseline", "ready", "unavailable"])
+def test_profile_identity_switch_requires_ready_full_surface_configuration(mode, phase):
+    arguments = surfaces.SurfaceConfiguration(probe_mode=phase, derivation_mode=mode).launch_arguments()
+    assert (surfaces.IDENTITY_ARGUMENT in arguments) is (mode == "profile-identity" and phase == "ready")
+    if surfaces.IDENTITY_ARGUMENT in arguments:
+        assert surfaces.KEY_ARGUMENT in arguments
+        assert surfaces.DOCUMENT_ARGUMENT in arguments
+        assert "--glint-worker-surface-bootstrap-test" in arguments
+        assert not any("canvas-bootstrap-test" in argument for argument in arguments)
+
+
+@pytest.mark.parametrize("mode", [None, [], "random"])
+def test_profile_identity_configuration_rejects_unknown_mode(mode):
+    with pytest.raises(ValueError, match="derivation mode"):
+        surfaces.SurfaceConfiguration(derivation_mode=mode).launch_arguments()
+
+
+@pytest.mark.parametrize("missing", [None, *surfaces.IDENTITY_PATCHES])
+def test_profile_identity_receipt_requires_each_exact_compiled_patch(tmp_path, monkeypatch, missing):
+    import hashlib
+
+    core = {"chrome.exe": "a", "chrome.dll": "b", "chrome_elf.dll": "c"}
+    receipt = {"runtime_core_sha256_measured": core, "patches": [
+        {"name": name, "sha256": hashlib.sha256((surfaces.ROOT / "native/patches" / name).read_bytes()).hexdigest()}
+        for name in (*surfaces.REQUIRED_PATCHES, *surfaces.IDENTITY_PATCHES) if name != missing]}
+    raw = json.dumps(receipt).encode()
+    monkeypatch.setattr(surfaces, "validate_worker_receipt", lambda *args, **kwargs: raw)
+    if missing is None:
+        assert surfaces.validate_receipt(tmp_path / "chrome.exe", core, derivation_mode="profile-identity") == raw
+    else:
+        with pytest.raises(ValueError, match="exact compiled surface patch"):
+            surfaces.validate_receipt(tmp_path / "chrome.exe", core, derivation_mode="profile-identity")
+        assert surfaces.validate_receipt(tmp_path / "chrome.exe", core) == raw
+
+
 def test_owned_denial_fixture_counts_requests_and_execution_separately():
     server = surfaces.SurfaceFixtureServer(("127.0.0.1", 0))
     thread = threading.Thread(target=server.serve_forever, daemon=True)

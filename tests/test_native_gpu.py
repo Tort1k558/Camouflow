@@ -538,13 +538,24 @@ def test_readback_feature_merges_existing_partition_flag():
     assert FEATURE_ARGUMENT in ReadbackConfiguration().launch_arguments()
 
 
+@pytest.mark.parametrize("mode", ["partitioned-privacy", "profile-identity"])
+@pytest.mark.parametrize("phase", ["baseline", "ready", "unavailable"])
+def test_readback_identity_flag_preserves_feature_selection(mode, phase):
+    from scripts import verify_native_gpu_readback as gpu
+
+    arguments = gpu.ReadbackConfiguration(probe_mode=phase, derivation_mode=mode).launch_arguments()
+    assert (gpu.IDENTITY_ARGUMENT in arguments) is (phase == "ready" and mode == "profile-identity")
+    expected = gpu.FEATURE_ARGUMENT + ("," + gpu.READBACK_FEATURE if phase == "ready" else "")
+    assert [value for value in arguments if value.startswith("--enable-features=")] == [expected]
+
+
 def test_readback_cli_rejects_old_receipt_before_creating_profiles(tmp_path, monkeypatch):
     from scripts import verify_native_gpu_readback as gpu
 
     executable = tmp_path / "chrome.exe"
     executable.write_bytes(b"not executed")
     monkeypatch.setattr(gpu, "measure_runtime_core", lambda path: {"chrome.exe": "fixture"})
-    def reject_receipt(*args):
+    def reject_receipt(*args, **kwargs):
         raise ValueError("uncompiled readback")
     monkeypatch.setattr(gpu, "validate_receipt", reject_receipt)
     owned = tmp_path / "owned"
@@ -556,6 +567,32 @@ def test_readback_cli_rejects_old_receipt_before_creating_profiles(tmp_path, mon
     evidence = json.loads(report.read_text(encoding="utf-8"))
     assert evidence["passed"] is False and evidence["privacy_admitted"] is False
     assert evidence["error"] == "uncompiled readback" and not evidence["checks"]
+
+
+@pytest.mark.parametrize("missing", [None, "0046-native-webgl-bounded-readback.patch", "0047-native-webgl-clipped-publication.patch",
+                                    "0055-native-gpu-readback-metadata-transport.patch", "0056-native-gpu-metadata-protocol-tests.patch",
+                                    "0057-native-gpu-metadata-attachment-tests.patch", "0058-native-gpu-passthrough-attachment-tests.patch"])
+def test_readback_identity_receipt_binds_complete_gpu_package(tmp_path, monkeypatch, missing):
+    import hashlib
+    from scripts import verify_native_gpu_readback as gpu
+
+    names = (gpu.GPU_PATCH, "0046-native-webgl-bounded-readback.patch", "0047-native-webgl-clipped-publication.patch",
+             "0055-native-gpu-readback-metadata-transport.patch", "0056-native-gpu-metadata-protocol-tests.patch",
+             "0057-native-gpu-metadata-attachment-tests.patch", "0058-native-gpu-passthrough-attachment-tests.patch")
+    receipt = {"patches": [{"name": name, "sha256": hashlib.sha256((gpu.ROOT / "native/patches" / name).read_bytes()).hexdigest()}
+                           for name in names if name != missing]}
+    raw = json.dumps(receipt).encode()
+    modes = []
+    def surface_receipt(*args, derivation_mode):
+        modes.append(derivation_mode)
+        return raw
+    monkeypatch.setattr(gpu, "validate_surface_receipt", surface_receipt)
+    if missing is None:
+        assert gpu.validate_receipt(tmp_path / "chrome.exe", {}, derivation_mode="profile-identity") == raw
+    else:
+        with pytest.raises(ValueError, match="exact compiled WebGL readback patch"):
+            gpu.validate_receipt(tmp_path / "chrome.exe", {}, derivation_mode="profile-identity")
+    assert modes == ["profile-identity"]
 
 
 @pytest.mark.parametrize("field,value", [("width", 4), ("height", 4), ("width", True),

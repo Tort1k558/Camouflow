@@ -31,7 +31,7 @@ from scripts.verify_native_gpu import (
     validate_shader_readback,
 )
 from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
-from scripts.verify_native_surfaces import SAME_PARTITION, SurfaceConfiguration
+from scripts.verify_native_surfaces import DERIVATION_MODES, IDENTITY_ARGUMENT, SAME_PARTITION, SurfaceConfiguration
 from scripts.verify_native_surfaces import validate_receipt as validate_surface_receipt
 from scripts.verify_native_worker_startup import (
     FEATURE_ARGUMENT,
@@ -243,14 +243,21 @@ class ReadbackConfiguration(SurfaceConfiguration):
         return arguments
 
 
-def validate_receipt(executable: Path, core: dict) -> bytes:
-    raw = validate_surface_receipt(executable, core)
-    patch = ROOT / "native/patches" / GPU_PATCH
-    if not patch.is_file() or patch.is_symlink():
-        raise ValueError("GPU readback requires a registered compiled patch, not a draft")
-    expected = {"name": GPU_PATCH, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}
-    if expected not in json.loads(raw.decode("utf-8-sig"))["patches"]:
-        raise ValueError("Receipt lacks the exact compiled WebGL readback patch")
+def validate_receipt(executable: Path, core: dict, *, derivation_mode: str = "partitioned-privacy") -> bytes:
+    raw = validate_surface_receipt(executable, core, derivation_mode=derivation_mode)
+    names = (GPU_PATCH,)
+    if derivation_mode == "profile-identity":
+        names += ("0046-native-webgl-bounded-readback.patch", "0047-native-webgl-clipped-publication.patch",
+                  "0055-native-gpu-readback-metadata-transport.patch", "0056-native-gpu-metadata-protocol-tests.patch",
+                  "0057-native-gpu-metadata-attachment-tests.patch", "0058-native-gpu-passthrough-attachment-tests.patch")
+    receipt = json.loads(raw.decode("utf-8-sig"))
+    for name in names:
+        patch = ROOT / "native/patches" / name
+        if not patch.is_file() or patch.is_symlink():
+            raise ValueError("GPU readback requires a registered compiled patch, not a draft")
+        expected = {"name": name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}
+        if expected not in receipt["patches"]:
+            raise ValueError("Receipt lacks the exact compiled WebGL readback patch")
     return raw
 
 
@@ -517,7 +524,7 @@ def restart_state(observed: dict) -> dict:
 
 
 async def verify(executable: Path, owned: Path, server: FixtureServer, report: dict,
-                 runtimes: list[NativeRuntime]) -> None:
+                 runtimes: list[NativeRuntime], *, derivation_mode: str = "partitioned-privacy") -> None:
     discovery = NativeRuntime(owned / "driver-arguments", executable, ReadbackConfiguration())
     runtimes.append(discovery)
     try:
@@ -531,7 +538,7 @@ async def verify(executable: Path, owned: Path, server: FixtureServer, report: d
     results = {}
     for name in ("baseline", "profile-a", "profile-b"):
         protected = name != "baseline"
-        configuration = ReadbackConfiguration(probe_mode="ready" if protected else "baseline",
+        configuration = ReadbackConfiguration(probe_mode="ready" if protected else "baseline", derivation_mode=derivation_mode,
             disabled_features_argument=replacement, ignored_driver_argument=original)
         runtime = NativeRuntime(owned / name, executable, configuration)
         runtimes.append(runtime)
@@ -545,10 +552,15 @@ async def verify(executable: Path, owned: Path, server: FixtureServer, report: d
                         or replacement not in effective or expected not in effective
                         or any(argument not in effective for argument in configuration.launch_arguments())):
                     raise ValueError("Effective arguments do not request the expected partition/readback mode")
+                identity_arguments = [argument for argument in effective
+                                      if argument.startswith("--glint-fingerprint-derivation-mode=")]
+                if identity_arguments != ([IDENTITY_ARGUMENT] if protected and derivation_mode == "profile-identity" else []):
+                    raise ValueError("Effective readback arguments do not request the selected identity mode")
                 observed = await observe(context, f"http://127.0.0.1:{server.server_port}", read=READBACK_READ)
                 check = {"name": f"{name}-{phase}", "passed": False, "observed": observed}
                 report["checks"].append(check)
-                normalized = validate_readback(observed, protected=protected, baseline=baseline, previous=previous)
+                normalized = validate_readback(observed, protected=protected, baseline=baseline, previous=previous,
+                                               derivation_mode=derivation_mode)
                 previous = observed
                 if baseline is None:
                     baseline = normalized
@@ -556,7 +568,7 @@ async def verify(executable: Path, owned: Path, server: FixtureServer, report: d
                 check["passed"] = True
             finally:
                 await runtime.close()
-    validate_profile_isolation(results["baseline"], results["profile-a"], results["profile-b"])
+    validate_profile_isolation(results["baseline"], results["profile-a"], results["profile-b"], derivation_mode=derivation_mode)
     report["cross_profile_isolation_passed"] = True
 
 
@@ -565,17 +577,18 @@ def main() -> int:
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--derivation-mode", choices=DERIVATION_MODES, default="partitioned-privacy")
     args = parser.parse_args()
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite GPU readback evidence")
     report = {"schema": 1, "passed": False, "privacy_admitted": False, "checks": [],
-              "platform": platform.platform(), "scope": __doc__}
+              "platform": platform.platform(), "scope": __doc__, "derivation_mode": args.derivation_mode}
     server = thread = owned = None
     runtimes = []
     try:
         executable = args.executable.resolve(strict=True)
         core = measure_runtime_core(executable)
-        receipt = validate_receipt(executable, core)
+        receipt = validate_receipt(executable, core, derivation_mode=args.derivation_mode)
         inputs = probe_inputs()
         report.update(runtime_core_sha256_measured=core, probe_inputs_sha256=inputs,
                       receipt_sha256=hashlib.sha256(receipt).hexdigest(),
@@ -587,8 +600,8 @@ def main() -> int:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         owned = Path(tempfile.mkdtemp(prefix="glint-gpu-readback-", dir=args.work_dir.resolve()))
-        asyncio.run(verify(executable, owned, server, report, runtimes))
-        if (measure_runtime_core(executable) != core or validate_receipt(executable, core) != receipt
+        asyncio.run(verify(executable, owned, server, report, runtimes, derivation_mode=args.derivation_mode))
+        if (measure_runtime_core(executable) != core or validate_receipt(executable, core, derivation_mode=args.derivation_mode) != receipt
                 or probe_inputs() != inputs):
             raise ValueError("GPU runtime, receipt or probe changed during verification")
         expected = {f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b")

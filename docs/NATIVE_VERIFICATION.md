@@ -29,6 +29,8 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | `scripts/verify_native_canvas.py` | Canvas verification tooling, not an implemented protection claim |
 | `scripts/verify_native_worker_startup.py` | Default: 40 owned startup/restart/shared-client cases; `--include-nested` adds 20 nested dedicated-worker cases; no Canvas admission |
 | `scripts/verify_native_surfaces.py --include-nested-canvas` | Passed on browser 001-047: 7 existing phases and 24 parent/child Canvas cases across baseline/two profiles and restart, including first-script/repeated readback and separate fetch/body counters |
+| `scripts/verify_native_surfaces.py --derivation-mode profile-identity --include-nested-canvas` | Prepared: stable cross-origin Canvas/Audio, restart and two-profile isolation using exact compiled patches 0049-0054; existing 001-047 receipt is rejected, not treated as an identity-mode result |
+| `scripts/verify_native_gpu_readback.py --derivation-mode profile-identity` | Prepared: six existing phases with cross-origin WebGL1/2/renderbuffer consistency, restart and profile isolation; requires exact identity and complete GPU transport patches, not an old receipt |
 | `scripts/verify_native_identity.py --strict-client-hints` | Passed on browser 001-047: 8 strict document/frame HTTP-versus-JS comparisons, 6 worker JS-preservation checks and 4 invalid-UA rejection checks; 18 total |
 
 Run commands as documented in the [build guide](../native/BUILDING.md). Use fresh
@@ -85,6 +87,26 @@ and 24 nested cases passed, with unchanged browser core hashes and no cleanup
 error. This establishes that scoped execution, not future identity-mode behavior.
 Run heavy C++ candidate checks separately from native builds after the observed
 out-of-memory failure; do not silently lower the requested four build jobs.
+
+Profile-identity execution is opt-in through `--derivation-mode profile-identity`.
+It preserves the baseline and existing partitioned-privacy default, requires
+every exact identity patch in a core-bound receipt, and verifies the measured
+launch mode. Protected document/frame/worker Canvas and document OfflineAudio
+must now agree across origins as well as across same-partition contexts; restart
+and independent-profile isolation remain mandatory. Optional nested Canvas
+retains its 24-case contract. The missing-policy denial phase still uses the
+compatibility mode and is labelled separately; it is not identity-specific
+failure-path coverage. This is an owned diagnostic gate, not manager admission.
+The old browser was actually rejected before any fixture/profile launch:
+`D:\CamouFlowNative\profile-identity-old-core-rejection-001-047-v1.json`.
+No successful identity-mode browser execution is claimed from that negative check.
+The WebGL readback gate has the same opt-in and mode-propagation checks. It
+retains CPU/PBO/packing/clipping/export/error checks, but requires protected
+pixels to agree across all document and worker origins in profile-identity
+mode. Its receipt additionally binds 0046/0047 and 0055–0058. The existing
+001-047 browser was rejected before any fixture launch:
+`D:\CamouFlowNative\profile-identity-gpu-old-core-rejection-001-047-v1.json`.
+This is not WebGPU, validating-decoder coverage or a passing new-mode result.
 
 Nested worker coverage is opt-in and preserves the existing 40-case contract:
 

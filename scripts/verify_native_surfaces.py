@@ -53,6 +53,13 @@ from scripts.verify_native_worker_startup import (
 )
 
 DOCUMENT_ARGUMENT = "--glint-document-surface-bootstrap-test"
+IDENTITY_ARGUMENT = "--glint-fingerprint-derivation-mode=profile-identity"
+DERIVATION_MODES = ("partitioned-privacy", "profile-identity")
+IDENTITY_PATCHES = (
+    "0049-native-profile-identity-derivation.patch", "0050-native-immutable-fingerprint-mode.patch",
+    "0051-native-identity-context-tests.patch", "0052-native-surface-identity-v3-transport.patch",
+    "0053-native-identity-handoff-tests.patch", "0054-native-profile-identity-launch.patch",
+)
 REQUIRED_PATCHES = (
     "0032-native-document-surface-policy.patch",
     "0033-native-surface-readback.patch",
@@ -269,21 +276,28 @@ class SurfaceFixtureHandler(CanvasFixtureHandler):
 @dataclass(frozen=True)
 class SurfaceConfiguration(StartupConfiguration):
     bootstrap_policy: str = "surfaces"
+    derivation_mode: str = "partitioned-privacy"
 
     def launch_arguments(self) -> list[str]:
+        if not isinstance(self.derivation_mode, str) or self.derivation_mode not in DERIVATION_MODES:
+            raise ValueError("Unknown combined surface derivation mode")
         arguments = super().launch_arguments()
         if self.probe_mode != "baseline":
             arguments.append(DOCUMENT_ARGUMENT)
+        if self.probe_mode == "ready" and self.derivation_mode == "profile-identity":
+            arguments.append(IDENTITY_ARGUMENT)
         return arguments
 
 
-def validate_receipt(executable: Path, core: dict) -> bytes:
+def validate_receipt(executable: Path, core: dict, *, derivation_mode: str = "partitioned-privacy") -> bytes:
+    if not isinstance(derivation_mode, str) or derivation_mode not in DERIVATION_MODES:
+        raise ValueError("Unknown combined surface derivation mode")
     raw = validate_worker_receipt(executable, core, bootstrap_policy="surfaces")
     receipt = json.loads(raw.decode("utf-8-sig"))
     # An EXE hash alone does not bind Blink code in chrome.dll on Windows.
     if receipt.get("runtime_core_sha256_measured") != core:
         raise ValueError("Combined surface gate requires a receipt binding every runtime core file")
-    for name in REQUIRED_PATCHES:
+    for name in REQUIRED_PATCHES + (IDENTITY_PATCHES if derivation_mode == "profile-identity" else ()):
         patch = ROOT / "native/patches" / name
         if not patch.is_file() or patch.is_symlink():
             raise ValueError("Combined surfaces require registered patches, not uncompiled drafts")
@@ -376,7 +390,8 @@ def probe_inputs() -> dict[str, str]:
 
 
 async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, report: dict,
-                 runtimes: list[NativeRuntime], *, include_nested_canvas: bool = False) -> None:
+                 runtimes: list[NativeRuntime], *, include_nested_canvas: bool = False,
+                 derivation_mode: str = "partitioned-privacy") -> None:
     origin = f"http://127.0.0.1:{server.server_port}"
     discovery = NativeRuntime(owned / "driver-arguments", executable, SurfaceConfiguration())
     runtimes.append(discovery)
@@ -392,7 +407,7 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
     results = {}
     for name in ("baseline", "profile-a", "profile-b"):
         mode = "baseline" if name == "baseline" else "ready"
-        configuration = SurfaceConfiguration(probe_mode=mode,
+        configuration = SurfaceConfiguration(probe_mode=mode, derivation_mode=derivation_mode,
             disabled_features_argument=replacement, ignored_driver_argument=original)
         runtime = NativeRuntime(owned / name, executable, configuration)
         runtimes.append(runtime)
@@ -407,11 +422,16 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
                     raise ValueError("Effective arguments disable storage partitioning")
                 if mode == "ready" and DOCUMENT_ARGUMENT not in effective:
                     raise ValueError("Document surface policy was not requested")
+                expected_identity = mode == "ready" and derivation_mode == "profile-identity"
+                identity_arguments = [argument for argument in effective
+                                      if argument.startswith("--glint-fingerprint-derivation-mode=")]
+                if identity_arguments != ([IDENTITY_ARGUMENT] if expected_identity else []):
+                    raise ValueError("Effective arguments do not request the selected identity mode")
                 check = {"name": f"{name}-{phase}", "passed": False}
                 report["checks"].append(check)
                 observed = await observe(context, origin, read=COMBINED_READ)
                 check["observed"] = observed
-                validate_combined(observed, previous, protected=mode == "ready")
+                validate_combined(observed, previous, protected=mode == "ready", derivation_mode=derivation_mode)
                 security = {}
                 for frame_name, frame in (await security_frames(context.pages[0])).items():
                     security[frame_name] = await asyncio.wait_for(frame.evaluate(SECURITY_READ), timeout=20)
@@ -438,13 +458,14 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
                 results[name] = observed
             finally:
                 await runtime.close()
-    validate_isolation(results["baseline"], results["profile-a"], results["profile-b"])
+    validate_isolation(results["baseline"], results["profile-a"], results["profile-b"], derivation_mode=derivation_mode)
     report["cross_profile_isolation_passed"] = True
     report["audio_quality"] = {
         name: compare_quality({context: row["audio"] for context, row in results["baseline"].items()},
                               {context: row["audio"] for context, row in results[name].items()})
         for name in ("profile-a", "profile-b")}
     check = {"name": "missing-document-policy", "passed": False}
+    check["derivation_mode"] = "partitioned-privacy"
     report["checks"].append(check)
     await verify_document_denial(executable, owned, server, original, replacement, check)
     check["passed"] = True
@@ -457,12 +478,17 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--include-nested-canvas", action="store_true",
                         help="Also check first-script/repeated Canvas in classic/module parent/child workers")
+    parser.add_argument("--derivation-mode", choices=DERIVATION_MODES, default="partitioned-privacy",
+                        help="Owned profile-identity diagnostics require exact compiled patches 0049-0054")
     args = parser.parse_args()
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite surface evidence")
     report = {"schema": 1, "passed": False, "privacy_admitted": False, "checks": [],
               "platform": platform.platform(), "scope": "Combined Canvas/OfflineAudio isolation, first-parser-script consistency, restart, float32 error/SNR and missing-policy rejection; render durations measured, not a performance admission; no GPU or anti-bot admission"}
     report["include_nested_canvas"] = args.include_nested_canvas
+    report["derivation_mode"] = args.derivation_mode
+    if args.derivation_mode == "profile-identity":
+        report["scope"] += "; stable cross-origin profile identity; missing-policy rejection uses the compatibility mode"
     if args.include_nested_canvas:
         report["scope"] += "; nested classic/module dedicated-worker first-script/repeated Canvas and restart; not independent child-policy denial or nested Audio"
     server = thread = owned = None
@@ -470,7 +496,7 @@ def main() -> int:
     try:
         executable = args.executable.resolve(strict=True)
         core = measure_runtime_core(executable)
-        receipt = validate_receipt(executable, core)
+        receipt = validate_receipt(executable, core, derivation_mode=args.derivation_mode)
         inputs = probe_inputs()
         report.update(runtime_core_sha256_measured=core, probe_inputs_sha256=inputs,
                       receipt_sha256=hashlib.sha256(receipt).hexdigest(),
@@ -483,8 +509,8 @@ def main() -> int:
         thread.start()
         owned = Path(tempfile.mkdtemp(prefix="glint-surfaces-", dir=args.work_dir.resolve()))
         asyncio.run(verify(executable, owned, server, report, runtimes,
-                           include_nested_canvas=args.include_nested_canvas))
-        if (measure_runtime_core(executable) != core or validate_receipt(executable, core) != receipt
+                           include_nested_canvas=args.include_nested_canvas, derivation_mode=args.derivation_mode))
+        if (measure_runtime_core(executable) != core or validate_receipt(executable, core, derivation_mode=args.derivation_mode) != receipt
                 or probe_inputs() != inputs):
             raise ValueError("Surface runtime, receipt or probe code changed during verification")
         expected = {f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b")
