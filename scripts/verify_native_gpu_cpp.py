@@ -20,6 +20,16 @@ TARGETS = {
 }
 
 
+def evidence_directory(log: Path) -> Path:
+    if log != log.resolve() or not log.parent.is_dir() or log.exists() or log.is_symlink():
+        raise ValueError("A fresh canonical C++ diagnostic log is required")
+    checks = log.with_name(log.name + ".artifacts")
+    if checks != checks.resolve() or checks.exists() or checks.is_symlink():
+        raise ValueError("Refusing to overwrite C++ diagnostic artifacts")
+    checks.mkdir()
+    return checks
+
+
 def syntax_flags(ninja: str, toolchain: str, relative: str, *, generated: bool = False) -> str:
     prefix = "gen/" if generated else "../../"
     if not re.search(r"^build [^\n]+: cxx " + re.escape(prefix + relative) + r"(?: \||$)", ninja, re.M):
@@ -54,8 +64,7 @@ def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
     before = {str(path): digest(path) for path in inputs}
     core = measure_runtime_core(output / "chrome.exe")
     arguments = digest(output / "args.gn")
-    checks = overlay.parent / "cpp-checks"
-    checks.mkdir()
+    checks = evidence_directory(log)
     units = {}
     with log.open("x", encoding="utf-8") as stream:
         for name, (unit, target) in TARGETS.items():
@@ -84,4 +93,5 @@ def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
     return {"passed": True, "compiled": False, "privacy_admitted": False,
             "scope": "C++ parsing/type-checking only; no optimization, link, native test or browser execution",
             "units": units, "inputs": before, "baseline_runtime_core_sha256": core,
-            "active_core_and_gn_unchanged": True, "args_sha256": arguments}
+            "active_core_and_gn_unchanged": True, "args_sha256": arguments,
+            "diagnostic_artifacts": str(checks)}

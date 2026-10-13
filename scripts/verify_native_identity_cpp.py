@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 from scripts.verify_native_document_drafts import digest
-from scripts.verify_native_gpu_cpp import syntax_flags
+from scripts.verify_native_gpu_cpp import evidence_directory, syntax_flags
 from scripts.verify_native_runtime import measure_runtime_core
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,8 +65,7 @@ def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
     before = {str(path): digest(path) for path in inputs}
     core = measure_runtime_core(output / "chrome.exe")
     arguments = digest(output / "args.gn")
-    checks = overlay / "cpp-checks"
-    checks.mkdir()
+    checks = evidence_directory(log)
     generated = checks / "gen"
     for original in (overlay / "bindings-gen").rglob("*"):
         if original.is_file():
@@ -105,4 +104,5 @@ def verify_cpp(source: Path, overlay: Path, log: Path, env: dict) -> dict:
             "compiled": False, "privacy_admitted": False,
             "scope": "Actual target C++ parsing/type checks; not optimizer, linker, fixture or browser execution",
             "units": units, "inputs": before, "candidate_sources": candidate_hashes,
-            "active_core_and_inputs_unchanged": unchanged, "baseline_runtime_core_sha256": core}
+            "active_core_and_inputs_unchanged": unchanged, "baseline_runtime_core_sha256": core,
+            "diagnostic_artifacts": str(checks)}

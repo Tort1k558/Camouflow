@@ -239,6 +239,12 @@ identity mode, attachment metadata or protected GPU output. The current GN
 configuration disables the validating decoder; parsing its translation unit
 does not establish coverage of that backend's excluded code or fixtures.
 
+Future C++ runs retain response files, fresh generated bindings and any Clang
+crash reproducer in `<log>.artifacts` beside the private log, outside the
+disposable source overlay. Existing logs/artifact paths reject rather than
+overwrite. These are diagnostic inputs, not native/runtime results; generated
+responses can reference the removed overlay and are not standalone build recipes.
+
 The first complete combined C++ attempt on source 001-048 **failed**:
 `identity-readback-combined-cpp-001-048-v2.json` on D. GPU's six units passed;
 identity stopped at `document_loader.cc` with `LLVM ERROR: out of memory`

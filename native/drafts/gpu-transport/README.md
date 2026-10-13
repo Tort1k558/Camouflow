@@ -137,6 +137,11 @@ not promoted into a compatible single-sample attachment.
 This compiles only into a disposable private directory, never the active output.
 It does not verify decoder execution, GPU calls, Blink ABI or privacy admission.
 
+Candidate C++ syntax logs now keep response files and Clang crash diagnostics
+in a new sibling `<log>.artifacts` directory, surviving owned-overlay cleanup.
+Existing evidence is never overwritten. This does not make syntax checks a
+linked decoder or browser proof, nor restore old discarded crash artifacts.
+
 - Compile/link the generated command, both decoders, Blink consumer and codec fixtures in Chromium.
 - Execute the 10 prepared decoder fixtures: feature-off unavailable response,
   invalid shared-memory ID, overflowing offset, truncated storage and initialized

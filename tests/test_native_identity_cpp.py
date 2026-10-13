@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from types import SimpleNamespace
 
 import pytest
@@ -43,10 +44,11 @@ def test_identity_cpp_checker_is_complete_and_fail_closed(tmp_path, monkeypatch,
         commands.append(command)
         response = Path(command[1].removeprefix("@")).read_text(encoding="utf-8")
         assert "-fsyntax-only" in response and "/Yu" not in response
-        assert response.index('-I"' + str(overlay / "cpp-checks/gen")) < response.index("ACTUAL_TARGET_FLAGS")
+        assert response.index('-I"' + str(log.with_name(log.name + ".artifacts") / "gen")) < response.index("ACTUAL_TARGET_FLAGS")
         assert kwargs["cwd"] == source / "out/CamouFlowNative"
         if len(commands) == 3:
             if failure == "compiler":
+                Path(command[1][1:]).with_suffix(".cpp").write_text("owned preprocessed crash fixture", encoding="utf-8")
                 return SimpleNamespace(returncode=1)
             if failure == "timeout":
                 raise checker.subprocess.TimeoutExpired(command, 180)
@@ -74,6 +76,12 @@ def test_identity_cpp_checker_is_complete_and_fail_closed(tmp_path, monkeypatch,
         assert {relative for relative, generated in flags if generated} == set(checker.GENERATED_TARGETS)
     if failure == "changed-input":
         assert proof["active_core_and_inputs_unchanged"] is False
+    artifacts = Path(proof["diagnostic_artifacts"])
+    assert artifacts.is_dir() and not artifacts.is_relative_to(overlay)
+    shutil.rmtree(overlay)
+    assert artifacts.is_dir() and list(artifacts.glob("*.rsp"))
+    if failure == "compiler":
+        assert next(artifacts.glob("*.cpp")).read_text(encoding="utf-8") == "owned preprocessed crash fixture"
 
 
 def test_identity_cpp_sources_include_consumers_and_generated_implementations():
