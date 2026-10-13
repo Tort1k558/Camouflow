@@ -1,0 +1,524 @@
+diff --git a/third_party/blink/renderer/modules/BUILD.gn b/third_party/blink/renderer/modules/BUILD.gn
+index ed61ac3161ba421b42252a205826c1a68565497d..25905aa7b7ff8a146b0df5ba859ee548d90b3542 100644
+--- a/third_party/blink/renderer/modules/BUILD.gn
++++ b/third_party/blink/renderer/modules/BUILD.gn
+@@ -632,6 +632,7 @@ source_set("unit_tests") {
+     "webaudio/glint/offline_audio_candidate_unittest.cc",
+     "webaudio/glint/offline_audio_buffer_unittest.cc",
+     "webgl/glint/rgba8_pack_copy_unittest.cc",
++    "webgl/glint/rgba8_readback_region_unittest.cc",
+     "webaudio/audio_context_autoplay_test.cc",
+     "webaudio/audio_context_test.cc",
+     "webaudio/audio_node_input_test.cc",
+diff --git a/third_party/blink/renderer/modules/webgl/BUILD.gn b/third_party/blink/renderer/modules/webgl/BUILD.gn
+index 308fa2f647858c998242cd7c81b3c339c56f3d96..1f2ee07514ec7c5aaae65e2ecab6f400159dfec8 100644
+--- a/third_party/blink/renderer/modules/webgl/BUILD.gn
++++ b/third_party/blink/renderer/modules/webgl/BUILD.gn
+@@ -8,6 +8,8 @@ import("//ui/gl/features.gni")
+ blink_modules_sources("webgl") {
+   sources = [
+     "glint/rgba8_pack_copy.h",
++    "glint/rgba8_readback_region.cc",
++    "glint/rgba8_readback_region.h",
+     "glint/rgba8_pack_copy.cc",
+     "angle_instanced_arrays.cc",
+     "angle_instanced_arrays.h",
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..10c295870c0451cd5f2aa67dbf3c10a99816cae2
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region.cc
+@@ -0,0 +1,103 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "rgba8_readback_region.h"
++
++#include <algorithm>
++#include <functional>
++#include <limits>
++
++#include "base/numerics/checked_math.h"
++
++namespace glint::candidate {
++base::expected<Rgba8ReadbackRegion, ReadbackRegionError>
++PlanRgba8ReadbackRegion(const Rgba8ReadbackRequest& request,
++                        size_t additional_memory_limit) {
++  if (request.frame_width <= 0 || request.frame_height <= 0 ||
++      request.width < 0 || request.height < 0) {
++    return base::unexpected(ReadbackRegionError::kInvalidDimensions);
++  }
++  Rgba8ReadbackRegion region;
++  base::CheckedNumeric<size_t> rectangle_bytes = request.width;
++  rectangle_bytes *= request.height;
++  rectangle_bytes *= 4;
++  if (!rectangle_bytes.IsValid()) {
++    return base::unexpected(ReadbackRegionError::kBudgetExceeded);
++  }
++  region.rectangle_bytes = rectangle_bytes.ValueOrDie();
++  if (request.x == 0 && request.y == 0 &&
++      request.width == request.frame_width &&
++      request.height == request.frame_height) {
++    region.mode = Rgba8ReadbackMode::kFullFrameInPlace;
++  } else if (request.width != 0 && request.height != 0) {
++    const int64_t left = std::max<int64_t>(0, request.x);
++    const int64_t bottom = std::max<int64_t>(0, request.y);
++    const int64_t right = std::min<int64_t>(
++        request.frame_width, static_cast<int64_t>(request.x) + request.width);
++    const int64_t top = std::min<int64_t>(
++        request.frame_height, static_cast<int64_t>(request.y) + request.height);
++    if (right > left && top > bottom) {
++      region.mode = Rgba8ReadbackMode::kHalo;
++      const int64_t halo_left = std::max<int64_t>(0, left - 1);
++      const int64_t halo_bottom = std::max<int64_t>(0, bottom - 1);
++      const int64_t halo_right =
++          std::min<int64_t>(request.frame_width, right + 1);
++      const int64_t halo_top = std::min<int64_t>(request.frame_height, top + 1);
++      region.x = static_cast<int32_t>(halo_left);
++      region.y = static_cast<int32_t>(halo_bottom);
++      region.width = static_cast<int32_t>(halo_right - halo_left);
++      region.height = static_cast<int32_t>(halo_top - halo_bottom);
++    }
++  }
++  base::CheckedNumeric<size_t> tile_bytes = region.width;
++  tile_bytes *= region.height;
++  tile_bytes *= 4;
++  auto total = rectangle_bytes + tile_bytes;
++  if (!total.IsValid() || total.ValueOrDie() > additional_memory_limit) {
++    return base::unexpected(ReadbackRegionError::kBudgetExceeded);
++  }
++  region.tile_bytes = tile_bytes.ValueOrDie();
++  return region;
++}
++
++base::expected<void, ReadbackRegionError> OverlayProtectedRgba8ReadbackRegion(
++    std::span<const uint8_t> protected_tile,
++    std::span<uint8_t> private_rectangle,
++    const Rgba8ReadbackRequest& request,
++    const Rgba8ReadbackRegion& region) {
++  const auto expected =
++      PlanRgba8ReadbackRegion(request, std::numeric_limits<size_t>::max());
++  if (!expected.has_value() || *expected != region ||
++      region.mode == Rgba8ReadbackMode::kFullFrameInPlace ||
++      protected_tile.size() != region.tile_bytes ||
++      private_rectangle.size() != region.rectangle_bytes) {
++    return base::unexpected(ReadbackRegionError::kInvalidStorage);
++  }
++  if (region.tile_bytes == 0) {
++    return {};
++  }
++  const std::less<const uint8_t*> less;
++  if (less(protected_tile.data(), private_rectangle.last(0).data()) &&
++      less(private_rectangle.data(), protected_tile.last(0).data())) {
++    return base::unexpected(ReadbackRegionError::kAliasedStorage);
++  }
++  const int64_t left = std::max<int64_t>(0, request.x);
++  const int64_t bottom = std::max<int64_t>(0, request.y);
++  const int64_t right = std::min<int64_t>(
++      request.frame_width, static_cast<int64_t>(request.x) + request.width);
++  const int64_t top = std::min<int64_t>(
++      request.frame_height, static_cast<int64_t>(request.y) + request.height);
++  const size_t bytes_per_row = static_cast<size_t>(right - left) * 4;
++  for (int64_t y = bottom; y < top; ++y) {
++    const size_t input = (static_cast<size_t>(y - region.y) * region.width +
++                          static_cast<size_t>(left - region.x)) *
++                         4;
++    const size_t output = (static_cast<size_t>(y - request.y) * request.width +
++                           static_cast<size_t>(left - request.x)) *
++                          4;
++    const auto row = protected_tile.subspan(input, bytes_per_row);
++    auto destination = private_rectangle.subspan(output, bytes_per_row);
++    std::copy(row.begin(), row.end(), destination.begin());
++  }
++  return {};
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region.h b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..ad9c25a2dd728296b42a1ef63451fb038608b512
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region.h
+@@ -0,0 +1,61 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_RGBA8_READBACK_REGION_H_
++#define GLINT_RGBA8_READBACK_REGION_H_
++
++#include <cstddef>
++#include <cstdint>
++#include <span>
++
++#include "base/types/expected.h"
++
++namespace glint::candidate {
++struct Rgba8ReadbackRequest {
++  int32_t frame_width;
++  int32_t frame_height;
++  int32_t x;
++  int32_t y;
++  int32_t width;
++  int32_t height;
++};
++
++enum class Rgba8ReadbackMode { kOutsideOnly, kFullFrameInPlace, kHalo };
++
++struct Rgba8ReadbackRegion {
++  Rgba8ReadbackMode mode = Rgba8ReadbackMode::kOutsideOnly;
++  int32_t x = 0;
++  int32_t y = 0;
++  int32_t width = 0;
++  int32_t height = 0;
++  size_t rectangle_bytes = 0;
++  size_t tile_bytes = 0;
++  bool operator==(const Rgba8ReadbackRegion&) const = default;
++};
++
++enum class ReadbackRegionError {
++  kInvalidDimensions,
++  kBudgetExceeded,
++  kInvalidStorage,
++  kAliasedStorage,
++};
++
++// One-pixel halo around the in-bounds portion of the requested rectangle.
++// Only for the edge-colour candidate; coordinate/global algorithms cannot use
++// this local-domain optimization. Empty intersection requires no tile read.
++// An exact full-frame request may transform its own private rectangle in place,
++// so the budget does not include a redundant second full-frame allocation.
++base::expected<Rgba8ReadbackRegion, ReadbackRegionError>
++PlanRgba8ReadbackRegion(const Rgba8ReadbackRequest& request,
++                        size_t additional_memory_limit);
++
++// Overlay already-protected halo pixels into the private driver-read rectangle.
++// Preserve every out-of-bounds pixel exactly; never mutate the source tile.
++// Reject forged plans, wrong lengths and aliases before writing anything.
++// Full-frame-in-place plans must use the transform directly, not this overlay.
++base::expected<void, ReadbackRegionError> OverlayProtectedRgba8ReadbackRegion(
++    std::span<const uint8_t> protected_tile,
++    std::span<uint8_t> private_rectangle,
++    const Rgba8ReadbackRequest& request,
++    const Rgba8ReadbackRegion& region);
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..e47d730857a2bdf08dbef9529b679468d9ff8b00
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region_unittest.cc
+@@ -0,0 +1,191 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "rgba8_readback_region.h"
++
++#include <array>
++#include <limits>
++#include <vector>
++
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h"
++
++namespace glint::candidate {
++namespace {
++TEST(GlintRgba8ReadbackRegionTest, TinyCropUsesHaloNotWholeLargeFramebuffer) {
++  const auto region = PlanRgba8ReadbackRegion({4096, 4096, 100, 100, 1, 1}, 40);
++  ASSERT_TRUE(region.has_value());
++  EXPECT_EQ(region->mode, Rgba8ReadbackMode::kHalo);
++  EXPECT_EQ(region->x, 99);
++  EXPECT_EQ(region->y, 99);
++  EXPECT_EQ(region->width, 3);
++  EXPECT_EQ(region->height, 3);
++  EXPECT_EQ(region->rectangle_bytes, 4u);
++  EXPECT_EQ(region->tile_bytes, 36u);
++  EXPECT_FALSE(PlanRgba8ReadbackRegion({4096, 4096, 100, 100, 1, 1}, 39));
++}
++
++TEST(GlintRgba8ReadbackRegionTest, ExactFullFrameNeedsOnePrivateAllocation) {
++  constexpr size_t kBudget = 64U * 1024U * 1024U;
++  const auto region =
++      PlanRgba8ReadbackRegion({4096, 4096, 0, 0, 4096, 4096}, kBudget);
++  ASSERT_TRUE(region.has_value());
++  EXPECT_EQ(region->mode, Rgba8ReadbackMode::kFullFrameInPlace);
++  EXPECT_EQ(region->rectangle_bytes, kBudget);
++  EXPECT_EQ(region->tile_bytes, 0u);
++  EXPECT_FALSE(
++      PlanRgba8ReadbackRegion({4096, 4096, 0, 0, 4096, 4096}, kBudget - 1));
++}
++
++TEST(GlintRgba8ReadbackRegionTest, CanvasBoundaryClipsHalo) {
++  const auto region = PlanRgba8ReadbackRegion({8, 6, -1, -2, 3, 4}, 1024);
++  ASSERT_TRUE(region.has_value());
++  EXPECT_EQ(region->x, 0);
++  EXPECT_EQ(region->y, 0);
++  EXPECT_EQ(region->width, 3);
++  EXPECT_EQ(region->height, 3);
++}
++
++TEST(GlintRgba8ReadbackRegionTest, OutsideOnlyKeepsPrivateDriverPixels) {
++  const Rgba8ReadbackRequest request{8, 6, -20, -20, 2, 2};
++  const auto region = PlanRgba8ReadbackRegion(request, 16);
++  ASSERT_TRUE(region.has_value());
++  EXPECT_EQ(region->mode, Rgba8ReadbackMode::kOutsideOnly);
++  std::array<uint8_t, 16> rectangle;
++  rectangle.fill(165);
++  const auto before = rectangle;
++  EXPECT_TRUE(
++      OverlayProtectedRgba8ReadbackRegion({}, rectangle, request, *region));
++  EXPECT_EQ(rectangle, before);
++}
++
++TEST(GlintRgba8ReadbackRegionTest, ExtremeCoordinatesDoNotOverflowClipping) {
++  const auto high = PlanRgba8ReadbackRegion(
++      {8, 6, std::numeric_limits<int32_t>::max(), 0, 1, 1}, 4);
++  const auto low = PlanRgba8ReadbackRegion(
++      {8, 6, std::numeric_limits<int32_t>::min(), 0, 1, 1}, 4);
++  ASSERT_TRUE(high.has_value());
++  ASSERT_TRUE(low.has_value());
++  EXPECT_EQ(high->tile_bytes, 0u);
++  EXPECT_EQ(low->tile_bytes, 0u);
++}
++
++TEST(GlintRgba8ReadbackRegionTest, InvalidDimensionsAndUnboundedMemoryReject) {
++  EXPECT_FALSE(PlanRgba8ReadbackRegion({0, 6, 0, 0, 1, 1}, 1024));
++  EXPECT_FALSE(PlanRgba8ReadbackRegion({8, 6, 0, 0, -1, 1}, 1024));
++  const auto max = std::numeric_limits<int32_t>::max();
++  EXPECT_FALSE(PlanRgba8ReadbackRegion({max, max, 1, 1, max, max}, 1024));
++}
++
++TEST(GlintRgba8ReadbackRegionTest, EmptyReadHasNoTileOrStorage) {
++  const Rgba8ReadbackRequest request{8, 6, 2, 2, 0, 4};
++  const auto region = PlanRgba8ReadbackRegion(request, 0);
++  ASSERT_TRUE(region.has_value());
++  EXPECT_EQ(region->rectangle_bytes, 0u);
++  EXPECT_EQ(region->tile_bytes, 0u);
++  EXPECT_TRUE(OverlayProtectedRgba8ReadbackRegion({}, {}, request, *region));
++}
++
++TEST(GlintRgba8ReadbackRegionTest,
++     OverlayCannotSilentlySkipFullFrameTransform) {
++  const Rgba8ReadbackRequest request{1, 1, 0, 0, 1, 1};
++  const auto region = PlanRgba8ReadbackRegion(request, 4);
++  ASSERT_TRUE(region.has_value());
++  std::array<uint8_t, 4> rectangle{1, 2, 3, 255};
++  const auto before = rectangle;
++  EXPECT_FALSE(
++      OverlayProtectedRgba8ReadbackRegion({}, rectangle, request, *region));
++  EXPECT_EQ(rectangle, before);
++}
++
++TEST(GlintRgba8ReadbackRegionTest, ForgedPlanAndWrongStorageNeverWrite) {
++  const Rgba8ReadbackRequest request{4, 4, 1, 1, 1, 1};
++  auto region = PlanRgba8ReadbackRegion(request, 40);
++  ASSERT_TRUE(region.has_value());
++  std::array<uint8_t, 36> tile{};
++  std::array<uint8_t, 4> rectangle{165, 165, 165, 165};
++  const auto before = rectangle;
++  EXPECT_FALSE(OverlayProtectedRgba8ReadbackRegion(
++      std::span(tile).first(32), rectangle, request, *region));
++  region->x = 1;
++  EXPECT_FALSE(
++      OverlayProtectedRgba8ReadbackRegion(tile, rectangle, request, *region));
++  EXPECT_EQ(rectangle, before);
++}
++
++TEST(GlintRgba8ReadbackRegionTest, AliasedStorageRejectsBeforeWrite) {
++  const Rgba8ReadbackRequest request{4, 4, 1, 1, 1, 1};
++  const auto region = PlanRgba8ReadbackRegion(request, 40);
++  ASSERT_TRUE(region.has_value());
++  std::array<uint8_t, 36> tile{};
++  const auto before = tile;
++  EXPECT_FALSE(OverlayProtectedRgba8ReadbackRegion(
++      tile, std::span(tile).subspan(8, 4), request, *region));
++  EXPECT_EQ(tile, before);
++}
++
++TEST(GlintRgba8ReadbackRegionTest, HaloMatchesFullCanvasForEverySmallCrop) {
++  constexpr int kWidth = 7, kHeight = 6;
++  std::array<uint8_t, 32> seed;
++  seed.fill(17);
++  std::vector<uint8_t> original(kWidth * kHeight * 4);
++  for (int y = 0; y < kHeight; ++y) {
++    for (int x = 0; x < kWidth; ++x) {
++      const size_t offset = (y * kWidth + x) * 4;
++      original[offset] = (x * 31 + y * 7) % 256;
++      original[offset + 1] = (x * 3 + y * 33) % 256;
++      original[offset + 2] = ((x + y) / 2) * 19;
++      original[offset + 3] = (x + y) % 5 == 0   ? 0
++                             : (x + y) % 7 == 0 ? 127
++                                                : 255;
++    }
++  }
++  auto full = original;
++  ASSERT_TRUE(ProtectWebGLCanonicalPixels(full, kWidth, kHeight, seed));
++  for (int y = -2; y < kHeight + 2; ++y) {
++    for (int x = -2; x < kWidth + 2; ++x) {
++      for (int height = 0; height <= 4; ++height) {
++        for (int width = 0; width <= 5; ++width) {
++          const Rgba8ReadbackRequest request{kWidth, kHeight, x,
++                                             y,      width,   height};
++          const auto region = PlanRgba8ReadbackRegion(request, 1024);
++          ASSERT_TRUE(region.has_value());
++          std::vector<uint8_t> tile(region->tile_bytes);
++          for (int row = 0; row < region->height; ++row) {
++            for (int column = 0; column < region->width; ++column) {
++              const size_t input =
++                  ((row + region->y) * kWidth + column + region->x) * 4;
++              const size_t output = (row * region->width + column) * 4;
++              for (int channel = 0; channel < 4; ++channel)
++                tile[output + channel] = original[input + channel];
++            }
++          }
++          if (!tile.empty())
++            ASSERT_TRUE(ProtectWebGLCanonicalPixels(tile, region->width,
++                                                    region->height, seed));
++          const auto protected_tile = tile;
++          std::vector<uint8_t> rectangle(region->rectangle_bytes, 165);
++          auto expected = rectangle;
++          for (int row = 0; row < height; ++row) {
++            for (int column = 0; column < width; ++column) {
++              if (x + column < 0 || x + column >= kWidth || y + row < 0 ||
++                  y + row >= kHeight)
++                continue;
++              const size_t input = ((y + row) * kWidth + x + column) * 4;
++              const size_t output = (row * width + column) * 4;
++              for (int channel = 0; channel < 4; ++channel) {
++                rectangle[output + channel] = original[input + channel];
++                expected[output + channel] = full[input + channel];
++              }
++            }
++          }
++          ASSERT_TRUE(OverlayProtectedRgba8ReadbackRegion(tile, rectangle,
++                                                          request, *region));
++          EXPECT_EQ(rectangle, expected);
++          EXPECT_EQ(tile, protected_tile);
++        }
++      }
++    }
++  }
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+index d79999a18788c6280dcd27bd07855208145f2dd2..5beeb1681e735c8093a39d20c8b03477f774ee6c 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -36,6 +36,7 @@
+ #include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
+ #include "third_party/blink/renderer/core/html/canvas/glint/readback_export_seed.h"
+ #include "third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h"
++#include "third_party/blink/renderer/modules/webgl/glint/rgba8_readback_region.h"
+ #include "third_party/skia/include/core/SkBitmap.h"
+ 
+ #include "base/bit_cast.h"
+@@ -5248,34 +5249,29 @@ bool WebGLRenderingContextBase::PrepareGlintRgba8Readback(
+   if (frame_width <= 0 || frame_height <= 0 || width <= 0 || height <= 0) {
+     return reject("Glint WebGL readback dimensions are unavailable.");
+   }
+-  base::CheckedNumeric<size_t> frame_bytes = frame_width;
+-  frame_bytes *= frame_height;
+-  frame_bytes *= 4;
+-  base::CheckedNumeric<size_t> rectangle_bytes = width;
+-  rectangle_bytes *= height;
+-  rectangle_bytes *= 4;
+-  auto total_bytes = frame_bytes + rectangle_bytes;
+-  if (!total_bytes.IsValid() ||
+-      total_bytes.ValueOrDie() >
+-          glint::candidate::kCandidateAdditionalPixelBudget) {
+-    return reject("Glint WebGL detached readback budget exceeded.");
+-  }
+-  SkBitmap frame;
+-  const auto frame_info =
+-      SkImageInfo::Make(frame_width, frame_height, kRGBA_8888_SkColorType,
++  const glint::candidate::Rgba8ReadbackRequest request{
++      frame_width, frame_height, x, y, width, height};
++  const auto region = glint::candidate::PlanRgba8ReadbackRegion(
++      request, glint::candidate::kCandidateAdditionalPixelBudget);
++  if (!region.has_value()) {
++    return reject("Glint WebGL detached readback budget or region is invalid.");
++  }
++  const auto rectangle_info =
++      SkImageInfo::Make(width, height, kRGBA_8888_SkColorType,
+                         kUnpremul_SkAlphaType, SkColorSpace::MakeSRGB());
+-  const auto rectangle_info = frame_info.makeWH(width, height);
+-  if (!frame.tryAllocPixels(frame_info, static_cast<size_t>(frame_width) * 4) ||
+-      !protected_rectangle.tryAllocPixels(rectangle_info,
++  if (!protected_rectangle.tryAllocPixels(rectangle_info,
+                                           static_cast<size_t>(width) * 4)) {
+     return reject("Glint WebGL detached allocation failed.");
+   }
+-  auto canonical = std::span(static_cast<uint8_t*>(frame.getPixels()),
+-                             frame_bytes.ValueOrDie());
++  SkBitmap tile;
++  if (region->mode == glint::candidate::Rgba8ReadbackMode::kHalo &&
++      !tile.tryAllocPixels(rectangle_info.makeWH(region->width, region->height),
++                           static_cast<size_t>(region->width) * 4)) {
++    return reject("Glint WebGL halo allocation failed.");
++  }
+   auto rectangle =
+       std::span(static_cast<uint8_t*>(protected_rectangle.getPixels()),
+-                rectangle_bytes.ValueOrDie());
+-  std::fill(canonical.begin(), canonical.end(), 0);
++                region->rectangle_bytes);
+   std::fill(rectangle.begin(), rectangle.end(), 0);
+   ScopedDrawingBufferBinder binder(GetDrawingBuffer(), framebuffer);
+   if (!binder.Succeeded()) {
+@@ -5298,31 +5294,41 @@ bool WebGLRenderingContextBase::PrepareGlintRgba8Readback(
+   // Never publish an unprotected intermediate, including SharedArrayBuffer.
+   ContextGL()->ReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE,
+                           rectangle.data());
+-  ContextGL()->ReadPixels(0, 0, frame_width, frame_height, GL_RGBA,
+-                          GL_UNSIGNED_BYTE, canonical.data());
+   if (isContextLost() ||
+       ContextGL()->GetGraphicsResetStatusKHR() != GL_NO_ERROR) {
+     return false;
+   }
+-  if (!glint::candidate::ProtectWebGLCanonicalPixels(
+-          canonical, frame_width, frame_height, *seed.value())) {
+-    return reject("Glint WebGL canonical readback could not be protected.");
+-  }
+-  for (int row = 0; row < height; ++row) {
+-    const int64_t source_y = static_cast<int64_t>(y) + row;
+-    if (source_y < 0 || source_y >= frame_height)
+-      continue;
+-    for (int column = 0; column < width; ++column) {
+-      const int64_t source_x = static_cast<int64_t>(x) + column;
+-      if (source_x < 0 || source_x >= frame_width)
+-        continue;
+-      const size_t input =
+-          (static_cast<size_t>(source_y) * frame_width + source_x) * 4;
+-      const size_t output = (static_cast<size_t>(row) * width + column) * 4;
+-      const auto pixel = canonical.subspan(input, 4);
+-      auto target = rectangle.subspan(output, 4);
+-      std::copy(pixel.begin(), pixel.end(), target.begin());
++  switch (region->mode) {
++    case glint::candidate::Rgba8ReadbackMode::kFullFrameInPlace:
++      // Transform only the detached driver-read copy, never the live target.
++      if (!glint::candidate::ProtectWebGLCanonicalPixels(
++              rectangle, width, height, *seed.value())) {
++        return reject(
++            "Glint WebGL full-frame readback could not be protected.");
++      }
++      break;
++    case glint::candidate::Rgba8ReadbackMode::kHalo: {
++      auto pixels = std::span(static_cast<uint8_t*>(tile.getPixels()),
++                              region->tile_bytes);
++      std::fill(pixels.begin(), pixels.end(), 0);
++      ContextGL()->ReadPixels(region->x, region->y, region->width,
++                              region->height, GL_RGBA, GL_UNSIGNED_BYTE,
++                              pixels.data());
++      if (isContextLost() ||
++          ContextGL()->GetGraphicsResetStatusKHR() != GL_NO_ERROR) {
++        return false;
++      }
++      if (!glint::candidate::ProtectWebGLCanonicalPixels(
++              pixels, region->width, region->height, *seed.value()) ||
++          !glint::candidate::OverlayProtectedRgba8ReadbackRegion(
++              pixels, rectangle, request, *region)) {
++        return reject("Glint WebGL halo readback could not be protected.");
++      }
++      break;
+     }
++    case glint::candidate::Rgba8ReadbackMode::kOutsideOnly:
++      // No in-bounds pixels exist. Preserve the private driver result exactly.
++      break;
+   }
+   protected_rectangle.setImmutable();
+   return true;

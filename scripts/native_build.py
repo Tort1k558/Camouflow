@@ -241,7 +241,9 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0042-native-initial-policy-fixture-scheme-lifetime.patch",
         "0043-native-surface-navigation-throttle-registration.patch",
         "0044-native-inline-navigation-rejection-fixture.patch",
-        "0045-native-navigation-observer-fixture-lifetime.patch"))
+        "0045-native-navigation-observer-fixture-lifetime.patch",
+        "0046-native-webgl-bounded-readback.patch",
+        "0047-native-webgl-clipped-publication.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:

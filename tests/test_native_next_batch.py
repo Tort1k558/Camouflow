@@ -83,7 +83,9 @@ def test_registered_replay_preserves_reviewed_successor_order(followups):
 
 
 @pytest.mark.parametrize("names", [batch.PROMOTED[:2], batch.FOLLOWUPS,
-                                   (*batch.PROMOTED, "0046-unreviewed.patch")])
+                                   (*batch.PROMOTED, "0048-unreviewed.patch"),
+                                   (*batch.PROMOTED, batch.FOLLOWUPS[-2]),
+                                   (*batch.PROMOTED, batch.FOLLOWUPS[-1])])
 def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
     with pytest.raises(ValueError):
         batch.registered_replay_chain([{"name": name} for name in names])
@@ -91,6 +93,66 @@ def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
 
 def test_unpromoted_baseline_has_no_registered_reversal():
     assert batch.registered_replay_chain([{"name": "0030-native-document-commit-prototype.patch"}]) == ()
+
+
+def test_native_readback_gate_covers_exact_registered_fixtures():
+    import re
+    from scripts.verify_native_privacy_units import required_tests
+    required = required_tests("gpu-readback")
+    assert sum(map(len, required.values())) == 31
+    for filename, suite in (
+        ("rgba8_readback_region_unittest.cc", "GlintRgba8ReadbackRegionTest"),
+        ("rgba8_clipped_publication_unittest.cc", "GlintRgba8ClippedPublicationTest"),
+    ):
+        source = (batch.ROOT / "native/drafts/next-readback" / filename).read_text(encoding="utf-8-sig")
+        cases = re.findall(r"TEST\(\s*" + suite + r"\s*,\s*(\w+)\s*\)", source)
+        assert len(cases) == len(set(cases)) and set(cases) == required[suite]
+
+
+@pytest.mark.parametrize("registered", [[], [{"name": "0045-native-navigation-observer-fixture-lifetime.patch"}]])
+def test_readback_baseline_restore_does_not_touch_unpromoted_overlay(tmp_path, monkeypatch, registered):
+    from scripts import verify_native_halo_draft as halo
+    monkeypatch.setattr(halo.build, "run", lambda *args, **kwargs: pytest.fail("Unexpected source mutation"))
+    halo.restore_registered_baseline(tmp_path, registered, {})
+
+
+@pytest.mark.parametrize("name", ["0046-native-webgl-bounded-readback.patch", "0047-native-webgl-clipped-publication.patch"])
+def test_readback_baseline_restore_rejects_partial_promotion(tmp_path, monkeypatch, name):
+    from scripts import verify_native_halo_draft as halo
+    monkeypatch.setattr(halo.build, "run", lambda *args, **kwargs: pytest.fail("Unexpected source mutation"))
+    with pytest.raises(ValueError, match="complete reviewed pair"):
+        halo.restore_registered_baseline(tmp_path, [{"name": name}], {})
+
+
+@pytest.mark.parametrize("corrupt", [False, True])
+def test_readback_baseline_restore_checks_exact_pair_before_reverse(tmp_path, monkeypatch, corrupt):
+    from scripts import verify_native_halo_draft as halo
+    root = tmp_path / "public"
+    patches = root / "native/patches"
+    patches.mkdir(parents=True)
+    first, second = tmp_path / "first.patch", tmp_path / "second.patch"
+    first.write_bytes(b"first canonical")
+    second.write_bytes(b"second canonical")
+    for name, canonical in zip(halo.PROMOTED, (first, second)):
+        (patches / name).write_bytes(canonical.read_bytes())
+    if corrupt:
+        (patches / halo.PROMOTED[1]).write_bytes(b"unreviewed")
+    monkeypatch.setattr(halo, "ROOT", root)
+    monkeypatch.setattr(halo, "PATCH", first)
+    monkeypatch.setattr(halo, "CLIPPED_PATCH", second)
+    commands = []
+    monkeypatch.setattr(halo.build, "run", lambda command, *args, **kwargs: commands.append(command))
+    registered = [{"name": name} for name in halo.PROMOTED]
+    if corrupt:
+        with pytest.raises(ValueError, match="canonical candidate"):
+            halo.restore_registered_baseline(tmp_path, registered, {})
+        assert commands == []
+    else:
+        halo.restore_registered_baseline(tmp_path, registered, {})
+        assert commands == [command for name in reversed(halo.PROMOTED) for command in (
+            ["git", "apply", "--reverse", "--check", str(patches / name)],
+            ["git", "apply", "--reverse", str(patches / name)],
+        )]
 
 
 def test_webgl_compile_fix_uses_expected_and_gc_owned_stateless_cleanup():

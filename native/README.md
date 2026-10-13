@@ -17,7 +17,7 @@ patch chain; they do not transfer automatically to newer binaries.
 
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
-| Registered Windows source | 001-045 | Ordered replay passed across 126 paths |
+| Registered Windows source | 001-047 | Ordered replay passed across 130 paths; 0046/0047 not yet built or runtime-verified |
 | Native navigation/readiness | 001-045 | **42/42** cases passed: missing/conflicting policy, late policy loss, recovery and observer-driven closure |
 | Native BrowserContext isolation | 001-045 | **26/26** cases passed |
 | Native window/child transport | 001-045 | **13/13** cases passed |
@@ -26,7 +26,7 @@ patch chain; they do not transfer automatically to newer binaries.
 | Complete eight-gate runtime suite | 001-045 | **160 checks passed** on unchanged runtime core |
 | Worker startup/restart | 001-045 | **40/40** classic/module, shared-client and unavailable-policy checks passed |
 | Combined Canvas/OfflineAudio | 001-045 | Two retries **7/7 passed**; initial profile-B timeout remains unresolved |
-| Protected WebGL readback | 001-045 | **Failed**: clipped reads overwrite out-of-bounds destination bytes; capability not admitted |
+| Protected WebGL readback | 001-045 | **Failed**: clipped reads overwrite out-of-bounds destination bytes; paired repair 0046/0047 awaits compilation and runtime |
 | Branding | Prepared | Product/logo patch not applied to verified binary |
 | Linux/macOS | Deferred | No current own-fork runtime admission |
 | Mobile Web | Emulation | Desktop viewport/touch mode, not Android/iOS |
@@ -79,6 +79,12 @@ throttle registration and fixture lifetimes. Native tests are passing;
 the current browser chain passes its ordinary runtime suite, but combined
 surface repeatability and remaining GPU gates are required before enabling
 capabilities or publishing a release.
+
+Patches 0046/0047 promote the bounded-halo and clipped-publication pair together.
+Their exact source replay passed without changing the 001-045 runtime core.
+The `gpu-readback` native gate requires all 31 pack-copy, region and clipped-copy
+fixtures; execution is pending. Source registration alone does not repair the
+already linked browser or enable a verified capability.
 
 Next coherent candidates: [profile policy](drafts/policy/README.md),
 [GPU metadata](drafts/gpu/README.md), [offline Audio](drafts/audio/README.md)

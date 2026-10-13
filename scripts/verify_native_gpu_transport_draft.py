@@ -18,6 +18,7 @@ from scripts.verify_native_halo_draft import (
     CANONICAL,
     CLIPPED_CANONICAL,
     CLIPPED_PATCH,
+    restore_registered_baseline,
 )
 from scripts.verify_native_halo_draft import (
     DRAFTS as READBACK,
@@ -161,6 +162,7 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_
                                   encoding="utf-8", newline="\n")
         build.run(["git", "init", "-q"], overlay, env)
         build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
+        restore_registered_baseline(overlay, registered, env)
         for patch in patches:
             build.run(["git", "apply", "--check", str(patch)], overlay, env)
             build.run(["git", "apply", str(patch)], overlay, env)

@@ -179,7 +179,24 @@ REQUIRED_GPU_PACK_TESTS = {
         "OversizedOffsetRejectsBeforeAnyWrite", "EmptyReadsDoNotTouchSourceOrDestination"},
 }
 
-NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "worker-surfaces")
+REQUIRED_GPU_READBACK_TESTS = {
+    **REQUIRED_GPU_PACK_TESTS,
+    "GlintRgba8ReadbackRegionTest": {
+        "TinyCropUsesHaloNotWholeLargeFramebuffer", "ExactFullFrameNeedsOnePrivateAllocation",
+        "CanvasBoundaryClipsHalo", "OutsideOnlyKeepsPrivateDriverPixels",
+        "ExtremeCoordinatesDoNotOverflowClipping", "InvalidDimensionsAndUnboundedMemoryReject",
+        "EmptyReadHasNoTileOrStorage", "OverlayCannotSilentlySkipFullFrameTransform",
+        "ForgedPlanAndWrongStorageNeverWrite", "AliasedStorageRejectsBeforeWrite",
+        "HaloMatchesFullCanvasForEverySmallCrop",
+    },
+    "GlintRgba8ClippedPublicationTest": {
+        "PreservesClippedPixelsPaddingAndOffsets", "EntirelyOutsideDestinationRemainsExact",
+        "InvalidCopyRegionNeverWrites", "ClipDoesNotRelaxOriginalBufferValidation",
+        "AliasesRejectBeforeClippedWrites", "FullRegionRetainsExistingPackContract",
+    },
+}
+
+NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "worker-surfaces")
 
 DELIVERY_SOURCE_FILES = {
     f"{name}{suffix}": f"{directory}/{name}{suffix}"
@@ -208,6 +225,8 @@ def require_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "gpu-readback":
+        return REQUIRED_GPU_READBACK_TESTS
     if target == "worker-surfaces":
         return REQUIRED_WORKER_SURFACE_TESTS
     if target == "surface-navigation":
@@ -322,8 +341,11 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                                  "0020-native-worker-policy-consumer.patch",
                                  "0031-native-worker-surface-policy.patch",
                                  "0036-native-worker-complete-surface-type.patch"})
-    if target == "gpu-pack-copy":
+    if target in {"gpu-pack-copy", "gpu-readback"}:
         required_patches.add("0034-native-gpu-metadata-minimization.patch")
+    if target == "gpu-readback":
+        required_patches.update({"0046-native-webgl-bounded-readback.patch",
+                                 "0047-native-webgl-clipped-publication.patch"})
     if target == "delivery":
         required_patches.update({"0018-native-document-policy-delivery.patch",
                                  "0019-native-worker-policy-delivery.patch",
@@ -348,8 +370,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
              if target == "worker-surfaces" else
              "Window readiness and authenticated child RFH transport units; not actual renderer IPC or admission"
              if target == "window-transport" else
-             "Native RGBA8 pack-copy arithmetic units; not GPU/driver readback or admission"
-             if target == "gpu-pack-copy" else
+             "Native RGBA8 pack-copy/region arithmetic units; not GPU/driver readback or admission"
+             if target in {"gpu-pack-copy", "gpu-readback"} else
              "NavigationSimulator document commit/rejection units; simulated network/renderer, not actual Blink first-script delivery or admission"
              if target == "document-navigation" else
              "Native final-partition validator units; not navigation recovery, IPC, first-script delivery or admission"
@@ -361,7 +383,7 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
              "Actual content-layer BrowserContext bridge/lifecycle/readiness units; not Chrome ProfileImpl startup, IPC, Canvas or admission"
              if target == "contexts" else
              "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission")
-    build_target = ("blink_unittests" if target in {"worker-handoff", "gpu-pack-copy"} else
+    build_target = ("blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback"} else
                     "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces"} else "camouflow_native_privacy_unittests")
     proof = {"passed": False, "scope": scope, "target": target,
              "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path)}

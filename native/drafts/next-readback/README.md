@@ -1,8 +1,7 @@
 # WebGL readback: bounded halo candidate
 
-**Unregistered, uncompiled; no runtime privacy capability is admitted.**
-This two-patch batch follows registered 001–037 and must not be applied during
-its active build. It changes private readback allocation, not the fingerprint
+**Registered as 0046/0047, not yet compiled or runtime-verified.**
+This paired repair follows registered 001–045. It changes private readback allocation, not the fingerprint
 algorithm, GPU identity, live framebuffer or JavaScript API.
 
 ## Changes
@@ -50,6 +49,14 @@ For a 1×1 crop inside a 4096×4096 attachment, planned storage is 40 bytes
 These are allocation calculations, **not measured performance improvements**.
 
 ## Evidence and pending checks
+
+Promotion replay passed across the complete 130-path registered chain:
+`clipped-readback-replay-001-047-v1.json` on D. The existing 001-045 browser,
+receipt and GN arguments remained unchanged. Draft composition tools reverse
+the exact promoted pair only in their owned overlays before replaying future
+candidates; partial promotion or different canonical bytes reject.
+The native `--target gpu-readback` gate requires 31 exact cases: 14 pack-copy,
+11 region-planner and 6 clipped-publication cases. These have not executed yet.
 
 | Check | Status |
 | :-- | :-- |

@@ -72,6 +72,7 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
                                   encoding="utf-8", newline="\n")
         build.run(["git", "init", "-q"], overlay, env)
         build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
+        gpu.restore_registered_baseline(overlay, identity_proof["registered_patches"], env)
         for patch in PATCHES:
             build.run(["git", "apply", "--check", str(patch)], overlay, env)
             build.run(["git", "apply", str(patch)], overlay, env)

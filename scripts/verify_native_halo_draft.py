@@ -32,6 +32,25 @@ CLIPPED_EXISTING = {"third_party/blink/renderer/modules/webgl/webgl_rendering_co
                    "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
                    "third_party/blink/renderer/modules/BUILD.gn"}
 
+PROMOTED = ("0046-native-webgl-bounded-readback.patch",
+            "0047-native-webgl-clipped-publication.patch")
+
+
+def restore_registered_baseline(overlay: Path, registered: list[dict], env: dict) -> None:
+    """Reverse only the reviewed pair in an owned copy before candidate replay."""
+    present = {item["name"] for item in registered}.intersection(PROMOTED)
+    if not present:
+        return
+    if present != set(PROMOTED):
+        raise ValueError("Readback promotion requires the complete reviewed pair")
+    for name, canonical in zip(PROMOTED, (PATCH, CLIPPED_PATCH)):
+        if (ROOT / "native/patches" / name).read_bytes() != canonical.read_bytes():
+            raise ValueError("Registered readback patch differs from its canonical candidate")
+    for name in reversed(PROMOTED):
+        patch = ROOT / "native/patches" / name
+        build.run(["git", "apply", "--reverse", "--check", str(patch)], overlay, env)
+        build.run(["git", "apply", "--reverse", str(patch)], overlay, env)
+
 
 def verify(workspace: Path, report: Path) -> dict:
     source = workspace / "chromium/src"
@@ -61,12 +80,15 @@ def verify(workspace: Path, report: Path) -> dict:
             raise ValueError("Halo inputs must not follow source links")
     with tempfile.TemporaryDirectory(prefix="glint-halo-replay-", dir=report.parent) as owned:
         overlay = Path(owned)
-        for name in existing:
+        for name in paths:
+            if not (source / name).is_file():
+                continue
             target = overlay / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text((source / name).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
         build.run(["git", "init", "-q"], overlay, env)
         build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
+        restore_registered_baseline(overlay, registered, env)
         build.run(["git", "apply", "--check", str(PATCH)], overlay, env)
         build.run(["git", "apply", str(PATCH)], overlay, env)
         build.run(["git", "apply", "--check", str(CLIPPED_PATCH)], overlay, env)
