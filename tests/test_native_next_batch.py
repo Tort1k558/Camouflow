@@ -507,3 +507,14 @@ def test_initial_origin_compile_repair_preserves_immutable_member_and_header_abi
     assert "CHECK(sandbox_origin->IsOpaque());" in text
     assert "CHECK(origin->IsSameOriginWith(effective_origin_to_commit.get()));" in text
     assert '"effective_origin_to_commit' not in text
+
+
+def test_worker_complete_type_repair_supplies_definition_without_changing_service_abi():
+    from scripts.native_build import ROOT
+    from scripts.verify_native_document_drafts import patch_paths
+
+    text = (ROOT / "native/patches/0036-native-worker-complete-surface-type.patch").read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == {"content/browser/camouflow_native/privacy_worker_service.h"}
+    added = [line for line in text.splitlines() if line.startswith("+") and not line.startswith("+++")]
+    assert added == [
+        '+#include "third_party/blink/public/mojom/native_privacy/native_privacy_surface_policy.mojom.h"']

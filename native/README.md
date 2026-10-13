@@ -12,7 +12,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 
 ## Source layout
 
-Current Windows development source is **001-035**. Patches 0031-0034 jointly
+Current Windows development source is **001-036**. Patches 0031-0034 jointly
 promote browser-owned document/worker surface policy, startup/child transport,
 Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
 replay passed across 125 paths; this batch is **not yet compiled or runtime
@@ -24,7 +24,10 @@ Patch 0035 fixes initial-origin calculation; its translation unit compiled.
 The full build remains pending. Two j4 attempts and the following j2 attempt
 ended with LLVM out-of-memory failures. One failed object subsequently compiled
 at j1; available system commit dropped to 0.39 GiB during the measured run.
-The full incremental retry now uses j1, preserving the existing outputs.
+The following j1 build reached a C++ incomplete-type error in the dedicated
+worker host. Repair 0036 adds the complete Mojo surface type to its service
+header; the failed translation unit is being checked before another full retry.
+Existing objects are preserved.
 Compilation is not runtime admission.
 
 The identity verifier now compares document HTTP User-Agent, primary
@@ -32,7 +35,7 @@ Accept-Language and platform/mobile Client Hints against JavaScript, not just
 against another HTTP baseline. The exact old 001-027 runtime passed 18 checks
 with unchanged core hashes. Worker requests retain their separate baseline
 contract: their missing Client Hints must not be fabricated to match documents.
-This is not TLS proof, full Client Hints parsing or verification of 001-035.
+This is not TLS proof, full Client Hints parsing or verification of 001-036.
 
 Manager diagnostics also observe WebGPU adapter information, sorted features
 and six native limits in the document and dedicated worker. Adapter requests

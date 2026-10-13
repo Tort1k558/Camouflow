@@ -10,6 +10,9 @@ including four Blink handoff cases that passed after test-only patch 0028.
 They do not enable Canvas privacy. The cohesive 0031–0034 source batch is now
 registered; its new unit/browser checks remain pending. Repair patch 0035 keeps
 the commit origin immutable and fixes the initial-document origin calculation.
+Repair 0036 includes the complete Mojo surface-policy type required by the
+worker service's default StructPtr argument; its dedicated worker object check
+and the subsequent full browser build are separate gates.
 The first 001–034 full build failed compiling `document_loader.cc`; a successful
 object rebuild does not prove a complete browser or admit the new protections.
 

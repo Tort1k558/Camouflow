@@ -1505,7 +1505,8 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
                  "0030-native-document-commit-prototype.patch",
                  "0031-native-worker-surface-policy.patch", "0032-native-document-surface-policy.patch",
                  "0033-native-surface-readback.patch", "0034-native-gpu-metadata-minimization.patch",
-                 "0035-native-initial-origin-calculation.patch"):
+                 "0035-native-initial-origin-calculation.patch",
+                 "0036-native-worker-complete-surface-type.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
