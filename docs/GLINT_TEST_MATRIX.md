@@ -85,9 +85,11 @@ The receipt binds all 47 exact patch hashes, EXE/DLL core and GN configuration.
 | Owned check | Result | Boundary |
 | --- | --- | --- |
 | Protected WebGL readback | **Passed: six phases** | Baseline and two independent profiles before/after restart in eight document/worker contexts; CPU/PBO clipping, untouched padding, renderbuffer resize, exports, errors and profile isolation |
-| Eight-gate suite, combined surfaces and worker startup | In progress | No transfer of 001-045 results |
-| Optional nested dedicated workers | Probe prepared | 20 additional cases; HTTP fixture and Node syntax checks passed, actual browser execution pending |
-| Native readback fixtures | Prepared, not executed | Exact 31-case gate; a passing browser probe is not native fixture execution |
+| Eight-gate suite | **Passed: 160 checks** | All eight gates completed on the unchanged 001-047 EXE/DLL core |
+| Combined Canvas/OfflineAudio | **Passed: 7/7** | Restart/profile/context consistency and exact missing-policy document abort; older intermittent timeout is not proven fixed |
+| Worker startup/restart/shared clients | **Passed: 40/40** | Default contract, surfaces bootstrap |
+| Extended nested dedicated workers | **Passed: 60/60** | Includes default 40 and 20 additional classic/module parent/child combinations across modes and restart; not independent child-policy denial or protected child pixels |
+| Native readback fixtures | Not executed; C++ preflight failed | Pack-copy and region fixtures misuse typed results; clipped-publication fixture parsed successfully. Exact 31-case execution remains required |
 | External detectors and CAPTCHA | Not rerun | No third-party acceptance claim |
 
 Private evidence: `browser-verification-001-047-v1/gpu-readback.json`,
@@ -96,6 +98,13 @@ Private evidence: `browser-verification-001-047-v1/gpu-readback.json`,
 `clipped-readback-replay-001-047-v2.json`; the earlier failed build is
 `clipped-readback-001-047-chrome-j4-v12.log`. No release or broad GPU capability
 is admitted by this single owned readback run.
+
+Completed browser evidence: `browser-verification-001-047-v1/verification.json`,
+`suite/suite.json`, `surfaces.json`, `worker-startup.json`, and
+`worker-nested-001-047-v1.json` on D:. The nested run binds the same core and
+probe hash, with independent parent/child fetch and execution counters.
+Native fixture preflight failure is retained separately as
+`readback-fixture-cpp-001-047-v1/proof.json`; no test was skipped or declared passed.
 
 ### Windows development candidate 001-045 — 2026-10-13
 

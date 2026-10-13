@@ -22,10 +22,10 @@ patch chain; they do not transfer automatically to newer binaries.
 | Native BrowserContext isolation | 001-045 | **26/26** cases passed |
 | Native window/child transport | 001-045 | **13/13** cases passed |
 | Native worker surfaces | 001-045 | **55/55** cases passed |
-| Current linked Windows candidate | 001-047 | Corrected incremental j4 build succeeded in **12m46s**; full regression suite in progress |
-| Complete eight-gate runtime suite | 001-045 | **160 checks passed** on unchanged runtime core |
-| Worker startup/restart | 001-045 | **40/40** classic/module, shared-client and unavailable-policy checks passed |
-| Combined Canvas/OfflineAudio | 001-045 | Two retries **7/7 passed**; initial profile-B timeout remains unresolved |
+| Current linked Windows candidate | 001-047 | Corrected incremental j4 build succeeded in **12m46s** |
+| Complete eight-gate runtime suite | 001-047 | **160 checks passed** on unchanged runtime core |
+| Worker startup/restart | 001-047 | Default **40/40**; extended **60/60**, including 20 nested classic/module cases |
+| Combined Canvas/OfflineAudio | 001-047 | **7/7 passed**; historical 001-045 profile-B timeout is not explained by this passing run |
 | Protected WebGL readback | 001-047 | **Six phases passed**, including clipped CPU/PBO reads, state/errors, exports, restart and profile isolation; wider admission remains blocked |
 | Branding | Prepared | Product/logo patch not applied to verified binary |
 | Linux/macOS | Deferred | No current own-fork runtime admission |
@@ -37,7 +37,7 @@ Raw Gtest results and guarded proof reports remain outside public source:
 `window-transport-001-045-v1` and `worker-surfaces-001-045-v1` on D:.
 These are C++ fixtures, not CAPTCHA or external anti-bot results.
 
-The 001-045 runtime gate covers persistent storage, concurrent-profile locks,
+The 001-047 runtime gate covers persistent storage, concurrent-profile locks,
 crash/restart recovery, permissions, an owned authenticated HTTP proxy,
 scenarios, Recorder and Mobile Web Emulation. All eight suite gates passed.
 The combined surface gate covers consistency
@@ -51,10 +51,13 @@ Protected GPU failure: `gpu-readback-001-045-v1.json`. The initial combined time
 recorded in `browser-verification-001-045-v1/surfaces.json`; a passing retry
 does not prove the intermittent failure is fixed.
 
-The corrected 001-047 WebGL run passed on the measured new DLL:
-`browser-verification-001-047-v1/gpu-readback.json`. The older failed run remains
-recorded. The 001-047 full suite, surface/worker reruns and the 31-case native
-readback gate still require their own completed evidence before release.
+All four owned 001-047 browser gates passed on one measured EXE/DLL core:
+`browser-verification-001-047-v1/verification.json`. The extended worker run
+also passed all 60 cases: `worker-nested-001-047-v1.json`. The older failed
+runs remain recorded. The 31-case native readback gate is still unexecuted:
+its C++ preflight found typed-result errors in the pack-copy and region fixtures,
+while the clipped-publication fixture passed. These need repair and execution
+before broader admission; browser checks are not substitutes for native tests.
 
 ## Source layout
 
