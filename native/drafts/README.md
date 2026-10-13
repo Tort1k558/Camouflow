@@ -15,8 +15,11 @@ gates and Canvas seed handoff are now registered as 0021-0026 behind a
 developer-only switch.
 The 001-027 browser passed 40 owned worker startup/restart/shared-client/rejection
 checks; all four Blink handoff unit cases passed after test-only correction 0028.
-The verified browser core is unchanged. Document startup and Canvas
-readback helpers/hooks remain unregistered. No Canvas runtime capability is enabled.
+The verified browser core is unchanged. Document startup, worker delivery,
+Canvas/OfflineAudio and WebGL candidates are now registered in 0031–0034.
+That full browser batch is compiling; source promotion is not runtime proof.
+No new Canvas runtime capability is admitted. The separate
+[`next-readback/`](next-readback/README.md) halo optimization remains unregistered.
 
 The final-partition validator and its nine cases are registered separately as
 0029. The public `document-partition` target passed, and the original 43 key/service
@@ -44,8 +47,9 @@ checking only ShutdownStarted would conceal a missing service shutdown hook.
 Tests use public fixed fixture identities, never real user profile secrets.
 
 The patch passed `git apply --check`, was registered in the exact source replay
-gate and applied after readiness verification completed. Its content unit target
-is now compiling; successful execution has **not** been established.
+gate and applied after readiness verification completed. Its original 20 named
+content-layer cases passed. The six additional startup cases introduced by 0032
+remain pending compilation and execution.
 The planned execution is the standard content unit target filtered to
 `NativePrivacyBrowserContextTest.*`, with single-process GoogleTest JSON output.
 All 20 named cases must finish successfully; a count alone is insufficient.

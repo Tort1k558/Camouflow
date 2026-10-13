@@ -460,3 +460,52 @@ def test_renderbuffer_gate_rejects_missing_multisample_or_modified_uniform_attac
     observed[field] = value
     with pytest.raises(ValueError):
         validate_renderbuffer(observed, protected=True)
+
+
+def test_future_halo_reference_memory_modes_are_explicit_and_bounded():
+    from scripts.verify_native_readback_regions import plan
+
+    assert plan(4096, 4096, 100, 100, 1, 1, 40) == {
+        "mode": "halo", "box": (99, 99, 3, 3), "rectangle_bytes": 4, "tile_bytes": 36}
+    assert plan(4096, 4096, 0, 0, 4096, 4096, 64 * 1024 * 1024) == {
+        "mode": "full-frame-in-place", "box": (0, 0, 0, 0), "rectangle_bytes": 64 * 1024 * 1024, "tile_bytes": 0}
+    assert plan(8, 6, -20, -20, 1, 1, 4)["mode"] == "outside"
+    assert plan(8, 6, 2, 2, 0, 4, 0)["tile_bytes"] == 0
+    with pytest.raises(ValueError):
+        plan(4096, 4096, 100, 100, 1, 1, 39)
+    with pytest.raises(ValueError):
+        plan(4096, 4096, 0, 0, 4096, 4096, 64 * 1024 * 1024 - 1)
+
+
+@pytest.mark.parametrize("read_request", [(0, 6, 0, 0, 1, 1), (8, 6, 0, 0, -1, 1),
+                                    (8, 6, True, 0, 1, 1), (8, 6, 1 << 31, 0, 1, 1)])
+def test_future_halo_model_rejects_unbounded_or_untyped_requests(read_request):
+    from scripts.verify_native_readback_regions import plan
+
+    with pytest.raises(ValueError):
+        plan(*read_request, 1024)
+
+
+def test_future_halo_model_agrees_with_full_frame_but_never_admits_native_runtime():
+    from scripts.verify_native_readback_regions import verify
+
+    report = verify()
+    assert report["passed"] is True and report["crop_equivalence_checks"] == 58860
+    assert report["native_compiled"] is False and report["gpu_verified"] is False
+    assert report["privacy_admitted"] is False
+
+
+def test_future_halo_hook_and_fixtures_remain_unregistered_and_canonical():
+    from scripts.verify_native_document_drafts import patch_paths
+    from scripts.verify_native_halo_draft import CANONICAL, DRAFTS, EXISTING, PATCH
+
+    text = PATCH.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == EXISTING | set(CANONICAL.values())
+    assert "+  switch (region->mode) {" in text
+    assert "+    case glint::candidate::Rgba8ReadbackMode::kFullFrameInPlace:" in text
+    assert "+    case glint::candidate::Rgba8ReadbackMode::kOutsideOnly:" in text
+    source = (DRAFTS / "rgba8_readback_region.cc").read_text(encoding="utf-8-sig")
+    assert "region.mode == Rgba8ReadbackMode::kFullFrameInPlace" in source
+    assert source.index("ReadbackRegionError::kAliasedStorage") < source.index("std::copy(")
+    fixtures = (DRAFTS / "rgba8_readback_region_unittest.cc").read_text(encoding="utf-8-sig")
+    assert fixtures.count("TEST(GlintRgba8ReadbackRegionTest,") == 11
