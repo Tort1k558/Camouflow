@@ -71,6 +71,25 @@ external green tiles do not replace them.
 
 ## Build history
 
+### Windows development candidate 001-039 — 2026-10-13
+
+j4 incremental build succeeded in **8m15.04s**, five executed build steps.
+Measured `chrome.dll` SHA-256:
+`3c9b71a91ccba24b97e151ed9d63a053b41eb61a0852aa13c6393f9237479c06`.
+The EXE and `chrome_elf.dll` hashes remain the same as 001-038.
+
+| Owned runtime check | Result | Boundary |
+| --- | --- | --- |
+| Combined baseline/profile/restart phases | Passed: 6/6 | Repeated on the linked 001-039 engine |
+| Missing required document policy | **Failed: persistent-context launch timeout** | No earlier fatal transition in the saved log; denying initial about:blank prevents the driver's startup wait from completing |
+| Independent browser-level CDP diagnostic | Observed: browser stayed alive, fixture fetched once, execution beacon absent | Prototype only; needs baseline control and committed-document/event checks before admission |
+| Worker checks and external detectors | Not rerun for this build | Do not transfer 001-038 results |
+
+Private evidence: `combined-surfaces-001-039-v1.json`,
+`no-policy-cdp-v1/proof.json`. The combined gate remains **failed**. Next: make
+the denial probe independent of a successfully committed startup page, prove
+the control endpoint executes normally, and promote the reviewed observer guard.
+
 ### Windows development candidate 001-038 — 2026-10-13
 
 Chromium **148.0.7778.96**; j4 incremental build succeeded in **31m11s**.
