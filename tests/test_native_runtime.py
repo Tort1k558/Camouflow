@@ -147,14 +147,54 @@ def test_native_privacy_derivation_matches_independent_dotnet_hmac_vector():
         "16ac09b09ddeb0bc278456d1e474d4d1fa4b6135a7529f05dc95391936c630fc")
 
 
+@pytest.mark.parametrize("surface,expected", [
+    ("canvas", "20dce1593e6c4c336c2fd3d3d280bbb25897e5535eb281995f1e258a92dd57f2"),
+    ("webgl", "2d9d6bba187081cec70f0cfb691f45f0edbdf6102225ebbdc0ead57d6e5f0ef3"),
+    ("webgpu", "c06c3fb80ba7ff2d923ae600f5bec7177a82629b0e2d1154794b9b2bc26e3fbd"),
+    ("audio", "967498cf8b7b8528a376c6e8b2579e22f9b476d87171ac51527da8e07733ef17"),
+])
+def test_native_profile_identity_reference_matches_native_candidate_vectors(surface, expected):
+    from app.core.native.identity import NativePrivacyIdentity
+    from scripts.verify_native_profile_identity_draft import PATCH, reference_vectors
+
+    identity = NativePrivacyIdentity(bytes(range(32)))
+    key = identity.derive_profile_identity(b"owned-browser-partition-A", surface)
+    assert key.hex() == expected == reference_vectors()[surface]
+    assert expected in PATCH.read_text(encoding="utf-8-sig")
+    assert key == identity.derive_profile_identity(b"owned-browser-partition-B", surface)
+    assert key == identity.derive_profile_identity(b"a" * 8192, surface)
+    assert key != identity.derive(b"owned-browser-partition-A", surface)
+    assert key != NativePrivacyIdentity(bytes(reversed(range(32)))).derive_profile_identity(
+        b"owned-browser-partition-A", surface)
+
+
+def test_native_profile_identity_reference_survives_reload_with_independent_owned_roots(tmp_path):
+    from app.core.native.identity import load_or_create_identity
+
+    first, second = tmp_path / "first", tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    identity = load_or_create_identity(first)
+    keys = {surface: identity.derive_profile_identity(b"owned-browser-partition", surface)
+            for surface in ("canvas", "webgl", "webgpu", "audio")}
+    assert len(set(keys.values())) == 4
+    assert identity.seed not in keys.values()
+    reloaded = load_or_create_identity(first)
+    independent = load_or_create_identity(second)
+    for surface, expected in keys.items():
+        assert reloaded.derive_profile_identity(b"different-browser-partition", surface) == expected
+        assert independent.derive_profile_identity(b"owned-browser-partition", surface) != expected
+
+
+@pytest.mark.parametrize("method", ["derive", "derive_profile_identity"])
 @pytest.mark.parametrize("partition,surface", [(b"", "canvas"), (b"a" * 8193, "canvas"),
                                                ("https://example.test", "canvas"), (bytearray(b"a"), "canvas"),
                                                (b"a", "unknown"), (b"a", "Canvas"), (b"a", None)])
-def test_native_privacy_derivation_rejects_untrusted_shapes(partition, surface):
+def test_native_privacy_derivation_rejects_untrusted_shapes(partition, surface, method):
     from app.core.native.identity import NativePrivacyIdentity
 
     with pytest.raises(ValueError):
-        NativePrivacyIdentity(bytes(range(32))).derive(partition, surface)
+        getattr(NativePrivacyIdentity(bytes(range(32))), method)(partition, surface)
 
 
 @pytest.mark.parametrize("payload", ['{}', '{"schema":true,"seed":"' + 'a' * 64 + '"}',

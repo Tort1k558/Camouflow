@@ -47,6 +47,10 @@ The sixth candidate prepares browser-only launch selection with strict service,
 full document/worker surface and legacy-conflict checks. Persistent/incognito
 initialization passes the immutable mode to its own service; renderer command
 lines do not receive it. Four more launch fixture definitions remain unexecuted.
+The manager key utility now has a separate profile-purpose derivation reference.
+Its four fixed vectors, persisted reload and root/surface separation are executed
+in Python tests; existing partitioned privacy vectors remain unchanged. It does
+not activate either mode or replace native BrowserContext/IPC checks.
 This does not enable an identity mode in the currently compiling browser.
 
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy

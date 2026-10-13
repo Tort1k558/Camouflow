@@ -120,7 +120,20 @@ not a new admitted manager capability or a user release.
 .venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-launch-replay.json --include-launch --check-bindings
 ```
 
-## Required before admission
+## Manager derivation reference
+
+`NativePrivacyIdentity.derive_profile_identity(partition_key, surface)` computes
+the same versioned profile-purpose HMAC using the existing locally owned root.
+It validates the supplied partition shape but excludes that partition from
+entropy. It does not authorize IPC, change the identity-file schema, regenerate
+invalid keys, enable launch switches, or admit any browser capability.
+
+Python tests execute all four fixed vectors against both the independent HMAC
+reference and the C++ candidate literals, plus cross-partition stability, surface/
+root separation and persisted reload. Legacy privacy derivation remains unchanged.
+This is executable manager-side reference evidence, **not native execution**.
+
+## Browser admission gates
 
 - Execute native fixtures, including unchanged legacy privacy vectors.
 - Verify real BrowserContext/OTR lifetime and persisted profile restart.

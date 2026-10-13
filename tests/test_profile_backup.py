@@ -81,8 +81,14 @@ def test_native_privacy_key_is_never_exported_and_restored_profile_gets_a_new_ke
         assert not any(name.endswith(IDENTITY_FILE) for name in archive.namelist())
     restored = profile_backup.restore_profile(target, "restored") / "native"
     restored.mkdir(exist_ok=True)
-    assert load_or_create_identity(restored).seed != identity.seed
-    assert load_or_create_identity(original).seed == identity.seed
+    restored_identity = load_or_create_identity(restored)
+    original_identity = load_or_create_identity(original)
+    assert restored_identity.seed != identity.seed
+    assert original_identity.seed == identity.seed
+    for surface in ("canvas", "webgl", "webgpu", "audio"):
+        expected = identity.derive_profile_identity(b"owned-original-partition", surface)
+        assert original_identity.derive_profile_identity(b"owned-original-partition", surface) == expected
+        assert restored_identity.derive_profile_identity(b"owned-restored-partition", surface) != expected
 
 
 def test_native_restore_discards_key_from_external_or_older_archive(workspace):

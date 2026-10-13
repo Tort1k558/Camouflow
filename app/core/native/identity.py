@@ -1,4 +1,4 @@
-"""Local profile keys for future native privacy policy; never browser switches."""
+"""Local profile keys and native derivation references; never browser switches."""
 
 import hashlib
 import hmac
@@ -22,14 +22,24 @@ class NativePrivacyIdentity:
 
     def derive(self, partition_key: bytes, surface: str) -> bytes:
         """Accept a trusted serialized browser storage partition, never a URL guess."""
+        label = self._surface_label(partition_key, surface)
+        message = (b"CamouFlowNative/privacy/v1\0" + len(label).to_bytes(4, "big") + label
+                   + len(partition_key).to_bytes(4, "big") + partition_key)
+        return hmac.digest(self.seed, message, hashlib.sha256)
+
+    def derive_profile_identity(self, partition_key: bytes, surface: str) -> bytes:
+        """Reference stable profile entropy; does not authorize a partition or enable a mode."""
+        label = self._surface_label(partition_key, surface)
+        message = b"Glint/profile-identity/v1\0" + len(label).to_bytes(4, "big") + label
+        return hmac.digest(self.seed, message, hashlib.sha256)
+
+    @staticmethod
+    def _surface_label(partition_key: bytes, surface: str) -> bytes:
         if not isinstance(partition_key, bytes) or not 1 <= len(partition_key) <= 8192:
             raise ValueError("Native privacy derivation requires a bounded browser partition")
         if not isinstance(surface, str) or surface not in {"canvas", "webgl", "webgpu", "audio"}:
             raise ValueError("Unknown Native privacy surface")
-        label = surface.encode("ascii")
-        message = (b"CamouFlowNative/privacy/v1\0" + len(label).to_bytes(4, "big") + label
-                   + len(partition_key).to_bytes(4, "big") + partition_key)
-        return hmac.digest(self.seed, message, hashlib.sha256)
+        return surface.encode("ascii")
 
 
 def load_or_create_identity(profile: Path) -> NativePrivacyIdentity:
