@@ -71,6 +71,18 @@ external green tiles do not replace them.
 
 ## Build history
 
+### Native identity keys/service 001-058 — 2026-10-14
+
+**62/62 cases passed**: 19 new identity derivation/immutable-mode cases and
+43 legacy key/loading/readiness cases. Zero failed, disabled or error cases;
+318 ms execution. The cached j4 build completed in **11m15.62s**, 201 executed
+steps. Test EXE SHA-256:
+`f9a9f48fab2224cf760ed1c24ff5d1186392431369c96da1670954fd2c479eaf`.
+Source, browser 001-047 core, GN and receipt remained unchanged after execution.
+Private proof/raw results/log: `identity-keys-001-058-v1.json`, `-tests.json`
+and `-build.log` on D. This is key/service proof, not BrowserContext, IPC,
+first-script delivery, GPU-driver coverage or linked identity-mode admission.
+
 ### Additional owned browser gates 001-047 — 2026-10-14
 
 | Gate | Result | Scope and limits |

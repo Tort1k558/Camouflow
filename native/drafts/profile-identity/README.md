@@ -1,7 +1,8 @@
 # Stable profile identity — derivation candidate
 
-**Canonical candidates promoted exactly as patches 0049–0054. Native execution
-and a linked identity-mode browser remain unverified; no manager capability is admitted.**
+**Canonical candidates promoted exactly as patches 0049–0054. Keys/service gate
+passed 62/62; context, transport, handoff and linked identity-mode browser remain
+unverified. No manager capability is admitted.**
 
 The complete Identity/GPU package is integrated into registered source 001-058.
 Private proof: `identity-gpu-source-integration-0049-0058-v1/proof.json` on D.
@@ -12,6 +13,14 @@ pre-promotion checks against source 001-048; do not reapply them to 001-058.
 Run the registered native targets `identity-keys` (62), `identity-contexts` (37),
 `identity-transport` (20) and `identity-handoff` (15), then the actual browser gates.
 These 134 cases include 50 new identity cases and 84 legacy regressions.
+The first registered native target completed successfully:
+`identity-keys-001-058-v1.json` and raw `-tests.json` on D. All 62 cases passed
+with zero failed, disabled or error cases; 318 ms execution. The j4 cached build
+completed in 11m15.62s, 201 executed steps. Test executable SHA-256:
+`f9a9f48fab2224cf760ed1c24ff5d1186392431369c96da1670954fd2c479eaf`.
+Post-execution guards confirmed source, browser core, GN and receipt unchanged.
+This proves the 19 new key/service cases and 43 legacy cases, not BrowserContext
+lifecycle, IPC, first-script delivery or a browser identity mode.
 
 ## Exact fixture inventory
 
@@ -102,9 +111,10 @@ reinterpret the current Canvas/GPU/Audio policy.
 | Current privacy API | Remains partition-dependent and unchanged |
 
 The native derivation/context/profile/service implementation is included in the
-patch. Eleven C++ fixtures are prepared: four independent vectors, purpose/site/
+patch. Eleven C++ fixtures passed the registered native key target: four independent vectors, purpose/site/
 root/surface separation, invalid surfaces, and service readiness/failure/reload/
-ephemeral ownership. **They have not been compiled or executed.**
+ephemeral ownership. They are included in the verified 62-case result; this is
+not context/renderer/worker execution.
 
 ```powershell
 .venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\profile-identity-replay.json
@@ -125,7 +135,8 @@ is introduced.
 
 Eight additional C++ fixtures cover default compatibility, cross-partition
 identity, readiness/shutdown, invalid modes, owner replacement rejection,
-persisted reload and ephemeral isolation. **Prepared, not executed.**
+persisted reload and ephemeral isolation. **All eight passed** in the registered
+62-case native key/service gate; browser-mode admission remains blocked.
 
 `identity_context_tests_candidate.patch` is the third patch in the sequence.
 Seven further fixtures exercise real `TestBrowserContext` owners: per-context

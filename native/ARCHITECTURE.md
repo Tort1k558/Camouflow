@@ -30,7 +30,7 @@ strings while retaining contradictory driver capabilities. Cross-OS and mobile
 identities remain unverified until their complete observable environment agrees.
 Current Mobile Web remains desktop Chromium viewport/touch emulation.
 
-The unregistered `drafts/profile-identity` sequence separates partitioned privacy
+The canonical `drafts/profile-identity` sequence separates partitioned privacy
 derivation from stable profile identity and prepares an immutable browser-owned
 selection per key service. Invalid selections reject initialization; installed
 owners cannot switch modes. Source replay covers the three-patch sequence; twenty-six
@@ -51,7 +51,14 @@ The manager key utility now has a separate profile-purpose derivation reference.
 Its four fixed vectors, persisted reload and root/surface separation are executed
 in Python tests; existing partitioned privacy vectors remain unchanged. It does
 not activate either mode or replace native BrowserContext/IPC checks.
-This does not enable an identity mode in the currently compiling browser.
+All six candidates are now registered exactly as 0049–0054, alongside GPU
+transport 0055–0058. Integrated source 001-058 matched the reviewed composition
+and passed full ordered replay. The key/service native target subsequently
+passed **62/62 cases** (19 new, 43 legacy), with unchanged browser core/GN/receipt:
+`identity-keys-001-058-v1.json` on D. The complete native selection is 134 cases;
+41 new definitions expand to 50 new cases because DocumentLoader has four modes.
+Context/transport/handoff execution and a linked identity-mode browser remain
+unverified. Historical source-only preparation below is not current admission.
 
 Manager diagnostics also compare measured WebGL/WebGL2 extensions, six limits and
 context attributes between document and dedicated worker. A feature-off 001-027
@@ -65,8 +72,10 @@ Windows en-US/de-DE observations passed on the unchanged 001-027 baseline;
 synthetic platform cases are not Linux/macOS/Android runtime validation.
 `verify_native_identity_readback_batch.py` composes all six identity candidates
 with the six halo/clipping/GPU metadata candidates in one isolated source tree.
-The exact combined source and pinned Mojo/GPU generation passed; no native
-compilation, protection admission or change to the active build was performed.
+The exact combined source and pinned Mojo/GPU generation passed before
+integration. C++ type checks covered 22 identity and six GPU units. These
+preflight results do not replace the remaining native/runtime gates or admit
+protection; the current verified browser is still 001-047.
 
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy
 requests before startup. Unsupported requests fail rather than silently falling

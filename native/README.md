@@ -18,6 +18,7 @@ patch chain; they do not transfer automatically to newer binaries.
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
 | Registered Windows source | 001-058 | Complete Identity/GPU source integration matched the reviewed composition and passed ordered replay; current browser remains 001-047 |
+| Native identity keys/service | 001-058 | **62/62** passed: 19 new derivation/mode cases and 43 legacy checks; unchanged browser core/GN/receipt |
 | Native navigation/readiness | 001-045 | **42/42** cases passed: missing/conflicting policy, late policy loss, recovery and observer-driven closure |
 | Native BrowserContext isolation | 001-045 | **26/26** cases passed |
 | Native window/child transport | 001-045 | **13/13** cases passed |
