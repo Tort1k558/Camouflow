@@ -1,0 +1,25 @@
+diff --git a/content/browser/renderer_host/navigation_throttle_registry_impl.cc b/content/browser/renderer_host/navigation_throttle_registry_impl.cc
+--- a/content/browser/renderer_host/navigation_throttle_registry_impl.cc
++++ b/content/browser/renderer_host/navigation_throttle_registry_impl.cc
+@@ -90,8 +90,8 @@
+   // NavigationThrottleRunner manages.
+   navigation_request_->GetDelegate()->CreateThrottlesForNavigation(*this);
+ 
+-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+-          kGlintDocumentPrivacyBootstrapSwitch)) {
++  if (GetGlintDocumentPrivacyBootstrapMode() !=
++      glint::candidate::DocumentPrivacyBootstrapMode::kOff) {
+     AddThrottle(std::make_unique<PrivacyNavigationThrottle>(*this));
+   }
+ 
+@@ -189,8 +189,8 @@
+   std::vector<std::unique_ptr<NavigationThrottle>> testing_throttles =
+       std::move(throttles_);
+ 
+-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+-          kGlintDocumentPrivacyBootstrapSwitch)) {
++  if (GetGlintDocumentPrivacyBootstrapMode() !=
++      glint::candidate::DocumentPrivacyBootstrapMode::kOff) {
+     AddThrottle(std::make_unique<PrivacyNavigationThrottle>(*this));
+   }
+ 

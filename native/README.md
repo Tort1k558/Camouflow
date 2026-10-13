@@ -12,7 +12,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 
 ## Source layout
 
-Current Windows development source is **001-042**. Patches 0031-0034 jointly
+Current Windows development source is **001-043**. Patches 0031-0034 jointly
 promote browser-owned document/worker surface policy, startup/child transport,
 Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
 replay passed across 125 paths for 001-038. That Windows browser compiled, but
@@ -91,6 +91,15 @@ when a test calls its factory; it does not suppress the registry assertion or
 change production code. The repaired fixture compiled to an isolated object
 (`initial-origin-fixture-compilation-001-042-v1/proof.json` on D). The j4 test
 retry retains the completed objects; native test results remain pending.
+
+That incremental test build completed in 49s and reached real native checks.
+They exposed a production wiring gap: both throttle registries checked only the
+Canvas switch, skipping the full surface mode. Patch 0043 registers the existing
+readiness throttle for every explicit non-off document mode in both navigation
+paths. Its translation unit compiled to an owned object with pinned flags;
+source/core guards passed (`surface-throttle-compilation-001-043-v1/proof.json`).
+Source replay passed across 126 paths. The 42-case gate still requires a full
+passing rerun; a partially executed/crashed run is not admission.
 
 The identity verifier now compares document HTTP User-Agent, primary
 Accept-Language and platform/mobile Client Hints against JavaScript, not just

@@ -148,6 +148,15 @@ Replay 001–041 прошёл по 125 путям. Повторный surface-na
 `initial-origin-fixture-compilation-001-042-v1/proof.json`.
 Следующий j4 прогон сохраняет объекты; 42 теста ещё не считаются выполненными.
 Лог: `D:\CamouFlowNative\surface-navigation-001-042-v3-build.log`.
+После 0042 test binary пересобрался за **49.26s** и запустил проверки. Они выявили
+пропуск production wiring: throttle registry проверял только Canvas switch,
+поэтому surface missing-policy не проходил readiness-throttle; about:blank
+отмена ломала предположения NavigationSimulator. Патч **0043** подключает
+существующий throttle для всех явных non-off document modes в обоих путях.
+Изменённый production файл отдельно скомпилирован; proof на D:
+`surface-throttle-compilation-001-043-v1/proof.json`. Replay прошёл по 126 путям.
+42-case gate повторяется на j4 с сохранением кэша. Прошлый partial/crashed run —
+не PASS. Лог: `D:\CamouFlowNative\surface-navigation-001-043-v4-build.log`.
 В следующем GPU-пакете подготовлен четырнадцатый passthrough fixture:
 multisample metadata сравнивается с фактическим `GL_RENDERBUFFER_SAMPLES`,
 а не с запрошенным числом samples. Формат RGBA8 сам по себе не означает
