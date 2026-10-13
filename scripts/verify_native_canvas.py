@@ -188,7 +188,8 @@ class CanvasFixtureHandler(FixtureHandler):
             pass
 
 
-def validate_observations(observed: dict, previous: dict | None = None) -> None:
+def validate_observations(observed: dict, previous: dict | None = None, *,
+                          require_context_equality: bool = True) -> None:
     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
         raise ValueError("Canvas probe must observe every document and worker context")
     if any(not isinstance(values, dict) or set(values) != {"pixels", "repeat", "blob", "htmlBlob", "htmlDataUrl", "htmlCapture", "geometry", "errors"}
@@ -210,7 +211,7 @@ def validate_observations(observed: dict, previous: dict | None = None) -> None:
             expected = None if name in {"dedicated", "shared", "service"} and key.startswith("html") else digest
             if values[key] != expected:
                 raise ValueError(f"Canvas readback disagrees in {name}/{key}")
-        if digest != observed["document"]["pixels"]:
+        if require_context_equality and digest != observed["document"]["pixels"]:
             raise ValueError(f"Unmodified drawing differs across native contexts: {name}")
     if previous is not None and observed != previous:
         raise ValueError("Canvas readback changed across an unmodified profile restart")

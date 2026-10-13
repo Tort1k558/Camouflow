@@ -128,6 +128,33 @@ Do not edit an active checkout, GN arguments or registered patch content while
 compilation is running. An object build proves only those translation units;
 production linking and actual browser execution are separate gates.
 
+## Combined surface runtime gate
+
+`scripts/verify_native_surfaces.py` prepares seven owned-browser phases for the
+next compiled surface batch: baseline and two independent profiles, each with a
+persistent restart, followed by missing-document-policy rejection. It combines
+all four Canvas readback entry points with OfflineAudio completion in the same
+eight document/frame/worker contexts. OfflineAudio is expected in five document
+contexts; worker unavailability is not audio coverage.
+
+The gate requires repeated reads, export/crop/transparent-pixel consistency,
+existing Canvas security checks, Audio event/Promise buffer identity and mutation
+semantics, same-partition agreement, different cross-origin/profile results and
+stable restarts. A fetched owned page must abort without its script beacon when
+document policy is unavailable; timeouts are not accepted as rejection.
+
+Before creating profiles or launching a browser, the gate requires exact
+registered surface patches and a build receipt binding **every runtime core
+file**, not just `chrome.exe` while Blink resides in `chrome.dll`. Reserved patch
+names 0031 (worker policy), 0032 (document policy) and 0033 (surface readback)
+are promotion prerequisites, **not currently registered or compiled patches**.
+The current 001–027 browser is deliberately rejected before launch.
+
+These are prepared checks, not executed protected-browser results. Numerical
+Audio error/SNR, performance budgets, GPU readback, malformed-policy injection,
+root-initial/sandbox delivery and public anti-bot diagnostics remain separate
+work. `privacy_admitted` stays false even if this functional gate passes.
+
 ## Distribution
 
 `distribution.py` manages checksum-verified local bundles and release selection.
