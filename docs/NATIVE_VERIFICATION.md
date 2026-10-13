@@ -389,6 +389,14 @@ This does not generate cross-OS/GPU presets, verify HTTP headers on arbitrary
 sites or admit new native capabilities. The separate native identity gate remains
 responsible for controlled HTTP/Client Hints/frame/worker checks.
 
+The manager health path no longer inspects `about:blank`, where the actual
+browser cannot expose secure-context Client Hints. Its disposable context loads
+an owned loopback document through an intercepted response; every other request
+is aborted, with no external server/network fallback. CSP permits the diagnostic
+blob worker, not external resources. A real 001–027 health-path run observed a
+secure context, genuine Client Hints and no mismatches; navigation/inspection
+failure still requires runtime teardown. This is not HTTP or TLS evidence.
+
 ## Texture lifecycle baseline
 
 `scripts/verify_native_gpu_textures.py` verifies actual texture uploads/readback,

@@ -830,8 +830,8 @@ def test_native_profile_probe_observes_owned_page_and_always_verifies_teardown(t
 
     executable = tmp_path / "owned.exe"
     executable.touch()
-    page = object()
-    context = SimpleNamespace(browser=SimpleNamespace(version="148.0.7778.96"), pages=[page])
+    page = SimpleNamespace(goto=AsyncMock())
+    context = SimpleNamespace(browser=SimpleNamespace(version="148.0.7778.96"), pages=[page], route=AsyncMock())
     closed = AsyncMock()
     monkeypatch.setattr(health, "NativeRuntime", lambda *args: SimpleNamespace(start=AsyncMock(return_value=context), close=closed))
     expected = {"browser_version": "148.0.7778.96", "mismatches": []}
@@ -844,7 +844,55 @@ def test_native_profile_probe_observes_owned_page_and_always_verifies_teardown(t
     else:
         assert asyncio.run(health.probe_native_profile(executable, configuration, tmp_path / "health")) == expected
     inspect.assert_awaited_once_with(page, configuration, "148.0.7778.96")
+    page.goto.assert_awaited_once_with("http://127.0.0.1/glint-native-health", wait_until="load", timeout=10000)
     closed.assert_awaited_once()
+    assert not list((tmp_path / "health").iterdir())
+
+
+def test_native_health_fixture_blocks_other_requests_without_network_fallback():
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.core.native import health
+
+    page = SimpleNamespace(goto=AsyncMock())
+    context = SimpleNamespace(route=AsyncMock(), pages=[page])
+    assert asyncio.run(health._prepare_diagnostic_page(context)) is page
+    pattern, handler = context.route.await_args.args
+    assert pattern == "**/*"
+    owned = SimpleNamespace(request=SimpleNamespace(url="http://127.0.0.1/glint-native-health"),
+                            abort=AsyncMock(), fulfill=AsyncMock())
+    asyncio.run(handler(owned))
+    owned.abort.assert_not_awaited()
+    response = owned.fulfill.await_args.kwargs
+    assert response["status"] == 200
+    assert response["headers"]["Content-Security-Policy"] == "default-src 'none'; worker-src blob:"
+    outside = SimpleNamespace(request=SimpleNamespace(url="https://example.com/"),
+                              abort=AsyncMock(), fulfill=AsyncMock())
+    asyncio.run(handler(outside))
+    outside.abort.assert_awaited_once_with("blockedbyclient")
+    outside.fulfill.assert_not_awaited()
+
+
+def test_native_health_navigation_failure_still_releases_owned_runtime(tmp_path, monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.core.native import health
+
+    executable = tmp_path / "owned.exe"
+    executable.touch()
+    page = SimpleNamespace(goto=AsyncMock(side_effect=RuntimeError("owned navigation failed")))
+    context = SimpleNamespace(browser=SimpleNamespace(version="148.0.7778.96"),
+                              pages=[page], route=AsyncMock())
+    close = AsyncMock()
+    monkeypatch.setattr(health, "NativeRuntime", lambda *args: SimpleNamespace(
+        start=AsyncMock(return_value=context), close=close))
+    with pytest.raises(RuntimeError, match="owned navigation failed"):
+        asyncio.run(health.probe_native_profile(executable, NativeConfiguration(), tmp_path / "health"))
+    close.assert_awaited_once()
     assert not list((tmp_path / "health").iterdir())
 
 
