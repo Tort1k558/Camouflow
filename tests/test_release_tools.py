@@ -988,12 +988,12 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
 
 @pytest.mark.parametrize("mutation", [None, "duplicate", "missing", "skip", "failure", "incomplete", "foreign", "disabled", "malformed"])
 @pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation",
-                                    "surface-navigation", "window-transport", "gpu-pack-copy"])
+                                    "surface-navigation", "window-transport", "gpu-pack-copy", "worker-surfaces"])
 def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, target):
     from scripts.verify_native_privacy_units import required_tests, validate_results
 
     report = {"tests": {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12,
-                        "surface-navigation": 34, "window-transport": 13, "gpu-pack-copy": 14}[target], "failures": 0, "disabled": 0, "testsuites": [
+                        "surface-navigation": 34, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
         for suite, cases in required_tests(target).items()]}
@@ -2166,6 +2166,24 @@ def test_native_delivery_verifier_requires_every_draft_endpoint_case():
             observed.setdefault(suite, []).append(case)
     assert sum(map(len, observed.values())) == 34
     assert {suite: set(cases) for suite, cases in observed.items()} == REQUIRED_DELIVERY_TESTS
+
+
+def test_native_worker_surface_verifier_covers_registered_fixtures_and_legacy_worker_cases():
+    import re
+
+    from scripts.verify_native_privacy_units import REQUIRED_DELIVERY_TESTS, REQUIRED_WORKER_SURFACE_TESTS, ROOT
+
+    patch = (ROOT / "native/patches/0031-native-worker-surface-policy.patch").read_text(encoding="utf-8-sig")
+    additions = "\n".join(line[1:] for line in patch.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    observed = {}
+    for suite, case in re.findall(r"TEST_F\(\s*(NativePrivacyWorkerSurface\w+),\s*(\w+)\)", additions):
+        observed.setdefault(suite, set()).add(case)
+    assert sum(map(len, observed.values())) == 30
+    for suite in ("NativePrivacyWorkerServiceTest", "NativePrivacyWorkerBootstrapTest"):
+        observed[suite] = REQUIRED_DELIVERY_TESTS[suite]
+    assert observed == REQUIRED_WORKER_SURFACE_TESTS
+    assert sum(map(len, observed.values())) == 55
 
 
 def test_native_delivery_verifier_rejects_unpromoted_and_modified_sources(tmp_path):

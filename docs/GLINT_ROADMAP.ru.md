@@ -86,6 +86,20 @@ multisample metadata сравнивается с фактическим `GL_REND
 а не с запрошенным числом samples. Формат RGBA8 сам по себе не означает
 single-sample readback: consumer отдельно отклоняет `samples != 0`.
 C++ fixture пока не скомпилирован и не выполнен.
+Объединённый replay identity/readback и изолированная генерация Mojo/GPU
+успешны на исходниках 001–036; active sources не изменены. Приватное доказательство:
+`D:\CamouFlowNative\identity-readback-multisample-001-036-batch-v1.json`.
+`compiled=false`, `mode_enabled=false`, `privacy_admitted=false`.
+
+Подготовлен отдельный unit gate `--target worker-surfaces` в
+`scripts/verify_native_privacy_units.py`: строго 55 завершённых случаев —
+25 существующих Canvas worker endpoint/consumer cases и 30 Surface cases из
+0031. Он требует зарегистрированную цепочку, включая исправление 0036;
+missing/duplicate/skipped/foreign/failed результаты не принимаются.
+Исторический `delivery` gate не расширен молча и сохраняет свой контракт.
+Новый gate ещё не запускался: он компилирует `content_unittests`, поэтому
+использовать его только после разрешённого возобновления сборок. Это не
+проверка first-script ordering реальных worker hosts и не admission браузера.
 
 Glint — настоящий pinned fork Chromium/Blink с C++/Mojo-патчами, а не только
 инъекции поверх Chrome. При этом менеджер использует Playwright/CDP для управления

@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -95,6 +94,30 @@ REQUIRED_WORKER_HANDOFF_TESTS = {
     },
 }
 
+REQUIRED_WORKER_SURFACE_TESTS = {
+    **{suite: REQUIRED_DELIVERY_TESTS[suite] for suite in (
+        "NativePrivacyWorkerServiceTest", "NativePrivacyWorkerBootstrapTest")},
+    "NativePrivacyWorkerSurfaceServiceTest": {
+        "MissingServiceReturnsNoSnapshot", "ReadySnapshotMatchesEveryDomainForAllWorkerKinds",
+        "LoadingDoesNotReplyWithPrematureSnapshot", "WrongWorkerOriginCannotGetSnapshot",
+        "ShutdownDuringReadinessReturnsNoSnapshot", "SurfaceThenCanvasCannotRequestTwice",
+        "CanvasThenSurfaceCannotRequestTwice", "UnpartitionedSharedServiceWorkersRejectSnapshot",
+    },
+    "NativePrivacyWorkerSurfaceBootstrapTest": {
+        "ReadyReturnsOwnedIndependentSnapshotOnce", "UnavailableReturnsNoSnapshot",
+        "BrowserTimeoutReturnsNoSnapshot", "CanvasVersionCannotSatisfySurfaceRequest",
+        "ReadyWithoutSnapshotIsRejected", "FailureWithSnapshotIsRejected",
+        "DifferentPartitionCannotInstallSnapshot", "ReusedSurfaceSeedIsRejected",
+        "PeerDisconnectSettlesOnce", "DeadlineRejectsLateSnapshot", "DestructionDropsPendingReply",
+        "MissingPipeReturnsTypedFailure", "ReadyCallbackCanDestroyConsumer",
+        "FailureCallbackCanDestroyConsumer", "DeadlineCallbackCanDestroyConsumer",
+        "OpaquePartitionPreservesOwnedIdentity", "OriginOnlyRequestOwnsBrowserPartition",
+        "FlagsSelectExactlyOneExplicitMode", "OffModeRejectsUnexpectedBootstrapData",
+        "CanvasModeCannotUseSurfaceFallback", "SurfaceModeCannotUseCanvasFallback",
+        "ConflictAndUnknownModeNeverBecomeReady",
+    },
+}
+
 REQUIRED_DOCUMENT_PARTITION_TESTS = {
     "GlintDocumentCanvasPolicyTest": {
         "MatchingPartitionReturnsOwnedSeed", "UnknownVersionRejectsMatchingPartition",
@@ -154,7 +177,7 @@ REQUIRED_GPU_PACK_TESTS = {
         "OversizedOffsetRejectsBeforeAnyWrite", "EmptyReadsDoNotTouchSourceOrDestination"},
 }
 
-NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy")
+NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "worker-surfaces")
 
 DELIVERY_SOURCE_FILES = {
     f"{name}{suffix}": f"{directory}/{name}{suffix}"
@@ -183,6 +206,8 @@ def require_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "worker-surfaces":
+        return REQUIRED_WORKER_SURFACE_TESTS
     if target == "surface-navigation":
         return REQUIRED_SURFACE_NAVIGATION_TESTS
     if target == "window-transport":
@@ -278,6 +303,13 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
         required_patches.add("0032-native-document-surface-policy.patch")
     if target in {"surface-navigation", "window-transport"}:
         required_patches.update({"0031-native-worker-surface-policy.patch", "0032-native-document-surface-policy.patch"})
+    if target == "worker-surfaces":
+        required_patches.update({"0017-native-browser-context-tests.patch",
+                                 "0018-native-document-policy-delivery.patch",
+                                 "0019-native-worker-policy-delivery.patch",
+                                 "0020-native-worker-policy-consumer.patch",
+                                 "0031-native-worker-surface-policy.patch",
+                                 "0036-native-worker-complete-surface-type.patch"})
     if target == "gpu-pack-copy":
         required_patches.add("0034-native-gpu-metadata-minimization.patch")
     if target == "delivery":
@@ -300,6 +332,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     core = measure_runtime_core(output / "chrome.exe")
     scope = ("Surface v2 NavigationSimulator/readiness units; not actual Blink or browser admission"
              if target == "surface-navigation" else
+             "Canvas and surface worker Mojo endpoints/bootstrap units; not worker-host startup, first-script delivery or admission"
+             if target == "worker-surfaces" else
              "Window readiness and authenticated child RFH transport units; not actual renderer IPC or admission"
              if target == "window-transport" else
              "Native RGBA8 pack-copy arithmetic units; not GPU/driver readback or admission"
@@ -316,7 +350,7 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
              if target == "contexts" else
              "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission")
     build_target = ("blink_unittests" if target in {"worker-handoff", "gpu-pack-copy"} else
-                    "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport"} else "camouflow_native_privacy_unittests")
+                    "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces"} else "camouflow_native_privacy_unittests")
     proof = {"passed": False, "scope": scope, "target": target,
              "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path)}
     with log_path.open("x", encoding="utf-8", newline="\n") as log:
