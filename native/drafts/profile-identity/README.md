@@ -14,6 +14,7 @@ headers. No active Chromium source, browser core or GN configuration changed.
 | Fixture definitions | `privacy_key_derivation_unittest.cc`, `privacy_key_service_unittest.cc`, `privacy_context_unittest.cc` | `profile-identity-fixtures-syntax-001-037-v1/proof.json` |
 | V3 transport | `surface_policy_producer.cc`, its fixture file and `surface_policy_preflight_unittest.cc`, with freshly generated candidate Mojo headers | `profile-identity-transport-syntax-001-038-v3/proof.json` |
 | First-evaluation fixture definitions | `document_loader_test.cc`, `worker_thread_test.cc`, with the same v3 candidate bindings | `profile-identity-handoff-syntax-001-038-v1/proof.json` |
+| Chrome launch integration | `profile_impl.cc`, `off_the_record_profile_impl.cc`, using candidate context APIs | `profile-identity-launch-syntax-001-038-v1/proof.json` |
 
 This does **not** execute cryptography, service/context/transport fixtures,
 generated serialization implementations, first-script delivery or browser
@@ -27,6 +28,9 @@ The handoff check parses real test target files, including the six new identity
 cases, without suppressing compiler diagnostics or reusing old PCH state.
 It does not launch a renderer/worker, evaluate JavaScript, or prove that trusted
 mode/seed delivery happens before the first script. Those remain runtime gates.
+The launch check likewise parses the regular and off-the-record profile paths;
+it does not prove startup, persisted mode, incognito isolation or flag rejection
+in an actual browser process.
 
 This candidate adds an explicit browser-owned profile-identity derivation API
 alongside the existing partitioned privacy API. It does not replace that API,
