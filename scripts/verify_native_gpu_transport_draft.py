@@ -101,7 +101,8 @@ if module.main(['--output-dir', str(owned)]) != 0:
     return len(generated)
 
 
-def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dict:
+def verify(workspace: Path, report: Path, *, check_codegen: bool = False, check_cpp: bool = False) -> dict:
+    check_codegen = check_codegen or check_cpp
     source = workspace / "chromium/src"
     if source != source.resolve() or not source.is_dir():
         raise ValueError("A canonical Chromium checkout is required")
@@ -143,6 +144,12 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
     previous_ids = command_ids((source / ids_path).read_text(encoding="utf-8-sig"))
     formatter_hash = digest(formatter) if check_codegen else None
     generated_count = None
+    cpp_proof = None
+    cpp_log = Path(str(report) + ".cpp.log")
+    if check_cpp and (cpp_log.exists() or cpp_log.is_symlink()):
+        raise ValueError("Refusing to overwrite C++ verification evidence")
+    if check_cpp:
+        inputs["scripts/verify_native_gpu_cpp.py"] = digest(ROOT / "scripts/verify_native_gpu_cpp.py")
     with tempfile.TemporaryDirectory(prefix="glint-gpu-transport-replay-", dir=report.parent) as owned:
         overlay = Path(owned) / "chromium/src"
         overlay.mkdir(parents=True)
@@ -167,6 +174,9 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
             raise ValueError("GPU command ABI changed outside the appended private command")
         if check_codegen:
             generated_count = verify_codegen(overlay, formatter, env)
+        if check_cpp:
+            from scripts.verify_native_gpu_cpp import verify_cpp
+            cpp_proof = verify_cpp(source, overlay, cpp_log, env)
         composed = {name: digest(overlay / name) for name in paths}
     if before != {name: digest(source / name) for name in paths}:
         raise ValueError("Active Chromium inputs changed during candidate replay")
@@ -178,6 +188,7 @@ def verify(workspace: Path, report: Path, *, check_codegen: bool = False) -> dic
               "active_source_unchanged": True, "legacy_command_ids_preserved": len(previous_ids),
               "new_command_id": 580, "inputs": inputs, "composed_source": composed,
               "generated_headers_checked": generated_count, "formatter_sha256": formatter_hash,
+              "cpp_syntax": cpp_proof,
               "registered_patches": registered}
     report.write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result
@@ -189,8 +200,10 @@ def main() -> int:
     parser.add_argument("--report", required=True, type=Path)
     parser.add_argument("--check-codegen", action="store_true",
                         help="Regenerate GPU source in the isolated copy; no native compilation")
+    parser.add_argument("--check-cpp", action="store_true",
+                        help="Also type-check six C++ units with actual target flags; no linking or runtime")
     args = parser.parse_args()
-    result = verify(args.workspace, args.report, check_codegen=args.check_codegen)
+    result = verify(args.workspace, args.report, check_codegen=args.check_codegen, check_cpp=args.check_cpp)
     print(json.dumps({key: result[key] for key in (
         "passed", "compiled", "privacy_admitted", "legacy_command_ids_preserved")}))
     return 0

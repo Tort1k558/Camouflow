@@ -46,6 +46,26 @@ reviewed validating-enabled configuration is required to run those tests.
 Do not claim their execution from the default build or change the active GN
 configuration while it compiles.
 
+### Repeatable public C++ check
+
+The public gate passed all six units against 001–037:
+`gpu-transport-public-cpp-001-037-v2.json` on D.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_gpu_transport_draft.py `
+  --workspace D:\CamouFlowNative `
+  --report D:\CamouFlowNative\gpu-transport-cpp-new.json --check-cpp
+```
+
+`--check-cpp` also requires isolated GPU code generation to agree with the
+candidate, then type-checks all six translation units sequentially using their
+actual generated target flags. It rejects absent target sources and unresolved
+Ninja substitutions. Old precompiled headers are not reused; crash diagnostics
+are redirected to owned scratch space. The private `.cpp.log` is retained.
+Compiler/target hashes and unchanged active browser/GN checks enter the report.
+The report retains `compiled: false` and `privacy_admitted: false`: this is not
+optimized object generation, linking, fixture execution or browser admission.
+
 Apply after the two candidates in `../next-readback/`, in order:
 
 1. `webgl_halo_readback_candidate.patch`

@@ -851,6 +851,44 @@ def test_future_gpu_fixture_counts_and_formats_match_native_types():
         assert not re.search(r"\w+->internal_format, GL_\w+\);", text)
 
 
+def gpu_syntax_target():
+    return ("defines = -DFIXTURE\ninclude_dirs = -I../..\n"
+            "cflags = /WX /FIbuild/precompile.h -fcrash-diagnostics-dir=../clang-crashreports\n"
+            "cflags_cc = /Fpold.pch /Yubuild/precompile.h /std$:c++23preview\n"
+            "build obj/unit.obj: cxx ../../gpu/command_buffer/service/fixture.cc | phony\n")
+
+
+def gpu_syntax_rule():
+    return "rule cxx\n  command = clang-cl.exe /showIncludes:user -imsvcSDK ${defines} ${include_dirs}\n"
+
+
+def test_gpu_cpp_syntax_retains_diagnostics_but_not_old_pch():
+    from scripts.verify_native_gpu_cpp import syntax_flags
+
+    flags = syntax_flags(gpu_syntax_target(), gpu_syntax_rule(), "gpu/command_buffer/service/fixture.cc")
+    assert "/WX" in flags and "/FIbuild/precompile.h" in flags
+    assert "/std:c++23preview" in flags and "-imsvcSDK" in flags
+    assert "/Fp" not in flags and "/Yu" not in flags
+    assert "clang-crashreports" not in flags
+
+
+@pytest.mark.parametrize("mutation", ["missing-source", "missing-flags", "unresolved", "missing-rule"])
+def test_gpu_cpp_syntax_rejects_unverified_generated_targets(mutation):
+    from scripts.verify_native_gpu_cpp import syntax_flags
+
+    ninja, rule = gpu_syntax_target(), gpu_syntax_rule()
+    if mutation == "missing-source":
+        ninja = ninja.replace("fixture.cc", "foreign.cc")
+    elif mutation == "missing-flags":
+        ninja = ninja.replace("defines =", "foreign =")
+    elif mutation == "unresolved":
+        ninja = ninja.replace("/WX", "${unreviewed}")
+    else:
+        rule = rule.replace("rule cxx", "rule cc")
+    with pytest.raises(ValueError):
+        syntax_flags(ninja, rule, "gpu/command_buffer/service/fixture.cc")
+
+
 def test_future_clipped_publication_checks_expected_explicitly():
     from scripts.verify_native_halo_draft import CLIPPED_PATCH, DRAFTS
 
