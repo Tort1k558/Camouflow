@@ -76,6 +76,23 @@ def test_owned_replay_disables_machine_specific_crlf_conversion():
     assert text.index(configure) < text.index(apply)
 
 
+@pytest.mark.parametrize("followups", [(), batch.FOLLOWUPS[:1], batch.FOLLOWUPS])
+def test_registered_replay_preserves_reviewed_successor_order(followups):
+    names = (*batch.PROMOTED, *followups)
+    assert batch.registered_replay_chain([{"name": name} for name in reversed(names)]) == names
+
+
+@pytest.mark.parametrize("names", [batch.PROMOTED[:2], batch.FOLLOWUPS,
+                                   (*batch.PROMOTED, "0037-unreviewed.patch")])
+def test_registered_replay_rejects_incomplete_or_unreviewed_chains(names):
+    with pytest.raises(ValueError):
+        batch.registered_replay_chain([{"name": name} for name in names])
+
+
+def test_unpromoted_baseline_has_no_registered_reversal():
+    assert batch.registered_replay_chain([{"name": "0030-native-document-commit-prototype.patch"}]) == ()
+
+
 def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():
     text = (DRAFTS / "gpu/webgl_default_readback_candidate.patch").read_text(encoding="utf-8-sig")
     assert "+BASE_FEATURE(kGlintWebGLReadbackCandidate, base::FEATURE_DISABLED_BY_DEFAULT);" in text

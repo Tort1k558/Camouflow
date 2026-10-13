@@ -99,12 +99,14 @@ objects, active browser binaries and GN settings remained unchanged.
 `privacy_admitted` remains **false**. Failed v1/v2 probe logs are retained;
 they were toolchain/archive-linking failures, not passing runtime evidence.
 
-The integration patch includes the updated fixtures. A fresh full next-batch
-replay against registered 001-036 did **not** complete: its historical promoted
-batch reversal fails at `document_loader.cc` in patch 0032. This failure occurs
-before the Audio patch is applied; the old replay receipt is not proof of the
-updated composition. The replay tool needs alignment with the newer registered
-source chain before this batch can be promoted.
+The integration patch includes the updated fixtures. The initial full replay
+against registered 001-036 failed because the historical reversal omitted
+follow-ups 0035/0036. The corrected verifier reverses the complete reviewed
+chain, proves an exact registered-source round trip, applies current candidates
+and reapplies those follow-ups. Unknown successors are rejected.
+`audio-scalar-quality-public-replay-v2.json` passed across **125 paths**, with
+canonical candidate equality and unchanged active source/browser/GN guards.
+This proves source composition only, not integrated compilation or runtime.
 
 ## Prepared numerical runtime gate
 

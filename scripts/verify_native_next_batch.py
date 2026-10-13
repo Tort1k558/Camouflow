@@ -16,6 +16,23 @@ from scripts.verify_native_document_drafts import digest, patch_paths
 from scripts.verify_native_runtime import measure_runtime_core
 
 DRAFTS = ROOT / "native/drafts"
+PROMOTED = ("0031-native-worker-surface-policy.patch", "0032-native-document-surface-policy.patch",
+            "0033-native-surface-readback.patch", "0034-native-gpu-metadata-minimization.patch")
+FOLLOWUPS = ("0035-native-initial-origin-calculation.patch", "0036-native-worker-complete-surface-type.patch")
+
+
+def registered_replay_chain(registered: list[dict]) -> tuple[str, ...]:
+    names = {item["name"] for item in registered}
+    if names.intersection(PROMOTED) and not set(PROMOTED).issubset(names):
+        raise ValueError("Surface batch registration is incomplete")
+    successors = {name for name in names if name[:4].isdigit() and int(name[:4]) > 34}
+    if successors - set(FOLLOWUPS):
+        raise ValueError("Registered successor requires reviewed next-batch replay support")
+    if successors and not set(PROMOTED).issubset(names):
+        raise ValueError("Surface follow-up requires the complete promoted batch")
+    return (*PROMOTED, *(name for name in FOLLOWUPS if name in names)) if set(PROMOTED).issubset(names) else ()
+
+
 PATCHES = ("gpu/gpu_metadata_minimization.patch", "audio/audio_helpers_integration.patch",
            "policy/surface_policy_helpers_integration.patch", "policy/surface_policy_wire_schema.patch",
            "policy/surface_worker_endpoint.patch", "policy/surface_worker_bootstrap.patch",
@@ -161,6 +178,7 @@ def verify(workspace: Path, report: Path) -> dict:
     if revision != build.LOCK["chromium_revision"]:
         raise ValueError("Chromium revision differs from the pinned build lock")
     registered = build.source_patches(source, env) + build.v8_source_patches(source, env)
+    replay_chain = registered_replay_chain(registered)
     inputs = {name: digest(DRAFTS / name) for name in (*PATCHES, *CANONICAL)}
     if any(value is None for value in inputs.values()):
         raise ValueError("A required public candidate file is missing")
@@ -168,6 +186,9 @@ def verify(workspace: Path, report: Path) -> dict:
                                 for name in PATCHES)))
     if set(paths) != EXISTING_PATHS | set(CANONICAL.values()):
         raise ValueError("Next-batch candidate source coverage is incomplete")
+    registered_inputs = {name: digest(ROOT / "native/patches" / name) for name in replay_chain}
+    paths = sorted(set(paths).union(*(patch_paths((ROOT / "native/patches" / name).read_text(encoding="utf-8-sig"))
+                                     for name in replay_chain)))
     for relative in paths:
         if (source / relative).resolve() != source / relative:
             raise ValueError("Candidate inputs must not follow source symlinks")
@@ -190,29 +211,34 @@ def verify(workspace: Path, report: Path) -> dict:
                 destination.write_text(original.read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
         build.run(["git", "init", "-q"], overlay, env)
         build.run(["git", "config", "core.autocrlf", "false"], overlay, env)
-        promoted = ("0031-native-worker-surface-policy.patch", "0032-native-document-surface-policy.patch",
-                    "0033-native-surface-readback.patch", "0034-native-gpu-metadata-minimization.patch")
-        names = {item["name"] for item in registered}
-        if names.intersection(promoted) and not set(promoted).issubset(names):
-            raise ValueError("Surface batch registration is incomplete")
-        if set(promoted).issubset(names):
-            for name in reversed(promoted):
+        if replay_chain:
+            for name in reversed(replay_chain):
                 patch = ROOT / "native/patches" / name
                 build.run(["git", "apply", "--reverse", "--check", str(patch)], overlay, env)
                 build.run(["git", "apply", "--reverse", str(patch)], overlay, env)
+            for name in replay_chain:
+                build.run(["git", "apply", str(ROOT / "native/patches" / name)], overlay, env)
+            if {relative: digest(overlay / relative) for relative in paths} != before:
+                raise ValueError("Registered chain does not round-trip to the active source")
+            for name in reversed(replay_chain):
+                build.run(["git", "apply", "--reverse", str(ROOT / "native/patches" / name)], overlay, env)
         for name in PATCHES:
             build.run(["git", "apply", "--check", str(DRAFTS / name)], overlay, env)
             build.run(["git", "apply", str(DRAFTS / name)], overlay, env)
         for name, relative in CANONICAL.items():
             if (overlay / relative).read_text(encoding="utf-8-sig") != (DRAFTS / name).read_text(encoding="utf-8-sig"):
                 raise ValueError(f"Composed source differs from canonical candidate: {name}")
+        for name in replay_chain[len(PROMOTED):]:
+            patch = ROOT / "native/patches" / name
+            build.run(["git", "apply", "--check", str(patch)], overlay, env)
+            build.run(["git", "apply", str(patch)], overlay, env)
         composed = {relative: digest(overlay / relative) for relative in paths}
-        if set(promoted).issubset(names) and composed != before:
-            raise ValueError("Promoted batch differs from the ordered canonical candidates")
     if before != {relative: digest(source / relative) for relative in paths}:
         raise ValueError("Active Chromium inputs changed during verification")
     if inputs != {name: digest(DRAFTS / name) for name in inputs} or digest(Path(__file__)) != verifier_hash:
         raise ValueError("Public verification inputs changed during replay")
+    if registered_inputs != {name: digest(ROOT / "native/patches" / name) for name in replay_chain}:
+        raise ValueError("Registered replay patches changed during verification")
     if build_inputs != {name: digest(output / name) for name in build_inputs}:
         raise ValueError("GN arguments or build receipt changed during replay")
     if measure_runtime_core(output / "chrome.exe") != core:
@@ -220,6 +246,7 @@ def verify(workspace: Path, report: Path) -> dict:
     result = {"passed": True, "privacy_admitted": False,
               "scope": "Ordered public next-batch source replay only; no compilation/link/runtime admission",
               "chromium_revision": revision, "registered_patches": registered,
+              "registered_replay_chain": replay_chain, "registered_replay_inputs": registered_inputs,
               "candidate_sha256": inputs, "patch_order": list(PATCHES),
               "verifier_sha256": verifier_hash, "active_source_sha256": before,
               "composed_sha256": composed, "baseline_runtime_core_sha256": core,
