@@ -48,6 +48,10 @@ diagnostic inputs. This is evidence for observation, not for a protected GPU.
 Profile health checks use a separate owned loopback page with page-scoped routing
 and guaranteed close. The original profile page and its network requests remain
 untouched; this was verified on the same old runtime in both locales.
+The owned page enables its own CDP Network session and bypasses service workers
+before navigation. A real registered-worker control on 001-027 intercepted normal
+page routing but not the diagnostic page; the original page remained controlled
+by that worker afterwards. No profile-wide service-worker setting is changed.
 Screen diagnostics observe available dimensions, pixel depth and orientation,
 and check configured screen geometry and available-area bounds. The same old
 runtime passed two desktop locales and a 390x844/DPR3 Mobile Web case with

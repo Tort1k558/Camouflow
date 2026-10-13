@@ -7,9 +7,11 @@ from .configuration import NativeConfiguration
 from .diagnostics import inspect_native_profile
 from .runtime import NativeRuntime
 
+DIAGNOSTIC_URL = "http://127.0.0.1/glint-native-health"
+
 
 async def _prepare_diagnostic_page(context, *, page=None):
-    url = "http://127.0.0.1/glint-native-health"
+    url = DIAGNOSTIC_URL
 
     async def respond(route):
         if route.request.url != url:
@@ -34,6 +36,9 @@ async def _prepare_diagnostic_page(context, *, page=None):
 async def inspect_native_context(context, configuration: NativeConfiguration, browser_version: str) -> dict:
     page = await context.new_page()
     try:
+        session = await context.new_cdp_session(page)
+        await session.send("Network.enable", {})
+        await session.send("Network.setBypassServiceWorker", {"bypass": True})
         await _prepare_diagnostic_page(context, page=page)
         return await inspect_native_profile(page, configuration, browser_version)
     finally:

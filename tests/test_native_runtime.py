@@ -1107,18 +1107,25 @@ def test_native_profile_probe_observes_owned_page_and_always_verifies_teardown(t
     assert not list((tmp_path / "health").iterdir())
 
 
-@pytest.mark.parametrize("failure", ["", "navigate", "inspect"])
+@pytest.mark.parametrize("failure", ["", "bypass", "navigate", "inspect"])
 def test_native_context_health_owns_only_diagnostic_page_and_closes_on_failure(monkeypatch, failure):
     from types import SimpleNamespace
-    from unittest.mock import AsyncMock
+    from unittest.mock import AsyncMock, call
 
     from app.core.native import health
 
     page = SimpleNamespace(route=AsyncMock(), goto=AsyncMock(), close=AsyncMock())
-    context = SimpleNamespace(new_page=AsyncMock(return_value=page), route=AsyncMock())
+    session = SimpleNamespace(send=AsyncMock())
+    context = SimpleNamespace(new_page=AsyncMock(return_value=page), route=AsyncMock(),
+                              new_cdp_session=AsyncMock(return_value=session))
     expected = {"mismatches": [], "native_patch_capabilities": []}
     inspect = AsyncMock(return_value=expected)
-    if failure == "navigate":
+    if failure == "bypass":
+        async def fail_bypass(method, parameters):
+            if method == "Network.setBypassServiceWorker":
+                raise RuntimeError("Owned service worker bypass failed")
+        session.send.side_effect = fail_bypass
+    elif failure == "navigate":
         page.goto.side_effect = RuntimeError("Owned navigation failed")
     elif failure == "inspect":
         inspect.side_effect = RuntimeError("Owned inspection failed")
@@ -1130,9 +1137,17 @@ def test_native_context_health_owns_only_diagnostic_page_and_closes_on_failure(m
     else:
         assert asyncio.run(health.inspect_native_context(context, configuration, "148.0.7778.96")) is expected
     context.route.assert_not_awaited()
-    page.route.assert_awaited_once()
+    context.new_cdp_session.assert_awaited_once_with(page)
+    assert session.send.await_args_list == [
+        call("Network.enable", {}), call("Network.setBypassServiceWorker", {"bypass": True})]
+    if failure == "bypass":
+        page.route.assert_not_awaited()
+        page.goto.assert_not_awaited()
+        inspect.assert_not_awaited()
+    else:
+        page.route.assert_awaited_once()
     page.close.assert_awaited_once()
-    if failure != "navigate":
+    if failure not in {"navigate", "bypass"}:
         inspect.assert_awaited_once_with(page, configuration, "148.0.7778.96")
 
 
