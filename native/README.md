@@ -34,6 +34,11 @@ with unchanged core hashes. Worker requests retain their separate baseline
 contract: their missing Client Hints must not be fabricated to match documents.
 This is not TLS proof, full Client Hints parsing or verification of 001-035.
 
+Manager diagnostics also observe WebGPU adapter information, sorted features
+and six native limits in the document and dedicated worker. Adapter requests
+are bounded; unavailable adapters remain explicitly unavailable. This creates
+no GPU device and does not spoof adapter data or provide WebGPU readback protection.
+
 Prepared native gates additionally require 26 BrowserContext cases, 34 surface
 navigation/readiness cases, 13 window/child cases and 14 RGBA8 pack-copy cases.
 These new native case sets have not run yet.

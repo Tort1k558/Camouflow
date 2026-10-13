@@ -103,6 +103,31 @@ OBSERVE = """async () => {
         }
         return result;
     };
+    const webGPUValues = async () => {
+        let timer;
+        try {
+            if (!navigator.gpu) throw new Error('WebGPU unavailable');
+            const adapter = await Promise.race([
+                navigator.gpu.requestAdapter(),
+                new Promise((resolve, reject) => {
+                    timer = setTimeout(() => reject(new Error('WebGPU adapter request timed out')), 3000);
+                })
+            ]);
+            if (!adapter) throw new Error('Native WebGPU adapter unavailable');
+            const info = adapter.info;
+            const limits = {};
+            for (const name of ['maxTextureDimension2D', 'maxBindGroups', 'maxBufferSize',
+                                'maxStorageBufferBindingSize', 'maxComputeWorkgroupSizeX',
+                                'maxComputeInvocationsPerWorkgroup']) {
+                limits[name] = adapter.limits[name];
+            }
+            return {available: true, features: Array.from(adapter.features).sort(), limits,
+                info: {vendor: info.vendor, architecture: info.architecture, device: info.device,
+                    description: info.description, isFallbackAdapter: info.isFallbackAdapter,
+                    subgroupMinSize: info.subgroupMinSize, subgroupMaxSize: info.subgroupMaxSize}};
+        } catch (error) { return {available: false, error: String(error.message)}; }
+        finally { clearTimeout(timer); }
+    };
     const navigatorValues = async () => {
         let userAgentHighEntropy = null;
         let userAgentDataError = '';
@@ -130,10 +155,10 @@ OBSERVE = """async () => {
         touch: navigator.maxTouchPoints, webdriver: navigator.webdriver,
         secureContext: isSecureContext,
         screen: {width: screen.width, height: screen.height, colorDepth: screen.colorDepth},
-        graphics: graphicsValues(), canvas: await canvasValues(),
+        graphics: graphicsValues(), webgpu: await webGPUValues(), canvas: await canvasValues(),
         audio: await audioValues(), media: await mediaValues()
     };
-    const source = '(async () => postMessage({...await (' + navigatorValues.toString() + ')(),graphics:(' + graphicsValues.toString() + ')(),canvas:await (' + canvasValues.toString() + ')()}))()';
+    const source = '(async () => postMessage({...await (' + navigatorValues.toString() + ')(),graphics:(' + graphicsValues.toString() + ')(),webgpu:await (' + webGPUValues.toString() + ')(),canvas:await (' + canvasValues.toString() + ')()}))()';
     const url = URL.createObjectURL(new Blob([source], {type: 'text/javascript'}));
     let worker;
     try {
@@ -179,6 +204,17 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
                 for key in ("font", "textWidth", "pixelSha256"):
                     if first.get(key) != second.get(key):
                         mismatches.append(f"Document and dedicated worker disagree on canvas {key}")
+        if "webgpu" in document or "webgpu" in worker:
+            first, second = document.get("webgpu"), worker.get("webgpu")
+            if (not isinstance(first, dict) or not isinstance(second, dict)
+                    or type(first.get("available")) is not bool or type(second.get("available")) is not bool):
+                mismatches.append("WebGPU observations could not be compared")
+            elif first.get("available") != second.get("available"):
+                mismatches.append("Document and dedicated worker disagree on webgpu availability")
+            elif first.get("available"):
+                for key in ("info", "features", "limits"):
+                    if first.get(key) != second.get(key):
+                        mismatches.append(f"Document and dedicated worker disagree on webgpu {key}")
         document_graphics, worker_graphics = document.get("graphics", {}), worker.get("graphics", {})
         for kind in ("webgl", "webgl2"):
             if kind in document_graphics and kind in worker_graphics:

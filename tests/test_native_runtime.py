@@ -586,6 +586,35 @@ def test_native_canvas_diagnostics_detects_document_worker_disagreement(key):
         f"Document and dedicated worker disagree on canvas {key}"]
 
 
+@pytest.mark.parametrize("key", ["info", "features", "limits"])
+def test_native_webgpu_diagnostics_reports_document_worker_disagreement(key):
+    from app.core.native.diagnostics import compare_observed
+
+    document = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC",
+                "webgpu": {"available": True, key: "document"}}
+    worker = {**document, "webgpu": {"available": True, key: "worker"}}
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == [
+        f"Document and dedicated worker disagree on webgpu {key}"]
+
+
+def test_native_webgpu_diagnostics_preserves_unavailable_adapters_without_fake_values():
+    from app.core.native.diagnostics import compare_observed
+
+    document = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC",
+                "webgpu": {"available": False, "error": "Native adapter unavailable"}}
+    worker = {**document, "webgpu": {"available": False, "error": "WebGPU unavailable"}}
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == []
+    worker["webgpu"]["available"] = True
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == [
+        "Document and dedicated worker disagree on webgpu availability"]
+    worker["webgpu"] = None
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == [
+        "WebGPU observations could not be compared"]
+    del worker["webgpu"]
+    assert compare_observed(NativeConfiguration(), {"document": document, "worker": worker}) == [
+        "WebGPU observations could not be compared"]
+
+
 def test_native_canvas_diagnostics_does_not_invent_pixels_for_unavailable_contexts():
     from app.core.native.diagnostics import compare_observed
 
