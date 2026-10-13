@@ -115,20 +115,66 @@ def test_combined_baseline_protected_restart_and_isolation():
     surfaces.validate_isolation(baseline, first, second)
 
 
+@pytest.mark.parametrize("mutation", [None, "missing-context", "missing-gpu", "extra-field"])
+def test_composite_surface_reader_requires_every_gpu_context(mutation):
+    original = observation("b", "c")
+    raw = {name: {**row, "gpu": {"owned": name}} for name, row in original.items()}
+    if mutation == "missing-context":
+        raw.pop("document")
+    elif mutation == "missing-gpu":
+        raw["document"].pop("gpu")
+    elif mutation == "extra-field":
+        raw["document"]["unexpected"] = True
+    if mutation is None:
+        observed, gpu = surfaces.split_combined_observation(raw, include_gpu_readback=True)
+        assert observed == original
+        assert gpu == {name: {"owned": name} for name in surfaces.CONTEXTS}
+        assert surfaces.split_combined_observation(original, include_gpu_readback=False) == (original, None)
+    else:
+        with pytest.raises(ValueError, match="context coverage"):
+            surfaces.split_combined_observation(raw, include_gpu_readback=True)
+
+
+def test_composite_gpu_reader_is_valid_javascript_and_worker_fixture_uses_it():
+    import subprocess
+    import playwright
+
+    node = Path(playwright.__file__).parent / "driver" / ("node.exe" if sys.platform == "win32" else "node")
+    read = surfaces.combined_read(True)
+    subprocess.run([str(node), "--check"], input="(" + read + ");", text=True,
+                   capture_output=True, check=True, timeout=15)
+    assert surfaces.combined_read() == surfaces.COMBINED_READ
+    server = surfaces.SurfaceFixtureServer(("127.0.0.1", 0), include_gpu_readback=True)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with urlopen(f"http://127.0.0.1:{server.server_port}/hardware-dedicated.js", timeout=5) as response:
+            assert response.headers["Content-Type"] == "application/javascript"
+            body = response.read().decode("utf-8")
+        assert read in body
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 @pytest.mark.parametrize("mode", surfaces.DERIVATION_MODES)
 @pytest.mark.parametrize("failure", [None, "start-a", "start-b", "survivor-changed", "restart-changed", "cleanup",
                                     "missing-argument", "duplicate-mode"])
-def test_concurrent_profile_probe_requires_stability_and_closes_both_owners(monkeypatch, mode, failure):
+@pytest.mark.parametrize("include_gpu", [False, True])
+def test_concurrent_profile_probe_requires_stability_and_closes_both_owners(monkeypatch, mode, failure, include_gpu):
     import asyncio
     from types import SimpleNamespace
+    from scripts import verify_native_gpu_readback as gpu
 
     events = []
+    configuration_type = gpu.ReadbackConfiguration if include_gpu else surfaces.SurfaceConfiguration
     class Runtime:
         def __init__(self, name):
             self.name = name
             self.context = None
             self.starts = self.closes = 0
-            self.configuration = surfaces.SurfaceConfiguration(probe_mode="ready", derivation_mode=mode,
+            self.configuration = configuration_type(probe_mode="ready", derivation_mode=mode,
                 disabled_features_argument="--disable-features=Example",
                 ignored_driver_argument="--disable-features=Example,ThirdPartyStoragePartitioning")
 
@@ -153,8 +199,12 @@ def test_concurrent_profile_probe_requires_stability_and_closes_both_owners(monk
     async def observe(context, *args, **kwargs):
         if ((failure == "survivor-changed" and profiles["profile-a"].context is None)
                 or (failure == "restart-changed" and profiles[context.name].starts > 1)):
-            return observation("f", "a" if mode == "partitioned-privacy" else "f")
-        return copy.deepcopy(results[context.name])
+            rows = observation("f", "a" if mode == "partitioned-privacy" else "f")
+        else:
+            rows = copy.deepcopy(results[context.name])
+        if include_gpu:
+            rows = {name: {**row, "gpu": {"profile": context.name}} for name, row in rows.items()}
+        return rows
     monkeypatch.setattr(surfaces, "observe", observe)
     async def arguments(context):
         values = profiles[context.name].configuration.launch_arguments()
@@ -164,8 +214,24 @@ def test_concurrent_profile_probe_requires_stability_and_closes_both_owners(monk
             values.append(surfaces.IDENTITY_ARGUMENT)
         return values
     monkeypatch.setattr(surfaces, "browser_arguments", arguments)
+    gpu_results = {name: {context: {"profile": name} for context in surfaces.CONTEXTS} for name in results}
+    gpu_checks = []
+    def validate_gpu(observed, *, protected, baseline=None, previous=None, derivation_mode):
+        gpu_checks.append((protected, derivation_mode))
+        if previous is not None and observed != previous:
+            raise ValueError("GPU survivor changed")
+        if baseline is not None:
+            assert baseline == gpu_results["baseline"]
+        return observed
+    def validate_gpu_isolation(baseline, first, second, *, derivation_mode):
+        assert baseline == gpu_results["baseline"]
+        assert first == gpu_results["profile-a"] and second == gpu_results["profile-b"]
+        assert derivation_mode == mode
+    monkeypatch.setattr(gpu, "validate_readback", validate_gpu)
+    monkeypatch.setattr(gpu, "validate_profile_isolation", validate_gpu_isolation)
     report = {"checks": []}
-    operation = surfaces.verify_concurrent_profiles(profiles, "http://owned", results, report, derivation_mode=mode)
+    operation = surfaces.verify_concurrent_profiles(profiles, "http://owned", results, report, derivation_mode=mode,
+                                                  gpu_results=gpu_results if include_gpu else None)
     if failure is None:
         asyncio.run(operation)
         assert [check["name"] for check in report["checks"]] == list(surfaces.CONCURRENT_PHASES)
@@ -173,6 +239,9 @@ def test_concurrent_profile_probe_requires_stability_and_closes_both_owners(monk
         assert [check["active_profiles"] for check in report["checks"]] == [
             ["profile-a", "profile-b"], ["profile-b"], ["profile-a", "profile-b"],
             ["profile-a"], ["profile-a", "profile-b"]]
+        if include_gpu:
+            assert gpu_checks == [(False, mode)] + [(True, mode)] * 8
+            assert all(set(check["gpu"]) == set(check["active_profiles"]) for check in report["checks"])
     else:
         with pytest.raises((ValueError, RuntimeError)):
             asyncio.run(operation)

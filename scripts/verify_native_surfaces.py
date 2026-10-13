@@ -207,8 +207,8 @@ async def verify_document_denial(executable: Path, owned: Path, server: SurfaceF
 
 
 class SurfaceFixtureServer(FixtureServer):
-    def __init__(self, address):
-        super().__init__(address, SurfaceFixtureHandler)
+    def __init__(self, address, *, include_gpu_readback: bool = False):
+        super().__init__(address, GpuSurfaceFixtureHandler if include_gpu_readback else SurfaceFixtureHandler)
         self._lock = threading.Lock()
         self._counts: dict[str, dict[str, int]] = {}
 
@@ -287,6 +287,29 @@ class SurfaceConfiguration(StartupConfiguration):
         if self.probe_mode == "ready" and self.derivation_mode == "profile-identity":
             arguments.append(IDENTITY_ARGUMENT)
         return arguments
+
+
+def combined_read(include_gpu_readback: bool = False) -> str:
+    if not include_gpu_readback:
+        return COMBINED_READ
+    from scripts.verify_native_gpu_readback import READBACK_READ
+    return f"async () => ({{...await ({COMBINED_READ})(), gpu: await ({READBACK_READ})()}})"
+
+
+class GpuSurfaceFixtureHandler(SurfaceFixtureHandler):
+    @property
+    def worker_read(self) -> str:
+        return combined_read(True)
+
+
+def split_combined_observation(observed: dict, *, include_gpu_readback: bool) -> tuple[dict, dict | None]:
+    if not include_gpu_readback:
+        return observed, None
+    if (not isinstance(observed, dict) or set(observed) != CONTEXTS
+            or any(not isinstance(row, dict) or set(row) != {"canvas", "audio", "gpu"} for row in observed.values())):
+        raise ValueError("Combined GPU surface context coverage is incomplete")
+    return ({name: {"canvas": row["canvas"], "audio": row["audio"]} for name, row in observed.items()},
+            {name: row["gpu"] for name, row in observed.items()})
 
 
 def validate_receipt(executable: Path, core: dict, *, derivation_mode: str = "partitioned-privacy") -> bytes:
@@ -379,13 +402,15 @@ def validate_first_script(result: dict, document: dict, counts: dict) -> None:
             raise ValueError("Audio policy changed between the first script and settled document: " + context)
 
 
-def probe_inputs() -> dict[str, str]:
+def probe_inputs(*, include_gpu_readback: bool = False) -> dict[str, str]:
     names = ("scripts/verify_native_surfaces.py", "scripts/verify_native_canvas.py",
              "scripts/verify_native_audio.py", "scripts/verify_native_worker_startup.py",
              "scripts/verify_native_audio_quality.py",
              "scripts/verify_native_nested_canvas.py",
              "scripts/verify_native_runtime.py", "app/core/native/runtime.py",
              "app/core/native/configuration.py", "app/core/native/identity.py")
+    if include_gpu_readback:
+        names += ("scripts/verify_native_gpu_readback.py", "scripts/verify_native_gpu.py", "scripts/verify_native_hardware.py")
     return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in names}
 
 
@@ -396,7 +421,12 @@ CONCURRENT_PHASES = (
 
 
 async def verify_concurrent_profiles(profiles: dict[str, NativeRuntime], origin: str, results: dict,
-                                     report: dict, *, derivation_mode: str) -> None:
+                                     report: dict, *, derivation_mode: str, gpu_results: dict | None = None) -> None:
+    gpu = None
+    gpu_baseline = None
+    if gpu_results is not None:
+        from scripts import verify_native_gpu_readback as gpu
+        gpu_baseline = gpu.validate_readback(gpu_results["baseline"], protected=False, derivation_mode=derivation_mode)
     first, second = profiles["profile-a"], profiles["profile-b"]
     try:
         for runtime in (first, second):
@@ -426,12 +456,20 @@ async def verify_concurrent_profiles(profiles: dict[str, NativeRuntime], origin:
                         or partitioning_argument(arguments) != runtime.configuration.disabled_features_argument
                         or identity_arguments != expected_identity):
                     raise ValueError("Concurrent profile launch arguments do not match the selected policy")
-                observed = await observe(runtime.context, origin, read=COMBINED_READ)
+                raw = await observe(runtime.context, origin, read=combined_read(gpu is not None))
+                observed, gpu_observed = split_combined_observation(raw, include_gpu_readback=gpu is not None)
                 check["observed"][name] = observed
                 validate_combined(observed, results[name], protected=True, derivation_mode=derivation_mode)
+                if gpu is not None:
+                    check.setdefault("gpu", {})[name] = gpu_observed
+                    gpu.validate_readback(gpu_observed, protected=True, baseline=gpu_baseline,
+                                          previous=gpu_results[name], derivation_mode=derivation_mode)
             if len(active) == 2:
                 validate_isolation(results["baseline"], check["observed"]["profile-a"],
                                    check["observed"]["profile-b"], derivation_mode=derivation_mode)
+                if gpu is not None:
+                    gpu.validate_profile_isolation(gpu_results["baseline"], check["gpu"]["profile-a"],
+                                                   check["gpu"]["profile-b"], derivation_mode=derivation_mode)
             check["passed"] = True
     finally:
         # A teardown failure must not prevent closing the other owned profile.
@@ -442,7 +480,13 @@ async def verify_concurrent_profiles(profiles: dict[str, NativeRuntime], origin:
 
 async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, report: dict,
                  runtimes: list[NativeRuntime], *, include_nested_canvas: bool = False,
-                 derivation_mode: str = "partitioned-privacy", include_concurrent_profiles: bool = False) -> None:
+                 derivation_mode: str = "partitioned-privacy", include_concurrent_profiles: bool = False,
+                 include_gpu_readback: bool = False) -> None:
+    gpu = None
+    configuration_type = SurfaceConfiguration
+    if include_gpu_readback:
+        from scripts import verify_native_gpu_readback as gpu
+        configuration_type = gpu.ReadbackConfiguration
     origin = f"http://127.0.0.1:{server.server_port}"
     discovery = NativeRuntime(owned / "driver-arguments", executable, SurfaceConfiguration())
     runtimes.append(discovery)
@@ -456,23 +500,27 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
     finally:
         await discovery.close()
     results = {}
+    gpu_results = {}
+    gpu_baseline = None
     profiles = {}
     for name in ("baseline", "profile-a", "profile-b"):
         mode = "baseline" if name == "baseline" else "ready"
-        configuration = SurfaceConfiguration(probe_mode=mode, derivation_mode=derivation_mode,
+        configuration = configuration_type(probe_mode=mode, derivation_mode=derivation_mode,
             disabled_features_argument=replacement, ignored_driver_argument=original)
         runtime = NativeRuntime(owned / name, executable, configuration)
         runtimes.append(runtime)
         if mode == "ready":
             profiles[name] = runtime
         previous = None
+        previous_gpu = None
         previous_nested = None
         for phase in ("initial", "restart"):
             try:
                 context = await runtime.start(headless=True)
                 effective = await browser_arguments(context)
                 if (partitioning_argument(effective) != replacement or replacement not in effective
-                        or FEATURE_ARGUMENT not in effective):
+                        or (FEATURE_ARGUMENT + ("," + gpu.READBACK_FEATURE if gpu is not None and mode == "ready" else "")) not in effective
+                        or any(argument not in effective for argument in configuration.launch_arguments())):
                     raise ValueError("Effective arguments disable storage partitioning")
                 if mode == "ready" and DOCUMENT_ARGUMENT not in effective:
                     raise ValueError("Document surface policy was not requested")
@@ -483,9 +531,18 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
                     raise ValueError("Effective arguments do not request the selected identity mode")
                 check = {"name": f"{name}-{phase}", "passed": False}
                 report["checks"].append(check)
-                observed = await observe(context, origin, read=COMBINED_READ)
+                raw = await observe(context, origin, read=combined_read(include_gpu_readback))
+                observed, gpu_observed = split_combined_observation(raw, include_gpu_readback=include_gpu_readback)
                 check["observed"] = observed
                 validate_combined(observed, previous, protected=mode == "ready", derivation_mode=derivation_mode)
+                if gpu is not None:
+                    check["gpu"] = gpu_observed
+                    normalized = gpu.validate_readback(gpu_observed, protected=mode == "ready", baseline=gpu_baseline,
+                                                       previous=previous_gpu, derivation_mode=derivation_mode)
+                    if gpu_baseline is None:
+                        gpu_baseline = normalized
+                    previous_gpu = gpu_observed
+                    gpu_results[name] = gpu_observed
                 security = {}
                 for frame_name, frame in (await security_frames(context.pages[0])).items():
                     security[frame_name] = await asyncio.wait_for(frame.evaluate(SECURITY_READ), timeout=20)
@@ -514,12 +571,17 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
                 await runtime.close()
     validate_isolation(results["baseline"], results["profile-a"], results["profile-b"], derivation_mode=derivation_mode)
     report["cross_profile_isolation_passed"] = True
+    if gpu is not None:
+        gpu.validate_profile_isolation(gpu_results["baseline"], gpu_results["profile-a"], gpu_results["profile-b"],
+                                       derivation_mode=derivation_mode)
+        report["gpu_cross_profile_isolation_passed"] = True
     report["audio_quality"] = {
         name: compare_quality({context: row["audio"] for context, row in results["baseline"].items()},
                               {context: row["audio"] for context, row in results[name].items()})
         for name in ("profile-a", "profile-b")}
     if include_concurrent_profiles:
-        await verify_concurrent_profiles(profiles, origin, results, report, derivation_mode=derivation_mode)
+        await verify_concurrent_profiles(profiles, origin, results, report, derivation_mode=derivation_mode,
+                                         gpu_results=gpu_results if gpu is not None else None)
     check = {"name": "missing-document-policy", "passed": False}
     check["derivation_mode"] = "partitioned-privacy"
     report["checks"].append(check)
@@ -538,6 +600,8 @@ def main() -> int:
                         help="Owned profile-identity diagnostics require exact compiled patches 0049-0054")
     parser.add_argument("--include-concurrent-profiles", action="store_true",
                         help="Also check two live profiles and symmetric close/restart isolation")
+    parser.add_argument("--include-gpu-readback", action="store_true",
+                        help="Measure actual Canvas, Audio and WebGL readback in the same contexts and profiles")
     args = parser.parse_args()
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite surface evidence")
@@ -546,6 +610,9 @@ def main() -> int:
     report["include_nested_canvas"] = args.include_nested_canvas
     report["derivation_mode"] = args.derivation_mode
     report["include_concurrent_profiles"] = args.include_concurrent_profiles
+    report["include_gpu_readback"] = args.include_gpu_readback
+    if args.include_gpu_readback:
+        report["scope"] += "; settled WebGL1/2 readback in the same profiles/contexts; no first-script or nested GPU, WebGPU protection or anti-bot admission"
     if args.include_concurrent_profiles:
         report["scope"] += "; two simultaneously live profiles with symmetric close/restart surface isolation; no resource performance admission"
     if args.derivation_mode == "profile-identity":
@@ -557,23 +624,26 @@ def main() -> int:
     try:
         executable = args.executable.resolve(strict=True)
         core = measure_runtime_core(executable)
-        receipt = validate_receipt(executable, core, derivation_mode=args.derivation_mode)
-        inputs = probe_inputs()
+        receipt_validator = validate_receipt
+        if args.include_gpu_readback:
+            from scripts.verify_native_gpu_readback import validate_receipt as receipt_validator
+        receipt = receipt_validator(executable, core, derivation_mode=args.derivation_mode)
+        inputs = probe_inputs(include_gpu_readback=args.include_gpu_readback)
         report.update(runtime_core_sha256_measured=core, probe_inputs_sha256=inputs,
                       receipt_sha256=hashlib.sha256(receipt).hexdigest(),
-                      javascript_sha256=hashlib.sha256(COMBINED_READ.encode("utf-8")).hexdigest())
+                      javascript_sha256=hashlib.sha256(combined_read(args.include_gpu_readback).encode("utf-8")).hexdigest())
         if args.work_dir.resolve().is_relative_to(ROOT):
             raise ValueError("Surface profiles must remain outside the public checkout")
         args.work_dir.mkdir(parents=True, exist_ok=True)
-        server = SurfaceFixtureServer(("127.0.0.1", 0))
+        server = SurfaceFixtureServer(("127.0.0.1", 0), include_gpu_readback=args.include_gpu_readback)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         owned = Path(tempfile.mkdtemp(prefix="glint-surfaces-", dir=args.work_dir.resolve()))
         asyncio.run(verify(executable, owned, server, report, runtimes,
                            include_nested_canvas=args.include_nested_canvas, derivation_mode=args.derivation_mode,
-                           include_concurrent_profiles=args.include_concurrent_profiles))
-        if (measure_runtime_core(executable) != core or validate_receipt(executable, core, derivation_mode=args.derivation_mode) != receipt
-                or probe_inputs() != inputs):
+                           include_concurrent_profiles=args.include_concurrent_profiles, include_gpu_readback=args.include_gpu_readback))
+        if (measure_runtime_core(executable) != core or receipt_validator(executable, core, derivation_mode=args.derivation_mode) != receipt
+                or probe_inputs(include_gpu_readback=args.include_gpu_readback) != inputs):
             raise ValueError("Surface runtime, receipt or probe code changed during verification")
         expected = {f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b")
                     for phase in ("initial", "restart")}

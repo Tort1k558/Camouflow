@@ -31,6 +31,7 @@ upstream SDK controls and old reports are not proof of a new own-engine release.
 | `scripts/verify_native_surfaces.py --include-nested-canvas` | Passed on browser 001-047: 7 existing phases and 24 parent/child Canvas cases across baseline/two profiles and restart, including first-script/repeated readback and separate fetch/body counters |
 | `scripts/verify_native_surfaces.py --derivation-mode profile-identity --include-nested-canvas` | Prepared: stable cross-origin Canvas/Audio, restart and two-profile isolation using exact compiled patches 0049-0054; existing 001-047 receipt is rejected, not treated as an identity-mode result |
 | `scripts/verify_native_surfaces.py --include-concurrent-profiles` | Prepared: five additional phases with two live profiles, symmetric close/restart, unchanged survivor surfaces and exact launch-policy checks; not yet browser-executed |
+| `scripts/verify_native_surfaces.py --include-gpu-readback` | Prepared: Canvas/Audio/WebGL measured in the same document/worker contexts and profiles; composes with restart, concurrency and nested Canvas options; not yet browser-executed |
 | `scripts/verify_native_gpu_readback.py --derivation-mode profile-identity` | Prepared: six existing phases with cross-origin WebGL1/2/renderbuffer consistency, restart and profile isolation; requires exact identity and complete GPU transport patches, not an old receipt |
 | `scripts/verify_native_identity.py --strict-client-hints` | Passed on browser 001-047: 8 strict document/frame HTTP-versus-JS comparisons, 6 worker JS-preservation checks and 4 invalid-UA rejection checks; 18 total |
 
@@ -118,6 +119,17 @@ storage-partitioning exclusions. Teardown attempts both owners even when one
 fails. The original seven-phase default and optional 24 nested Canvas cases
 remain unchanged. These are prepared lifecycle/consistency checks, not memory/
 CPU benchmarks, concurrent nested-worker coverage or passing browser evidence.
+
+`--include-gpu-readback` selects the existing native readback configuration and
+its exact receipt gate. Each settled document/frame/worker measurement includes
+Canvas, Audio and WebGL in one collector; both component validators must pass.
+GPU normalization, cross-profile isolation and restart checks are reused from
+the standalone readback gate. With concurrent profiles enabled, the same GPU
+snapshots are also checked through all five close/restart phases. Worker scripts
+use the composite collector; missing GPU contexts reject rather than skip.
+The first-parser-script and optional nested-worker extensions still cover only
+Canvas/Audio and Canvas respectively, not first-script/nested GPU protection.
+WebGPU protection, TLS and external detector acceptance are not covered.
 
 Nested worker coverage is opt-in and preserves the existing 40-case contract:
 
