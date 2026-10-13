@@ -173,10 +173,37 @@ would incorrectly apply a second, different surface seed. WebGPU integer
 buffer/compute behavior and real GPU capabilities remain independently checked.
 
 The **old, unprotected** binary passed the PNG/pack-state fixture in both
-initial/restart phases (`gpu-png-pack-state-001-027-baseline-v3.json`). The first
+initial/restart phases (`gpu-png-pack-state-001-027-baseline-v4.json`). The first
 run exposed ANGLE's shorter translated debug shader text after cache reuse;
 restart comparison now excludes only that length while separately validating
 debug-extension presence/error behavior. It still compares pixels, exports,
 state, metadata and capabilities. This is fixture evidence, **not execution
 of the new WebGL patch**. Error/context-loss, custom framebuffer and other
 formats remain separate unfinished gates.
+
+### Error and context-loss fixtures
+
+The readback gate additionally checks zero-sized reads, negative dimensions,
+short destinations, mismatched typed arrays, invalid format, incomplete
+framebuffers, preservation of a pending error during a valid read, WebGL2's
+missing pixel-pack buffer and implicit row-length/skip constraints. Empty and
+failed reads must leave sentinel destinations untouched. A deliberately lost
+context must preserve the destination and expose `CONTEXT_LOST_WEBGL` once.
+All fixtures ran successfully in both baseline/restart phases across eight
+contexts on the old unprotected binary (`gpu-png-pack-state-001-027-baseline-v4.json`).
+
+The [WebGL1 read operation contract](https://registry.khronos.org/webgl/specs/latest/1.0/#5.14.12)
+and [WebGL2 pixel-store constraints](https://registry.khronos.org/webgl/specs/latest/2.0/#PIXEL_STORE_PARAM_CONSTRAINTS)
+are compatibility requirements, not optional privacy features. Review exposed
+two source-candidate mistakes: a missing-attachment framebuffer must retain its
+upstream framebuffer error rather than receive a generic unsupported-format
+error; row-length zero still means the requested width, so positive pixel skips
+cannot create overlapping rows. The candidate now handles both before any
+destination write. These C++ changes remain uncompiled.
+
+The corrected 29-candidate stack passed source replay across 124 paths:
+`webgl-readback-public-replay-v2.json`. Earlier replay/promotion evidence predates
+this correction and must not be used as the final promotion source. The refreshed
+four-patch aggregate replay independently reproduced those 124 paths
+(`surface-promotion-v9/proof.json`); it is the current prepared source batch,
+still not registered or compiled.

@@ -81,6 +81,9 @@ def test_webgl_readback_is_disabled_by_default_and_uses_owned_surface_seed():
     assert "framebuffer || format != GL_RGBA || type != GL_UNSIGNED_BYTE" in text
     assert "kCandidateAdditionalPixelBudget" in text
     assert "total_bytes.IsValid()" in text
+    assert "ContextGL()->CheckFramebufferStatus(" in text
+    assert "SynthesizeGLError(GL_INVALID_FRAMEBUFFER_OPERATION" in text
+    assert "(pack.row_length > 0 ? pack.row_length : width)" in text
 
 
 def test_webgl_readback_keeps_intermediate_pixels_private_and_restores_pack_state():

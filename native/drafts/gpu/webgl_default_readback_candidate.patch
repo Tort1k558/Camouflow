@@ -215,7 +215,7 @@ index 18aaa25ad71c65f717ca58a936bd1c78a6a537ec..f5ef984115d33b2f4a00e6fd40d6bae4
      ScopedDrawingBufferBinder binder(GetDrawingBuffer(), framebuffer);
      if (!binder.Succeeded()) {
 diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
-index e3f40494b329dd99664439f3134d80b29e4688d7..a0425eeb7e2c46c337d189b13bc3ded3427f6964 100644
+index e3f40494b329dd99664439f3134d80b29e4688d7..d6e161ef3849c75c9c1a4d67fbe73cdad7098ed0 100644
 --- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
 +++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
 @@ -25,9 +25,19 @@
@@ -263,7 +263,7 @@ index e3f40494b329dd99664439f3134d80b29e4688d7..a0425eeb7e2c46c337d189b13bc3ded3
    {
      ScopedDrawingBufferBinder binder(GetDrawingBuffer(), framebuffer);
      if (!binder.Succeeded()) {
-@@ -5155,6 +5183,126 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+@@ -5155,6 +5183,133 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
    }
  }
  
@@ -286,13 +286,20 @@ index e3f40494b329dd99664439f3134d80b29e4688d7..a0425eeb7e2c46c337d189b13bc3ded3
 +  if (!ValidateReadBufferAndGetInfo("readPixels", framebuffer)) {
 +    return false;
 +  }
++  if (framebuffer && ContextGL()->CheckFramebufferStatus(
++                         IsWebGL2() ? GL_READ_FRAMEBUFFER : GL_FRAMEBUFFER) !=
++                         GL_FRAMEBUFFER_COMPLETE) {
++    SynthesizeGLError(GL_INVALID_FRAMEBUFFER_OPERATION, "readPixels",
++                      "framebuffer incomplete");
++    return false;
++  }
 +  const auto pack = GetPackPixelStoreParams();
 +  const auto storage = GetDrawingBuffer()->StorageFormat();
 +  if (framebuffer || format != GL_RGBA || type != GL_UNSIGNED_BYTE ||
 +      (storage != GL_RGBA8 && storage != GL_RGB8) ||
 +      GetColorSpace() != gfx::ColorSpace::CreateSRGB() ||
-+      (pack.row_length > 0 &&
-+       static_cast<int64_t>(pack.skip_pixels) + width > pack.row_length)) {
++      (static_cast<int64_t>(pack.skip_pixels) + width >
++       (pack.row_length > 0 ? pack.row_length : width))) {
 +    return reject(
 +        "Glint WebGL candidate supports nonoverlapping default RGBA8/sRGB "
 +        "readback only.");

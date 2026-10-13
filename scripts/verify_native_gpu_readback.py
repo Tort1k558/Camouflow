@@ -60,6 +60,53 @@ READBACK_READ = GPU_READ.replace(
     "      scene.initialState = beforeExport;\n"
     "    } finally {\n      if (name === 'webgl2') {")
 
+ERROR_READ = """
+      if (gl.getError() !== gl.NO_ERROR) throw new Error(name + ': pre-error-fixture failure');
+      if (name === 'webgl2') {
+        gl.pixelStorei(gl.PACK_ROW_LENGTH, 0); gl.pixelStorei(gl.PACK_SKIP_PIXELS, 0);
+        gl.pixelStorei(gl.PACK_SKIP_ROWS, 0); gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      }
+      const attempt = (width, height, destination, format = gl.RGBA) => {
+        gl.readPixels(0, 0, width, height, format, gl.UNSIGNED_BYTE, destination);
+        return {error: gl.getError(), nextError: gl.getError(), pixels: Array.from(destination)};
+      };
+      const validation = {
+        zero: attempt(0, 0, new Uint8Array(4).fill(165)),
+        negative: attempt(-1, 1, new Uint8Array(4).fill(165)),
+        short: attempt(1, 1, new Uint8Array(3).fill(165)),
+        wrongType: attempt(1, 1, new Uint16Array(2).fill(165)),
+        invalidFormat: attempt(1, 1, new Uint8Array(4).fill(165), 0)
+      };
+      const incomplete = gl.createFramebuffer();
+      if (!incomplete) throw new Error(name + ': framebuffer fixture allocation failed');
+      try {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, incomplete);
+        validation.incomplete = attempt(1, 1, new Uint8Array(4).fill(165));
+      } finally { gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(incomplete); }
+      gl.enable(0); // Deliberately leave INVALID_ENUM pending during a valid read.
+      validation.pending = attempt(1, 1, new Uint8Array(4).fill(165));
+      validation.noPackBuffer = null; validation.overlappingPack = null;
+      if (name === 'webgl2') {
+        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+        validation.noPackBuffer = {error: gl.getError(), nextError: gl.getError()};
+        gl.pixelStorei(gl.PACK_SKIP_PIXELS, 1);
+        validation.overlappingPack = attempt(1, 1, new Uint8Array(8).fill(165));
+        gl.pixelStorei(gl.PACK_SKIP_PIXELS, 0);
+      }
+      scene.validation = validation;
+"""
+READBACK_READ = READBACK_READ.replace(
+    "      scene.initialState = beforeExport;", "      scene.initialState = beforeExport;" + ERROR_READ)
+READBACK_READ = READBACK_READ.replace(
+    "    gl.getExtension('WEBGL_lose_context')?.loseContext();",
+    "    const loss = gl.getExtension('WEBGL_lose_context');\n"
+    "    if (!loss) throw new Error(name + ': context-loss fixture unavailable');\n"
+    "    loss.loseContext();\n"
+    "    const lostPixels = new Uint8Array(4).fill(165);\n"
+    "    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, lostPixels);\n"
+    "    scene.lost = {lost: gl.isContextLost(), error: gl.getError(),\n"
+    "      nextError: gl.getError(), pixels: Array.from(lostPixels)};")
+
 
 class ReadbackFixtureHandler(GpuFixtureHandler):
     worker_read = READBACK_READ
@@ -117,12 +164,13 @@ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None 
                 raise ValueError("WebGL readback coverage is unavailable: " + context + "/" + api)
             scene = gl.get("scene")
             fields = {"pixels", "repeat", "crop", "pbo", "packed", "png", "packState",
-                      "exportState", "initialState"}
+                      "exportState", "initialState", "validation", "lost"}
             if not isinstance(scene, dict) or set(scene) != fields:
                 raise ValueError("Readback/export/state observations are incomplete")
             full = scene["pixels"]
             read_scene = {key: scene[key] for key in ("pixels", "repeat", "crop", "pbo", "packed")}
             validate_shader_readback(read_scene, api, expected_pixels=full)
+            validate_errors(scene["validation"], api, full[:4], scene["lost"])
             if any((byte != reference if not protected or index % 4 == 3 else
                     byte >> 1 != reference >> 1) for index, (byte, reference) in enumerate(zip(full, SHADER_PIXELS))):
                 raise ValueError("Readback changed alpha, upper colour bits or baseline pixels")
@@ -166,6 +214,35 @@ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None 
             if observed["cross_origin_frame"]["webgl"][api]["scene"]["pixels"] == reference:
                 raise ValueError("Cross-origin WebGL partition was not isolated")
     return normalized
+
+
+def validate_errors(observed: dict, api: str, first_pixel: list[int], lost: dict) -> None:
+    expected = {
+        name: {"error": error, "nextError": 0, "pixels": [165] * length}
+        for name, error, length in (
+            ("zero", 0, 4), ("negative", 1281, 4), ("short", 1282, 3),
+            ("wrongType", 1282, 2), ("invalidFormat", 1280, 4), ("incomplete", 1286, 4))}
+    expected["pending"] = {"error": 1280, "nextError": 0, "pixels": first_pixel}
+    expected["noPackBuffer"] = {"error": 1282, "nextError": 0} if api == "webgl2" else None
+    expected["overlappingPack"] = {"error": 1282, "nextError": 0, "pixels": [165] * 8} if api == "webgl2" else None
+    if not isinstance(observed, dict) or set(observed) != set(expected):
+        raise ValueError("Readback error fixtures are incomplete")
+    for name, reference in expected.items():
+        value = observed[name]
+        if reference is None:
+            if value is not None:
+                raise ValueError("WebGL1 claimed WebGL2 error coverage")
+            continue
+        if (not isinstance(value, dict) or set(value) != set(reference)
+                or type(value["error"]) is not int or type(value["nextError"]) is not int
+                or ("pixels" in reference and (not isinstance(value["pixels"], list)
+                    or any(type(byte) is not int for byte in value["pixels"]))) or value != reference):
+            raise ValueError("Readback error semantics or untouched destination changed: " + name)
+    if (not isinstance(lost, dict) or set(lost) != {"lost", "error", "nextError", "pixels"}
+            or lost["lost"] is not True or type(lost["error"]) is not int or type(lost["nextError"]) is not int
+            or not isinstance(lost["pixels"], list) or any(type(byte) is not int for byte in lost["pixels"])
+            or lost != {"lost": True, "error": 37442, "nextError": 0, "pixels": [165] * 4}):
+        raise ValueError("Lost-context read changed destination or error semantics")
 
 
 def probe_inputs() -> dict[str, str]:

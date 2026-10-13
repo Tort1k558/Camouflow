@@ -209,6 +209,14 @@ def readback_observation(*, protected=False):
             scene["initialState"] = initial
             scene["packState"] = {**initial, "rowLength": 6, "skipRows": 1, "skipPixels": 1} if api == "webgl2" else initial.copy()
             scene["exportState"] = scene["packState"].copy()
+            scene["validation"] = {
+                case: {"error": error, "nextError": 0, "pixels": [165] * count}
+                for case, error, count in (("zero", 0, 4), ("negative", 1281, 4), ("short", 1282, 3),
+                    ("wrongType", 1282, 2), ("invalidFormat", 1280, 4), ("incomplete", 1286, 4))}
+            scene["validation"].update(pending={"error": 1280, "nextError": 0, "pixels": full[:4]},
+                noPackBuffer={"error": 1282, "nextError": 0} if api == "webgl2" else None,
+                overlappingPack={"error": 1282, "nextError": 0, "pixels": [165] * 8} if api == "webgl2" else None)
+            scene["lost"] = {"lost": True, "error": 37442, "nextError": 0, "pixels": [165] * 4}
     return observed
 
 
@@ -282,6 +290,39 @@ def test_readback_restart_ignores_driver_debug_cache_length_but_not_pixels():
     assert restart_state(initial) == restart_state(restarted)
     restarted["document"]["webgl"]["webgl"]["scene"]["pixels"][0] ^= 1
     assert restart_state(initial) != restart_state(restarted)
+
+
+@pytest.mark.parametrize("case", ["zero", "negative", "short", "wrongType", "invalidFormat",
+                                 "incomplete", "pending", "noPackBuffer", "overlappingPack"])
+def test_readback_error_gate_requires_exact_errors_and_no_extra_pending_error(case):
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    observed = readback_observation(protected=True)
+    observed["document"]["webgl"]["webgl2"]["scene"]["validation"][case]["nextError"] = 1282
+    with pytest.raises(ValueError):
+        validate_readback(observed, protected=True)
+
+
+@pytest.mark.parametrize("case", ["zero", "negative", "short", "wrongType", "invalidFormat",
+                                 "incomplete", "overlappingPack"])
+def test_readback_error_gate_rejects_destination_mutation_on_failure_or_empty_read(case):
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    observed = readback_observation(protected=True)
+    observed["document"]["webgl"]["webgl2"]["scene"]["validation"][case]["pixels"][0] = 0
+    with pytest.raises(ValueError):
+        validate_readback(observed, protected=True)
+
+
+@pytest.mark.parametrize("field,value", [("lost", False), ("error", 0), ("nextError", 1282),
+                                       ("pixels", [0] * 4), ("lost", 1), ("error", True)])
+def test_readback_error_gate_rejects_lost_context_semantic_changes(field, value):
+    from scripts.verify_native_gpu_readback import validate_readback
+
+    observed = readback_observation(protected=True)
+    observed["document"]["webgl"]["webgl2"]["scene"]["lost"][field] = value
+    with pytest.raises(ValueError):
+        validate_readback(observed, protected=True)
 
 
 def test_readback_feature_merges_existing_partition_flag():
