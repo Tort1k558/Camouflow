@@ -493,3 +493,16 @@ def test_offline_audio_guard_fixtures_cannot_allocate_a_resolver_on_early_failur
     assert "GlintCopyBudgetRejectsBeforeAllocationOrRenderThread" in names
     assert text.count("+  auto promise = context->startOfflineRendering(nullptr, exception);") == 2
     assert text.count("+  EXPECT_TRUE(promise.IsEmpty());") == 2
+def test_initial_origin_compile_repair_preserves_immutable_member_and_header_abi():
+    from scripts.native_build import ROOT
+    from scripts.verify_native_document_drafts import patch_paths
+
+    patch = ROOT / "native/patches/0035-native-initial-origin-calculation.patch"
+    text = patch.read_text(encoding="utf-8-sig")
+    assert patch_paths(text) == {"third_party/blink/renderer/core/loader/document_loader.cc"}
+    assert "+  scoped_refptr<SecurityOrigin> effective_origin_to_commit = origin_to_commit_;" in text
+    assert "-      origin_to_commit_ = SecurityOrigin::CreateFromUrlOrigin(" in text
+    normalized = " ".join(text.replace("\n+", "\n").split())
+    assert "glint_document_surface_payload_required_ && glint_document_surface_policy_" in normalized
+    assert "CHECK(sandbox_origin->IsOpaque());" in text
+    assert "CHECK(origin->IsSameOriginWith(effective_origin_to_commit.get()));" in text

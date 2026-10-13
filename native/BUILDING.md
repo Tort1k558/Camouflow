@@ -8,7 +8,10 @@ document/worker IPC unit infrastructure is registered in patches 0018-0020.
 Worker startup gates and thread handoff are registered in patches 0021-0026,
 including four Blink handoff cases that passed after test-only patch 0028.
 They do not enable Canvas privacy. The cohesive 0031–0034 source batch is now
-registered; its new unit/browser checks remain pending the current build.
+registered; its new unit/browser checks remain pending. Repair patch 0035 keeps
+the commit origin immutable and fixes the initial-document origin calculation.
+The first 001–034 full build failed compiling `document_loader.cc`; a successful
+object rebuild does not prove a complete browser or admit the new protections.
 
 ## Requirements
 

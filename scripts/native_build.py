@@ -207,7 +207,8 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0031-native-worker-surface-policy.patch",
         "0032-native-document-surface-policy.patch",
         "0033-native-surface-readback.patch",
-        "0034-native-gpu-metadata-minimization.patch"))
+        "0034-native-gpu-metadata-minimization.patch",
+        "0035-native-initial-origin-calculation.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:

@@ -1,0 +1,176 @@
+diff --git a/third_party/blink/renderer/core/loader/document_loader.cc b/third_party/blink/renderer/core/loader/document_loader.cc
+index e7cf29f..b05ffb1 100644
+--- a/third_party/blink/renderer/core/loader/document_loader.cc
++++ b/third_party/blink/renderer/core/loader/document_loader.cc
+@@ -2381,11 +2381,21 @@ Frame* DocumentLoader::CalculateOwnerFrame() {
+ 
+ scoped_refptr<SecurityOrigin> DocumentLoader::CalculateOrigin(
+     Document* owner_document) {
++  // InitializeWindow validates or clears initial policy before this call.
++  // Keep the browser commit origin immutable; apply the trusted initial origin
++  // only to this calculation, including all upstream sandbox/security checks.
++  scoped_refptr<SecurityOrigin> effective_origin_to_commit = origin_to_commit_;
++  if (commit_reason_ == CommitReason::kInitialization &&
++      glint_document_surface_payload_required_ &&
++      glint_document_surface_policy_) {
++    effective_origin_to_commit = SecurityOrigin::CreateFromUrlOrigin(
++        glint_document_surface_policy_->partition.origin());
++  }
+   scoped_refptr<SecurityOrigin> origin;
+   // Whether the origin is newly created within this call, instead of copied
+-  // from an existing document's origin or from `origin_to_commit_`. If this is
+-  // true, we won't try to compare the nonce of this origin (if it's opaque) to
+-  // the browser-calculated origin later on.
++  // from an existing document's origin or from `effective_origin_to_commit`. If
++  // this is true, we won't try to compare the nonce of this origin (if it's
++  // opaque) to the browser-calculated origin later on.
+   if (IsPagePopupRunningInWebTest(frame_)) {
+     // If we are a page popup in LayoutTests ensure we use the popup
+     // owner's security origin so the tests can possibly access the
+@@ -2406,18 +2416,18 @@ scoped_refptr<SecurityOrigin> DocumentLoader::CalculateOrigin(
+     // surprising side effects: for example, if the web security setting toggle
+     // is disabled, this will affect the owner document's origin too...
+     //
+-    // TODO(dcheng): maybe FrameLoader::Init() should specify origin_to_commit_?
+-    // But origin_to_commit_ is currently cloned with IsolatedCopy() which
+-    // breaks aliasing...
++    // TODO(dcheng): maybe FrameLoader::Init() should specify
++    // effective_origin_to_commit? But effective_origin_to_commit is currently
++    // cloned with IsolatedCopy() which breaks aliasing...
+     origin = owner_document->domWindow()->GetMutableSecurityOrigin();
+-  } else if (origin_to_commit_) {
++  } else if (effective_origin_to_commit) {
+     // Origin to commit is specified by the browser process, it must be taken
+     // and used directly. An exception is when the owner origin should be
+     // inherited in the cases above, since we want to also inherit renderer-only
+     // information such as document.domain value. This is OK because the
+     // non-renderer only origin bits will be the same, which will be asserted at
+     // the end of this function.
+-    origin = origin_to_commit_;
++    origin = effective_origin_to_commit;
+   } else {
+     // Otherwise, create an origin that propagates precursor information
+     // as needed. For non-opaque origins, this creates a standard tuple
+@@ -2430,14 +2440,14 @@ scoped_refptr<SecurityOrigin> DocumentLoader::CalculateOrigin(
+   if ((policy_container_->GetPolicies().sandbox_flags &
+        network::mojom::blink::WebSandboxFlags::kOrigin) !=
+       network::mojom::blink::WebSandboxFlags::kNone) {
+-    // If `origin_to_commit_` is set, don't create a new opaque origin, but just
+-    // use `origin_to_commit_`, which is already opaque.
++    // If `effective_origin_to_commit` is set, don't create a new opaque origin,
++    // but just use `effective_origin_to_commit`, which is already opaque.
+     scoped_refptr<SecurityOrigin> sandbox_origin;
+ 
+     if (base::FeatureList::IsEnabled(
+             blink::features::kUseSandboxTokenForOriginDerivation)) {
+-      if (origin_to_commit_) {
+-        sandbox_origin = origin_to_commit_;
++      if (effective_origin_to_commit) {
++        sandbox_origin = effective_origin_to_commit;
+       } else {
+         // The token is only set for the initial empty document of sandboxed
+         // frames/windows, so verify we're in that state.
+@@ -2453,8 +2463,9 @@ scoped_refptr<SecurityOrigin> DocumentLoader::CalculateOrigin(
+                 origin.get());
+       }
+     } else {
+-      sandbox_origin = origin_to_commit_ ? origin_to_commit_
+-                                         : origin->DeriveNewOpaqueOrigin();
++      sandbox_origin = effective_origin_to_commit
++                           ? effective_origin_to_commit
++                           : origin->DeriveNewOpaqueOrigin();
+     }
+ 
+     CHECK(sandbox_origin->IsOpaque());
+@@ -2520,12 +2531,12 @@ scoped_refptr<SecurityOrigin> DocumentLoader::CalculateOrigin(
+       // Some clients do not want local URLs to have access to other local
+       // URLs.
+       origin->BlockLocalAccessFromLocalOrigin();
+-      if (origin_to_commit_) {
+-        // This information does not exist on `origin_to_commit_` as it comes
+-        // from the browser side. To make sure the `IsSameOriginWith()` check
+-        // at the end of the function will pass, also block access for
+-        // `origin_to_commit_`.
+-        origin_to_commit_->BlockLocalAccessFromLocalOrigin();
++      if (effective_origin_to_commit) {
++        // This information does not exist on `effective_origin_to_commit` as it
++        // comes from the browser side. To make sure the `IsSameOriginWith()`
++        // check at the end of the function will pass, also block access for
++        // `effective_origin_to_commit`.
++        effective_origin_to_commit->BlockLocalAccessFromLocalOrigin();
+       }
+     }
+   }
+@@ -2540,43 +2551,44 @@ scoped_refptr<SecurityOrigin> DocumentLoader::CalculateOrigin(
+       origin->SetOpaqueOriginIsPotentiallyTrustworthy(true);
+     }
+   }
+-  if (origin_to_commit_) {
++  if (effective_origin_to_commit) {
+     SCOPED_CRASH_KEY_STRING256("OriginCalc", "url_stripped",
+                                url_.StrippedForUseAsReferrer().Ascii());
+     SCOPED_CRASH_KEY_BOOL("OriginCalc", "same_ptr",
+-                          origin == origin_to_commit_);
++                          origin == effective_origin_to_commit);
+     SCOPED_CRASH_KEY_STRING256("OriginCalc", "origin",
+                                origin->ToString().Ascii());
+     SCOPED_CRASH_KEY_STRING256("OriginCalc", "origin_to_commit",
+-                               origin_to_commit_->ToString().Ascii());
++                               effective_origin_to_commit->ToString().Ascii());
+     SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_local", origin->IsLocal());
+-    SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_to_commit_local",
+-                          origin_to_commit_->IsLocal());
++    SCOPED_CRASH_KEY_BOOL("OriginCalc", "effective_origin_to_commitlocal",
++                          effective_origin_to_commit->IsLocal());
+     SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_opaque", origin->IsOpaque());
+-    SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_to_commit_opaque",
+-                          origin_to_commit_->IsOpaque());
++    SCOPED_CRASH_KEY_BOOL("OriginCalc", "effective_origin_to_commitopaque",
++                          effective_origin_to_commit->IsOpaque());
+     SCOPED_CRASH_KEY_BOOL("OriginCalc", "origin_block",
+                           origin->block_local_access_from_local_origin());
+     SCOPED_CRASH_KEY_BOOL(
+-        "OriginCalc", "origin_to_commit_block",
+-        origin_to_commit_->block_local_access_from_local_origin());
++        "OriginCalc", "effective_origin_to_commitblock",
++        effective_origin_to_commit->block_local_access_from_local_origin());
+     if (origin->IsLocal() && !origin->IsOpaque() &&
+         origin->block_local_access_from_local_origin() &&
+-        origin != origin_to_commit_) {
++        origin != effective_origin_to_commit) {
+       // For local non-opaque origins that block local access, we can't use the
+       // IsSameOrigin check directly if the ptr is not the same (e.g. when the
+       // origin is inherited from the owner, instead of using
+-      // `origin_to_commit_`), since the blocking will apply within that check.
+-      // Instead, check that all the important properties are the same.
++      // `effective_origin_to_commit`), since the blocking will apply within
++      // that check. Instead, check that all the important properties are the
++      // same.
+       CHECK(owner_document && owner_document->domWindow());
+-      CHECK(origin_to_commit_->IsLocal());
+-      CHECK(!origin_to_commit_->IsOpaque());
+-      CHECK(origin_to_commit_->block_local_access_from_local_origin());
+-      CHECK_EQ(origin->Protocol(), origin_to_commit_->Protocol());
+-      CHECK_EQ(origin->Host(), origin_to_commit_->Host());
+-      CHECK_EQ(origin->Domain(), origin_to_commit_->Domain());
++      CHECK(effective_origin_to_commit->IsLocal());
++      CHECK(!effective_origin_to_commit->IsOpaque());
++      CHECK(effective_origin_to_commit->block_local_access_from_local_origin());
++      CHECK_EQ(origin->Protocol(), effective_origin_to_commit->Protocol());
++      CHECK_EQ(origin->Host(), effective_origin_to_commit->Host());
++      CHECK_EQ(origin->Domain(), effective_origin_to_commit->Domain());
+     } else {
+-      CHECK(origin->IsSameOriginWith(origin_to_commit_.get()));
++      CHECK(origin->IsSameOriginWith(effective_origin_to_commit.get()));
+     }
+   }
+   return origin;
+@@ -2719,8 +2731,6 @@ void DocumentLoader::InitializeWindow(Document* owner_document) {
+     if (!frame_->IsProvisional() &&
+         glint::candidate::CanAdoptInitialDocumentSurfacePolicy(
+             glint_document_surface_policy_, owner_origin, sandboxed)) {
+-      origin_to_commit_ = SecurityOrigin::CreateFromUrlOrigin(
+-          glint_document_surface_policy_->partition.origin());
+       storage_key_ = glint_document_surface_policy_->partition;
+     } else {
+       // Keep required=true: invalid initial data must never borrow owner policy.

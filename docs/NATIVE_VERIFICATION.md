@@ -357,6 +357,25 @@ The current Chromium commit StorageKey is provisional and DocumentLoader can
 adjust it: first-script delivery therefore also needs an exact trusted-partition
 commitment check against final document state, not just a ready profile root.
 
+## Current full-build repair
+
+The 001–034 full Chrome build terminated after 1,406 completed tasks with a
+`document_loader.cc` compilation error: initial policy adoption assigned to the
+immutable `origin_to_commit_` member. Registered repair 0035 instead uses a local
+effective origin inside the existing origin calculation. The commit member and
+header ABI remain unchanged; sandbox, same-origin and local-access checks remain.
+Source integrity replay of the complete repaired chain passed. The single failed
+object is being rebuilt before resuming full Chrome; no new browser is verified.
+
+## Stable profile-identity derivation candidate
+
+The separate [identity candidate](../native/drafts/profile-identity/README.md)
+provides browser-owned profile/service/context derivation with a distinct HMAC
+purpose, retaining partition validation and the unchanged partitioned privacy API.
+Source replay and four independent Python/native-fixture vector comparisons passed.
+Its eleven native fixtures remain uncompiled. Mode selection, policy/IPC mode
+delivery, UI admission and cross-API identity behaviour are not implemented by it.
+
 ## GPU attachment metadata transport candidate
 
 The separate [GPU transport draft](../native/drafts/gpu-transport/README.md)
