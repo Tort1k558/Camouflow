@@ -12,9 +12,11 @@ headers. No active Chromium source, browser core or GN configuration changed.
 | --- | --- | --- |
 | Core APIs | `privacy_key_derivation.cc`, `privacy_profile_key.cc`, `privacy_key_service.cc`, `privacy_context.cc` | `profile-identity-core-syntax-001-037-v1/proof.json` |
 | Fixture definitions | `privacy_key_derivation_unittest.cc`, `privacy_key_service_unittest.cc`, `privacy_context_unittest.cc` | `profile-identity-fixtures-syntax-001-037-v1/proof.json` |
+| V3 transport | `surface_policy_producer.cc`, its fixture file and `surface_policy_preflight_unittest.cc`, with freshly generated candidate Mojo headers | `profile-identity-transport-syntax-001-038-v3/proof.json` |
 
-This does **not** execute cryptography, service/context fixtures, transport
-bindings, first-script delivery or browser behavior. Optimized objects and
+This does **not** execute cryptography, service/context/transport fixtures,
+generated serialization implementations, first-script delivery or browser
+behavior. Optimized objects and
 linkage remain unverified; `privacy_admitted` is false. The regular privacy
 unit target currently links 6754 cached inputs, so its isolated future-mode
 link/run must wait for resource headroom rather than compete with the active
@@ -89,8 +91,10 @@ remain equal across sites.
 Five additional native fixtures cover stable/default production, owned
 document/worker roundtrip, unsupported versions/modes and cross-partition
 rejection. Pinned Mojo parsing and isolated C++ binding generation passed,
-including the mode, typed partition and four seed arrays. **No fixtures or
-generated bindings have been compiled.**
+including the mode, typed partition and four seed arrays. The producer and two
+transport fixture translation units subsequently passed C++ syntax checks with
+those candidate headers. Generated `.cc` implementations, optimized objects,
+linkage and fixture execution remain unverified.
 
 ```powershell
 .venv\Scripts\python.exe scripts/verify_native_profile_identity_draft.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\identity-transport-replay.json --include-transport
