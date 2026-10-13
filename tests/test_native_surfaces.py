@@ -359,7 +359,7 @@ def test_gpu_passthrough_attachment_fixtures_enable_feature_and_cover_native_sta
 
     text = PASSTHROUGH_ATTACHMENT_PATCH.read_text(encoding="utf-8-sig")
     assert patch_paths(text) == PASSTHROUGH_ATTACHMENT_PATHS
-    assert text.count("+TEST_F(GlintPassthroughAttachmentTest,") == 8
+    assert text.count("+TEST_F(GlintPassthroughAttachmentTest,") == 10
     assert "InitAndEnableFeature(features::kGlintReadbackMetadataCandidate)" in text
     assert "ActualRgba8ExtentsPreserveRenderbufferBinding" in text
     assert "RedefinedAttachmentUsesCurrentNativeDimensions" in text
@@ -369,6 +369,11 @@ def test_gpu_passthrough_attachment_fixtures_enable_feature_and_cover_native_sta
     assert "TextureReattachmentUsesSelectedObjectNotBoundTexture" in text
     assert "TextureMipAttachmentReportsSelectedLevel" in text
     assert "CubeFaceAttachmentReportsNativeExtentsAndPreservesBinding" in text
+    assert "ArrayLayerAttachmentReportsNativeExtentsAndPreservesBinding" in text
+    assert "ThreeDimensionalLayerReportsNativeExtentsAndPreservesBinding" in text
+    assert "attachment.Init(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, kClientTextureId," in text
+    assert "DoGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &after, 1);" in text
+    assert "DoGetIntegerv(GL_TEXTURE_BINDING_3D, &after, 1);" in text
     assert "max_level.Init(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 1);" in text
     assert "GL_TEXTURE_CUBE_MAP_POSITIVE_Y, kClientTextureId, 0);" in text
     assert "DoGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &after, 1);" in text

@@ -15,7 +15,7 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 Current Windows development source is **001-036**. Patches 0031-0034 jointly
 promote browser-owned document/worker surface policy, startup/child transport,
 Canvas/OfflineAudio candidates and partial native WebGL readback. Exact source
-replay passed across 125 paths; this batch is **not yet compiled or runtime
+replay passed across 125 paths; this batch is **not yet fully compiled or runtime
 verified**. The preceding document-commit binary passed all 12 NavigationSimulator
 cases. The last verified browser remains 001-027; no new privacy capability or
 anti-bot result is admitted by this promotion.
@@ -26,8 +26,9 @@ ended with LLVM out-of-memory failures. One failed object subsequently compiled
 at j1; available system commit dropped to 0.39 GiB during the measured run.
 The following j1 build reached a C++ incomplete-type error in the dedicated
 worker host. Repair 0036 adds the complete Mojo surface type to its service
-header; the failed translation unit is being checked before another full retry.
-Existing objects are preserved.
+header; the previously failed dedicated worker translation unit compiled with
+the exact 001-036 source chain unchanged. The full incremental retry uses j1.
+Existing objects are preserved; the new browser remains unverified.
 Compilation is not runtime admission.
 
 The identity verifier now compares document HTTP User-Agent, primary
