@@ -93,6 +93,34 @@ investigate detectable Canvas perturbation and ordinary graphics compatibility.
 A green BrowserScan observation does not close these gaps or imply
 Turnstile/reCAPTCHA success.
 
+### Controlled Canvas pixel fidelity
+
+`scripts/native_canvas_fidelity.py` measures bounded 32x24 RGBA fixtures:
+explicit `putImageData`, repeated/full/single-pixel reads, PNG export/decode and
+writing the returned image into another canvas. It reports changed channels,
+pixels, alpha and maximum absolute error; it does not call pixel mutation a PASS.
+Stock Chromium and feature-off Glint had matching metrics on all three fixtures.
+
+| Input fixture | Feature-off Glint vs supplied pixels | Profile-identity candidate vs supplied pixels | Repeat / single pixel / PNG / rewrite |
+| --- | --- | --- | --- |
+| Opaque palette | Exact | **720/768 pixels, 1056 channels changed**, maximum error 1 | No differences relative to the first read |
+| Opaque gradient | Exact | **667/768 pixels, 1150 channels changed**, maximum error 1 | No differences relative to the first read |
+| Half-transparent palette | 768 pixels / 1344 channels changed, maximum error 1 | Same metrics as stock and feature-off Glint | No differences relative to the first read |
+
+All alpha bytes were preserved. The transparent control's rounding is retained,
+not misclassified as a Glint regression. Matching counts do not prove identical
+pixels. These three document fixtures do not cover workers, HDR, every colour
+space or image-editor compatibility. Protected opaque `putImageData` is **not
+pixel-exact**; deterministic repeat/export consistency alone does not establish
+ordinary-browser plausibility or fidelity. Do not admit this candidate as fully
+compatible based on the earlier combined gates.
+
+Private proof: `canvas-fidelity-001-059-v1/report.json` on D; exact matching
+browser versions, measured effective launch flags, probe/receipt hashes and
+unchanged runtime cores/receipt; no cleanup errors. The measurement/validator has
+29 passing Python tests; the full Python regression suite passed **2321 tests
+in 82.88s** after this addition. No Chromium source change or rebuild was made.
+
 ## Test destinations
 
 Priority: **Core** for each build; **Extended** before release; **Reference** for
