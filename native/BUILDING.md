@@ -3,7 +3,8 @@
 Glint is CamouFlow's own Chromium fork. This guide builds the **registered
 development patch chain**, not Camoufox/CloakBrowser and not an admitted release.
 Linux/macOS own-fork builds are deferred. Glint product/logo branding is registered
-as patch 0060; its linked runtime/UI verification remains pending. Context tests are registered in patch 0017;
+as patches 0060–0061; 0060 icons/PE metadata passed but version-page branding failed,
+so 0061 repairs the actual UI resources. Context tests are registered in patch 0017;
 document/worker IPC unit infrastructure is registered in patches 0018-0020.
 Worker startup gates and thread handoff are registered in patches 0021-0026,
 including four Blink handoff cases that passed after test-only patch 0028.

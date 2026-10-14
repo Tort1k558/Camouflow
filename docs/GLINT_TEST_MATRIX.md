@@ -3,7 +3,55 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
-## Latest linked build: 001-059 — 2026-10-14
+## Latest linked build: 001-060 — 2026-10-14
+
+Chrome continuation v2 linked successfully at j4 in **17m47.10s**, 177 executed
+steps after the earlier OOM attempt and isolated object recovery. This is not
+clean-build time. Receipt binds all 60 patches; a separately launched,
+checksum-bound 001-060 copy is retained before the next UI-resource build.
+
+| Runtime file | SHA-256 |
+| --- | --- |
+| chrome.exe | `275ad4eaa4b51b3e53a9a57496ecb17f6bc90b8c687e252567ce7d2050c0088c` |
+| chrome.dll | `429bc5964bef552be528b4e6039529bef9cde0b18b079532ffa6b6a76c0216fc` |
+| chrome_elf.dll | `f26f09cadfc9fbfe1384c2df2a7549151e4afa988568e6468d296d4fd61303fb` |
+
+| Check | Actual outcome |
+| --- | --- |
+| Seven policy/runtime gates | Hardware 9, WebRTC 7, automation 55, fonts 42, identity 18, CDP 6, combined 5: **142 checks passed** |
+| Full lifecycle gate | **Failed** after 17 completed checks, at graceful checkpoint close in the three-profile test; no 160/160 claim |
+| Compiled Windows icons | Main/app-list payloads match the existing project ICO |
+| Executable/library ProductName | Both report **Glint** |
+| Version-page product | **Chromium**, so full branding gate failed |
+
+Proofs on D: `browser-build-001-060-v2.json`,
+`browser-verification-001-060-v1/suite.json`,
+`branding-runtime-001-060-v1/report.json` and
+`standalone-runtime-backup-001-060-before-061-v1/proof.json`.
+The failed branding gate was not weakened: patch 0061 now updates the actual
+UI message bodies and 14 scaled light/dark/favicons, retaining IDs, dimensions,
+copyright authors and ChromiumOS naming. Its source preparation/reversal tests
+passed. The first 001-061 process disappeared without a terminal receipt/report;
+continuation v2 was started at j4 with cached objects and unchanged inputs.
+
+Shutdown diagnosis narrowed the lifecycle failure: close/disconnected events
+arrive, but native shutdown waits for ThreadPool; an owned process stack shows
+`BtmDatabase::InitImpl` / SQLite commit blocked in Windows `WriteFile`. One-profile
+diagnosis completed; three-profile diagnosis needed a longer diagnostic-only
+deadline. These stack runs are **not runtime admission**. The speculative
+disconnected-browser shortcut did not fix the graceful checkpoint failure and
+was removed. Production timeouts remain unchanged; SSD-profile comparison and
+HDD/I/O investigation are separate from the failed lifecycle gate.
+Private evidence: `multi-profile-close-060-debug-v1/`,
+`shutdown-stack-060-v2/`, `shutdown-stack-060-v3/` and
+`runtime-001-060-crash-close-v2.json` on D.
+
+The compiled branding verifier now also binds both branding patches and runtime
+resource/locale pack hashes, rejects changed/removed packs and retains failed
+evidence. **2376 Python tests passed in 87.79s** after these changes. No privacy
+capability or production release was admitted from this partial result.
+
+## Previous verified baseline: 001-059 — 2026-10-14
 
 Chromium 148.0.7778.96 linked at `j4` in **16m35.44s**, 244 executed steps,
 reusing the prior source/test builds. The initial planned graph shrank as cached

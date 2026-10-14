@@ -39,14 +39,31 @@ Patch 0060 is registered in the strict source replay gate and applied to the
 idle Windows source checkout. A checksum-bound, separately launched 001–059
 runtime copy was preserved before application; proof on D:
 `standalone-runtime-backup-001-059-before-060-v1/proof.json`. The 001–060 browser
-build was started at j4. Do not change its sources, GN or patch registry while
-it is active. The last verified browser binary is not yet Glint-branded. Actual window/taskbar icons,
-shortcut migration and product/about strings require a new build and runtime
-verification. Preparation and a successful apply check are not runtime proof.
+linked at j4; actual main/app-list icon payloads and executable/library
+ProductName passed. Its version page still displayed Chromium, so full branding
+verification **failed**, not passed.
+
+Registered patch 0061 repairs UI message bodies and the actual 1x/2x scaled
+light/dark logos and favicons. `glint-wordmark.svg` stores vector outlines beside
+the existing project mark; rasterization does not require substituting a system
+font. Message IDs, authors/credits, ChromiumOS names and image dimensions remain
+intact. The 001–061 continuation is building at j4, with a separately launched
+001–060 rollback copy preserved. Do not edit active sources/GN/registered patches.
+
+After successful linking, verify compiled metadata, icons, version-page product,
+unchanged resource/locale packs and ownership cleanup:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_branding.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --output D:\CamouFlowNative\branding-runtime-new
+```
+
+This gate does not prove cached Windows taskbar/shortcut migration or all UI
+surfaces. Native lifecycle failure under concurrent profile I/O remains a
+separate blocker; see the current test matrix. No production admission yet.
 
 Earlier numbered patches retain their historical diagnostic text for exact
 source replay and the current development binary. The branding patch replaces
 those strings after that chain; do not rewrite applied patches during a build.
 Hardware/identity rejection verifiers now accept the exact native CHECK text
 from either historical or Glint-branded binaries, without accepting generic
-launch failures. These checks still require actual execution on the new binary.
+launch failures. Hardware and identity checks passed on the copied 001–060 binary.

@@ -1573,7 +1573,8 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
                  "0057-native-gpu-metadata-attachment-tests.patch",
                  "0058-native-gpu-passthrough-attachment-tests.patch",
                  "0059-native-identical-v8-snapshot.patch",
-                 "0060-native-glint-branding.patch"):
+                 "0060-native-glint-branding.patch",
+                 "0061-native-glint-ui-resources.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1

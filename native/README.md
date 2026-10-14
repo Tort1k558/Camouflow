@@ -37,7 +37,7 @@ patch chain; they do not transfer automatically to newer binaries.
 | Nested worker Canvas | 001-047 | **24/24** first-script/repeat/restart cases passed alongside all seven combined phases |
 | Strict HTTP/JS Client Hints | 001-047 | **18/18** checks passed: eight strict document/frame comparisons, six worker JS checks, four invalid-UA rejections; worker HTTP hints and TLS are not covered |
 | Protected WebGL readback | 001-047 | **Six phases passed**, including clipped CPU/PBO reads, state/errors, exports, restart and profile isolation; wider admission remains blocked |
-| Branding | Registered, build pending | Patch 0060 applied to sources; last verified binary remains unbranded |
+| Branding | Partial, UI fix building | 001–060 icons/PE names passed, version page remained Chromium; registered 0061 repairs scaled UI resources |
 | Linux/macOS | Deferred | No current own-fork runtime admission |
 | Mobile Web | Emulation | Desktop viewport/touch mode, not Android/iOS |
 
