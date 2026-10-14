@@ -162,6 +162,38 @@ diagnostics; generic launch errors remain rejected. Release-tool tests passed
 571/571 before starting the new build.
 The full Python regression suite then passed **2337/2337 in 85.30s**.
 
+### Canvas colour-space and storage compatibility
+
+The bounded `native_canvas_formats.py` probe measures four actual context/output
+combinations, in document and dedicated worker. It checks requested context
+colour space/storage, returned ImageData format/type, finite samples and PNG
+export status. An ignored float16/P3 request is rejected by the verifier rather
+than treated as supported. Different PNG byte lengths are not an API failure.
+
+The separate, checksum-bound 001-059 rollback runtime was used while 001-060
+compiled; no browser was opened from the active build output. Unmodified Chromium
+148.0.7778.96 and feature-off Glint supported all four combinations. Their
+document/worker observations agreed. Current profile-identity protection has
+**six API compatibility failures per scope**, not a passing format gate:
+
+| Actual context / requested ImageData | Stock and feature-off Glint | Protected getImageData | Protected PNG export |
+| --- | --- | --- | --- |
+| sRGB/unorm8 / rgba-unorm8 | Both operations supported | Supported | Supported |
+| Display-P3/unorm8 / rgba-unorm8 | Both operations supported | **NotReadableError** | **NotReadableError** |
+| sRGB/float16 / rgba-float16 | Both operations supported | **NotReadableError** | **NotReadableError** |
+| Display-P3/float16 / rgba-float16 | Both operations supported | **NotReadableError** | **NotReadableError** |
+
+Proof: `canvas-formats-001-059-v3/report.json` on D, including worker rows,
+measured effective launch flags, unchanged copied runtime cores/receipt and no
+cleanup errors. Earlier v1 measured float16 output conversion from an unorm8
+backing; v2/v3 explicitly verify float16 backing as well. This is API coverage,
+**not HDR tone-mapping, out-of-range sample fidelity, every browser context or
+editor compatibility**. Broad Canvas capability admission remains blocked;
+the next implementation must address these failures without silently changing
+the requested format, losing alpha/colour semantics or bypassing policy.
+The full Python regression run passed **2350 tests in 98.92s** before the final
+worker-cleanup assertion was added; all **14 format tests** passed afterward.
+
 ## Test destinations
 
 Priority: **Core** for each build; **Extended** before release; **Reference** for
