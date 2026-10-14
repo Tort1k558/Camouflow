@@ -46,7 +46,8 @@ binding. Their source composition is checked, not their native execution.
 The sixth candidate prepares browser-only launch selection with strict service,
 full document/worker surface and legacy-conflict checks. Persistent/incognito
 initialization passes the immutable mode to its own service; renderer command
-lines do not receive it. Four more launch fixture definitions remain unexecuted.
+lines do not receive it. The four launch fixtures subsequently executed in the
+001-059 BrowserContext target; linked Chrome ProfileImpl behavior remains unverified.
 The manager key utility now has a separate profile-purpose derivation reference.
 Its four fixed vectors, persisted reload and root/surface separation are executed
 in Python tests; existing partitioned privacy vectors remain unchanged. It does
@@ -57,8 +58,9 @@ and passed full ordered replay. The key/service native target subsequently
 passed **62/62 cases** (19 new, 43 legacy), with unchanged browser core/GN/receipt:
 `identity-keys-001-058-v1.json` on D. The complete native selection is 134 cases;
 41 new definitions expand to 50 new cases because DocumentLoader has four modes.
-Context/transport/handoff execution and a linked identity-mode browser remain
-unverified. Historical source-only preparation below is not current admission.
+Context **37/37** and transport **20/20** cases subsequently passed on 001-059.
+Handoff execution and a linked identity-mode browser remain unverified.
+Historical source-only preparation below is not current admission.
 
 Manager diagnostics also compare measured WebGL/WebGL2 extensions, six limits and
 context attributes between document and dedicated worker. A feature-off 001-027

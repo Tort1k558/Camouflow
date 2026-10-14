@@ -1,0 +1,27 @@
+diff --git a/tools/v8_context_snapshot/v8_context_snapshot_generator.cc b/tools/v8_context_snapshot/v8_context_snapshot_generator.cc
+--- a/tools/v8_context_snapshot/v8_context_snapshot_generator.cc
++++ b/tools/v8_context_snapshot/v8_context_snapshot_generator.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <string>
+ #include <string_view>
+ 
+ #include "base/at_exit.h"
+@@ -80,8 +81,14 @@
+   base::FilePath file_path =
+       base::CommandLine::ForCurrentProcess()->GetSwitchValuePath("output_file");
+   CHECK(!file_path.empty());
++  const auto snapshot_size = static_cast<size_t>(blob.raw_size);
++  std::string existing_snapshot;
++  const bool unchanged_snapshot =
++      base::ReadFileToStringWithMaxSize(file_path, &existing_snapshot,
++                                      snapshot_size) &&
++      existing_snapshot == std::string_view(blob.data, snapshot_size);
+   int error_code = 0;
+-  if (!base::WriteFile(file_path,
++  if (!unchanged_snapshot && !base::WriteFile(file_path,
+                        base::as_bytes(base::span(
+                            blob.data, static_cast<size_t>(blob.raw_size))))) {
+     fprintf(stderr, "Error: WriteFile of %d snapshot has failed.\n",

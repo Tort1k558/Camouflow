@@ -236,10 +236,16 @@ steps and the unresolved first-download transport limitation.
   cached objects; let the user finish their session before replacing runtime
   files. A successful snapshot generated elsewhere does not complete the
   original build action or prove the test binary passed.
+  Patch 0059 avoids rewriting an already byte-identical snapshot, with a
+  size-bounded read and exact byte comparison. A changed snapshot still requires
+  a writable destination; write errors are not suppressed. This resolved the
+  identical-snapshot action while a manual browser remained open, but is not
+  permission to replace its DLLs or other mapped runtime files.
 
 Individual preparation, build and runtime stages have been exercised in the
 development workspace. This consolidated fresh-machine sequence has **not yet
 been replayed end to end on a new machine**. Existing runtime proof covers the
-001-047 browser; registered source is 001-058 and its identity key/service target
-passed 62 cases. Context/transport/handoff, new-mode runtime and prepared branding still must
-be compiled and verified before claiming them in a released browser.
+001-047 browser; registered source is 001-059. Identity key/service passed 62
+cases on 001-058, and contexts/transport passed 37/20 cases on 001-059.
+Handoff, new-mode runtime and prepared branding still must be compiled and
+verified before claiming them in a released browser.
