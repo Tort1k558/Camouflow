@@ -112,6 +112,23 @@ configuration changed. The full cached retry now uses
 `identity-contexts-001-058-v3.json`. This proves two objects, not the 37 cases or
 that every remaining parallel compile will fit memory.
 
+The v3 retry stopped after **4h23m01.48s**, with 3169 completed steps and
+477 remaining, at the V8 context snapshot action: `WriteFile of 3918880
+snapshot has failed`. The same generator successfully wrote a separate
+3918880-byte probe file. A manually opened browser was still using this build
+directory, so a mapped-file conflict is suspected; no browser was forcibly
+closed and no snapshot was replaced. Failed proof remains in
+`identity-contexts-001-058-v3.*` on D. **The 37 cases still did not execute.**
+
+To make progress without touching the live browser's snapshot, all **631
+content unittest object targets** were successfully checked/built in bounded
+command batches with `j4`. Cached objects were reused; 631 is the target count,
+not the number of freshly compiled objects or executed tests. Source, browser
+core, GN, receipt, toolchain and existing snapshot hashes remained unchanged.
+Private proof: `context-objects-001-058-v2/proof.json` and `build.log` on D.
+This is object compilation only: full linking, snapshot generation and the
+context/transport test executions remain pending.
+
 ### Additional owned browser gates 001-047 — 2026-10-14
 
 | Gate | Result | Scope and limits |

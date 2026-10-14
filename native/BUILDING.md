@@ -229,6 +229,13 @@ steps and the unresolved first-download transport limitation.
   This worked for generated navigation, instrumentation and CSS shorthand
   objects on 001-058. Do not silently lower an explicitly requested job count,
   suppress diagnostics, rerun sync or erase cached objects to recover from OOM.
+- Do not launch a manual browser from an output directory that is being built.
+  Use a separate complete runtime package instead. On Windows, a running
+  browser can retain mapped runtime files, including the V8 context snapshot,
+  and prevent build actions from replacing them. Preserve the failed log and
+  cached objects; let the user finish their session before replacing runtime
+  files. A successful snapshot generated elsewhere does not complete the
+  original build action or prove the test binary passed.
 
 Individual preparation, build and runtime stages have been exercised in the
 development workspace. This consolidated fresh-machine sequence has **not yet
