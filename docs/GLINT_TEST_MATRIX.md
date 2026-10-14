@@ -94,6 +94,12 @@ scope, not merely one. A separate stricter assessment of the unchanged saved
 actual measurements passed all eight scopes; original proof was not rewritten:
 `font-rendering-001-062-v1-all-scope-audit.json` on D. This is a saved-data audit,
 not another browser execution.
+After manager integration, a **new actual browser execution** also passed:
+`font-rendering-001-062-v2/report.json` on D. All six configurations completed
+two starts and eight scopes with zero assessment/cleanup errors, unchanged
+core/receipt/resources/probe inputs and stable visible/native comparisons.
+This run includes configuration/privacy/runtime/identity source hashes and the
+stricter every-scope pixel-effect requirement; it still grants no capabilities.
 **598 Python tests passed in 20.58s**
 for the updated release tooling and rendering helpers.
 After adding the eight-context first-script fixtures, the full Python regression
