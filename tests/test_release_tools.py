@@ -813,6 +813,27 @@ def test_native_font_gate_requires_controls_and_blocks_local_face_bypass():
         validate_font_probe(observed, _font_observation(), True)
 
 
+@pytest.mark.parametrize("url,retained", [
+    ("http://127.0.0.1:1234/owned-font.ttf", True),
+    ("http://localhost:1234/owned-font.ttf", True),
+    ("http://127.0.0.1:4321/owned-font.ttf", False),
+    ("https://example.com/owned-font.ttf", False),
+    ("http://127.0.0.1:1234/other.ttf", False),
+])
+def test_font_network_trace_is_limited_to_owned_fixture(url, retained):
+    from scripts.verify_native_fonts import record_network_event
+
+    events = []
+    record_network_event(events, "response", "native-legacy", 0, "http://127.0.0.1:1234", url, {"status": 200})
+    assert len(events) == int(retained)
+    if retained:
+        assert events[0]["mode"] == "native-legacy" and events[0]["details"] == {"status": 200}
+    events = [{} for _ in range(512)]
+    record_network_event(events, "requestfailed", "native-default", 0,
+                         "http://127.0.0.1:1234", url, {"failure": "net::ERR_FAILED"})
+    assert len(events) == 512
+
+
 @pytest.mark.parametrize("fonts,protected,valid", [
     ([{"family": "Arial"}], True, True),
     ([{"family": "Arial"}, {"family": "Courier New"}], False, True),

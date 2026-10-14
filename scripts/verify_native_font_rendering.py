@@ -98,15 +98,16 @@ def assess(runs: dict) -> dict:
             if (not observed["fidelity"]["matches_control"] or observed["formats"] or observed["hdr"]
                     or observed["consistency_changed"] or (mode == "native" and observed["text"])):
                 failures.append({"mode": mode, "scope": scope, "reason": "control-compatibility-changed"})
-    effect = any(
-        first["hashes"]["pixels"] != second["hashes"]["pixels"]
-        for scope in native_font_contexts.SCOPES
-        for first, second in zip(runs["aliased"][0][scope]["text"]["rows"],
-                                 runs["grayscale"][0][scope]["text"]["rows"], strict=True))
+    effects = {scope: any(first["hashes"]["pixels"] != second["hashes"]["pixels"]
+                          for first, second in zip(runs["aliased"][0][scope]["text"]["rows"],
+                                                   runs["grayscale"][0][scope]["text"]["rows"], strict=True))
+               for scope in native_font_contexts.SCOPES}
+    effect = all(effects.values())
     if not effect:
-        failures.append({"reason": "no-measured-aliased-versus-grayscale-pixel-effect"})
+        failures.append({"reason": "no-measured-aliased-versus-grayscale-pixel-effect",
+                         "scopes": [scope for scope, changed in effects.items() if not changed]})
     return {"passed": not failures, "failures": failures, "restarts": restarts,
-            "controls": controls, "aliased_grayscale_pixel_effect": effect}
+            "controls": controls, "aliased_grayscale_pixel_effect": effect, "pixel_effects_by_scope": effects}
 
 
 async def verify(executable: Path, destination: Path) -> dict:

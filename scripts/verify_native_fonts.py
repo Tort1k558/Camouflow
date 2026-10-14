@@ -50,7 +50,12 @@ READ = """async postscript => {
   const downloaded = new FontFace('OwnedDownloaded', 'url(/owned-font.ttf)');
   const fontSet = typeof document === 'undefined' ? self.fonts : document.fonts;
   try {
-    await downloaded.load(); fontSet.add(downloaded);
+    try { await downloaded.load(); }
+    catch (error) {
+      throw new Error('Owned downloaded font load failed at ' + self.location.origin
+        + '; status=' + downloaded.status + '; ' + String(error));
+    }
+    fontSet.add(downloaded);
     return {
       origin: self.location.origin,
       arial: await measure('Arial'),
@@ -135,8 +140,16 @@ def validate_enumeration(fonts: list, protected: bool) -> None:
         raise ValueError("Windows font positive controls are unavailable")
 
 
+def record_network_event(events: list, kind: str, mode: str, restart: int,
+                         origin: str, url: str, details: dict) -> None:
+    allowed = {origin + "/owned-font.ttf", origin.replace("127.0.0.1", "localhost") + "/owned-font.ttf"}
+    if url in allowed and len(events) < 512:
+        events.append({"kind": kind, "mode": mode, "restart": restart, "url": url, "details": details})
+
+
 async def verify(executable: Path, root: Path, server, checks: list) -> dict:
     origin = f"http://127.0.0.1:{server.server_port}"
+    server.font_network_events = []
     baseline = None
     expected_styles = None
     async with async_playwright() as driver:
@@ -152,6 +165,13 @@ async def verify(executable: Path, root: Path, server, checks: list) -> dict:
                     context = await driver.chromium.launch_persistent_context(
                         profile, executable_path=str(executable), chromium_sandbox=True,
                         headless=True, args=arguments, permissions=["local-fonts"], timeout=30000)
+                    context.on("requestfailed", lambda request, mode=name, run=restart: record_network_event(
+                        server.font_network_events, "requestfailed", mode, run, origin, request.url,
+                        {"failure": request.failure}))
+                    context.on("response", lambda response, mode=name, run=restart: record_network_event(
+                        server.font_network_events, "response", mode, run, origin, response.url,
+                        {"status": response.status, "content_type": response.headers.get("content-type"),
+                         "content_length": response.headers.get("content-length")}))
                     try:
                         version = context.browser.version
                         page = context.pages[0]
@@ -186,11 +206,8 @@ async def verify(executable: Path, root: Path, server, checks: list) -> dict:
                         if len(page.frames) != 3:
                             raise ValueError("Exactly two owned font frame contexts must be observed")
                         frames = [("document", page), *zip(("same_origin_frame", "cross_origin_frame"), page.frames[1:])]
-                        observations = {scope: await frame.evaluate(READ, server.font_postscript) for scope, frame in frames}
-                        observations.update(await asyncio.wait_for(page.evaluate(WORKERS), timeout=40))
-                        if set(observations) != {"document", "same_origin_frame", "cross_origin_frame", "dedicated", "shared", "service"}:
-                            raise ValueError("All six document/worker font contexts must be observed")
-                        for scope, observed in observations.items():
+                        def record_probe(scope, observed):
+                            nonlocal baseline
                             check = {"mode": name, "restart": restart, "context": scope,
                                      "observed": observed, "passed": False}
                             checks.append(check)
@@ -201,6 +218,20 @@ async def verify(executable: Path, root: Path, server, checks: list) -> dict:
                             check["passed"] = True
                             if baseline is None:
                                 baseline = observed
+                        for scope, frame in frames:
+                            try:
+                                observed = await frame.evaluate(READ, server.font_postscript)
+                            except Exception as error:
+                                raise RuntimeError(f"Font probe mode={name}, restart={restart}, context={scope}: {error}") from error
+                            record_probe(scope, observed)
+                        try:
+                            observations = await asyncio.wait_for(page.evaluate(WORKERS), timeout=40)
+                        except Exception as error:
+                            raise RuntimeError(f"Font probe mode={name}, restart={restart}, context=workers: {error}") from error
+                        if set(observations) != {"dedicated", "shared", "service"}:
+                            raise ValueError("All three owned font worker contexts must be observed")
+                        for scope, observed in observations.items():
+                            record_probe(scope, observed)
                     finally:
                         await context.close()
     with executable.open("rb") as stream:
@@ -232,6 +263,8 @@ def main() -> int:
         server.shutdown()
         server.server_close()
         thread.join()
+    report["network_events"] = getattr(server, "font_network_events", [])
+    report["network_trace_truncated"] = len(report["network_events"]) >= 512
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report))

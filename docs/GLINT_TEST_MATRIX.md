@@ -3,13 +3,23 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
-## Next registered package: 001-062 — 2026-10-14
+## Latest linked build: 001-062 — 2026-10-14
 
 Patch 0062 is registered/applied to source: Windows font parameter policy,
 validated renderer forwarding, early renderer initialization and five native
 fixtures in the existing `gfx_unittests` target. The complete reviewed package
 passed preparation/apply-check and isolated renderer startup C++/DEPS checks;
-it is **not yet a linked or admitted browser**.
+it is **not yet a runtime-admitted browser**.
+
+The browser linked successfully at j4 in **29m02.24s**, 52 executed steps, with
+an exact 62-patch receipt (`browser-build-001-062-v1.json` on D). This is an
+incremental build, not a clean build. Core hashes:
+
+| Runtime file | SHA-256 |
+| --- | --- |
+| chrome.exe | `275ad4eaa4b51b3e53a9a57496ecb17f6bc90b8c687e252567ce7d2050c0088c` |
+| chrome.dll | `9b65965659f4ba78f2da12d18c858519a68066df232f0cd67a92bdb004e7a24a` |
+| chrome_elf.dll | `f26f09cadfc9fbfe1384c2df2a7549151e4afa988568e6468d296d4fd61303fb` |
 
 The exact 001-061 executable, DLLs, resource/locale packs and receipt were copied,
 checksum-checked and actually launched before source promotion. Rollback proof:
@@ -22,14 +32,54 @@ core/GN/receipt/source postguards passed. Proof:
 `windows-font-policy-001-062-v1.json` and its raw `-tests.json` on D; test EXE
 SHA-256 `3edc3eb7a3dd2997c51e4c42206f6224727e9347c766b5f5e5c2c25d1ed41a96`.
 This proves parsing/field-preservation behavior, not renderer startup or pixels.
-The full browser build has now been started at j4, with proof expected at
-`browser-build-001-062-v1.json`. **598 Python tests passed in 20.58s**
+The compiled mode/restart/first-script/HDR/visual comparison **passed**:
+`font-rendering-001-062-v1/report.json` on D. Six configurations (feature-off plus
+five modes), two starts per persistent profile and eight scopes completed:
+96 context observations, 576 text cases, 288 raw-image cases, 384 format cases
+and 384 HDR cases. All core/receipt/resource/probe/screenshot postguards passed;
+cleanup and repeated-start comparisons had no errors. Twelve PNGs were retained;
+off/aliased/grayscale scenes were visually inspected.
+
+| Mode | Measured effect and boundary |
+| --- | --- |
+| `native` | Matches feature-off in all eight scopes and visible samples |
+| `aliased` | Changed all six text samples in every scope; visible DOM/SVG/Canvas changed, with sharper/jagged text and layout differences |
+| `grayscale` | Changed all six text samples in every scope; visible Canvas pixels changed, recorded layout metrics retained |
+| `cleartype-rgb` | Matches this host's baseline; no distinct-identity claim |
+| `cleartype-bgr` | Visible opaque Canvas changed; Offscreen measurements matched baseline, so not five distinct Canvas identities |
+
+Aliased/grayscale raw pixel differences were confirmed separately in **each** of
+the eight scopes. Raw-image fidelity metrics, format operations and HDR results
+retained their controls. This is rendering/compatibility fixture evidence, not
+HDR colourimetry, broad application compatibility, fingerprint realism or
+capability admission. The first fresh full runtime suite **failed**:
+seven gates passed (**118 checks**), but the font-selection gate stopped after
+eight completed checks with `Page.evaluate: NetworkError` while entering the
+legacy path. Proof: `browser-verification-001-062-v1/`. External sites are not
+yet retested and no full 160/160 claim is made for this run.
+
+An instrumented repeat of the **unmodified** font gate passed all **42 checks**,
+without request failures or changed core/source inputs:
+`fonts-network-trace-001-062-v1/report.json`. A second attributed diagnostic run
+also passed 42 with no failed requests (`fonts-attributed-001-062-v1.json`). These
+repeats do **not establish the cause or fix** the original intermittent error.
+The gate now retains bounded owned-font HTTP responses/failures, identifies the
+mode/restart/context and preserves completed frame checks before later failures;
+assertions were not weakened, retried or skipped. Full suite continuation v2 is
+running at `browser-verification-001-062-v2/` on the unchanged binary.
+
+The future mode gate also requires an aliased/grayscale pixel effect in **every**
+scope, not merely one. A separate stricter assessment of the unchanged saved
+actual measurements passed all eight scopes; original proof was not rewritten:
+`font-rendering-001-062-v1-all-scope-audit.json` on D. This is a saved-data audit,
+not another browser execution.
+**598 Python tests passed in 20.58s**
 for the updated release tooling and rendering helpers.
 After adding the eight-context first-script fixtures, the full Python regression
 completed: **2422 passed in 93.97s**. This is application/tooling test coverage,
 not a linked 001-062 browser result.
 
-## Latest linked build: 001-061 — 2026-10-14
+## Previous verified baseline: 001-061 — 2026-10-14
 
 Continuation v2 completed at j4 in **23m48.21s**, 247 executed steps, with an
 exact 61-patch receipt. This is incremental build time, not a clean build.

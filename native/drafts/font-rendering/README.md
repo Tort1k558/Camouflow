@@ -1,7 +1,7 @@
 # Windows font rasterization candidate
 
-**Registered/applied as patch 0062; browser binary remains verified 001–061.
-No new capability admitted.**
+**Registered/applied as patch 0062; 001–062 browser linked, 001–061 remains the
+verified runtime baseline. No new capability admitted.**
 
 This candidate changes actual Windows text-rendering parameters, not Canvas
 readback bytes, JavaScript APIs, installed font names, OS identity or GPU strings.
@@ -60,7 +60,15 @@ bounds and idempotence. All **five executed and passed** in Chromium's
   `gfx_unittests` build in 8m15.14s / 138 steps. Browser core, GN, receipt and source
   postguards passed. Proof: `windows-font-policy-001-062-v1.json` and raw
   `-tests.json` on D.
-- Browser linking and actual visual/runtime effects are **not yet verified**.
+- Browser linked at j4 in **29m02.24s**, 52 executed steps, with an exact 62-patch
+  receipt (`browser-build-001-062-v1.json` on D). The compiled mode comparison
+  below passed; fresh full runtime regression and broader compatibility remain
+  separate gates.
+
+The first 001–062 full runtime suite passed seven gates but failed the existing
+font-selection gate with a font-download `NetworkError`. Two attributed repeats
+passed the unchanged assertions (42 checks each), but the original cause remains
+unresolved. The failure is retained and is not declared fixed by rerunning.
 
 Regenerate only from a pre-0062 source tree into a fresh output outside Chromium;
 the preparer intentionally refuses already-applied policy files:
@@ -150,7 +158,15 @@ required to differ when normal rendering suppresses LCD text. Errors are retaine
 across modes, but retained browser resources stop additional launches. Core,
 receipt, packs and probe sources are guarded after execution.
 
-The verifier is prepared/tested, **not yet executed on the compiled candidate**.
+The compiled comparison **passed** on all six configurations/two starts/eight
+scopes: `font-rendering-001-062-v1/report.json` on D. No cleanup, restart,
+raw-image, format or HDR differences from required controls; all input and
+screenshot guards passed. Aliased versus grayscale pixel effects were observed
+in every scope. `native` matched feature-off. ClearType RGB matched this host's
+baseline; BGR changed opaque on-screen Canvas but not the Offscreen samples.
+This does not yield five distinct profile identities. Off/aliased/grayscale
+screenshots were inspected: aliased visibly degrades smoothness and changes some
+layout metrics, so modes must not be randomly assigned as an authenticity claim.
 A pass demonstrates this fixture's effects/coherence, not visual quality, true
 OS/GPU emulation, fingerprint realism or release/capability admission.
 
@@ -169,18 +185,18 @@ monospace matched. Do not force unconditional metric equality or call that
 baseline a Glint defect. Private calibration proofs/screenshots:
 `font-visuals-001-061-v1/` and `font-visuals-stock-148-v1/` on D. Requested font
 names and successful rendering do not independently prove installed-family
-identity. This baseline is not visual validation of the 0062 modes.
+identity. For actual 0062 mode observations, see the compiled comparison above;
+the 001–061 baseline itself is not candidate validation.
 
 ## Admission work
 
-The reviewed package is registered and its forwarding/startup C++/DEPS checks
-passed in isolation, and the five policy fixtures passed in Chromium. Link the
-browser and compare actual modes in
-document/iframe/dedicated/shared/service workers, before-script and restart runs.
-Check Canvas/DOM/SVG text and ordinary page rendering with real installed fonts.
-Verify raw pixel fidelity, P3/float16 APIs, PNG/ImageBitmap/drawImage and screenshots
-without the old Canvas readback candidate enabled. Combining both candidates is
-a separate test and does not fix the old candidate's failures automatically.
+The package is registered/linked; five native units and the initial eight-scope
+mode/restart/raw/HDR/visible-text comparison passed. Continue with the fresh full
+runtime regression, ordinary sites/editors, broader fonts/emoji/web fonts,
+cross-site/process and nested worker cases, display/GPU paths and controlled
+clone/restore integration. Do not promote manager controls or capability admission
+from this initial fixture alone. Combining the old readback candidate is a
+separate test and does not fix that candidate's failures automatically.
 
 ClearType may be suppressed by normal rendering rules on transparent surfaces;
 RGB/BGR need not produce distinct Canvas output. Aliased rendering can visibly

@@ -5,7 +5,10 @@ development patch chain**, not Camoufox/CloakBrowser and not an admitted release
 Linux/macOS own-fork builds are deferred. The latest verified Windows browser is
 **001–061**: all eight runtime gates (160 checks) and compiled Glint branding
 passed. Registered source now includes **0062**, the experimental Windows font
-rasterization package. Its browser linking/visual validation is still pending;
+rasterization package. Its browser now links and its mode/restart/first-script
+compatibility comparison passed. The first full runtime regression hit a font
+download `NetworkError`; attributed repeats passed but the cause is unresolved.
+A fresh full-suite repeat is in progress;
 do not transfer the 001–061 results to it. Exact results and retained failures:
 [test matrix](../docs/GLINT_TEST_MATRIX.md).
 

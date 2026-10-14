@@ -141,6 +141,16 @@ def test_all_modes_require_stable_compatible_observations_and_pixel_effect():
     assert not result["controls"]["native"]["document"]["text"]
 
 
+def test_effect_in_some_scopes_does_not_hide_ignored_worker_policy():
+    runs = mode_runs()
+    for index in range(2):
+        runs["aliased"][index]["service-module"]["text"] = deepcopy(runs["grayscale"][index]["service-module"]["text"])
+    result = verifier.assess(runs)
+    assert not result["passed"]
+    assert result["pixel_effects_by_scope"]["document"]
+    assert not result["pixel_effects_by_scope"]["service-module"]
+
+
 @pytest.mark.parametrize("mutation", ["restart", "native-change", "raw-change", "format-error", "unstable-export", "no-effect"])
 def test_incompatible_or_ineffective_mode_is_not_a_pass(mutation):
     runs = mode_runs()
