@@ -1,6 +1,6 @@
 # Windows font rasterization candidate
 
-**Unregistered, not applied to the active 001–060 build. No capability admitted.**
+**Unregistered, not applied to the active 001–061 build. No capability admitted.**
 
 This candidate changes actual Windows text-rendering parameters, not Canvas
 readback bytes, JavaScript APIs, installed font names, OS identity or GPU strings.
@@ -33,9 +33,15 @@ bounds and idempotence. They have been **type-checked, not executed**.
   flags: Windows parameter hook and policy fixtures. Active sources, core,
   compiler/target inputs and GN remained unchanged.
 - Private proof: `windows-font-rendering-cpp-001-060-v1/proof.json` on D.
+- Renderer switch forwarding passed an isolated C++ syntax/type check with the
+  actual `content/browser` target flags on source 001–061. Active source,
+  compiler and target inputs remained unchanged. Chromium's inherited DEPS
+  checker accepted the added include with no violations.
+- Private proofs: `font-renderer-forwarding-001-061-v1/proof.json` and `deps.json`
+  on D. These checks do not bind or validate the concurrently built executable.
 - Three Python preparation/replay/refusal tests passed.
-- Renderer forwarding C++ compilation, optimized linking, native fixture
-  execution and actual visual/runtime effects are **not yet verified**.
+- Optimized compilation/linking, native fixture execution and actual
+  visual/runtime effects are **not yet verified**.
 
 Regenerate only into a fresh output outside Chromium:
 
