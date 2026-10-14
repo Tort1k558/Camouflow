@@ -118,6 +118,28 @@ profiles were on C. This validates the fixture **without patch 0062 enabled**;
 it is not the five-mode candidate comparison, restarts, DOM/SVG text, HDR fidelity
 or fingerprint acceptance.
 
+## Mode/restart comparison
+
+After the 001–062 browser build finishes, run the compiled-candidate verifier:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_font_rendering.py --executable D:\CamouFlowNative\chromium\src\out\CamouFlowNative\chrome.exe --output D:\CamouFlowNative\font-rendering-new
+```
+
+It requires an idle builder, matching core/0062 receipt and fresh private output.
+It runs feature-off plus all five named modes, each with two starts of its own
+persistent profile and all eight first-script scopes. No old readback protection
+is enabled. Restart drift, raw-image metric changes, newly broken formats/exports,
+unstable repeated reads and a changed `native` baseline fail the experiment.
+Aliased/grayscale must produce a measured pixel difference; RGB/BGR are not
+required to differ when normal rendering suppresses LCD text. Errors are retained
+across modes, but retained browser resources stop additional launches. Core,
+receipt, packs and probe sources are guarded after execution.
+
+The verifier is prepared/tested, **not yet executed on the compiled candidate**.
+A pass demonstrates this fixture's effects/coherence, not visual quality, true
+OS/GPU emulation, fingerprint realism or release/capability admission.
+
 ## Admission work
 
 The reviewed package is registered and its forwarding/startup C++/DEPS checks

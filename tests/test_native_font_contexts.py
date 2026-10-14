@@ -1,10 +1,13 @@
 import asyncio
 from copy import deepcopy
+import hashlib
+import json
 
 import pytest
 
 from app.core.native import canvas_fidelity
 from scripts import native_canvas_formats, native_font_contexts, native_font_rendering
+from scripts import verify_native_font_rendering as verifier
 
 
 def observation(scope):
@@ -110,3 +113,184 @@ def test_format_errors_are_retained_not_hidden_by_schema_validation():
     value["formats"]["rows"][1]["read"] = {"status": "error", "name": "NotReadableError"}
     native_font_contexts.validate_scope("document", value)
     assert native_canvas_formats.compare_control(observation("document")["formats"], value["formats"])
+
+
+def mode_runs():
+    result = {mode: [{scope: observation(scope) for scope in native_font_contexts.SCOPES}
+                     for _ in range(2)] for mode in verifier.MODES}
+    for scopes in result["aliased"]:
+        for value in scopes.values():
+            for row in value["text"]["rows"]:
+                row["hashes"] = {name: "b" * 64 for name in native_font_rendering.HASHES}
+    return result
+
+
+def test_all_modes_require_stable_compatible_observations_and_pixel_effect():
+    result = verifier.assess(mode_runs())
+    assert result["passed"] and result["aliased_grayscale_pixel_effect"]
+    assert result["controls"]["aliased"]["document"]["text"]
+    assert not result["controls"]["native"]["document"]["text"]
+
+
+@pytest.mark.parametrize("mutation", ["restart", "native-change", "raw-change", "format-error", "unstable-export", "no-effect"])
+def test_incompatible_or_ineffective_mode_is_not_a_pass(mutation):
+    runs = mode_runs()
+    if mutation == "restart":
+        runs["aliased"][1]["document"]["text"]["rows"][0]["metrics"]["width"] += 1
+    elif mutation == "native-change":
+        for scopes in runs["native"]:
+            scopes["document"]["text"]["rows"][0]["metrics"]["width"] += 1
+    elif mutation == "raw-change":
+        for scopes in runs["aliased"]:
+            scopes["document"]["fidelity"]["rows"][0]["input"] = {
+                "changedChannels": 1, "changedPixels": 1, "alphaChanges": 0, "maximumError": 1}
+    elif mutation == "format-error":
+        for scopes in runs["aliased"]:
+            scopes["document"]["formats"]["rows"][1]["read"] = {"status": "error", "name": "NotReadableError"}
+    elif mutation == "unstable-export":
+        for scopes in runs["aliased"]:
+            scopes["document"]["text"]["rows"][0]["hashes"]["pngRepeat"] = "c" * 64
+    else:
+        runs["aliased"] = deepcopy(runs["grayscale"])
+    assert not verifier.assess(runs)["passed"]
+
+
+@pytest.mark.parametrize("missing", ["mode", "restart", "scope"])
+def test_incomplete_mode_matrix_rejects(missing):
+    runs = mode_runs()
+    if missing == "mode":
+        runs.pop("native")
+    elif missing == "restart":
+        runs["native"].pop()
+    else:
+        runs["native"][0].pop("service-module")
+    with pytest.raises(ValueError):
+        verifier.assess(runs)
+
+
+def test_unstable_control_does_not_make_equally_broken_modes_pass():
+    runs = mode_runs()
+    for rounds in runs.values():
+        for scopes in rounds:
+            scopes["document"]["text"]["rows"][0]["hashes"]["pngRepeat"] = "c" * 64
+    result = verifier.assess(runs)
+    assert not result["passed"]
+    assert any(item["reason"] == "repeated-read-or-export-is-unstable" for item in result["failures"])
+
+
+@pytest.mark.parametrize("mode", verifier.MODES)
+def test_mode_arguments_are_explicit_without_readback_flags(mode):
+    args = verifier.RenderingConfiguration(rasterization=mode).launch_arguments()
+    expected = "--glint-windows-font-rasterization=" + mode
+    assert (expected in args) is (mode != "off")
+    assert all("readback" not in argument.lower() for argument in args)
+
+
+@pytest.mark.parametrize("mode", ["Native", "rgb", "", None, True])
+def test_unknown_modes_have_no_fallback(mode):
+    with pytest.raises(ValueError):
+        verifier.RenderingConfiguration(rasterization=mode).context_options()
+
+
+@pytest.mark.parametrize("failure", [None, "measurement", "core-change", "pack-change", "pack-removed", "source-change", "receipt-change", "cleanup", "bind"])
+def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure):
+    public = tmp_path / "public"
+    runtime_dir = tmp_path / "runtime"
+    runtime_dir.mkdir()
+    executable = runtime_dir / "chrome.exe"
+    executable.write_bytes(b"owned executable")
+    pack = runtime_dir / "resources.pak"
+    pack.write_bytes(b"owned resources")
+    patch = public / "native/patches/0062-native-windows-font-rasterization.patch"
+    patch.parent.mkdir(parents=True)
+    patch.write_bytes(b"owned policy")
+    for relative in ("scripts/native_font_contexts.py", "scripts/native_font_rendering.py",
+                     "scripts/native_canvas_formats.py", "app/core/native/canvas_fidelity.py"):
+        path = public / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"owned probe")
+
+    def core(path):
+        return {"chrome.exe": hashlib.sha256(path.read_bytes()).hexdigest(),
+                "chrome.dll": "d" * 64, "chrome_elf.dll": "e" * 64}
+
+    (runtime_dir / "camouflow-build.json").write_text(json.dumps({
+        "platform": "win32", "binary": "chrome.exe", "runtime_core_sha256_measured": core(executable),
+        "patches": [{"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}],
+    }), encoding="utf-8")
+    monkeypatch.setattr(verifier, "ROOT", public)
+    monkeypatch.setattr(verifier, "PATCH", patch)
+    monkeypatch.setattr(verifier.sys, "platform", "win32")
+    monkeypatch.setattr(verifier, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(verifier, "measure_runtime_core", core)
+    monkeypatch.setattr(verifier, "measure_branding_resources",
+                        lambda path: {"resources.pak": hashlib.sha256(pack.read_bytes()).hexdigest()})
+    runs = mode_runs()
+    starts = []
+
+    class Runtime:
+        def __init__(self, profile, path, configuration):
+            self.mode = configuration.rasterization
+            self.has_resources = False
+
+        async def start(self, **kwargs):
+            self.has_resources = True
+            starts.append(self.mode)
+            return self
+
+        async def new_page(self):
+            return self.mode
+
+        async def close(self):
+            if failure == "cleanup":
+                raise RuntimeError("owned cleanup failure")
+            self.has_resources = False
+
+    async def collect(mode, url):
+        if failure == "measurement" and mode == "off":
+            raise ValueError("owned measurement failure")
+        if mode == "cleartype-bgr":
+            if failure == "core-change":
+                executable.write_bytes(b"changed executable")
+            elif failure == "pack-change":
+                pack.write_bytes(b"changed resources")
+            elif failure == "pack-removed":
+                pack.unlink(missing_ok=True)
+            elif failure == "source-change":
+                (public / "scripts/native_font_contexts.py").write_bytes(b"changed probe")
+            elif failure == "receipt-change":
+                (runtime_dir / "camouflow-build.json").write_bytes(b"changed receipt")
+        return deepcopy(runs[mode][0])
+
+    class Server:
+        server_address = ("127.0.0.1", 1234)
+
+        def __init__(self, *args):
+            if failure == "bind":
+                raise OSError("owned bind failure")
+
+        def serve_forever(self):
+            pass
+
+        def shutdown(self):
+            pass
+
+        def server_close(self):
+            pass
+
+    monkeypatch.setattr(verifier, "NativeRuntime", Runtime)
+    monkeypatch.setattr(verifier.native_font_contexts, "collect", collect)
+    monkeypatch.setattr(verifier, "FixtureServer", Server)
+    destination = tmp_path / "evidence"
+    report = asyncio.run(verifier.verify(executable, destination))
+    assert report["passed"] is (failure is None)
+    assert report["capability_admitted"] is False
+    assert json.loads((destination / "report.json").read_text(encoding="utf-8")) == report
+    assert report["inputs_unchanged"] is (failure not in {
+        "core-change", "pack-change", "pack-removed", "source-change", "receipt-change"})
+    if failure == "cleanup":
+        assert starts == ["off"]
+    elif failure != "bind":
+        assert starts == [mode for mode in verifier.MODES for _ in range(2)]
+    with pytest.raises(ValueError, match="Fresh private evidence"):
+        asyncio.run(verifier.verify(executable, destination))
