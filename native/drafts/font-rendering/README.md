@@ -50,6 +50,27 @@ Regenerate only into a fresh output outside Chromium:
 git -C D:\CamouFlowNative\chromium\src apply --check D:\CamouFlowNative\windows-font-rendering-new.patch
 ```
 
+## Rendering observations
+
+`scripts/native_font_rendering.py` measures three requested CSS font families on
+opaque and transparent surfaces: text metrics, nonblank pixel coverage, repeated
+readback, PNG encode/decode and direct ImageBitmap copies. It reports hash/metric
+differences, not whether they represent a realistic identity. Requested family
+names may resolve to fallback fonts; this is not installed-font verification.
+
+Reuse `scripts.native_canvas_formats.WORKER_READ` for the dedicated-worker probe
+and `app.core.native.canvas_fidelity` for raw-image controls. Raw-pixel fidelity
+and colour/storage-format checks remain separate from text-hash changes.
+
+An actual feature-off 001–060 diagnostic completed six cases in each of document
+and dedicated worker, with no observed readback/PNG/ImageBitmap differences and
+matching measurements between these two scopes. The opaque palette had zero
+changed pixels in each scope. Core hashes stayed unchanged and cleanup completed.
+Private evidence: `font-rasterization-probe-001-060-v1/report.json` on D.
+Only temporary diagnostic profiles were placed on C; the executable remained on
+D. This is fixture validation, **not execution of the rendering candidate**,
+full lifecycle admission, colour/HDR fidelity, DOM/SVG or other-worker coverage.
+
 ## Admission work
 
 After the active build finishes, validate full forwarding/DEPS, register the
