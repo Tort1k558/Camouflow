@@ -68,10 +68,20 @@ try:
     cpu = find(privacy, 'objectName', 'nativeCpuLimit')
     cpu.setProperty('text', '2')
     QMetaObject.invokeMethod(cpu, 'editingFinished')
+    options = ui.browser_settings.nativeFontRasterizationOptions
+    assert len(options) == 5 and options[2] == {'value': 'grayscale', 'label': 'Grayscale'}
+    grayscale = find(privacy, 'label', 'Grayscale')
+    assert grayscale is not None
+    QMetaObject.invokeMethod(grayscale, 'clicked')
+    pump()
+    assert grayscale.property('active')
+    ui.browser_settings.setNativePrivacyValue('font_rasterization', 'unknown')
+    assert ui.browser_settings.nativePrivacyPolicy['font_rasterization'] == 'grayscale'
     QMetaObject.invokeMethod(find(page, 'text', 'Save changes'), 'clicked')
     pump()
     policy = db.db_get_native_defaults()['privacy_policy']
     assert policy['cpu_limit'] == 2 and policy['restrict_webrtc']
+    assert policy['font_rasterization'] == 'grayscale'
     assert 'Pending' in ui.browser_settings.nativePrivacyStatus
     from app.core.native.configuration import NativeConfiguration
     try:
@@ -83,6 +93,7 @@ try:
     QMetaObject.invokeMethod(find(page, 'text', 'Save changes'), 'clicked')
     pump()
     assert not db.db_get_native_defaults()['privacy_policy']['cpu_limit']
+    assert db.db_get_native_defaults()['privacy_policy']['font_rasterization'] == 'native'
     assert db.db_get_native_defaults()['window_width'] == 420
     ui.browser_settings.setValue('fingerprint_noise', True)
     messages = []

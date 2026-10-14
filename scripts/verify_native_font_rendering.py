@@ -16,13 +16,14 @@ sys.path.insert(0, str(ROOT))
 
 from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime
+from app.core.native.privacy import FONT_RASTERIZATION_MODES
 from app.core.native import canvas_fidelity
 from scripts import native_canvas_formats, native_canvas_hdr, native_font_contexts, native_font_rendering, native_font_visuals
 from scripts.verify_native_branding import measure_branding_resources
 from scripts.verify_native_privacy_units import require_idle_builder
 from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
 
-MODES = ("off", "native", "aliased", "grayscale", "cleartype-rgb", "cleartype-bgr")
+MODES = ("off", *FONT_RASTERIZATION_MODES)
 PATCH = ROOT / "native/patches/0062-native-windows-font-rasterization.patch"
 
 
@@ -136,6 +137,7 @@ async def verify(executable: Path, destination: Path) -> dict:
               ROOT / "scripts/native_canvas_hdr.py",
               ROOT / "scripts/native_font_visuals.py",
               ROOT / "app/core/native/canvas_fidelity.py"]
+    inputs.extend(ROOT / "app/core/native" / name for name in ("configuration.py", "privacy.py", "runtime.py", "identity.py"))
     before = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
     resources = measure_branding_resources(executable)
     destination.mkdir()

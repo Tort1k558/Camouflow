@@ -65,8 +65,29 @@ also passed 42 with no failed requests (`fonts-attributed-001-062-v1.json`). The
 repeats do **not establish the cause or fix** the original intermittent error.
 The gate now retains bounded owned-font HTTP responses/failures, identifies the
 mode/restart/context and preserves completed frame checks before later failures;
-assertions were not weakened, retried or skipped. Full suite continuation v2 is
-running at `browser-verification-001-062-v2/` on the unchanged binary.
+assertions were not weakened, retried or skipped. Full suite continuation v2
+**passed all eight gates, 160/160 checks** on the unchanged binary:
+`browser-verification-001-062-v2/suite.json`. This successful repeat does not
+resolve the original NetworkError or establish reliability under all loads.
+
+Fresh compiled branding verification also **passed** for this exact 001-062
+runtime: project main/app-list icons, executable/library product names and the
+version-page product label. Core/receipt/resource postguards passed. Proof:
+`branding-runtime-001-062-v1/report.json` on D. This is not taskbar/shortcut
+migration or fingerprint admission.
+
+The manager now exposes five Windows text-rendering choices as **saved drafts**.
+Existing policies default to `native`; reset restores it. Non-native choices
+require the separate `font-rasterization` capability and remain blocked before
+driver startup until verified activation is implemented. They are not silently
+enabled by a successful diagnostic run.
+The actual offscreen QML flow passed selection/save/invalid-value rejection,
+native reset and pre-launch refusal; its rendered green UI was inspected at
+1280x1100 (`font-policy-manager-001-062-v2/manager.png` on D). The offscreen
+plugin had no system fonts, so the private capture explicitly registered this
+host's Segoe UI/Consolas files; production font settings were not changed.
+The full application/tooling regression after this integration passed
+**2506 tests in 99.63s**. These tests do not admit experimental runtime policy.
 
 The future mode gate also requires an aliased/grayscale pixel effect in **every**
 scope, not merely one. A separate stricter assessment of the unchanged saved

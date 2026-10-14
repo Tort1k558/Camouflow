@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 import math
 
+FONT_RASTERIZATION_MODES = ("native", "aliased", "grayscale", "cleartype-rgb", "cleartype-bgr")
+
 
 @dataclass(frozen=True)
 class NativePrivacyPolicy:
@@ -12,6 +14,7 @@ class NativePrivacyPolicy:
     restrict_webrtc: bool = False
     conceal_automation: bool = False
     native_user_agent: bool = False
+    font_rasterization: str = "native"
 
     @classmethod
     def from_dict(cls, value: dict) -> "NativePrivacyPolicy":
@@ -32,6 +35,8 @@ class NativePrivacyPolicy:
             raise ValueError("Native memory limit must be 0 (native), 0.25, 0.5, 1, 2, 4, 8 or 16 GiB")
         if any(type(value) is not bool for value in (self.restrict_webrtc, self.conceal_automation, self.native_user_agent)):
             raise ValueError("Native privacy switches must be booleans")
+        if not isinstance(self.font_rasterization, str) or self.font_rasterization not in FONT_RASTERIZATION_MODES:
+            raise ValueError("Unknown Windows font rasterization mode")
         if not isinstance(self.fonts, tuple) or len(self.fonts) > 64:
             raise ValueError("Native font selection permits at most 64 families")
         if self.fonts:
@@ -50,7 +55,8 @@ class NativePrivacyPolicy:
         return [name for name, requested in (
             ("hardware", bool(self.cpu_limit or self.memory_limit)), ("fonts", bool(self.fonts)),
             ("webrtc", self.restrict_webrtc), ("automation", self.conceal_automation),
-            ("identity", self.native_user_agent)) if requested]
+            ("identity", self.native_user_agent),
+            ("font-rasterization", self.font_rasterization != "native")) if requested]
 
     def prepared_arguments(self) -> list[str]:
         self.validate()
@@ -67,6 +73,8 @@ class NativePrivacyPolicy:
             arguments.append("--enable-blink-features=CamouFlowAutomationConcealed")
         if self.native_user_agent:
             arguments.append("--camouflow-native-user-agent")
+        if self.font_rasterization != "native":
+            arguments.append("--glint-windows-font-rasterization=" + self.font_rasterization)
         return arguments
 
     def require_verified_runtime(self) -> None:

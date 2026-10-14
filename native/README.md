@@ -17,7 +17,7 @@ patch chain; they do not transfer automatically to newer binaries.
 
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
-| Registered Windows source | 001-062 | 001-061 runtime/branding verified; 0062 adds experimental Windows font rendering, now linked but not yet runtime-admitted |
+| Registered Windows source | 001-062 | Runtime/branding verified; 0062 adds experimental Windows font rendering. Product capability admission remains closed |
 | Native identity keys/service | 001-059 | **62/62** passed, repeating the 001-058 result: 19 new derivation/mode cases and 43 legacy checks; unchanged browser core/GN/receipt |
 | Native identity contexts/transport | 001-059 | **37/37 + 20/20** passed in the linked Chromium content target; not a linked identity-mode browser or renderer delivery proof |
 | Native identity handoff | 001-059 | **15/15** Blink cases passed: 12 document cases across four modes and three worker-thread cases; not a linked identity-mode browser |
@@ -31,15 +31,14 @@ patch chain; they do not transfer automatically to newer binaries.
 | Native GPU metadata | 001-058 | **33/33** Chromium `gpu_unittests` cases passed: codec 14, passthrough protocol 5, attachment 14. Not validating-decoder, WebGPU or browser readback admission |
 | Windows font rendering policy | 001-062 | **5/5** Chromium units and six-configuration/two-start/eight-scope rendering comparison passed; raw/HDR controls retained. Aliased/grayscale effects verified; not five distinct identities or capability admission |
 | Current linked Windows candidate | 001-062 | Incremental j4 build succeeded in **29m02s**, 52 executed steps; separate runnable 001-061 rollback copy retained |
-| Complete eight-gate runtime suite | 001-061 | **160 checks passed** on unchanged runtime core; earlier 001-060 shutdown failure remains recorded |
-| Compiled branding | 001-061 | Main/app-list icons, ProductName and version-page Glint logo/name verified; not cached taskbar/shortcut migration or every UI screen |
+| Complete eight-gate runtime suite | 001-062 | **160 checks passed** in continuation v2; first-run font NetworkError remains unexplained and recorded |
+| Compiled branding | 001-062 | Main/app-list icons, ProductName and version-page Glint logo/name verified; not cached taskbar/shortcut migration or every UI screen |
 | Combined identity and privacy surfaces | 001-059 | Profile-identity and partitioned-privacy each passed **12/12 phases + 24 nested Canvas cases** with concurrent profiles, restart and WebGL readback; not WebGPU protection or third-party anti-bot acceptance |
 | Worker startup/restart | 001-047 | Default **40/40**; extended **60/60**, including 20 nested classic/module cases |
 | Combined Canvas/OfflineAudio | 001-047 | **Three consecutive 7/7 runs passed** on unchanged core; historical 001-045 profile-B timeout remains unexplained |
 | Nested worker Canvas | 001-047 | **24/24** first-script/repeat/restart cases passed alongside all seven combined phases |
 | Strict HTTP/JS Client Hints | 001-047 | **18/18** checks passed: eight strict document/frame comparisons, six worker JS checks, four invalid-UA rejections; worker HTTP hints and TLS are not covered |
 | Protected WebGL readback | 001-047 | **Six phases passed**, including clipped CPU/PBO reads, state/errors, exports, restart and profile isolation; wider admission remains blocked |
-| Branding | Partial, UI fix building | 001–060 icons/PE names passed, version page remained Chromium; registered 0061 repairs scaled UI resources |
 | Linux/macOS | Deferred | No current own-fork runtime admission |
 | Mobile Web | Emulation | Desktop viewport/touch mode, not Android/iOS |
 

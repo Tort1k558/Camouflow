@@ -235,10 +235,25 @@ Item {
                         FormField { objectName: "nativeMemoryLimit"; Layout.fillWidth: true; label: "Memory ceiling (GiB)"; placeholder: "0 = native; 0.25, 0.5, 1, 2, 4, 8, 16"; text: String(browserSettingsBridge.nativePrivacyPolicy.memory_limit); onEditingFinished: browserSettingsBridge.setNativePrivacyValue("memory_limit", text) }
                     }
                     MultiField { objectName: "nativeFontFamilies"; width: parent.width; label: "Installed font families"; placeholder: "Empty = native; include Arial; one family per line"; text: browserSettingsBridge.nativePrivacyPolicy.fonts.join("\n"); onEditingFinished: browserSettingsBridge.setNativePrivacyValue("fonts", text) }
+                    Text { text: "Windows text rendering · draft"; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
+                    Flow {
+                        width: parent.width; spacing: 8
+                        Repeater {
+                            model: browserSettingsBridge.nativeFontRasterizationOptions
+                            delegate: ModeButton {
+                                required property var modelData
+                                width: 130
+                                label: modelData.label
+                                active: browserSettingsBridge.nativePrivacyPolicy.font_rasterization === modelData.value
+                                onClicked: browserSettingsBridge.setNativePrivacyValue("font_rasterization", modelData.value)
+                            }
+                        }
+                    }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Saved only; verified runtime activation is not enabled. Aliased reduces smoothness. ClearType modes may produce identical results."; color: Theme.muted; font.pixelSize: 12 }
                     ToggleRow { width: parent.width; label: "Restrict non-proxied WebRTC UDP"; hint: "Routing policy, not a fake IP; some media connections may be unavailable."; checked: browserSettingsBridge.nativePrivacyPolicy.restrict_webrtc; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("restrict_webrtc", value) } }
                     ToggleRow { width: parent.width; label: "Conceal webdriver exposure"; hint: "Native getter policy; not general CDP invisibility."; checked: browserSettingsBridge.nativePrivacyPolicy.conceal_automation; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("conceal_automation", value) } }
                     ToggleRow { width: parent.width; label: "Native headless UA policy"; hint: "Keep the real version, OS and Client Hints; remove only the headless product prefix."; checked: browserSettingsBridge.nativePrivacyPolicy.native_user_agent; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("native_user_agent", value) } }
-                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Ceilings never invent additional hardware. Font selection uses real installed faces; include sufficient fonts for the selected languages. Requested patches are not verified yet: saving this policy prepares it, but browser launch is blocked until verified activation is implemented. Native values leaves the existing runtime usable."; color: Theme.muted; font.pixelSize: 12 }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Ceilings never invent additional hardware. Font selection uses real installed faces; include sufficient fonts for the selected languages. Saving prepares a draft; non-native policy launch remains blocked until verified activation is implemented. Native values leaves the existing runtime usable."; color: Theme.muted; font.pixelSize: 12 }
                 }
             }
             SettingsSection {

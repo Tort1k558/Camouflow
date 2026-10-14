@@ -230,7 +230,7 @@ def test_unknown_modes_have_no_fallback(mode):
         verifier.RenderingConfiguration(rasterization=mode).context_options()
 
 
-@pytest.mark.parametrize("failure", [None, "measurement", "core-change", "pack-change", "pack-removed", "source-change", "receipt-change", "screenshot-change", "screenshot-removed", "visual-restart", "cleanup", "bind"])
+@pytest.mark.parametrize("failure", [None, "measurement", "core-change", "pack-change", "pack-removed", "source-change", "policy-change", "receipt-change", "screenshot-change", "screenshot-removed", "visual-restart", "cleanup", "bind"])
 def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure):
     public = tmp_path / "public"
     runtime_dir = tmp_path / "runtime"
@@ -243,7 +243,9 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     patch.parent.mkdir(parents=True)
     patch.write_bytes(b"owned policy")
     for relative in ("scripts/native_font_contexts.py", "scripts/native_font_rendering.py",
-                     "scripts/native_canvas_formats.py", "scripts/native_canvas_hdr.py", "scripts/native_font_visuals.py", "app/core/native/canvas_fidelity.py"):
+                     "scripts/native_canvas_formats.py", "scripts/native_canvas_hdr.py", "scripts/native_font_visuals.py",
+                     "app/core/native/canvas_fidelity.py", "app/core/native/configuration.py",
+                     "app/core/native/privacy.py", "app/core/native/runtime.py", "app/core/native/identity.py"):
         path = public / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"owned probe")
@@ -305,6 +307,8 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
                 pack.unlink(missing_ok=True)
             elif failure == "source-change":
                 (public / "scripts/native_font_contexts.py").write_bytes(b"changed probe")
+            elif failure == "policy-change":
+                (public / "app/core/native/privacy.py").write_bytes(b"changed policy")
             elif failure == "receipt-change":
                 (runtime_dir / "camouflow-build.json").write_bytes(b"changed receipt")
             elif failure == "screenshot-change":
@@ -347,7 +351,7 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     assert report["capability_admitted"] is False
     assert json.loads((destination / "report.json").read_text(encoding="utf-8")) == report
     assert report["inputs_unchanged"] is (failure not in {
-        "core-change", "pack-change", "pack-removed", "source-change", "receipt-change", "screenshot-change", "screenshot-removed"})
+        "core-change", "pack-change", "pack-removed", "source-change", "policy-change", "receipt-change", "screenshot-change", "screenshot-removed"})
     if failure == "cleanup":
         assert starts == ["off"]
     elif failure != "bind":

@@ -246,6 +246,46 @@ def test_native_privacy_policy_rejects_invalid_controls_without_silent_normaliza
         NativePrivacyPolicy.from_dict(values)
 
 
+@pytest.mark.parametrize("mode", ["Native", "", "rgb", None, True, 1, [], {}])
+def test_native_font_rasterization_rejects_invalid_modes(mode):
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    with pytest.raises(ValueError, match="rasterization"):
+        NativePrivacyPolicy.from_dict({"font_rasterization": mode})
+
+
+@pytest.mark.parametrize("mode", ["native", "aliased", "grayscale", "cleartype-rgb", "cleartype-bgr"])
+def test_native_font_rasterization_drafts_never_enable_unverified_runtime(mode, tmp_path, monkeypatch):
+    from dataclasses import asdict
+    from unittest.mock import Mock
+
+    from app.core.native import runtime as module
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    policy = NativePrivacyPolicy.from_dict({"font_rasterization": mode})
+    assert NativePrivacyPolicy.from_dict(asdict(policy)) == policy
+    configuration = NativeConfiguration(privacy_policy=policy)
+    if mode == "native":
+        assert policy == NativePrivacyPolicy()
+        assert policy.prepared_arguments() == []
+        assert policy.required_capabilities() == []
+        configuration.launch_arguments()
+        return
+    assert policy.prepared_arguments() == ["--glint-windows-font-rasterization=" + mode]
+    assert policy.required_capabilities() == ["font-rasterization"]
+    with pytest.raises(ValueError, match="verified"):
+        configuration.launch_arguments()
+    with pytest.raises(ValueError, match="verified"):
+        configuration.context_options()
+    driver = Mock()
+    monkeypatch.setattr(module, "async_playwright", driver)
+    runtime = NativeRuntime(tmp_path / "not-created", Path(__file__), configuration)
+    with pytest.raises(ValueError, match="verified"):
+        asyncio.run(runtime.start())
+    driver.assert_not_called()
+    assert not runtime.has_resources and not runtime.profile_dir.exists()
+
+
 def test_native_privacy_policy_prepares_exact_cpp_switches_without_activating_them(tmp_path, monkeypatch):
     from unittest.mock import Mock
 

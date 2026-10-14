@@ -140,8 +140,15 @@ class BrowserSettingsBridge(QObject):
             required = NativePrivacyPolicy.from_dict(self._native.get("privacy_policy", {})).required_capabilities()
         except ValueError as error:
             return "Invalid policy: " + str(error)
-        return ("Pending own-fork verification: " + ", ".join(required)
+        return ("Pending verified runtime activation: " + ", ".join(required)
                 if required else "Native browser values; no experimental privacy policy requested")
+
+    @pyqtProperty("QVariantList", constant=True)
+    def nativeFontRasterizationOptions(self) -> list:  # noqa: N802
+        from app.core.native.privacy import FONT_RASTERIZATION_MODES
+        labels = {"native": "Native", "aliased": "Aliased", "grayscale": "Grayscale",
+                  "cleartype-rgb": "ClearType RGB", "cleartype-bgr": "ClearType BGR"}
+        return [{"value": mode, "label": labels[mode]} for mode in FONT_RASTERIZATION_MODES]
 
     @pyqtSlot(str, "QVariant")
     def setNativePrivacyValue(self, key: str, value: Any) -> None:  # noqa: N802
@@ -160,7 +167,7 @@ class BrowserSettingsBridge(QObject):
                 value = float(value) if str(value).strip() else 0
             elif key == "fonts":
                 value = self._text_list(value)
-            elif key not in {"restrict_webrtc", "conceal_automation", "native_user_agent"}:
+            elif key not in {"restrict_webrtc", "conceal_automation", "native_user_agent", "font_rasterization"}:
                 raise ValueError("Unknown Native privacy field")
             policy = NativePrivacyPolicy.from_dict({**self._native.get("privacy_policy", {}), key: value})
         except (ValueError, TypeError) as error:
