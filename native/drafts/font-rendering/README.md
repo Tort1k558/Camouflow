@@ -71,6 +71,17 @@ Only temporary diagnostic profiles were placed on C; the executable remained on
 D. This is fixture validation, **not execution of the rendering candidate**,
 full lifecycle admission, colour/HDR fidelity, DOM/SVG or other-worker coverage.
 
+A separate four-scope control then measured document, dedicated, shared and
+service workers on feature-off Glint 001–060 and checksum-bound stock Chromium
+148.0.7778.96. Each scope matched its stock counterpart. Generic `monospace`
+resolved differently in shared/service workers versus document/dedicated workers
+in **both** engines; named Arial/Times New Roman observations matched across
+scopes. Do not mistake this upstream baseline for a Glint regression or require
+unconditional cross-scope equality when the baseline differs. Private reports:
+`font-worker-scopes-001-060-v1/report.json` and
+`font-worker-scopes-stock-148-v1/report.json` on D. These are observations of the
+unprotected baseline, not candidate execution or a complete font-policy test.
+
 ## Admission work
 
 After the active build finishes, validate full forwarding/DEPS, register the

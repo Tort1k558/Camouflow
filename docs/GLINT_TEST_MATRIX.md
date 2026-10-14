@@ -3,7 +3,37 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
-## Latest linked build: 001-060 — 2026-10-14
+## Latest linked build: 001-061 — 2026-10-14
+
+Continuation v2 completed at j4 in **23m48.21s**, 247 executed steps, with an
+exact 61-patch receipt. This is incremental build time, not a clean build.
+Proof: `browser-build-001-061-v2.json` on D.
+
+| Check | Actual outcome |
+| --- | --- |
+| Compiled main/app-list icon payloads | Match the project ICO |
+| Executable/library ProductName | **Glint** |
+| `chrome://version` product and screenshot | **Glint**, project logo/wordmark visually inspected |
+| Core, receipt, patches and resource/locale pack postguards | Unchanged during branding probe |
+| Full eight-gate runtime suite | Started; no completed-suite claim yet |
+
+Branding proof: `branding-runtime-001-061-v1/report.json` and `version-page.png`
+on D. Core executable/DLL hashes match 001-060 below: this package changes the
+external UI resources/locale packs. The branding gate binds their separate
+hashes; executable hashes alone do not identify the new UI package. Cached
+taskbar icons, existing shortcuts, all UI screens and privacy admission remain
+outside this branding gate. The receipt's runtime/privacy admission flags remain
+false. Full-suite evidence is being written to `browser-verification-001-061-v1/`.
+
+The original **001-060** three-profile HDD lifecycle case was separately rerun
+after the build finished: **three rounds passed in 64.047s**, with unchanged core
+and production close deadlines. Proof: `shutdown-060-hdd-idle-v1.json` on D.
+This supports an I/O-pressure explanation for the earlier shutdown timeout; it
+does not erase the failed full-suite report or prove reliability under concurrent
+build/storage pressure. No timeout extension, profile relocation or BTM disabling
+was introduced.
+
+## Previous linked build: 001-060 — 2026-10-14
 
 Chrome continuation v2 linked successfully at j4 in **17m47.10s**, 177 executed
 steps after the earlier OOM attempt and isolated object recovery. This is not
