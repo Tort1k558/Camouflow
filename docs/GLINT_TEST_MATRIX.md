@@ -210,6 +210,22 @@ the requested format, losing alpha/colour semantics or bypassing policy.
 The full Python regression run passed **2350 tests in 98.92s** before the final
 worker-cleanup assertion was added; all **14 format tests** passed afterward.
 
+### Next rendering candidate (not part of the active build)
+
+The new public `native/drafts/font-rendering/` package prepares actual Windows
+font-rasterization modes, with native cached-parameter application, validated
+renderer switch forwarding and five native fixture definitions. Preparation and
+apply-check passed on source 001-060 without modifying it. Two isolated C++ type
+checks passed with actual gfx/gfx-unittest target flags: Windows parameter hook
+and fixtures; active inputs/core stayed unchanged. Private proof:
+`windows-font-rendering-cpp-001-060-v1/proof.json` on D.
+
+This is not optimized compilation, fixture execution, renderer forwarding
+validation or browser protection. The candidate is unregistered, unapplied and
+not selectable in the manager. It does not repair the old readback algorithm by
+itself; verify pixel fidelity and text/rendering coherence before admission.
+After adding the preparation tests, **2354 Python tests passed in 110.26s**.
+
 ## Test destinations
 
 Priority: **Core** for each build; **Extended** before release; **Reference** for
