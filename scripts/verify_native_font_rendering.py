@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime
 from app.core.native import canvas_fidelity
-from scripts import native_canvas_formats, native_canvas_hdr, native_font_contexts, native_font_rendering
+from scripts import native_canvas_formats, native_canvas_hdr, native_font_contexts, native_font_rendering, native_font_visuals
 from scripts.verify_native_branding import measure_branding_resources
 from scripts.verify_native_privacy_units import require_idle_builder
 from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
@@ -133,13 +133,14 @@ async def verify(executable: Path, destination: Path) -> dict:
     inputs = [PATCH, Path(__file__), ROOT / "scripts/native_font_contexts.py",
               ROOT / "scripts/native_font_rendering.py", ROOT / "scripts/native_canvas_formats.py",
               ROOT / "scripts/native_canvas_hdr.py",
+              ROOT / "scripts/native_font_visuals.py",
               ROOT / "app/core/native/canvas_fidelity.py"]
     before = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
     resources = measure_branding_resources(executable)
     destination.mkdir()
     report = {"passed": False, "scope": __doc__, "capability_admitted": False,
               "runtime_core_sha256_measured": core, "inputs_sha256": before,
-              "resource_pack_sha256": resources, "runs": {}, "errors": []}
+              "resource_pack_sha256": resources, "runs": {}, "visuals": {}, "screenshots_sha256": {}, "errors": []}
     server = None
     thread = None
     server_started = False
@@ -150,6 +151,7 @@ async def verify(executable: Path, destination: Path) -> dict:
         server_started = True
         for mode in MODES:
             report["runs"][mode] = []
+            report["visuals"][mode] = []
             for round_index in range(2):
                 runtime = NativeRuntime(destination / "profiles" / mode, executable,
                                         RenderingConfiguration(rasterization=mode))
@@ -158,6 +160,11 @@ async def verify(executable: Path, destination: Path) -> dict:
                     page = await context.new_page()
                     measured = await native_font_contexts.collect(page, f"http://127.0.0.1:{server.server_address[1]}")
                     report["runs"][mode].append(measured)
+                    visible = await native_font_visuals.collect(page)
+                    screenshot = f"font-{mode}-{round_index}.png"
+                    await page.screenshot(path=str(destination / screenshot))
+                    report["screenshots_sha256"][screenshot] = hashlib.sha256((destination / screenshot).read_bytes()).hexdigest()
+                    report["visuals"][mode].append(visible)
                 except Exception as error:
                     report["errors"].append({"mode": mode, "round": round_index,
                                               "error": type(error).__name__ + ": " + str(error)})
@@ -172,7 +179,12 @@ async def verify(executable: Path, destination: Path) -> dict:
                     (destination / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")
         if not report["errors"]:
             report["assessment"] = assess(report["runs"])
-            report["passed"] = report["assessment"]["passed"]
+            report["visual_restarts"] = {mode: native_font_visuals.compare_control(values[0], values[1])
+                                          for mode, values in report["visuals"].items()}
+            report["visual_controls"] = {mode: native_font_visuals.compare_control(report["visuals"]["off"][0], values[0])
+                                          for mode, values in report["visuals"].items() if mode != "off"}
+            report["passed"] = (report["assessment"]["passed"] and not any(report["visual_restarts"].values())
+                                and not report["visual_controls"]["native"])
     except Exception as error:
         report["error"] = type(error).__name__ + ": " + str(error)
     finally:
@@ -186,7 +198,9 @@ async def verify(executable: Path, destination: Path) -> dict:
             report["inputs_unchanged"] = (
                 core == measure_runtime_core(executable) and receipt == receipt_path.read_bytes()
                 and resources == measure_branding_resources(executable)
-                and before == {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs})
+                and before == {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
+                and all(value == hashlib.sha256((destination / name).read_bytes()).hexdigest()
+                        for name, value in report["screenshots_sha256"].items()))
         except (ValueError, OSError) as error:
             report["inputs_unchanged"] = False
             report["guard_error"] = type(error).__name__ + ": " + str(error)
@@ -204,7 +218,12 @@ def main() -> int:
         report = asyncio.run(verify(arguments.executable, arguments.output))
     except (OSError, ValueError) as error:
         parser.exit(1, f"Font rendering verification failed: {error}\n")
-    print(json.dumps({key: report.get(key) for key in ("passed", "errors", "error", "inputs_unchanged")}, indent=2))
+    summary = {key: report.get(key) for key in ("passed", "errors", "error", "inputs_unchanged")}
+    summary.update(report=str(arguments.output / "report.json"),
+                   assessment_failures=len(report.get("assessment", {}).get("failures", [])),
+                   visual_restart_differences=sum(map(len, report.get("visual_restarts", {}).values())),
+                   native_visual_differences=len(report.get("visual_controls", {}).get("native", [])))
+    print(json.dumps(summary, indent=2))
     return 0 if report["passed"] else 1
 
 

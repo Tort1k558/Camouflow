@@ -154,6 +154,23 @@ The verifier is prepared/tested, **not yet executed on the compiled candidate**.
 A pass demonstrates this fixture's effects/coherence, not visual quality, true
 OS/GPU emulation, fingerprint realism or release/capability admission.
 
+### Visible DOM/SVG/Canvas samples
+
+`scripts/native_font_visuals.py` draws the same three requested fonts on actual
+DOM, SVG and opaque on-screen Canvas surfaces. The mode verifier saves one
+checksum-bound PNG per mode/start, retains layout/pixel observations and rejects
+restart drift or a changed `native` baseline. Non-native changes are reported,
+not automatically judged visually acceptable. Screenshots still need inspection.
+
+The feature-off 001–061 scene was actually captured and visually inspected; its
+measurements matched checksum-bound stock Chromium 148.0.7778.96. Arial/Times
+Canvas text widths differed slightly from DOM/SVG in **both** engines, while
+monospace matched. Do not force unconditional metric equality or call that
+baseline a Glint defect. Private calibration proofs/screenshots:
+`font-visuals-001-061-v1/` and `font-visuals-stock-148-v1/` on D. Requested font
+names and successful rendering do not independently prove installed-family
+identity. This baseline is not visual validation of the 0062 modes.
+
 ## Admission work
 
 The reviewed package is registered and its forwarding/startup C++/DEPS checks

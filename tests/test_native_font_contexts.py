@@ -220,7 +220,7 @@ def test_unknown_modes_have_no_fallback(mode):
         verifier.RenderingConfiguration(rasterization=mode).context_options()
 
 
-@pytest.mark.parametrize("failure", [None, "measurement", "core-change", "pack-change", "pack-removed", "source-change", "receipt-change", "cleanup", "bind"])
+@pytest.mark.parametrize("failure", [None, "measurement", "core-change", "pack-change", "pack-removed", "source-change", "receipt-change", "screenshot-change", "screenshot-removed", "visual-restart", "cleanup", "bind"])
 def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure):
     public = tmp_path / "public"
     runtime_dir = tmp_path / "runtime"
@@ -233,7 +233,7 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     patch.parent.mkdir(parents=True)
     patch.write_bytes(b"owned policy")
     for relative in ("scripts/native_font_contexts.py", "scripts/native_font_rendering.py",
-                     "scripts/native_canvas_formats.py", "scripts/native_canvas_hdr.py", "app/core/native/canvas_fidelity.py"):
+                     "scripts/native_canvas_formats.py", "scripts/native_canvas_hdr.py", "scripts/native_font_visuals.py", "app/core/native/canvas_fidelity.py"):
         path = public / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"owned probe")
@@ -256,6 +256,14 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     runs = mode_runs()
     starts = []
 
+    class Page:
+        def __init__(self, mode):
+            self.mode = mode
+
+        async def screenshot(self, *, path):
+            from pathlib import Path
+            Path(path).write_bytes(b"owned screenshot")
+
     class Runtime:
         def __init__(self, profile, path, configuration):
             self.mode = configuration.rasterization
@@ -267,14 +275,15 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
             return self
 
         async def new_page(self):
-            return self.mode
+            return Page(self.mode)
 
         async def close(self):
             if failure == "cleanup":
                 raise RuntimeError("owned cleanup failure")
             self.has_resources = False
 
-    async def collect(mode, url):
+    async def collect(page, url):
+        mode = page.mode
         if failure == "measurement" and mode == "off":
             raise ValueError("owned measurement failure")
         if mode == "cleartype-bgr":
@@ -288,7 +297,19 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
                 (public / "scripts/native_font_contexts.py").write_bytes(b"changed probe")
             elif failure == "receipt-change":
                 (runtime_dir / "camouflow-build.json").write_bytes(b"changed receipt")
+            elif failure == "screenshot-change":
+                (tmp_path / "evidence/font-off-0.png").write_bytes(b"changed screenshot")
+            elif failure == "screenshot-removed":
+                (tmp_path / "evidence/font-off-0.png").unlink(missing_ok=True)
         return deepcopy(runs[mode][0])
+
+    async def visual_collect(page):
+        value = {"rows": [{"font": font, "domWidth": 160, "domHeight": 24, "svgWidth": 160,
+                           "canvasWidth": 160, "canvasPixelSha256": "a" * 64}
+                          for font in verifier.native_font_visuals.FONTS]}
+        if failure == "visual-restart" and page.mode == "native" and starts.count("native") == 2:
+            value["rows"][0]["domWidth"] += 1
+        return value
 
     class Server:
         server_address = ("127.0.0.1", 1234)
@@ -308,6 +329,7 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
 
     monkeypatch.setattr(verifier, "NativeRuntime", Runtime)
     monkeypatch.setattr(verifier.native_font_contexts, "collect", collect)
+    monkeypatch.setattr(verifier.native_font_visuals, "collect", visual_collect)
     monkeypatch.setattr(verifier, "FixtureServer", Server)
     destination = tmp_path / "evidence"
     report = asyncio.run(verifier.verify(executable, destination))
@@ -315,7 +337,7 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     assert report["capability_admitted"] is False
     assert json.loads((destination / "report.json").read_text(encoding="utf-8")) == report
     assert report["inputs_unchanged"] is (failure not in {
-        "core-change", "pack-change", "pack-removed", "source-change", "receipt-change"})
+        "core-change", "pack-change", "pack-removed", "source-change", "receipt-change", "screenshot-change", "screenshot-removed"})
     if failure == "cleanup":
         assert starts == ["off"]
     elif failure != "bind":
