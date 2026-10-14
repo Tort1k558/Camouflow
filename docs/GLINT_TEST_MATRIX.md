@@ -15,7 +15,7 @@ Proof: `browser-build-001-061-v2.json` on D.
 | Executable/library ProductName | **Glint** |
 | `chrome://version` product and screenshot | **Glint**, project logo/wordmark visually inspected |
 | Core, receipt, patches and resource/locale pack postguards | Unchanged during branding probe |
-| Full eight-gate runtime suite | Started; no completed-suite claim yet |
+| Full eight-gate runtime suite | **160 checks passed**: runtime 18, hardware 9, WebRTC 7, automation 55, fonts 42, identity 18, CDP 6, combined 5 |
 
 Branding proof: `branding-runtime-001-061-v1/report.json` and `version-page.png`
 on D. Core executable/DLL hashes match 001-060 below: this package changes the
@@ -23,7 +23,9 @@ external UI resources/locale packs. The branding gate binds their separate
 hashes; executable hashes alone do not identify the new UI package. Cached
 taskbar icons, existing shortcuts, all UI screens and privacy admission remain
 outside this branding gate. The receipt's runtime/privacy admission flags remain
-false. Full-suite evidence is being written to `browser-verification-001-061-v1/`.
+false. Full-suite proof: `browser-verification-001-061-v1/suite.json`, with all
+eight checksum-bound child reports. This passing fixture suite does not admit
+the experimental rendering candidate, external anti-bot acceptance or a release.
 
 The original **001-060** three-profile HDD lifecycle case was separately rerun
 after the build finished: **three rounds passed in 64.047s**, with unchanged core

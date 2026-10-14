@@ -17,7 +17,7 @@ patch chain; they do not transfer automatically to newer binaries.
 
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
-| Registered Windows source | 001-059 | Identity/GPU package integrated; 0059 avoids rewriting byte-identical V8 snapshots. Exact linked receipt and baseline runtime verified |
+| Registered Windows source | 001-061 | Identity/GPU package and Glint UI branding integrated; exact linked receipt and baseline runtime verified |
 | Native identity keys/service | 001-059 | **62/62** passed, repeating the 001-058 result: 19 new derivation/mode cases and 43 legacy checks; unchanged browser core/GN/receipt |
 | Native identity contexts/transport | 001-059 | **37/37 + 20/20** passed in the linked Chromium content target; not a linked identity-mode browser or renderer delivery proof |
 | Native identity handoff | 001-059 | **15/15** Blink cases passed: 12 document cases across four modes and three worker-thread cases; not a linked identity-mode browser |
@@ -29,8 +29,9 @@ patch chain; they do not transfer automatically to newer binaries.
 | Identity/GPU package | Registered 0049-0058 | **22 identity + six GPU C++ units** type-checked before integration; native selections and initial combined runtime runs now passed. Product capability admission remains closed |
 | GPU metadata codec | Registered 0055 | **14/14** actual codec fixtures executed with standalone MSVC/GoogleTest; not GN decoder/attachment execution or browser admission |
 | Native GPU metadata | 001-058 | **33/33** Chromium `gpu_unittests` cases passed: codec 14, passthrough protocol 5, attachment 14. Not validating-decoder, WebGPU or browser readback admission |
-| Current linked Windows candidate | 001-059 | Incremental j4 build succeeded in **16m35s**, 244 executed steps; separate runnable 001-047 rollback copy retained |
-| Complete eight-gate runtime suite | 001-059 | **160 checks passed** on unchanged runtime core |
+| Current linked Windows candidate | 001-061 | Incremental j4 build succeeded in **23m48s**, 247 executed steps; separate runnable 001-060 rollback copy retained |
+| Complete eight-gate runtime suite | 001-061 | **160 checks passed** on unchanged runtime core; earlier 001-060 shutdown failure remains recorded |
+| Compiled branding | 001-061 | Main/app-list icons, ProductName and version-page Glint logo/name verified; not cached taskbar/shortcut migration or every UI screen |
 | Combined identity and privacy surfaces | 001-059 | Profile-identity and partitioned-privacy each passed **12/12 phases + 24 nested Canvas cases** with concurrent profiles, restart and WebGL readback; not WebGPU protection or third-party anti-bot acceptance |
 | Worker startup/restart | 001-047 | Default **40/40**; extended **60/60**, including 20 nested classic/module cases |
 | Combined Canvas/OfflineAudio | 001-047 | **Three consecutive 7/7 runs passed** on unchanged core; historical 001-045 profile-B timeout remains unexplained |
@@ -90,7 +91,7 @@ WebGPU, future identity mode or third-party acceptance.
 | `core/` | Shared C++ policy primitives |
 | `windows/` | Windows font-policy source |
 | `tests/` | Native policy fixtures and tests |
-| `branding/` | Source replay instructions for registered product/logo patch 0060 |
+| `branding/` | Source assets/replay instructions for registered product/logo and scaled UI patches 0060–0061 |
 | `drafts/` | Canonical candidates, unregistered integration patches and explicit proof boundaries |
 | `build/`, `toolchain/` | Build/toolchain support source |
 | `build-lock.json` | Pinned upstream revisions and build limits |
