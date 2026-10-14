@@ -6,7 +6,7 @@ import json
 import pytest
 
 from app.core.native import canvas_fidelity
-from scripts import native_canvas_formats, native_font_contexts, native_font_rendering
+from scripts import native_canvas_formats, native_canvas_hdr, native_font_contexts, native_font_rendering
 from scripts import verify_native_font_rendering as verifier
 
 
@@ -31,6 +31,15 @@ def observation(scope):
                                        "length": 1024, "finite": True},
                               "export": {"status": "ok", "mime": "image/png", "bytes": 128}}
                              for colour, storage in native_canvas_formats.CASES]},
+        "hdr": {"rows": [{"colorSpace": colour, "alpha": alpha, "contextColorSpace": colour,
+                          "contextColorType": "float16", "input": native_canvas_hdr.input_values(alpha),
+                          **{operation: {"status": "ok", "colorSpace": colour, "pixelFormat": "rgba-float16",
+                                         "dataType": "Float16Array", "values": native_canvas_hdr.input_values(alpha)}
+                             for operation in ("read", "repeat")},
+                          "png": {"status": "ok", "mime": "image/png", "bytes": 128,
+                                  "width": native_canvas_hdr.WIDTH, "height": native_canvas_hdr.HEIGHT,
+                                  "rgba8Sha256": "a" * 64, "pngSha256": "b" * 64}}
+                         for colour, alpha in native_canvas_hdr.CASES]},
     }
 
 
@@ -48,7 +57,7 @@ def test_late_or_ambiguous_start_rejects(change):
         native_font_contexts.validate_scope("document", value)
 
 
-@pytest.mark.parametrize("section", ["text", "fidelity", "formats"])
+@pytest.mark.parametrize("section", ["text", "fidelity", "formats", "hdr"])
 def test_missing_measurement_rejects(section):
     value = observation("document")
     value[section]["rows"].pop()
@@ -178,6 +187,25 @@ def test_unstable_control_does_not_make_equally_broken_modes_pass():
     assert any(item["reason"] == "repeated-read-or-export-is-unstable" for item in result["failures"])
 
 
+@pytest.mark.parametrize("section", ["formats", "hdr"])
+def test_equally_unsupported_control_and_modes_are_not_compatible_pass(section):
+    runs = mode_runs()
+    for rounds in runs.values():
+        for scopes in rounds:
+            scopes["document"][section]["rows"][0]["read"] = {"status": "error", "name": "NotReadableError"}
+    assert not verifier.assess(runs)["passed"]
+
+
+def test_changed_hdr_values_fail_even_with_stable_restarts():
+    runs = mode_runs()
+    for scopes in runs["aliased"]:
+        for operation in ("read", "repeat"):
+            scopes["document"]["hdr"]["rows"][0][operation]["values"][2] = 1
+    result = verifier.assess(runs)
+    assert not result["passed"]
+    assert result["controls"]["aliased"]["document"]["hdr"]
+
+
 @pytest.mark.parametrize("mode", verifier.MODES)
 def test_mode_arguments_are_explicit_without_readback_flags(mode):
     args = verifier.RenderingConfiguration(rasterization=mode).launch_arguments()
@@ -205,7 +233,7 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     patch.parent.mkdir(parents=True)
     patch.write_bytes(b"owned policy")
     for relative in ("scripts/native_font_contexts.py", "scripts/native_font_rendering.py",
-                     "scripts/native_canvas_formats.py", "app/core/native/canvas_fidelity.py"):
+                     "scripts/native_canvas_formats.py", "scripts/native_canvas_hdr.py", "app/core/native/canvas_fidelity.py"):
         path = public / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"owned probe")

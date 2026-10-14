@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from app.core.native import canvas_fidelity
-from scripts import native_canvas_formats, native_font_rendering
+from scripts import native_canvas_formats, native_canvas_hdr, native_font_rendering
 from scripts.verify_native_runtime import FixtureHandler
 
 SCOPES = ("document", "iframe", "dedicated-classic", "dedicated-module",
@@ -16,10 +16,10 @@ const fontProbe = (async () => {
   const start = {phase: typeof document === 'undefined' ? 'worker-global' : 'parser',
     readyState: typeof document === 'undefined' ? null : document.readyState,
     requestsAtStart: requests};
-  return {start, text: await (TEXT)(), fidelity: await (FIDELITY)(), formats: await (FORMATS)()};
+  return {start, text: await (TEXT)(), fidelity: await (FIDELITY)(), formats: await (FORMATS)(), hdr: await (HDR)()};
 })();
 fontProbe.catch(() => {});
-""".replace("TEXT", native_font_rendering.READ).replace("FIDELITY", canvas_fidelity.READ).replace("FORMATS", native_canvas_formats.READ)
+""".replace("TEXT", native_font_rendering.READ).replace("FIDELITY", canvas_fidelity.READ).replace("FORMATS", native_canvas_formats.READ).replace("HDR", native_canvas_hdr.READ)
 
 
 def worker_source(kind: str) -> bytes:
@@ -115,7 +115,7 @@ WORKER_READ = """async ({kind, type}) => {
 def validate_scope(scope: str, value: dict) -> None:
     if scope not in SCOPES:
         raise ValueError("Unknown font measurement scope")
-    if not isinstance(value, dict) or set(value) != {"start", "text", "fidelity", "formats"}:
+    if not isinstance(value, dict) or set(value) != {"start", "text", "fidelity", "formats", "hdr"}:
         raise ValueError("First-script rendering observation is incomplete")
     expected = {"phase": "parser", "readyState": "loading", "requestsAtStart": 0} if scope in {
         "document", "iframe"} else {"phase": "worker-global", "readyState": None, "requestsAtStart": 0}
@@ -125,6 +125,7 @@ def validate_scope(scope: str, value: dict) -> None:
     native_font_rendering.validate_measurement(value["text"])
     canvas_fidelity.validate_measurement(value["fidelity"])
     native_canvas_formats.validate_measurement(value["formats"])
+    native_canvas_hdr.validate_measurement(value["hdr"])
 
 
 async def collect(page, base_url: str) -> dict:

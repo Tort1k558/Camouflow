@@ -118,6 +118,18 @@ profiles were on C. This validates the fixture **without patch 0062 enabled**;
 it is not the five-mode candidate comparison, restarts, DOM/SVG text, HDR fidelity
 or fingerprint acceptance.
 
+The expanded fixture now includes `scripts/native_canvas_hdr.py`: known float16
+inputs below zero/above one, opaque/partial alpha, repeat reads and PNG-to-sRGB8
+conversion observations. Matching-version stock Chromium and feature-off Glint
+001–061 matched in document/dedicated-worker controls. Opaque inputs were exact;
+four RGB channels under zero alpha were discarded in both engines. PNG conversion
+is observed separately, **not asserted lossless or colourimetrically correct**.
+Private proof: `canvas-hdr-controls-001-061-v1/report.json` on D.
+Expanded first-script calibration also completed all eight scopes, including
+**32 HDR colour/alpha cases**, with unchanged core and completed cleanup:
+`font-first-script-001-061-v2/report.json` on D. This is still feature-off fixture
+calibration, not a 0062 mode/restart result.
+
 ## Mode/restart comparison
 
 After the 001–062 browser build finishes, run the compiled-candidate verifier:
@@ -131,6 +143,8 @@ It runs feature-off plus all five named modes, each with two starts of its own
 persistent profile and all eight first-script scopes. No old readback protection
 is enabled. Restart drift, raw-image metric changes, newly broken formats/exports,
 unstable repeated reads and a changed `native` baseline fail the experiment.
+Unavailable colour/storage or HDR operations fail even when the control is also
+unavailable; changed HDR values/conversion results are not hidden by equal restarts.
 Aliased/grayscale must produce a measured pixel difference; RGB/BGR are not
 required to differ when normal rendering suppresses LCD text. Errors are retained
 across modes, but retained browser resources stop additional launches. Core,

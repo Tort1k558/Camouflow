@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime
 from app.core.native import canvas_fidelity
-from scripts import native_canvas_formats, native_font_contexts, native_font_rendering
+from scripts import native_canvas_formats, native_canvas_hdr, native_font_contexts, native_font_rendering
 from scripts.verify_native_branding import measure_branding_resources
 from scripts.verify_native_privacy_units import require_idle_builder
 from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
@@ -55,6 +55,7 @@ def compare(control: dict, candidate: dict) -> dict:
             "text": native_font_rendering.compare_control(first["text"], second["text"]),
             "fidelity": canvas_fidelity.compare_control(first["fidelity"], second["fidelity"]),
             "formats": native_canvas_formats.compare_control(first["formats"], second["formats"]),
+            "hdr": native_canvas_hdr.compare_control(first["hdr"], second["hdr"]),
             "consistency_changed": (native_font_rendering.consistency_observations(first["text"])
                                     != native_font_rendering.consistency_observations(second["text"])),
         }
@@ -76,14 +77,25 @@ def assess(runs: dict) -> dict:
                         or any(row["repeat"]["changedChannels"] for row in value["fidelity"]["rows"])):
                     failures.append({"mode": mode, "round": round_index, "scope": scope,
                                      "reason": "repeated-read-or-export-is-unstable"})
+                if any(row[operation]["status"] != "ok" for row in value["formats"]["rows"]
+                       for operation in ("read", "export")):
+                    failures.append({"mode": mode, "round": round_index, "scope": scope,
+                                     "reason": "colour-storage-api-unavailable"})
+                if any(row[operation]["status"] != "ok" for row in value["hdr"]["rows"]
+                       for operation in ("read", "repeat", "png")):
+                    failures.append({"mode": mode, "round": round_index, "scope": scope,
+                                     "reason": "hdr-api-operation-failed"})
+                if any(not item["repeat_matches"] for item in native_canvas_hdr.observations(value["hdr"])):
+                    failures.append({"mode": mode, "round": round_index, "scope": scope,
+                                     "reason": "hdr-repeated-read-is-unstable"})
     for mode, scopes in restarts.items():
         for scope, observed in scopes.items():
             if (observed["text"] or not observed["fidelity"]["matches_control"]
-                    or observed["formats"] or observed["consistency_changed"]):
+                    or observed["formats"] or observed["hdr"] or observed["consistency_changed"]):
                 failures.append({"mode": mode, "scope": scope, "reason": "restart-changed-observation"})
     for mode, scopes in controls.items():
         for scope, observed in scopes.items():
-            if (not observed["fidelity"]["matches_control"] or observed["formats"]
+            if (not observed["fidelity"]["matches_control"] or observed["formats"] or observed["hdr"]
                     or observed["consistency_changed"] or (mode == "native" and observed["text"])):
                 failures.append({"mode": mode, "scope": scope, "reason": "control-compatibility-changed"})
     effect = any(
@@ -120,6 +132,7 @@ async def verify(executable: Path, destination: Path) -> dict:
         raise ValueError("The exact compiled font policy and runtime core receipt are required")
     inputs = [PATCH, Path(__file__), ROOT / "scripts/native_font_contexts.py",
               ROOT / "scripts/native_font_rendering.py", ROOT / "scripts/native_canvas_formats.py",
+              ROOT / "scripts/native_canvas_hdr.py",
               ROOT / "app/core/native/canvas_fidelity.py"]
     before = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
     resources = measure_branding_resources(executable)
