@@ -68,10 +68,30 @@ is retained in `-v1/`: Browser.getBrowserCommandLine requires the diagnostic
 automation flag. All test-owned browser resources were released. No proxy
 credentials or raw profiles are published.
 
-Next: compare timing behavior with an unmodified matching Chromium environment
-before changing timer semantics; investigate detectable Canvas perturbation and
-ordinary graphics compatibility. A green BrowserScan observation does not close
-these gaps or imply Turnstile/reCAPTCHA success.
+### Matching-version stock control
+
+Unmodified Playwright Chromium **148.0.7778.96** was tested on the same machine
+and authenticated proxy route, with de-DE/Europe/Berlin, a fresh persistent
+profile, headless mode and CDP attached. Its three core hashes matched the
+previous stock calibration and remained unchanged after the run. Four page
+observations completed with HTTP 200; test-owned resources were released.
+
+| Observation | Glint 001-059, native UA enabled | Matching stock Chromium | Interpretation |
+| --- | --- | --- | --- |
+| Device and Browser Info timing flag | `hasInconsistentTimingResolution: true` in the recorded visit | **True on all three visits** | Not isolated to Glint patches; no timer root cause established |
+| Overall bot verdict | `isBot: true`, timing flag only in captured details | `isBot: true`, also expected UA/WebDriver/CDP flags | Different launch features; do not compare overall verdicts as an equivalent clean-browser control |
+
+Private proof: `stock-site-control-148-001-059-v1/report.json`, screenshots and
+captured same-origin diagnostic scripts on D. This control is automated and
+headless, **not a manual human-browser baseline**. The captured same-origin
+scripts did not expose the named timing check; an external fingerprint script
+was listed but not captured. Do not infer the detector's implementation from
+its flag name or change browser timer semantics on this evidence alone.
+
+Next: isolate launch/instrumentation factors before changing timer semantics;
+investigate detectable Canvas perturbation and ordinary graphics compatibility.
+A green BrowserScan observation does not close these gaps or imply
+Turnstile/reCAPTCHA success.
 
 ## Test destinations
 
