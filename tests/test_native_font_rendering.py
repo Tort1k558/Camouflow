@@ -12,6 +12,7 @@ def source_fixture(tmp_path, monkeypatch):
         "ui/gfx/BUILD.gn": '      "win/camouflow_font_configuration.h",\n      "font_render_params_win_unittest.cc",\n',
         "ui/gfx/font_render_params_win.cc": '#include "base/callback_list.h"\n    skia::LegacyDisplayGlobals::SetCachedParams(\n',
         "content/browser/renderer_host/render_process_host_impl.cc": '#include "build/build_config.h"\n  // Native hardware limits must reach every renderer, including workers.\n',
+        "content/renderer/render_thread_impl.cc": '#include "third_party/blink/public/web/web_view.h"\n  blink::Initialize();\n  if (!command_line.HasSwitch(switches::kDisableThreadedCompositing))\n',
     }
     for name, text in files.items():
         path = source / name
@@ -33,7 +34,7 @@ def test_font_draft_replays_without_changing_original_sources(tmp_path, monkeypa
     patch = tmp_path / "font.patch"
     report = draft.prepare(source, patch)
     assert report["prepared"] and not report["applied"]
-    assert len(report["files"]) == 5
+    assert len(report["files"]) == 6
     assert b"\r\n" not in patch.read_bytes()
     assert all((source / name).read_text(encoding="utf-8") == text for name, text in originals.items())
     replay = tmp_path / "replay"
@@ -47,6 +48,10 @@ def test_font_draft_replays_without_changing_original_sources(tmp_path, monkeypa
     assert render.index("ParseWindowsFontRasterization(value)") < render.index("renderer_cmd->AppendSwitchASCII")
     cache = (replay / "ui/gfx/font_render_params_win.cc").read_text(encoding="utf-8")
     assert cache.index("ApplyWindowsFontRasterization") < cache.index("LegacyDisplayGlobals::SetCachedParams")
+    startup = (replay / "content/renderer/render_thread_impl.cc").read_text(encoding="utf-8")
+    assert startup.index("blink::Initialize") < startup.index("SetAntialiasedTextEnabled")
+    assert startup.index("SetLCDTextEnabled") < startup.index("kDisableThreadedCompositing")
+    assert "*mode != glint::candidate::WindowsFontRasterization::kNative" in startup
     subprocess.run(["git", "apply", "--reverse", str(patch)], cwd=replay, check=True)
     assert all((replay / name).read_text(encoding="utf-8") == text for name, text in originals.items())
     with pytest.raises(ValueError, match="new canonical output"):

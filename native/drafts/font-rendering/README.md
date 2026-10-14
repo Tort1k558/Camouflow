@@ -1,6 +1,6 @@
 # Windows font rasterization candidate
 
-**Unregistered, not applied to the active 001–061 build. No capability admitted.**
+**Unregistered, not applied to source or binary 001–061. No capability admitted.**
 
 This candidate changes actual Windows text-rendering parameters, not Canvas
 readback bytes, JavaScript APIs, installed font names, OS identity or GPU strings.
@@ -21,6 +21,12 @@ Windows cached font parameters apply the selected mode before Skia cache setup;
 upstream renderer preferences already carry these parameters into Blink.
 Cache refresh reapplies the same command-line choice. No host registry changes.
 
+Explicit non-native modes also initialize Blink's antialiasing/LCD settings on
+the main renderer thread after Blink initialization and before compositor/worker
+startup. This avoids depending solely on a document's later preference update.
+The `native` mode does not override this startup behavior. Actual before-script
+worker effects still require execution of the candidate.
+
 `windows_font_rasterization_candidate.patch` includes the policy, Windows cache
 hook, renderer forwarding and Windows-only build/test registration. Its five
 GTest definitions cover parsing, invalid names/enums, native preservation, field
@@ -40,6 +46,13 @@ bounds and idempotence. They have been **type-checked, not executed**.
 - Private proofs: `font-renderer-forwarding-001-061-v1/proof.json` and `deps.json`
   on D. These checks do not bind or validate the concurrently built executable.
 - Three Python preparation/replay/refusal tests passed.
+- The expanded six-file candidate prepares and apply-checks on source 001–061.
+  Its renderer initialization unit passed an isolated C++ syntax/type check with
+  actual renderer-target flags; the three added includes passed inherited DEPS.
+  Active source, compiler and target inputs stayed unchanged. Private evidence:
+  `font-renderer-startup-001-061-v2/proof.json` and `deps.json` on D.
+  Earlier C++ evidence above covers the preceding revision, not execution of
+  this expanded package.
 - Optimized compilation/linking, native fixture execution and actual
   visual/runtime effects are **not yet verified**.
 

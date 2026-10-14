@@ -45,6 +45,44 @@ diff --git a/ui/gfx/font_render_params_win.cc b/ui/gfx/font_render_params_win.cc
      skia::LegacyDisplayGlobals::SetCachedParams(
          FontRenderParams::SubpixelRenderingToSkiaPixelGeometry(
              params_->subpixel_rendering),
+diff --git a/content/renderer/render_thread_impl.cc b/content/renderer/render_thread_impl.cc
+--- a/content/renderer/render_thread_impl.cc
++++ b/content/renderer/render_thread_impl.cc
+@@ -162,6 +162,11 @@
+ #include "third_party/blink/public/web/web_user_level_memory_pressure_signal_generator.h"
+ #include "third_party/blink/public/web/web_v8_features.h"
+ #include "third_party/blink/public/web/web_view.h"
++#if BUILDFLAG(IS_WIN)
++#include "third_party/blink/public/web/win/web_font_rendering.h"
++#include "ui/gfx/font_render_params.h"
++#include "ui/gfx/win/glint_font_rasterization_policy.h"
++#endif
+ #include "third_party/perfetto/include/perfetto/tracing/track.h"
+ #include "third_party/skia/include/core/SkFontMgr.h"
+ #include "third_party/skia/include/core/SkGraphics.h"
+@@ -792,6 +797,22 @@
+ 
+   blink::Initialize(blink_platform_impl_.get(), binders,
+                     main_thread_scheduler_.get());
++
++#if BUILDFLAG(IS_WIN)
++  if (command_line.HasSwitch(glint::candidate::kWindowsFontRasterizationSwitch)) {
++    const auto mode = glint::candidate::ParseWindowsFontRasterization(
++        command_line.GetSwitchValueASCII(
++            glint::candidate::kWindowsFontRasterizationSwitch));
++    CHECK(mode.has_value()) << "Invalid Glint Windows font rasterization";
++    if (*mode != glint::candidate::WindowsFontRasterization::kNative) {
++      const auto params = gfx::GetFontRenderParams(gfx::FontRenderParamsQuery(),
++                                                   nullptr);
++      blink::WebFontRendering::SetAntialiasedTextEnabled(params.antialiasing);
++      blink::WebFontRendering::SetLCDTextEnabled(
++          params.subpixel_rendering != gfx::FontRenderParams::SUBPIXEL_RENDERING_NONE);
++    }
++  }
++#endif
+ 
+   if (!command_line.HasSwitch(switches::kDisableThreadedCompositing))
+     InitializeCompositorThread();
 diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
 --- a/content/browser/renderer_host/render_process_host_impl.cc
 +++ b/content/browser/renderer_host/render_process_host_impl.cc

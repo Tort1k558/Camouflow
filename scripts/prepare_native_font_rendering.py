@@ -34,7 +34,8 @@ def prepare(source: Path, output: Path) -> dict:
     originals = {}
     replacements = {}
     for name in ("ui/gfx/BUILD.gn", "ui/gfx/font_render_params_win.cc",
-                 "content/browser/renderer_host/render_process_host_impl.cc"):
+                 "content/browser/renderer_host/render_process_host_impl.cc",
+                 "content/renderer/render_thread_impl.cc"):
         path = source / name
         if path != path.resolve() or not path.is_file():
             raise ValueError("Font draft source files must be ordinary files")
@@ -56,6 +57,31 @@ def prepare(source: Path, output: Path) -> dict:
       CHECK(mode.has_value()) << "Invalid Glint Windows font rasterization";
       CHECK(glint::candidate::ApplyWindowsFontRasterization(*params_, *mode));
     }
+
+"""
+    replacements[name] = replace_once(replacements[name], anchor, block + anchor)
+    name = "content/renderer/render_thread_impl.cc"
+    replacements[name] = replace_once(originals[name], '#include "third_party/blink/public/web/web_view.h"\n',
+        '#include "third_party/blink/public/web/web_view.h"\n#if BUILDFLAG(IS_WIN)\n'
+        '#include "third_party/blink/public/web/win/web_font_rendering.h"\n'
+        '#include "ui/gfx/font_render_params.h"\n'
+        '#include "ui/gfx/win/glint_font_rasterization_policy.h"\n#endif\n')
+    anchor = "  if (!command_line.HasSwitch(switches::kDisableThreadedCompositing))\n"
+    block = """#if BUILDFLAG(IS_WIN)
+  if (command_line.HasSwitch(glint::candidate::kWindowsFontRasterizationSwitch)) {
+    const auto mode = glint::candidate::ParseWindowsFontRasterization(
+        command_line.GetSwitchValueASCII(
+            glint::candidate::kWindowsFontRasterizationSwitch));
+    CHECK(mode.has_value()) << "Invalid Glint Windows font rasterization";
+    if (*mode != glint::candidate::WindowsFontRasterization::kNative) {
+      const auto params = gfx::GetFontRenderParams(gfx::FontRenderParamsQuery(),
+                                                   nullptr);
+      blink::WebFontRendering::SetAntialiasedTextEnabled(params.antialiasing);
+      blink::WebFontRendering::SetLCDTextEnabled(
+          params.subpixel_rendering != gfx::FontRenderParams::SUBPIXEL_RENDERING_NONE);
+    }
+  }
+#endif
 
 """
     replacements[name] = replace_once(replacements[name], anchor, block + anchor)
