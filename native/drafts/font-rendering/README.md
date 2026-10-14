@@ -98,6 +98,22 @@ unconditional cross-scope equality when the baseline differs. Private reports:
 `font-worker-scopes-stock-148-v1/report.json` on D. These are observations of the
 unprotected baseline, not candidate execution or a complete font-policy test.
 
+`scripts/native_font_contexts.py` adds owned first-script fixtures for eight
+scopes: document, iframe and classic/module dedicated, shared and service workers.
+Text measurement begins in the parser (`readyState=loading`) or worker global
+script before any measurement request. Remaining asynchronous observations may
+settle after that initial script; this does not claim every read precedes events.
+Each scope retains text, raw-image fidelity and colour/storage-format results,
+including observed API errors rather than converting them into compatibility PASS.
+
+Actual calibration on the separate 001–061 rollback executable completed all
+eight scopes: **48 text cases, 24 raw-image cases and 32 format cases**, with zero
+format-operation errors. Startup markers, core stability and resource cleanup
+were checked. Evidence: `font-first-script-001-061-v1/report.json` on D. Temporary
+profiles were on C. This validates the fixture **without patch 0062 enabled**;
+it is not the five-mode candidate comparison, restarts, DOM/SVG text, HDR fidelity
+or fingerprint acceptance.
+
 ## Admission work
 
 The reviewed package is registered and its forwarding/startup C++/DEPS checks
