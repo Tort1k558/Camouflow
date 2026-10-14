@@ -129,6 +129,15 @@ Private proof: `context-objects-001-058-v2/proof.json` and `build.log` on D.
 This is object compilation only: full linking, snapshot generation and the
 context/transport test executions remain pending.
 
+The additional **418 object targets** recorded as unfinished in the v3 failure
+log then completed in guarded `j4` batches: 34, 0, 30, 100 and 18 executed
+steps, with earlier cached objects reused. These overlap the 631 targets above
+and must not be added together as distinct compilations. Source, browser core,
+GN, receipt, toolchain and existing snapshot hashes remained unchanged. Proof:
+`remaining-context-objects-001-058-v2/proof.json` and `build.log` on D.
+The browser session is still open; the original snapshot action, final linking
+and all 37 context tests remain unverified.
+
 ### Additional owned browser gates 001-047 — 2026-10-14
 
 | Gate | Result | Scope and limits |
