@@ -21,7 +21,8 @@ Receipt binds all 59 patches, GN arguments and the complete runtime core:
 | Eight-gate runtime suite | **160 passed** | Runtime 18, hardware 9, WebRTC 7, automation 55, fonts 42, identity 18, CDP 6, combined 5; owned fixtures, not universal CDP invisibility |
 | Combined profile-identity | **12/12 phases + 24 nested Canvas cases** | Canvas/Audio/WebGL in the same profiles and contexts; stable identity across tested origins, separate profiles, restart and simultaneous ownership |
 | Combined partitioned-privacy | **12/12 phases + 24 nested Canvas cases** | Original partitioned derivation retained, with the same combined lifecycle/API checks |
-| External fingerprint/CAPTCHA sites | **Not verified for this build** | No third-party PASS or human-score claim |
+| External fingerprint sites | **Mixed observations; see below** | Four public sites tested under proxy in headless/CDP mode; not CAPTCHA or human acceptance |
+| CAPTCHA sites | **Not verified for this build** | No challenge completion or human-score claim |
 
 Private proof: `browser-build-001-059-v1.json`,
 `browser-verification-001-059-v1/suite.json`,
@@ -39,6 +40,38 @@ was used to obtain that result. First-script coverage is Canvas/Audio; nested
 coverage is Canvas, not nested Audio/GPU. WebGPU is observed but not protected.
 Product capability admission, branding, broader compatibility and external-site
 verification remain separate outstanding gates.
+
+### Repeatability and external observations
+
+Profile-identity extended runs v2, v3 and v4 each passed **12/12 phases + 24
+nested Canvas cases**. Runtime, receipt and probe-source hashes agree across
+all three; no cleanup error was reported. Proofs on D:
+`combined-identity-surfaces-001-059-v2.json`, `-v3.json` and `-v4.json`.
+
+Four public sites returned HTTP 200 through authenticated SOCKS egress verified
+inside the browser. Test profile: native Windows/GPU, de-DE, Europe/Berlin,
+headless Chromium 148 with CDP attached and profile-identity surface candidates.
+Two runs used the same persistent profile and unchanged core. The first omitted
+the existing native UA flag; the second enabled `--camouflow-native-user-agent`.
+No JavaScript API overrides or engine rebuild were used for this comparison.
+
+| Service | First run, native UA flag off | Same-profile run, native UA flag on | Boundary |
+| --- | --- | --- | --- |
+| BrowserScan bot detection | **Robot**, UA highlighted | **Normal**; webdriver/UA/CDP/navigator sections not flagged | One observed visit per configuration, not universal CDP invisibility |
+| Sannysoft | `HEADCHR_UA` failed on HeadlessChrome | `HEADCHR_UA` ok, webdriver advanced passed, Chrome object present, five plugins; no FAIL row found in captured scanner text | Some deliberately invalid API calls produced page errors; not a CAPTCHA test |
+| Device and Browser Info | `isBot: true`; bot UA and timing resolution flagged | **Still `isBot: true`**; only timing resolution flagged in captured details | Worker/document CDP, Client Hints, WebGL and GPU consistency flags were false in this observation |
+| CreepJS | 67% headless; 44% like-headless; reported 14% RGBA noise | 0% headless; **44% like-headless and reported 13% RGBA noise remain** | Its own diagnostic metrics, not a human score or a pass/fail certification |
+
+Private bodies, screenshots and core/cleanup evidence:
+`external-identity-probes-001-059-v2/` and `-v3/` on D. Initial discovery failure
+is retained in `-v1/`: Browser.getBrowserCommandLine requires the diagnostic
+automation flag. All test-owned browser resources were released. No proxy
+credentials or raw profiles are published.
+
+Next: compare timing behavior with an unmodified matching Chromium environment
+before changing timer semantics; investigate detectable Canvas perturbation and
+ordinary graphics compatibility. A green BrowserScan observation does not close
+these gaps or imply Turnstile/reCAPTCHA success.
 
 ## Test destinations
 
