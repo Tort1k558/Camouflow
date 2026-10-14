@@ -181,6 +181,21 @@ of the authenticated final origin. They do not prove Chrome ProfileImpl startup,
 complete renderer-to-browser IPC or the new profile-identity browser runtime.
 The current browser core remains 001-047; capability admission remains closed.
 
+The key/service gate was subsequently repeated on 001-059 and passed **62/62**:
+`identity-keys-001-059-v1.*` on D. All four identity selections now have executed
+proof on the same registered source chain: **134/134** cases (50 new, 84 legacy).
+This does not promote source-only results into a browser runtime admission.
+
+Before rebuilding Chrome, an isolated 001-047 rollback copy was created on D:
+`standalone-runtime-backup-001-047-before-059-v2/`. Its **509 files**, totaling
+690878774 bytes, match recorded hashes; the copied runtime launched headlessly
+as Chromium 148.0.7778.96 and released runtime ownership. The first attempt is
+retained as failed evidence: it omitted the versioned assembly manifest and
+Windows reported SideBySide error 14001. The v2 copy includes that manifest.
+This is a local rollback copy and launch check, not a new published package or
+a repeat of the full browser verification suite. Chrome 001-059 is now building
+at `j4`; there is no verified new browser binary yet.
+
 ### Native GPU metadata 001-058 — 2026-10-14
 
 The actual Chromium `gpu_unittests` target compiled and linked at `j4` in

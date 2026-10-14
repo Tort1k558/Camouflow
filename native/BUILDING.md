@@ -241,6 +241,11 @@ steps and the unresolved first-download transport limitation.
   a writable destination; write errors are not suppressed. This resolved the
   identical-snapshot action while a manual browser remained open, but is not
   permission to replace its DLLs or other mapped runtime files.
+  An unpacked Windows runtime also needs its versioned assembly `.manifest`,
+  resources and locale files, not just `chrome.exe` and DLLs. Verify a copied
+  rollback runtime actually launches before starting a build that overwrites
+  the original output. The checked 001-047 copy on D contains 509 hashed files
+  and passed an isolated headless launch before the 001-059 browser build.
 
 Individual preparation, build and runtime stages have been exercised in the
 development workspace. This consolidated fresh-machine sequence has **not yet

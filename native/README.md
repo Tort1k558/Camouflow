@@ -18,7 +18,7 @@ patch chain; they do not transfer automatically to newer binaries.
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
 | Registered Windows source | 001-059 | Identity/GPU package integrated; 0059 avoids rewriting byte-identical V8 snapshots. Current browser remains 001-047 |
-| Native identity keys/service | 001-058 | **62/62** passed: 19 new derivation/mode cases and 43 legacy checks; unchanged browser core/GN/receipt |
+| Native identity keys/service | 001-059 | **62/62** passed, repeating the 001-058 result: 19 new derivation/mode cases and 43 legacy checks; unchanged browser core/GN/receipt |
 | Native identity contexts/transport | 001-059 | **37/37 + 20/20** passed in the linked Chromium content target; not a linked identity-mode browser or renderer delivery proof |
 | Native identity handoff | 001-059 | **15/15** Blink cases passed: 12 document cases across four modes and three worker-thread cases; not a linked identity-mode browser |
 | Native navigation/readiness | 001-045 | **42/42** cases passed: missing/conflicting policy, late policy loss, recovery and observer-driven closure |
