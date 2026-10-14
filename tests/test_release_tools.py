@@ -1007,13 +1007,13 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
 
 @pytest.mark.parametrize("mutation", [None, "duplicate", "missing", "skip", "failure", "incomplete", "foreign", "disabled", "malformed"])
 @pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation",
-                                    "surface-navigation", "window-transport", "gpu-pack-copy", "worker-surfaces", "gpu-metadata-codec",
+                                    "surface-navigation", "window-transport", "gpu-pack-copy", "worker-surfaces", "gpu-metadata-codec", "gpu-metadata",
                                     "identity-keys", "identity-contexts", "identity-transport", "identity-handoff"])
 def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, target):
     from scripts.verify_native_privacy_units import required_tests, validate_results
 
     report = {"tests": {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12,
-                        "surface-navigation": 42, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55, "gpu-metadata-codec": 14,
+                        "surface-navigation": 42, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55, "gpu-metadata-codec": 14, "gpu-metadata": 33,
                         "identity-keys": 62, "identity-contexts": 37, "identity-transport": 20, "identity-handoff": 15}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}

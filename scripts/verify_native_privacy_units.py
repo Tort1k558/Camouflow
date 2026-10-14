@@ -196,7 +196,7 @@ REQUIRED_GPU_READBACK_TESTS = {
     },
 }
 
-NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "worker-surfaces")
+NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "gpu-metadata", "worker-surfaces")
 IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
 
 DELIVERY_SOURCE_FILES = {
@@ -226,6 +226,24 @@ def require_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "gpu-metadata":
+        return {
+            **required_tests("gpu-metadata-codec"),
+            "GLES2DecoderPassthroughTest": {
+                "GlintMetadataInvalidSharedMemoryDoesNotWrite", "GlintMetadataOverflowingOffsetDoesNotWrite",
+                "GlintMetadataTruncatedResultStorageDoesNotWrite", "GlintMetadataInitializedResultDoesNotWrite",
+                "GlintMetadataFeatureOffPublishesOnlyUnavailable",
+            },
+            "GlintPassthroughAttachmentTest": {
+                "ActualRgba8ExtentsPreserveRenderbufferBinding", "RedefinedAttachmentUsesCurrentNativeDimensions",
+                "IntegerAttachmentIsNotByteColourCompatible", "MetadataQueryPreservesPendingClientError",
+                "TextureAttachmentUsesNativeExtentsAndPreservesBinding", "TextureReattachmentUsesSelectedObjectNotBoundTexture",
+                "TextureMipAttachmentReportsSelectedLevel", "CubeFaceAttachmentReportsNativeExtentsAndPreservesBinding",
+                "ArrayLayerAttachmentReportsNativeExtentsAndPreservesBinding", "ThreeDimensionalLayerReportsNativeExtentsAndPreservesBinding",
+                "SelectedReadAttachmentControlsNativeMetadata", "NoReadBufferRemainsUnavailableWithoutClientErrors",
+                "IncompleteFramebufferRemainsUnavailableWithoutClientErrors", "MultisampleMetadataMatchesActualRenderbufferSamples",
+            },
+        }
     if target in IDENTITY_TARGETS:
         from scripts import verify_native_profile_identity_draft as identity
         if target == "identity-keys":
@@ -394,6 +412,10 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
         required_patches.update({"0046-native-webgl-bounded-readback.patch",
                                  "0047-native-webgl-clipped-publication.patch",
                                  "0048-native-readback-fixture-result-api.patch"})
+    if target == "gpu-metadata":
+        required_patches.update({"0055-native-gpu-readback-metadata-transport.patch",
+                                 "0056-native-gpu-metadata-protocol-tests.patch",
+                                 "0058-native-gpu-passthrough-attachment-tests.patch"})
     if target == "delivery":
         required_patches.update({"0018-native-document-policy-delivery.patch",
                                  "0019-native-worker-policy-delivery.patch",
@@ -414,6 +436,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     core = measure_runtime_core(output / "chrome.exe")
     scope = ("Selected identity and legacy policy units; not an enabled browser identity or capability admission"
              if target in IDENTITY_TARGETS else
+             "Chromium GPU codec and passthrough command/attachment units; not validating decoder, WebGPU or browser readback admission"
+             if target == "gpu-metadata" else
              "Surface NavigationSimulator/readiness units; not actual Blink or browser admission"
              if target == "surface-navigation" else
              "Canvas and surface worker Mojo endpoints/bootstrap units; not worker-host startup, first-script delivery or admission"
@@ -433,7 +457,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
              "Actual content-layer BrowserContext bridge/lifecycle/readiness units; not Chrome ProfileImpl startup, IPC, Canvas or admission"
              if target == "contexts" else
              "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission")
-    build_target = ("blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff"} else
+    build_target = ("gpu_unittests" if target == "gpu-metadata" else
+                    "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff"} else
                     "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
     proof = {"passed": False, "scope": scope, "target": target,
              "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path)}

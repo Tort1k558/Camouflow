@@ -138,6 +138,30 @@ GN, receipt, toolchain and existing snapshot hashes remained unchanged. Proof:
 The browser session is still open; the original snapshot action, final linking
 and all 37 context tests remain unverified.
 
+### Native GPU metadata 001-058 — 2026-10-14
+
+The actual Chromium `gpu_unittests` target compiled and linked at `j4` in
+**6m42.46s**, 120 executed steps. **33/33 cases passed**, without skipped or
+disabled cases: codec 14, passthrough protocol 5 and attachment 14. Execution
+took **937 ms** in the first run. The public verifier repeated the same exact
+selection successfully using the cached target. Source, browser core, GN and
+receipt remained unchanged; the first guarded run also bound the toolchain and
+existing snapshot hashes. Test binary SHA-256:
+`78119b90a44733b5ded4b0f9937f14c7b78a36b362d03d2d78e3bbf47986330d`.
+
+Proof/raw results/logs on D: `gpu-metadata-units-001-058-v1/` and
+`gpu-metadata-001-058-v2.*`. Reproduce the exact registered target with:
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_privacy_units.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\gpu-metadata-new.json --vs-installation D:\CamouFlowNative\toolchain\BuildTools --jobs 4 --target gpu-metadata
+```
+
+This proves the selected codec and passthrough command/attachment fixtures,
+including buffer bounds, feature-off behavior, selected attachment dimensions,
+formats, mip/face/layer selection, bindings and pending client errors. It does
+not prove the excluded validating decoder, renderer-to-GPU IPC, protected
+browser readback, WebGPU, profile-identity mode or capability admission.
+
 ### Additional owned browser gates 001-047 — 2026-10-14
 
 | Gate | Result | Scope and limits |

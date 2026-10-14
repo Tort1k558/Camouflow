@@ -26,6 +26,7 @@ patch chain; they do not transfer automatically to newer binaries.
 | Native bounded/clipped readback | 001-048 | **31/31** cases passed: pack copy 14, region planner 11, clipped publication 6; browser core 001-047 remained unchanged |
 | Identity/GPU package | Registered 0049-0058 | **22 identity + six GPU C++ units** type-checked before integration in one composed tree with fresh generators; native fixtures/link/runtime and identity admission still required |
 | GPU metadata codec | Registered 0055 | **14/14** actual codec fixtures executed with standalone MSVC/GoogleTest; not GN decoder/attachment execution or browser admission |
+| Native GPU metadata | 001-058 | **33/33** Chromium `gpu_unittests` cases passed: codec 14, passthrough protocol 5, attachment 14. Not validating-decoder, WebGPU or browser readback admission |
 | Current linked Windows candidate | 001-047 | Corrected incremental j4 build succeeded in **12m46s** |
 | Complete eight-gate runtime suite | 001-047 | **160 checks passed** on unchanged runtime core |
 | Worker startup/restart | 001-047 | Default **40/40**; extended **60/60**, including 20 nested classic/module cases |
