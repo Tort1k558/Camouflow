@@ -106,6 +106,27 @@ After adding the eight-context first-script fixtures, the full Python regression
 completed: **2422 passed in 93.97s**. This is application/tooling test coverage,
 not a linked 001-062 browser result.
 
+### Windows package preparation
+
+The public `stage_native_windows.py` command now invokes Chromium's official
+`mini_installer_archive` target, with pinned source/receipt/GN/core/patch-chain
+checks and postguards. It does not regenerate GN or replace the browser receipt.
+The actual 001-062 j4 action is in progress; no relocated-package or capability
+admission is claimed. Its proof/log use `official-staging-001-062-v2*` on D.
+The first preflight refused equivalent LF/CRLF GN text before any compiler ran;
+the corrected text comparison retains exact receipt and post-run byte guards.
+That refusal is preserved in `official-staging-001-062-v1-preflight.json`.
+
+The packager now checks the receipt's full core against the measured browser and
+postguards receipt, GN, report, licenses and compiled payload sources after final
+archive hashing. Mutation/removal tests require refusal without publishing an
+archive. This is prerequisite integrity work, not policy activation.
+The complete Python regression passed **2543 tests in 107.44s**, including 23
+staging cases and packaging failure/postguard coverage. The local Retype build
+also passed: 37 pages, zero errors/warnings. A previous docs CI run failed inside
+Retype with `InvalidOperationException` concerning concurrent collection updates;
+verbose CI logging is enabled to diagnose recurrence, not claimed as a fix.
+
 ## Previous verified baseline: 001-061 — 2026-10-14
 
 Continuation v2 completed at j4 in **23m48.21s**, 247 executed steps, with an

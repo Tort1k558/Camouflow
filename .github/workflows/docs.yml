@@ -34,7 +34,7 @@ jobs:
 
       - name: Build docs
         working-directory: docs-site
-        run: node node_modules/retypeapp/retype.js build
+        run: node node_modules/retypeapp/retype.js build --verbose
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -196,18 +196,34 @@ real browser host delivered the correct partition key or that Canvas is protecte
 `scripts/package_native_windows.py` requires the official mini-installer staged
 **Chrome-bin** tree, a matching build receipt and passing `runtime.json` for the
 same binary/core DLLs. Do not ZIP arbitrary build output or ship only chrome.exe.
-The public build command currently builds `chrome`, **not the installer staging
-pipeline**; end-to-end fresh-machine packaging remains a separate work item.
-
-For an already prepared official staging tree:
+The ordinary build command builds `chrome`, **not the installer staging
+pipeline**. Run the separate official archive target only after browser probes
+finish and no other builder owns this output:
 
 ```powershell
-& $python scripts/package_native_windows.py --build-output $output --staged "$workspace\staging\Chrome-bin" --runtime-report "$workspace\verification-new\runtime.json" --archive "$workspace\glint-dev-new.tar.gz"
+& $python scripts/stage_native_windows.py --workspace $workspace --vs-installation "$workspace\toolchain\BuildTools" --jobs 4 --report "$workspace\official-staging-new.json"
+if ($LASTEXITCODE -ne 0) { throw 'Glint official staging failed' }
+```
+
+This uses Chromium's `mini_installer_archive` target, not a hand-picked file
+copy. It checks the pinned source, build receipt, core DLLs, GN and patch chain
+before/after the action without rewriting GN or the browser receipt. The target
+may rebuild installer dependencies; its duration is not just archive time.
+The proof records the resulting `Chrome-bin` path under the build's `gen` tree.
+That generated staging directory is mutable: package it before starting another
+build. Do not treat a staging success as relocated runtime or privacy admission.
+
+For the official staging tree reported by this command:
+
+```powershell
+& $python scripts/package_native_windows.py --build-output $output --staged "$output\gen\chrome\installer\mini_installer\mini_installer\temp_installer_archive\Chrome-bin" --runtime-report "$workspace\verification-new\runtime.json" --archive "$workspace\glint-dev-new.tar.gz"
 if ($LASTEXITCODE -ne 0) { throw 'Glint packaging failed' }
 ```
 
 Archives/reports must use new paths. The packager checks payload against compiled
-output and retains licenses/credits. Installation/activation/rollback use
+output and retains licenses/credits. It requires the receipt's complete browser
+core to match the report and guards receipt, GN, report, licenses and every
+compiled payload source until the archive is published. Installation/activation/rollback use
 `scripts/native_release.py`; activation requires health checks and must not
 replace a working runtime based only on successful compilation. Windows
 development archives are unsigned. No production release is implied here.
@@ -255,8 +271,7 @@ steps and the unresolved first-download transport limitation.
 
 Individual preparation, build and runtime stages have been exercised in the
 development workspace. This consolidated fresh-machine sequence has **not yet
-been replayed end to end on a new machine**. Existing runtime proof covers the
-001-047 browser; registered source is 001-059. Identity key/service passed 62
-cases on 001-058, and contexts/transport passed 37/20 cases on 001-059.
-Blink handoff passed 15 cases on 001-059. New-mode browser runtime and prepared
-branding still must be compiled and verified before release claims.
+been replayed end to end on a new machine**. Current per-build runtime, branding,
+experimental rendering and unresolved failure evidence is maintained in the
+[test matrix](../docs/GLINT_TEST_MATRIX.md). Older successful checks do not
+automatically admit a new binary, relocated package or fingerprint capability.

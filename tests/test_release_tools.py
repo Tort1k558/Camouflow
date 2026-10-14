@@ -1692,6 +1692,7 @@ def _native_windows_packaging_fixture(tmp_path, monkeypatch):
                "chromium_revision": packaging.LOCK["chromium_revision"],
                "depot_tools_revision": packaging.LOCK["depot_tools_revision"],
                "binary_sha256_measured": checksum, "args_sha256": sha256_file(output / "args.gn"),
+               "runtime_core_sha256_measured": measure_runtime_core(output / "chrome.exe"),
                "native_patch_runtime_verified": False, "patches": []}
     (output / "camouflow-build.json").write_text(json.dumps(receipt), encoding="utf-8")
     report = tmp_path / "runtime.json"
@@ -1723,13 +1724,15 @@ def test_native_windows_package_is_reproducible_and_installable_without_claiming
             assert hashlib.sha256(archive.extractfile(name).read()).hexdigest() == digest
         assert {"licenses/Chromium-LICENSE", "licenses/CamouFlow-LICENSE"}.issubset(metadata["files_sha256"])
         assert not metadata["native_patch_runtime_verified"]
+        assert metadata["build_receipt_sha256"] == hashlib.sha256((output / "camouflow-build.json").read_bytes()).hexdigest()
+        assert metadata["runtime_report_sha256"] == hashlib.sha256(report.read_bytes()).hexdigest()
     release = NativeBinaryStore(tmp_path / "store").install_archive(destination, first["sha256"])
     assert release["build_kind"] == "chromium-fork"
     assert not list(tmp_path.glob("native-package-*"))
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
-@pytest.mark.parametrize("mutation", ["receipt_revision", "boolean_schema", "binary_changed", "args_changed",
+@pytest.mark.parametrize("mutation", ["receipt_revision", "receipt_core", "boolean_schema", "binary_changed", "args_changed",
                                      "report_failed", "report_other_binary", "report_partial", "report_version",
                                      "report_missing_core", "report_changed_core", "compiled_dll_changed",
                                      "staged_dll_changed", "missing_dll", "extra_file", "debug_symbols", "overwrite", "missing_license"])
@@ -1739,10 +1742,13 @@ def test_native_windows_package_rejects_unverified_or_changed_inputs(tmp_path, m
     from scripts import package_native_windows as packaging
 
     output, staged, report, destination = _native_windows_packaging_fixture(tmp_path, monkeypatch)
-    if mutation in {"receipt_revision", "boolean_schema"}:
+    if mutation in {"receipt_revision", "receipt_core", "boolean_schema"}:
         record = output / "camouflow-build.json"
         value = json.loads(record.read_text(encoding="utf-8-sig"))
-        value["chromium_revision" if mutation == "receipt_revision" else "schema"] = "a" * 40 if mutation == "receipt_revision" else True
+        if mutation == "receipt_core":
+            value["runtime_core_sha256_measured"]["chrome.dll"] = "a" * 64
+        else:
+            value["chromium_revision" if mutation == "receipt_revision" else "schema"] = "a" * 40 if mutation == "receipt_revision" else True
         record.write_text(json.dumps(value), encoding="utf-8")
     elif mutation == "compiled_dll_changed":
         (output / "chrome.dll").write_bytes(b"new linked code with the same launcher")
@@ -1802,6 +1808,54 @@ def test_native_windows_package_rejects_staged_files_changed_during_archiving(tm
         package(output, staged, report, destination)
     assert not destination.exists()
     assert not list(tmp_path.glob("native-package-*"))
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
+@pytest.mark.parametrize("input_name", ["receipt", "report", "args", "compiled_dll", "compiled_locale", "license"])
+@pytest.mark.parametrize("remove", [False, True])
+def test_native_windows_package_postguards_all_provenance_and_compiled_inputs(tmp_path, monkeypatch, input_name, remove):
+    import tarfile
+
+    from scripts.package_native_windows import package
+
+    output, staged, report, destination = _native_windows_packaging_fixture(tmp_path, monkeypatch)
+    paths = {"receipt": output / "camouflow-build.json", "report": report, "args": output / "args.gn",
+             "compiled_dll": output / "chrome.dll", "compiled_locale": output / "locales/en-US.pak",
+             "license": output.parent.parent / "LICENSE"}
+    addfile = tarfile.TarFile.addfile
+
+    def changing_addfile(bundle, info, fileobj=None):
+        addfile(bundle, info, fileobj)
+        if info.name == "native-release.json":
+            if remove:
+                paths[input_name].unlink()
+            else:
+                paths[input_name].write_bytes(b"changed after payload was archived")
+
+    monkeypatch.setattr(tarfile.TarFile, "addfile", changing_addfile)
+    with pytest.raises(ValueError, match="input changed while archiving"):
+        package(output, staged, report, destination)
+    assert not destination.exists()
+    assert not list(tmp_path.glob("native-package-*"))
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
+def test_native_windows_package_postguards_after_archive_hashing(tmp_path, monkeypatch):
+    from scripts import package_native_windows as packaging
+
+    output, staged, report, destination = _native_windows_packaging_fixture(tmp_path, monkeypatch)
+    sha256_file = packaging.sha256_file
+
+    def hashing(path):
+        digest = sha256_file(path)
+        if path.name == "bundle.tar.gz":
+            report.write_bytes(b"changed during final archive hashing")
+        return digest
+
+    monkeypatch.setattr(packaging, "sha256_file", hashing)
+    with pytest.raises(ValueError, match="input changed while archiving"):
+        packaging.package(output, staged, report, destination)
+    assert not destination.exists()
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")

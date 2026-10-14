@@ -64,7 +64,10 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
         raise ValueError("Refusing to overwrite an existing Native archive")
     if build_output.name != "CamouFlowNative" or build_output.parent.name != "out":
         raise ValueError("Expected the owned out/CamouFlowNative build directory")
-    receipt = read_record(build_output / "camouflow-build.json")
+    receipt_path = build_output / "camouflow-build.json"
+    args_path = build_output / "args.gn"
+    input_hashes = {path: sha256_file(path) for path in (receipt_path, args_path, runtime_report)}
+    receipt = read_record(receipt_path)
     report = read_record(runtime_report)
     for key, expected in {"schema": 1, "platform": "win32", "binary": "chrome.exe",
                           "native_version": LOCK["native_version"],
@@ -75,12 +78,15 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
     binary_hash = sha256_file(build_output / "chrome.exe")
     if receipt.get("binary_sha256_measured") != binary_hash:
         raise ValueError("Native build executable changed after compilation")
-    if receipt.get("args_sha256") != sha256_file(build_output / "args.gn"):
+    if receipt.get("args_sha256") != input_hashes[args_path]:
         raise ValueError("Native build arguments changed after compilation")
+    core = measure_runtime_core(build_output / "chrome.exe")
+    if receipt.get("runtime_core_sha256_measured") != core:
+        raise ValueError("Native build receipt does not match the complete browser core")
     if (report.get("passed") is not True or report.get("platform") != "Windows"
             or report.get("version") != LOCK["chromium_version"]
             or report.get("binary_sha256_measured") != binary_hash
-            or report.get("runtime_core_sha256_measured") != measure_runtime_core(build_output / "chrome.exe")
+            or report.get("runtime_core_sha256_measured") != core
             or not isinstance(report.get("checks"), list)
             or any(not isinstance(check, str) for check in report["checks"])
             or not REQUIRED_RUNTIME_CHECKS.issubset(report["checks"])):
@@ -108,6 +114,7 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
         checksum = sha256_file(path)
         if not source.is_file() or source != source.resolve() or checksum != sha256_file(source):
             raise ValueError("Staged file differs from the compiled output: " + name)
+        input_hashes[source] = checksum
         total += path.stat().st_size
         if len(files) + 1 >= MAX_FILES or total > MAX_UNPACKED_BYTES:
             raise ValueError("Native staged files exceed installation limits")
@@ -122,7 +129,9 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
                 or not 0 < path.stat().st_size <= 1024 * 1024):
             raise ValueError("Missing or unsafe source license notice")
         total += path.stat().st_size
-        files.append((name, path, sha256_file(path)))
+        checksum = sha256_file(path)
+        files.append((name, path, checksum))
+        input_hashes[path] = checksum
         names.add(name.casefold())
     if len(files) + 1 > MAX_FILES:
         raise ValueError("Native staged files exceed installation limits")
@@ -131,7 +140,8 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
                 "architecture": host_architecture(), "build_kind": "chromium-fork",
                 "executable": "chrome.exe", "executable_sha256": binary_hash,
                 "build_receipt": receipt, "native_patch_runtime_verified": False,
-                "runtime_report_sha256": sha256_file(runtime_report),
+                "build_receipt_sha256": input_hashes[receipt_path],
+                "runtime_report_sha256": input_hashes[runtime_report],
                 "files_sha256": {name: checksum for name, _, checksum in files}}
     encoded = json.dumps(metadata, sort_keys=True, indent=2).encode("utf-8")
     if len(encoded) > 1024 * 1024 or total + len(encoded) > MAX_UNPACKED_BYTES:
@@ -154,6 +164,9 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
         if archive.stat().st_size > MAX_ARCHIVE_BYTES:
             raise ValueError("Native release archive exceeds installation limits")
         digest = sha256_file(archive)
+        for path, checksum in input_hashes.items():
+            if path != path.resolve() or not path.is_file() or sha256_file(path) != checksum:
+                raise ValueError("Native packaging input changed while archiving: " + path.name)
         os.link(archive, destination)
     return {"archive": str(destination), "sha256": digest, "files": len(files),
             "native_patch_runtime_verified": False}
