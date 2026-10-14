@@ -987,6 +987,27 @@ def test_glint_branding_preparation_is_nonmutating_and_patch_roundtrips(tmp_path
     assert all((source / name).read_bytes() == contents for name, contents in original.items())
     assert not patch.read_bytes().startswith(b"\xef\xbb\xbf")
     assert b"\r\n" not in patch.read_bytes()
+    from scripts.verify_glint_branding import verify as verify_branding
+    replay = verify_branding(source, patch, tmp_path / "branding-replay")
+    assert replay["passed"] is True
+    assert replay["source_unchanged"] is True
+    assert replay["files"] == report["assets"]
+    assert all((source / name).read_bytes() == contents for name, contents in original.items())
+    with pytest.raises(ValueError, match="new canonical output"):
+        verify_branding(source, patch, tmp_path / "branding-replay")
+    with pytest.raises(ValueError, match="outside Chromium"):
+        verify_branding(source, patch, source / "forbidden-branding-output")
+    corrupted = tmp_path / "different-brand.patch"
+    corrupted.write_text(patch.read_text(encoding="utf-8").replace(
+        "+PRODUCT_FULLNAME=Glint", "+PRODUCT_FULLNAME=Other"), encoding="utf-8", newline="\n")
+    with pytest.raises(ValueError, match="differs from fresh generation"):
+        verify_branding(source, corrupted, tmp_path / "different-brand-replay")
+    unexpected = tmp_path / "extra-path.patch"
+    unexpected.write_text(patch.read_text(encoding="utf-8") +
+                          "diff --git a/extra.cc b/extra.cc\n", encoding="utf-8", newline="\n")
+    with pytest.raises(ValueError, match="unexpected source paths"):
+        verify_branding(source, unexpected, tmp_path / "extra-path-replay")
+    assert all((source / name).read_bytes() == contents for name, contents in original.items())
     real_run(["git", "-c", "core.autocrlf=false", "apply", "--check", str(patch)], cwd=source, check=True)
     real_run(["git", "-c", "core.autocrlf=false", "apply", str(patch)], cwd=source, check=True)
     assert (source / "chrome/app/theme/chromium/win/chromium.ico").read_bytes() == (public / "logo.ico").read_bytes()

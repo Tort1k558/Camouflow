@@ -20,6 +20,20 @@ The generator is public and does not modify the Chromium checkout:
 git -C D:\CamouFlowNative\chromium\src apply --check D:\CamouFlowNative\glint-branding.patch
 ```
 
+Verify the public candidate without changing the source checkout:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.verify_glint_branding --source D:\CamouFlowNative\chromium\src --patch C:\Users\lolod\Desktop\camouflow-app\camouflow\native\branding\glint.patch --output D:\CamouFlowNative\branding-replay-new
+```
+
+The output directory must not exist. The gate regenerates the expected assets,
+applies the public patch in a disposable source copy, checks every resulting
+asset hash, reverses it and checks original-copy and real-source hashes. A
+different product/logo, extra source path or changed source rejects the gate.
+This replay passed against actual source 001–059 on 14 October 2026; private
+proof is `branding-replay-001-059-v4/report.json` on D. This does **not** register
+or apply the patch to the real checkout, compile it or prove window/taskbar UI.
+
 Do not apply it during an active build. After the current build terminates,
 register this patch in the strict source replay gate before applying/building.
 The current browser binary is not yet Glint-branded. Actual window/taskbar icons,

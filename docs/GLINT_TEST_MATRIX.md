@@ -135,6 +135,22 @@ and `product-canvas-health-001-059-v1/report.json` on D. No capability was admit
 After integration, all **2335 Python tests passed in 81.51s**; 43 cover the shared
 measurement, malformed metrics, product audit and worker probe composition.
 
+### Branding source preflight
+
+The prepared Glint branding patch passed the new nonmutating source/asset replay
+against actual source 001-059. All 16 resulting file hashes matched freshly
+generated product/logo assets; reversing the patch restored the owned copy,
+and the actual source files remained unchanged. Proof on D:
+`branding-replay-001-059-v4/report.json`. The gate rejects extra paths, changed
+branding assets and reuse of an existing evidence directory. The first v1
+attempt failed in the verifier on an incorrect report-key lookup before replay;
+its artifacts were retained and the generator contract was corrected.
+
+This is **not compiled branding**: the current executable remains unbranded,
+and the candidate remains outside the registered build chain. Product/about
+strings, Windows icon resources and shortcut migration still need the next
+linked build and actual UI checks.
+
 ## Test destinations
 
 Priority: **Core** for each build; **Extended** before release; **Reference** for
