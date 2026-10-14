@@ -2,8 +2,8 @@
 
 Glint is CamouFlow's own Chromium fork. This guide builds the **registered
 development patch chain**, not Camoufox/CloakBrowser and not an admitted release.
-Linux/macOS own-fork builds are deferred. The branding candidate in `branding/`
-is not a registered build input. Context tests are registered in patch 0017;
+Linux/macOS own-fork builds are deferred. Glint product/logo branding is registered
+as patch 0060; its linked runtime/UI verification remains pending. Context tests are registered in patch 0017;
 document/worker IPC unit infrastructure is registered in patches 0018-0020.
 Worker startup gates and thread handoff are registered in patches 0021-0026,
 including four Blink handoff cases that passed after test-only patch 0028.
@@ -65,7 +65,7 @@ snapshots. Do not manufacture those records. Sync rejects modified source:
 `native_build.py build` checks applied patches but **does not apply them**.
 For a fresh checkout after successful hooks, apply numbered production patches
 in order. Patch 0007 belongs to the separate V8 repository, not Chromium root.
-Do not add draft/branding patches to this loop; they must first be registered
+Do not add unregistered draft patches to this loop; they must first be registered
 in the exact source replay gate and have their verification updated.
 
 ```powershell
@@ -134,8 +134,8 @@ Patches 0018-0020 alone do not connect the consumer to worker startup. The separ
 0021-0026 stack wires dedicated/shared/service workers and owned Blink seed
 transport behind `--glint-worker-canvas-bootstrap-test`; it additionally needs
 the existing browser-owned key-service opt-in for a successful response. The flag
-is not a manager privacy capability. Canvas helpers/readback hooks, document
-bootstrap and branding are still outside the registered chain. Registration
+is not a manager privacy capability. Later numbered patches register Canvas
+helpers/readback hooks, document bootstrap and branding. Registration
 alone is not successful compilation or execution. The four `WorkerThreadTest`
 handoff cases belong to `blink_unittests`, not this 34-case content gate.
 The scripts do not admit capabilities automatically or prove CAPTCHA success.

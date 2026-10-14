@@ -147,9 +147,20 @@ attempt failed in the verifier on an incorrect report-key lookup before replay;
 its artifacts were retained and the generator contract was corrected.
 
 This is **not compiled branding**: the current executable remains unbranded,
-and the candidate remains outside the registered build chain. Product/about
+and these preflight results do not prove UI behavior. Product/about
 strings, Windows icon resources and shortcut migration still need the next
 linked build and actual UI checks.
+
+The same patch is now registered as `0060-native-glint-branding.patch` and was
+applied to the idle source checkout after preserving and actually launching a
+checksum-bound standalone copy of verified 001-059. Its normalized registered
+artifact passed replay again (`branding-replay-001-059-v5/report.json`). The
+001-060 build was started at j4; it is not yet a verified runtime. Build state
+must be checked from live processes and its terminal report, not this paragraph.
+Hardware/identity CHECK-message verifiers retain exact historical and branded
+diagnostics; generic launch errors remain rejected. Release-tool tests passed
+571/571 before starting the new build.
+The full Python regression suite then passed **2337/2337 in 85.30s**.
 
 ## Test destinations
 

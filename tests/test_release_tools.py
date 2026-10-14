@@ -1572,7 +1572,8 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
                  "0056-native-gpu-metadata-protocol-tests.patch",
                  "0057-native-gpu-metadata-attachment-tests.patch",
                  "0058-native-gpu-passthrough-attachment-tests.patch",
-                 "0059-native-identical-v8-snapshot.patch"):
+                 "0059-native-identical-v8-snapshot.patch",
+                 "0060-native-glint-branding.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1
@@ -2022,12 +2023,13 @@ def test_native_browser_hardware_validation_embeds_the_same_policy_before_switch
     assert contents.index("CHECK(camouflow::native::ParseHardwareLimits") < contents.index("renderer_cmd->CopySwitchesFrom")
 
 
-@pytest.mark.parametrize("diagnostic", ["Invalid CamouFlow Native hardware limits", "Browser executable not found", "Browser launch timed out"])
+@pytest.mark.parametrize("diagnostic", ["Invalid CamouFlow Native hardware limits", "Invalid Glint hardware limits",
+                                       "Invalid Glint unrelated setting", "Browser executable not found", "Browser launch timed out"])
 def test_native_hardware_rejection_requires_specific_native_diagnostic(diagnostic):
     from playwright.async_api import Error
     from scripts.verify_native_hardware import validate_rejection
 
-    if diagnostic.startswith("Invalid CamouFlow"):
+    if diagnostic in {"Invalid CamouFlow Native hardware limits", "Invalid Glint hardware limits"}:
         validate_rejection(Error(diagnostic))
     else:
         with pytest.raises(ValueError, match="expected native CHECK"):

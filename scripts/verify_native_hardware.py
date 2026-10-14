@@ -32,7 +32,8 @@ async def close_context(context) -> None:
 
 
 def validate_rejection(error: PlaywrightError) -> None:
-    if "Invalid CamouFlow Native hardware limits" not in str(error):
+    if not any(message in str(error) for message in (
+            "Invalid CamouFlow Native hardware limits", "Invalid Glint hardware limits")):
         raise ValueError("Invalid hardware launch failed without the expected native CHECK") from error
 
 READ = """() => ({

@@ -174,7 +174,8 @@ async def verify(executable: Path, work_dir: Path, origin: str, checks: list, *,
                         owned, executable_path=str(executable), headless=True,
                         chromium_sandbox=True, args=[FLAG + "=" + value])
                 except PlaywrightError as error:
-                    if "Invalid CamouFlow Native browser identity flag" not in str(error):
+                    if not any(message in str(error) for message in (
+                            "Invalid CamouFlow Native browser identity flag", "Invalid Glint browser identity flag")):
                         raise ValueError("Invalid identity flag did not fail with its native CHECK") from error
                 else:
                     await context.close()

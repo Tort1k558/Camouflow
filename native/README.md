@@ -37,7 +37,7 @@ patch chain; they do not transfer automatically to newer binaries.
 | Nested worker Canvas | 001-047 | **24/24** first-script/repeat/restart cases passed alongside all seven combined phases |
 | Strict HTTP/JS Client Hints | 001-047 | **18/18** checks passed: eight strict document/frame comparisons, six worker JS checks, four invalid-UA rejections; worker HTTP hints and TLS are not covered |
 | Protected WebGL readback | 001-047 | **Six phases passed**, including clipped CPU/PBO reads, state/errors, exports, restart and profile isolation; wider admission remains blocked |
-| Branding | Prepared | Product/logo patch not applied to verified binary |
+| Branding | Registered, build pending | Patch 0060 applied to sources; last verified binary remains unbranded |
 | Linux/macOS | Deferred | No current own-fork runtime admission |
 | Mobile Web | Emulation | Desktop viewport/touch mode, not Android/iOS |
 
@@ -90,7 +90,7 @@ WebGPU, future identity mode or third-party acceptance.
 | `core/` | Shared C++ policy primitives |
 | `windows/` | Windows font-policy source |
 | `tests/` | Native policy fixtures and tests |
-| `branding/` | Prepared Glint product/logo patch, not applied |
+| `branding/` | Source replay instructions for registered product/logo patch 0060 |
 | `drafts/` | Canonical candidates, unregistered integration patches and explicit proof boundaries |
 | `build/`, `toolchain/` | Build/toolchain support source |
 | `build-lock.json` | Pinned upstream revisions and build limits |
