@@ -162,6 +162,17 @@ formats, mip/face/layer selection, bindings and pending client errors. It does
 not prove the excluded validating decoder, renderer-to-GPU IPC, protected
 browser readback, WebGPU, profile-identity mode or capability admission.
 
+A broader exact-suite regression run then passed **74/74 cases** in 272 ms:
+the 33 selected metadata cases plus 41 existing GLES2/GLES3 passthrough cases.
+No skipped, disabled or failed case was accepted; source/core/GN/receipt,
+toolchain and snapshot hashes remained unchanged. Private proof/raw results:
+`gpu-passthrough-regression-001-058-v1/` on D. The filter covered
+`GLES2DecoderPassthroughTest.*`, `GLES3DecoderPassthroughTest.*`,
+`GlintReadbackMetadataTest.*` and `GlintPassthroughAttachmentTest.*`; it does
+not cover every typed/parameterized GPU suite. These 74 include the earlier
+33 and must not be added as disjoint tests. The full Python suite after adding
+the public metadata verifier passed **2292 tests** in 82.72 seconds.
+
 ### Additional owned browser gates 001-047 — 2026-10-14
 
 | Gate | Result | Scope and limits |
