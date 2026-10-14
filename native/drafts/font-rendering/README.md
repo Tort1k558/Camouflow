@@ -1,6 +1,7 @@
 # Windows font rasterization candidate
 
-**Unregistered, not applied to source or binary 001–061. No capability admitted.**
+**Registered/applied as patch 0062; browser binary remains verified 001–061.
+No new capability admitted.**
 
 This candidate changes actual Windows text-rendering parameters, not Canvas
 readback bytes, JavaScript APIs, installed font names, OS identity or GPU strings.
@@ -27,7 +28,8 @@ startup. This avoids depending solely on a document's later preference update.
 The `native` mode does not override this startup behavior. Actual before-script
 worker effects still require execution of the candidate.
 
-`windows_font_rasterization_candidate.patch` includes the policy, Windows cache
+`windows_font_rasterization_candidate.patch` is the canonical source of registered
+`0062-native-windows-font-rasterization.patch`. It includes the policy, Windows cache
 hook, renderer forwarding and Windows-only build/test registration. Its five
 GTest definitions cover parsing, invalid names/enums, native preservation, field
 bounds and idempotence. They have been **type-checked, not executed**.
@@ -56,7 +58,8 @@ bounds and idempotence. They have been **type-checked, not executed**.
 - Optimized compilation/linking, native fixture execution and actual
   visual/runtime effects are **not yet verified**.
 
-Regenerate only into a fresh output outside Chromium:
+Regenerate only from a pre-0062 source tree into a fresh output outside Chromium;
+the preparer intentionally refuses already-applied policy files:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/prepare_native_font_rendering.py --source D:\CamouFlowNative\chromium\src --output D:\CamouFlowNative\windows-font-rendering-new.patch
@@ -97,8 +100,9 @@ unprotected baseline, not candidate execution or a complete font-policy test.
 
 ## Admission work
 
-After the active build finishes, validate full forwarding/DEPS, register the
-reviewed package, compile the five native cases and compare actual modes in
+The reviewed package is registered and its forwarding/startup C++/DEPS checks
+passed in isolation. Compile and execute the five native cases, then link the
+browser and compare actual modes in
 document/iframe/dedicated/shared/service workers, before-script and restart runs.
 Check Canvas/DOM/SVG text and ordinary page rendering with real installed fonts.
 Verify raw pixel fidelity, P3/float16 APIs, PNG/ImageBitmap/drawImage and screenshots

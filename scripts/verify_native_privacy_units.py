@@ -196,7 +196,7 @@ REQUIRED_GPU_READBACK_TESTS = {
     },
 }
 
-NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "gpu-metadata", "worker-surfaces")
+NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "gpu-metadata", "worker-surfaces", "font-rasterization")
 IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
 
 DELIVERY_SOURCE_FILES = {
@@ -226,6 +226,12 @@ def require_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "font-rasterization":
+        return {"GlintWindowsFontRasterizationTest": {
+            "ParsesEveryNamedMode", "RejectsInvalidNamesWithoutNormalization",
+            "NativePreservesAllHostFields", "InvalidEnumPreservesAllHostFields",
+            "ModesOnlyChangeRasterizationFields",
+        }}
     if target == "gpu-metadata":
         return {
             **required_tests("gpu-metadata-codec"),
@@ -373,6 +379,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     build.require_stage(workspace / "chromium", "hooks")
     patches = build.source_patches(source, env) + build.v8_source_patches(source, env)
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
+    if target == "font-rasterization":
+        required_patches.add("0062-native-windows-font-rasterization.patch")
     if target in IDENTITY_TARGETS:
         required_patches.update({"0049-native-profile-identity-derivation.patch",
                                  "0050-native-immutable-fingerprint-mode.patch",
@@ -434,7 +442,9 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("Selected identity and legacy policy units; not an enabled browser identity or capability admission"
+    scope = ("Windows font policy parsing/field-preservation units; not renderer startup, visual output or capability admission"
+             if target == "font-rasterization" else
+             "Selected identity and legacy policy units; not an enabled browser identity or capability admission"
              if target in IDENTITY_TARGETS else
              "Chromium GPU codec and passthrough command/attachment units; not validating decoder, WebGPU or browser readback admission"
              if target == "gpu-metadata" else
@@ -457,7 +467,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
              "Actual content-layer BrowserContext bridge/lifecycle/readiness units; not Chrome ProfileImpl startup, IPC, Canvas or admission"
              if target == "contexts" else
              "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission")
-    build_target = ("gpu_unittests" if target == "gpu-metadata" else
+    build_target = ("gfx_unittests" if target == "font-rasterization" else
+                    "gpu_unittests" if target == "gpu-metadata" else
                     "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff"} else
                     "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
     proof = {"passed": False, "scope": scope, "target": target,

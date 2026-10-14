@@ -3,6 +3,24 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Next registered package: 001-062 — 2026-10-14
+
+Patch 0062 is registered/applied to source: Windows font parameter policy,
+validated renderer forwarding, early renderer initialization and five native
+fixtures in the existing `gfx_unittests` target. The complete reviewed package
+passed preparation/apply-check and isolated renderer startup C++/DEPS checks;
+it is **not yet a linked or admitted browser**.
+
+The exact 001-061 executable, DLLs, resource/locale packs and receipt were copied,
+checksum-checked and actually launched before source promotion. Rollback proof:
+`standalone-runtime-backup-001-061-before-062-v1/proof.json` on D.
+The new `--target font-rasterization` verifier builds/selects exactly five named
+tests, rejects missing/skipped/failed/duplicate cases and guards baseline browser
+code, GN, receipt and source state. Its native build/run is in progress at j4;
+no native test success is claimed yet. Expected report:
+`windows-font-policy-001-062-v1.json` on D. **598 Python tests passed in 20.58s**
+for the updated release tooling and rendering helpers.
+
 ## Latest linked build: 001-061 — 2026-10-14
 
 Continuation v2 completed at j4 in **23m48.21s**, 247 executed steps, with an

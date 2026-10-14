@@ -2,20 +2,22 @@
 
 Glint is CamouFlow's own Chromium fork. This guide builds the **registered
 development patch chain**, not Camoufox/CloakBrowser and not an admitted release.
-Linux/macOS own-fork builds are deferred. Glint product/logo branding is registered
-as patches 0060–0061; 0060 icons/PE metadata passed but version-page branding failed,
-so 0061 repairs the actual UI resources. Context tests are registered in patch 0017;
-document/worker IPC unit infrastructure is registered in patches 0018-0020.
-Worker startup gates and thread handoff are registered in patches 0021-0026,
-including four Blink handoff cases that passed after test-only patch 0028.
-They do not enable Canvas privacy. The cohesive 0031–0034 source batch is now
-registered; its new unit/browser checks remain pending. Repair patch 0035 keeps
-the commit origin immutable and fixes the initial-document origin calculation.
-Repair 0036 includes the complete Mojo surface-policy type required by the
-worker service's default StructPtr argument; its dedicated worker object check
-and the subsequent full browser build are separate gates.
-The first 001–034 full build failed compiling `document_loader.cc`; a successful
-object rebuild does not prove a complete browser or admit the new protections.
+Linux/macOS own-fork builds are deferred. The latest verified Windows browser is
+**001–061**: all eight runtime gates (160 checks) and compiled Glint branding
+passed. Registered source now includes **0062**, the experimental Windows font
+rasterization package. Its browser linking/visual validation is still pending;
+do not transfer the 001–061 results to it. Exact results and retained failures:
+[test matrix](../docs/GLINT_TEST_MATRIX.md).
+
+The five new font-policy fixtures use the existing Chromium `gfx_unittests`
+target and the normal isolated verifier:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_privacy_units.py --workspace D:\CamouFlowNative --report D:\CamouFlowNative\font-policy-new.json --vs-installation D:\CamouFlowNative\toolchain\BuildTools --jobs 4 --target font-rasterization
+```
+
+Use a fresh report path. Passing these policy units does not prove renderer
+startup, actual pixels, worker delivery or fingerprint acceptance.
 
 ## Requirements
 

@@ -1079,7 +1079,7 @@ def test_native_privacy_verification_refuses_existing_compiler(monkeypatch, runn
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows owned-profile unit verifier")
 @pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure", "source_change"])
-@pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation"])
+@pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", "font-rasterization"])
 def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure, target):
     import json
     import subprocess
@@ -1110,7 +1110,8 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         "0026-native-worker-canvas-handoff-tests.patch",
         "0029-native-document-partition-validator-tests.patch",
         "0030-native-document-commit-prototype.patch", "0032-native-document-surface-policy.patch",
-        "0042-native-initial-policy-fixture-scheme-lifetime.patch")]
+        "0042-native-initial-policy-fixture-scheme-lifetime.patch",
+        "0062-native-windows-font-rasterization.patch")]
     monkeypatch.setattr(privacy.build, "source_patches", lambda *args: [dict(item) for item in source_patches])
     monkeypatch.setattr(privacy.build, "v8_source_patches", lambda *args: [])
     monkeypatch.setattr(privacy.build, "check_patch_dependencies", lambda *args: None)
@@ -1123,7 +1124,8 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
 
     monkeypatch.setattr(privacy, "measure_runtime_core", measure)
     commands = []
-    build_target = ("blink_unittests" if target == "worker-handoff" else
+    build_target = ("gfx_unittests" if target == "font-rasterization" else
+                    "blink_unittests" if target == "worker-handoff" else
                     "content_unittests" if target in {"contexts", "delivery", "document-navigation"} else "camouflow_native_privacy_unittests")
 
     def run(args, **kwargs):
@@ -1134,7 +1136,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
                 raise subprocess.CalledProcessError(1, args)
             (output / (build_target + ".exe")).write_bytes(b"owned unit executable")
         else:
-            results = {"tests": {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12}[target],
+            results = {"tests": {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12, "font-rasterization": 5}[target],
                        "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
                        "testsuites": [{"name": suite, "testsuite": [
                            {"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(cases)]}
@@ -1157,13 +1159,13 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         assert len(commands) == 1
     else:
         assert commands[1][0] == str(output / (build_target + ".exe"))
-        if target in {"worker-handoff", "document-partition", "document-navigation"}:
+        if target in {"worker-handoff", "document-partition", "document-navigation", "font-rasterization"}:
             assert "*" not in commands[1][1]
             assert set(commands[1][1].removeprefix("--gtest_filter=").split(":")) == {
                 f"{suite}.{case}" for suite, cases in privacy.required_tests(target).items() for case in cases}
     assert proof["target"] == target
     if failure is None:
-        assert proof["tests"] == {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12}[target] and proof["baseline_browser_code_unchanged"]
+        assert proof["tests"] == {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12, "font-rasterization": 5}[target] and proof["baseline_browser_code_unchanged"]
         assert len(proof["test_binary_sha256"]) == 64
         if target == "delivery":
             assert len(proof["delivery_source_sha256"]) == 10
@@ -1574,7 +1576,8 @@ def test_native_patch_validation_rejects_extra_edits_in_known_files_without_chan
                  "0058-native-gpu-passthrough-attachment-tests.patch",
                  "0059-native-identical-v8-snapshot.patch",
                  "0060-native-glint-branding.patch",
-                 "0061-native-glint-ui-resources.patch"):
+                 "0061-native-glint-ui-resources.patch",
+                 "0062-native-windows-font-rasterization.patch"):
         (patches / name).write_text("", encoding="utf-8")
     monkeypatch.setattr(native_build, "ROOT", public)
     assert len(native_build.source_patches(source, env)) == 1

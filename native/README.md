@@ -17,7 +17,7 @@ patch chain; they do not transfer automatically to newer binaries.
 
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
-| Registered Windows source | 001-061 | Identity/GPU package and Glint UI branding integrated; exact linked receipt and baseline runtime verified |
+| Registered Windows source | 001-062 | 001-061 runtime/branding verified; 0062 adds experimental Windows font rendering, not yet linked or admitted |
 | Native identity keys/service | 001-059 | **62/62** passed, repeating the 001-058 result: 19 new derivation/mode cases and 43 legacy checks; unchanged browser core/GN/receipt |
 | Native identity contexts/transport | 001-059 | **37/37 + 20/20** passed in the linked Chromium content target; not a linked identity-mode browser or renderer delivery proof |
 | Native identity handoff | 001-059 | **15/15** Blink cases passed: 12 document cases across four modes and three worker-thread cases; not a linked identity-mode browser |

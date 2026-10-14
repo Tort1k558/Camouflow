@@ -6,6 +6,12 @@ import pytest
 from scripts import prepare_native_font_rendering as draft
 
 
+def test_registered_font_patch_matches_reviewed_candidate():
+    candidate = draft.ROOT / "native/drafts/font-rendering/windows_font_rasterization_candidate.patch"
+    registered = draft.ROOT / "native/patches/0062-native-windows-font-rasterization.patch"
+    assert registered.read_bytes() == candidate.read_bytes()
+
+
 def source_fixture(tmp_path, monkeypatch):
     source = tmp_path / "source"
     files = {

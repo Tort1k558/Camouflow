@@ -257,7 +257,8 @@ def source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
         "0058-native-gpu-passthrough-attachment-tests.patch",
         "0059-native-identical-v8-snapshot.patch",
         "0060-native-glint-branding.patch",
-        "0061-native-glint-ui-resources.patch"))
+        "0061-native-glint-ui-resources.patch",
+        "0062-native-windows-font-rasterization.patch"))
 
 
 def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]:
