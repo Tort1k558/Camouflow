@@ -46,6 +46,16 @@ Private evidence: `multi-profile-close-060-debug-v1/`,
 `shutdown-stack-060-v2/`, `shutdown-stack-060-v3/` and
 `runtime-001-060-crash-close-v2.json` on D.
 
+An isolated storage-volume comparison then passed **three rounds / three profiles
+in 42.516s** with temporary profiles on the local C: SSD and the exact unchanged
+001-060 binary still on D:. Default production close deadlines were retained.
+Proof: `shutdown-060-ssd-v1.json` on D. This supports investigating profile I/O
+pressure rather than an unresponsive disconnected browser; it is **not a
+replacement for the failed HDD gate**, nor proof that every HDD configuration is
+broken. Recheck the original D: profile case after build I/O is idle before
+changing native scheduling or runtime shutdown contracts. No automatic profile
+relocation, forced shutdown or disabled BTM protection was introduced.
+
 The compiled branding verifier now also binds both branding patches and runtime
 resource/locale pack hashes, rejects changed/removed packs and retains failed
 evidence. **2376 Python tests passed in 87.79s** after these changes. No privacy
