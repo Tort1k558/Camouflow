@@ -5,6 +5,7 @@ import json
 import re
 
 from .configuration import NativeConfiguration
+from .canvas_fidelity import READ as CANVAS_FIDELITY_READ, validate_measurement
 
 
 OBSERVE = """async () => {
@@ -28,7 +29,8 @@ OBSERVE = """async () => {
                     pixelSha256 = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
                 } catch (error) { hashError = String(error.message); }
             } else { hashError = 'SHA-256 unavailable outside a secure context'; }
-            return {available: true, font: context.font, textWidth: width, pixelSha256, hashError};
+            const fidelity = await (__GLINT_CANVAS_FIDELITY__)();
+            return {available: true, font: context.font, textWidth: width, pixelSha256, hashError, fidelity};
         } catch (error) { return {available: false, error: String(error.message)}; }
         finally { if (canvas) canvas.width = 0; }
     };
@@ -176,7 +178,7 @@ OBSERVE = """async () => {
     } catch (error) {
         return {document: documentValues, worker: null, workerError: String(error.message)};
     } finally { worker?.terminate(); URL.revokeObjectURL(url); }
-}"""
+}""".replace("__GLINT_CANVAS_FIDELITY__", CANVAS_FIDELITY_READ)
 
 
 def compare_observed(configuration: NativeConfiguration, observed: dict) -> list[str]:
@@ -213,10 +215,12 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
                 mismatches.append(f"Document and dedicated worker disagree on {key}")
         if "canvas" in document and "canvas" in worker:
             first, second = document["canvas"], worker["canvas"]
-            if first.get("available") != second.get("available"):
+            if not isinstance(first, dict) or not isinstance(second, dict):
+                mismatches.append("Canvas observations could not be compared")
+            elif first.get("available") != second.get("available"):
                 mismatches.append("Document and dedicated worker disagree on canvas availability")
             elif first.get("available"):
-                for key in ("font", "textWidth", "pixelSha256"):
+                for key in ("font", "textWidth", "pixelSha256", "fidelity"):
                     if first.get(key) != second.get(key):
                         mismatches.append(f"Document and dedicated worker disagree on canvas {key}")
         if "webgpu" in document or "webgpu" in worker:
@@ -427,6 +431,36 @@ def audit_observed_request_identity(headers: dict, observed: dict, *, strict_cli
     return issues
 
 
+def audit_observed_canvas(observed: dict) -> list[str]:
+    """Report explicit opaque pixel mutation separately from alpha rounding."""
+    issues = []
+    for scope in ("document", "worker"):
+        values = observed.get(scope)
+        if not isinstance(values, dict) or "canvas" not in values:
+            continue
+        canvas = values["canvas"]
+        if not isinstance(canvas, dict) or type(canvas.get("available")) is not bool:
+            issues.append(f"{scope.capitalize()} Canvas observation is malformed")
+            continue
+        if not canvas["available"]:
+            issues.append(f"{scope.capitalize()} Canvas fidelity could not be observed")
+            continue
+        try:
+            validate_measurement(canvas.get("fidelity"))
+        except ValueError:
+            issues.append(f"{scope.capitalize()} Canvas fidelity measurement is incomplete or malformed")
+            continue
+        for row in canvas["fidelity"]["rows"]:
+            if row["name"].startswith("opaque-") and row["input"]["changedChannels"]:
+                issues.append(f"{scope.capitalize()} Canvas {row['name']} changes explicitly supplied opaque pixels")
+            for operation in ("repeat", "single", "export", "rewrite"):
+                if row[operation]["changedChannels"]:
+                    issues.append(f"{scope.capitalize()} Canvas {row['name']} {operation} disagrees with its first read")
+            if row["input"]["alphaChanges"]:
+                issues.append(f"{scope.capitalize()} Canvas {row['name']} changes explicitly supplied alpha")
+    return issues
+
+
 def audit_observed_graphics(observed: dict) -> list[str]:
     """Validate emitted GPU observations, without fabricating unavailable APIs."""
     issues = []
@@ -486,7 +520,7 @@ async def inspect_native_profile(page, configuration: NativeConfiguration, brows
     configuration.validate()
     observed = await page.evaluate(OBSERVE)
     mismatches = (compare_observed(configuration, observed) + audit_observed_identity(observed, browser_version)
-                  + audit_observed_graphics(observed))
+                  + audit_observed_graphics(observed) + audit_observed_canvas(observed))
     return {"browser_version": browser_version, "configuration": asdict(configuration),
             "observed": observed, "mismatches": mismatches,
             "limitations": configuration.limitations(), "native_patch_capabilities": []}

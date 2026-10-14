@@ -33,16 +33,16 @@ Current Mobile Web remains desktop Chromium viewport/touch emulation.
 The canonical `drafts/profile-identity` sequence separates partitioned privacy
 derivation from stable profile identity and prepares an immutable browser-owned
 selection per key service. Invalid selections reject initialization; installed
-owners cannot switch modes. Source replay covers the three-patch sequence; twenty-six
-native fixture definitions are prepared, not executed. A fourth, eight-file
+owners cannot switch modes. Initial source replay prepared twenty-six native
+fixture definitions; their later execution is recorded below. A fourth, eight-file
 candidate integrates selected derivation into the surface producer and a v3
 wire mode with five more fixture definitions. Unknown modes and v2 reject before
 seed copies; final-partition validation remains mandatory. Pinned Mojo parsing
-and C++ binding generation passed in an isolated copy. Native compilation,
-first-script renderer/worker handoff and launch/UI selection remain unverified.
+and C++ binding generation passed in an isolated copy. The later native and
+linked-browser checks are recorded below; product UI capability admission remains separate.
 The fifth candidate adds six Blink fixture definitions for before-script mode
 retention, independent document clones, invalid mode rejection and worker-origin
-binding. Their source composition is checked, not their native execution.
+binding. These were initially source-only checks; their native execution is recorded below.
 The sixth candidate prepares browser-only launch selection with strict service,
 full document/worker surface and legacy-conflict checks. Persistent/incognito
 initialization passes the immutable mode to its own service; renderer command
@@ -60,7 +60,11 @@ passed **62/62 cases** (19 new, 43 legacy), with unchanged browser core/GN/recei
 41 new definitions expand to 50 new cases because DocumentLoader has four modes.
 Context **37/37** and transport **20/20** cases subsequently passed on 001-059.
 Blink handoff **15/15** also passed on 001-059: 12 document cases across four
-modes and three worker-thread cases. A linked identity-mode browser remains unverified.
+modes and three worker-thread cases. Keys also passed 62/62 on 001-059, completing
+134/134 on that source. The linked 001-059 browser subsequently passed extended
+profile-identity and partitioned-privacy combined checks, including simultaneous
+profiles and restart. This does not admit product privacy capabilities or prove
+first-script GPU/nested Audio/GPU coverage; see the current test matrix.
 Historical source-only preparation below is not current admission.
 
 Manager diagnostics also compare measured WebGL/WebGL2 extensions, six limits and
@@ -78,12 +82,24 @@ with the six halo/clipping/GPU metadata candidates in one isolated source tree.
 The exact combined source and pinned Mojo/GPU generation passed before
 integration. C++ type checks covered 22 identity and six GPU units. These
 preflight results do not replace the remaining native/runtime gates or admit
-protection; the current verified browser is still 001-047.
+protection. The earlier browser was 001-047; the latest linked baseline is
+001-059, with its actual scope recorded in the test matrix.
 
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy
 requests before startup. Unsupported requests fail rather than silently falling
 back. Diagnostics observe actual document/worker browser values; they do not
 replace APIs or invent hardware/GPU values.
+
+`canvas_fidelity.py` is shared by runtime diagnostics and the verification helper.
+Document and dedicated-worker probes measure explicit opaque ImageData fidelity,
+repeat/single-pixel/PNG/rewrite consistency and alpha preservation using bounded
+32x24 inputs. Diagnostics report opaque pixel mutation, malformed observations
+and inconsistent operations as mismatches; half-transparent RGB rounding alone
+is not treated as a regression. These metrics do not certify fingerprint
+plausibility or replace stock calibration. Real 001-059 observations confirmed
+zero baseline issues and four protected opaque-mutation warnings across the two
+scopes, with unchanged core/receipt. The actual routed health probe also passed
+its baseline document/worker checks and removed its disposable profile.
 
 Persistent identity uses an owned profile-root file containing a versioned
 private key. Export excludes the key; restored/cloned profiles obtain a distinct

@@ -121,6 +121,20 @@ unchanged runtime cores/receipt; no cleanup errors. The measurement/validator ha
 29 passing Python tests; the full Python regression suite passed **2321 tests
 in 82.88s** after this addition. No Chromium source change or rebuild was made.
 
+The measurement now lives in `app/core/native/canvas_fidelity.py`; the script
+re-exports the same implementation. Manager diagnostics run it in the document
+and dedicated worker and report opaque mutation/readback inconsistencies as
+mismatches. Actual baseline/protected 001-059 profiles verified this integration:
+baseline had no mismatches; protected had exactly four opaque-mutation warnings
+(two per scope), with matching document/worker metrics and no alpha mutation.
+This new owned profile measured 672 palette and 655 gradient pixels changed;
+different profile keys mean these counts need not equal the earlier profile.
+The routed health probe also passed with its real CSP, worker lifecycle and
+disposable-profile cleanup. Proofs: `product-canvas-fidelity-001-059-v1/report.json`
+and `product-canvas-health-001-059-v1/report.json` on D. No capability was admitted.
+After integration, all **2335 Python tests passed in 81.51s**; 43 cover the shared
+measurement, malformed metrics, product audit and worker probe composition.
+
 ## Test destinations
 
 Priority: **Core** for each build; **Extended** before release; **Reference** for
