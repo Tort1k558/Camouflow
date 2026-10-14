@@ -162,6 +162,22 @@ diagnostics; generic launch errors remain rejected. Release-tool tests passed
 571/571 before starting the new build.
 The full Python regression suite then passed **2337/2337 in 85.30s**.
 
+The first 001-060 build attempt terminated after **12m51.40s**, with 123 finished
+steps, two failed C++ objects and 4044 remaining graph steps. Both failures
+reported **LLVM ERROR: out of memory**, in `paint_preview_client.obj` and
+`connectors_service_base.obj`; this is not evidence of a source/type error.
+The graph estimate had already shrunk from its initial plan, so it is not a
+fresh-compilation count or a reliable completion-time estimate. First-attempt
+evidence is retained in `browser-build-001-060-v1.json` and archived
+`heavy-objects-001-060-isolated-v1/siso_output` / `siso_failed_commands.bat` on D.
+Both object targets then compiled successfully, sequentially with the same j4
+setting: **1m53.00s** and **19.16s**, one executed step each. The terminal proof
+`heavy-objects-001-060-isolated-v1/proof.json` binds both object hashes and confirms
+unchanged sources, runtime core, GN, receipt state and toolchain. Compiler flags,
+pagefile and caches were not changed. Chrome continuation v2 was started at j4;
+its terminal receipt and runtime tests are still required. A recovered object
+is not a completed browser or evidence that memory pressure cannot recur.
+
 ### Canvas colour-space and storage compatibility
 
 The bounded `native_canvas_formats.py` probe measures four actual context/output
