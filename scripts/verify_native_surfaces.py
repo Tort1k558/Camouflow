@@ -519,7 +519,7 @@ async def verify(executable: Path, owned: Path, server: SurfaceFixtureServer, re
                 context = await runtime.start(headless=True)
                 effective = await browser_arguments(context)
                 if (partitioning_argument(effective) != replacement or replacement not in effective
-                        or (FEATURE_ARGUMENT + ("," + gpu.READBACK_FEATURE if gpu is not None and mode == "ready" else "")) not in effective
+                        or (FEATURE_ARGUMENT + ("," + gpu.READBACK_FEATURES if gpu is not None and mode == "ready" else "")) not in effective
                         or any(argument not in effective for argument in configuration.launch_arguments())):
                     raise ValueError("Effective arguments disable storage partitioning")
                 if mode == "ready" and DOCUMENT_ARGUMENT not in effective:

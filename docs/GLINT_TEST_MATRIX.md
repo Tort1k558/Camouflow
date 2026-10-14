@@ -3,6 +3,43 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Latest linked build: 001-059 — 2026-10-14
+
+Chromium 148.0.7778.96 linked at `j4` in **16m35.44s**, 244 executed steps,
+reusing the prior source/test builds. The initial planned graph shrank as cached
+dependencies were skipped; its 3016 estimate is not a fresh compilation count.
+Receipt binds all 59 patches, GN arguments and the complete runtime core:
+
+| File | SHA-256 |
+| --- | --- |
+| chrome.exe | `61e97ba3335f64836b3abcf93d67af0d6ddd0d06c291b4592b1448643b35e222` |
+| chrome.dll | `b78314a9b158d60729b85a30a0dbbf449d6391c3352b1f8fa7b4da463adbe384` |
+| chrome_elf.dll | `3468b145cea9de7df386ad58c0daedba0d39c71bac58b0136486a36a2037b74d` |
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Eight-gate runtime suite | **160 passed** | Runtime 18, hardware 9, WebRTC 7, automation 55, fonts 42, identity 18, CDP 6, combined 5; owned fixtures, not universal CDP invisibility |
+| Combined profile-identity | **12/12 phases + 24 nested Canvas cases** | Canvas/Audio/WebGL in the same profiles and contexts; stable identity across tested origins, separate profiles, restart and simultaneous ownership |
+| Combined partitioned-privacy | **12/12 phases + 24 nested Canvas cases** | Original partitioned derivation retained, with the same combined lifecycle/API checks |
+| External fingerprint/CAPTCHA sites | **Not verified for this build** | No third-party PASS or human-score claim |
+
+Private proof: `browser-build-001-059-v1.json`,
+`browser-verification-001-059-v1/suite.json`,
+`combined-identity-surfaces-001-059-v2.json` and
+`combined-partitioned-surfaces-001-059-v1.json` on D. Combined reports bind the
+runtime core, receipt and probe source hashes; cleanup reported no error.
+
+The first combined identity attempt is retained as failed evidence in
+`combined-identity-surfaces-001-059-v1.json`: protected framebuffer reads returned
+zeros/GL_INVALID_OPERATION because the harness enabled readback without enabling
+its new GPU metadata transport dependency. The corrected harness requests both
+features only in ready profiles; the same unchanged binary then passed both
+combined modes. No native patch, fabricated metadata or weakened pixel validator
+was used to obtain that result. First-script coverage is Canvas/Audio; nested
+coverage is Canvas, not nested Audio/GPU. WebGPU is observed but not protected.
+Product capability admission, branding, broader compatibility and external-site
+verification remain separate outstanding gates.
+
 ## Test destinations
 
 Priority: **Core** for each build; **Extended** before release; **Reference** for

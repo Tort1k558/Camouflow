@@ -40,6 +40,8 @@ from scripts.verify_native_worker_startup import (
 )
 
 READBACK_FEATURE = "GlintWebGLReadbackCandidate"
+METADATA_FEATURE = "GlintReadbackMetadataCandidate"
+READBACK_FEATURES = READBACK_FEATURE + "," + METADATA_FEATURE
 GPU_PATCH = "0034-native-gpu-metadata-minimization.patch"
 # Decode outside the browser: a 2D getImageData read would apply the Canvas seed
 # a second time and hide or fabricate WebGL/PNG domain consistency.
@@ -238,7 +240,7 @@ class ReadbackConfiguration(SurfaceConfiguration):
     def launch_arguments(self) -> list[str]:
         arguments = super().launch_arguments()
         if self.probe_mode == "ready":
-            arguments = [argument + "," + READBACK_FEATURE if argument == FEATURE_ARGUMENT else argument
+            arguments = [argument + "," + READBACK_FEATURES if argument == FEATURE_ARGUMENT else argument
                          for argument in arguments]
         return arguments
 
@@ -547,7 +549,7 @@ async def verify(executable: Path, owned: Path, server: FixtureServer, report: d
             try:
                 context = await runtime.start(headless=True)
                 effective = await browser_arguments(context)
-                expected = FEATURE_ARGUMENT + ("," + READBACK_FEATURE if protected else "")
+                expected = FEATURE_ARGUMENT + ("," + READBACK_FEATURES if protected else "")
                 if (partitioning_argument(effective) != replacement
                         or replacement not in effective or expected not in effective
                         or any(argument not in effective for argument in configuration.launch_arguments())):

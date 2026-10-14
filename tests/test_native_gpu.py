@@ -527,14 +527,17 @@ def test_readback_error_gate_rejects_lost_context_semantic_changes(field, value,
 
 def test_readback_feature_merges_existing_partition_flag():
     from scripts.verify_native_gpu_readback import (
+        METADATA_FEATURE,
         READBACK_FEATURE,
+        READBACK_FEATURES,
         ReadbackConfiguration,
     )
     from scripts.verify_native_worker_startup import FEATURE_ARGUMENT
 
     arguments = ReadbackConfiguration(probe_mode="ready").launch_arguments()
     enabled = [argument for argument in arguments if argument.startswith("--enable-features=")]
-    assert enabled == [FEATURE_ARGUMENT + "," + READBACK_FEATURE]
+    assert enabled == [FEATURE_ARGUMENT + "," + READBACK_FEATURES]
+    assert READBACK_FEATURES.split(",") == [READBACK_FEATURE, METADATA_FEATURE]
     assert FEATURE_ARGUMENT in ReadbackConfiguration().launch_arguments()
 
 
@@ -545,7 +548,8 @@ def test_readback_identity_flag_preserves_feature_selection(mode, phase):
 
     arguments = gpu.ReadbackConfiguration(probe_mode=phase, derivation_mode=mode).launch_arguments()
     assert (gpu.IDENTITY_ARGUMENT in arguments) is (phase == "ready" and mode == "profile-identity")
-    expected = gpu.FEATURE_ARGUMENT + ("," + gpu.READBACK_FEATURE if phase == "ready" else "")
+    expected = gpu.FEATURE_ARGUMENT + ("," + gpu.READBACK_FEATURES if phase == "ready" else "")
+    assert (gpu.METADATA_FEATURE in arguments[arguments.index(expected)]) == (phase == "ready")
     assert [value for value in arguments if value.startswith("--enable-features=")] == [expected]
 
 
