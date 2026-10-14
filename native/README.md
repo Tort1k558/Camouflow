@@ -29,6 +29,7 @@ patch chain; they do not transfer automatically to newer binaries.
 | Identity/GPU package | Registered 0049-0058 | **22 identity + six GPU C++ units** type-checked before integration; native selections and initial combined runtime runs now passed. Product capability admission remains closed |
 | GPU metadata codec | Registered 0055 | **14/14** actual codec fixtures executed with standalone MSVC/GoogleTest; not GN decoder/attachment execution or browser admission |
 | Native GPU metadata | 001-058 | **33/33** Chromium `gpu_unittests` cases passed: codec 14, passthrough protocol 5, attachment 14. Not validating-decoder, WebGPU or browser readback admission |
+| Windows font rendering policy | 001-062 source | **5/5** selected Chromium `gfx_unittests` cases passed; browser core/GN/receipt remained unchanged. Browser linking, worker startup and actual pixels still pending |
 | Current linked Windows candidate | 001-061 | Incremental j4 build succeeded in **23m48s**, 247 executed steps; separate runnable 001-060 rollback copy retained |
 | Complete eight-gate runtime suite | 001-061 | **160 checks passed** on unchanged runtime core; earlier 001-060 shutdown failure remains recorded |
 | Compiled branding | 001-061 | Main/app-list icons, ProductName and version-page Glint logo/name verified; not cached taskbar/shortcut migration or every UI screen |

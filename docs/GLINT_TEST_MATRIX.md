@@ -16,10 +16,18 @@ checksum-checked and actually launched before source promotion. Rollback proof:
 `standalone-runtime-backup-001-061-before-062-v1/proof.json` on D.
 The new `--target font-rasterization` verifier builds/selects exactly five named
 tests, rejects missing/skipped/failed/duplicate cases and guards baseline browser
-code, GN, receipt and source state. Its native build/run is in progress at j4;
-no native test success is claimed yet. Expected report:
-`windows-font-policy-001-062-v1.json` on D. **598 Python tests passed in 20.58s**
+code, GN, receipt and source state. All **five native cases passed** after an
+incremental j4 `gfx_unittests` build: **8m15.14s**, 138 executed steps. Browser
+core/GN/receipt/source postguards passed. Proof:
+`windows-font-policy-001-062-v1.json` and its raw `-tests.json` on D; test EXE
+SHA-256 `3edc3eb7a3dd2997c51e4c42206f6224727e9347c766b5f5e5c2c25d1ed41a96`.
+This proves parsing/field-preservation behavior, not renderer startup or pixels.
+The full browser build has now been started at j4, with proof expected at
+`browser-build-001-062-v1.json`. **598 Python tests passed in 20.58s**
 for the updated release tooling and rendering helpers.
+After adding the eight-context first-script fixtures, the full Python regression
+completed: **2422 passed in 93.97s**. This is application/tooling test coverage,
+not a linked 001-062 browser result.
 
 ## Latest linked build: 001-061 — 2026-10-14
 

@@ -32,7 +32,8 @@ worker effects still require execution of the candidate.
 `0062-native-windows-font-rasterization.patch`. It includes the policy, Windows cache
 hook, renderer forwarding and Windows-only build/test registration. Its five
 GTest definitions cover parsing, invalid names/enums, native preservation, field
-bounds and idempotence. They have been **type-checked, not executed**.
+bounds and idempotence. All **five executed and passed** in Chromium's
+`gfx_unittests` target; they do not prove actual renderer/worker effects.
 
 ## Current evidence
 
@@ -55,8 +56,11 @@ bounds and idempotence. They have been **type-checked, not executed**.
   `font-renderer-startup-001-061-v2/proof.json` and `deps.json` on D.
   Earlier C++ evidence above covers the preceding revision, not execution of
   this expanded package.
-- Optimized compilation/linking, native fixture execution and actual
-  visual/runtime effects are **not yet verified**.
+- The five selected native fixtures passed after an incremental j4
+  `gfx_unittests` build in 8m15.14s / 138 steps. Browser core, GN, receipt and source
+  postguards passed. Proof: `windows-font-policy-001-062-v1.json` and raw
+  `-tests.json` on D.
+- Browser linking and actual visual/runtime effects are **not yet verified**.
 
 Regenerate only from a pre-0062 source tree into a fresh output outside Chromium;
 the preparer intentionally refuses already-applied policy files:
@@ -117,7 +121,7 @@ or fingerprint acceptance.
 ## Admission work
 
 The reviewed package is registered and its forwarding/startup C++/DEPS checks
-passed in isolation. Compile and execute the five native cases, then link the
+passed in isolation, and the five policy fixtures passed in Chromium. Link the
 browser and compare actual modes in
 document/iframe/dedicated/shared/service workers, before-script and restart runs.
 Check Canvas/DOM/SVG text and ordinary page rendering with real installed fonts.
