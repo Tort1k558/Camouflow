@@ -59,7 +59,8 @@ passed **62/62 cases** (19 new, 43 legacy), with unchanged browser core/GN/recei
 `identity-keys-001-058-v1.json` on D. The complete native selection is 134 cases;
 41 new definitions expand to 50 new cases because DocumentLoader has four modes.
 Context **37/37** and transport **20/20** cases subsequently passed on 001-059.
-Handoff execution and a linked identity-mode browser remain unverified.
+Blink handoff **15/15** also passed on 001-059: 12 document cases across four
+modes and three worker-thread cases. A linked identity-mode browser remains unverified.
 Historical source-only preparation below is not current admission.
 
 Manager diagnostics also compare measured WebGL/WebGL2 extensions, six limits and

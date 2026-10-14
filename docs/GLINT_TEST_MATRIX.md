@@ -165,6 +165,22 @@ source/core/GN/receipt/snapshot/generator hashes unchanged during those controls
 The two Blink identity-handoff fixture objects also compiled in **42.15s**,
 but their 15 cases have not executed: `identity-handoff-objects-001-058-v1/`.
 
+### Blink identity handoff 001-059 — 2026-10-14
+
+The actual `blink_unittests` target compiled and linked at `j4` in
+**2h1m54.83s**, 948 executed steps. **15/15 cases passed** in 520 ms with no
+skipped, disabled or failed cases: three DocumentLoader fixture definitions
+each ran in four parameter modes (12 cases), plus three worker-thread fixtures.
+The final source/core/GN/receipt guards passed. Test binary SHA-256:
+`a358e707622e2c5cff70a4eb331dd5cfb30938e20878c8d83596f387284f5dd6`.
+Proof/raw results/log: `identity-handoff-001-059-v1.*` on D.
+
+The selected cases cover policy ownership before inline document execution and
+worker evaluation, clone isolation, rejection of unknown modes and retention
+of the authenticated final origin. They do not prove Chrome ProfileImpl startup,
+complete renderer-to-browser IPC or the new profile-identity browser runtime.
+The current browser core remains 001-047; capability admission remains closed.
+
 ### Native GPU metadata 001-058 — 2026-10-14
 
 The actual Chromium `gpu_unittests` target compiled and linked at `j4` in

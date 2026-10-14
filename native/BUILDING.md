@@ -247,5 +247,5 @@ development workspace. This consolidated fresh-machine sequence has **not yet
 been replayed end to end on a new machine**. Existing runtime proof covers the
 001-047 browser; registered source is 001-059. Identity key/service passed 62
 cases on 001-058, and contexts/transport passed 37/20 cases on 001-059.
-Handoff, new-mode runtime and prepared branding still must be compiled and
-verified before claiming them in a released browser.
+Blink handoff passed 15 cases on 001-059. New-mode browser runtime and prepared
+branding still must be compiled and verified before release claims.
