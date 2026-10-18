@@ -247,6 +247,29 @@ Success does not enable experimental policies or prove publisher signatures.
 Activate only after successful verification; test rollback in this owned store,
 not the user's configured installation or profiles.
 
+### Experimental manager controls
+
+The client permits selected source-level controls only for the exact local
+development package reviewed in [the matrix](../docs/GLINT_TEST_MATRIX.md).
+Install/activate that checksum-verified bundle in a managed store, select the
+store in Glint settings and save the requested privacy policy. Every policy
+start checks the pinned manifest and full payload off the UI event loop. Unknown,
+modified or standalone builds are refused; there is no manifest-boolean bypass.
+This is not a signed online catalog or a production security review.
+
+Reproduce the combined manager-runtime check with a new evidence directory:
+
+```powershell
+& $python scripts/verify_native_admitted_policy.py --executable $installedExe --output "$workspace\admitted-policy-new"
+if ($LASTEXITCODE -ne 0) { throw 'Glint admitted policy verification failed' }
+```
+
+The gate uses two concurrent persistent profiles, restarts, native/grayscale
+rendering, frame/worker observations, WebRTC controls and manager diagnostics.
+It does not enable profile-identity Canvas/Audio/GPU protection or simulate
+another OS. The manager's **Native values** preset keeps unreviewed ordinary
+Chromium runtimes usable without experimental policies.
+
 ## Verification boundary
 
 See the [clean-workspace audit](../docs/GLINT_WINDOWS_BUILD_AUDIT.md) for observed

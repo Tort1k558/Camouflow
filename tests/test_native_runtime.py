@@ -1434,7 +1434,7 @@ def test_native_health_ui_reports_actual_canvas_audio_and_anonymous_media_counts
     observed = {"document": {"canvas": canvas, "audio": audio, "media": media}, "worker": {"canvas": canvas}}
     monkeypatch.setattr(distribution, "resolve_native_executable", lambda settings: Path(__file__))
     monkeypatch.setattr(health, "probe_native_profile", AsyncMock(return_value={
-        "browser_version": "148.0.7778.96", "observed": observed, "mismatches": []}))
+        "browser_version": "148.0.7778.96", "observed": observed, "mismatches": [], "native_patch_capabilities": []}))
     monkeypatch.setattr(browser_settings.threading, "Thread", lambda **kwargs: SimpleNamespace(start=kwargs["target"]))
     emit = Mock()
     bridge = SimpleNamespace(_engine="native", _native={}, _native_probe_running=False,

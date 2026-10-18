@@ -65,9 +65,9 @@ class NativeConfiguration:
         if not isinstance(self.permissions, tuple) or any(not isinstance(permission, str) or permission not in {"geolocation", "notifications", "camera", "microphone", "clipboard-read", "clipboard-write"} for permission in self.permissions):
             raise ValueError("Unsupported Native browser permission")
 
-    def context_options(self) -> dict:
+    def context_options(self, *, admission=None) -> dict:
         self.validate()
-        self.privacy_policy.require_verified_runtime()
+        self.privacy_policy.require_verified_runtime(admission)
         mobile = self.environment == "mobile_web"
         return {
             "viewport": {"width": self.width, "height": self.height},
@@ -80,13 +80,15 @@ class NativeConfiguration:
             "permissions": list(self.permissions),
         }
 
-    def launch_arguments(self) -> list[str]:
+    def launch_arguments(self, *, admission=None) -> list[str]:
         self.validate()
-        self.privacy_policy.require_verified_runtime()
-        return ["--lang=" + self.locale, "--accept-lang=" + self.locale]
+        self.privacy_policy.require_verified_runtime(admission)
+        return ["--lang=" + self.locale, "--accept-lang=" + self.locale, *self.privacy_policy.prepared_arguments()]
 
     def limitations(self) -> list[str]:
-        notes = ["Chromium fingerprint APIs retain their native values; Canvas/WebGL/Audio/fonts/hardware are not masked."]
+        notes = (["Experimental source-level controls requested; activation requires a reviewed local runtime. Not general anti-bot invisibility."]
+                 if self.privacy_policy.required_capabilities() else
+                 ["Chromium fingerprint APIs retain their native values; Canvas/WebGL/Audio/fonts/hardware are not masked."])
         if self.environment == "mobile_web":
             notes.append("Mobile Web is desktop Chromium with viewport/touch emulation, not an Android Chrome or iOS Safari identity.")
         return notes

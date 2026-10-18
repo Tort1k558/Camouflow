@@ -1504,6 +1504,7 @@ class ProfilesBridge(QObject):
                             signals["native"] = await inspect_native_context(
                                 browser.context, NativeConfiguration.from_settings(browser._browser_settings),
                                 browser.browser.version)
+                            signals["native"]["native_patch_capabilities"] = browser._native_runtime.native_policy_capabilities
                         webrtc_candidates = await browser.page.evaluate("""async () => {
                             if (!window.RTCPeerConnection) return [];
                             const pc = new RTCPeerConnection({ iceServers: [] });

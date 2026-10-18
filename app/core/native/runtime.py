@@ -29,9 +29,14 @@ class NativeRuntime:
         self.playwright = None
         self._profile_lock = None
         self._privacy_identity = None
+        self._policy_admission = None
         self._driver_stop_task = None
         self._driver_start_task = None
         self._operation_lock = asyncio.Lock()
+
+    @property
+    def native_policy_capabilities(self) -> list[str]:
+        return list(self._policy_admission.capabilities) if self._policy_admission is not None else []
 
     @property
     def has_resources(self) -> bool:
@@ -42,7 +47,17 @@ class NativeRuntime:
         async with self._operation_lock:
             if self.has_resources:
                 raise NativeRuntimeError("Native profile is already running")
-            options = self.configuration.context_options()
+            admission = None
+            if self.configuration.privacy_policy.required_capabilities():
+                from .admission import verify_runtime_policy
+
+                admission = await asyncio.to_thread(verify_runtime_policy, self.executable, self.configuration.privacy_policy)
+            if admission is None:
+                options = self.configuration.context_options()
+                arguments = self.configuration.launch_arguments()
+            else:
+                options = self.configuration.context_options(admission=admission)
+                arguments = self.configuration.launch_arguments(admission=admission)
             if not self.executable.is_file():
                 raise NativeRuntimeError("Native Chromium executable is not installed")
             if not self.profile_dir.is_absolute() or self.profile_dir != self.profile_dir.resolve() or self.profile_dir.is_symlink() or self.profile_dir.is_junction():
@@ -82,8 +97,9 @@ class NativeRuntime:
                 self.context = await self.playwright.chromium.launch_persistent_context(
                     str(self.profile_dir), executable_path=str(self.executable), headless=headless,
                     chromium_sandbox=True, proxy=proxy, timeout=30000,
-                    args=self.configuration.launch_arguments(), **options,
+                    args=arguments, **options,
                 )
+                self._policy_admission = admission
                 return self.context
             except BaseException:
                 await self._close()
@@ -128,6 +144,7 @@ class NativeRuntime:
             self._driver_stop_task = None
             self._driver_start_task = None
             self._privacy_identity = None
+            self._policy_admission = None
             if self._profile_lock is not None:
                 self._profile_lock.unlock()
                 self._profile_lock = None

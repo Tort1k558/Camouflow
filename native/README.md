@@ -17,7 +17,7 @@ patch chain; they do not transfer automatically to newer binaries.
 
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
-| Registered Windows source | 001-062 | Runtime/branding verified; 0062 adds experimental Windows font rendering. Product capability admission remains closed |
+| Registered Windows source | 001-062 | Runtime/branding verified; selected controls enabled experimentally for one reviewed local package. General fork admission remains closed |
 | Native identity keys/service | 001-059 | **62/62** passed, repeating the 001-058 result: 19 new derivation/mode cases and 43 legacy checks; unchanged browser core/GN/receipt |
 | Native identity contexts/transport | 001-059 | **37/37 + 20/20** passed in the linked Chromium content target; not a linked identity-mode browser or renderer delivery proof |
 | Native identity handoff | 001-059 | **15/15** Blink cases passed: 12 document cases across four modes and three worker-thread cases; not a linked identity-mode browser |
@@ -29,9 +29,9 @@ patch chain; they do not transfer automatically to newer binaries.
 | Identity/GPU package | Registered 0049-0058 | **22 identity + six GPU C++ units** type-checked before integration; native selections and initial combined runtime runs now passed. Product capability admission remains closed |
 | GPU metadata codec | Registered 0055 | **14/14** actual codec fixtures executed with standalone MSVC/GoogleTest; not GN decoder/attachment execution or browser admission |
 | Native GPU metadata | 001-058 | **33/33** Chromium `gpu_unittests` cases passed: codec 14, passthrough protocol 5, attachment 14. Not validating-decoder, WebGPU or browser readback admission |
-| Windows font rendering policy | 001-062 | **5/5** Chromium units and six-configuration/two-start/eight-scope rendering comparison passed; raw/HDR controls retained. Aliased/grayscale effects verified; not five distinct identities or capability admission |
+| Windows font rendering policy | 001-062 | **5/5** Chromium units and standalone/combined rendering comparisons passed; raw/HDR controls retained. Experimental reviewed-package activation, not five distinct identities |
 | Current linked Windows candidate | 001-062 | Incremental j4 build succeeded in **29m02s**, 52 executed steps; separate runnable 001-061 rollback copy retained |
-| Windows development package | 001-062 | Official staging passed; 261 checksummed files, 220.95 MiB archive. Installed-copy **160/160** and same-Chromium activation/rollback with five-store continuity passed; unsigned local artifact, no policy admission |
+| Windows development package | 001-062 | 261 checksummed files, 220.95 MiB archive; installed-copy **160/160** and same-Chromium rollback passed. Selected controls have experimental local admission; artifact remains unsigned |
 | Complete eight-gate runtime suite | 001-062 | **160 checks passed** in continuation v2; first-run font NetworkError remains unexplained and recorded |
 | Compiled branding | 001-062 | Main/app-list icons, ProductName and version-page Glint logo/name verified; not cached taskbar/shortcut migration or every UI screen |
 | Combined identity and privacy surfaces | 001-059 | Profile-identity and partitioned-privacy each passed **12/12 phases + 24 nested Canvas cases** with concurrent profiles, restart and WebGL readback; not WebGPU protection or third-party anti-bot acceptance |

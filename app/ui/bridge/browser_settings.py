@@ -140,7 +140,7 @@ class BrowserSettingsBridge(QObject):
             required = NativePrivacyPolicy.from_dict(self._native.get("privacy_policy", {})).required_capabilities()
         except ValueError as error:
             return "Invalid policy: " + str(error)
-        return ("Pending verified runtime activation: " + ", ".join(required)
+        return ("Experimental controls; reviewed local runtime required: " + ", ".join(required)
                 if required else "Native browser values; no experimental privacy policy requested")
 
     @pyqtProperty("QVariantList", constant=True)
@@ -322,7 +322,10 @@ class BrowserSettingsBridge(QObject):
                 try:
                     executable = resolve_native_executable(settings)
                     observations = asyncio.run(probe_native_profile(executable, configuration, OUTPUTS_DIR / "native-health"))
-                    report = f"Headless startup and teardown verified; Chromium {observations['browser_version']}. Fingerprint patches not verified. " + " ".join(configuration.limitations())
+                    capabilities = observations["native_patch_capabilities"]
+                    policy_status = ("Experimental native controls active: " + ", ".join(capabilities) + ". "
+                                     if capabilities else "No native policy activation verified. ")
+                    report = f"Headless startup and teardown verified; Chromium {observations['browser_version']}. " + policy_status + " ".join(configuration.limitations())
                     for scope in ("document", "worker"):
                         values = observations["observed"].get(scope)
                         if values is None:

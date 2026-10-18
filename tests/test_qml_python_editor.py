@@ -63,7 +63,7 @@ try:
     pump()
     privacy = find(page, 'objectName', 'nativePrivacySection')
     assert privacy.isVisible() and not section.isVisible()
-    QMetaObject.invokeMethod(find(privacy, 'text', 'Privacy draft'), 'clicked')
+    QMetaObject.invokeMethod(find(privacy, 'text', 'Privacy preset'), 'clicked')
     pump()
     cpu = find(privacy, 'objectName', 'nativeCpuLimit')
     cpu.setProperty('text', '2')
@@ -82,7 +82,7 @@ try:
     policy = db.db_get_native_defaults()['privacy_policy']
     assert policy['cpu_limit'] == 2 and policy['restrict_webrtc']
     assert policy['font_rasterization'] == 'grayscale'
-    assert 'Pending' in ui.browser_settings.nativePrivacyStatus
+    assert 'reviewed local runtime required' in ui.browser_settings.nativePrivacyStatus
     from app.core.native.configuration import NativeConfiguration
     try:
         NativeConfiguration.from_settings(db.db_get_native_defaults()).launch_arguments()

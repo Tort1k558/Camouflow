@@ -1,4 +1,4 @@
-"""Validated Native privacy policy drafts; no unverified runtime activation."""
+"""Validated source-level policies; verified runtime admission required."""
 
 from dataclasses import dataclass
 import math
@@ -77,7 +77,11 @@ class NativePrivacyPolicy:
             arguments.append("--glint-windows-font-rasterization=" + self.font_rasterization)
         return arguments
 
-    def require_verified_runtime(self) -> None:
+    def require_verified_runtime(self, admission=None) -> None:
         requested = self.required_capabilities()
         if requested:
-            raise ValueError("Native privacy policy is saved but cannot run until own-fork capabilities are verified: " + ", ".join(requested))
+            from .admission import NativePolicyAdmission
+
+            if not isinstance(admission, NativePolicyAdmission):
+                raise ValueError("Native privacy policy requires verified runtime admission: " + ", ".join(requested))
+            admission.require_policy(self)

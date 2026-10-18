@@ -2,6 +2,7 @@
 
 from dataclasses import asdict
 import json
+import math
 import re
 
 from .configuration import NativeConfiguration
@@ -184,6 +185,24 @@ OBSERVE = """async () => {
 def compare_observed(configuration: NativeConfiguration, observed: dict) -> list[str]:
     mismatches = []
     document = observed["document"]
+    policy = configuration.privacy_policy
+    for scope in ("document", "worker"):
+        values = observed.get(scope)
+        if not isinstance(values, dict):
+            continue
+        cpu = values.get("hardwareConcurrency")
+        if policy.cpu_limit and (type(cpu) is not int or not 0 < cpu <= policy.cpu_limit):
+            mismatches.append(f"{scope.capitalize()} CPU exceeds or cannot verify the configured ceiling")
+        memory = values.get("deviceMemory")
+        if policy.memory_limit and (type(memory) not in {int, float} or not math.isfinite(memory)
+                                    or not 0 < memory <= policy.memory_limit):
+            mismatches.append(f"{scope.capitalize()} memory exceeds or cannot verify the configured ceiling")
+        if policy.native_user_agent:
+            ua = values.get("userAgent")
+            if not isinstance(ua, str) or "HeadlessChrome" in ua:
+                mismatches.append(f"{scope.capitalize()} native UA policy was not observed")
+    if policy.conceal_automation and document.get("webdriver") is not False:
+        mismatches.append("Document webdriver policy was not observed")
     for key, expected in (("width", configuration.width), ("height", configuration.height),
                           ("dpr", configuration.device_scale_factor)):
         if document.get(key) != expected:

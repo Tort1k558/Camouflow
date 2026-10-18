@@ -230,6 +230,26 @@ def test_unknown_modes_have_no_fallback(mode):
         verifier.RenderingConfiguration(rasterization=mode).context_options()
 
 
+@pytest.mark.parametrize("failure", [None, "restart", "one-scope-no-effect", "missing-mode"])
+def test_admitted_rendering_requires_restart_stability_and_effect_in_every_scope(failure):
+    from scripts.verify_native_admitted_policy import validate_rendering
+
+    runs = mode_runs()
+    measured = {"native": deepcopy(runs["native"]), "grayscale": deepcopy(runs["aliased"])}
+    if failure == "restart":
+        measured["native"][1]["document"]["text"]["rows"][0]["hashes"]["pixels"] = "f" * 64
+    elif failure == "one-scope-no-effect":
+        for index in range(2):
+            measured["grayscale"][index]["service-module"] = deepcopy(measured["native"][index]["service-module"])
+    elif failure == "missing-mode":
+        del measured["native"]
+    if failure is None:
+        validate_rendering(measured)
+    else:
+        with pytest.raises(ValueError):
+            validate_rendering(measured)
+
+
 @pytest.mark.parametrize("failure", [None, "measurement", "core-change", "pack-change", "pack-removed", "source-change", "policy-change", "receipt-change", "screenshot-change", "screenshot-removed", "visual-restart", "cleanup", "bind"])
 def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure):
     public = tmp_path / "public"

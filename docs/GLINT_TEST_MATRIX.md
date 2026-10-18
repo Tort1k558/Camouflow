@@ -170,6 +170,45 @@ The final active release is 001-062 in this diagnostic store only; user settings
 and profiles were not switched. Binary-version activation does **not** admit
 experimental fingerprint policies.
 
+### Experimental manager policy admission — October 18
+
+Selected controls now have a separate, explicit local review: CPU/memory
+ceilings, installed font selection, WebRTC routing, webdriver exposure, native
+headless-UA handling and Windows font rasterization. Only archive
+`84e8d2369be630825afbff2732b09d5d81bb699e3c60025b73756c3fc305c10a`
+and exact manifest SHA-256
+`465b32ab5ad0488543ac3d9410e3f8576faa621e87399fa1d5db9959b5c0ed27`
+are reviewed. The application pins these bytes independently of manifest
+booleans, verifies every payload file off the event loop before each policy
+start, and refuses unknown/changed runtimes before creating a user profile or
+starting the driver. Native/default launches retain their existing behavior.
+This is experimental local admission, not publisher signatures, security rebase,
+general fork admission or a complete coherent-device generator.
+
+`admitted-policy-001-062-v2/report.json` **passed** using NativeRuntime rather
+than raw Playwright flags: two concurrently running profiles, initial/restart
+phases, eight combined document/frame/worker contexts per phase and eight
+first-script rendering scopes per phase. Native/grayscale effects were measured
+in every scope; repeated reads, raw-image controls, colour/HDR operations,
+WebRTC positive/restricted controls, security errors and owned profile markers
+retained their contracts. Manager health diagnostics found zero mismatches;
+runtime/probe input postguards and cleanup passed. The earlier v1 run also passed
+and remains retained; v2 adds explicit unavailable-API/repeated-read and early
+server-failure handling.
+
+The actual manager/scenario path also **passed** with the UI privacy preset plus
+grayscale: CPU 4, memory 4 GiB, real Arial/Segoe UI/Tahoma selection, webdriver
+false and native Chrome/148 UA. Execution, Recorder capture and replay succeeded;
+proof: `manager-admitted-policy-001-062-v1/report.json` on D. The green QML settings
+flow was rendered/inspected at `font-policy-manager-001-062-v3/manager.png`.
+The full Python regression passed **2576 tests in 131.27s**. Neither these results
+nor the `identity` capability admit Canvas/Audio/GPU protection, TLS emulation,
+arbitrary OS/device identities or external anti-bot acceptance.
+Mobile Web health with all six controls also passed: 390x844, DPR 3, touch 1,
+CPU/memory ceilings 2/2 and webdriver false, zero diagnostic mismatches
+(`mobile-admitted-policy-001-062-v1/report.json`). It remains desktop Windows
+Web Emulation, not Android/iOS identity or a mobile anti-bot result.
+
 ## Previous verified baseline: 001-061 — 2026-10-14
 
 Continuation v2 completed at j4 in **23m48.21s**, 247 executed steps, with an

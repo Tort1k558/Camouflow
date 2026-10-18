@@ -75,7 +75,7 @@ necessarily contain the latest Glint development build.
 | Identity & contexts | Private profile keys; browser-owned partition/surface derivation | Complete coherent device-passport generator |
 | Hardware & fonts | Native CPU/memory ceilings and installed Windows-font selection | Cross-platform device emulation |
 | WebRTC & automation | Native routing and selected automation/headless/CDP signal policies | External leak checks; **no full CDP invisibility** |
-| Worker/document delivery | Worker opt-in transport; four Blink handoff tests passed; document drafts | Document runtime/recovery gates and production admission |
+| Worker/document delivery | Native policies checked across frames/workers, concurrent profiles and restarts | Wider compatibility and production admission |
 | Canvas / GPU / Audio | Canvas candidates; upstream GPU/audio behavior | **Protection incomplete and not activated** |
 | TLS / HTTP | Upstream Chromium/BoringSSL | Same-route measurements; no custom ClientHello spoofing |
 | Mobile & platforms | Viewport/touch Web Emulation; verified Windows development runtime | Not real Android/iOS; Linux/macOS runtime checks deferred |
@@ -85,18 +85,18 @@ necessarily contain the latest Glint development build.
 
 ### Glint: verified, not advertised
 
-**Windows · Chromium 148.0.7778.96 · patches 001–027** — pinned development
+**Windows · Chromium 148.0.7778.96 · patches 001–062** — pinned development
 baseline, not a production release or a claim of current security updates.
 
 | Check | Recorded result |
 | --- | --- |
-| Existing runtime policies | **160 checks passed across 8 local gates** |
-| Worker startup / restart / rejection | **40 checks passed**, diagnostic opt-in |
-| Blink seed ownership / thread handoff | **4 cases passed**, with test-only fixture correction 0028 |
-| Document partition validator | **9 cases passed**, registered unit target 0029; not navigation recovery |
-| Unprotected Canvas API baseline | **4 phases passed** — not protection evidence |
-| External fingerprint/bot services | **Not run for 001–027** |
-| reCAPTCHA / real-key Turnstile / hCaptcha | **Not verified for 001–027** |
+| Installed Windows package | **160/160 checks passed across 8 local gates**; 261 checksummed files |
+| Experimental policy activation | Two concurrent profiles, restarts and frames/workers passed through the manager runtime; reviewed package only |
+| Text rendering | Native/grayscale combined checks passed in eight first-script scopes; raw pixels, formats and HDR retained |
+| Scenarios & Recorder | Real manager execution, capture and replay passed with experimental policies active |
+| Development rollback | Five persistent stores retained across four same-Chromium release switches |
+| External fingerprint/bot services | **Not rerun for this package/policy combination** |
+| reCAPTCHA / real-key Turnstile / hCaptcha | **No verified scores or universal PASS claim** |
 
 [Full test matrix & build history](docs/GLINT_TEST_MATRIX.md): CreepJS, Pixelscan,
 BrowserScan, Sannysoft, BrowserLeaks, Fingerprint Playground, TLS/HTTP and more.

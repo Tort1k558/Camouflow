@@ -219,14 +219,14 @@ Item {
                 objectName: "nativePrivacySection"
                 visible: root.isNative && root.tab === "Fingerprint"
                 width: parent.width; height: nativePrivacyFields.implicitHeight + 100
-                title: "Glint privacy policy"; subtitle: "Saved drafts, not JavaScript fingerprint replacements."; icon: "globe"
+                title: "Glint privacy policy"; subtitle: "Experimental source-level controls; reviewed runtime required."; icon: "globe"
                 Column {
                     id: nativePrivacyFields
                     anchors.fill: parent; spacing: 16
                     Flow {
                         width: parent.width; spacing: 10
                         PrimaryButton { text: "Native values"; secondary: true; onClicked: browserSettingsBridge.applyNativePrivacyPreset("native") }
-                        PrimaryButton { text: "Privacy draft"; secondary: true; onClicked: browserSettingsBridge.applyNativePrivacyPreset("privacy") }
+                        PrimaryButton { text: "Privacy preset"; secondary: true; onClicked: browserSettingsBridge.applyNativePrivacyPreset("privacy") }
                     }
                     Text { objectName: "nativePrivacyStatus"; width: parent.width; wrapMode: Text.WordWrap; text: browserSettingsBridge.nativePrivacyStatus; color: Theme.muted; font.pixelSize: 12 }
                     RowLayout {
@@ -235,7 +235,7 @@ Item {
                         FormField { objectName: "nativeMemoryLimit"; Layout.fillWidth: true; label: "Memory ceiling (GiB)"; placeholder: "0 = native; 0.25, 0.5, 1, 2, 4, 8, 16"; text: String(browserSettingsBridge.nativePrivacyPolicy.memory_limit); onEditingFinished: browserSettingsBridge.setNativePrivacyValue("memory_limit", text) }
                     }
                     MultiField { objectName: "nativeFontFamilies"; width: parent.width; label: "Installed font families"; placeholder: "Empty = native; include Arial; one family per line"; text: browserSettingsBridge.nativePrivacyPolicy.fonts.join("\n"); onEditingFinished: browserSettingsBridge.setNativePrivacyValue("fonts", text) }
-                    Text { text: "Windows text rendering · draft"; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
+                    Text { text: "Windows text rendering · experimental"; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
                     Flow {
                         width: parent.width; spacing: 8
                         Repeater {
@@ -249,11 +249,11 @@ Item {
                             }
                         }
                     }
-                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Saved only; verified runtime activation is not enabled. Aliased reduces smoothness. ClearType modes may produce identical results."; color: Theme.muted; font.pixelSize: 12 }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Requires a reviewed managed runtime. Aliased reduces smoothness. ClearType modes may produce identical results."; color: Theme.muted; font.pixelSize: 12 }
                     ToggleRow { width: parent.width; label: "Restrict non-proxied WebRTC UDP"; hint: "Routing policy, not a fake IP; some media connections may be unavailable."; checked: browserSettingsBridge.nativePrivacyPolicy.restrict_webrtc; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("restrict_webrtc", value) } }
                     ToggleRow { width: parent.width; label: "Conceal webdriver exposure"; hint: "Native getter policy; not general CDP invisibility."; checked: browserSettingsBridge.nativePrivacyPolicy.conceal_automation; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("conceal_automation", value) } }
                     ToggleRow { width: parent.width; label: "Native headless UA policy"; hint: "Keep the real version, OS and Client Hints; remove only the headless product prefix."; checked: browserSettingsBridge.nativePrivacyPolicy.native_user_agent; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("native_user_agent", value) } }
-                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Ceilings never invent additional hardware. Font selection uses real installed faces; include sufficient fonts for the selected languages. Saving prepares a draft; non-native policy launch remains blocked until verified activation is implemented. Native values leaves the existing runtime usable."; color: Theme.muted; font.pixelSize: 12 }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Ceilings never invent additional hardware. Select real fonts suitable for your languages. Experimental controls require the reviewed package; unknown or modified runtimes are blocked. Native values keeps the existing runtime usable."; color: Theme.muted; font.pixelSize: 12 }
                 }
             }
             SettingsSection {

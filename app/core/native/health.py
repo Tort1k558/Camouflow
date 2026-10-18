@@ -61,7 +61,10 @@ async def _probe(executable: Path, configuration: NativeConfiguration, work_dir:
             raise ValueError("Native browser did not report its version")
         if inspect_values:
             page = await _prepare_diagnostic_page(context)
-            return await inspect_native_profile(page, configuration, version)
+            report = await inspect_native_profile(page, configuration, version)
+            if configuration.privacy_policy.required_capabilities():
+                report["native_patch_capabilities"] = runtime.native_policy_capabilities
+            return report
         return {"browser_version": version}
     finally:
         try:
