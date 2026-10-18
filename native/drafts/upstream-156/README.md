@@ -95,7 +95,7 @@ production admission or Canvas/Audio/GPU protection claim follows from replay.
 ## Still required
 
 - Complete full-source/API review and select the candidate explicitly in build
-  tooling; the default build lock/registered patch chain still target 148.
+  tooling against the full checkout; the default build lock/registered patch chain still target 148.
 - Check all new upstream paths that could bypass old policy boundaries.
 - Run GN/checkdeps and compile against the target's actual dependency set.
 - Repeat complete runtime, rendering, storage, proxy, restart and crash gates.
@@ -131,3 +131,30 @@ generated files unchanged**, source invariants and input guards passed. This
 used the existing clang-format 21 binary; its target dependency provenance is
 **not verified**. Target-toolchain reproduction, C++ compilation, GRIT build
 and runtime gates remain outstanding. No browser compilation was started.
+
+## Explicit candidate build selection
+
+`scripts/native_build.py --candidate upstream-156` selects this manifest's
+Chromium/V8 revisions and draft patches without modifying the default 148
+lock. Start with a **new empty** workspace on D:, never the existing reviewed
+checkout or the sparse replay input tree:
+
+```powershell
+python scripts/native_build.py preflight --workspace D:/Glint156Candidate --candidate upstream-156 --jobs 4
+```
+
+Preflight is read-only. When builds are explicitly resumed, the same selection
+must accompany `bootstrap`, `sync`, `hooks` and `build`. The first mutating step
+claims the workspace with a revision marker. Default or other-revision commands
+cannot reuse it; candidate selection cannot claim an existing nonempty checkout.
+The build requires the **complete draft chain already applied** to the full
+Chromium/V8 checkouts, rejects unrelated/partial source changes, and revalidates
+patches after compilation. This command does not install/apply patches itself.
+Stage records and build receipts bind the candidate manifest hash; a default
+148 stage record cannot satisfy the 156 gate. Runtime verification remains false.
+
+The candidate explicitly reuses depot_tools revision
+`a03dfbf7f2d1cefa2795d81d59ca4f16c8616a8f`; compatibility with the full 156
+dependency set/toolchain has **not** been demonstrated. No downloads, hooks,
+GN generation or compilation were run for this selection. Local read-only
+preflight saw 300.6 GiB free on D: and did not create the proposed workspace.

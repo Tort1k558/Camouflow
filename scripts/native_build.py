@@ -45,7 +45,8 @@ def run(args: list[str], cwd: Path, env: dict[str, str], *, capture: bool = Fals
     return result.stdout.strip() if capture else ""
 
 
-def preflight(workspace: Path, *, backing_volume: Path | None = None) -> dict:
+def preflight(workspace: Path, *, backing_volume: Path | None = None, lock: dict | None = None) -> dict:
+    lock = LOCK if lock is None else lock
     if not workspace.is_absolute() or workspace != workspace.resolve():
         raise ValueError("Build workspace must be absolute and must not contain links")
     if workspace == ROOT or workspace.is_relative_to(ROOT):
@@ -68,11 +69,11 @@ def preflight(workspace: Path, *, backing_volume: Path | None = None) -> dict:
         backing = {"backing_volume": str(backing_volume), "workspace_free_gib": round(free, 1),
                    "backing_free_gib": round(backing_free, 1)}
         free = min(free, backing_free)
-    if free < LOCK["minimum_free_gib"]:
-        raise ValueError(f"Need at least {LOCK['minimum_free_gib']} GiB free; found {free:.1f}")
+    if free < lock["minimum_free_gib"]:
+        raise ValueError(f"Need at least {lock['minimum_free_gib']} GiB free; found {free:.1f}")
     return {"workspace": str(workspace), "free_gib": round(free, 1),
-            "cpu_count": os.cpu_count(), "chromium_revision": LOCK["chromium_revision"],
-            "depot_tools_revision": LOCK["depot_tools_revision"], **backing}
+            "cpu_count": os.cpu_count(), "chromium_revision": lock["chromium_revision"],
+            "depot_tools_revision": lock["depot_tools_revision"], **backing}
 
 
 def environment(workspace: Path) -> dict[str, str]:
@@ -168,7 +169,7 @@ def bootstrap_windows_git(workspace: Path, env: dict[str, str]) -> None:
 
 
 def _source_patches(source: Path, env: dict[str, str], names: tuple[str, ...],
-                    *, index_dir: Path | None = None) -> list[dict[str, str]]:
+                    *, index_dir: Path | None = None, patch_directory: Path | None = None) -> list[dict[str, str]]:
     changed = set(run(["git", "diff", "HEAD", "--name-only"], source, env, capture=True).splitlines())
     changed.update(run(["git", "ls-files", "--others", "--exclude-standard"], source, env, capture=True).splitlines())
     if not changed:
@@ -176,7 +177,7 @@ def _source_patches(source: Path, env: dict[str, str], names: tuple[str, ...],
     patches = []
     expected = set()
     for name in names:
-        patch = ROOT / "native/patches" / name
+        patch = (ROOT / "native/patches" if patch_directory is None else patch_directory) / name
         contents = patch.read_text(encoding="utf-8-sig")
         files = {line.split(" b/", 1)[1] for line in contents.splitlines() if line.startswith("diff --git ")}
         if changed.intersection(files):
@@ -276,10 +277,12 @@ def v8_source_patches(source: Path, env: dict[str, str]) -> list[dict[str, str]]
             for patch in _source_patches(v8, env, ("0007-native-inspector-error-accessors.patch",), index_dir=source.parent)]
 
 
-def stage_identity(chromium: Path, stage: str) -> dict:
+def stage_identity(chromium: Path, stage: str, candidate: dict | None = None) -> dict:
+    lock = LOCK if candidate is None else candidate["lock"]
     return {"schema": 1, "stage": stage, "platform": sys.platform,
-            "chromium_revision": LOCK["chromium_revision"],
-            "depot_tools_revision": LOCK["depot_tools_revision"],
+            "chromium_revision": lock["chromium_revision"],
+            "depot_tools_revision": lock["depot_tools_revision"],
+            **({"candidate_manifest_sha256": candidate["manifest_sha256"]} if candidate else {}),
             "deps_sha256": hashlib.sha256((chromium / "src/DEPS").read_bytes()).hexdigest(),
             "gclient_sha256": hashlib.sha256((chromium / ".gclient").read_bytes()).hexdigest(),
             "dependency_snapshots_sha256": {
@@ -335,21 +338,21 @@ def stage_path(chromium: Path, stage: str) -> Path:
     return target
 
 
-def record_stage(chromium: Path, stage: str) -> None:
+def record_stage(chromium: Path, stage: str, candidate: dict | None = None) -> None:
     target = stage_path(chromium, stage)
     temporary = None
     try:
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=chromium,
                                          prefix=f"camouflow-{stage}-", suffix=".tmp", delete=False) as stream:
             temporary = Path(stream.name)
-            json.dump(stage_identity(chromium, stage), stream, indent=2)
+            json.dump(stage_identity(chromium, stage, candidate), stream, indent=2)
         temporary.replace(target)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
 
 
-def require_stage(chromium: Path, stage: str) -> None:
+def require_stage(chromium: Path, stage: str, candidate: dict | None = None) -> None:
     target = stage_path(chromium, stage)
     if not target.is_file():
         raise ValueError(f"Run {stage} to successful completion before the next build stage")
@@ -357,20 +360,118 @@ def require_stage(chromium: Path, stage: str) -> None:
         identity = json.loads(target.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as error:
         raise ValueError(f"Invalid Native {stage} stage record") from error
-    if identity != stage_identity(chromium, stage):
+    if identity != stage_identity(chromium, stage, candidate):
         raise ValueError(f"Native {stage} inputs changed; rerun that stage")
 
 
-def execute(action: str, workspace: Path, *, backing_volume: Path | None = None, jobs: int | None = None) -> None:
-    jobs = LOCK["build_jobs"] if jobs is None else jobs
-    if type(jobs) is not int or not 1 <= jobs <= LOCK["build_jobs"]:
-        raise ValueError(f"Native jobs must be between 1 and {LOCK['build_jobs']}")
-    print(json.dumps(preflight(workspace, backing_volume=backing_volume)), flush=True)
+def load_candidate(name: str) -> dict:
+    if name != "upstream-156":
+        raise ValueError("Unknown Native build candidate")
+    directory = ROOT / "native/drafts" / name
+    manifest_path = directory / "manifest.json"
+    if manifest_path != manifest_path.resolve():
+        raise ValueError("Candidate manifest must not contain links")
+    raw = manifest_path.read_bytes()
+    manifest = json.loads(raw)
+    if not isinstance(manifest, dict):
+        raise ValueError("Candidate manifest must be an object")
+    if (manifest.get("schema") != 1 or not isinstance(manifest.get("target_revision"), str)
+            or not isinstance(manifest.get("target_version"), str)
+            or not re.fullmatch(r"[0-9a-f]{40}", manifest.get("target_revision", ""))
+            or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", manifest.get("target_version", ""))
+            or manifest.get("chromium_repository") != LOCK["chromium_repository"]):
+        raise ValueError("Invalid candidate Chromium identity")
+    settings = manifest.get("build", {})
+    if (not isinstance(settings, dict) or set(settings) != {"depot_tools_revision", "minimum_free_gib", "build_jobs"}
+            or not isinstance(settings.get("depot_tools_revision"), str)
+            or not re.fullmatch(r"[0-9a-f]{40}", settings.get("depot_tools_revision", ""))
+            or type(settings.get("minimum_free_gib")) is not int or settings["minimum_free_gib"] < LOCK["minimum_free_gib"]
+            or type(settings.get("build_jobs")) is not int or not 1 <= settings["build_jobs"] <= LOCK["build_jobs"]):
+        raise ValueError("Candidate must pin depot_tools and retain resource limits")
+    dependencies = manifest.get("dependencies", {})
+    dependency = dependencies.get("v8", {}) if isinstance(dependencies, dict) else {}
+    if (not isinstance(dependency, dict)
+            or dependency.get("repository") != "https://chromium.googlesource.com/v8/v8.git"
+            or not isinstance(dependency.get("revision"), str)
+            or not re.fullmatch(r"[0-9a-f]{40}", dependency.get("revision", ""))):
+        raise ValueError("Candidate must pin the V8 repository and revision")
+    patches = manifest.get("patches", [])
+    if not isinstance(patches, list) or not patches:
+        raise ValueError("Candidate patch chain is empty")
+    for number, row in enumerate(patches, 1):
+        if not isinstance(row, dict):
+            raise ValueError("Candidate patch entries must be objects")
+        name = row.get("file", "")
+        if (not isinstance(name, str) or not re.fullmatch(rf"{number:04d}-[a-z0-9-]+\.patch", name)
+                or row.get("directory", ".") not in {".", "v8"}):
+            raise ValueError("Candidate patch sequence or repository is invalid")
+        path = directory / "patches" / name
+        if path != path.resolve() or hashlib.sha256(path.read_bytes()).hexdigest() != row.get("sha256"):
+            raise ValueError("Candidate patch hash differs: " + name)
+    lock = {**LOCK, **settings, "native_version": "0.2.0-dev",
+            "chromium_revision": manifest["target_revision"], "chromium_version": manifest["target_version"]}
+    return {"name": "upstream-156", "directory": directory, "manifest": manifest,
+            "manifest_sha256": hashlib.sha256(raw).hexdigest(), "lock": lock}
+
+
+def candidate_workspace(workspace: Path, candidate: dict | None, *, claim: bool = False) -> None:
+    marker = workspace / "glint-build-candidate.json"
+    if marker != marker.resolve():
+        raise ValueError("Candidate workspace marker must not contain links")
+    if candidate is None:
+        if marker.exists():
+            raise ValueError("Candidate workspace requires its explicit --candidate selection")
+        return
+    identity = {"schema": 1, "candidate": candidate["name"],
+                "chromium_revision": candidate["lock"]["chromium_revision"]}
+    if marker.exists():
+        if json.loads(marker.read_bytes()) != identity:
+            raise ValueError("Candidate workspace belongs to a different revision")
+    elif workspace.exists() and any(workspace.iterdir()):
+        raise ValueError("A candidate requires a new empty workspace, not the existing browser checkout")
+    elif claim:
+        workspace.mkdir(parents=True, exist_ok=True)
+        with marker.open("x", encoding="utf-8") as stream:
+            json.dump(identity, stream, indent=2)
+
+
+def candidate_source_patches(source: Path, env: dict[str, str], candidate: dict) -> list[dict]:
+    manifest = candidate["manifest"]
+    if load_candidate(candidate["name"])["manifest_sha256"] != candidate["manifest_sha256"]:
+        raise ValueError("Candidate inputs changed during the build stage")
+    if run(["git", "rev-parse", "HEAD"], source, env, capture=True) != manifest["target_revision"]:
+        raise ValueError("Candidate Chromium checkout revision differs")
+    dependency = manifest["dependencies"]["v8"]
+    v8 = source / "v8"
+    if v8 != v8.resolve() or run(["git", "rev-parse", "HEAD"], v8, env, capture=True) != dependency["revision"]:
+        raise ValueError("Candidate V8 checkout revision differs")
+    patches = []
+    for directory in (".", "v8"):
+        names = tuple(row["file"] for row in manifest["patches"] if row.get("directory", ".") == directory)
+        measured = _source_patches(source / directory, env, names, index_dir=source.parent,
+                                   patch_directory=candidate["directory"] / "patches")
+        if [item["name"] for item in measured] != list(names):
+            raise ValueError("The complete candidate patch chain must already be applied")
+        patches.extend({**item, **({"repository": "v8", "revision": dependency["revision"]} if directory == "v8" else {})}
+                       for item in measured)
+    return patches
+
+
+def execute(action: str, workspace: Path, *, backing_volume: Path | None = None, jobs: int | None = None,
+            candidate_name: str | None = None) -> None:
+    candidate = None if candidate_name is None else load_candidate(candidate_name)
+    lock = LOCK if candidate is None else candidate["lock"]
+    jobs = lock["build_jobs"] if jobs is None else jobs
+    if type(jobs) is not int or not 1 <= jobs <= lock["build_jobs"]:
+        raise ValueError(f"Native jobs must be between 1 and {lock['build_jobs']}")
+    print(json.dumps(preflight(workspace, backing_volume=backing_volume, lock=lock)), flush=True)
+    candidate_workspace(workspace, candidate)
     if action == "preflight":
         return
+    candidate_workspace(workspace, candidate, claim=True)
     workspace.mkdir(parents=True, exist_ok=True)
     env = environment(workspace)
-    checkout(workspace / "depot_tools", LOCK["depot_tools_repository"], LOCK["depot_tools_revision"], env)
+    checkout(workspace / "depot_tools", lock["depot_tools_repository"], lock["depot_tools_revision"], env)
     if os.name == "nt":
         bootstrap_windows_git(workspace, env)
     if action == "bootstrap":
@@ -386,8 +487,8 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
     if action == "sync":
         for stage in ("sync", "hooks"):
             stage_path(chromium, stage).unlink(missing_ok=True)
-        checkout(source, LOCK["chromium_repository"], LOCK["chromium_revision"], env)
-        config = ("solutions = " + repr([{"name": "src", "url": LOCK["chromium_repository"],
+        checkout(source, lock["chromium_repository"], lock["chromium_revision"], env)
+        config = ("solutions = " + repr([{"name": "src", "url": lock["chromium_repository"],
                    "managed": False, "custom_deps": {}, "custom_vars": {}}]) + "\n")
         config_path = chromium / ".gclient"
         if config_path.exists() and config_path.read_text(encoding="utf-8-sig") != config:
@@ -396,22 +497,23 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
         if os.name == "nt":
             run([depot_command("gclient", workspace)[0], str(workspace / "depot_tools/gsutil.py"), "version"], chromium, env)
         run(depot_command("gclient", workspace) + ["sync", "--no-history", "--nohooks",
-            "--revision", "src@" + LOCK["chromium_revision"], "-j", str(jobs)], chromium, env)
+            "--revision", "src@" + lock["chromium_revision"], "-j", str(jobs)], chromium, env)
         snapshot_dependencies(chromium, workspace, env)
-        record_stage(chromium, "sync")
+        record_stage(chromium, "sync", candidate)
         return
     if not (chromium / ".gclient").is_file() or not (source / "DEPS").is_file():
         raise ValueError("Run sync before hooks/build")
-    if run(["git", "rev-parse", "HEAD"], source, env, capture=True) != LOCK["chromium_revision"]:
+    if run(["git", "rev-parse", "HEAD"], source, env, capture=True) != lock["chromium_revision"]:
         raise ValueError("Chromium revision does not match the build lock")
-    require_stage(chromium, "sync")
+    require_stage(chromium, "sync", candidate)
     if action == "hooks":
         stage_path(chromium, "hooks").unlink(missing_ok=True)
         run(depot_command("gclient", workspace) + ["runhooks"], chromium, env)
-        record_stage(chromium, "hooks")
+        record_stage(chromium, "hooks", candidate)
         return
-    require_stage(chromium, "hooks")
-    patches = source_patches(source, env) + v8_source_patches(source, env)
+    require_stage(chromium, "hooks", candidate)
+    patches = (candidate_source_patches(source, env, candidate) if candidate
+               else source_patches(source, env) + v8_source_patches(source, env))
     if patches:
         check_patch_dependencies(source, env)
     output = source / "out/CamouFlowNative"
@@ -422,7 +524,9 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
     output.joinpath("args.gn").write_text(arguments, encoding="utf-8")
     run(depot_command("gn", workspace) + ["gen", "out/CamouFlowNative"], source, env)
     run(depot_command("autoninja", workspace) + ["-C", "out/CamouFlowNative", "-j", str(jobs), "chrome"], source, env)
-    if source_patches(source, env) + v8_source_patches(source, env) != patches:
+    verified = (candidate_source_patches(source, env, candidate) if candidate
+                else source_patches(source, env) + v8_source_patches(source, env))
+    if verified != patches:
         raise ValueError("Native source patches changed during compilation; refusing a build receipt")
     if (output.joinpath("args.gn").read_text(encoding="utf-8-sig") != arguments
             or (ROOT / "native/args.gn").read_text(encoding="utf-8-sig") != arguments):
@@ -431,9 +535,10 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
                        "darwin": "Chromium.app/Contents/MacOS/Chromium"}[sys.platform]
     binary = output / relative_binary
     core = measure_runtime_core(binary)
-    receipt = {"schema": 1, "native_version": LOCK["native_version"],
-               "chromium_revision": LOCK["chromium_revision"],
-               "depot_tools_revision": LOCK["depot_tools_revision"],
+    receipt = {"schema": 1, "native_version": lock["native_version"],
+               "chromium_revision": lock["chromium_revision"],
+               "depot_tools_revision": lock["depot_tools_revision"],
+               **({"candidate_manifest_sha256": candidate["manifest_sha256"]} if candidate else {}),
                "platform": sys.platform, "binary": relative_binary, "build_jobs": jobs,
                "binary_sha256_measured": core[binary.name],
                "runtime_core_sha256_measured": core,
@@ -447,11 +552,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("preflight", "bootstrap", "sync", "hooks", "build"))
     parser.add_argument("--workspace", type=Path, required=True)
+    parser.add_argument("--candidate", choices=("upstream-156",), help="Explicit research build in a separate owned workspace; not runtime admission")
     parser.add_argument("--backing-volume", type=Path, help="Also require free space on this backing volume (WSL: /mnt/d)")
     parser.add_argument("--jobs", type=int, choices=range(1, LOCK["build_jobs"] + 1), help="Parallel jobs for sync/build; defaults to the build lock")
     args = parser.parse_args()
     try:
-        execute(args.action, args.workspace, backing_volume=args.backing_volume, jobs=args.jobs)
+        execute(args.action, args.workspace, backing_volume=args.backing_volume, jobs=args.jobs,
+                candidate_name=args.candidate)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f"Native build failed: {error}", file=sys.stderr)
         return 1

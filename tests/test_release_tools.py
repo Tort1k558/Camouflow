@@ -498,11 +498,16 @@ def test_native_build_rejects_invalid_job_budgets_before_filesystem_changes(tmp_
 
 
 @pytest.mark.parametrize("missing_dll", [None, "chrome.dll", "chrome_elf.dll"])
-def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_path, monkeypatch, missing_dll):
+@pytest.mark.parametrize("candidate_name", [None, "upstream-156"])
+def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_path, monkeypatch, missing_dll, candidate_name):
     import json
     from scripts import native_build
     if missing_dll and sys.platform != "win32":
         pytest.skip("Windows core DLL receipt")
+    candidate = native_build.load_candidate(candidate_name) if candidate_name else None
+    if candidate:
+        native_build.candidate_workspace(tmp_path, candidate, claim=True)
+    selected_lock = native_build.LOCK if candidate is None else candidate["lock"]
 
     source = tmp_path / "chromium/src"
     source.mkdir(parents=True)
@@ -517,7 +522,7 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
     def run(args, *a, **kwargs):
         commands.append(args)
         if args[:3] == ["git", "rev-parse", "HEAD"]:
-            return native_build.LOCK["chromium_revision"]
+            return selected_lock["chromium_revision"]
         if args[0] == "autoninja":
             binary = source / "out/CamouFlowNative" / relative
             binary.parent.mkdir(parents=True, exist_ok=True)
@@ -534,18 +539,29 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
     monkeypatch.setattr(native_build, "require_stage", lambda *a: None)
     monkeypatch.setattr(native_build, "v8_source_patches", lambda *a: [])
     monkeypatch.setattr(native_build, "source_patches", lambda *a: [])
+    candidate_checks = []
+    def check_candidate(source, env, selected):
+        candidate_checks.append(selected)
+        return []
+    monkeypatch.setattr(native_build, "candidate_source_patches", check_candidate)
     monkeypatch.setattr(native_build, "depot_command", lambda name, *a: [name])
     monkeypatch.setattr(native_build, "run", run)
     if missing_dll:
         with pytest.raises(ValueError, match=missing_dll):
-            native_build.execute("build", tmp_path, jobs=1)
+            native_build.execute("build", tmp_path, jobs=1, candidate_name=candidate_name)
         assert not receipt_path.exists()
         return
-    native_build.execute("build", tmp_path, jobs=1)
+    native_build.execute("build", tmp_path, jobs=1, candidate_name=candidate_name)
     assert ["autoninja", "-C", "out/CamouFlowNative", "-j", "1", "chrome"] in commands
     receipt = json.loads((source / "out/CamouFlowNative/camouflow-build.json").read_text(encoding="utf-8"))
     assert receipt["build_jobs"] == 1
     assert receipt["native_patch_runtime_verified"] is False
+    assert receipt["chromium_revision"] == selected_lock["chromium_revision"]
+    if candidate:
+        assert candidate_checks == [candidate, candidate]
+        assert receipt["candidate_manifest_sha256"] == candidate["manifest_sha256"]
+    else:
+        assert not candidate_checks and "candidate_manifest_sha256" not in receipt
     core = native_build.measure_runtime_core(source / "out/CamouFlowNative" / relative)
     assert receipt["runtime_core_sha256_measured"] == core
     assert receipt["binary_sha256_measured"] == core[Path(relative).name]
@@ -3192,6 +3208,112 @@ def test_upstream_source_invariants_reject_abi_and_resource_drift(tmp_path, fail
     else:
         assert draft.verify_source_invariants(inputs, tmp_path) == {
             "gpu_commands": {"preserved": 1, "appended": 577}, "grit_structure_preserved": True}
+
+
+@pytest.mark.parametrize("failure", [None, "patch", "revision", "jobs", "space", "settings", "v8", "sequence"])
+def test_native_candidate_selection_pins_inputs_without_mutating_default_lock(tmp_path, monkeypatch, failure):
+    import copy
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    original_lock = copy.deepcopy(build.LOCK)
+    directory = tmp_path / "native/drafts/upstream-156"
+    (directory / "patches").mkdir(parents=True)
+    patch = directory / "patches/0001-owned.patch"
+    patch.write_bytes(b"owned patch\n")
+    manifest = {"schema": 1, "target_revision": "a" * 40, "target_version": "156.0.8078.36",
+                "chromium_repository": build.LOCK["chromium_repository"],
+                "build": {"depot_tools_revision": "b" * 40, "minimum_free_gib": 180, "build_jobs": 4},
+                "dependencies": {"v8": {"repository": "https://chromium.googlesource.com/v8/v8.git", "revision": "c" * 40}},
+                "patches": [{"file": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]}
+    if failure == "patch":
+        patch.write_bytes(b"modified")
+    elif failure == "revision":
+        manifest["target_revision"] = "main"
+    elif failure == "jobs":
+        manifest["build"]["build_jobs"] = 5
+    elif failure == "space":
+        manifest["build"]["minimum_free_gib"] = 1
+    elif failure == "settings":
+        manifest["build"]["chromium_repository"] = "https://untrusted.invalid"
+    elif failure == "v8":
+        manifest["dependencies"]["v8"]["revision"] = "HEAD"
+    elif failure == "sequence":
+        manifest["patches"][0]["file"] = "../0001-owned.patch"
+    (directory / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    monkeypatch.setattr(build, "ROOT", tmp_path)
+    if failure:
+        with pytest.raises(ValueError):
+            build.load_candidate("upstream-156")
+    else:
+        candidate = build.load_candidate("upstream-156")
+        assert candidate["lock"]["chromium_revision"] == "a" * 40
+        assert candidate["lock"]["depot_tools_revision"] == "b" * 40
+        assert candidate["manifest_sha256"] == hashlib.sha256((directory / "manifest.json").read_bytes()).hexdigest()
+    assert build.LOCK == original_lock
+    with pytest.raises(ValueError, match="Unknown"):
+        build.load_candidate("../unknown")
+
+
+def test_native_candidate_workspace_cannot_reuse_or_be_opened_as_default(tmp_path):
+    from scripts import native_build as build
+
+    candidate = build.load_candidate("upstream-156")
+    workspace = tmp_path / "candidate"
+    build.candidate_workspace(workspace, candidate)
+    assert not workspace.exists()
+    build.candidate_workspace(workspace, candidate, claim=True)
+    build.candidate_workspace(workspace, candidate)
+    with pytest.raises(ValueError, match="explicit"):
+        build.candidate_workspace(workspace, None)
+    changed = {**candidate, "lock": {**candidate["lock"], "chromium_revision": "a" * 40}}
+    with pytest.raises(ValueError, match="different revision"):
+        build.candidate_workspace(workspace, changed)
+    existing = tmp_path / "existing"
+    existing.mkdir()
+    (existing / "user-file").write_bytes(b"preserve")
+    with pytest.raises(ValueError, match="new empty workspace"):
+        build.candidate_workspace(existing, candidate, claim=True)
+    assert (existing / "user-file").read_bytes() == b"preserve"
+    assert not (existing / "glint-build-candidate.json").exists()
+
+
+def test_native_candidate_stage_identity_is_bound_to_manifest(tmp_path):
+    from scripts import native_build as build
+
+    chromium = _native_build_stage_fixture(tmp_path)
+    candidate = build.load_candidate("upstream-156")
+    build.record_stage(chromium, "sync", candidate)
+    build.require_stage(chromium, "sync", candidate)
+    with pytest.raises(ValueError, match="inputs changed"):
+        build.require_stage(chromium, "sync")
+    with pytest.raises(ValueError, match="inputs changed"):
+        build.require_stage(chromium, "sync", {**candidate, "manifest_sha256": "a" * 64})
+
+
+@pytest.mark.parametrize("failure", [None, "chromium", "v8", "partial"])
+def test_native_candidate_requires_exact_checkout_and_complete_patch_chain(tmp_path, monkeypatch, failure):
+    from scripts import native_build as build
+
+    candidate = build.load_candidate("upstream-156")
+    source = tmp_path / "src"
+    (source / "v8").mkdir(parents=True)
+    def run(command, cwd, env, **kwargs):
+        if cwd == source:
+            return "wrong" if failure == "chromium" else candidate["lock"]["chromium_revision"]
+        return "wrong" if failure == "v8" else candidate["manifest"]["dependencies"]["v8"]["revision"]
+    def patches(path, env, names, **kwargs):
+        assert kwargs["patch_directory"] == candidate["directory"] / "patches"
+        return [] if failure == "partial" else [{"name": name, "sha256": "a" * 64} for name in names]
+    monkeypatch.setattr(build, "run", run)
+    monkeypatch.setattr(build, "_source_patches", patches)
+    if failure:
+        with pytest.raises(ValueError):
+            build.candidate_source_patches(source, {}, candidate)
+    else:
+        rows = build.candidate_source_patches(source, {}, candidate)
+        assert len(rows) == 62 and sum(row.get("repository") == "v8" for row in rows) == 1
 
 
 def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches():

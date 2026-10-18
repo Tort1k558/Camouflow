@@ -1455,6 +1455,11 @@
       "original_sha256": "85d1479390e046de59a98b2f0a73cf7f4657dc341c5bf8f48260be6c7106d13e"
     }
   ],
+  "build": {
+    "depot_tools_revision": "a03dfbf7f2d1cefa2795d81d59ca4f16c8616a8f",
+    "minimum_free_gib": 180,
+    "build_jobs": 4
+  },
   "scope": "Draft source-context port; no GN, compilation, runtime or production admission",
   "python_syntax_passed": true,
   "schema": 1,

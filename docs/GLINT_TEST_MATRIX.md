@@ -1355,6 +1355,21 @@ mutation. This does not compile C++, build GRIT or establish runtime readiness.
 The complete local Python regression with this gate passed **2643 tests in
 124.01 seconds**.
 
+Candidate build selection is now explicit via `native_build.py --candidate
+upstream-156`: separate empty-workspace claim, exact Chromium/V8 revisions,
+complete patch-chain checks, post-build guards and manifest-bound stage/receipt
+identity. Tests reject mixed default/candidate workspaces, wrong revisions,
+partial patch chains, changed pins and reduced resource limits. Compiler dispatch
+and receipts are covered with mocks, not a real 156 build. The only real candidate
+command executed was read-only preflight: 300.6 GiB free on D:, no workspace
+created. Default 148 pins, manager admission and production remain unchanged.
+The manifest including these build pins was replayed again in
+`upstream-156-replay-v11/report.json`: 62/62 patches, 30 unchanged GPU-generated
+files and source/input invariants passed. Formatter target provenance remains
+unverified; `compiled`, `runtime_verified` and `production_admitted` stay false.
+The full local Python regression passed **2660 tests in 132.70 seconds**;
+the final targeted build/preflight/candidate subset passed **88 tests**.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.
