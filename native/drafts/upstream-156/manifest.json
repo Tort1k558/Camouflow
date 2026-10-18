@@ -480,6 +480,180 @@
       "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/test/test_render_frame.cc?format=TEXT",
       "bytes": 19746,
       "sha256": "a83676a9a4cc6a5cad61431bbb9bc1a39d14dc3c32fff1ffd5f844f274e791ce"
+    },
+    {
+      "path": "content/browser/renderer_host/render_view_host_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/renderer_host/render_view_host_impl.cc?format=TEXT",
+      "bytes": 42261,
+      "sha256": "3c30354b04ea58a85369f2551cd977f924b7c6f071db1cdcfc91e9a8dc1d0fe4"
+    },
+    {
+      "path": "content/renderer/render_frame_impl.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/renderer/render_frame_impl.h?format=TEXT",
+      "bytes": 77484,
+      "sha256": "73841d22ca5259b585723cdc63a33729ff597e5586f96f2c2e0169800511ac7d"
+    },
+    {
+      "path": "third_party/blink/public/web/web_local_frame_client.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/public/web/web_local_frame_client.h?format=TEXT",
+      "bytes": 39917,
+      "sha256": "1ee52d4d1bc7bd0d69bed17814ee756df3fe1805a31df722e2beb1c1003b079d"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/local_dom_window.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/frame/local_dom_window.cc?format=TEXT",
+      "bytes": 107545,
+      "sha256": "7e9ff1d20107a394b16908b3c52e0c592c6c4e1cfaf1c6a741aac6e8659e26b7"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/local_frame_client.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/frame/local_frame_client.h?format=TEXT",
+      "bytes": 19213,
+      "sha256": "8ee7274f203f336a3fdc483d284643e455299c63fc4f7ac565676b1d643134d1"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/local_frame_client_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/frame/local_frame_client_impl.cc?format=TEXT",
+      "bytes": 50544,
+      "sha256": "f6c4f4c5b8a6ef4a4570f031b315f801cc9f64fb1ab5c156c054a3dfc73403d5"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/local_frame_client_impl.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/frame/local_frame_client_impl.h?format=TEXT",
+      "bytes": 13772,
+      "sha256": "2621c8b9f3c8cf25d03db44f3c55154864895675434819ae1714b0fdcfb39331"
+    },
+    {
+      "path": "third_party/blink/renderer/core/loader/frame_loader.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/loader/frame_loader.cc?format=TEXT",
+      "bytes": 87057,
+      "sha256": "077c60a1bc2a08a7a3b8ea95abdac10ec2496387faf644cf77a510f45c317cc2"
+    },
+    {
+      "path": "third_party/blink/renderer/core/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/BUILD.gn?format=TEXT",
+      "bytes": 75814,
+      "sha256": "110d4ee2c85265dd5104e709545418342ced1b6e6c848321ace57c24d723e467"
+    },
+    {
+      "path": "third_party/blink/renderer/core/html/build.gni",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/html/build.gni?format=TEXT",
+      "bytes": 27918,
+      "sha256": "17f1829b88eb284a036a1f8c9b10880331fbc1583da7a08cc64d006592236550"
+    },
+    {
+      "path": "third_party/blink/renderer/core/html/canvas/html_canvas_element.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc?format=TEXT",
+      "bytes": 85431,
+      "sha256": "32d08cf9c9fb5ef2574507578d445bb940d1b2d14ae9b1e55a97c04e8fbd94f0"
+    },
+    {
+      "path": "third_party/blink/renderer/core/html/canvas/html_canvas_element.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/html/canvas/html_canvas_element.h?format=TEXT",
+      "bytes": 20396,
+      "sha256": "d2d7eae3efad51a86309b18f644f076a02a59beb5764040c5a096bebf7b94079"
+    },
+    {
+      "path": "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc?format=TEXT",
+      "bytes": 40082,
+      "sha256": "cdb79d71a3ad97724494ccca79b32dbfa42a20dfd3bbf0cb9a04560ea953baec"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/BUILD.gn?format=TEXT",
+      "bytes": 43174,
+      "sha256": "d7692873504f1c1571966ac5aecba1207b168c72ddc3000e216641a1fa4a8d1a"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc?format=TEXT",
+      "bytes": 66676,
+      "sha256": "6c17271efd1e4235c3b12d8365e9a4681812ab79ab49a7c4dae7dbf52b2de49f"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/BUILD.gn?format=TEXT",
+      "bytes": 6310,
+      "sha256": "6a798f6b49db47491a828c201ec479642d9b2726088fb4a4ee5e8167ac7a1a82"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/offline_audio_context.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc?format=TEXT",
+      "bytes": 22684,
+      "sha256": "4db4eb28062e27a57dae23bc3f687455fd281779329b2343725e4c853eeb16f3"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/offline_audio_context.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/offline_audio_context.h?format=TEXT",
+      "bytes": 6682,
+      "sha256": "7f1fe53a432548c261c2617ef3acad92d152e2d8da203244eda17eb22d8a83d8"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc?format=TEXT",
+      "bytes": 7100,
+      "sha256": "79f0cebd269138a6ff2788da9c740af7f2e3214af864f74304707fd00719200b"
+    },
+    {
+      "path": "third_party/blink/common/features.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/common/features.cc?format=TEXT",
+      "bytes": 105323,
+      "sha256": "0cea368743ba20abdc1d6f76e2248865f5a4fa18a7a6ad475673ed7e78673e02"
+    },
+    {
+      "path": "third_party/blink/public/common/features.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/public/common/features.h?format=TEXT",
+      "bytes": 81836,
+      "sha256": "2b98ce5540d18367bfca665b73eb2f26fad058f72351b486356528e012fc6535"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgl/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webgl/BUILD.gn?format=TEXT",
+      "bytes": 7015,
+      "sha256": "7b7331a0593d02f933cf7b5cd3d0a09d1121547e555e7fdd8b64a47eec56fa7f"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc?format=TEXT",
+      "bytes": 213874,
+      "sha256": "30289da234726ac9e03c91e1139ee89003cf9dc22e937a17f8bc6f21d78f3fa6"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc?format=TEXT",
+      "bytes": 1901,
+      "sha256": "e375ead2cbbb0c0d02b71fddd4cea6d3ab6e76772565ae6ca5b6c13f9fa65376"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webgl/webgl_debug_shaders.cc?format=TEXT",
+      "bytes": 2824,
+      "sha256": "10088aafbdbf48563484368a82fef6aa41309c6100af1118ee800268e4ef2031"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webgl/webgl_renderbuffer.h?format=TEXT",
+      "bytes": 2949,
+      "sha256": "9a437e9c2ae1a7bc30f4fb0a7ef03af78be24200e492fc9b7a84d0147a177ec7"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc?format=TEXT",
+      "bytes": 351582,
+      "sha256": "cdd4ad854c1af086de7b9dc7d5850b8a20e50490aa39a8b56be87fc4251b8d57"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h?format=TEXT",
+      "bytes": 86600,
+      "sha256": "f16314b3aa39a1f4d190c1c47b8b6edef5c29b7c2b23d4d4320b62e06f30b628"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc?format=TEXT",
+      "bytes": 13161,
+      "sha256": "adce5605571613435cfe5c3ebe7f27271f0f8feb443138b72a934d13b687b6bf"
     }
   ],
   "patches": [
@@ -663,6 +837,81 @@
       "file": "0030-native-document-commit-prototype.patch",
       "sha256": "8f43b1631b92f333139810c6a8c1fd0906d37847840df8301724e3e60e2d397b",
       "original_sha256": "819cda896e05e4bc3b2acc5ce09a848886d9c4349017f97140f7118a303c17e7"
+    },
+    {
+      "file": "0031-native-worker-surface-policy.patch",
+      "sha256": "3551e508ef08ddca28557923b93ed1c72592816438b875b5b4ece1ef6bb49d0c",
+      "original_sha256": "cf126d1bda37f292746b7f4e0f69c8bdd1eff953c3289b7e050f32c068278c60"
+    },
+    {
+      "file": "0032-native-document-surface-policy.patch",
+      "sha256": "9238b924c4cb7d63082a9e03f5ff7db07b166ff475c007a2991830c37d4dfdff",
+      "original_sha256": "e7da00de8db1ec8270a52a9d13c72047537f225d810df728d4100ae8375776ae"
+    },
+    {
+      "file": "0033-native-surface-readback.patch",
+      "sha256": "c9553820e2711f9f109fa00cf0643746d4e9896085759ce9d608309b876a1211",
+      "original_sha256": "fc50b5481b10770713d9bb318675ea332f86ba0434e37fa032debc46428377f6"
+    },
+    {
+      "file": "0034-native-gpu-metadata-minimization.patch",
+      "sha256": "b3e344fb4dd94945cfbdaf8594738d9278d13e6d88f85327b721171ad85579b0",
+      "original_sha256": "59f105f8e7b83e54f2d13e4da668a5bd21f3e422908c690df626178251695ed1"
+    },
+    {
+      "file": "0035-native-initial-origin-calculation.patch",
+      "sha256": "b6166b4a5a4f40f613d77f6355796c6ca300a01f68c02a10b7a3a2bff329589b",
+      "original_sha256": "9b620fbdc0cccdbd30d02bf85a66288de1e9c7d40e87593f11dd7d309f5ca06a"
+    },
+    {
+      "file": "0036-native-worker-complete-surface-type.patch",
+      "sha256": "858fc1cab03b4ddd7e85c285c30488f5057d9684f1828ad52bc449de258a37a0",
+      "original_sha256": "858fc1cab03b4ddd7e85c285c30488f5057d9684f1828ad52bc449de258a37a0"
+    },
+    {
+      "file": "0037-native-webgl-readback-compilation.patch",
+      "sha256": "c087790804dba71799858a58b0279194e571a77741e7f574b8bfe9f436d28404",
+      "original_sha256": "69e57c1c71c7e38c649f498a1ef8ae9073107cce198084498bb95f457fc88020"
+    },
+    {
+      "file": "0038-native-renderer-struct-pointer-presence.patch",
+      "sha256": "040cd0c0ee4070d04214483b173afe16968122b361c8f57c4ec54c255c84296a",
+      "original_sha256": "83c28d2074fb69d6b58bc52d375dd9d9351de5afad8d89847bef194a200d36f3"
+    },
+    {
+      "file": "0039-native-document-ready-commit-cancellation.patch",
+      "sha256": "4e8932a53c71377eb358ed88ff80e090dbb8a4cd6c52ab8e010dc91ddc640438",
+      "original_sha256": "5879185499e5cd64eb62f7339cfae07bfd2fe72aa8b5dfbcefcb645416a492a4"
+    },
+    {
+      "file": "0040-native-ready-commit-observer-lifetime.patch",
+      "sha256": "60c240665ed1e07e7fd8c969a57ef062d10fd2c98665683b7f6f2d78894be33c",
+      "original_sha256": "b5a4f80ee2b7a45236bee3ad48cb8c96dc6ea4885515ddf99934ca6281fbc773"
+    },
+    {
+      "file": "0041-native-child-transport-fixture-interface.patch",
+      "sha256": "5c77333f393d9b1232e61602b80f69b8260af97a947acfc7cae99cd3b09f6a51",
+      "original_sha256": "d77fac0e5f67d0a7cc99392ac29974b06c5c8803dee3d1d9ec015e193817ecf0"
+    },
+    {
+      "file": "0042-native-initial-policy-fixture-scheme-lifetime.patch",
+      "sha256": "9821d9fc97f139666c75397f35214306f377f1b2e163607d30531a991209b228",
+      "original_sha256": "c542d584b651a564de2384abd6a447f10ca7678439e5172e0cfb30d718882fa9"
+    },
+    {
+      "file": "0043-native-surface-navigation-throttle-registration.patch",
+      "sha256": "9dd05aa683ce4f0e95f19439ef93c1052d62c2974670ea230cb8606f72838f76",
+      "original_sha256": "0fb33217e1dbca8368846752d9b2e9e009ec6a61808c46100b6f5e4211a5bb0c"
+    },
+    {
+      "file": "0044-native-inline-navigation-rejection-fixture.patch",
+      "sha256": "002f842705468e1b7db17a582e33500e7f6887c11f87136f9a8785ef57a38bec",
+      "original_sha256": "6b7835deead2921ae36f3073bd1d690b4ebf24ac9cb5fdbcbfbdd705399d4e2f"
+    },
+    {
+      "file": "0045-native-navigation-observer-fixture-lifetime.patch",
+      "sha256": "52a1e5c558954e315e1a5227b91e04da29a574a168c8b03e9dfb4ef145ddaa83",
+      "original_sha256": "4bf23ac2d1b1617f7cfa9d5f2c740319465e4f1db6e10efd740e769dd1a04ef3"
     }
   ],
   "scope": "Draft source-context port; no GN, compilation, runtime or production admission",

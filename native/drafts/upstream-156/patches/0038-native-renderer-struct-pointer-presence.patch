@@ -1,0 +1,13 @@
+diff --git a/content/renderer/render_frame_impl.cc b/content/renderer/render_frame_impl.cc
+index 8ad0806..543319c 100644
+--- a/content/renderer/render_frame_impl.cc
++++ b/content/renderer/render_frame_impl.cc
+@@ -2741,7 +2741,7 @@ void RenderFrameImpl::CommitNavigation(
+       document_surface_policy = glint::candidate::DecodeOwnedDocumentSurfacePolicy(
+           *commit_params->glint_document_surface_commit, commit_params->storage_key,
+           commit_params->origin_to_commit,
+-          commit_params->glint_document_canvas_commit != nullptr);
++          !commit_params->glint_document_canvas_commit.is_null());
+     }
+     if (!document_surface_policy) {
+       // Reject before lifecycle callbacks, body decoding or old-page teardown.

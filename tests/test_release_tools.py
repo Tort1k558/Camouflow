@@ -3113,7 +3113,7 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
     from scripts import verify_native_rebase_draft as draft
 
     manifest = json.loads((draft.DRAFT / "manifest.json").read_text(encoding="utf-8-sig"))
-    originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:30]
+    originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:45]
     assert [row["file"] for row in manifest["patches"]] == [path.name for path in originals]
     for row, original in zip(manifest["patches"], originals, strict=True):
         content = (draft.DRAFT / "patches" / row["file"]).read_bytes()
@@ -3172,6 +3172,27 @@ def test_upstream_worker_batch_retains_new_policy_container_and_fixture_contract
     assert commit.count("AddThrottle(std::make_unique<PrivacyNavigationThrottle>(*this))") == 2
     commit_patch = (draft.DRAFT / "patches/0030-native-document-commit-prototype.patch").read_text(encoding="utf-8")
     assert "CreateThrottlesForCommitWithoutUrlLoader(" in commit_patch
+
+
+def test_upstream_surface_batch_keeps_initiator_token_and_new_worker_mock_signature():
+    from scripts import verify_native_rebase_draft as draft
+
+    def additions(name):
+        text = (draft.DRAFT / "patches" / name).read_text(encoding="utf-8")
+        return "\n".join(line[1:] for line in text.splitlines() if line.startswith("+") and not line.startswith("+++"))
+
+    document = additions("0032-native-document-surface-policy.patch")
+    assert "blink.mojom.InitiatorStateToken initiator_state_token" in document
+    assert document.count("const blink::InitiatorStateToken& initiator_state_token") == 4
+    assert document.count("frame_token, initiator_state_token") >= 3
+    worker = additions("0031-native-worker-surface-policy.patch")
+    assert "DidEvaluateTopLevelScript(_)" not in worker
+    assert "DidEvaluateTopLevelScriptMock(_, _)" in worker
+    assert "const JavaScriptFrameworkDetectionResult&" in worker
+    assert "nullptr, legacy" not in worker
+    metadata = additions("0034-native-gpu-metadata-minimization.patch")
+    assert "BASE_FEATURE(kGlintGpuMetadataMinimization, base::FEATURE_DISABLED_BY_DEFAULT)" in metadata
+    assert "BASE_FEATURE(kGlintWebGLReadbackCandidate, base::FEATURE_DISABLED_BY_DEFAULT)" in metadata
 
 
 def test_native_error_patch_covers_console_coercion_and_property_preview_paths():

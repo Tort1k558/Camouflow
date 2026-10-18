@@ -1,0 +1,89 @@
+diff --git a/third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc b/third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc
+index 480633b..8fad054 100644
+--- a/third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc
++++ b/third_party/blink/public/common/native_privacy/glint/initial_document_surface_policy_unittest.cc
+@@ -17,11 +17,13 @@ std::optional<DocumentSurfacePolicy> Owned(const url::Origin& origin) {
+   policy.audio.fill(4);
+   return DocumentSurfacePolicy{key, policy};
+ }
+-const url::Origin kOrigin = url::Origin::Create(GURL("https://initial.test/"));
++url::Origin Origin() {
++  return url::Origin::Create(GURL("https://initial.test/"));
++}
+ }  // namespace
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, RootWithoutCreatorAcceptsBrowserOrigin) {
+-  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(kOrigin), std::nullopt, false));
++  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(Origin()), std::nullopt, false));
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, RootPreservesBrowserOpaqueIdentity) {
+@@ -30,12 +32,12 @@ TEST(GlintInitialDocumentSurfacePolicyTest, RootPreservesBrowserOpaqueIdentity)
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, PopupAcceptsExactCreatorOrigin) {
+-  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(kOrigin), kOrigin, false));
++  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(Origin()), Origin(), false));
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, PopupRejectsDifferentCreatorOrigin) {
+   EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(
+-      Owned(kOrigin), url::Origin::Create(GURL("https://other.test/")), false));
++      Owned(Origin()), url::Origin::Create(GURL("https://other.test/")), false));
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, OpaqueCreatorAcceptsExactNonce) {
+@@ -48,15 +50,15 @@ TEST(GlintInitialDocumentSurfacePolicyTest, OpaqueCreatorRejectsDifferentNonce)
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, SandboxRequiresOpaqueBrowserOrigin) {
+-  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(Owned(kOrigin), kOrigin, true));
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(Owned(Origin()), Origin(), true));
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, SandboxUsesBrowserOpaqueNotCreatorTuple) {
+-  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(url::Origin()), kOrigin, true));
++  EXPECT_TRUE(CanAdoptInitialDocumentSurfacePolicy(Owned(url::Origin()), Origin(), true));
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, SandboxMissingPayloadIsRejected) {
+-  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(std::nullopt, kOrigin, true));
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(std::nullopt, Origin(), true));
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, RootMissingPayloadIsRejected) {
+@@ -64,26 +66,26 @@ TEST(GlintInitialDocumentSurfacePolicyTest, RootMissingPayloadIsRejected) {
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, UnsupportedPolicyVersionIsRejected) {
+-  auto owned = Owned(kOrigin);
++  auto owned = Owned(Origin());
+   owned->policy.version = 0;
+-  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(owned, kOrigin, false));
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(owned, Origin(), false));
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, ReusedSurfaceSeedIsRejected) {
+-  auto owned = Owned(kOrigin);
++  auto owned = Owned(Origin());
+   owned->policy.audio = owned->policy.canvas;
+-  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(owned, kOrigin, false));
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(owned, Origin(), false));
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, ChangedPartitionCommitmentIsRejected) {
+-  auto owned = Owned(kOrigin);
++  auto owned = Owned(Origin());
+   owned->policy.partition_encoding.back() ^= 1;
+-  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(owned, kOrigin, false));
++  EXPECT_FALSE(CanAdoptInitialDocumentSurfacePolicy(owned, Origin(), false));
+ }
+ 
+ TEST(GlintInitialDocumentSurfacePolicyTest, FinalDifferentKeyStillRejectsAdoptedPolicy) {
+-  const auto owned = Owned(kOrigin);
+-  ASSERT_TRUE(CanAdoptInitialDocumentSurfacePolicy(owned, kOrigin, false));
++  const auto owned = Owned(Origin());
++  ASSERT_TRUE(CanAdoptInitialDocumentSurfacePolicy(owned, Origin(), false));
+   EXPECT_FALSE(ValidateDocumentSurfacePolicy(owned,
+       blink::StorageKey::CreateFirstParty(url::Origin()), true, false));
+ }

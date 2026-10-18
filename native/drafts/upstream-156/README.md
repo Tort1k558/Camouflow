@@ -31,6 +31,9 @@ each draft patch to its hash and original registered patch hash.
 | 0021-0025 | Dedicated/shared/service-worker startup gates and owned seed handoff; dedicated-worker continuations retain the new upstream PolicyContainer |
 | 0026-0028 | Worker-thread tests adapted to upstream factory/mock APIs, bootstrap failure and fixture lifetime |
 | 0029-0030 | Document partition validation, navigation commit carrier/preflight, throttle registration and loader/context tests |
+| 0031-0032 | Worker/document surface transport, initial windows/child frames and readiness; new InitiatorStateToken is retained end-to-end |
+| 0033-0034 | Existing experimental Canvas/Audio/WebGL readback and GPU metadata candidates, not admitted profile controls |
+| 0035-0045 | Origin, type/ABI, cancellation, observer lifetime and fixture/throttle corrections |
 
 The font service gained an independent local-font matcher upstream. Merely
 repairing rejected patch context would leave that new path unrestricted. The
@@ -60,11 +63,11 @@ patches rather than rewriting entire source files as an incidental rebase.
 
 The output must be new, external and outside the input tree. The gate copies
 only checksummed inputs into its owned scratch directory, checks/applies all
-thirty patches in sequence, parses included Python/DEPS files and rechecks inputs.
-Real local evidence: `upstream-156-replay-v6/report.json` on D: **30/30 passed**,
-80 upstream source inputs. The v5 report covers 17 drafts, v4 covers ten.
-Eight resulting GN/GNI files passed syntax parsing with the existing installed
-GN tool, without changing bytes: `upstream-156-gn-syntax-v2.json`. This is not
+45 patches in sequence, parses included Python/DEPS files and rechecks inputs.
+Real local evidence: `upstream-156-replay-v7/report.json` on D: **45/45 passed**,
+109 upstream source inputs. The v6 report covers 30 drafts, v5 covers 17 and v4 ten.
+13 resulting GN/GNI files passed syntax parsing with the existing installed
+GN tool, without changing bytes: `upstream-156-gn-syntax-v3.json`. This is not
 `gn gen`, `gn check`, dependency-graph validation or execution of C++ tests.
 The earlier v2 report covers only the first six drafts. The v3 scratch replay
 was superseded after detecting CRLF-only churn in generated V8 patch context;
@@ -73,9 +76,14 @@ The Windows standalone C++ policy suite also passed with added real DirectWrite
 font-set conversion and allowed/excluded unique-name positive controls. This
 does not compile the new Chromium local-font matcher translation unit.
 
+Readback candidates are retained for research/regression, not silently enabled
+for user profiles. Their previously observed explicit-pixel/HDR compatibility
+problems on 148 are not fixed by a source rebase. No 156 compatibility result,
+production admission or Canvas/Audio/GPU protection claim follows from replay.
+
 ## Still required
 
-- Port and review patches 0031-0062 and any additional dependency/API changes.
+- Port and review patches 0046-0062 and any additional dependency/API changes.
 - Check all new upstream paths that could bypass old policy boundaries.
 - Run GN/checkdeps and compile against the target's actual dependency set.
 - Repeat complete runtime, rendering, storage, proxy, restart and crash gates.

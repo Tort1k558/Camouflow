@@ -1308,6 +1308,19 @@ delivery on 156. All those gates remain required after the complete port/build.
 The full application regression with this batch passed **2623 tests in
 109.48 seconds**; these Python tests do not execute the 156 C++ runtime.
 
+Surface/readback/navigation drafts extend replay through **0045: 45/45**,
+`upstream-156-replay-v7/report.json`, bound to 109 upstream inputs. The port
+retains InitiatorStateToken in the custom child-frame Mojo call, renderer
+branches, browser delegation and fixtures; new worker mock/factory APIs and
+the upstream OfflineAudio resolver cleanup remain intact. 13 GN/GNI files
+passed read-only syntax parsing (`upstream-156-gn-syntax-v3.json`). GPU candidate
+features remain disabled by default. These are research/source checks only;
+known readback fidelity/HDR limitations are not repaired or admitted by rebasing.
+Chromium 156 compilation, generated bindings and actual lifecycle/readback
+behavior remain unverified.
+The full local Python regression with this batch passed **2624 tests in
+101.80 seconds**. This does not execute Chromium 156 or admit research policies.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.
