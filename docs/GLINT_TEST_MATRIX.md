@@ -114,7 +114,10 @@ checks and postguards. It does not regenerate GN or replace the browser receipt.
 The 001-062 j4 v2 attempt was interrupted without a terminal proof. On October 18,
 no builder or surviving tool handle remained; the same target was resumed with
 fresh `official-staging-001-062-v3*` evidence on D. No relocated-package or
-capability admission is claimed while that action is running.
+capability admission follows from staging alone. The official archive target
+**succeeded in 8m49.48s, two executed steps**; pinned source/core/GN/receipt
+postguards passed. This is the archive action's time, not end-to-end source
+validation or a clean browser build.
 The first preflight refused equivalent LF/CRLF GN text before any compiler ran;
 the corrected text comparison retains exact receipt and post-run byte guards.
 That refusal is preserved in `official-staging-001-062-v1-preflight.json`.
@@ -145,6 +148,27 @@ successfully; the earlier Retype concurrency exception remains historical.
 The full Python regression for the relocated-package support passed **2552
 tests in 147.11s**. Resource/manifest mutation stops, release-bound child reports,
 versioned identity DLL checks and refusal to write inside the store are covered.
+
+The official 001-062 payload was packaged and installed into a new owned store:
+**261 files**, **231,686,185 archive bytes** (220.95 MiB), complete payload hashes
+verified. Proof: `managed-package-001-062-v1/proof.json` on D. Archive SHA-256:
+`84e8d2369be630825afbff2732b09d5d81bb699e3c60025b73756c3fc305c10a`.
+This is an unsigned local development artifact, not a published production release.
+The installed-copy eight-gate run **passed 160/160 checks**:
+`relocated-suite-001-062-v1/suite.json`. Runtime 18, hardware 9, WebRTC 7,
+automation 55, fonts 42, identity 18, CDP 6 and combined 5 all passed, bound to
+this archive digest and its complete installed payload. This is not external
+anti-bot acceptance or publisher-signature verification. Activation/rollback
+and same-Chromium profile continuity checks also **passed**:
+`managed-package-001-062-v1/activation-rollback.json`. The owned store activated
+001-010, activated 001-062, rolled back to 001-010 and reactivated 001-062.
+Cookies, LocalStorage, IndexedDB, Cache and Service Worker registration survived
+all four starts of one owned profile. Both immutable payloads retained their
+hashes; no temporary health profiles remained. Both builds use Chromium
+148.0.7778.96: this does not establish arbitrary Chromium downgrade compatibility.
+The final active release is 001-062 in this diagnostic store only; user settings
+and profiles were not switched. Binary-version activation does **not** admit
+experimental fingerprint policies.
 
 ## Previous verified baseline: 001-061 — 2026-10-14
 

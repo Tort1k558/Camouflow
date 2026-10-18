@@ -31,6 +31,7 @@ patch chain; they do not transfer automatically to newer binaries.
 | Native GPU metadata | 001-058 | **33/33** Chromium `gpu_unittests` cases passed: codec 14, passthrough protocol 5, attachment 14. Not validating-decoder, WebGPU or browser readback admission |
 | Windows font rendering policy | 001-062 | **5/5** Chromium units and six-configuration/two-start/eight-scope rendering comparison passed; raw/HDR controls retained. Aliased/grayscale effects verified; not five distinct identities or capability admission |
 | Current linked Windows candidate | 001-062 | Incremental j4 build succeeded in **29m02s**, 52 executed steps; separate runnable 001-061 rollback copy retained |
+| Windows development package | 001-062 | Official staging passed; 261 checksummed files, 220.95 MiB archive. Installed-copy **160/160** and same-Chromium activation/rollback with five-store continuity passed; unsigned local artifact, no policy admission |
 | Complete eight-gate runtime suite | 001-062 | **160 checks passed** in continuation v2; first-run font NetworkError remains unexplained and recorded |
 | Compiled branding | 001-062 | Main/app-list icons, ProductName and version-page Glint logo/name verified; not cached taskbar/shortcut migration or every UI screen |
 | Combined identity and privacy surfaces | 001-059 | Profile-identity and partitioned-privacy each passed **12/12 phases + 24 nested Canvas cases** with concurrent profiles, restart and WebGL readback; not WebGPU protection or third-party anti-bot acceptance |
