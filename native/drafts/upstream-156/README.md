@@ -102,3 +102,10 @@ production admission or Canvas/Audio/GPU protection claim follows from replay.
 - Review upstream security changes and update the reviewed package only after
   packaging and rollback checks. No manifest flag or successful patch replay
   admits production or grants the existing 148 package's capabilities to 156.
+
+The replay gate also checks source invariants automatically: existing GLES2
+command names/ordinals must remain unchanged, with exactly one append-only
+metadata command; branding may change GRIT text but not its element structure
+or attributes. Failure keeps `passed=false` in the report. The complete run
+`upstream-156-replay-v9/report.json` passed these checks (321 original commands,
+new ordinal 577). These checks do not replace code generation or compilation.

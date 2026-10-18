@@ -1338,6 +1338,12 @@ The complete local Python regression for this draft batch passed **2625 tests
 in 128.98 seconds**; the release-tool subset passed **652 tests in 22.88
 seconds**. These are tooling/manager tests, not Chromium 156 runtime evidence.
 
+The replay verifier now enforces GPU append-only command ordinals and preserved
+GRIT structure/attributes itself. `upstream-156-replay-v9/report.json` passed
+all 62 patches and both invariants; altered ordinals, names, duplicate IDs,
+extra commands, changed resource IDs/structure and malformed XML are rejected
+by negative tests. This remains source-only evidence, with no compiler started.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

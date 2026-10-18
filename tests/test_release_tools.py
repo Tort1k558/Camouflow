@@ -3045,7 +3045,7 @@ def test_upstream_audit_binds_lock_and_bounded_https_response(tmp_path, monkeypa
 
 
 @pytest.mark.parametrize("directory", [".", "v8"])
-@pytest.mark.parametrize("failure", [None, "source", "patch", "apply", "postguard", "deleted-input", "dependency", "directory"])
+@pytest.mark.parametrize("failure", [None, "source", "patch", "apply", "postguard", "deleted-input", "dependency", "directory", "invariant"])
 def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path, monkeypatch, failure, directory):
     import hashlib
     import json
@@ -3097,6 +3097,10 @@ def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path
                 input_file.unlink()
         return result
     monkeypatch.setattr(draft.subprocess, "run", wrapped)
+    if failure == "invariant":
+        def reject_invariants(inputs, work):
+            raise ValueError("Owned ABI drift")
+        monkeypatch.setattr(draft, "verify_source_invariants", reject_invariants)
     report = draft.verify(source, output)
     assert report["passed"] is (failure is None)
     assert report["compiled"] is False and report["runtime_verified"] is False and report["production_admitted"] is False
@@ -3105,6 +3109,43 @@ def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path
     assert json.loads((output / "report.json").read_text(encoding="utf-8")) == report
     with pytest.raises(ValueError, match="new external"):
         draft.verify(source, output)
+
+
+@pytest.mark.parametrize("failure", [None, "renumber", "rename", "extra", "duplicate", "resource-id", "resource-shape", "malformed"])
+def test_upstream_source_invariants_reject_abi_and_resource_drift(tmp_path, failure):
+    from scripts import verify_native_rebase_draft as draft
+
+    ids = "gpu/command_buffer/common/gles2_cmd_ids_autogen.h"
+    resources = "chrome/app/chromium_strings.grd"
+    original = "  OP(Existing) /* 576 */\n"
+    commands = original + "  OP(GetGlintReadFramebufferMetadataCHROMIUM) /* 577 */\n"
+    xml = '<grit><messages><message name="IDS_NAME">Chromium</message></messages></grit>'
+    updated = xml.replace("Chromium", "Glint")
+    if failure == "renumber":
+        commands = commands.replace("576", "575")
+    elif failure == "rename":
+        commands = commands.replace("Existing", "Renamed")
+    elif failure == "extra":
+        commands += "  OP(Extra) /* 578 */\n"
+    elif failure == "duplicate":
+        commands = commands.replace("/* 577 */", "/* 576 */")
+    elif failure == "resource-id":
+        updated = updated.replace("IDS_NAME", "IDS_OTHER")
+    elif failure == "resource-shape":
+        updated = updated.replace("Glint", "<ph name='NEW'>Glint</ph>")
+    elif failure == "malformed":
+        updated = "<grit>"
+    for name, content in ((ids, commands), (resources, updated)):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    inputs = {ids: original.encode(), resources: xml.encode()}
+    if failure:
+        with pytest.raises((ValueError, SyntaxError)):
+            draft.verify_source_invariants(inputs, tmp_path)
+    else:
+        assert draft.verify_source_invariants(inputs, tmp_path) == {
+            "gpu_commands": {"preserved": 1, "appended": 577}, "grit_structure_preserved": True}
 
 
 def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches():

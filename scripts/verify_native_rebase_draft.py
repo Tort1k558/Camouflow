@@ -10,9 +10,36 @@ from pathlib import Path, PurePosixPath
 import re
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 DRAFT = ROOT / "native/drafts/upstream-156"
+
+
+def verify_source_invariants(inputs: dict[str, bytes], work: Path) -> dict:
+    from scripts.verify_native_gpu_transport_draft import command_ids
+
+    result = {}
+    ids = "gpu/command_buffer/common/gles2_cmd_ids_autogen.h"
+    if ids in inputs:
+        before = command_ids(inputs[ids].decode("utf-8-sig"))
+        after = command_ids(checked_child(work, ids).read_text(encoding="utf-8-sig"))
+        expected = [("GetGlintReadFramebufferMetadataCHROMIUM", before[-1][1] + 1)] if before else []
+        if (not before or after[:len(before)] != before or after[len(before):] != expected
+                or len({name for name, _ in after}) != len(after)
+                or len({number for _, number in after}) != len(after)):
+            raise ValueError("GPU command ordinals must be preserved with one append-only metadata command")
+        result["gpu_commands"] = {"preserved": len(before), "appended": expected[0][1]}
+    resources = "chrome/app/chromium_strings.grd"
+    if resources in inputs:
+        def structure(content: bytes) -> list:
+            return [(node.tag, node.attrib) for node in ET.fromstring(content).iter()]
+
+        if structure(inputs[resources]) != structure(checked_child(work, resources).read_bytes()):
+            raise ValueError("Branding must preserve GRIT resource structure and attributes")
+        result["grit_structure_preserved"] = True
+    return result
 
 
 def checked_child(root: Path, name: str) -> Path:
@@ -88,6 +115,7 @@ def verify(source: Path, output: Path) -> dict:
         for path in work.rglob("*"):
             if path.is_file() and ".git" not in path.parts and (path.suffix == ".py" or path.name == "DEPS"):
                 ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path.relative_to(work)))
+        report["source_invariants"] = verify_source_invariants(inputs, work)
         report["passed"] = True
     except (OSError, ValueError, SyntaxError, subprocess.SubprocessError) as error:
         report["error"] = str(error)
