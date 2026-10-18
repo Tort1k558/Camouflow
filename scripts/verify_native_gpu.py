@@ -157,6 +157,46 @@ GPU_READ = """async () => {
   device.addEventListener('uncapturederror', event => errors.push(event.error.message));
   device.pushErrorScope('validation');
   try {
+    const textureReadback = async () => {
+      const texture = device.createTexture({size: [4, 4, 2], mipLevelCount: 3,
+        format: 'rgba8unorm', usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST});
+      const rows = [];
+      try {
+        for (let mip = 0; mip < 3; mip++) {
+          const width = 4 >> mip, height = 4 >> mip;
+          for (let layer = 0; layer < 2; layer++) {
+            const pixels = new Uint8Array(width * height * 4);
+            for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+              pixels.set([x + 1, y + 1, 85 + layer * 16 + mip, 255], (y * width + x) * 4);
+            }
+            device.queue.writeTexture({texture, mipLevel: mip, origin: [0, 0, layer]}, pixels,
+              {bytesPerRow: width * 4, rowsPerImage: height}, [width, height, 1]);
+          }
+        }
+        for (let mip = 0; mip < 3; mip++) {
+          const width = 4 >> mip, height = 4 >> mip;
+          for (let layer = 0; layer < 2; layer++) {
+            const buffer = device.createBuffer({size: 256 * (height + 2),
+              usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ});
+            try {
+              device.queue.writeBuffer(buffer, 0, new Uint8Array(buffer.size).fill(165));
+              const read = async () => {
+                const encoder = device.createCommandEncoder();
+                encoder.copyTextureToBuffer({texture, mipLevel: mip, origin: [0, 0, layer]},
+                  {buffer, offset: 256, bytesPerRow: 256, rowsPerImage: height}, [width, height, 1]);
+                device.queue.submit([encoder.finish()]);
+                await buffer.mapAsync(GPUMapMode.READ);
+                const bytes = Array.from(new Uint8Array(buffer.getMappedRange()));
+                buffer.unmap();
+                return bytes;
+              };
+              rows.push({mip, layer, size: [width, height], packed: await read(), repeat: await read()});
+            } finally { buffer.destroy(); }
+          }
+        }
+        return rows;
+      } finally { texture.destroy(); }
+    };
     const input = new Uint32Array([17, 34, 51, 255]);
     device.queue.writeBuffer(source, 0, input);
     const encoder = device.createCommandEncoder();
@@ -182,10 +222,11 @@ GPU_READ = """async () => {
     await target.mapAsync(GPUMapMode.READ);
     const compute = Array.from(new Uint32Array(target.getMappedRange()));
     target.unmap();
+    const textures = await textureReadback();
     const validation = await device.popErrorScope();
     result.webgpu = {available: true, info: first, repeat,
       deviceInfo: info(device.adapterInfo), features: Array.from(adapter.features).sort(),
-      limits, roundtrip, compute, validationError: validation?.message ?? null, errors};
+      limits, roundtrip, compute, textures, validationError: validation?.message ?? null, errors};
   } finally { source.destroy(); target.destroy(); computed.destroy(); device.destroy(); }
   return result;
 }"""
@@ -193,6 +234,36 @@ GPU_READ = """async () => {
 
 class GpuFixtureHandler(CanvasFixtureHandler):
     worker_read = GPU_READ
+
+
+def expected_texture_readback() -> list[dict]:
+    rows = []
+    for mip in range(3):
+        width = height = 4 >> mip
+        for layer in range(2):
+            packed = [165] * (256 * (height + 2))
+            for y in range(height):
+                pixels = [value for x in range(width) for value in (x + 1, y + 1, 85 + layer * 16 + mip, 255)]
+                start = 256 * (y + 1)
+                packed[start:start + len(pixels)] = pixels
+            rows.append({"mip": mip, "layer": layer, "size": [width, height],
+                         "packed": packed, "repeat": packed.copy()})
+    return rows
+
+
+def validate_texture_readback(rows) -> None:
+    expected = expected_texture_readback()
+    if not isinstance(rows, list) or len(rows) != len(expected):
+        raise ValueError("Missing WebGPU texture/mip/layer observations")
+    for row, reference in zip(rows, expected, strict=True):
+        if (not isinstance(row, dict) or set(row) != set(reference)
+                or any(type(row.get(key)) is not int for key in ("mip", "layer"))
+                or not isinstance(row.get("size"), list) or any(type(value) is not int for value in row["size"])
+                or any(not isinstance(row.get(key), list)
+                       or any(type(byte) is not int or not 0 <= byte <= 255 for byte in row[key])
+                       for key in ("packed", "repeat"))
+                or row != reference):
+            raise ValueError("WebGPU texture/mip/layer pixels or untouched padding disagree")
 
 
 def validate_shader_readback(scene: dict, api: str, *, expected_pixels: list[int] | None = None) -> None:
@@ -287,6 +358,7 @@ def validate_observations(observed: dict, *, minimized: bool = False,
                 raise ValueError(f"WebGPU adapter disappeared: {context}")
             continue
         coverage["webgpu"] += 1
+        validate_texture_readback(gpu.get("textures"))
         info = gpu.get("info")
         if (not isinstance(info, dict) or set(info) != {"vendor", "architecture", "device",
                 "description", "subgroupMinSize", "subgroupMaxSize", "isFallbackAdapter"}
@@ -357,7 +429,7 @@ def main() -> int:
         parser.error("Refusing to overwrite existing GPU evidence")
     report = {"schema": 1, "platform": platform.platform(), "passed": False, "checks": [],
               "privacy_admitted": False, "contexts": sorted(CONTEXTS),
-              "scope": "Local GPU metadata, real GLSL draw/crop/repeat, WebGL2 PBO/pack padding and WebGPU buffer/compute diagnostics; no GPU readback privacy or anti-bot claim"}
+              "scope": "Local GPU metadata, GLSL draw/crop/repeat, WebGL2 PBO/pack padding, WebGPU buffer/compute and texture/mip/layer readback diagnostics; no GPU readback privacy or anti-bot claim"}
     server = None
     thread = None
     try:

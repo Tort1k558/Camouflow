@@ -1394,6 +1394,34 @@ diagnostics in the new lock functions/tests; its two complete files still have
 the same **67 pre-existing diagnostics** as the committed baseline, not a clean
 project-wide lint result.
 
+### WebGPU texture compatibility expansion — existing 001–062 Windows package
+
+`verify_native_gpu.py` now writes distinct rgba8unorm data to three mip levels
+and two array layers, then reads every subresource twice into padded buffers.
+The validator checks exact texels, layer/mip selection, repeated reads and all
+untouched prefix/row/suffix sentinel bytes. Missing/duplicate cases, malformed
+metadata, altered pixels/padding and boolean/float byte substitutions fail.
+
+Real private report: `D:\CamouFlowNative\gpu-textures-001-062-v1\report.json`.
+
+| Phase | WebGL1 / WebGL2 / WebGPU contexts | Texture cases | Result |
+| --- | --- | --- | --- |
+| Feature off | 8 / 8 / 8 | 48 | Passed |
+| Feature off, restart | 8 / 8 / 8 | 48 | Passed |
+| Metadata minimization on | 8 / 8 / 8 | 48 | Passed |
+| Metadata minimization on, restart | 8 / 8 / 8 | 48 | Passed |
+
+**192 texture cases**, each read twice, ran on the unchanged measured
+Chromium **148.0.7778.96** 001–062 core. Input/core postguards passed; no user
+profile, manager setting or production package was changed. The test uses only
+owned loopback fixtures. This does not cover texture sampling/filtering, mipmap
+generation, every format/GPU/OS, WebGPU fingerprint protection, CAPTCHA or the
+uncompiled 156 candidate. GPU metadata minimization remains a research feature,
+not a newly admitted manager capability.
+The complete local Python regression passed **2688 tests in 131.22 seconds**;
+the GPU verifier itself passes Ruff. Its tests file retains four existing
+import-order diagnostics outside the new cases, not a clean full-file lint run.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

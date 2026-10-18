@@ -11,8 +11,10 @@ from scripts.verify_native_gpu import (
     CONTEXTS,
     WEBGL_LIMITS,
     WEBGPU_LIMITS,
+    expected_texture_readback,
     validate_observations,
     validate_shader_readback,
+    validate_texture_readback,
 )
 
 
@@ -64,7 +66,8 @@ def observation(*, minimized=False, webgpu=True):
         info.update(vendor="actual", architecture="actual", device="actual", description="actual")
     gpu = {"available": True, "info": info, "repeat": copy.deepcopy(info), "deviceInfo": copy.deepcopy(info),
            "features": ["depth-clip-control"], "limits": dict.fromkeys(WEBGPU_LIMITS, 256),
-           "roundtrip": [17, 34, 51, 255], "compute": [18, 35, 52, 256], "validationError": None, "errors": []}
+           "roundtrip": [17, 34, 51, 255], "compute": [18, 35, 52, 256],
+           "textures": expected_texture_readback(), "validationError": None, "errors": []}
     if not webgpu:
         gpu = {"available": False, "reason": "No adapter"}
     full = [value for y in range(1, 5) for x in range(1, 5) for value in (x, y, 85, 255)]
@@ -91,6 +94,54 @@ def test_baseline_and_minimized_preserve_capabilities():
 
 def test_unavailable_webgpu_is_not_counted_as_coverage():
     assert validate_observations(observation(webgpu=False))["webgpu"] == 0
+
+
+@pytest.mark.parametrize("row,field,index,value", [
+    (0, "packed", 0, 0), (0, "packed", 256, 0), (0, "packed", 272, 0),
+    (0, "packed", -1, 0), (0, "repeat", 256, 0),
+    (1, "packed", 258, 85), (2, "packed", 258, 85), (5, "packed", 258, 85),
+    (0, "packed", 256, True), (0, "repeat", 256, 1.0),
+])
+def test_webgpu_texture_pixels_layers_mips_and_padding_are_checked(row, field, index, value):
+    rows = expected_texture_readback()
+    rows[row][field][index] = value
+    with pytest.raises(ValueError, match="texture/mip/layer"):
+        validate_texture_readback(rows)
+
+
+def test_webgpu_texture_reference_has_distinct_layers_mips_and_untouched_padding():
+    rows = expected_texture_readback()
+    assert len(rows) == 6
+    assert rows[0]["packed"][256:272] == [1, 1, 85, 255, 2, 1, 85, 255, 3, 1, 85, 255, 4, 1, 85, 255]
+    assert rows[1]["packed"][256:260] == [1, 1, 101, 255]
+    assert rows[2]["packed"][256:264] == [1, 1, 86, 255, 2, 1, 86, 255]
+    assert rows[5]["size"] == [1, 1] and len(rows[5]["packed"]) == 768
+    assert rows[5]["packed"][256:260] == [1, 1, 103, 255]
+    assert rows[5]["packed"][:256] == [165] * 256
+    assert rows[5]["packed"][260:] == [165] * 508
+
+
+@pytest.mark.parametrize("failure", ["missing", "duplicate", "order", "mip", "layer", "size", "short", "missing-field"])
+def test_webgpu_texture_coverage_and_metadata_cannot_be_faked(failure):
+    rows = expected_texture_readback()
+    if failure == "missing":
+        rows.pop()
+    elif failure == "duplicate":
+        rows[-1] = copy.deepcopy(rows[0])
+    elif failure == "order":
+        rows.reverse()
+    elif failure == "mip":
+        rows[0]["mip"] = False
+    elif failure == "layer":
+        rows[0]["layer"] = 1
+    elif failure == "size":
+        rows[0]["size"] = [True, 4]
+    elif failure == "short":
+        rows[0]["packed"].pop()
+    else:
+        del rows[0]["repeat"]
+    with pytest.raises(ValueError, match="texture/mip/layer"):
+        validate_texture_readback(rows)
 
 
 @pytest.mark.parametrize("field,index,value", [
