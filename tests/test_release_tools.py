@@ -2955,6 +2955,95 @@ def test_packaged_native_runtime_requires_observed_policy(tmp_path, monkeypatch,
     assert os.environ["CAMOUFLOW_DATA_DIR"] == "preserved"
 
 
+@pytest.mark.parametrize("pinned,revision,status,aligned", [
+    ("148.0.7778.96", "a" * 40, "behind-stable", False),
+    ("156.0.8078.36", "b" * 40, "aligned", True),
+    ("156.0.8078.36", "a" * 40, "review-required", False),
+    ("157.0.0.1", "a" * 40, "review-required", False),
+])
+def test_upstream_audit_compares_numeric_versions_and_exact_revision(pinned, revision, status, aligned):
+    import datetime as dt
+    from scripts import audit_native_upstream as upstream
+
+    releases = [{"version": version, "channel": "Stable", "platform": "Windows", "time": 1000,
+                 "hashes": {"chromium": "b" * 40}} for version in ("99.0.0.1", "156.0.8078.36", "155.0.8059.85")]
+    report = upstream.compare({"chromium_version": pinned, "chromium_revision": revision}, releases,
+                              dt.datetime(2026, 10, 18, tzinfo=dt.timezone.utc))
+    assert report["status"] == status and report["upstream_aligned"] is aligned
+    assert report["highest_observed_stable"]["version"] == "156.0.8078.36"
+    assert report["production_admitted"] is False and report["security_review_complete"] is False
+
+
+@pytest.mark.parametrize("field,value", [("channel", "Beta"), ("platform", "Linux"), ("version", "invalid"),
+                                         ("time", True), ("time", -1), ("time", 99999999999999),
+                                         ("hashes", []), ("hashes", {"chromium": "not-a-commit"})])
+def test_upstream_audit_rejects_malformed_official_metadata(field, value):
+    import datetime as dt
+    from scripts import audit_native_upstream as upstream
+
+    release = {"version": "156.0.8078.36", "channel": "Stable", "platform": "Windows", "time": 1000,
+               "hashes": {"chromium": "b" * 40}, field: value}
+    with pytest.raises(ValueError):
+        upstream.compare({"chromium_version": "148.0.7778.96", "chromium_revision": "a" * 40}, [release],
+                         dt.datetime(2026, 10, 18, tzinfo=dt.timezone.utc))
+
+
+def test_upstream_audit_preserves_existing_evidence_before_network(tmp_path, monkeypatch):
+    from unittest.mock import Mock
+    from scripts import audit_native_upstream as upstream
+
+    output = tmp_path / "report.json"
+    output.write_text("original", encoding="utf-8")
+    request = Mock()
+    monkeypatch.setattr(upstream.urllib.request, "urlopen", request)
+    with pytest.raises(ValueError, match="new evidence"):
+        upstream.audit(output)
+    request.assert_not_called()
+    assert output.read_text(encoding="utf-8") == "original"
+
+
+@pytest.mark.parametrize("failure", [None, "redirect", "oversized", "changed-lock"])
+def test_upstream_audit_binds_lock_and_bounded_https_response(tmp_path, monkeypatch, failure):
+    import hashlib
+    import json
+    from unittest.mock import MagicMock
+    from scripts import audit_native_upstream as upstream
+
+    root = tmp_path / "repo"
+    (root / "native").mkdir(parents=True)
+    lock = root / "native/build-lock.json"
+    original = json.dumps({"chromium_version": "148.0.7778.96", "chromium_revision": "a" * 40}).encode()
+    lock.write_bytes(original)
+    monkeypatch.setattr(upstream, "ROOT", root)
+    raw = json.dumps([{"version": "156.0.8078.36", "channel": "Stable", "platform": "Windows", "time": 1000,
+                       "hashes": {"chromium": "b" * 40}}]).encode()
+    response = MagicMock()
+    response.__enter__.return_value = response
+    response.geturl.return_value = "https://untrusted.invalid" if failure == "redirect" else upstream.SOURCE_URL
+    def read(limit):
+        assert limit == upstream.MAX_RESPONSE_BYTES + 1
+        if failure == "changed-lock":
+            lock.write_bytes(original + b" ")
+        return b"x" * limit if failure == "oversized" else raw
+    response.read.side_effect = read
+    def open_url(request, timeout):
+        assert request.full_url == upstream.SOURCE_URL and timeout == 30
+        return response
+    monkeypatch.setattr(upstream.urllib.request, "urlopen", open_url)
+    output = tmp_path / "report.json"
+    if failure is not None:
+        with pytest.raises(ValueError):
+            upstream.audit(output)
+        assert not output.exists()
+    else:
+        report = upstream.audit(output)
+        assert report["status"] == "behind-stable"
+        assert report["lock_sha256"] == hashlib.sha256(original).hexdigest()
+        assert report["response_sha256"] == hashlib.sha256(raw).hexdigest()
+        assert json.loads(output.read_text(encoding="utf-8")) == report
+        assert lock.read_bytes() == original
+
+
 def test_native_error_patch_covers_console_coercion_and_property_preview_paths():
     from scripts.native_build import ROOT
 

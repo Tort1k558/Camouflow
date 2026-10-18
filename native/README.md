@@ -15,6 +15,13 @@ Camoufox/CloakBrowser rename or a JavaScript fingerprint wrapper.
 **Development engine, not a signed release.** Results belong to the stated
 patch chain; they do not transfer automatically to newer binaries.
 
+**Upstream release blocker (October 18, 2026):** the fork is pinned to Chromium
+148.0.7778.96. Official Windows Stable metadata includes 156.0.8078.36; the
+upstream audit reports `behind-stable`. Runtime success is not security
+readiness. Rebase and repeat the full gates before production publication.
+Use `scripts/audit_native_upstream.py --output <new-external-report.json>` to
+refresh this comparison; it never changes the source pin or admits a release.
+
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
 | Registered Windows source | 001-062 | Runtime/branding verified; selected controls enabled experimentally for one reviewed local package. General fork admission remains closed |

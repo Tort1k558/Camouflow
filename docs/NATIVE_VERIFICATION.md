@@ -26,6 +26,22 @@ proof that a driver identity is plausible.
 
 ## Public gates
 
+Before selecting an upstream target or considering production publication, run:
+
+```powershell
+.venv\Scripts\python.exe scripts/audit_native_upstream.py --output D:\Glint\upstream-audit.json
+```
+
+This reads the official Windows Stable metadata from
+[ChromiumDash](https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Windows&num=20),
+records exact versions/revisions and response/build-lock hashes, and refuses
+existing evidence, redirected/oversized responses or a changed build lock.
+Exit 1 means the pin is behind or needs review, not a failed runtime build.
+Exit 0 establishes only alignment with the highest observed Stable version
+and its exact Chromium revision. Neither outcome admits production: patch
+security review, updated dependencies, clean builds and runtime gates remain
+required. The script never fetches source, updates the pin or changes binaries.
+
 For a Windows desktop package with all three engines, create an empty artifact
 directory on D: and use an already installed, reviewed Glint managed store:
 

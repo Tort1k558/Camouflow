@@ -1234,6 +1234,33 @@ remains unchanged; Linux/macOS and external anti-bot acceptance are not claimed.
 
 ## Sources and maintenance
 
+### Upstream metadata audit - October 18, 2026
+
+`upstream-audit-20261018-v1.json` on D records the official Windows Stable
+metadata snapshot and unchanged build-lock checksum. Pinned Glint base:
+**148.0.7778.96**, revision `8625e066febc721e015ea99842da12901eb7ed73`.
+Highest observed Stable version in that response: **156.0.8078.36**, revision
+`5a93aa59e3043e747eff68659dcf7d20193d160e`, published October 14.
+Other rollout versions are retained in the report; this is not an assertion
+that every user receives the highest listed version. Result: **behind-stable**,
+exit 1, production admission false. Sources/binaries were not changed.
+An upstream rebase and fresh build/runtime/security review are required before
+publishing Glint as a production engine. This metadata comparison does not
+enumerate CVEs, prove exploitability or replace a security review.
+
+A separate, bounded source-context assessment fetched only the files needed
+for patches 0001-0006 at that exact 156 revision into an owned D: directory.
+`upstream-156-compatibility-v1/report.json` records source URLs/file hashes,
+patch hashes, failures and whether preceding patches failed. Hardware build
+registration/DEPS, MIDL, automation feature registration and Windows font
+service contexts need adaptation. WebRTC and headless-UA patches passed
+`git apply --check` and were applied only in that assessment directory.
+This is **not** a successfully rebased six-patch stack, compile/API validation
+or runtime proof: four earlier context checks failed and dependencies were
+not fetched. The active 148 checkout, build lock and binaries remain unchanged.
+
+## Reference sources
+
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.
 - [Rebrowser detector source](https://github.com/rebrowser/rebrowser-bot-detector): automation checks and their prerequisites.
 - [Google sample source](https://github.com/google/recaptcha/tree/master/examples): client and backend verification examples.
