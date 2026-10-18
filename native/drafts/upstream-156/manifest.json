@@ -654,6 +654,342 @@
       "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webgpu/gpu_adapter.cc?format=TEXT",
       "bytes": 13161,
       "sha256": "adce5605571613435cfe5c3ebe7f27271f0f8feb443138b72a934d13b687b6bf"
+    },
+    {
+      "path": "chrome/app/chromium_strings.grd",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/chromium_strings.grd?format=TEXT",
+      "bytes": 273028,
+      "sha256": "2744123fbc7d9a99b5d08ae3669c605f77550501c5d4275311f25312c405af26"
+    },
+    {
+      "path": "chrome/app/theme/chromium/BRANDING",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/chromium/BRANDING?format=TEXT",
+      "bytes": 375,
+      "sha256": "15ac20cb8744ebac0815961059231baefa71fd4ed3023cb2094aaf8a34ae423b"
+    },
+    {
+      "path": "chrome/app/theme/chromium/product_logo.svg",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/chromium/product_logo.svg?format=TEXT",
+      "bytes": 1028,
+      "sha256": "8d258980e03725a15d842cce436f566ec9de945f9c306b547325458ac1efd900"
+    },
+    {
+      "path": "chrome/app/theme/chromium/product_logo_128.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/chromium/product_logo_128.png?format=TEXT",
+      "bytes": 4393,
+      "sha256": "ea2d5a7c15ae1e03138d2bb227d3ed4684808c7de10a1443d776cde3ca3dcd9d"
+    },
+    {
+      "path": "chrome/app/theme/chromium/product_logo_16.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/chromium/product_logo_16.png?format=TEXT",
+      "bytes": 1399,
+      "sha256": "a393eac540413ebbc51ba033b96d6f87918d1039f1ec16cd8c0e6a57818f2ea1"
+    },
+    {
+      "path": "chrome/app/theme/chromium/product_logo_24.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/chromium/product_logo_24.png?format=TEXT",
+      "bytes": 759,
+      "sha256": "7a431699c78af352352932f6dd4e04848b57990c0a5675a66695e1dd454cb592"
+    },
+    {
+      "path": "chrome/app/theme/chromium/product_logo_256.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/chromium/product_logo_256.png?format=TEXT",
+      "bytes": 9614,
+      "sha256": "e14120fdefb8eb455f44eac572f34bda75c32c9404e5c3745d44793dae217331"
+    },
+    {
+      "path": "chrome/app/theme/chromium/product_logo_48.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/chromium/product_logo_48.png?format=TEXT",
+      "bytes": 1545,
+      "sha256": "008be542c4ee081c28461e5f6e8a133ce6abb1e2c0998dee414f2db44a6d9c91"
+    },
+    {
+      "path": "chrome/app/theme/chromium/product_logo_64.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/chromium/product_logo_64.png?format=TEXT",
+      "bytes": 2172,
+      "sha256": "aa7f129dcfe02276ebd365781c6a0c3c8ab1ca41abf3408ca47e604e7fe12018"
+    },
+    {
+      "path": "chrome/app/theme/chromium/win/app_list.ico",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/chromium/win/app_list.ico?format=TEXT",
+      "bytes": 24494,
+      "sha256": "0fbdbddf9c74d42b98548e924b706abccade41a427a405d56f1a30270b369b16"
+    },
+    {
+      "path": "chrome/app/theme/chromium/win/chromium.ico",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/chromium/win/chromium.ico?format=TEXT",
+      "bytes": 54121,
+      "sha256": "cd3c4557f730ec73624196e020e36064d41d660228e6048eca298cd8410f81f6"
+    },
+    {
+      "path": "chrome/app/theme/default_100_percent/chromium/product_logo_16.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/default_100_percent/chromium/product_logo_16.png?format=TEXT",
+      "bytes": 662,
+      "sha256": "32ea0cf8a4f67b8fde3225391201f72bb4ef117295b104961c68d0502a7142d8"
+    },
+    {
+      "path": "chrome/app/theme/default_100_percent/chromium/product_logo_32.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/default_100_percent/chromium/product_logo_32.png?format=TEXT",
+      "bytes": 822,
+      "sha256": "c29f2c754d619246062db49e4ba1c3b8e96fcce18ec4524f5ef371172af385ad"
+    },
+    {
+      "path": "chrome/app/theme/default_100_percent/chromium/product_logo_name_22.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/default_100_percent/chromium/product_logo_name_22.png?format=TEXT",
+      "bytes": 2285,
+      "sha256": "fd2ba439f3aad0b56b8228bc966f4f3c425a56f4c7c3e77b8a850fc7bfc93b24"
+    },
+    {
+      "path": "chrome/app/theme/default_100_percent/chromium/product_logo_name_22_white.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/default_100_percent/chromium/product_logo_name_22_white.png?format=TEXT",
+      "bytes": 1913,
+      "sha256": "655d7d7e6d0b2997a948f8ca414a71e84e7c9615df928be01c1c4ca744085b9c"
+    },
+    {
+      "path": "chrome/app/theme/default_200_percent/chromium/product_logo_16.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/default_200_percent/chromium/product_logo_16.png?format=TEXT",
+      "bytes": 1524,
+      "sha256": "9fef85f58e6e4a2cdcbe8b0d3d8fe833547362ab1501ab700d745876fd830f4e"
+    },
+    {
+      "path": "chrome/app/theme/default_200_percent/chromium/product_logo_32.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/default_200_percent/chromium/product_logo_32.png?format=TEXT",
+      "bytes": 1402,
+      "sha256": "926700351f770f2ae5d1298c75aa269da1416d1511e90a1eed07a5ac5e27e85e"
+    },
+    {
+      "path": "chrome/app/theme/default_200_percent/chromium/product_logo_name_22.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/default_200_percent/chromium/product_logo_name_22.png?format=TEXT",
+      "bytes": 5501,
+      "sha256": "91f827498cde94ab869a24a861eaf37a6550733ec58f452124feeedccb4596f6"
+    },
+    {
+      "path": "chrome/app/theme/default_200_percent/chromium/product_logo_name_22_white.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/theme/default_200_percent/chromium/product_logo_name_22_white.png?format=TEXT",
+      "bytes": 4313,
+      "sha256": "23195e26c92c275e99b9c55433e5add1741af93171cdee0ef6c4013f8a6cf205"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_shortcut_manager_win.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/browser/profiles/profile_shortcut_manager_win.cc?format=TEXT",
+      "bytes": 46439,
+      "sha256": "36c77cceb1ccef8763c0dfe40d8a07e1e62bd35eb12fddf07bd0d5f2a55d7ff8"
+    },
+    {
+      "path": "components/resources/default_100_percent/chromium/favicon_product.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/resources/default_100_percent/chromium/favicon_product.png?format=TEXT",
+      "bytes": 1399,
+      "sha256": "a393eac540413ebbc51ba033b96d6f87918d1039f1ec16cd8c0e6a57818f2ea1"
+    },
+    {
+      "path": "components/resources/default_100_percent/chromium/product_logo.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/resources/default_100_percent/chromium/product_logo.png?format=TEXT",
+      "bytes": 1562,
+      "sha256": "62c749f619fed78dce8a5c1953437df1c98950656b2d04eec4783579068599a4"
+    },
+    {
+      "path": "components/resources/default_100_percent/chromium/product_logo_white.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/resources/default_100_percent/chromium/product_logo_white.png?format=TEXT",
+      "bytes": 1417,
+      "sha256": "c7ca9560cc2f68e20fbfc733416f370515f8c36d975b42219105ceb5e8bc5b43"
+    },
+    {
+      "path": "components/resources/default_200_percent/chromium/favicon_product.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/resources/default_200_percent/chromium/favicon_product.png?format=TEXT",
+      "bytes": 822,
+      "sha256": "c29f2c754d619246062db49e4ba1c3b8e96fcce18ec4524f5ef371172af385ad"
+    },
+    {
+      "path": "components/resources/default_200_percent/chromium/product_logo.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/resources/default_200_percent/chromium/product_logo.png?format=TEXT",
+      "bytes": 2714,
+      "sha256": "5e0c309f31081c99f78cdbc6066ccc80d47b97da78e9c8e8075b89a3db9e470b"
+    },
+    {
+      "path": "components/resources/default_200_percent/chromium/product_logo_white.png",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/resources/default_200_percent/chromium/product_logo_white.png?format=TEXT",
+      "bytes": 2512,
+      "sha256": "06811b84f9b49e069f4e7473f0ce9d65760ffdc65fe56a69ff8fd47573635363"
+    },
+    {
+      "path": "content/renderer/render_thread_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/renderer/render_thread_impl.cc?format=TEXT",
+      "bytes": 67952,
+      "sha256": "9e115df5e7486b5eb7a56d58376f991b69793d95eb2ec52ddb7b9e39c47969c3"
+    },
+    {
+      "path": "gpu/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/BUILD.gn?format=TEXT",
+      "bytes": 33953,
+      "sha256": "4b40eca87b99f6b3a1a87a5bca53c007aa8af17f0a164be20c69e542dde60240"
+    },
+    {
+      "path": "gpu/GLES2/gl2chromium_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/GLES2/gl2chromium_autogen.h?format=TEXT",
+      "bytes": 21713,
+      "sha256": "ee5fc48407680c67063ccc1a95045ed43c9467580ec058876949f0b9a74bed35"
+    },
+    {
+      "path": "gpu/command_buffer/build_gles2_cmd_buffer.py",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/build_gles2_cmd_buffer.py?format=TEXT",
+      "bytes": 112050,
+      "sha256": "04fc9199cd4bbadc9bb7fbc60d2be4853254045b280174eb841679ceca6751bc"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_c_lib_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_c_lib_autogen.h?format=TEXT",
+      "bytes": 121578,
+      "sha256": "8c88fc59e685faffb48d0027c5587219ec551953b5e7ef69c3bcc18030fb62fa"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_cmd_helper_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_cmd_helper_autogen.h?format=TEXT",
+      "bytes": 105256,
+      "sha256": "bacbf027429869cc86b707f6ded19c7e7399eb1cf524e1fa2a009ed0f5943b90"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_implementation.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_implementation.cc?format=TEXT",
+      "bytes": 258354,
+      "sha256": "40f84935012ccafe0eb85ecd3fe25e0310c13f413cace0bbeceb2a3e050dec44"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_implementation_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_implementation_autogen.h?format=TEXT",
+      "bytes": 43163,
+      "sha256": "5b8cf83fb5eb7218f6b62487e9077647e47237ea702b8143059b1a88809a5463"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_interface_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_interface_autogen.h?format=TEXT",
+      "bytes": 48350,
+      "sha256": "ef22d649248c60d0ae4f3cf5722febc8c6dda9dff63080c14d4bb963d94296b6"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_interface_stub_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_interface_stub_autogen.h?format=TEXT",
+      "bytes": 42795,
+      "sha256": "44a79d4bcd8dcfa2457c3956915156eaa84be7cb3eeebac48d9d19a2ab69b4d0"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_interface_stub_impl_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_interface_stub_impl_autogen.h?format=TEXT",
+      "bytes": 63561,
+      "sha256": "1d91e498c23d6adacd40a733d1f3d2f2e0c47cdd137db25e7c8f66b4b6fe6252"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_trace_implementation_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_trace_implementation_autogen.h?format=TEXT",
+      "bytes": 42818,
+      "sha256": "9a79d5f2ef977bb5cce7ba03e9d0189a31d65b5cee232a10f6a9f14d5e25d922"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_trace_implementation_impl_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_trace_implementation_impl_autogen.h?format=TEXT",
+      "bytes": 106122,
+      "sha256": "3960a159df0ef3e56246f47cc4b24ce26d86a93f7acc7532cbcba43fdfa305af"
+    },
+    {
+      "path": "gpu/command_buffer/common/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/common/BUILD.gn?format=TEXT",
+      "bytes": 4907,
+      "sha256": "f24042156a66f8adf3f5af02a7c9b7fdb9704bd8bcdae4884f166055acb20fb6"
+    },
+    {
+      "path": "gpu/command_buffer/common/gles2_cmd_format_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/common/gles2_cmd_format_autogen.h?format=TEXT",
+      "bytes": 561828,
+      "sha256": "f7118843b2a02be1acc387109605a9020690acb3770d5132101e49357702af29"
+    },
+    {
+      "path": "gpu/command_buffer/common/gles2_cmd_format_test_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/common/gles2_cmd_format_test_autogen.h?format=TEXT",
+      "bytes": 247991,
+      "sha256": "a178a0c013f0eb2c13134ca84169984aabdf49dc8c2ebbe4a1262e4c1a95bcb2"
+    },
+    {
+      "path": "gpu/command_buffer/common/gles2_cmd_ids_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/common/gles2_cmd_ids_autogen.h?format=TEXT",
+      "bytes": 24957,
+      "sha256": "ae4c2a2a56cad71cb6ac74b101bf123c2e4fea1ce3358887f6d80a7a6b351c74"
+    },
+    {
+      "path": "gpu/command_buffer/gles2_cmd_buffer_functions.txt",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/gles2_cmd_buffer_functions.txt?format=TEXT",
+      "bytes": 43905,
+      "sha256": "58f835326cb6c3e07d30c41879d54fc50945cb63d3f20b7d8b8e8a73b98b1908"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder.cc?format=TEXT",
+      "bytes": 656640,
+      "sha256": "45c7b3a82e392af291be32d5ee2d6029a049a71afe205d78b27864fdd3174baa"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_passthrough.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_passthrough.h?format=TEXT",
+      "bytes": 27759,
+      "sha256": "20315302e3ea303d0a79f7a38347ecaacc051834ff2f0c68efa20c754ef8f7f6"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_passthrough_doers.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_doers.cc?format=TEXT",
+      "bytes": 183121,
+      "sha256": "713b0d34708b25c09232323c75a30b37c858263722cdba8ca05fd6d3b3167e78"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_passthrough_handlers.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_handlers.cc?format=TEXT",
+      "bytes": 83481,
+      "sha256": "261559c27e8959acc8f6dfa8ccbd8dd04e432391b4b39b21558a38d0ade29bd5"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_commands.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_commands.cc?format=TEXT",
+      "bytes": 7203,
+      "sha256": "5de93b0d10098c06a7a3d0fa5f4628b06844dc2923f5dfc025089a420ef074f7"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc?format=TEXT",
+      "bytes": 16519,
+      "sha256": "711a6740cafd2080af0672fa7a130666b8e6ff61086714e355579c660f1f4fb5"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_unittest_extensions.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_unittest_extensions.cc?format=TEXT",
+      "bytes": 2688,
+      "sha256": "e8f8a2f6354323baf39e5327b994e5aac2a898e582f70fa01ba83c1597c65364"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_unittest_framebuffers.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_unittest_framebuffers.cc?format=TEXT",
+      "bytes": 187517,
+      "sha256": "15a24f079751d96457c17d8006af0e985bcdd818cfb8540ffbf12863e91dd9e8"
+    },
+    {
+      "path": "gpu/config/gpu_finch_features.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/config/gpu_finch_features.cc?format=TEXT",
+      "bytes": 35555,
+      "sha256": "eef13b1c4bb30db66de9235c0941e5487d51ac86adad537724f15c9ed395c496"
+    },
+    {
+      "path": "gpu/config/gpu_finch_features.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/config/gpu_finch_features.h?format=TEXT",
+      "bytes": 11329,
+      "sha256": "b887dd341045ff1b3843d0fba9c8445b42b29d73b8733b336ffcda69ad6d2ffd"
+    },
+    {
+      "path": "tools/v8_context_snapshot/v8_context_snapshot_generator.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/tools/v8_context_snapshot/v8_context_snapshot_generator.cc?format=TEXT",
+      "bytes": 4402,
+      "sha256": "4dd1d182244268c6aef4efbabf8b30ce1fdf9777294c26e177184e9b2c96adb7"
+    },
+    {
+      "path": "ui/gfx/font_render_params_win.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/ui/gfx/font_render_params_win.cc?format=TEXT",
+      "bytes": 5106,
+      "sha256": "b449d66c3bdbb5cf1a52d90f62cd57308a7d5d7c2f69e4daf6505419ce6d1175"
     }
   ],
   "patches": [
@@ -912,6 +1248,91 @@
       "file": "0045-native-navigation-observer-fixture-lifetime.patch",
       "sha256": "52a1e5c558954e315e1a5227b91e04da29a574a168c8b03e9dfb4ef145ddaa83",
       "original_sha256": "4bf23ac2d1b1617f7cfa9d5f2c740319465e4f1db6e10efd740e769dd1a04ef3"
+    },
+    {
+      "file": "0046-native-webgl-bounded-readback.patch",
+      "sha256": "7e02be0fb09e1a33ccd8924a59a4bc4b3636d358d7487a1b22a5a3c89329506e",
+      "original_sha256": "817dfb868247b8e623df7fe285c0b672fbb41ecf336e1a5d2314fdf3d7e91de7"
+    },
+    {
+      "file": "0047-native-webgl-clipped-publication.patch",
+      "sha256": "002b7bee104aa08cdaed54f124470f45814e1bd639d50936ba75f34faf0bc091",
+      "original_sha256": "74c70c01c4f0b59d234ff45c54b99416ed3a3b28eb4661dcdfb1cd4f7f067dae"
+    },
+    {
+      "file": "0048-native-readback-fixture-result-api.patch",
+      "sha256": "d7d1fbb8adf37e1273cbd5b517b4fdb862e07aca06f170605f5fe03c2a1b1314",
+      "original_sha256": "ee07d7340c960d007eb9b0849607b24395d031a5e7f9970dc23d408678b2e0e2"
+    },
+    {
+      "file": "0049-native-profile-identity-derivation.patch",
+      "sha256": "e4ffed107c2354b2b4a7662f98524a8790756ac0800f13146227fa78a0d70dae",
+      "original_sha256": "e4ffed107c2354b2b4a7662f98524a8790756ac0800f13146227fa78a0d70dae"
+    },
+    {
+      "file": "0050-native-immutable-fingerprint-mode.patch",
+      "sha256": "d3d94993ad91ce3d5f314b548453c195ccb091c462cf62ccefe3763a98fbb25e",
+      "original_sha256": "d3d94993ad91ce3d5f314b548453c195ccb091c462cf62ccefe3763a98fbb25e"
+    },
+    {
+      "file": "0051-native-identity-context-tests.patch",
+      "sha256": "0a75baf1eb888cc4d36dd30cde541089a4bc84c0634c24854bebc9d14e5c5181",
+      "original_sha256": "0a75baf1eb888cc4d36dd30cde541089a4bc84c0634c24854bebc9d14e5c5181"
+    },
+    {
+      "file": "0052-native-surface-identity-v3-transport.patch",
+      "sha256": "9fdd7106117549de5c08f7b610c11a56915ce3010e4f9906f441ce8a4280106c",
+      "original_sha256": "795508a4f51f68b6ed48b19a994e69e90b7391dbb7ca5c49724da668933eeb74"
+    },
+    {
+      "file": "0053-native-identity-handoff-tests.patch",
+      "sha256": "83eb2be84b8c0c5128e5f58047de5d8fdb807249144064bc8640edd1a4c89c64",
+      "original_sha256": "03027639f31132c51aed6b5e150e2b04ec083f9c6bd8c1864d75a3b02ff4f61b"
+    },
+    {
+      "file": "0054-native-profile-identity-launch.patch",
+      "sha256": "b397535ebb5c2b24170fbe2993b882f29def3d1d4a1843d1be4c0df01f0e266a",
+      "original_sha256": "4615e62ee51e9d03193c2e4f20be2ef9e09f0cddbb2c885ffadbe3d2ead86332"
+    },
+    {
+      "file": "0055-native-gpu-readback-metadata-transport.patch",
+      "sha256": "4f65842f570079704e19406ede0bf2196fd7c01479a0ee5490ebb30f5f7da5e2",
+      "original_sha256": "9af9753c9e5b68f133b39566aac232a4045a255062a0607161f8c839abe60720"
+    },
+    {
+      "file": "0056-native-gpu-metadata-protocol-tests.patch",
+      "sha256": "dd48870f0928b377875ed59d4819715e7166db5385c09c6c2d6c4833305eb0ce",
+      "original_sha256": "72037bf67d7d98d9c3a7be5361664e242f3b22fe79723f95b21a99064a1839f1"
+    },
+    {
+      "file": "0057-native-gpu-metadata-attachment-tests.patch",
+      "sha256": "fc8087e3d05e592adc2e5c57d7f66737231cd36dfc329509238dd43dffe29278",
+      "original_sha256": "befb9aa8d83474dceec4a119f8b25bdeab962625aa645e4b3a5d9f49748b168b"
+    },
+    {
+      "file": "0058-native-gpu-passthrough-attachment-tests.patch",
+      "sha256": "5fae71ec65ed631ac97faabfc7f7a8f5cbbaa114f37dc5a7aa35f3985937804e",
+      "original_sha256": "d24fa491b2809af9896e4dd281730b8eaf9aa4a3ebc3416a91aa5d39477c90a2"
+    },
+    {
+      "file": "0059-native-identical-v8-snapshot.patch",
+      "sha256": "41852fa42112514d9d849c879d48d1cf451aa9d9c41963647e4eeccf8a4e1988",
+      "original_sha256": "c3c58f263bd81bfab03a52e654db83a20d1193ce61e915d174b293ec781d2baa"
+    },
+    {
+      "file": "0060-native-glint-branding.patch",
+      "sha256": "e75588eb1ee0651c2609798439d36530073f8d5cc80b7868396ec583234714bc",
+      "original_sha256": "92aa9255f5e60d0d5b7515477464a0084ea0ad02a389ba5d5b05cf5d31c30d26"
+    },
+    {
+      "file": "0061-native-glint-ui-resources.patch",
+      "sha256": "7088a0b6d55e6b72d1a4b2d7291e05438db383ae7ea4f272a2832c49838658d3",
+      "original_sha256": "1d49f9f6b2cadfa632638df67916e194ea2a5f83bc1b97276589eb67b1eff572"
+    },
+    {
+      "file": "0062-native-windows-font-rasterization.patch",
+      "sha256": "7c74fe72d26bb6723f355d9847fe73346671d4b79327c53c49cbf616dae2e865",
+      "original_sha256": "85d1479390e046de59a98b2f0a73cf7f4657dc341c5bf8f48260be6c7106d13e"
     }
   ],
   "scope": "Draft source-context port; no GN, compilation, runtime or production admission",

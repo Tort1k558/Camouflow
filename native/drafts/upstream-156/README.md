@@ -34,6 +34,10 @@ each draft patch to its hash and original registered patch hash.
 | 0031-0032 | Worker/document surface transport, initial windows/child frames and readiness; new InitiatorStateToken is retained end-to-end |
 | 0033-0034 | Existing experimental Canvas/Audio/WebGL readback and GPU metadata candidates, not admitted profile controls |
 | 0035-0045 | Origin, type/ABI, cancellation, observer lifetime and fixture/throttle corrections |
+| 0046-0048 | Bounded/clipped WebGL readback and publication fixtures |
+| 0049-0054 | Profile-identity derivation/mode, context/transport/handoff tests and launch policy; updated worker fixture calls |
+| 0055-0058 | Existing GPU metadata protocol and attachment candidates; command appended at target ID 577 without changing upstream IDs |
+| 0059-0062 | Unchanged-snapshot write avoidance, Glint branding/resources and Windows font rasterization |
 
 The font service gained an independent local-font matcher upstream. Merely
 repairing rejected patch context would leave that new path unrestricted. The
@@ -63,12 +67,19 @@ patches rather than rewriting entire source files as an incidental rebase.
 
 The output must be new, external and outside the input tree. The gate copies
 only checksummed inputs into its owned scratch directory, checks/applies all
-45 patches in sequence, parses included Python/DEPS files and rechecks inputs.
-Real local evidence: `upstream-156-replay-v7/report.json` on D: **45/45 passed**,
-109 upstream source inputs. The v6 report covers 30 drafts, v5 covers 17 and v4 ten.
-13 resulting GN/GNI files passed syntax parsing with the existing installed
-GN tool, without changing bytes: `upstream-156-gn-syntax-v3.json`. This is not
+62 patches in sequence, parses included Python/DEPS files and rechecks inputs.
+Real local evidence: `upstream-156-replay-v8/report.json` on D: **62/62 passed**,
+165 upstream source inputs, including original binary resource inputs. Earlier
+reports cover their smaller patch sets. After an upstream HTTP 429, 24 missing
+inputs were recovered from the owned immutable Git baseline and individually
+checked against the already recorded upstream hashes; no alternate source or
+unchecked content was substituted.
+15 resulting GN/GNI files passed syntax parsing with the existing installed
+GN tool, without changing bytes: `upstream-156-gn-syntax-v4.json`. This is not
 `gn gen`, `gn check`, dependency-graph validation or execution of C++ tests.
+`upstream-156-abi-resources-v1.json` separately confirms preservation of all
+321 upstream GLES2 command ordinals, append-only command 577, and unchanged
+GRIT XML structure/attributes. It does not regenerate GPU code or compile GRIT.
 The earlier v2 report covers only the first six drafts. The v3 scratch replay
 was superseded after detecting CRLF-only churn in generated V8 patch context;
 v4 uses the compact LF patch and explicit autocrlf-disabled application.
@@ -83,7 +94,8 @@ production admission or Canvas/Audio/GPU protection claim follows from replay.
 
 ## Still required
 
-- Port and review patches 0046-0062 and any additional dependency/API changes.
+- Complete full-source/API review and select the candidate explicitly in build
+  tooling; the default build lock/registered patch chain still target 148.
 - Check all new upstream paths that could bypass old policy boundaries.
 - Run GN/checkdeps and compile against the target's actual dependency set.
 - Repeat complete runtime, rendering, storage, proxy, restart and crash gates.

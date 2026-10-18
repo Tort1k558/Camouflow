@@ -1,0 +1,170 @@
+diff --git a/content/browser/camouflow_native/privacy_context_unittest.cc b/content/browser/camouflow_native/privacy_context_unittest.cc
+index cf52397..dc61290 100644
+--- a/content/browser/camouflow_native/privacy_context_unittest.cc
++++ b/content/browser/camouflow_native/privacy_context_unittest.cc
+@@ -469,5 +469,165 @@ TEST_F(NativePrivacyBrowserContextTest, OffTheRecordReadinessCompletesInlineWith
+   EXPECT_FALSE(base::PathExists(context->GetPath().AppendASCII("camouflow-native-privacy.json")));
+ }
+ 
++TEST_F(NativePrivacyBrowserContextTest,
++       SelectedModesBelongToTheirContextOwners) {
++  auto identity = NewContext("Identity");
++  auto privacy = NewContext("Privacy");
++  ASSERT_TRUE(identity);
++  ASSERT_TRUE(privacy);
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(
++      identity.get(), owned_.GetPath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(privacy.get(),
++                                                             owned_.GetPath()));
++  EXPECT_EQ(GetNativeFingerprintDerivationMode(identity.get()),
++            NativeFingerprintDerivationMode::kProfileIdentity);
++  EXPECT_EQ(GetNativeFingerprintDerivationMode(privacy.get()),
++            NativeFingerprintDerivationMode::kPartitionedPrivacy);
++  const auto other = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test")));
++  for (const auto* surface : {"canvas", "webgl", "webgpu", "audio"}) {
++    const auto selected = DeriveNativeSelectedFingerprintKey(
++        identity.get(), Partition(), surface);
++    ASSERT_TRUE(selected);
++    EXPECT_EQ(selected, DeriveNativeSelectedFingerprintKey(identity.get(),
++                                                           other, surface));
++    EXPECT_NE(selected, DeriveNativeSelectedFingerprintKey(
++                            privacy.get(), Partition(), surface));
++    EXPECT_NE(
++        DeriveNativeSelectedFingerprintKey(privacy.get(), Partition(), surface),
++        DeriveNativeSelectedFingerprintKey(privacy.get(), other, surface));
++  }
++}
++
++TEST_F(NativePrivacyBrowserContextTest,
++       SelectedIdentityRejectsLoadingAndContextShutdown) {
++  auto context = NewContext("Identity");
++  ASSERT_TRUE(context);
++  EXPECT_FALSE(GetNativeFingerprintDerivationMode(context.get()));
++  ASSERT_TRUE(InitializeNativePrivacyContext(
++      context.get(), owned_.GetPath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  EXPECT_FALSE(GetNativeFingerprintDerivationMode(context.get()));
++  EXPECT_FALSE(
++      DeriveNativeSelectedFingerprintKey(context.get(), Partition(), "canvas"));
++  tasks_.RunUntilIdle();
++  ASSERT_EQ(GetNativeFingerprintDerivationMode(context.get()),
++            NativeFingerprintDerivationMode::kProfileIdentity);
++  ASSERT_TRUE(
++      DeriveNativeSelectedFingerprintKey(context.get(), Partition(), "canvas"));
++  context->NotifyWillBeDestroyed();
++  EXPECT_FALSE(GetNativeFingerprintDerivationMode(context.get()));
++  EXPECT_FALSE(
++      DeriveNativeSelectedFingerprintKey(context.get(), Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyBrowserContextTest,
++       InvalidSelectedModeDoesNotOwnTheContext) {
++  auto context = NewContext("Invalid");
++  ASSERT_TRUE(context);
++  const auto invalid = static_cast<NativeFingerprintDerivationMode>(99);
++  EXPECT_FALSE(
++      InitializeNativePrivacyContext(context.get(), owned_.GetPath(), invalid));
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(
++      context.get(), owned_.GetPath(), invalid));
++  EXPECT_EQ(camouflow::native::PrivacyKeyService::GetForOwner(*context),
++            nullptr);
++  EXPECT_FALSE(GetNativeFingerprintDerivationMode(context.get()));
++  EXPECT_FALSE(
++      DeriveNativeSelectedFingerprintKey(context.get(), Partition(), "canvas"));
++  // Rejected input installs nothing; an explicit valid request may still
++  // initialize.
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(
++      context.get(), owned_.GetPath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  EXPECT_TRUE(
++      DeriveNativeSelectedFingerprintKey(context.get(), Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyBrowserContextTest, SelectedModeCannotReplaceLoadingOwner) {
++  auto context = NewContext("Loading");
++  ASSERT_TRUE(context);
++  ASSERT_TRUE(InitializeNativePrivacyContext(
++      context.get(), owned_.GetPath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  EXPECT_FALSE(InitializeNativePrivacyContext(context.get(), owned_.GetPath()));
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(
++      context.get(), owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(GetNativeFingerprintDerivationMode(context.get()),
++            NativeFingerprintDerivationMode::kProfileIdentity);
++}
++
++TEST_F(NativePrivacyBrowserContextTest,
++       SelectedIdentitySurvivesNewContextWithSameRoot) {
++  auto first = NewContext("First");
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(
++      first.get(), owned_.GetPath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  const auto selected =
++      DeriveNativeSelectedFingerprintKey(first.get(), Partition(), "canvas");
++  ASSERT_TRUE(selected);
++  ShutdownNativePrivacyContext(first.get());
++  auto restarted = NewContext("Restarted");
++  ASSERT_TRUE(restarted);
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(
++      restarted.get(), owned_.GetPath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  EXPECT_EQ(selected, DeriveNativeSelectedFingerprintKey(
++                          restarted.get(), Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyBrowserContextTest,
++       SelectedIncognitoIdentityRejectsPersistentRoot) {
++  auto first = NewContext("IncognitoFirst");
++  auto second = NewContext("IncognitoSecond");
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  first->set_is_off_the_record(true);
++  second->set_is_off_the_record(true);
++  EXPECT_FALSE(InitializeNativePrivacyContext(
++      first.get(), owned_.GetPath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  EXPECT_FALSE(InitializeNativePrivacyContextBeforeFirstFrame(
++      first.get(), owned_.GetPath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  ASSERT_TRUE(InitializeNativePrivacyContext(
++      first.get(), base::FilePath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(
++      second.get(), base::FilePath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  const auto selected =
++      DeriveNativeSelectedFingerprintKey(first.get(), Partition(), "canvas");
++  ASSERT_TRUE(selected);
++  EXPECT_NE(selected, DeriveNativeSelectedFingerprintKey(
++                          second.get(), Partition(), "canvas"));
++  EXPECT_EQ(selected, DeriveNativeSelectedFingerprintKey(
++                          first.get(), Partition(), "canvas"));
++  EXPECT_FALSE(base::PathExists(
++      first->GetPath().AppendASCII("camouflow-native-privacy.json")));
++  EXPECT_FALSE(base::PathExists(
++      second->GetPath().AppendASCII("camouflow-native-privacy.json")));
++}
++
++TEST_F(NativePrivacyBrowserContextTest,
++       SelectedNullAndFailedContextsNeverExposeMode) {
++  EXPECT_FALSE(GetNativeFingerprintDerivationMode(nullptr));
++  EXPECT_FALSE(
++      DeriveNativeSelectedFingerprintKey(nullptr, Partition(), "canvas"));
++  ASSERT_TRUE(base::DeleteFile(IdentityPath()));
++  auto failed = NewContext("Failed");
++  ASSERT_TRUE(failed);
++  ASSERT_TRUE(InitializeNativePrivacyContextBeforeFirstFrame(
++      failed.get(), owned_.GetPath(),
++      NativeFingerprintDerivationMode::kProfileIdentity));
++  EXPECT_FALSE(GetNativeFingerprintDerivationMode(failed.get()));
++  EXPECT_FALSE(
++      DeriveNativeSelectedFingerprintKey(failed.get(), Partition(), "canvas"));
++  EXPECT_FALSE(base::PathExists(IdentityPath()));
++}
++
+ }  // namespace
+ }  // namespace content

@@ -1321,6 +1321,23 @@ behavior remain unverified.
 The full local Python regression with this batch passed **2624 tests in
 101.80 seconds**. This does not execute Chromium 156 or admit research policies.
 
+The complete draft chain now replays **0062: 62/62** against 165 upstream
+inputs, including original branding binaries (`upstream-156-replay-v8/report.json`).
+Missing downloads after an HTTP 429 were recovered only from the owned Git
+baseline and verified against the previously recorded source hashes. The
+source audit preserves all 321 original GLES2 command IDs and appends the private
+command as **577**, not the old 148 value 580; GRIT XML structure and attributes
+remain unchanged (`upstream-156-abi-resources-v1.json`). 15 GN/GNI files passed
+read-only parser checks (`upstream-156-gn-syntax-v4.json`). Identity fixtures use
+the current worker API, branding changes retain current upstream message content.
+No GPU code generation, target compilation, resource build or runtime claim is
+made. Default build selection and reviewed manager admission still target 148;
+candidate build tooling and complete 156 build/gates are the next requirements.
+
+The complete local Python regression for this draft batch passed **2625 tests
+in 128.98 seconds**; the release-tool subset passed **652 tests in 22.88
+seconds**. These are tooling/manager tests, not Chromium 156 runtime evidence.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

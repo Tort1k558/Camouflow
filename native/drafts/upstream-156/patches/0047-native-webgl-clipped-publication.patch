@@ -1,0 +1,295 @@
+diff --git a/third_party/blink/renderer/modules/BUILD.gn b/third_party/blink/renderer/modules/BUILD.gn
+index f0feee1..070c3fe 100644
+--- a/third_party/blink/renderer/modules/BUILD.gn
++++ b/third_party/blink/renderer/modules/BUILD.gn
+@@ -656,6 +656,7 @@ source_set("unit_tests") {
+     "webaudio/glint/offline_audio_buffer_unittest.cc",
+     "webgl/glint/rgba8_pack_copy_unittest.cc",
+     "webgl/glint/rgba8_readback_region_unittest.cc",
++    "webgl/glint/rgba8_clipped_publication_unittest.cc",
+     "webaudio/audio_context_autoplay_test.cc",
+     "webaudio/audio_context_test.cc",
+     "webaudio/audio_node_input_test.cc",
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_clipped_publication_unittest.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_clipped_publication_unittest.cc
+new file mode 100644
+index 0000000..80304c0
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_clipped_publication_unittest.cc
+@@ -0,0 +1,92 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "rgba8_pack_copy.h"
++
++#include <array>
++#include <vector>
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace glint::candidate {
++namespace {
++TEST(GlintRgba8ClippedPublicationTest,
++     PreservesClippedPixelsPaddingAndOffsets) {
++  std::array<uint8_t, 64> source;
++  for (size_t index = 0; index < source.size(); ++index)
++    source[index] = static_cast<uint8_t>(index);
++  std::vector<uint8_t> destination(200, 165), expected = destination;
++  blink::WebGLImageConversion::PixelStoreParams pack;
++  pack.alignment = 8;
++  pack.row_length = 6;
++  pack.skip_pixels = 1;
++  pack.skip_rows = 1;
++  for (size_t row = 1; row < 3; ++row)
++    for (size_t byte = 0; byte < 8; ++byte)
++      expected[12 + 28 + row * 24 + 4 + byte] = source[row * 16 + 4 + byte];
++  EXPECT_TRUE(CopyRgba8ReadbackToPackLayout(source, destination, 4, 4, 12, pack,
++                                            gfx::Rect(1, 1, 2, 2))
++                  .has_value());
++  EXPECT_EQ(destination, expected);
++}
++
++TEST(GlintRgba8ClippedPublicationTest, EntirelyOutsideDestinationRemainsExact) {
++  std::array<uint8_t, 64> source{};
++  std::array<uint8_t, 64> destination;
++  destination.fill(165);
++  const auto before = destination;
++  EXPECT_TRUE(CopyRgba8ReadbackToPackLayout(source, destination, 4, 4, 0, {},
++                                            gfx::Rect())
++                  .has_value());
++  EXPECT_EQ(destination, before);
++}
++
++TEST(GlintRgba8ClippedPublicationTest, InvalidCopyRegionNeverWrites) {
++  std::array<uint8_t, 64> source{};
++  std::array<uint8_t, 64> destination;
++  destination.fill(165);
++  const auto before = destination;
++  for (const auto& region :
++       {gfx::Rect(-1, 0, 1, 1), gfx::Rect(3, 0, 2, 1), gfx::Rect(0, 3, 1, 2)}) {
++    EXPECT_FALSE(
++        CopyRgba8ReadbackToPackLayout(source, destination, 4, 4, 0, {}, region)
++            .has_value());
++    EXPECT_EQ(destination, before);
++  }
++}
++
++TEST(GlintRgba8ClippedPublicationTest,
++     ClipDoesNotRelaxOriginalBufferValidation) {
++  std::array<uint8_t, 64> source{};
++  std::array<uint8_t, 4> destination{165, 165, 165, 165};
++  const auto before = destination;
++  EXPECT_FALSE(CopyRgba8ReadbackToPackLayout(source, destination, 4, 4, 0, {},
++                                             gfx::Rect(0, 0, 1, 1))
++                   .has_value());
++  EXPECT_EQ(destination, before);
++}
++
++TEST(GlintRgba8ClippedPublicationTest, AliasesRejectBeforeClippedWrites) {
++  std::array<uint8_t, 80> storage;
++  storage.fill(165);
++  const auto before = storage;
++  EXPECT_FALSE(CopyRgba8ReadbackToPackLayout(std::span(storage).first(64),
++                                             std::span(storage).subspan(8, 64),
++                                             4, 4, 0, {}, gfx::Rect(1, 1, 2, 2))
++                   .has_value());
++  EXPECT_EQ(storage, before);
++}
++
++TEST(GlintRgba8ClippedPublicationTest, FullRegionRetainsExistingPackContract) {
++  std::array<uint8_t, 64> source;
++  for (size_t index = 0; index < source.size(); ++index)
++    source[index] = static_cast<uint8_t>(index);
++  std::array<uint8_t, 64> legacy{}, clipped{};
++  ASSERT_TRUE(
++      CopyRgba8ReadbackToPackLayout(source, legacy, 4, 4, 0, {}).has_value());
++  ASSERT_TRUE(CopyRgba8ReadbackToPackLayout(source, clipped, 4, 4, 0, {},
++                                            gfx::Rect(0, 0, 4, 4))
++                  .has_value());
++  EXPECT_EQ(clipped, legacy);
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.cc b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.cc
+index 997539b..f1b31d2 100644
+--- a/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.cc
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.cc
+@@ -14,8 +14,12 @@ base::expected<void, Rgba8PackCopyError> CopyRgba8ReadbackToPackLayout(
+     GLsizei width,
+     GLsizei height,
+     size_t destination_offset,
+-    const blink::WebGLImageConversion::PixelStoreParams& params) {
+-  if (width < 0 || height < 0 ||
++    const blink::WebGLImageConversion::PixelStoreParams& params,
++    const gfx::Rect& copy_region) {
++  if (width < 0 || height < 0 || copy_region.x() < 0 || copy_region.y() < 0 ||
++      copy_region.width() < 0 || copy_region.height() < 0 ||
++      static_cast<int64_t>(copy_region.x()) + copy_region.width() > width ||
++      static_cast<int64_t>(copy_region.y()) + copy_region.height() > height ||
+       (params.alignment != 1 && params.alignment != 2 &&
+        params.alignment != 4 && params.alignment != 8) ||
+       params.row_length < 0 || params.skip_rows < 0 || params.skip_pixels < 0 ||
+@@ -57,11 +61,35 @@ base::expected<void, Rgba8PackCopyError> CopyRgba8ReadbackToPackLayout(
+   const size_t row_pixels = params.row_length > 0 ? params.row_length : width;
+   const size_t stride = row_pixels * 4 + padding;
+   const size_t start = destination_offset + skip_bytes;
+-  for (size_t row = 0; row < static_cast<size_t>(height); ++row) {
+-    const auto input = source.subspan(row * row_bytes, row_bytes);
+-    auto output = destination.subspan(start + row * stride, row_bytes);
++  if (copy_region.IsEmpty()) {
++    return {};
++  }
++  const size_t column_offset = static_cast<size_t>(copy_region.x()) * 4;
++  const size_t copy_bytes = static_cast<size_t>(copy_region.width()) * 4;
++  for (size_t row = copy_region.y();
++       row < static_cast<size_t>(copy_region.y() + copy_region.height());
++       ++row) {
++    const auto input =
++        source.subspan(row * row_bytes + column_offset, copy_bytes);
++    auto output =
++        destination.subspan(start + row * stride + column_offset, copy_bytes);
+     std::copy(input.begin(), input.end(), output.begin());
+   }
+   return {};
+ }
++
++base::expected<void, Rgba8PackCopyError> CopyRgba8ReadbackToPackLayout(
++    std::span<const uint8_t> source,
++    std::span<uint8_t> destination,
++    GLsizei width,
++    GLsizei height,
++    size_t destination_offset,
++    const blink::WebGLImageConversion::PixelStoreParams& params) {
++  if (width < 0 || height < 0) {
++    return base::unexpected(Rgba8PackCopyError::kInvalidLayout);
++  }
++  return CopyRgba8ReadbackToPackLayout(source, destination, width, height,
++                                       destination_offset, params,
++                                       gfx::Rect(0, 0, width, height));
++}
+ }  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h
+index dd0f6be..aa4daf4 100644
+--- a/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h
++++ b/third_party/blink/renderer/modules/webgl/glint/rgba8_pack_copy.h
+@@ -9,6 +9,7 @@
+ 
+ #include "base/types/expected.h"
+ #include "third_party/blink/renderer/platform/graphics/gpu/webgl_image_conversion.h"
++#include "ui/gfx/geometry/rect.h"
+ 
+ namespace glint::candidate {
+ enum class Rgba8PackCopyError {
+@@ -29,5 +30,16 @@ base::expected<void, Rgba8PackCopyError> CopyRgba8ReadbackToPackLayout(
+     GLsizei height,
+     size_t destination_offset,
+     const blink::WebGLImageConversion::PixelStoreParams& params);
++
++// Copy only the in-bounds part of the read rectangle. Preserve all clipped
++// destination pixels, row padding, skips and offset bytes exactly.
++base::expected<void, Rgba8PackCopyError> CopyRgba8ReadbackToPackLayout(
++    std::span<const uint8_t> source,
++    std::span<uint8_t> destination,
++    GLsizei width,
++    GLsizei height,
++    size_t destination_offset,
++    const blink::WebGLImageConversion::PixelStoreParams& params,
++    const gfx::Rect& copy_region);
+ }  // namespace glint::candidate
+ #endif
+diff --git a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+index 8ed2a40..4cfdde1 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl2_rendering_context_base.cc
+@@ -921,8 +921,9 @@ void WebGL2RenderingContextBase::readPixels(GLint x,
+   if (base::FeatureList::IsEnabled(features::kGlintWebGLReadbackCandidate) &&
+       width > 0 && height > 0) {
+     SkBitmap rectangle;
++    gfx::Rect copy_region;
+     if (!PrepareGlintRgba8Readback(x, y, width, height, format, type,
+-                                   rectangle)) {
++                                   rectangle, copy_region)) {
+       return;
+     }
+     const auto pack = GetPackPixelStoreParams();
+@@ -940,10 +941,13 @@ void WebGL2RenderingContextBase::readPixels(GLint x,
+     const auto pixels =
+         std::span(static_cast<const uint8_t*>(rectangle.getPixels()),
+                   rectangle.computeByteSize());
+-    for (size_t row = 0; row < static_cast<size_t>(height); ++row) {
+-      const int64_t destination = offset + skip_bytes + row * stride;
+-      const auto input = pixels.subspan(row * row_bytes, row_bytes);
+-      BufferSubDataImpl(GL_PIXEL_PACK_BUFFER, destination, row_bytes,
++    const size_t column_offset = static_cast<size_t>(copy_region.x()) * 4;
++    const size_t copy_bytes = static_cast<size_t>(copy_region.width()) * 4;
++    for (size_t row = copy_region.y(); !copy_region.IsEmpty() &&
++         row < static_cast<size_t>(copy_region.y() + copy_region.height()); ++row) {
++      const int64_t destination = offset + skip_bytes + row * stride + column_offset;
++      const auto input = pixels.subspan(row * row_bytes + column_offset, copy_bytes);
++      BufferSubDataImpl(GL_PIXEL_PACK_BUFFER, destination, copy_bytes,
+                         input.data());
+     }
+     return;
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+index 8ff0d90..adadc66 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -5379,8 +5379,9 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+   if (base::FeatureList::IsEnabled(features::kGlintWebGLReadbackCandidate) &&
+       width > 0 && height > 0) {
+     SkBitmap rectangle;
++    gfx::Rect copy_region;
+     if (!PrepareGlintRgba8Readback(x, y, width, height, format, type,
+-                                   rectangle)) {
++                                   rectangle, copy_region)) {
+       return;
+     }
+     const auto source =
+@@ -5388,7 +5389,8 @@ void WebGLRenderingContextBase::ReadPixelsHelper(GLint x,
+                   rectangle.computeByteSize());
+     const auto destination = std::span(data, buffer_size.ValueOrDie());
+     if (!glint::candidate::CopyRgba8ReadbackToPackLayout(
+-            source, destination, width, height, 0, GetPackPixelStoreParams()).has_value()) {
++            source, destination, width, height, 0, GetPackPixelStoreParams(),
++              copy_region).has_value()) {
+       SynthesizeGLError(GL_INVALID_OPERATION, "readPixels",
+                         "Glint WebGL pack-copy failed.");
+     }
+@@ -5410,7 +5412,9 @@ bool WebGLRenderingContextBase::PrepareGlintRgba8Readback(
+     GLsizei height,
+     GLenum format,
+     GLenum type,
+-    SkBitmap& protected_rectangle) {
++    SkBitmap& protected_rectangle,
++    gfx::Rect& copy_region) {
++  copy_region = gfx::Rect();
+   const auto reject = [this](const char* reason) {
+     SynthesizeGLError(GL_INVALID_OPERATION, "readPixels", reason);
+     return false;
+@@ -5475,6 +5479,14 @@ bool WebGLRenderingContextBase::PrepareGlintRgba8Readback(
+   if (!region.has_value()) {
+     return reject("Glint WebGL detached readback budget or region is invalid.");
+   }
++  const int64_t left = std::max<int64_t>(0, x);
++  const int64_t bottom = std::max<int64_t>(0, y);
++  const int64_t right = std::min<int64_t>(frame_width, static_cast<int64_t>(x) + width);
++  const int64_t top = std::min<int64_t>(frame_height, static_cast<int64_t>(y) + height);
++  if (left < right && bottom < top) {
++    copy_region = gfx::Rect(static_cast<int>(left - x), static_cast<int>(bottom - y),
++                            static_cast<int>(right - left), static_cast<int>(top - bottom));
++  }
+   const auto rectangle_info =
+       SkImageInfo::Make(width, height, kRGBA_8888_SkColorType,
+                         kUnpremul_SkAlphaType, SkColorSpace::MakeSRGB());
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+index 06d3c02..4c8e2a9 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h
+@@ -1952,7 +1952,8 @@ class MODULES_EXPORT WebGLRenderingContextBase
+                                  GLsizei height,
+                                  GLenum format,
+                                  GLenum type,
+-                                 SkBitmap& protected_rectangle);
++                                 SkBitmap& protected_rectangle,
++                                 gfx::Rect& copy_region);
+   void ReadPixelsHelper(GLint x,
+                         GLint y,
+                         GLsizei width,

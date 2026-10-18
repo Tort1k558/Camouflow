@@ -1,0 +1,281 @@
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+index e9e02db..277dd71 100644
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -74,6 +74,9 @@
+ #include "base/trace_event/typed_macros.h"
+ #include "base/tracing/protos/chrome_track_event.pbzero.h"
+ #include "build/build_config.h"
++#if BUILDFLAG(IS_WIN)
++#include "ui/gfx/win/glint_font_rasterization_policy.h"
++#endif
+ #include "cc/base/switches.h"
+ #include "components/embedder_support/switches.h"
+ #include "components/input/features.h"
+@@ -4111,6 +4114,17 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
+   }
+ #endif
+ 
++#if BUILDFLAG(IS_WIN)
++  if (browser_cmd.HasSwitch(glint::candidate::kWindowsFontRasterizationSwitch)) {
++    const auto value = browser_cmd.GetSwitchValueASCII(
++        glint::candidate::kWindowsFontRasterizationSwitch);
++    CHECK(glint::candidate::ParseWindowsFontRasterization(value).has_value())
++        << "Invalid Glint Windows font rasterization";
++    renderer_cmd->AppendSwitchASCII(
++        glint::candidate::kWindowsFontRasterizationSwitch, value);
++  }
++#endif
++
+   // Native hardware limits must reach every renderer, including workers.
+   static constexpr const char* kCamouFlowHardwareSwitches[] = {
+       "camouflow-hardware-concurrency", "camouflow-device-memory"};
+diff --git a/content/renderer/render_thread_impl.cc b/content/renderer/render_thread_impl.cc
+index fe688f2..0ae8899 100644
+--- a/content/renderer/render_thread_impl.cc
++++ b/content/renderer/render_thread_impl.cc
+@@ -163,6 +163,11 @@
+ #include "third_party/blink/public/web/web_user_level_memory_pressure_signal_generator.h"
+ #include "third_party/blink/public/web/web_v8_features.h"
+ #include "third_party/blink/public/web/web_view.h"
++#if BUILDFLAG(IS_WIN)
++#include "third_party/blink/public/web/win/web_font_rendering.h"
++#include "ui/gfx/font_render_params.h"
++#include "ui/gfx/win/glint_font_rasterization_policy.h"
++#endif
+ #include "third_party/perfetto/include/perfetto/tracing/track.h"
+ #include "third_party/perfetto/include/perfetto/tracing/track_event_args.h"
+ #include "third_party/skia/include/core/SkFontMgr.h"
+@@ -836,6 +841,22 @@ void RenderThreadImpl::InitializeWebKit(mojo::BinderMap* binders) {
+   blink::Initialize(blink_platform_impl_.get(), binders,
+                     main_thread_scheduler_.get());
+ 
++#if BUILDFLAG(IS_WIN)
++  if (command_line.HasSwitch(glint::candidate::kWindowsFontRasterizationSwitch)) {
++    const auto mode = glint::candidate::ParseWindowsFontRasterization(
++        command_line.GetSwitchValueASCII(
++            glint::candidate::kWindowsFontRasterizationSwitch));
++    CHECK(mode.has_value()) << "Invalid Glint Windows font rasterization";
++    if (*mode != glint::candidate::WindowsFontRasterization::kNative) {
++      const auto params = gfx::GetFontRenderParams(gfx::FontRenderParamsQuery(),
++                                                   nullptr);
++      blink::WebFontRendering::SetAntialiasedTextEnabled(params.antialiasing);
++      blink::WebFontRendering::SetLCDTextEnabled(
++          params.subpixel_rendering != gfx::FontRenderParams::SUBPIXEL_RENDERING_NONE);
++    }
++  }
++#endif
++
+   if (!command_line.HasSwitch(switches::kDisableThreadedCompositing))
+     InitializeCompositorThread();
+ 
+diff --git a/ui/gfx/BUILD.gn b/ui/gfx/BUILD.gn
+index a8847f1..2df1508 100644
+--- a/ui/gfx/BUILD.gn
++++ b/ui/gfx/BUILD.gn
+@@ -331,6 +331,7 @@ component("gfx") {
+       "win/direct_write.h",
+       "win/camouflow_font_collection.h",
+       "win/camouflow_font_configuration.h",
++      "win/glint_font_rasterization_policy.h",
+       "win/camouflow_font_families.h",
+       "win/gdi_util.cc",
+       "win/gdi_util.h",
+@@ -940,6 +941,7 @@ test("gfx_unittests") {
+   if (is_win) {
+     sources += [
+       "font_render_params_win_unittest.cc",
++      "win/glint_font_rasterization_policy_unittest.cc",
+       "font_util_win.cc",
+       "path_win_unittest.cc",
+       "win/crash_id_helper_unittest.cc",
+diff --git a/ui/gfx/font_render_params_win.cc b/ui/gfx/font_render_params_win.cc
+index 968bb2b..a7de329 100644
+--- a/ui/gfx/font_render_params_win.cc
++++ b/ui/gfx/font_render_params_win.cc
+@@ -10,6 +10,9 @@
+ #include <optional>
+ 
+ #include "base/callback_list.h"
++#include "base/check.h"
++#include "base/command_line.h"
++#include "ui/gfx/win/glint_font_rasterization_policy.h"
+ #include "base/feature_list.h"
+ #include "base/features.h"
+ #include "base/files/file_path.h"
+@@ -103,6 +106,14 @@ class CachedFontRenderParams {
+       params_->text_gamma = SK_GAMMA_EXPONENT;
+     }
+ 
++    const auto* command = base::CommandLine::ForCurrentProcess();
++    if (command->HasSwitch(glint::candidate::kWindowsFontRasterizationSwitch)) {
++      const auto mode = glint::candidate::ParseWindowsFontRasterization(
++          command->GetSwitchValueASCII(glint::candidate::kWindowsFontRasterizationSwitch));
++      CHECK(mode.has_value()) << "Invalid Glint Windows font rasterization";
++      CHECK(glint::candidate::ApplyWindowsFontRasterization(*params_, *mode));
++    }
++
+     skia::LegacyDisplayGlobals::SetCachedParams(
+         FontRenderParams::SubpixelRenderingToSkiaPixelGeometry(
+             params_->subpixel_rendering),
+diff --git a/ui/gfx/win/glint_font_rasterization_policy.h b/ui/gfx/win/glint_font_rasterization_policy.h
+new file mode 100644
+index 0000000..ed2618d
+--- /dev/null
++++ b/ui/gfx/win/glint_font_rasterization_policy.h
+@@ -0,0 +1,74 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_WINDOWS_FONT_RASTERIZATION_POLICY_H_
++#define GLINT_WINDOWS_FONT_RASTERIZATION_POLICY_H_
++
++#include <optional>
++#include <string_view>
++
++#include "ui/gfx/font_render_params.h"
++
++namespace glint::candidate {
++
++inline constexpr char kWindowsFontRasterizationSwitch[] =
++    "glint-windows-font-rasterization";
++
++enum class WindowsFontRasterization {
++  kNative,
++  kAliased,
++  kGrayscale,
++  kClearTypeRgb,
++  kClearTypeBgr,
++};
++
++constexpr std::optional<WindowsFontRasterization>
++ParseWindowsFontRasterization(std::string_view value) {
++  if (value == "native") {
++    return WindowsFontRasterization::kNative;
++  }
++  if (value == "aliased") {
++    return WindowsFontRasterization::kAliased;
++  }
++  if (value == "grayscale") {
++    return WindowsFontRasterization::kGrayscale;
++  }
++  if (value == "cleartype-rgb") {
++    return WindowsFontRasterization::kClearTypeRgb;
++  }
++  if (value == "cleartype-bgr") {
++    return WindowsFontRasterization::kClearTypeBgr;
++  }
++  return std::nullopt;
++}
++
++inline bool ApplyWindowsFontRasterization(
++    gfx::FontRenderParams& params,
++    WindowsFontRasterization mode) {
++  switch (mode) {
++    case WindowsFontRasterization::kNative:
++      return true;
++    case WindowsFontRasterization::kAliased:
++      params.antialiasing = false;
++      params.subpixel_positioning = false;
++      params.subpixel_rendering = gfx::FontRenderParams::SUBPIXEL_RENDERING_NONE;
++      return true;
++    case WindowsFontRasterization::kGrayscale:
++      params.antialiasing = true;
++      params.subpixel_positioning = true;
++      params.subpixel_rendering = gfx::FontRenderParams::SUBPIXEL_RENDERING_NONE;
++      return true;
++    case WindowsFontRasterization::kClearTypeRgb:
++    case WindowsFontRasterization::kClearTypeBgr:
++      params.antialiasing = true;
++      params.subpixel_positioning = true;
++      params.subpixel_rendering =
++          mode == WindowsFontRasterization::kClearTypeRgb
++              ? gfx::FontRenderParams::SUBPIXEL_RENDERING_RGB
++              : gfx::FontRenderParams::SUBPIXEL_RENDERING_BGR;
++      return true;
++  }
++  return false;
++}
++
++}  // namespace glint::candidate
++#endif
+diff --git a/ui/gfx/win/glint_font_rasterization_policy_unittest.cc b/ui/gfx/win/glint_font_rasterization_policy_unittest.cc
+new file mode 100644
+index 0000000..93f7fd8
+--- /dev/null
++++ b/ui/gfx/win/glint_font_rasterization_policy_unittest.cc
+@@ -0,0 +1,75 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "ui/gfx/win/glint_font_rasterization_policy.h"
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace glint::candidate {
++namespace {
++
++TEST(GlintWindowsFontRasterizationTest, ParsesEveryNamedMode) {
++  EXPECT_EQ(ParseWindowsFontRasterization("native"), WindowsFontRasterization::kNative);
++  EXPECT_EQ(ParseWindowsFontRasterization("aliased"), WindowsFontRasterization::kAliased);
++  EXPECT_EQ(ParseWindowsFontRasterization("grayscale"), WindowsFontRasterization::kGrayscale);
++  EXPECT_EQ(ParseWindowsFontRasterization("cleartype-rgb"), WindowsFontRasterization::kClearTypeRgb);
++  EXPECT_EQ(ParseWindowsFontRasterization("cleartype-bgr"), WindowsFontRasterization::kClearTypeBgr);
++}
++
++TEST(GlintWindowsFontRasterizationTest, RejectsInvalidNamesWithoutNormalization) {
++  for (const auto value : {"", "Native", " grayscale", "grayscale ", "rgb", "macos", "1"}) {
++    EXPECT_FALSE(ParseWindowsFontRasterization(value));
++  }
++}
++
++TEST(GlintWindowsFontRasterizationTest, NativePreservesAllHostFields) {
++  gfx::FontRenderParams params;
++  params.antialiasing = false;
++  params.subpixel_positioning = false;
++  params.subpixel_rendering = gfx::FontRenderParams::SUBPIXEL_RENDERING_VRGB;
++  params.text_gamma = 1.8f;
++  params.text_contrast = 0.4f;
++  const auto before = params;
++  ASSERT_TRUE(ApplyWindowsFontRasterization(params, WindowsFontRasterization::kNative));
++  EXPECT_TRUE(params == before);
++}
++
++TEST(GlintWindowsFontRasterizationTest, InvalidEnumPreservesAllHostFields) {
++  gfx::FontRenderParams params;
++  const auto before = params;
++  EXPECT_FALSE(ApplyWindowsFontRasterization(params, static_cast<WindowsFontRasterization>(999)));
++  EXPECT_TRUE(params == before);
++}
++
++TEST(GlintWindowsFontRasterizationTest, ModesOnlyChangeRasterizationFields) {
++  for (const auto mode : {WindowsFontRasterization::kAliased,
++                         WindowsFontRasterization::kGrayscale,
++                         WindowsFontRasterization::kClearTypeRgb,
++                         WindowsFontRasterization::kClearTypeBgr}) {
++    gfx::FontRenderParams params;
++    params.text_gamma = 1.8f;
++    params.text_contrast = 0.4f;
++    params.hinting = gfx::FontRenderParams::HINTING_FULL;
++    params.autohinter = true;
++    params.use_bitmaps = true;
++    ASSERT_TRUE(ApplyWindowsFontRasterization(params, mode));
++    EXPECT_EQ(params.antialiasing, mode != WindowsFontRasterization::kAliased);
++    EXPECT_EQ(params.subpixel_positioning, params.antialiasing);
++    EXPECT_EQ(params.text_gamma, 1.8f);
++    EXPECT_EQ(params.text_contrast, 0.4f);
++    EXPECT_EQ(params.hinting, gfx::FontRenderParams::HINTING_FULL);
++    EXPECT_TRUE(params.autohinter);
++    EXPECT_TRUE(params.use_bitmaps);
++    const auto expected = mode == WindowsFontRasterization::kClearTypeRgb
++                              ? gfx::FontRenderParams::SUBPIXEL_RENDERING_RGB
++                         : mode == WindowsFontRasterization::kClearTypeBgr
++                              ? gfx::FontRenderParams::SUBPIXEL_RENDERING_BGR
++                              : gfx::FontRenderParams::SUBPIXEL_RENDERING_NONE;
++    EXPECT_EQ(params.subpixel_rendering, expected);
++    const auto once = params;
++    ASSERT_TRUE(ApplyWindowsFontRasterization(params, mode));
++    EXPECT_TRUE(params == once);
++  }
++}
++
++}  // namespace
++}  // namespace glint::candidate

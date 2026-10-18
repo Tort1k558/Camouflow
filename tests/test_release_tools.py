@@ -3113,7 +3113,7 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
     from scripts import verify_native_rebase_draft as draft
 
     manifest = json.loads((draft.DRAFT / "manifest.json").read_text(encoding="utf-8-sig"))
-    originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:45]
+    originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:62]
     assert [row["file"] for row in manifest["patches"]] == [path.name for path in originals]
     for row, original in zip(manifest["patches"], originals, strict=True):
         content = (draft.DRAFT / "patches" / row["file"]).read_bytes()
@@ -3193,6 +3193,20 @@ def test_upstream_surface_batch_keeps_initiator_token_and_new_worker_mock_signat
     metadata = additions("0034-native-gpu-metadata-minimization.patch")
     assert "BASE_FEATURE(kGlintGpuMetadataMinimization, base::FEATURE_DISABLED_BY_DEFAULT)" in metadata
     assert "BASE_FEATURE(kGlintWebGLReadbackCandidate, base::FEATURE_DISABLED_BY_DEFAULT)" in metadata
+
+
+def test_upstream_final_batch_uses_target_command_id_and_current_identity_fixture_api():
+    import re
+    from scripts import verify_native_rebase_draft as draft
+
+    transport = (draft.DRAFT / "patches/0055-native-gpu-readback-metadata-transport.patch").read_text(encoding="utf-8")
+    assert re.search(r"^\+\s*OP\(GetGlintReadFramebufferMetadataCHROMIUM\)\s*/\*\s*577\s*\*/", transport, re.MULTILINE)
+    assert "diff --git a/gpu/command_buffer/build_gles2_cmd_buffer.py" in transport
+    for name in ("0052-native-surface-identity-v3-transport.patch", "0053-native-identity-handoff-tests.patch"):
+        text = (draft.DRAFT / "patches" / name).read_text(encoding="utf-8")
+        additions = "\n".join(line[1:] for line in text.splitlines() if line.startswith("+") and not line.startswith("+++"))
+        assert "DidEvaluateTopLevelScript(true)" not in additions
+        assert not re.search(r'KURL\("http://fake.url/"\),\s*nullptr,', additions)
 
 
 def test_native_error_patch_covers_console_coercion_and_property_preview_paths():

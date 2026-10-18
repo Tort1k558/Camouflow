@@ -1,0 +1,443 @@
+diff --git a/content/browser/camouflow_native/privacy_context.cc b/content/browser/camouflow_native/privacy_context.cc
+index 690e887..73f7351 100644
+--- a/content/browser/camouflow_native/privacy_context.cc
++++ b/content/browser/camouflow_native/privacy_context.cc
+@@ -14,28 +14,33 @@ namespace content {
+ using camouflow::native::PrivacyKeyService;
+ 
+ bool InitializeNativePrivacyContext(BrowserContext* context,
+-                                    const base::FilePath& owned_root) {
++                                    const base::FilePath& owned_root,
++                                    NativeFingerprintDerivationMode mode) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   if (!context || context->ShutdownStarted()) {
+     return false;
+   }
+   if (context->IsOffTheRecord()) {
+-    return owned_root.empty() && PrivacyKeyService::InstallEphemeral(*context);
++    return owned_root.empty() &&
++           PrivacyKeyService::InstallEphemeral(*context, mode);
+   }
+-  return PrivacyKeyService::InstallOwnedProfile(*context, owned_root);
++  return PrivacyKeyService::InstallOwnedProfile(*context, owned_root, mode);
+ }
+ 
+ bool InitializeNativePrivacyContextBeforeFirstFrame(
+     BrowserContext* context,
+-    const base::FilePath& owned_root) {
++    const base::FilePath& owned_root,
++    NativeFingerprintDerivationMode mode) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   if (!context || context->ShutdownStarted()) {
+     return false;
+   }
+   if (context->IsOffTheRecord()) {
+-    return owned_root.empty() && PrivacyKeyService::InstallEphemeral(*context);
++    return owned_root.empty() &&
++           PrivacyKeyService::InstallEphemeral(*context, mode);
+   }
+-  return PrivacyKeyService::InstallOwnedProfileBeforeFirstFrame(*context, owned_root);
++  return PrivacyKeyService::InstallOwnedProfileBeforeFirstFrame(
++      *context, owned_root, mode);
+ }
+ 
+ void ShutdownNativePrivacyContext(BrowserContext* context) {
+@@ -90,4 +95,24 @@ std::optional<std::array<uint8_t, 32>> DeriveNativeProfileIdentityKey(
+   return PrivacyKeyService::GetForOwner(*context)->DeriveProfileIdentity(
+       trusted_partition, surface);
+ }
++std::optional<NativeFingerprintDerivationMode>
++GetNativeFingerprintDerivationMode(BrowserContext* context) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!IsNativePrivacyContextReady(context)) {
++    return std::nullopt;
++  }
++  return PrivacyKeyService::GetForOwner(*context)->derivation_mode();
++}
++
++std::optional<std::array<uint8_t, 32>> DeriveNativeSelectedFingerprintKey(
++    BrowserContext* context,
++    const blink::StorageKey& trusted_partition,
++    std::string_view surface) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!IsNativePrivacyContextReady(context)) {
++    return std::nullopt;
++  }
++  return PrivacyKeyService::GetForOwner(*context)->DeriveSelected(
++      trusted_partition, surface);
++}
+ }  // namespace content
+diff --git a/content/browser/camouflow_native/privacy_key_service.cc b/content/browser/camouflow_native/privacy_key_service.cc
+index d0a9179..27eba1d 100644
+--- a/content/browser/camouflow_native/privacy_key_service.cc
++++ b/content/browser/camouflow_native/privacy_key_service.cc
+@@ -18,12 +18,15 @@ PrivacyKeyService* PrivacyKeyService::GetForOwner(base::SupportsUserData& owner)
+   return static_cast<PrivacyKeyService*>(owner.GetUserData(&kPrivacyKeyServiceUserDataKey));
+ }
+ 
+-bool PrivacyKeyService::InstallOwnedProfile(base::SupportsUserData& owner,
+-                                           const base::FilePath& owned_profile) {
+-  if (GetForOwner(owner)) {
++bool PrivacyKeyService::InstallOwnedProfile(
++    base::SupportsUserData& owner,
++    const base::FilePath& owned_profile,
++    content::NativeFingerprintDerivationMode mode) {
++  if (GetForOwner(owner) ||
++      !content::IsValidNativeFingerprintDerivationMode(mode)) {
+     return false;
+   }
+-  auto service = std::make_unique<PrivacyKeyService>();
++  auto service = std::make_unique<PrivacyKeyService>(mode);
+   if (!service->InitializeOwnedProfile(owned_profile)) {
+     return false;
+   }
+@@ -33,12 +36,14 @@ bool PrivacyKeyService::InstallOwnedProfile(base::SupportsUserData& owner,
+ 
+ bool PrivacyKeyService::InstallOwnedProfileBeforeFirstFrame(
+     base::SupportsUserData& owner,
+-    const base::FilePath& owned_profile) {
+-  if (GetForOwner(owner) || !owned_profile.IsAbsolute() ||
++    const base::FilePath& owned_profile,
++    content::NativeFingerprintDerivationMode mode) {
++  if (!content::IsValidNativeFingerprintDerivationMode(mode) ||
++      GetForOwner(owner) || !owned_profile.IsAbsolute() ||
+       owned_profile.ReferencesParent()) {
+     return false;
+   }
+-  auto service = std::make_unique<PrivacyKeyService>();
++  auto service = std::make_unique<PrivacyKeyService>(mode);
+   service->state_ = State::kLoading;
+   service->Loaded(PrivacyProfileKey::LoadOwnedProfile(owned_profile));
+   owner.SetUserData(&kPrivacyKeyServiceUserDataKey, std::move(service));
+@@ -46,11 +51,14 @@ bool PrivacyKeyService::InstallOwnedProfileBeforeFirstFrame(
+   return true;
+ }
+ 
+-bool PrivacyKeyService::InstallEphemeral(base::SupportsUserData& owner) {
+-  if (GetForOwner(owner)) {
++bool PrivacyKeyService::InstallEphemeral(
++    base::SupportsUserData& owner,
++    content::NativeFingerprintDerivationMode mode) {
++  if (GetForOwner(owner) ||
++      !content::IsValidNativeFingerprintDerivationMode(mode)) {
+     return false;
+   }
+-  auto service = std::make_unique<PrivacyKeyService>();
++  auto service = std::make_unique<PrivacyKeyService>(mode);
+   if (!service->InitializeEphemeral()) {
+     return false;
+   }
+@@ -58,7 +66,9 @@ bool PrivacyKeyService::InstallEphemeral(base::SupportsUserData& owner) {
+   return true;
+ }
+ 
+-PrivacyKeyService::PrivacyKeyService() = default;
++PrivacyKeyService::PrivacyKeyService(
++    content::NativeFingerprintDerivationMode mode)
++    : derivation_mode_(mode) {}
+ PrivacyKeyService::~PrivacyKeyService() {
+   ready_callbacks_.clear();
+   Shutdown();
+@@ -66,7 +76,8 @@ PrivacyKeyService::~PrivacyKeyService() {
+ 
+ bool PrivacyKeyService::InitializeOwnedProfile(const base::FilePath& owned_profile) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+-  if (state_ != State::kUninitialized || !owned_profile.IsAbsolute() ||
++  if (!content::IsValidNativeFingerprintDerivationMode(derivation_mode_) ||
++      state_ != State::kUninitialized || !owned_profile.IsAbsolute() ||
+       owned_profile.ReferencesParent()) {
+     return false;
+   }
+@@ -84,7 +95,8 @@ bool PrivacyKeyService::InitializeOwnedProfile(const base::FilePath& owned_profi
+ 
+ bool PrivacyKeyService::InitializeEphemeral() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+-  if (state_ != State::kUninitialized) {
++  if (!content::IsValidNativeFingerprintDerivationMode(derivation_mode_) ||
++      state_ != State::kUninitialized) {
+     return false;
+   }
+   key_ = PrivacyProfileKey::CreateEphemeral();
+@@ -126,6 +138,28 @@ std::optional<std::array<uint8_t, 32>> PrivacyKeyService::DeriveProfileIdentity(
+   return key_->DeriveProfileIdentity(trusted_partition, surface);
+ }
+ 
++content::NativeFingerprintDerivationMode PrivacyKeyService::derivation_mode()
++    const {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  return derivation_mode_;
++}
++
++std::optional<std::array<uint8_t, 32>> PrivacyKeyService::DeriveSelected(
++    const blink::StorageKey& trusted_partition,
++    std::string_view surface) const {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (state_ != State::kReady || !key_) {
++    return std::nullopt;
++  }
++  switch (derivation_mode_) {
++    case content::NativeFingerprintDerivationMode::kPartitionedPrivacy:
++      return key_->Derive(trusted_partition, surface);
++    case content::NativeFingerprintDerivationMode::kProfileIdentity:
++      return key_->DeriveProfileIdentity(trusted_partition, surface);
++  }
++  return std::nullopt;
++}
++
+ void PrivacyKeyService::WhenReady(base::OnceCallback<void(bool)> callback) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   CHECK(callback);
+diff --git a/content/browser/camouflow_native/privacy_key_service.h b/content/browser/camouflow_native/privacy_key_service.h
+index 06ff20c..483b029 100644
+--- a/content/browser/camouflow_native/privacy_key_service.h
++++ b/content/browser/camouflow_native/privacy_key_service.h
+@@ -15,22 +15,34 @@
+ #include "base/sequence_checker.h"
+ #include "base/supports_user_data.h"
+ #include "content/browser/camouflow_native/privacy_profile_key.h"
++#include "content/public/browser/native_privacy_context.h"
+ 
+ namespace camouflow::native {
+ 
+ class PrivacyKeyService : public base::SupportsUserData::Data {
+  public:
+   enum class State { kUninitialized, kLoading, kReady, kFailed, kStopped };
+-  PrivacyKeyService();
++  explicit PrivacyKeyService(
++      content::NativeFingerprintDerivationMode mode =
++          content::NativeFingerprintDerivationMode::kPartitionedPrivacy);
+   ~PrivacyKeyService() override;
+   static PrivacyKeyService* GetForOwner(base::SupportsUserData& owner);
+-  static bool InstallOwnedProfile(base::SupportsUserData& owner,
+-                                  const base::FilePath& owned_profile);
++  static bool InstallOwnedProfile(
++      base::SupportsUserData& owner,
++      const base::FilePath& owned_profile,
++      content::NativeFingerprintDerivationMode mode =
++          content::NativeFingerprintDerivationMode::kPartitionedPrivacy);
+   // Startup-only: caller explicitly permits bounded identity-file I/O before
+   // exposing the profile or creating its first renderer. Failure installs Failed.
+   static bool InstallOwnedProfileBeforeFirstFrame(
+-      base::SupportsUserData& owner, const base::FilePath& owned_profile);
+-  static bool InstallEphemeral(base::SupportsUserData& owner);
++      base::SupportsUserData& owner,
++      const base::FilePath& owned_profile,
++      content::NativeFingerprintDerivationMode mode =
++          content::NativeFingerprintDerivationMode::kPartitionedPrivacy);
++  static bool InstallEphemeral(
++      base::SupportsUserData& owner,
++      content::NativeFingerprintDerivationMode mode =
++          content::NativeFingerprintDerivationMode::kPartitionedPrivacy);
+   // Each service must be owned by one BrowserContext; no redirect to original.
+   bool InitializeOwnedProfile(const base::FilePath& owned_profile);
+   bool InitializeEphemeral();
+@@ -49,9 +61,15 @@ class PrivacyKeyService : public base::SupportsUserData::Data {
+       const blink::StorageKey& trusted_partition,
+       std::string_view surface) const;
+ 
++  content::NativeFingerprintDerivationMode derivation_mode() const;
++  std::optional<std::array<uint8_t, 32>> DeriveSelected(
++      const blink::StorageKey& trusted_partition,
++      std::string_view surface) const;
++
+  private:
+   void Loaded(std::unique_ptr<PrivacyProfileKey> key);
+   void NotifyReadiness();
++  const content::NativeFingerprintDerivationMode derivation_mode_;
+   State state_ = State::kUninitialized;
+   std::unique_ptr<PrivacyProfileKey> key_;
+   std::vector<base::OnceCallback<void(bool)>> ready_callbacks_;
+diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/content/browser/camouflow_native/privacy_key_service_unittest.cc
+index 5a80711..8044a99 100644
+--- a/content/browser/camouflow_native/privacy_key_service_unittest.cc
++++ b/content/browser/camouflow_native/privacy_key_service_unittest.cc
+@@ -405,4 +405,131 @@ TEST_F(NativePrivacyKeyServiceTest, ProfileIdentityOwnedReloadPreservesTheKey) {
+   EXPECT_EQ(identity, restarted.DeriveProfileIdentity(Partition(), "canvas"));
+ }
+ 
++TEST_F(NativePrivacyKeyServiceTest,
++       SelectedDefaultPreservesPartitionedPrivacy) {
++  PrivacyKeyService service;
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(service.derivation_mode(),
++            content::NativeFingerprintDerivationMode::kPartitionedPrivacy);
++  const auto other = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test")));
++  for (const auto* surface : {"canvas", "webgl", "webgpu", "audio"}) {
++    const auto selected = service.DeriveSelected(Partition(), surface);
++    ASSERT_TRUE(selected);
++    EXPECT_EQ(selected, service.Derive(Partition(), surface));
++    EXPECT_NE(selected, service.DeriveSelected(other, surface));
++    EXPECT_NE(selected, service.DeriveProfileIdentity(Partition(), surface));
++  }
++}
++
++TEST_F(NativePrivacyKeyServiceTest, SelectedIdentityIsStableAcrossPartitions) {
++  PrivacyKeyService service(
++      content::NativeFingerprintDerivationMode::kProfileIdentity);
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  const auto other = blink::StorageKey::CreateFirstParty(
++      url::Origin::Create(GURL("https://other.test")));
++  for (const auto* surface : {"canvas", "webgl", "webgpu", "audio"}) {
++    const auto selected = service.DeriveSelected(Partition(), surface);
++    ASSERT_TRUE(selected);
++    EXPECT_EQ(selected, service.DeriveProfileIdentity(Partition(), surface));
++    EXPECT_EQ(selected, service.DeriveSelected(other, surface));
++    EXPECT_NE(selected, service.Derive(Partition(), surface));
++  }
++  EXPECT_FALSE(service.DeriveSelected(Partition(), "unknown"));
++}
++
++TEST_F(NativePrivacyKeyServiceTest,
++       SelectedModeRejectsUntilReadyAndAfterShutdown) {
++  PrivacyKeyService service(
++      content::NativeFingerprintDerivationMode::kProfileIdentity);
++  EXPECT_FALSE(service.DeriveSelected(Partition(), "canvas"));
++  ASSERT_TRUE(service.InitializeOwnedProfile(owned_.GetPath()));
++  EXPECT_EQ(service.state(), State::kLoading);
++  EXPECT_FALSE(service.DeriveSelected(Partition(), "canvas"));
++  tasks_.RunUntilIdle();
++  ASSERT_TRUE(service.DeriveSelected(Partition(), "canvas"));
++  service.Shutdown();
++  EXPECT_FALSE(service.DeriveSelected(Partition(), "canvas"));
++  EXPECT_FALSE(service.InitializeEphemeral());
++}
++
++TEST_F(NativePrivacyKeyServiceTest, InvalidModeRejectsBothInitializers) {
++  const auto invalid =
++      static_cast<content::NativeFingerprintDerivationMode>(99);
++  PrivacyKeyService service(invalid);
++  EXPECT_FALSE(service.InitializeOwnedProfile(owned_.GetPath()));
++  EXPECT_FALSE(service.InitializeEphemeral());
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(service.state(), State::kUninitialized);
++  EXPECT_FALSE(service.DeriveSelected(Partition(), "canvas"));
++  std::string persisted;
++  ASSERT_TRUE(base::ReadFileToString(
++      owned_.GetPath().AppendASCII("camouflow-native-privacy.json"),
++      &persisted));
++  EXPECT_EQ(persisted, kIdentity);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, InvalidModeDoesNotInstallAnOwnerService) {
++  struct Owner : base::SupportsUserData {};
++  Owner owner;
++  const auto invalid =
++      static_cast<content::NativeFingerprintDerivationMode>(-1);
++  EXPECT_FALSE(
++      PrivacyKeyService::InstallOwnedProfile(owner, owned_.GetPath(), invalid));
++  EXPECT_FALSE(PrivacyKeyService::InstallOwnedProfileBeforeFirstFrame(
++      owner, owned_.GetPath(), invalid));
++  EXPECT_FALSE(PrivacyKeyService::InstallEphemeral(owner, invalid));
++  EXPECT_EQ(PrivacyKeyService::GetForOwner(owner), nullptr);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, InstalledModeCannotBeReplaced) {
++  struct Owner : base::SupportsUserData {};
++  Owner owner;
++  ASSERT_TRUE(PrivacyKeyService::InstallEphemeral(
++      owner, content::NativeFingerprintDerivationMode::kProfileIdentity));
++  auto* service = PrivacyKeyService::GetForOwner(owner);
++  ASSERT_NE(service, nullptr);
++  const auto selected = service->DeriveSelected(Partition(), "canvas");
++  ASSERT_TRUE(selected);
++  EXPECT_FALSE(PrivacyKeyService::InstallEphemeral(owner));
++  EXPECT_FALSE(PrivacyKeyService::InstallOwnedProfile(owner, owned_.GetPath()));
++  EXPECT_FALSE(PrivacyKeyService::InstallOwnedProfileBeforeFirstFrame(
++      owner, owned_.GetPath()));
++  EXPECT_EQ(PrivacyKeyService::GetForOwner(owner), service);
++  EXPECT_EQ(service->derivation_mode(),
++            content::NativeFingerprintDerivationMode::kProfileIdentity);
++  EXPECT_EQ(selected, service->DeriveSelected(Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyKeyServiceTest, SelectedIdentityReloadPreservesModeAndKey) {
++  PrivacyKeyService first(
++      content::NativeFingerprintDerivationMode::kProfileIdentity);
++  ASSERT_TRUE(first.InitializeOwnedProfile(owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  const auto selected = first.DeriveSelected(Partition(), "canvas");
++  ASSERT_TRUE(selected);
++  first.Shutdown();
++  PrivacyKeyService restarted(
++      content::NativeFingerprintDerivationMode::kProfileIdentity);
++  ASSERT_TRUE(restarted.InitializeOwnedProfile(owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(selected, restarted.DeriveSelected(Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyKeyServiceTest,
++       SelectedEphemeralIdentityOwnersStayIndependent) {
++  PrivacyKeyService first(
++      content::NativeFingerprintDerivationMode::kProfileIdentity);
++  PrivacyKeyService second(
++      content::NativeFingerprintDerivationMode::kProfileIdentity);
++  ASSERT_TRUE(first.InitializeEphemeral());
++  ASSERT_TRUE(second.InitializeEphemeral());
++  const auto selected = first.DeriveSelected(Partition(), "canvas");
++  ASSERT_TRUE(selected);
++  EXPECT_NE(selected, second.DeriveSelected(Partition(), "canvas"));
++  EXPECT_EQ(selected, first.DeriveSelected(Partition(), "canvas"));
++}
++
+ }  // namespace camouflow::native
+diff --git a/content/public/browser/native_privacy_context.h b/content/public/browser/native_privacy_context.h
+index bdf19cf..8f97557 100644
+--- a/content/public/browser/native_privacy_context.h
++++ b/content/public/browser/native_privacy_context.h
+@@ -15,19 +15,36 @@ namespace blink { class StorageKey; }
+ namespace content {
+ class BrowserContext;
+ 
++// Browser-owned derivation strategy, not a verified renderer fingerprint mode.
++enum class NativeFingerprintDerivationMode {
++  kPartitionedPrivacy = 0,
++  kProfileIdentity = 1,
++};
++inline bool IsValidNativeFingerprintDerivationMode(
++    NativeFingerprintDerivationMode mode) {
++  return mode == NativeFingerprintDerivationMode::kPartitionedPrivacy ||
++         mode == NativeFingerprintDerivationMode::kProfileIdentity;
++}
++
+ // Explicit development opt-in; does not enable any protected fingerprint surface.
+ inline constexpr char kNativePrivacyKeyServiceSwitch[] = "camouflow-native-privacy-key-service";
+ 
+ // UI thread only. Persistent roots must be owned and process-locked by the embedder.
+ // Off-the-record contexts require an empty root and never read the persistent key.
+-CONTENT_EXPORT bool InitializeNativePrivacyContext(BrowserContext* context,
+-                                                   const base::FilePath& owned_root);
++CONTENT_EXPORT bool InitializeNativePrivacyContext(
++    BrowserContext* context,
++    const base::FilePath& owned_root,
++    NativeFingerprintDerivationMode mode =
++        NativeFingerprintDerivationMode::kPartitionedPrivacy);
+ // Startup-only UI-sequence initialization before profile publication/frames.
+ // Caller must explicitly permit the existing bounded identity-file read. No
+ // nested event loop, identity regeneration or async fallback. Ready or Failed
+ // is installed before returning; query readiness separately.
+ CONTENT_EXPORT bool InitializeNativePrivacyContextBeforeFirstFrame(
+-    BrowserContext* context, const base::FilePath& owned_root);
++    BrowserContext* context,
++    const base::FilePath& owned_root,
++    NativeFingerprintDerivationMode mode =
++        NativeFingerprintDerivationMode::kPartitionedPrivacy);
+ CONTENT_EXPORT void ShutdownNativePrivacyContext(BrowserContext* context);
+ CONTENT_EXPORT bool IsNativePrivacyContextReady(BrowserContext* context);
+ // UI thread only. Initialization must precede waiting. Terminal results run
+@@ -47,6 +64,13 @@ CONTENT_EXPORT std::optional<std::array<uint8_t, 32>>
+ DeriveNativeProfileIdentityKey(BrowserContext* context,
+                                const blink::StorageKey& trusted_partition,
+                                std::string_view surface);
++// Ready/UI-sequence only. The mode is immutable for the installed service.
++CONTENT_EXPORT std::optional<NativeFingerprintDerivationMode>
++GetNativeFingerprintDerivationMode(BrowserContext* context);
++CONTENT_EXPORT std::optional<std::array<uint8_t, 32>>
++DeriveNativeSelectedFingerprintKey(BrowserContext* context,
++                                   const blink::StorageKey& trusted_partition,
++                                   std::string_view surface);
+ }  // namespace content
+ 
+ #endif  // CONTENT_PUBLIC_BROWSER_NATIVE_PRIVACY_CONTEXT_H_
