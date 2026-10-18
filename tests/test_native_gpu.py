@@ -267,6 +267,48 @@ def test_gpu_cli_records_failure_without_admission(tmp_path, monkeypatch):
     assert evidence["error"] and not evidence["checks"]
 
 
+@pytest.mark.parametrize("failed", [False, True])
+@pytest.mark.parametrize("mutation", [None, "runtime", "input", "deleted-runtime", "deleted-input"])
+def test_gpu_cli_postguards_run_after_success_and_expected_failure(tmp_path, monkeypatch, failed, mutation):
+    import hashlib
+    from types import SimpleNamespace
+
+    from scripts import verify_native_gpu as gpu
+
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"owned runtime")
+    source = tmp_path / "probe.py"
+    source.write_bytes(b"owned probe")
+    report = tmp_path / "report.json"
+    monkeypatch.setattr(sys, "argv", ["probe", "--executable", str(executable),
+                                     "--work-dir", str(tmp_path / "owned"), "--report", str(report)])
+    monkeypatch.setattr(gpu, "measure_runtime_core", lambda path, directory: {"chrome.exe": hashlib.sha256(path.read_bytes()).hexdigest()})
+    monkeypatch.setattr(gpu, "probe_inputs", lambda: {"probe": hashlib.sha256(source.read_bytes()).hexdigest()})
+    monkeypatch.setattr(gpu, "FixtureServer", lambda *args: SimpleNamespace(
+        server_port=1, serve_forever=lambda: None, server_close=lambda: None, shutdown=lambda: None))
+    async def verify(*args):
+        if mutation == "runtime":
+            executable.write_bytes(b"changed runtime")
+        elif mutation == "input":
+            source.write_bytes(b"changed probe")
+        elif mutation == "deleted-runtime":
+            executable.unlink()
+        elif mutation == "deleted-input":
+            source.unlink()
+        if failed:
+            raise ValueError("Translated shader metadata still exposed: owned fixture")
+    monkeypatch.setattr(gpu, "verify", verify)
+    assert gpu.main() == (1 if failed or mutation else 0)
+    evidence = json.loads(report.read_bytes())
+    assert evidence["passed"] is (not failed and mutation is None)
+    assert evidence["privacy_admitted"] is False
+    assert evidence["runtime_core_unchanged"] is (mutation not in {"runtime", "deleted-runtime"})
+    assert evidence["probe_inputs_unchanged"] is (mutation not in {"input", "deleted-input"})
+    if failed:
+        assert evidence["error"].startswith("Translated shader metadata still exposed: ")
+    assert ("guard_error" in evidence) is bool(mutation)
+
+
 def readback_observation(*, protected=False):
     from PyQt6.QtCore import QBuffer, QIODevice
     from PyQt6.QtGui import QColor, QImage

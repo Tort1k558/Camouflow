@@ -68,7 +68,7 @@ jobs:
         run: python -m compileall -q app main.py scripts
 
       - name: Undefined names and syntax errors
-        run: ruff check app --select F821,F822,F823,E9
+        run: ruff check app scripts --select F821,F822,F823,E9
 
   qml-smoke:
     env:
@@ -313,6 +313,47 @@ jobs:
           import sys
           from pathlib import Path
           subprocess.run([sys.executable, "scripts/verify_native_runtime.py", "--work-dir", str(Path(os.environ["RUNNER_TEMP"]) / "camouflow-native-checks"), "--report", "outputs/native-runtime/source.json"], check=True)
+      - name: Calibrate GPU operation probes on unpatched upstream Chromium
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/camouflow-native-browsers
+        shell: python
+        run: |
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as driver:
+              executable = driver.chromium.executable_path
+          report_path = Path("outputs/native-runtime/gpu-upstream-baseline.json")
+          subprocess.run([sys.executable, "scripts/verify_native_gpu.py", "--executable", executable,
+                          "--work-dir", str(Path(os.environ["RUNNER_TEMP"]) / "camouflow-native-gpu"),
+                          "--report", str(report_path)], check=True, timeout=240)
+          report = json.loads(report_path.read_text(encoding="utf-8"))
+          if report.get("passed") is not True or report.get("privacy_admitted") is not False:
+              raise SystemExit("Upstream GPU baseline did not produce diagnostic-only evidence")
+          for phase in report["checks"]:
+              print(phase["name"], phase["coverage"])
+              if phase["coverage"]["webgpu"] == 0:
+                  print("WebGPU unavailable on this runner: no WebGPU coverage claimed")
+          negative_path = Path("outputs/native-runtime/gpu-upstream-negative.json")
+          result = subprocess.run([sys.executable, "scripts/verify_native_gpu.py", "--executable", executable,
+                                   "--work-dir", str(Path(os.environ["RUNNER_TEMP"]) / "camouflow-native-gpu"),
+                                   "--report", str(negative_path), "--minimized"], check=False, timeout=240)
+          negative = json.loads(negative_path.read_text(encoding="utf-8"))
+          expected = ("Translated shader metadata still exposed: ", "GPU debug metadata still exposed: ",
+                      "WebGPU identifying strings still exposed: ")
+          if (result.returncode != 1 or negative.get("passed") is not False
+                  or negative.get("privacy_admitted") is not False
+                  or not negative.get("error", "").startswith(expected)
+                  or negative.get("runtime_core_unchanged") is not True
+                  or negative.get("probe_inputs_unchanged") is not True):
+              raise SystemExit("Unpatched GPU policy was not rejected with unchanged measured inputs")
+          checks = negative["checks"]
+          if len(checks) != 3 or not all(check["passed"] is True for check in checks[:2]) or checks[2]["passed"] is not False:
+              raise SystemExit("GPU negative control did not retain both successful baseline phases")
+          print("GPU baseline operations passed; unpatched minimization switch correctly rejected")
       - name: Prove native hardware gate rejects an unpatched upstream browser
         env:
           PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/camouflow-native-browsers

@@ -1452,6 +1452,37 @@ The GPU verifier itself passed Ruff; current probe hashes match the saved
 runtime evidence. The final missing/duplicate/malformed coverage subset passed
 all **9 negative-control cases**.
 
+### Upstream calibration and failed-report integrity
+
+The same GPU probe passed on the installed unpatched Playwright Chromium
+**148.0.7778.96**: two baseline/restart phases, eight WebGL1/WebGL2/WebGPU
+contexts each and **96 shader texture cases**. Requesting Glint metadata
+minimization on that unpatched binary was correctly rejected after both good
+baseline phases: `Translated shader metadata still exposed: document/webgl`.
+This is an expected negative control, not a failed ordinary-browser operation.
+
+Failed GPU probes now run runtime-core and source-input postguards too; previously
+an exception skipped those checks. Reports explicitly record both unchanged flags,
+and changed/deleted inputs invalidate the evidence even if the original error
+looks like the expected policy rejection. Ten Python cases cover success/failure
+with changed/deleted runtime and probe inputs.
+
+| Private report | Actual result |
+| --- | --- |
+| `gpu-upstream-guarded-v2/positive.json` | Unpatched baseline passed; both postguards true |
+| `gpu-upstream-guarded-v2/negative.json` | Expected policy rejection; both postguards true |
+| `gpu-shader-guarded-001-062-v2/report.json` | Glint 148: all four phases passed; both postguards true |
+
+Reports live on D: under `CamouFlowNative`. Desktop CI now includes upstream
+GPU calibration/negative control and archives their JSON. An unavailable runner
+WebGPU API remains zero coverage, not a WebGPU PASS; no alternate backend or unsafe
+flag is enabled. CI also checks undefined names/syntax in `scripts/` as well as
+`app/`. These checks do not compile/admit Chromium 156 or publish a new runtime.
+The full local Python regression passed **2704 tests in 127.93 seconds**;
+selected undefined-name/syntax checks passed and all eight workflow Python
+blocks parsed. The updated workflow still requires a fresh completed CI run;
+local calibration is not a claim that the full remote pipeline is green.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

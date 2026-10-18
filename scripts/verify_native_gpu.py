@@ -462,6 +462,8 @@ def main() -> int:
               "scope": "Local GPU metadata, GLSL draw/crop/repeat, WebGL2 PBO/pack padding, WebGPU buffer/compute and texture/mip/layer transfer plus shader-render readback diagnostics; no GPU readback privacy or anti-bot claim"}
     server = None
     thread = None
+    core = None
+    inputs = None
     try:
         executable = args.executable.resolve(strict=True)
         if not executable.is_file():
@@ -477,10 +479,6 @@ def main() -> int:
         thread.start()
         with tempfile.TemporaryDirectory(prefix="glint-gpu-owned-", dir=args.work_dir.resolve()) as owned:
             asyncio.run(verify(executable, Path(owned), f"http://127.0.0.1:{server.server_port}", report, args.minimized))
-        if measure_runtime_core(executable, args.windows_library_directory) != core:
-            raise ValueError("Chromium runtime core changed during GPU verification")
-        if probe_inputs() != inputs:
-            raise ValueError("GPU probe inputs changed during verification")
         report["passed"] = True
     except Exception as error:  # noqa: BLE001 - persist failed diagnostic evidence before exiting
         report.update(error=str(error), traceback=traceback.format_exc())
@@ -491,6 +489,22 @@ def main() -> int:
             server.server_close()
         if thread is not None:
             thread.join(timeout=5)
+        if core is not None:
+            try:
+                report["runtime_core_unchanged"] = measure_runtime_core(executable, args.windows_library_directory) == core
+            except (OSError, ValueError) as error:
+                report["runtime_core_unchanged"] = False
+                report["runtime_guard_error"] = str(error)
+        if inputs is not None:
+            try:
+                report["probe_inputs_unchanged"] = probe_inputs() == inputs
+            except (OSError, ValueError) as error:
+                report["probe_inputs_unchanged"] = False
+                report["input_guard_error"] = str(error)
+        if any(report.get(key) is False for key in ("runtime_core_unchanged", "probe_inputs_unchanged")):
+            report["passed"] = False
+            report["guard_error"] = "GPU evidence postguards failed"
+            report.setdefault("error", report["guard_error"])
         args.report.parent.mkdir(parents=True, exist_ok=True)
         with args.report.open("x", encoding="utf-8") as output:
             output.write(json.dumps(report, indent=2))
