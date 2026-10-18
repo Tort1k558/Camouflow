@@ -129,6 +129,35 @@ int main() {
   if (!restricted)
     return 1;
   check(restricted->GetFontFamilyCount() == 1, "only selected native family remains");
+  ComPtr<IDWriteFontCollection1> restricted_v1;
+  hr = restricted.As(&restricted_v1);
+  check(SUCCEEDED(hr) && restricted_v1, "restricted collection supports font-set conversion");
+  if (!restricted_v1)
+    return 1;
+  ComPtr<IDWriteFontSet> restricted_set;
+  hr = restricted_v1->GetFontSet(&restricted_set);
+  check(SUCCEEDED(hr) && restricted_set, "restricted native font set exists");
+  if (!restricted_set)
+    return 1;
+  ComPtr<IDWriteFontSet> system_set;
+  hr = factory->GetSystemFontSet(&system_set);
+  check(SUCCEEDED(hr) && system_set, "unrestricted local-font positive control");
+  if (!system_set)
+    return 1;
+  for (const wchar_t* name : {L"Arial", L"Segoe UI"}) {
+    DWRITE_FONT_PROPERTY property = {DWRITE_FONT_PROPERTY_ID_FULL_NAME, name, L""};
+    ComPtr<IDWriteFontSet> system_matches;
+    ComPtr<IDWriteFontSet> restricted_matches;
+    hr = system_set->GetMatchingFonts(&property, 1, &system_matches);
+    check(SUCCEEDED(hr) && system_matches && system_matches->GetFontCount() > 0,
+          "actual unique-name lookup has an unrestricted positive control");
+    hr = restricted_set->GetMatchingFonts(&property, 1, &restricted_matches);
+    check(SUCCEEDED(hr) && restricted_matches, "restricted unique-name lookup succeeds");
+    if (!restricted_matches)
+      return 1;
+    check((restricted_matches->GetFontCount() > 0) == (std::wstring_view(name) == L"Arial"),
+          "font-set unique-name lookup retains allowed font and excludes other family");
+  }
   UINT32 original_index = 0;
   BOOL exists = FALSE;
   system->FindFamilyName(L"Arial", &original_index, &exists);

@@ -1,0 +1,176 @@
+{
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "source_files": [
+    {
+      "path": "build/toolchain/win/midl.py",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/build/toolchain/win/midl.py?format=TEXT",
+      "bytes": 21896,
+      "sha256": "8a805574f0140476837fcd2a5b6cdce8246cfbc416ca70c3b061e99242843564"
+    },
+    {
+      "path": "chrome/VERSION",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/VERSION?format=TEXT",
+      "bytes": 38,
+      "sha256": "411431988782ae7de41a119d839bee80d229a101db5f1847810e93e4f8db125e"
+    },
+    {
+      "path": "chrome/browser/renderer_preferences_util.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/browser/renderer_preferences_util.cc?format=TEXT",
+      "bytes": 10539,
+      "sha256": "a2e51d5bdb659fc839717b7458680e495f5166c6065d1ef22d27ea8ced4634e0"
+    },
+    {
+      "path": "components/embedder_support/user_agent_utils.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/embedder_support/user_agent_utils.cc?format=TEXT",
+      "bytes": 34560,
+      "sha256": "0e3acc91465a072ec95505443a641ae60666d84beabe35107ccd3e084313a094"
+    },
+    {
+      "path": "components/embedder_support/user_agent_utils_unittest.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/embedder_support/user_agent_utils_unittest.cc?format=TEXT",
+      "bytes": 47553,
+      "sha256": "a63abfb4a221042b3cb660e54280c5db68d5220a7583f904e50b31439bebdf11"
+    },
+    {
+      "path": "components/services/font_data/DEPS",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/services/font_data/DEPS?format=TEXT",
+      "bytes": 93,
+      "sha256": "170f17e5a56da63f0b6a921e7a2dc44cb4654fc77d4f96da812aab8ae71af8ae"
+    },
+    {
+      "path": "components/services/font_data/font_data_service_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/services/font_data/font_data_service_impl.cc?format=TEXT",
+      "bytes": 23932,
+      "sha256": "507e4e1b20fe7df12c246f24700a2d61484d1efe21447d0462ed2816192a6d55"
+    },
+    {
+      "path": "content/browser/font_access/font_enumeration_data_source_win.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/font_access/font_enumeration_data_source_win.cc?format=TEXT",
+      "bytes": 8836,
+      "sha256": "a67dcd01afdd8d203a2a230731a6ffad29ba0a992b73864eb25b07a1e45c9d52"
+    },
+    {
+      "path": "content/browser/renderer_host/dwrite_font_proxy_impl_win.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/renderer_host/dwrite_font_proxy_impl_win.cc?format=TEXT",
+      "bytes": 23177,
+      "sha256": "629f77c916de27a09da6535fed3a2a163a2a813504c2815372b59d97656b9587"
+    },
+    {
+      "path": "content/browser/renderer_host/render_process_host_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/renderer_host/render_process_host_impl.cc?format=TEXT",
+      "bytes": 258123,
+      "sha256": "d168f6d921877c499312337c9ee9cfa42201ae497c5a54616acb4c3f5d11f792"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/DEPS",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/frame/DEPS?format=TEXT",
+      "bytes": 4077,
+      "sha256": "de0f08b561f656e50bf56adbbbae481da239969fac450ac9d2bff37e9e71f7c3"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/build.gni",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/frame/build.gni?format=TEXT",
+      "bytes": 8645,
+      "sha256": "17c57cf52916851823c96e78c07d148ab1178840552e55adc1ca2f0d1b11cef4"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/navigator.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/frame/navigator.cc?format=TEXT",
+      "bytes": 4659,
+      "sha256": "df8ed975407e288da7b276c3db97f92dfaf796f9e2b4e6e13679ee508713d904"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc?format=TEXT",
+      "bytes": 442,
+      "sha256": "7b689c17f7007b7e342412cb27165111fe6b5db8672ac27b8b9fc1ea0f432928"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/navigator_device_memory.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/frame/navigator_device_memory.cc?format=TEXT",
+      "bytes": 684,
+      "sha256": "69c4a6d2796ecefbb8ebeab82f866da33b5eda285612f9125d7242ed4a6bc993"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/runtime_enabled_features.json5",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/platform/runtime_enabled_features.json5?format=TEXT",
+      "bytes": 241333,
+      "sha256": "019ec774f034798c240ed78849e7446c0bfadd886c60353430c423571926c22e"
+    },
+    {
+      "path": "ui/gfx/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/ui/gfx/BUILD.gn?format=TEXT",
+      "bytes": 27582,
+      "sha256": "b3158e943992ac74e04e926fa9600e218de32c85634882b8aa1d3e574cb3bcc0"
+    },
+    {
+      "path": "components/services/font_data/dwrite_local_font_matcher.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/services/font_data/dwrite_local_font_matcher.cc?format=TEXT",
+      "bytes": 5924,
+      "sha256": "e6d5fe8fa6ce149fdc13d368f47e8b791dde4f192aa9d030950ed358c24327b3"
+    }
+  ],
+  "patches": [
+    {
+      "file": "0001-native-hardware-privacy-limits.patch",
+      "sha256": "3925b0cec579b2a73fad70463227f1b44d3c464a06f5f2ad86d39a190d2910e8",
+      "original_sha256": "66a489729badc37b3db76d3797fccd7e2822fce4896ecfea49fa77f4e84c651e",
+      "original_apply_exit": 1,
+      "rejected_paths": [
+        "third_party\\blink\\renderer\\core\\frame\\DEPS.rej",
+        "third_party\\blink\\renderer\\core\\frame\\build.gni.rej"
+      ]
+    },
+    {
+      "file": "0002-midl-locale-name-hashes.patch",
+      "sha256": "72c5c65fdfd767523370f33c4e772c29c6e17a5428b81dadef41f4b408d8b0a6",
+      "original_sha256": "e9e4ec5e23272c7429bb2f0e9db774282a137a7f2852c33f8bf792201223d75e",
+      "original_apply_exit": 1,
+      "rejected_paths": [
+        "build\\toolchain\\win\\midl.py.rej"
+      ]
+    },
+    {
+      "file": "0003-native-webrtc-routing-policy.patch",
+      "sha256": "703af6e903aafb1d202cbcc7ce8de97bd6a3fd3177c1d612efd7b4989bdf5701",
+      "original_sha256": "00755f95fae6bbb8f42202261eb602650686e1b19e6e748442757fe21e119645",
+      "original_apply_exit": 0,
+      "rejected_paths": []
+    },
+    {
+      "file": "0004-native-automation-exposure.patch",
+      "sha256": "c39be12d074a6a39b275d5553d1a8606ea641ca34e91861c227133b87b0a59ad",
+      "original_sha256": "b567b54f8131631c3c4ca3f5d41bc1bcae53966930f578333c9051811973e2a3",
+      "original_apply_exit": 1,
+      "rejected_paths": [
+        "third_party\\blink\\renderer\\platform\\runtime_enabled_features.json5.rej"
+      ]
+    },
+    {
+      "file": "0005-native-windows-font-collection.patch",
+      "sha256": "10704af84edc65880e8927241e93a9cf28a7dff507f89152fddd0013f986f4bf",
+      "original_sha256": "0ad13814c81d2572f2df7dbb6c6121bf1f39e397f22c91a627b7c78959cd84c6",
+      "original_apply_exit": 1,
+      "rejected_paths": [
+        "components\\services\\font_data\\DEPS.rej",
+        "components\\services\\font_data\\font_data_service_impl.cc.rej",
+        "content\\browser\\renderer_host\\dwrite_font_proxy_impl_win.cc.rej"
+      ]
+    },
+    {
+      "file": "0006-native-headless-user-agent.patch",
+      "sha256": "e0442474daab13665820664869b4f4fde85cb5682b0aa8a0ab5cec667c9dd871",
+      "original_sha256": "0ee3bcee1e3b3b39862d6d3530520b65f43182cfe7cf7d3cfa8993092841cbd7",
+      "original_apply_exit": 0,
+      "rejected_paths": []
+    }
+  ],
+  "scope": "Draft source-context port; no GN, compilation, runtime or production admission",
+  "python_syntax_passed": true,
+  "schema": 1,
+  "target_version": "156.0.8078.36",
+  "chromium_repository": "https://chromium.googlesource.com/chromium/src.git",
+  "compiled": false,
+  "runtime_verified": false,
+  "production_admitted": false
+}

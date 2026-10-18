@@ -3044,6 +3044,56 @@ def test_upstream_audit_binds_lock_and_bounded_https_response(tmp_path, monkeypa
         assert lock.read_bytes() == original
 
 
+@pytest.mark.parametrize("failure", [None, "source", "patch", "apply", "postguard", "deleted-input"])
+def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path, monkeypatch, failure):
+    import hashlib
+    import json
+    from scripts import verify_native_rebase_draft as draft
+
+    source = tmp_path / "source"
+    source.mkdir()
+    original = b"int value = 1;\n"
+    input_file = source / "value.cc"
+    input_file.write_bytes(original)
+    candidate = tmp_path / "draft"
+    (candidate / "patches").mkdir(parents=True)
+    patch = candidate / "patches/change.patch"
+    patch.write_text("diff --git a/value.cc b/value.cc\n--- a/value.cc\n+++ b/value.cc\n@@ -1 +1 @@\n-int value = 1;\n+int value = 2;\n", encoding="utf-8", newline="\n")
+    manifest = {"schema": 1, "target_revision": "a" * 40,
+                "source_files": [{"path": "value.cc", "sha256": hashlib.sha256(original).hexdigest()}],
+                "patches": [{"file": "change.patch", "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]}
+    (candidate / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    monkeypatch.setattr(draft, "DRAFT", candidate)
+    if failure == "source":
+        input_file.write_bytes(b"changed source")
+    if failure == "patch":
+        patch.write_bytes(b"changed patch")
+    output = tmp_path / "output"
+    if failure in {"source", "patch"}:
+        with pytest.raises(ValueError, match="checksum"):
+            draft.verify(source, output)
+        assert not output.exists()
+        return
+    run = draft.subprocess.run
+    def wrapped(command, **kwargs):
+        if command[1:3] == ["apply", "--check"] and failure == "apply":
+            return draft.subprocess.CompletedProcess(command, 1, "", "owned application failure")
+        result = run(command, **kwargs)
+        if command[1] == "apply" and "--check" not in command:
+            if failure == "postguard":
+                input_file.write_bytes(b"changed during replay")
+            elif failure == "deleted-input":
+                input_file.unlink()
+        return result
+    monkeypatch.setattr(draft.subprocess, "run", wrapped)
+    report = draft.verify(source, output)
+    assert report["passed"] is (failure is None)
+    assert report["compiled"] is False and report["runtime_verified"] is False and report["production_admitted"] is False
+    assert json.loads((output / "report.json").read_text(encoding="utf-8")) == report
+    with pytest.raises(ValueError, match="new external"):
+        draft.verify(source, output)
+
+
 def test_native_error_patch_covers_console_coercion_and_property_preview_paths():
     from scripts.native_build import ROOT
 

@@ -1259,6 +1259,20 @@ This is **not** a successfully rebased six-patch stack, compile/API validation
 or runtime proof: four earlier context checks failed and dependencies were
 not fetched. The active 148 checkout, build lock and binaries remain unchanged.
 
+The subsequent [six-patch draft port](../native/drafts/upstream-156/README.md)
+now passes sequential source-context replay on the exact 156 inputs:
+`upstream-156-replay-v2/report.json`, **6/6**, inputs unchanged. The port preserves
+upstream font-service cache/local-matcher initialization and covers the new
+DirectWrite unique-name path using the restricted collection's font set.
+Standalone Windows C++ controls verified real collection-to-font-set conversion,
+an allowed Arial match and an excluded Segoe UI match with unrestricted positive
+controls. No 156 Chromium translation unit or browser was compiled; patches
+0007-0062 and actual dependency/API/runtime compatibility remain unverified.
+The full application regression after this draft/verifier and standalone
+font-set coverage passed **2610 tests in 118.92 seconds**. Source/patch checksum
+rejection, failed application and changed/deleted-input postguards are covered;
+successful draft replay never sets compilation/runtime/production flags.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

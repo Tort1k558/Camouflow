@@ -1,0 +1,31 @@
+diff --git a/chrome/browser/renderer_preferences_util.cc b/chrome/browser/renderer_preferences_util.cc
+index 680a3df..e5d70d9 100644
+--- a/chrome/browser/renderer_preferences_util.cc
++++ b/chrome/browser/renderer_preferences_util.cc
+@@ -9,6 +9,8 @@
+ #include <string>
+ #include <vector>
+ 
++#include "base/check_op.h"
++#include "base/command_line.h"
+ #include "base/logging.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+@@ -204,6 +206,17 @@ void UpdateFromSystemSettings(blink::RendererPreferences* prefs,
+                  &prefs->webrtc_udp_min_port, &prefs->webrtc_udp_max_port);
+   prefs->webrtc_local_ips_allowed_urls = GetLocalIpsAllowedUrls(
+       pref_service->GetList(prefs::kWebRtcLocalIpsAllowedUrls));
++  const base::CommandLine* command_line =
++      base::CommandLine::ForCurrentProcess();
++  constexpr char kNativeWebRtcPolicy[] = "camouflow-webrtc-ip-handling-policy";
++  if (command_line->HasSwitch(kNativeWebRtcPolicy)) {
++    CHECK_EQ(command_line->GetSwitchValueASCII(kNativeWebRtcPolicy),
++             "disable_non_proxied_udp") << "Invalid CamouFlow WebRTC policy";
++    prefs->webrtc_ip_handling_policy =
++        blink::mojom::WebRtcIpHandlingPolicy::kDisableNonProxiedUdp;
++    prefs->webrtc_ip_handling_urls.clear();
++    prefs->webrtc_local_ips_allowed_urls.clear();
++  }
+   prefs->accept_languages = GetLanguageListForProfile(
+       profile, pref_service->GetString(language::prefs::kAcceptLanguages));
+ #if !BUILDFLAG(IS_MAC)
