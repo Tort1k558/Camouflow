@@ -3256,6 +3256,95 @@ def test_native_candidate_selection_pins_inputs_without_mutating_default_lock(tm
         build.load_candidate("../unknown")
 
 
+@pytest.mark.parametrize("failure", [None, "prepare", "apply", "dirty", "concurrent-edit"])
+def test_native_candidate_batch_application_prepares_both_repositories_and_preserves_edits(tmp_path, monkeypatch, failure):
+    import hashlib
+    import json
+    import os
+    import subprocess
+    from scripts import native_build as build
+
+    source = tmp_path / "src"
+    source.mkdir()
+    candidate_directory = tmp_path / "draft"
+    (candidate_directory / "patches").mkdir(parents=True)
+    environment = dict(os.environ)
+    revisions = []
+    rows = []
+    original = bytes(range(256))
+    for number, directory in enumerate((".", "v8"), 1):
+        repository = source / directory
+        repository.mkdir(exist_ok=True)
+        def git(*args):
+            return subprocess.check_output(["git", *args], cwd=repository, env=environment)
+        git("init", "--quiet")
+        git("config", "core.autocrlf", "false")
+        (repository / ".gitignore").write_text("v8/\n", encoding="utf-8")
+        (repository / "value.bin").write_bytes(original)
+        git("add", ".")
+        git("-c", "user.name=Glint fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "-m", "owned baseline")
+        revisions.append(git("rev-parse", "HEAD").decode().strip())
+        (repository / "value.bin").write_bytes(original[::-1])
+        content = git("diff", "--binary", "HEAD")
+        content += b"diff --git a/added.txt b/added.txt\nnew file mode 100644\n--- /dev/null\n+++ b/added.txt\n@@ -0,0 +1 @@\n+owned new file\n"
+        (repository / "value.bin").write_bytes(original)
+        if failure == "prepare" and directory == "v8":
+            content = b"invalid patch\n"
+        name = f"{number:04d}-owned.patch"
+        (candidate_directory / "patches" / name).write_bytes(content)
+        rows.append({"file": name, "directory": directory, "sha256": hashlib.sha256(content).hexdigest()})
+    candidate = {"name": "upstream-156", "directory": candidate_directory, "manifest_sha256": "a" * 64,
+                 "manifest": {"target_revision": revisions[0], "dependencies": {"v8": {"revision": revisions[1]}}, "patches": rows}}
+    monkeypatch.setattr(build, "load_candidate", lambda name: candidate)
+    if failure == "dirty":
+        (source / "user-file").write_bytes(b"preserve")
+    run = build.run
+    def wrapped(command, cwd, env, **kwargs):
+        actual_apply = command[:2] == ["git", "apply"] and "--check" not in command and "--reverse" not in command
+        if actual_apply and cwd == source / "v8" and failure in {"apply", "concurrent-edit"}:
+            if failure == "concurrent-edit":
+                (source / "user-file").write_bytes(b"preserve concurrent edit")
+            raise subprocess.CalledProcessError(1, command)
+        return run(command, cwd, env, **kwargs)
+    monkeypatch.setattr(build, "run", wrapped)
+    if failure:
+        with pytest.raises((ValueError, subprocess.SubprocessError)):
+            build.apply_candidate_patches(source, environment, candidate)
+        if failure == "concurrent-edit":
+            assert (source / "user-file").read_bytes() == b"preserve concurrent edit"
+            assert (source / "value.bin").read_bytes() == original[::-1]
+            report = json.loads(next(tmp_path.glob("glint-candidate-patches-*/report.json")).read_bytes())
+            assert report["rollback_errors"] and report["passed"] is False
+        else:
+            for repository in (source, source / "v8"):
+                assert (repository / "value.bin").read_bytes() == original
+                assert not (repository / "added.txt").exists()
+            if failure == "dirty":
+                assert (source / "user-file").read_bytes() == b"preserve"
+            else:
+                report = json.loads(next(tmp_path.glob("glint-candidate-patches-*/report.json")).read_bytes())
+                assert report["passed"] is False
+                assert report["rolled_back"] == (["."] if failure == "apply" else [])
+    else:
+        patches = build.apply_candidate_patches(source, environment, candidate)
+        assert len(patches) == 2
+        for repository in (source, source / "v8"):
+            assert (repository / "value.bin").read_bytes() == original[::-1]
+            assert (repository / "added.txt").read_bytes() == b"owned new file\n"
+        assert build.apply_candidate_patches(source, environment, candidate) == patches
+        for repository in (source, source / "v8"):
+            assert subprocess.check_output(["git", "diff", "--cached", "--name-only"], cwd=repository) == b""
+
+
+def test_native_patch_action_requires_explicit_candidate_before_any_workspace_changes(tmp_path):
+    from scripts import native_build as build
+
+    workspace = tmp_path / "not-created"
+    with pytest.raises(ValueError, match="explicit --candidate"):
+        build.execute("patch", workspace)
+    assert not workspace.exists()
+
+
 def test_native_candidate_workspace_cannot_reuse_or_be_opened_as_default(tmp_path):
     from scripts import native_build as build
 

@@ -144,12 +144,28 @@ python scripts/native_build.py preflight --workspace D:/Glint156Candidate --cand
 ```
 
 Preflight is read-only. When builds are explicitly resumed, the same selection
-must accompany `bootstrap`, `sync`, `hooks` and `build`. The first mutating step
+must accompany `bootstrap`, `sync`, `hooks`, `patch` and `build`. The first mutating step
 claims the workspace with a revision marker. Default or other-revision commands
 cannot reuse it; candidate selection cannot claim an existing nonempty checkout.
 The build requires the **complete draft chain already applied** to the full
 Chromium/V8 checkouts, rejects unrelated/partial source changes, and revalidates
-patches after compilation. This command does not install/apply patches itself.
+patches after compilation. Apply the chain explicitly after successful hooks,
+before building (never while another process is using/building that checkout):
+
+```powershell
+python scripts/native_build.py patch --workspace D:/Glint156Candidate --candidate upstream-156
+```
+
+The patch action prepares both repositories in temporary Git indexes and checks
+both complete deltas before touching source files. The real indexes stay intact.
+Already fully applied chains are validated without reapplying. Partial or
+unrelated edits are rejected. On an application/verification error, only an exact
+owned patch state can be reversed; concurrent user edits prevent automatic
+rollback and are retained for inspection. Private deltas and a JSON report remain
+under `chromium/glint-candidate-patches-*`. This is not a power-loss-atomic
+transaction across two repositories. Tiny real Git fixtures cover binary edits,
+new files, preflight failures, second-repository failure, rollback and concurrent
+edit preservation; the full Chromium 156 checkout has not run this action yet.
 Stage records and build receipts bind the candidate manifest hash; a default
 148 stage record cannot satisfy the 156 gate. Runtime verification remains false.
 

@@ -1370,6 +1370,18 @@ unverified; `compiled`, `runtime_verified` and `production_admitted` stay false.
 The full local Python regression passed **2660 tests in 132.70 seconds**;
 the final targeted build/preflight/candidate subset passed **88 tests**.
 
+The explicit candidate `patch` action now prepares the entire Chromium/V8 batch
+in temporary indexes before source changes, preserves real indexes and records
+private deltas/results. Failure reverses only exact owned states; concurrent
+edits block rollback rather than being overwritten. Real tiny Git fixtures cover
+binary/new files, invalid second-repository preparation, second apply failure,
+rollback, repeat invocation and preservation of unrelated edits. No full 156
+checkout mutation, compiler invocation or runtime result is claimed by these
+fixtures; the reviewed 148 checkout and build lock remain unchanged.
+The full local Python regression passed **2666 tests in 180.33 seconds**.
+The final focused patch-action/real-Git subset passed **6 tests in 13.85
+seconds**, including raw binary deltas without text-conversion/color filters.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

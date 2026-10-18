@@ -457,9 +457,77 @@ def candidate_source_patches(source: Path, env: dict[str, str], candidate: dict)
     return patches
 
 
+def apply_candidate_patches(source: Path, env: dict[str, str], candidate: dict) -> list[dict]:
+    if source != source.resolve() or not source.is_dir():
+        raise ValueError("Candidate source must be a canonical checkout")
+    manifest = candidate["manifest"]
+    groups = []
+    for directory in (".", "v8"):
+        repository = source / directory
+        revision = manifest["target_revision"] if directory == "." else manifest["dependencies"]["v8"]["revision"]
+        if (repository != repository.resolve()
+                or run(["git", "rev-parse", "HEAD"], repository, env, capture=True) != revision):
+            raise ValueError("Candidate patch checkout revision differs")
+        names = tuple(row["file"] for row in manifest["patches"] if row.get("directory", ".") == directory)
+        groups.append((repository, names))
+    if any(run(["git", "status", "--porcelain"], repository, env, capture=True) for repository, _ in groups):
+        return candidate_source_patches(source, env, candidate)
+    if load_candidate(candidate["name"])["manifest_sha256"] != candidate["manifest_sha256"]:
+        raise ValueError("Candidate inputs changed before patch application")
+    evidence = Path(tempfile.mkdtemp(prefix="glint-candidate-patches-", dir=source.parent))
+    report = {"passed": False, "candidate_manifest_sha256": candidate["manifest_sha256"],
+              "compiled": False, "applied": [], "rolled_back": []}
+    plans = []
+    applied = []
+    try:
+        for number, (repository, names) in enumerate(groups):
+            index_env = {**env, "GIT_INDEX_FILE": str(evidence / f"index-{number}")}
+            run(["git", "read-tree", "HEAD"], repository, index_env)
+            for name in names:
+                run(["git", "-c", "core.autocrlf=false", "apply", "--cached",
+                     str(candidate["directory"] / "patches" / name)], repository, index_env)
+            delta = evidence / f"repository-{number}.patch"
+            result = subprocess.run(["git", "diff", "--cached", "--binary", "--full-index",
+                                     "--no-ext-diff", "--no-textconv", "--no-color", "HEAD"],
+                                    cwd=repository, env=index_env, capture_output=True, check=True)
+            if not result.stdout:
+                raise ValueError("Candidate patch batch produced an empty repository delta")
+            delta.write_bytes(result.stdout)
+            run(["git", "apply", "--check", str(delta)], repository, env)
+            plans.append((repository, names, delta))
+        if (load_candidate(candidate["name"])["manifest_sha256"] != candidate["manifest_sha256"]
+                or any(run(["git", "status", "--porcelain"], repository, env, capture=True)
+                       for repository, _ in groups)):
+            raise ValueError("Candidate inputs or checkout changed during patch preparation")
+        for repository, names, delta in plans:
+            run(["git", "apply", str(delta)], repository, env)
+            applied.append((repository, names, delta))
+            report["applied"].append(repository.relative_to(source).as_posix())
+            (evidence / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+        patches = candidate_source_patches(source, env, candidate)
+        report["passed"] = True
+        return patches
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        report["error"] = str(error)
+        for repository, names, delta in reversed(applied):
+            try:
+                _source_patches(repository, env, names, index_dir=source.parent,
+                                patch_directory=candidate["directory"] / "patches")
+                run(["git", "apply", "--reverse", "--check", str(delta)], repository, env)
+                run(["git", "apply", "--reverse", str(delta)], repository, env)
+                report["rolled_back"].append(repository.relative_to(source).as_posix())
+            except (OSError, ValueError, subprocess.SubprocessError) as rollback_error:
+                report.setdefault("rollback_errors", []).append(str(rollback_error))
+        raise ValueError(f"Candidate patch application failed; evidence: {evidence}") from error
+    finally:
+        (evidence / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+
 def execute(action: str, workspace: Path, *, backing_volume: Path | None = None, jobs: int | None = None,
             candidate_name: str | None = None) -> None:
     candidate = None if candidate_name is None else load_candidate(candidate_name)
+    if action == "patch" and candidate is None:
+        raise ValueError("Patch application requires an explicit --candidate selection")
     lock = LOCK if candidate is None else candidate["lock"]
     jobs = lock["build_jobs"] if jobs is None else jobs
     if type(jobs) is not int or not 1 <= jobs <= lock["build_jobs"]:
@@ -512,6 +580,12 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
         record_stage(chromium, "hooks", candidate)
         return
     require_stage(chromium, "hooks", candidate)
+    if action == "patch":
+        patches = apply_candidate_patches(source, env, candidate)
+        require_stage(chromium, "sync", candidate)
+        require_stage(chromium, "hooks", candidate)
+        print(json.dumps({"candidate_patches_applied": len(patches), "compiled": False}), flush=True)
+        return
     patches = (candidate_source_patches(source, env, candidate) if candidate
                else source_patches(source, env) + v8_source_patches(source, env))
     if patches:
@@ -550,7 +624,7 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("preflight", "bootstrap", "sync", "hooks", "build"))
+    parser.add_argument("action", choices=("preflight", "bootstrap", "sync", "hooks", "patch", "build"))
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--candidate", choices=("upstream-156",), help="Explicit research build in a separate owned workspace; not runtime admission")
     parser.add_argument("--backing-volume", type=Path, help="Also require free space on this backing volume (WSL: /mnt/d)")
