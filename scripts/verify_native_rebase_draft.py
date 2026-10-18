@@ -7,6 +7,7 @@ import ast
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
+import re
 import subprocess
 import sys
 
@@ -46,9 +47,22 @@ def verify(source: Path, output: Path) -> dict:
         inputs[row["path"]] = content
     for row in manifest["patches"]:
         path = checked_child(DRAFT / "patches", row["file"])
-        if hashlib.sha256(path.read_bytes()).hexdigest() != row["sha256"]:
+        content = path.read_bytes()
+        if hashlib.sha256(content).hexdigest() != row["sha256"]:
             raise ValueError("Draft patch checksum differs: " + row["file"])
+        if b"\r" in content or content.startswith(b"\xef\xbb\xbf"):
+            raise ValueError("Draft patches require UTF-8 without BOM and LF line endings")
+        if row.get("directory", ".") not in {".", "v8"}:
+            raise ValueError("Unsupported draft repository directory")
         patches.append(path)
+    v8 = manifest.get("dependencies", {}).get("v8")
+    if v8 is not None:
+        dependencies = inputs.get("DEPS", b"").decode("utf-8-sig")
+        revisions = re.findall(r"'v8_revision':\s*'([0-9a-f]{40})'", dependencies)
+        if revisions != [v8.get("revision")]:
+            raise ValueError("Draft V8 revision does not match Chromium DEPS")
+    if any(row.get("directory") == "v8" for row in manifest["patches"]) and v8 is None:
+        raise ValueError("V8 drafts require a pinned Chromium DEPS dependency")
     output.mkdir()
     work = output / "src"
     work.mkdir()
@@ -61,14 +75,16 @@ def verify(source: Path, output: Path) -> dict:
             path = work / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(content)
-        subprocess.run(["git", "init", "--quiet"], cwd=work, check=True, capture_output=True)
-        for patch in patches:
+        for directory in sorted({row.get("directory", ".") for row in manifest["patches"]}):
+            subprocess.run(["git", "init", "--quiet"], cwd=work / directory, check=True, capture_output=True)
+        for patch, row in zip(patches, manifest["patches"], strict=True):
+            directory = row.get("directory", ".")
             for arguments in (("--check",), ()):
-                result = subprocess.run(["git", "apply", *arguments, str(patch)], cwd=work,
+                result = subprocess.run(["git", "-c", "core.autocrlf=false", "apply", *arguments, str(patch)], cwd=work / directory,
                                         capture_output=True, text=True, check=False)
                 if result.returncode:
                     raise ValueError("Draft application failed: " + patch.name + ": " + result.stderr)
-            report["checks"].append({"patch": patch.name, "applied": True})
+            report["checks"].append({"patch": patch.name, "directory": directory, "applied": True})
         for path in work.rglob("*"):
             if path.is_file() and ".git" not in path.parts and (path.suffix == ".py" or path.name == "DEPS"):
                 ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path.relative_to(work)))

@@ -3044,8 +3044,9 @@ def test_upstream_audit_binds_lock_and_bounded_https_response(tmp_path, monkeypa
         assert lock.read_bytes() == original
 
 
-@pytest.mark.parametrize("failure", [None, "source", "patch", "apply", "postguard", "deleted-input"])
-def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path, monkeypatch, failure):
+@pytest.mark.parametrize("directory", [".", "v8"])
+@pytest.mark.parametrize("failure", [None, "source", "patch", "apply", "postguard", "deleted-input", "dependency", "directory"])
+def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path, monkeypatch, failure, directory):
     import hashlib
     import json
     from scripts import verify_native_rebase_draft as draft
@@ -3053,15 +3054,25 @@ def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path
     source = tmp_path / "source"
     source.mkdir()
     original = b"int value = 1;\n"
-    input_file = source / "value.cc"
+    input_file = source / directory / "value.cc"
+    input_file.parent.mkdir(parents=True, exist_ok=True)
     input_file.write_bytes(original)
     candidate = tmp_path / "draft"
     (candidate / "patches").mkdir(parents=True)
     patch = candidate / "patches/change.patch"
     patch.write_text("diff --git a/value.cc b/value.cc\n--- a/value.cc\n+++ b/value.cc\n@@ -1 +1 @@\n-int value = 1;\n+int value = 2;\n", encoding="utf-8", newline="\n")
     manifest = {"schema": 1, "target_revision": "a" * 40,
-                "source_files": [{"path": "value.cc", "sha256": hashlib.sha256(original).hexdigest()}],
-                "patches": [{"file": "change.patch", "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]}
+                "source_files": [{"path": input_file.relative_to(source).as_posix(), "sha256": hashlib.sha256(original).hexdigest()}],
+                "patches": [{"file": "change.patch", "sha256": hashlib.sha256(patch.read_bytes()).hexdigest(), "directory": directory}]}
+    if directory == "v8":
+        dependencies = ("vars = {'v8_revision': '" + "a" * 40 + "'}\n").encode()
+        (source / "DEPS").write_bytes(dependencies)
+        manifest["source_files"].append({"path": "DEPS", "sha256": hashlib.sha256(dependencies).hexdigest()})
+        manifest["dependencies"] = {"v8": {"revision": "a" * 40}}
+    if failure == "dependency":
+        manifest["dependencies"] = {"v8": {"revision": "b" * 40}}
+    if failure == "directory":
+        manifest["patches"][0]["directory"] = "../escape"
     (candidate / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     monkeypatch.setattr(draft, "DRAFT", candidate)
     if failure == "source":
@@ -3069,17 +3080,17 @@ def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path
     if failure == "patch":
         patch.write_bytes(b"changed patch")
     output = tmp_path / "output"
-    if failure in {"source", "patch"}:
-        with pytest.raises(ValueError, match="checksum"):
+    if failure in {"source", "patch", "dependency", "directory"}:
+        with pytest.raises(ValueError):
             draft.verify(source, output)
         assert not output.exists()
         return
     run = draft.subprocess.run
     def wrapped(command, **kwargs):
-        if command[1:3] == ["apply", "--check"] and failure == "apply":
+        if "apply" in command and "--check" in command and failure == "apply":
             return draft.subprocess.CompletedProcess(command, 1, "", "owned application failure")
         result = run(command, **kwargs)
-        if command[1] == "apply" and "--check" not in command:
+        if "apply" in command and "--check" not in command:
             if failure == "postguard":
                 input_file.write_bytes(b"changed during replay")
             elif failure == "deleted-input":
@@ -3089,9 +3100,32 @@ def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path
     report = draft.verify(source, output)
     assert report["passed"] is (failure is None)
     assert report["compiled"] is False and report["runtime_verified"] is False and report["production_admitted"] is False
+    if failure is None:
+        assert (output / "src" / directory / "value.cc").read_bytes() == b"int value = 2;\n"
     assert json.loads((output / "report.json").read_text(encoding="utf-8")) == report
     with pytest.raises(ValueError, match="new external"):
         draft.verify(source, output)
+
+
+def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches():
+    import hashlib
+    import json
+    from scripts import verify_native_rebase_draft as draft
+
+    manifest = json.loads((draft.DRAFT / "manifest.json").read_text(encoding="utf-8-sig"))
+    originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:10]
+    assert [row["file"] for row in manifest["patches"]] == [path.name for path in originals]
+    for row, original in zip(manifest["patches"], originals, strict=True):
+        content = (draft.DRAFT / "patches" / row["file"]).read_bytes()
+        assert b"\r" not in content and not content.startswith(b"\xef\xbb\xbf")
+        assert hashlib.sha256(content).hexdigest() == row["sha256"]
+        assert hashlib.sha256(original.read_bytes()).hexdigest() == row["original_sha256"]
+    assert manifest["patches"][6]["directory"] == "v8"
+    assert manifest["dependencies"]["v8"]["revision"] == "8ce248ef8f7f71c04f7faaac249a37d340279f52"
+    assert any(row["path"] == "DEPS" for row in manifest["source_files"])
+    inspector = (draft.DRAFT / "patches" / manifest["patches"][6]["file"]).read_text(encoding="utf-8")
+    assert "+  if (!isBuiltinGetter(function))" in inspector
+    assert "-bool isBuiltinGetter" not in inspector
 
 
 def test_native_error_patch_covers_console_coercion_and_property_preview_paths():

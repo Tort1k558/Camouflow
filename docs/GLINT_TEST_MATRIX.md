@@ -1273,6 +1273,17 @@ font-set coverage passed **2610 tests in 118.92 seconds**. Source/patch checksum
 rejection, failed application and changed/deleted-input postguards are covered;
 successful draft replay never sets compilation/runtime/production flags.
 
+The next draft batch extends the exact-source replay through **0010: 10/10**,
+`upstream-156-replay-v4/report.json`. Chromium DEPS pins V8
+`8ce248ef8f7f71c04f7faaac249a37d340279f52`; the verifier rejects a different
+dependency revision and applies the Inspector patch in that separate repository.
+The port retains upstream `isBuiltinGetter` protections while adding the
+existing bounded descriptor walk/no-JavaScript Error handling. LevelDB, SQL
+and profile-namespace patches pass source-context replay unchanged. Application
+now explicitly disables autocrlf and rejects BOM/CRLF patches; an initial V8
+draft's line-ending churn was removed before publication. This remains a
+source-context result, not compiled V8/SQL tests or a Chromium 156 runtime.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

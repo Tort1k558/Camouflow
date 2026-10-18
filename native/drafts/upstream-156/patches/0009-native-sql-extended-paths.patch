@@ -1,0 +1,53 @@
+diff --git a/sql/database.cc b/sql/database.cc
+--- a/sql/database.cc
++++ b/sql/database.cc
+@@ -2110,8 +2110,11 @@
+ #if BUILDFLAG(IS_WIN)
+     const bool in_memory = db_file_path == kSqliteOpenInMemoryPath;
+     if (!in_memory) {
+-      // Do not allow query injection.
+-      if (db_file_path.contains('?')) {
++      // The Windows namespace marker is part of the path, not a URI query.
++      // EscapePath encodes it; reject any other query delimiter as before.
++      const size_t query_search_start =
++          db_file_path.starts_with(R"(\\?\)") ? 4 : 0;
++      if (db_file_path.find('?', query_search_start) != std::string::npos) {
+         RecordOpenDatabaseFailureReason(
+             histogram_tag_, OpenDatabaseFailedReason::kIncorrectPath);
+         return false;
+diff --git a/sql/database_unittest.cc b/sql/database_unittest.cc
+--- a/sql/database_unittest.cc
++++ b/sql/database_unittest.cc
+@@ -2288,6 +2288,32 @@
+   ASSERT_TRUE(base::PathExists(db_path_));
+ }
+ 
++TEST_P(SQLDatabaseTestExclusiveFileLockWithSpecialChars, ExtendedNamespace) {
++  const base::FilePath extended_path(
++      FILE_PATH_LITERAL("\\\\?\\") + db_path_.value());
++  ASSERT_TRUE(db_->Open(extended_path));
++  ASSERT_TRUE(db_->Execute("CREATE TABLE data(contents INTEGER)"));
++  ASSERT_TRUE(db_->Execute("INSERT INTO data VALUES(42)"));
++
++  base::File competing(db_path_, base::File::FLAG_OPEN | base::File::FLAG_READ);
++  EXPECT_FALSE(competing.IsValid());
++  db_->Close();
++
++  ASSERT_TRUE(db_->Open(extended_path));
++  Statement read(db_->GetUniqueStatement("SELECT contents FROM data"));
++  ASSERT_TRUE(read.Step());
++  EXPECT_EQ(read.ColumnInt(0), 42);
++}
++
++TEST_P(SQLDatabaseTestExclusiveFileLockWithSpecialChars,
++       ExtendedNamespaceRejectsQueryInjection) {
++  const base::FilePath injected_path(
++      FILE_PATH_LITERAL("\\\\?\\") + db_path_.value() +
++      FILE_PATH_LITERAL("?exclusive=false"));
++  EXPECT_FALSE(db_->Open(injected_path));
++  EXPECT_FALSE(base::PathExists(db_path_));
++}
++
+ INSTANTIATE_TEST_SUITE_P(All,
+                          SQLDatabaseTestExclusiveFileLockWithSpecialChars,
+                          Values(FILE_PATH_LITERAL("!"),

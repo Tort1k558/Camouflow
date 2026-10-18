@@ -1,0 +1,173 @@
+diff --git a/src/inspector/v8-console-message.cc b/src/inspector/v8-console-message.cc
+index da35ae7..74b3634 100644
+--- a/src/inspector/v8-console-message.cc
++++ b/src/inspector/v8-console-message.cc
+@@ -114,6 +114,11 @@ class V8ValueStringBuilder {
+     if (value->IsBigInt()) return append(value.As<v8::BigInt>());
+     if (value->IsSymbol()) return append(value.As<v8::Symbol>());
+     if (value->IsArray()) return append(value.As<v8::Array>());
++    if (value->IsNativeError()) {
++      m_builder.append(ValueMirror::getErrorDescription(
++          m_context, value.As<v8::Object>(), /*includeStack=*/false));
++      return true;
++    }
+     if (value->IsProxy()) {
+       m_builder.append("[object Proxy]");
+       return true;
+diff --git a/src/inspector/value-mirror.cc b/src/inspector/value-mirror.cc
+index ac78cea..815ec89 100644
+--- a/src/inspector/value-mirror.cc
++++ b/src/inspector/value-mirror.cc
+@@ -268,38 +268,76 @@ bool isBuiltinGetter(v8::Local<v8::Function> function) {
+   return function->ScriptId() == v8::UnboundScript::kNoScriptId;
+ }
+ 
++v8::MaybeLocal<v8::Value> getErrorPropertyDescriptor(
++    v8::Local<v8::Context> context, v8::Local<v8::Object> object,
++    v8::Local<v8::Name> name) {
++  v8::Isolate* isolate = v8::Isolate::GetCurrent();
++  for (int depth = 0; depth < 128; ++depth) {
++    if (object->IsProxy()) return v8::MaybeLocal<v8::Value>();
++    v8::Local<v8::Value> descriptor;
++    if (!object->GetOwnPropertyDescriptor(context, name).ToLocal(&descriptor)) {
++      return v8::MaybeLocal<v8::Value>();
++    }
++    if (descriptor->IsObject()) return descriptor;
++    v8::Local<v8::Value> prototype = object->GetPrototype();
++    if (!prototype->IsObject()) return v8::Undefined(isolate);
++    object = prototype.As<v8::Object>();
++  }
++  return v8::MaybeLocal<v8::Value>();
++}
++
+ v8::MaybeLocal<v8::Value> getErrorProperty(v8::Local<v8::Context> context,
+                                            v8::Local<v8::Object> object,
+-                                           v8::Local<v8::String> name) {
++                                           v8::Local<v8::Name> name) {
+   v8::Isolate* isolate = v8::Isolate::GetCurrent();
+   v8::TryCatch tryCatch(isolate);
++  v8::Isolate::DisallowJavascriptExecutionScope no_javascript(
++      isolate,
++      v8::Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE);
+   v8::MicrotasksScope microtasksScope(context,
+                                       v8::MicrotasksScope::kDoNotRunMicrotasks);
++  if (name->IsString() &&
++      name.As<v8::String>()->StringEquals(toV8String(isolate, "stack"))) {
++    // Lazy stack formatting must not invoke custom name/message accessors.
++    const char* metadata_names[] = {"name", "message"};
++    for (const char* metadata_name : metadata_names) {
++      v8::Local<v8::Value> descriptor;
++      if (!getErrorPropertyDescriptor(context, object,
++                                      toV8String(isolate, metadata_name))
++               .ToLocal(&descriptor)) {
++        return v8::MaybeLocal<v8::Value>();
++      }
++      if (descriptor->IsObject() &&
++          descriptor.As<v8::Object>()
++              ->HasOwnProperty(context, toV8String(isolate, "get"))
++              .FromMaybe(true)) {
++        return v8::MaybeLocal<v8::Value>();
++      }
++    }
++  }
+   v8::Local<v8::Value> descriptor;
+-  if (!object->GetOwnPropertyDescriptor(context, name).ToLocal(&descriptor)) {
+-    tryCatch.Reset();
+-    return object->Get(context, name);
++  if (!getErrorPropertyDescriptor(context, object, name).ToLocal(&descriptor) ||
++      !descriptor->IsObject()) {
++    return v8::MaybeLocal<v8::Value>();
+   }
+-  if (!descriptor->IsObject()) return object->Get(context, name);
+-
+   v8::Local<v8::Object> descriptorObject = descriptor.As<v8::Object>();
+-  v8::Local<v8::Value> getDescriptor;
+   if (!descriptorObject->HasOwnProperty(context, toV8String(isolate, "get"))
+-           .FromJust()) {
+-    tryCatch.Reset();
+-    return object->Get(context, name);
++           .FromMaybe(true)) {
++    return descriptorObject->Get(context, toV8String(isolate, "value"));
+   }
++  v8::Local<v8::Value> getDescriptor;
+   if (!descriptorObject->Get(context, toV8String(isolate, "get"))
+            .ToLocal(&getDescriptor)) {
+-    tryCatch.Reset();
+-    return object->Get(context, name);
++    return v8::MaybeLocal<v8::Value>();
+   }
+-
+-  if (getDescriptor->IsFunction() &&
+-      !isBuiltinGetter(getDescriptor.As<v8::Function>())) {
++  if (getDescriptor->IsUndefined()) return v8::Undefined(isolate);
++  if (getDescriptor->IsProxy() || !getDescriptor->IsFunction()) {
++    return v8::MaybeLocal<v8::Value>();
++  }
++  v8::Local<v8::Function> function = getDescriptor.As<v8::Function>();
++  if (!isBuiltinGetter(function)) {
+     return v8::MaybeLocal<v8::Value>();
+   }
+-
+   return object->Get(context, name);
+ }
+ 
+@@ -310,7 +348,8 @@ v8::MaybeLocal<v8::Value> getErrorProperty(v8::Local<v8::Context> context,
+ //   * The rest is the content of the "stack" property but only with the actual
+ //     stack trace part.
+ String16 descriptionForError(v8::Local<v8::Context> context,
+-                             v8::Local<v8::Object> object) {
++                             v8::Local<v8::Object> object,
++                             bool includeStack = true) {
+   v8::Isolate* isolate = v8::Isolate::GetCurrent();
+   v8::TryCatch tryCatch(isolate);
+ 
+@@ -329,7 +368,7 @@ String16 descriptionForError(v8::Local<v8::Context> context,
+   }
+ 
+   std::optional<String16> stack;
+-  {
++  if (includeStack) {
+     v8::Local<v8::Value> stackValue;
+     if (getErrorProperty(context, object, toV8String(isolate, "stack"))
+             .ToLocal(&stackValue) &&
+@@ -1525,6 +1564,12 @@ bool doesAttributeHaveObservableSideEffectOnGet(v8::Local<v8::Context> context,
+ 
+ ValueMirror::~ValueMirror() = default;
+ 
++String16 ValueMirror::getErrorDescription(v8::Local<v8::Context> context,
++                                        v8::Local<v8::Object> object,
++                                        bool includeStack) {
++  return descriptionForError(context, object, includeStack);
++}
++
+ // static
+ bool ValueMirror::getProperties(v8::Local<v8::Context> context,
+                                 v8::Local<v8::Object> object,
+@@ -1642,7 +1687,11 @@ bool ValueMirror::getProperties(v8::Local<v8::Context> context,
+                                                           v8Name)) {
+             v8::TryCatch tryCatchFunction(isolate);
+             v8::Local<v8::Value> value;
+-            if (object->Get(context, v8Name).ToLocal(&value)) {
++            v8::MaybeLocal<v8::Value> property =
++                object->IsNativeError()
++                    ? getErrorProperty(context, object, v8Name)
++                    : object->Get(context, v8Name);
++            if (property.ToLocal(&value)) {
+               if (value->IsPromise() &&
+                   value.As<v8::Promise>()->State() == v8::Promise::kRejected) {
+                 value.As<v8::Promise>()->MarkAsHandled();
+diff --git a/src/inspector/value-mirror.h b/src/inspector/value-mirror.h
+index b758401..b25c848 100644
+--- a/src/inspector/value-mirror.h
++++ b/src/inspector/value-mirror.h
+@@ -51,6 +51,10 @@ class ValueMirror {
+  public:
+   virtual ~ValueMirror();
+ 
++  static String16 getErrorDescription(v8::Local<v8::Context> context,
++                                      v8::Local<v8::Object> object,
++                                      bool includeStack);
++
+   static std::unique_ptr<ValueMirror> create(v8::Local<v8::Context> context,
+                                              v8::Local<v8::Value> value);
+   virtual protocol::Response buildRemoteObject(

@@ -16,6 +16,10 @@ each draft patch to its hash and original registered patch hash.
 | 0004 | Existing webdriver control, updated runtime-feature registration context |
 | 0005 | Native font collection/fallback and service manager; new upstream DirectWrite local-font matcher uses the same restricted collection's font set |
 | 0006 | Existing native headless-UA control; source-context replay passed |
+| 0007 | Inspector Error-description safety, rebased onto the exact V8 dependency while retaining upstream builtin-getter checks |
+| 0008 | Existing LevelDB Windows path separator normalization |
+| 0009 | Existing extended Windows SQLite path handling and its upstream test cases |
+| 0010 | Existing Windows persistent-profile namespace handling |
 
 The font service gained an independent local-font matcher upstream. Merely
 repairing rejected patch context would leave that new path unrestricted. The
@@ -36,17 +40,27 @@ patches before creating output. It does not modify the supplied source tree.
 .venv\Scripts\python.exe scripts/verify_native_rebase_draft.py --source D:\Glint156\src --output D:\Glint156\replay-1
 ```
 
+The manifest pins V8 revision `8ce248ef8f7f71c04f7faaac249a37d340279f52`
+from the exact Chromium DEPS file, not from an unrelated Stable rollout.
+Patch 0007 runs in the separate `v8` repository directory. The verifier checks
+the DEPS binding before creating output and disables Git autocrlf for patch
+application, regardless of the user's global configuration. It rejects BOM/CRLF
+patches rather than rewriting entire source files as an incidental rebase.
+
 The output must be new, external and outside the input tree. The gate copies
 only checksummed inputs into its owned scratch directory, checks/applies all
-six patches in sequence, parses included Python/DEPS files and rechecks inputs.
-Real local evidence: `upstream-156-replay-v2/report.json` on D: **6/6 passed**.
+ten patches in sequence, parses included Python/DEPS files and rechecks inputs.
+Real local evidence: `upstream-156-replay-v4/report.json` on D: **10/10 passed**.
+The earlier v2 report covers only the first six drafts. The v3 scratch replay
+was superseded after detecting CRLF-only churn in generated V8 patch context;
+v4 uses the compact LF patch and explicit autocrlf-disabled application.
 The Windows standalone C++ policy suite also passed with added real DirectWrite
 font-set conversion and allowed/excluded unique-name positive controls. This
 does not compile the new Chromium local-font matcher translation unit.
 
 ## Still required
 
-- Port and review patches 0007-0062, including pinned V8/dependency revisions.
+- Port and review patches 0011-0062 and any additional dependency/API changes.
 - Check all new upstream paths that could bypass old policy boundaries.
 - Run GN/checkdeps and compile against the target's actual dependency set.
 - Repeat complete runtime, rendering, storage, proxy, restart and crash gates.

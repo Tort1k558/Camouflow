@@ -108,6 +108,54 @@
       "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/components/services/font_data/dwrite_local_font_matcher.cc?format=TEXT",
       "bytes": 5924,
       "sha256": "e6d5fe8fa6ce149fdc13d368f47e8b791dde4f192aa9d030950ed358c24327b3"
+    },
+    {
+      "path": "DEPS",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/DEPS?format=TEXT",
+      "bytes": 192396,
+      "sha256": "fdf1996e51bf86b491386d1119990969827b8c4a54dfe0fe384e8834af66832a"
+    },
+    {
+      "path": "v8/src/inspector/v8-console-message.cc",
+      "url": "https://chromium.googlesource.com/v8/v8/+/8ce248ef8f7f71c04f7faaac249a37d340279f52/src/inspector/v8-console-message.cc?format=TEXT",
+      "bytes": 27290,
+      "sha256": "a690e5a2bb873b3427f693379a50ebe19db4ee2e2cee44db544bd2dbe563913d"
+    },
+    {
+      "path": "v8/src/inspector/value-mirror.cc",
+      "url": "https://chromium.googlesource.com/v8/v8/+/8ce248ef8f7f71c04f7faaac249a37d340279f52/src/inspector/value-mirror.cc?format=TEXT",
+      "bytes": 78568,
+      "sha256": "c715a02ef7b2b02fe516201699c805d9dd1a73f36624768c81ed8a37f4750556"
+    },
+    {
+      "path": "v8/src/inspector/value-mirror.h",
+      "url": "https://chromium.googlesource.com/v8/v8/+/8ce248ef8f7f71c04f7faaac249a37d340279f52/src/inspector/value-mirror.h?format=TEXT",
+      "bytes": 4011,
+      "sha256": "a99c359fb6f14940c1092e57538de6c6885d918313f5117bc08fb0f4a193ed1e"
+    },
+    {
+      "path": "third_party/leveldatabase/env_chromium.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/leveldatabase/env_chromium.cc?format=TEXT",
+      "bytes": 52881,
+      "sha256": "4ce00910b0e5ee48af3c35be47b53f70426acfcd0ece43d3c26a109e9585e636"
+    },
+    {
+      "path": "sql/database.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/sql/database.cc?format=TEXT",
+      "bytes": 104952,
+      "sha256": "782a2094fecfd4d66135e1ce563e14df123ee61bcb78b9ed862710d901cb22ef"
+    },
+    {
+      "path": "sql/database_unittest.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/sql/database_unittest.cc?format=TEXT",
+      "bytes": 119291,
+      "sha256": "c0db2bb4b592b0ec03fcc3d968906d90df6276c7d0a9f8392a84997ceb39f43a"
+    },
+    {
+      "path": "chrome/app/chrome_main_delegate.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/chrome_main_delegate.cc?format=TEXT",
+      "bytes": 81296,
+      "sha256": "728fe6993ca4c3759b63f383d47a3f21a531b70fea9232932af190714ead184f"
     }
   ],
   "patches": [
@@ -163,6 +211,34 @@
       "original_sha256": "0ee3bcee1e3b3b39862d6d3530520b65f43182cfe7cf7d3cfa8993092841cbd7",
       "original_apply_exit": 0,
       "rejected_paths": []
+    },
+    {
+      "file": "0007-native-inspector-error-accessors.patch",
+      "sha256": "4117bf2b1f42641a5c60098faaeb061cdd84cdc5c2bfec97e8829d17679d70e0",
+      "original_sha256": "c15e5f2504e3335edd8911353a16946fd2f01b8673463175f651f181a68255d8",
+      "directory": "v8",
+      "original_apply_exit": 1
+    },
+    {
+      "file": "0008-native-leveldb-path-separators.patch",
+      "sha256": "0b32699a17c81752a511e1a5e531485eee2740d891ce2662830c9ba704add957",
+      "original_sha256": "0b32699a17c81752a511e1a5e531485eee2740d891ce2662830c9ba704add957",
+      "directory": ".",
+      "original_apply_exit": 0
+    },
+    {
+      "file": "0009-native-sql-extended-paths.patch",
+      "sha256": "a63bbdd4f9aa94ae7165c5c846cd9f5a283bfda7fe1db53ca26518f1abb17143",
+      "original_sha256": "a63bbdd4f9aa94ae7165c5c846cd9f5a283bfda7fe1db53ca26518f1abb17143",
+      "directory": ".",
+      "original_apply_exit": 0
+    },
+    {
+      "file": "0010-native-windows-profile-namespace.patch",
+      "sha256": "2658c560005b86977c473028a8926c5d173b0219af426d3a6210b4b772740dd4",
+      "original_sha256": "2658c560005b86977c473028a8926c5d173b0219af426d3a6210b4b772740dd4",
+      "directory": ".",
+      "original_apply_exit": 0
     }
   ],
   "scope": "Draft source-context port; no GN, compilation, runtime or production admission",
@@ -172,5 +248,11 @@
   "chromium_repository": "https://chromium.googlesource.com/chromium/src.git",
   "compiled": false,
   "runtime_verified": false,
-  "production_admitted": false
+  "production_admitted": false,
+  "dependencies": {
+    "v8": {
+      "revision": "8ce248ef8f7f71c04f7faaac249a37d340279f52",
+      "repository": "https://chromium.googlesource.com/v8/v8.git"
+    }
+  }
 }
