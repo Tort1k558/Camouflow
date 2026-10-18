@@ -1,0 +1,190 @@
+diff --git a/third_party/blink/common/storage_key/storage_key.cc b/third_party/blink/common/storage_key/storage_key.cc
+index d88ce14..ea4b4db 100644
+--- a/third_party/blink/common/storage_key/storage_key.cc
++++ b/third_party/blink/common/storage_key/storage_key.cc
+@@ -633,6 +633,61 @@ StorageKey::StorageKey(const url::Origin& origin,
+   DCHECK(IsValid());
+ }
+ 
++std::optional<std::string> StorageKey::SerializeForNativePrivacy() const {
++  constexpr size_t kMaximumBytes = 8192;
++  std::string out("CamouFlowNative/partition/v1");
++  out.push_back('\0');
++  const auto append_integer = [&out](uint64_t value, int bytes) {
++    for (int shift = (bytes - 1) * 8; shift >= 0; shift -= 8) {
++      out.push_back(static_cast<char>((value >> shift) & 0xff));
++    }
++  };
++  const auto append_nonce = [&append_integer](const base::UnguessableToken& nonce) {
++    append_integer(nonce.GetHighForSerialization(), 8);
++    append_integer(nonce.GetLowForSerialization(), 8);
++  };
++  const auto append_field = [&out, &append_integer](std::string_view value) {
++    if (value.size() > kMaximumBytes ||
++        out.size() + 4 + value.size() > kMaximumBytes) {
++      return false;
++    }
++    append_integer(value.size(), 4);
++    out.append(value);
++    return true;
++  };
++  const auto append_origin = [&out, &append_nonce, &append_integer,
++                              &append_field](const url::Origin& origin) {
++    out.push_back(origin.opaque() ? '\1' : '\0');
++    const auto& tuple = origin.GetTupleOrPrecursorTupleIfOpaque();
++    if (!append_field(tuple.scheme()) || !append_field(tuple.host())) {
++      return false;
++    }
++    append_integer(tuple.port(), 2);
++    if (origin.opaque()) {
++      const auto* nonce = origin.GetNonceForSerialization();
++      CHECK(nonce);
++      append_nonce(*nonce);
++    }
++    return true;
++  };
++  if (!append_origin(origin_) ||
++      !append_origin(top_level_site_if_third_party_enabled_.internal_value())) {
++    return std::nullopt;
++  }
++  out.push_back(ancestor_chain_bit_if_third_party_enabled_ ==
++                        blink::mojom::AncestorChainBit::kCrossSite
++                    ? '\1'
++                    : '\0');
++  out.push_back(nonce_.has_value() ? '\1' : '\0');
++  if (nonce_) {
++    append_nonce(*nonce_);
++  }
++  if (out.size() > kMaximumBytes) {
++    return std::nullopt;
++  }
++  return out;
++}
++
+ std::string StorageKey::Serialize() const {
+   DCHECK(!origin_.opaque());
+ 
+diff --git a/third_party/blink/common/storage_key/storage_key_unittest.cc b/third_party/blink/common/storage_key/storage_key_unittest.cc
+index 4aaebb6..3c84a9d 100644
+--- a/third_party/blink/common/storage_key/storage_key_unittest.cc
++++ b/third_party/blink/common/storage_key/storage_key_unittest.cc
+@@ -9,6 +9,7 @@
+ #include <utility>
+ 
+ #include "base/feature_list.h"
++#include "base/strings/string_number_conversions.h"
+ #include "base/test/gtest_util.h"
+ #include "base/test/scoped_feature_list.h"
+ #include "base/unguessable_token.h"
+@@ -68,6 +69,95 @@ class StorageKeyTest : public ::testing::Test {
+ };
+ 
+ // Test when a constructed StorageKey object should be considered valid/opaque.
++TEST_F(StorageKeyTest, NativePrivacyEncodingIsStableAndPreservesStorageFormat) {
++  const auto origin = url::Origin::Create(GURL("https://sub.example.test:8443"));
++  const auto key = StorageKey::CreateFirstParty(origin);
++  const auto storage = key.Serialize();
++  const auto privacy = key.SerializeForNativePrivacy();
++  ASSERT_TRUE(privacy);
++  EXPECT_EQ(*privacy, *key.SerializeForNativePrivacy());
++  EXPECT_EQ(*privacy, *StorageKey(key).SerializeForNativePrivacy());
++  EXPECT_EQ(key.Serialize(), storage);
++  EXPECT_NE(*privacy, storage);
++}
++
++TEST_F(StorageKeyTest, NativePrivacyEncodingHasVersionedLiteralVector) {
++  const auto key = StorageKey::Create(
++      url::Origin::Create(GURL("https://sub.example.test:8443/a")),
++      net::SchemefulSite(GURL("https://top.test")), mojom::AncestorChainBit::kCrossSite);
++  const auto privacy = key.SerializeForNativePrivacy();
++  ASSERT_TRUE(privacy);
++  EXPECT_EQ(base::HexEncode(*privacy), "43616D6F75466C6F774E61746976652F706172746974696F6E2F76310000000000056874747073000000107375622E6578616D706C652E7465737420FB0000000005687474707300000008746F702E7465737401BB0100");
++}
++
++TEST_F(StorageKeyTest, NativePrivacyEncodingRetainsSitesWithPartitioningDisabled) {
++  base::test::ScopedFeatureList features;
++  features.InitAndDisableFeature(net::features::kThirdPartyStoragePartitioning);
++  const auto origin = url::Origin::Create(GURL("https://embedded.test"));
++  const auto first = StorageKey::Create(origin, net::SchemefulSite(GURL("https://first.test")),
++                                      mojom::AncestorChainBit::kCrossSite);
++  const auto second = StorageKey::Create(origin, net::SchemefulSite(GURL("https://second.test")),
++                                       mojom::AncestorChainBit::kCrossSite);
++  EXPECT_EQ(first.Serialize(), second.Serialize());
++  ASSERT_TRUE(first.SerializeForNativePrivacy());
++  ASSERT_TRUE(second.SerializeForNativePrivacy());
++  EXPECT_NE(*first.SerializeForNativePrivacy(), *second.SerializeForNativePrivacy());
++}
++
++TEST_F(StorageKeyTest, NativePrivacyEncodingDistinguishesOpaqueOrigins) {
++  const auto first = StorageKey::CreateFirstParty(url::Origin());
++  const auto second = StorageKey::CreateFirstParty(url::Origin());
++  ASSERT_TRUE(first.SerializeForNativePrivacy());
++  ASSERT_TRUE(second.SerializeForNativePrivacy());
++  EXPECT_NE(*first.SerializeForNativePrivacy(), *second.SerializeForNativePrivacy());
++  EXPECT_EQ(*first.SerializeForNativePrivacy(), *StorageKey(first).SerializeForNativePrivacy());
++}
++
++TEST_F(StorageKeyTest, NativePrivacyEncodingDistinguishesOpaqueTopLevelSites) {
++  const auto origin = url::Origin::Create(GURL("https://embedded.test"));
++  const auto first = StorageKey::Create(origin, net::SchemefulSite(), mojom::AncestorChainBit::kCrossSite);
++  const auto second = StorageKey::Create(origin, net::SchemefulSite(), mojom::AncestorChainBit::kCrossSite);
++  ASSERT_TRUE(first.SerializeForNativePrivacy());
++  ASSERT_TRUE(second.SerializeForNativePrivacy());
++  EXPECT_NE(*first.SerializeForNativePrivacy(), *second.SerializeForNativePrivacy());
++}
++
++TEST_F(StorageKeyTest, NativePrivacyEncodingIncludesStorageNonceAndAncestorChain) {
++  const auto origin = url::Origin::Create(GURL("https://same.test"));
++  const auto first = StorageKey::CreateWithNonce(origin, base::UnguessableToken::Create());
++  const auto second = StorageKey::CreateWithNonce(origin, base::UnguessableToken::Create());
++  ASSERT_TRUE(first.SerializeForNativePrivacy());
++  ASSERT_TRUE(second.SerializeForNativePrivacy());
++  EXPECT_NE(*first.SerializeForNativePrivacy(), *second.SerializeForNativePrivacy());
++  const auto same = StorageKey::CreateFirstParty(origin);
++  const auto cross = StorageKey::Create(origin, net::SchemefulSite(origin), mojom::AncestorChainBit::kCrossSite);
++  ASSERT_TRUE(same.SerializeForNativePrivacy());
++  ASSERT_TRUE(cross.SerializeForNativePrivacy());
++  EXPECT_NE(*same.SerializeForNativePrivacy(), *cross.SerializeForNativePrivacy());
++}
++
++TEST_F(StorageKeyTest, NativePrivacyEncodingIncludesOpaquePrecursors) {
++  const auto origin = url::Origin::Create(GURL("https://embedded.test"));
++  const auto first = StorageKey::Create(origin, GetOpaqueSite(1, 2, "https://first.test"),
++                                      mojom::AncestorChainBit::kCrossSite);
++  const auto second = StorageKey::Create(origin, GetOpaqueSite(1, 2, "https://second.test"),
++                                       mojom::AncestorChainBit::kCrossSite);
++  ASSERT_TRUE(first.SerializeForNativePrivacy());
++  ASSERT_TRUE(second.SerializeForNativePrivacy());
++  EXPECT_NE(*first.SerializeForNativePrivacy(), *second.SerializeForNativePrivacy());
++}
++
++TEST_F(StorageKeyTest, NativePrivacyEncodingCanonicalizesOriginTuples) {
++  const auto first = StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://SAME.test:443/a")));
++  const auto second = StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://same.test/b")));
++  const auto port = StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://same.test:8443/a")));
++  ASSERT_TRUE(first.SerializeForNativePrivacy());
++  ASSERT_TRUE(second.SerializeForNativePrivacy());
++  ASSERT_TRUE(port.SerializeForNativePrivacy());
++  EXPECT_EQ(*first.SerializeForNativePrivacy(), *second.SerializeForNativePrivacy());
++  EXPECT_NE(*first.SerializeForNativePrivacy(), *port.SerializeForNativePrivacy());
++}
++
+ TEST_F(StorageKeyTest, ConstructionValidity) {
+   StorageKey empty = StorageKey();
+   EXPECT_TRUE(IsOpaque(empty));
+diff --git a/third_party/blink/public/common/storage_key/storage_key.h b/third_party/blink/public/common/storage_key/storage_key.h
+index 9bd6ac6..32b2d48 100644
+--- a/third_party/blink/public/common/storage_key/storage_key.h
++++ b/third_party/blink/public/common/storage_key/storage_key.h
+@@ -176,6 +176,11 @@ class BLINK_COMMON_EXPORT StorageKey {
+   // Note that this function will DCHECK if the origin is opaque.
+   std::string Serialize() const;
+ 
++  // Versioned Native privacy input, not a disk storage identifier. Includes
++  // opaque nonces and retained partition fields even when 3p storage is off.
++  // Consumers must separately enforce partitioned worker lifecycle policy.
++  std::optional<std::string> SerializeForNativePrivacy() const;
++
+   // A variant of serialization for localStorage code only.
+   // You almost always want to use Serialize() instead.
+   // Note that this function will DCHECK if the origin is opaque.

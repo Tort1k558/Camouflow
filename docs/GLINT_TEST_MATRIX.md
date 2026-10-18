@@ -1284,6 +1284,17 @@ now explicitly disables autocrlf and rejects BOM/CRLF patches; an initial V8
 draft's line-ending churn was removed before publication. This remains a
 source-context result, not compiled V8/SQL tests or a Chromium 156 runtime.
 
+The key/context batch extends replay through **0017: 17/17**,
+`upstream-156-replay-v5/report.json`, bound to 35 upstream input files.
+Key derivation, owned-file loading, service lifetime, BrowserContext ownership,
+readiness and test registration are retained; the derivation target's BUILD.gn
+insertion was adapted to the new upstream layout. Four resulting BUILD.gn files
+parsed with the installed GN tool without changing bytes
+(`upstream-156-gn-syntax-v1.json`). Regression checks bind the draft hashes to
+their originals and retain all new key/context implementation/test-file bodies.
+These are source/syntax checks only: no new GN graph, compiled key/context tests
+or Chromium 156 profile-isolation runtime result is claimed.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

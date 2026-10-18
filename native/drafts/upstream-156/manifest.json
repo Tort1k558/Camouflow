@@ -156,6 +156,60 @@
       "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/app/chrome_main_delegate.cc?format=TEXT",
       "bytes": 81296,
       "sha256": "728fe6993ca4c3759b63f383d47a3f21a531b70fea9232932af190714ead184f"
+    },
+    {
+      "path": "third_party/blink/public/common/storage_key/storage_key.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/public/common/storage_key/storage_key.h?format=TEXT",
+      "bytes": 17969,
+      "sha256": "c50fbb8162db75adf4e92ccbf2176266ef50c334f07e721b6c715d78d436296e"
+    },
+    {
+      "path": "third_party/blink/common/storage_key/storage_key.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/common/storage_key/storage_key.cc?format=TEXT",
+      "bytes": 35757,
+      "sha256": "b06e1a9880494f001c20696796243da1a5dfbcbdf73c953d78377f6b4de2bdb4"
+    },
+    {
+      "path": "third_party/blink/common/storage_key/storage_key_unittest.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/common/storage_key/storage_key_unittest.cc?format=TEXT",
+      "bytes": 68075,
+      "sha256": "c96e62d5a9fb404df78d847620ddeb701b9b23839ac49e26b5254c5f788db7df"
+    },
+    {
+      "path": "content/browser/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/BUILD.gn?format=TEXT",
+      "bytes": 160890,
+      "sha256": "9419aa1fbfc0f5e2e80f1391e13ac919cd1e2dd97053d50f78353a8fb206f1d3"
+    },
+    {
+      "path": "content/public/browser/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/public/browser/BUILD.gn?format=TEXT",
+      "bytes": 25762,
+      "sha256": "d1351708589b93c15436b1a081ab437a5e60a05347696cb366b508f483531910"
+    },
+    {
+      "path": "content/browser/browser_context_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/browser_context_impl.cc?format=TEXT",
+      "bytes": 17596,
+      "sha256": "3cf997b3d94d1da6d7cb0567629525df6f89630f37ea102ba20c9941299e6544"
+    },
+    {
+      "path": "chrome/browser/profiles/profile_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/browser/profiles/profile_impl.cc?format=TEXT",
+      "bytes": 72870,
+      "sha256": "e887443652d48563145855e2c525426aa44ccd1dc1023a7e1068fa4c092f06eb"
+    },
+    {
+      "path": "chrome/browser/profiles/off_the_record_profile_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/chrome/browser/profiles/off_the_record_profile_impl.cc?format=TEXT",
+      "bytes": 26548,
+      "sha256": "b1539681e8c3be41288c8de3a2e66843091f5898b789c0d037615c0074799e7a"
+    },
+    {
+      "path": "content/test/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/test/BUILD.gn?format=TEXT",
+      "bytes": 167268,
+      "sha256": "fa3d3f098659ce74a9b59f54183fb06a2ca8231aa17e2d6765804d8f2c23af08"
     }
   ],
   "patches": [
@@ -239,6 +293,41 @@
       "original_sha256": "2658c560005b86977c473028a8926c5d173b0219af426d3a6210b4b772740dd4",
       "directory": ".",
       "original_apply_exit": 0
+    },
+    {
+      "file": "0011-native-privacy-partition-serialization.patch",
+      "sha256": "48928b9f827a7d49125142e08b89e14899682e448e558b14db08ea23ab9525f6",
+      "original_sha256": "9295a6a5687ea61bba3252a9aaabdb4b1922116a6d426652c670d35032ffa331"
+    },
+    {
+      "file": "0012-native-browser-privacy-key-derivation.patch",
+      "sha256": "18d850c68c653ffd65fb424f5e7c137af61926d1c9a9a3414555e1bbc94c740c",
+      "original_sha256": "95d93c3abd880b8570822afe283d89508a54e08bc1f75ad0fe3fecbe7efd8a11"
+    },
+    {
+      "file": "0013-native-owned-profile-key-loader.patch",
+      "sha256": "389929c390b4db2e2d175acd503915d1ee1ee45de38414d2fd386eac77025398",
+      "original_sha256": "c819c97ee8756af42912676f9ca567223da7b5a3c00398c7ecbf45648e97e92a"
+    },
+    {
+      "file": "0014-native-private-key-service-lifecycle.patch",
+      "sha256": "afa92b06380187aa34376ace3785e91d31512b704cb4b98a1b635fe133d453b0",
+      "original_sha256": "0102764a5651df9bfa10439a7428663cda4e2754a0b5d5a3a369a172a641bf4c"
+    },
+    {
+      "file": "0015-native-browser-context-key-ownership.patch",
+      "sha256": "5e56f2d5c543c5a8796f2e708d5a44ce5c94e2373c563641e6f1665b41805522",
+      "original_sha256": "51dfcba7b78bd0458c7ca246e34d58530455e0639d1a3f0ef73c4aa532300a63"
+    },
+    {
+      "file": "0016-native-private-key-readiness.patch",
+      "sha256": "ffb217be4d1a14a2fa4712e860946d7931153dafe7531f5099eb779e7091fcd8",
+      "original_sha256": "1c7f2f7c6a9d07062806016d075f6fc06377c966c32ed6b30f337d635e0c42a0"
+    },
+    {
+      "file": "0017-native-browser-context-tests.patch",
+      "sha256": "024bd39b72dee2e6048eb127a300db919f8e78b267141ca211110ff8f6579d21",
+      "original_sha256": "d9607a9e58950576e342e87e312660aa74b30599bc135947dcdf0c83070cd19c"
     }
   ],
   "scope": "Draft source-context port; no GN, compilation, runtime or production admission",

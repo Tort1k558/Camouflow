@@ -1,0 +1,352 @@
+diff --git a/chrome/browser/profiles/off_the_record_profile_impl.cc b/chrome/browser/profiles/off_the_record_profile_impl.cc
+index 21cb081..c851391 100644
+--- a/chrome/browser/profiles/off_the_record_profile_impl.cc
++++ b/chrome/browser/profiles/off_the_record_profile_impl.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/profiles/off_the_record_profile_impl.h"
++#include "content/public/browser/native_privacy_context.h"
+ 
+ #include <memory>
+ #include <utility>
+@@ -194,6 +195,11 @@ OffTheRecordProfileImpl::OffTheRecordProfileImpl(
+ }
+ 
+ void OffTheRecordProfileImpl::Init() {
++  const auto* native_command = base::CommandLine::ForCurrentProcess();
++  if (native_command->HasSwitch(content::kNativePrivacyKeyServiceSwitch)) {
++    CHECK_EQ(native_command->GetSwitchValueASCII(content::kNativePrivacyKeyServiceSwitch), "1");
++    CHECK(content::InitializeNativePrivacyContext(this, base::FilePath()));
++  }
+   FullBrowserTransitionManager::Get()->OnProfileCreated(this);
+ 
+   BrowserContextDependencyManager::GetInstance()->CreateBrowserContextServices(
+diff --git a/chrome/browser/profiles/profile_impl.cc b/chrome/browser/profiles/profile_impl.cc
+index 81e83a8..3968f5d 100644
+--- a/chrome/browser/profiles/profile_impl.cc
++++ b/chrome/browser/profiles/profile_impl.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/profiles/profile_impl.h"
++#include "content/public/browser/native_privacy_context.h"
+ 
+ #include <stddef.h>
+ 
+@@ -733,6 +734,13 @@ void ProfileImpl::LoadPrefsForNormalStartup(bool async_prefs) {
+ }
+ 
+ void ProfileImpl::DoFinalInit(CreateMode create_mode) {
++  const auto* native_command = base::CommandLine::ForCurrentProcess();
++  if (native_command->HasSwitch(content::kNativePrivacyKeyServiceSwitch)) {
++    CHECK_EQ(native_command->GetSwitchValueASCII(content::kNativePrivacyKeyServiceSwitch), "1");
++    base::FilePath native_owned_root;
++    CHECK(base::PathService::Get(chrome::DIR_USER_DATA, &native_owned_root));
++    CHECK(content::InitializeNativePrivacyContext(this, native_owned_root));
++  }
+   TRACE_EVENT0("browser", "ProfileImpl::DoFinalInit");
+ 
+   PrefService* prefs = GetPrefs();
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+index 4c6a511..4d778b6 100644
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -132,6 +132,7 @@ source_set("browser") {
+   ldflags = []
+ 
+   deps = [
++    ":camouflow_native_privacy",
+     ":child_process_security_policy_impl",
+     "//base",
+     "//base:base_static",
+@@ -625,6 +626,7 @@ source_set("browser") {
+     "browser_child_process_host_impl_receiver_bindings.cc",
+     "browser_context.cc",
+     "browser_context_impl.cc",
++    "camouflow_native/privacy_context.cc",
+     "browser_context_impl.h",
+     "browser_interface_binders.cc",
+     "browser_interface_binders.h",
+diff --git a/content/browser/browser_context_impl.cc b/content/browser/browser_context_impl.cc
+index bbcd455..8621b3d 100644
+--- a/content/browser/browser_context_impl.cc
++++ b/content/browser/browser_context_impl.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/browser_context_impl.h"
++#include "content/public/browser/native_privacy_context.h"
+ 
+ #include <utility>
+ 
+@@ -175,6 +176,7 @@ void BrowserContextImpl::NotifyWillBeDestroyed() {
+     return;
+   }
+   will_be_destroyed_soon_ = true;
++  ShutdownNativePrivacyContext(self_);
+ 
+   self_->ForEachLoadedStoragePartition(&NotifyContextWillBeDestroyed);
+ 
+diff --git a/content/browser/camouflow_native/privacy_context.cc b/content/browser/camouflow_native/privacy_context.cc
+new file mode 100644
+index 0000000..9c77a6f
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_context.cc
+@@ -0,0 +1,52 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/public/browser/native_privacy_context.h"
++
++#include "base/files/file_path.h"
++#include "content/browser/camouflow_native/privacy_key_service.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/browser_thread.h"
++
++namespace content {
++using camouflow::native::PrivacyKeyService;
++
++bool InitializeNativePrivacyContext(BrowserContext* context,
++                                    const base::FilePath& owned_root) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!context || context->ShutdownStarted()) {
++    return false;
++  }
++  if (context->IsOffTheRecord()) {
++    return owned_root.empty() && PrivacyKeyService::InstallEphemeral(*context);
++  }
++  return PrivacyKeyService::InstallOwnedProfile(*context, owned_root);
++}
++
++void ShutdownNativePrivacyContext(BrowserContext* context) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (context) {
++    if (auto* service = PrivacyKeyService::GetForOwner(*context)) {
++      service->Shutdown();
++    }
++  }
++}
++
++bool IsNativePrivacyContextReady(BrowserContext* context) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!context || context->ShutdownStarted()) {
++    return false;
++  }
++  auto* service = PrivacyKeyService::GetForOwner(*context);
++  return service && service->state() == PrivacyKeyService::State::kReady;
++}
++
++std::optional<std::array<uint8_t, 32>> DeriveNativePrivacyKey(
++    BrowserContext* context, const blink::StorageKey& trusted_partition,
++    std::string_view surface) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!IsNativePrivacyContextReady(context)) {
++    return std::nullopt;
++  }
++  return PrivacyKeyService::GetForOwner(*context)->Derive(trusted_partition, surface);
++}
++}  // namespace content
+diff --git a/content/browser/camouflow_native/privacy_key_service.cc b/content/browser/camouflow_native/privacy_key_service.cc
+index 11293e3..a0c042f 100644
+--- a/content/browser/camouflow_native/privacy_key_service.cc
++++ b/content/browser/camouflow_native/privacy_key_service.cc
+@@ -7,6 +7,39 @@
+ 
+ namespace camouflow::native {
+ 
++namespace {
++const int kPrivacyKeyServiceUserDataKey = 0;
++}  // namespace
++
++PrivacyKeyService* PrivacyKeyService::GetForOwner(base::SupportsUserData& owner) {
++  return static_cast<PrivacyKeyService*>(owner.GetUserData(&kPrivacyKeyServiceUserDataKey));
++}
++
++bool PrivacyKeyService::InstallOwnedProfile(base::SupportsUserData& owner,
++                                           const base::FilePath& owned_profile) {
++  if (GetForOwner(owner)) {
++    return false;
++  }
++  auto service = std::make_unique<PrivacyKeyService>();
++  if (!service->InitializeOwnedProfile(owned_profile)) {
++    return false;
++  }
++  owner.SetUserData(&kPrivacyKeyServiceUserDataKey, std::move(service));
++  return true;
++}
++
++bool PrivacyKeyService::InstallEphemeral(base::SupportsUserData& owner) {
++  if (GetForOwner(owner)) {
++    return false;
++  }
++  auto service = std::make_unique<PrivacyKeyService>();
++  if (!service->InitializeEphemeral()) {
++    return false;
++  }
++  owner.SetUserData(&kPrivacyKeyServiceUserDataKey, std::move(service));
++  return true;
++}
++
+ PrivacyKeyService::PrivacyKeyService() = default;
+ PrivacyKeyService::~PrivacyKeyService() { Shutdown(); }
+ 
+diff --git a/content/browser/camouflow_native/privacy_key_service.h b/content/browser/camouflow_native/privacy_key_service.h
+index f86509f..23e8a5d 100644
+--- a/content/browser/camouflow_native/privacy_key_service.h
++++ b/content/browser/camouflow_native/privacy_key_service.h
+@@ -10,15 +10,20 @@
+ 
+ #include "base/memory/weak_ptr.h"
+ #include "base/sequence_checker.h"
++#include "base/supports_user_data.h"
+ #include "content/browser/camouflow_native/privacy_profile_key.h"
+ 
+ namespace camouflow::native {
+ 
+-class PrivacyKeyService {
++class PrivacyKeyService : public base::SupportsUserData::Data {
+  public:
+   enum class State { kUninitialized, kLoading, kReady, kFailed, kStopped };
+   PrivacyKeyService();
+-  ~PrivacyKeyService();
++  ~PrivacyKeyService() override;
++  static PrivacyKeyService* GetForOwner(base::SupportsUserData& owner);
++  static bool InstallOwnedProfile(base::SupportsUserData& owner,
++                                  const base::FilePath& owned_profile);
++  static bool InstallEphemeral(base::SupportsUserData& owner);
+   // Each service must be owned by one BrowserContext; no redirect to original.
+   bool InitializeOwnedProfile(const base::FilePath& owned_profile);
+   bool InitializeEphemeral();
+diff --git a/content/browser/camouflow_native/privacy_key_service_unittest.cc b/content/browser/camouflow_native/privacy_key_service_unittest.cc
+index d5e3eeb..c88c5ee 100644
+--- a/content/browser/camouflow_native/privacy_key_service_unittest.cc
++++ b/content/browser/camouflow_native/privacy_key_service_unittest.cc
+@@ -149,5 +149,78 @@ TEST_F(NativePrivacyKeyServiceTest, PersistentAndEphemeralInstancesDoNotShareKey
+   EXPECT_EQ(a, persistent.Derive(Partition(), "canvas"));
+ }
+ 
++class PrivacyTestOwner final : public base::SupportsUserData {
++ public:
++  ~PrivacyTestOwner() override = default;
++};
++
++TEST_F(NativePrivacyKeyServiceTest, OwnerInstallationIsSingleUse) {
++  PrivacyTestOwner owner;
++  EXPECT_EQ(PrivacyKeyService::GetForOwner(owner), nullptr);
++  ASSERT_TRUE(PrivacyKeyService::InstallOwnedProfile(owner, owned_.GetPath()));
++  auto* service = PrivacyKeyService::GetForOwner(owner);
++  ASSERT_NE(service, nullptr);
++  EXPECT_EQ(service->state(), State::kLoading);
++  EXPECT_FALSE(PrivacyKeyService::InstallEphemeral(owner));
++  EXPECT_FALSE(PrivacyKeyService::InstallOwnedProfile(owner, owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(service->state(), State::kReady);
++}
++
++TEST_F(NativePrivacyKeyServiceTest, OwnerDestructionDuringLoadDropsReply) {
++  auto owner = std::make_unique<PrivacyTestOwner>();
++  ASSERT_TRUE(PrivacyKeyService::InstallOwnedProfile(*owner, owned_.GetPath()));
++  owner.reset();
++  tasks_.RunUntilIdle();
++}
++
++TEST_F(NativePrivacyKeyServiceTest, FailedOwnerCannotReplaceIdentity) {
++  ASSERT_TRUE(base::DeleteFile(owned_.GetPath().AppendASCII("camouflow-native-privacy.json")));
++  PrivacyTestOwner owner;
++  ASSERT_TRUE(PrivacyKeyService::InstallOwnedProfile(owner, owned_.GetPath()));
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(PrivacyKeyService::GetForOwner(owner)->state(), State::kFailed);
++  EXPECT_FALSE(PrivacyKeyService::InstallEphemeral(owner));
++}
++
++TEST_F(NativePrivacyKeyServiceTest, IndependentOwnersDoNotRedirectToOriginal) {
++  PrivacyTestOwner original;
++  PrivacyTestOwner off_the_record;
++  ASSERT_TRUE(PrivacyKeyService::InstallOwnedProfile(original, owned_.GetPath()));
++  ASSERT_TRUE(PrivacyKeyService::InstallEphemeral(off_the_record));
++  tasks_.RunUntilIdle();
++  auto* persistent = PrivacyKeyService::GetForOwner(original);
++  auto* ephemeral = PrivacyKeyService::GetForOwner(off_the_record);
++  ASSERT_NE(persistent, ephemeral);
++  const auto a = persistent->Derive(Partition(), "canvas");
++  const auto b = ephemeral->Derive(Partition(), "canvas");
++  ASSERT_TRUE(a);
++  ASSERT_TRUE(b);
++  EXPECT_NE(a, b);
++  ephemeral->Shutdown();
++  EXPECT_EQ(a, persistent->Derive(Partition(), "canvas"));
++}
++
++TEST_F(NativePrivacyKeyServiceTest, InvalidOwnerInstallDoesNotOccupySlot) {
++  PrivacyTestOwner owner;
++  EXPECT_FALSE(PrivacyKeyService::InstallOwnedProfile(owner, base::FilePath(FILE_PATH_LITERAL("relative"))));
++  EXPECT_EQ(PrivacyKeyService::GetForOwner(owner), nullptr);
++  EXPECT_TRUE(PrivacyKeyService::InstallEphemeral(owner));
++}
++
++TEST_F(NativePrivacyKeyServiceTest, OwnerDataCloneDoesNotCopyPrivateIdentity) {
++  PrivacyTestOwner original;
++  PrivacyTestOwner cloned;
++  ASSERT_TRUE(PrivacyKeyService::InstallEphemeral(original));
++  cloned.CloneDataFrom(original);
++  EXPECT_EQ(PrivacyKeyService::GetForOwner(cloned), nullptr);
++  ASSERT_TRUE(PrivacyKeyService::InstallEphemeral(cloned));
++  const auto a = PrivacyKeyService::GetForOwner(original)->Derive(Partition(), "canvas");
++  const auto b = PrivacyKeyService::GetForOwner(cloned)->Derive(Partition(), "canvas");
++  ASSERT_TRUE(a);
++  ASSERT_TRUE(b);
++  EXPECT_NE(a, b);
++}
++
+ }  // namespace
+ }  // namespace camouflow::native
+diff --git a/content/public/browser/BUILD.gn b/content/public/browser/BUILD.gn
+index 790d665..02ab7ca 100644
+--- a/content/public/browser/BUILD.gn
++++ b/content/public/browser/BUILD.gn
+@@ -271,6 +271,7 @@ source_set("browser_sources") {
+     "navigation_entry.h",
+     "navigation_entry_restore_context.h",
+     "navigation_handle.cc",
++    "native_privacy_context.h",
+     "navigation_handle.h",
+     "navigation_handle_timing.cc",
+     "navigation_handle_timing.h",
+diff --git a/content/public/browser/native_privacy_context.h b/content/public/browser/native_privacy_context.h
+new file mode 100644
+index 0000000..521d552
+--- /dev/null
++++ b/content/public/browser/native_privacy_context.h
+@@ -0,0 +1,32 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CONTENT_PUBLIC_BROWSER_NATIVE_PRIVACY_CONTEXT_H_
++#define CONTENT_PUBLIC_BROWSER_NATIVE_PRIVACY_CONTEXT_H_
++
++#include <array>
++#include <cstdint>
++#include <optional>
++#include <string_view>
++#include "content/common/content_export.h"
++
++namespace base { class FilePath; }
++namespace blink { class StorageKey; }
++namespace content {
++class BrowserContext;
++
++// Explicit development opt-in; does not enable any protected fingerprint surface.
++inline constexpr char kNativePrivacyKeyServiceSwitch[] = "camouflow-native-privacy-key-service";
++
++// UI thread only. Persistent roots must be owned and process-locked by the embedder.
++// Off-the-record contexts require an empty root and never read the persistent key.
++CONTENT_EXPORT bool InitializeNativePrivacyContext(BrowserContext* context,
++                                                   const base::FilePath& owned_root);
++CONTENT_EXPORT void ShutdownNativePrivacyContext(BrowserContext* context);
++CONTENT_EXPORT bool IsNativePrivacyContextReady(BrowserContext* context);
++// The caller supplies a browser-owned StorageKey, never a renderer-provided URL.
++CONTENT_EXPORT std::optional<std::array<uint8_t, 32>> DeriveNativePrivacyKey(
++    BrowserContext* context, const blink::StorageKey& trusted_partition,
++    std::string_view surface);
++}  // namespace content
++
++#endif  // CONTENT_PUBLIC_BROWSER_NATIVE_PRIVACY_CONTEXT_H_

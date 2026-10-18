@@ -20,6 +20,13 @@ each draft patch to its hash and original registered patch hash.
 | 0008 | Existing LevelDB Windows path separator normalization |
 | 0009 | Existing extended Windows SQLite path handling and its upstream test cases |
 | 0010 | Existing Windows persistent-profile namespace handling |
+| 0011 | Versioned StorageKey privacy serialization and partition tests |
+| 0012 | Profile-key derivation primitives and native test target; build registration moved to the new upstream file layout |
+| 0013 | Existing fail-closed owned-profile key loader and loader tests |
+| 0014 | Key service lifetime and ephemeral keys |
+| 0015 | BrowserContext/Profile ownership and off-the-record context initialization |
+| 0016 | Key-readiness contract and checks |
+| 0017 | BrowserContext tests and content-test dependency registration |
 
 The font service gained an independent local-font matcher upstream. Merely
 repairing rejected patch context would leave that new path unrestricted. The
@@ -49,8 +56,12 @@ patches rather than rewriting entire source files as an incidental rebase.
 
 The output must be new, external and outside the input tree. The gate copies
 only checksummed inputs into its owned scratch directory, checks/applies all
-ten patches in sequence, parses included Python/DEPS files and rechecks inputs.
-Real local evidence: `upstream-156-replay-v4/report.json` on D: **10/10 passed**.
+seventeen patches in sequence, parses included Python/DEPS files and rechecks inputs.
+Real local evidence: `upstream-156-replay-v5/report.json` on D: **17/17 passed**.
+The v4 report covers ten drafts. Four resulting BUILD.gn files also passed
+syntax parsing with the existing installed GN tool, with unchanged file hashes:
+`upstream-156-gn-syntax-v1.json`. This is not `gn gen`, `gn check`, resolution of
+the new dependency graph, or execution of the key/context C++ tests.
 The earlier v2 report covers only the first six drafts. The v3 scratch replay
 was superseded after detecting CRLF-only churn in generated V8 patch context;
 v4 uses the compact LF patch and explicit autocrlf-disabled application.
@@ -60,7 +71,7 @@ does not compile the new Chromium local-font matcher translation unit.
 
 ## Still required
 
-- Port and review patches 0011-0062 and any additional dependency/API changes.
+- Port and review patches 0018-0062 and any additional dependency/API changes.
 - Check all new upstream paths that could bypass old policy boundaries.
 - Run GN/checkdeps and compile against the target's actual dependency set.
 - Repeat complete runtime, rendering, storage, proxy, restart and crash gates.

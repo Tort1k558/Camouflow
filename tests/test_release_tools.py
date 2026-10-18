@@ -3113,7 +3113,7 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
     from scripts import verify_native_rebase_draft as draft
 
     manifest = json.loads((draft.DRAFT / "manifest.json").read_text(encoding="utf-8-sig"))
-    originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:10]
+    originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:17]
     assert [row["file"] for row in manifest["patches"]] == [path.name for path in originals]
     for row, original in zip(manifest["patches"], originals, strict=True):
         content = (draft.DRAFT / "patches" / row["file"]).read_bytes()
@@ -3126,6 +3126,30 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
     inspector = (draft.DRAFT / "patches" / manifest["patches"][6]["file"]).read_text(encoding="utf-8")
     assert "+  if (!isBuiltinGetter(function))" in inspector
     assert "-bool isBuiltinGetter" not in inspector
+
+
+def test_upstream_privacy_batch_keeps_owned_key_implementations_and_test_bindings():
+    import re
+    from scripts import verify_native_rebase_draft as draft
+
+    def added_files(text):
+        files = {}
+        for section in text.split("diff --git ")[1:]:
+            if "\n--- /dev/null\n" in section:
+                name = re.search(r"^\+\+\+ b/(.+)$", section, re.MULTILINE).group(1)
+                files[name] = [line[1:] for line in section.splitlines() if line.startswith("+") and not line.startswith("+++")]
+        return files
+
+    candidates = sorted((draft.DRAFT / "patches").glob("*.patch"))[10:17]
+    assert len(candidates) == 7
+    for candidate in candidates:
+        original = draft.ROOT / "native/patches" / candidate.name
+        assert added_files(candidate.read_text(encoding="utf-8")) == added_files(original.read_text(encoding="utf-8-sig"))
+    batch = "\n".join(path.read_text(encoding="utf-8") for path in candidates)
+    for binding in ('source_set("camouflow_native_privacy")', 'test("camouflow_native_privacy_unittests")',
+                    '"../browser/camouflow_native/privacy_context_unittest.cc"',
+                    '"//content/browser:camouflow_native_privacy"'):
+        assert binding in batch
 
 
 def test_native_error_patch_covers_console_coercion_and_property_preview_paths():
