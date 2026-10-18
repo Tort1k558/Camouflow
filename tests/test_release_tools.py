@@ -3336,6 +3336,53 @@ def test_native_candidate_batch_application_prepares_both_repositories_and_prese
             assert subprocess.check_output(["git", "diff", "--cached", "--name-only"], cwd=repository) == b""
 
 
+def test_native_workspace_lock_rejects_concurrent_operations_and_releases_after_error(tmp_path):
+    from scripts import native_build as build
+
+    with pytest.raises(RuntimeError, match="owned operation failed"), build.workspace_lock(tmp_path):
+        with pytest.raises(ValueError, match="Another Native"), build.workspace_lock(tmp_path):
+            pytest.fail("Concurrent workspace lock was acquired")
+        raise RuntimeError("owned operation failed")
+    with build.workspace_lock(tmp_path):
+        assert (tmp_path / "glint-build.lock").is_file()
+
+
+def test_native_workspace_lock_is_released_after_owning_process_terminates(tmp_path):
+    import subprocess
+
+    from scripts import native_build as build
+
+    command = ("from pathlib import Path\nfrom scripts.native_build import workspace_lock\n"
+               "import sys,time\nwith workspace_lock(Path(sys.argv[1])):\n"
+               " print('owned-lock-ready',flush=True)\n time.sleep(60)\n")
+    process = subprocess.Popen([sys.executable, "-c", command, str(tmp_path)], cwd=build.ROOT,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        assert process.stdout.readline().strip() == "owned-lock-ready"
+        assert process.poll() is None
+        with pytest.raises(ValueError, match="Another Native"), build.workspace_lock(tmp_path):
+            pytest.fail("Cross-process workspace lock was acquired")
+    finally:
+        if process.poll() is None:
+            process.terminate()
+        process.communicate(timeout=15)
+    with build.workspace_lock(tmp_path):
+        pass
+
+
+def test_native_workspace_lock_blocks_execute_before_tool_or_source_changes(tmp_path, monkeypatch):
+    from scripts import native_build as build
+
+    monkeypatch.setattr(build, "preflight", lambda *args, **kwargs: {})
+    def forbidden(*args, **kwargs):
+        pytest.fail("A concurrent operation reached tool/source mutation")
+    monkeypatch.setattr(build, "environment", forbidden)
+    with build.workspace_lock(tmp_path):
+        with pytest.raises(ValueError, match="Another Native"):
+            build.execute("build", tmp_path)
+        build.execute("preflight", tmp_path)
+
+
 def test_native_patch_action_requires_explicit_candidate_before_any_workspace_changes(tmp_path):
     from scripts import native_build as build
 

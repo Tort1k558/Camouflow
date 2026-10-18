@@ -166,6 +166,14 @@ under `chromium/glint-candidate-patches-*`. This is not a power-loss-atomic
 transaction across two repositories. Tiny real Git fixtures cover binary edits,
 new files, preflight failures, second-repository failure, rollback and concurrent
 edit preservation; the full Chromium 156 checkout has not run this action yet.
+All mutating `native_build.py` stages also hold an OS-backed workspace lock.
+A concurrent script invocation fails before tool/source changes; read-only
+preflight remains available. The OS releases the lock after a process exits,
+so a retained `glint-build.lock` file is not a stale-PID recovery problem.
+This coordinates cooperating script invocations only: manually launched tools
+and orphaned child processes still require an actual process check before
+changing source. Windows lock contention and owner termination are covered by
+real subprocess tests; Linux/macOS behavior is not runtime-verified.
 Stage records and build receipts bind the candidate manifest hash; a default
 148 stage record cannot satisfy the 156 gate. Runtime verification remains false.
 

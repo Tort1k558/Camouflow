@@ -11,10 +11,43 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = json.loads((ROOT / "native/build-lock.json").read_text(encoding="utf-8-sig"))
+
+
+@contextmanager
+def workspace_lock(workspace: Path):
+    path = workspace / "glint-build.lock"
+    if not workspace.is_dir() or workspace != workspace.resolve() or path != path.resolve():
+        raise ValueError("Build lock must belong to a canonical workspace")
+    with path.open("a+b") as stream:
+        if os.name == "nt":
+            import msvcrt
+
+            stream.seek(0, os.SEEK_END)
+            if stream.tell() == 0:
+                stream.write(b"\0")
+                stream.flush()
+            stream.seek(0)
+            acquire = lambda: msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+            release = lambda: msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+
+            acquire = lambda: fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            release = lambda: fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+        try:
+            acquire()
+        except OSError as error:
+            raise ValueError("Another Native build/patch operation owns this workspace") from error
+        try:
+            yield
+        finally:
+            stream.seek(0)
+            release()
 
 
 def measure_runtime_core(executable: Path, library_directory: Path | None = None) -> dict[str, str]:
@@ -538,6 +571,12 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
         return
     candidate_workspace(workspace, candidate, claim=True)
     workspace.mkdir(parents=True, exist_ok=True)
+    with workspace_lock(workspace):
+        candidate_workspace(workspace, candidate)
+        _execute_locked(action, workspace, jobs, candidate, lock)
+
+
+def _execute_locked(action: str, workspace: Path, jobs: int, candidate: dict | None, lock: dict) -> None:
     env = environment(workspace)
     checkout(workspace / "depot_tools", lock["depot_tools_repository"], lock["depot_tools_revision"], env)
     if os.name == "nt":

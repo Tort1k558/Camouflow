@@ -1382,6 +1382,18 @@ The full local Python regression passed **2666 tests in 180.33 seconds**.
 The final focused patch-action/real-Git subset passed **6 tests in 13.85
 seconds**, including raw binary deltas without text-conversion/color filters.
 
+Mutating build-tool stages now hold an OS-backed workspace lock. Windows tests
+cover same-process/cross-process contention, release after an exception or owner
+termination, and refusal before tool/source mutation; read-only preflight still
+works while locked. This is coordination between script invocations, not proof
+that manual tools/orphaned compiler children are stopped, and not Linux/macOS
+runtime evidence. No Glint build was started by these tests.
+The complete local Python regression passed **2669 tests in 160.20 seconds**.
+The targeted lock/build/candidate subset passed **96 tests**. Ruff found no
+diagnostics in the new lock functions/tests; its two complete files still have
+the same **67 pre-existing diagnostics** as the committed baseline, not a clean
+project-wide lint result.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.
