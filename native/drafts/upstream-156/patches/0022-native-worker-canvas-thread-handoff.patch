@@ -1,0 +1,115 @@
+diff --git a/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc b/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
+index a3a718f..2b7d000 100644
+--- a/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
++++ b/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc
+@@ -306,6 +306,11 @@ void WebSharedWorkerImpl::StartWorkerContext(
+           url::Origin(origin_from_browser)),
+       std::move(coep_reporting_observer), std::move(dip_reporting_observer));
+ 
++  if (worker_main_script_load_params) {
++    creation_params->glint_canvas_partition_seed =
++        std::move(worker_main_script_load_params->glint_canvas_partition_seed);
++  }
++
+   auto thread_startup_data = WorkerBackingThreadStartupData::CreateDefault();
+   thread_startup_data.atomics_wait_mode =
+       WorkerBackingThreadStartupData::AtomicsWaitMode::kAllow;
+diff --git a/third_party/blink/renderer/core/workers/dedicated_worker.cc b/third_party/blink/renderer/core/workers/dedicated_worker.cc
+index d3f34ef..fa5e38e 100644
+--- a/third_party/blink/renderer/core/workers/dedicated_worker.cc
++++ b/third_party/blink/renderer/core/workers/dedicated_worker.cc
+@@ -492,12 +492,16 @@ void DedicatedWorker::ContinueStartInternal(
+   if (!GetExecutionContext()) {
+     return;
+   }
++  auto creation_params = CreateGlobalScopeCreationParams(
++      script_url, referrer_policy, std::move(response_content_security_policies),
++      std::move(document_policy), std::move(coep_reporting_observer),
++      std::move(dip_reporting_observer));
++  if (worker_main_script_load_params) {
++    creation_params->glint_canvas_partition_seed =
++        std::move(worker_main_script_load_params->glint_canvas_partition_seed);
++  }
+   context_proxy_->StartWorkerGlobalScope(
+-      CreateGlobalScopeCreationParams(
+-          script_url, referrer_policy,
+-          std::move(response_content_security_policies),
+-          std::move(document_policy), std::move(coep_reporting_observer),
+-          std::move(dip_reporting_observer)),
++      std::move(creation_params),
+       std::move(worker_main_script_load_params), options_, script_url,
+       *outside_fetch_client_settings_object_, v8_stack_trace_id_, token_,
+       std::move(pending_dedicated_worker_host_),
+diff --git a/third_party/blink/renderer/core/workers/global_scope_creation_params.h b/third_party/blink/renderer/core/workers/global_scope_creation_params.h
+index d5a652b..dc920e0 100644
+--- a/third_party/blink/renderer/core/workers/global_scope_creation_params.h
++++ b/third_party/blink/renderer/core/workers/global_scope_creation_params.h
+@@ -5,6 +5,8 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_WORKERS_GLOBAL_SCOPE_CREATION_PARAMS_H_
+ #define THIRD_PARTY_BLINK_RENDERER_CORE_WORKERS_GLOBAL_SCOPE_CREATION_PARAMS_H_
+ 
++#include <array>
++#include <cstdint>
+ #include <memory>
+ #include <optional>
+ 
+@@ -291,6 +293,9 @@ struct CORE_EXPORT GlobalScopeCreationParams final {
+   mojo::PendingReceiver<mojom::blink::ReportingObserver>
+       coep_reporting_observer;
+   mojo::PendingReceiver<mojom::blink::ReportingObserver> dip_reporting_observer;
++
++  // Owned bootstrap data transported before the worker thread starts.
++  std::optional<std::array<uint8_t, 32>> glint_canvas_partition_seed;
+ };
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/core/workers/worker_global_scope.cc b/third_party/blink/renderer/core/workers/worker_global_scope.cc
+index 32c00e3..d0aed22 100644
+--- a/third_party/blink/renderer/core/workers/worker_global_scope.cc
++++ b/third_party/blink/renderer/core/workers/worker_global_scope.cc
+@@ -934,7 +934,9 @@ WorkerGlobalScope::WorkerGlobalScope(
+       script_eval_state_(ScriptEvalState::kPauseAfterFetch),
+       ukm_source_id_(creation_params->ukm_source_id),
+       top_level_frame_security_origin_(
+-          std::move(creation_params->top_level_frame_security_origin)) {
++          std::move(creation_params->top_level_frame_security_origin)),
++      glint_canvas_partition_seed_(
++          std::move(creation_params->glint_canvas_partition_seed)) {
+   // Workers should always maintain the default world of an isolate.
+   CHECK(creation_params->is_default_world_of_isolate);
+   TRACE_EVENT("blink.worker", "WorkerGlobalScope::WorkerGlobalScope");
+diff --git a/third_party/blink/renderer/core/workers/worker_global_scope.h b/third_party/blink/renderer/core/workers/worker_global_scope.h
+index c46068b..ca5582b 100644
+--- a/third_party/blink/renderer/core/workers/worker_global_scope.h
++++ b/third_party/blink/renderer/core/workers/worker_global_scope.h
+@@ -27,6 +27,9 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_WORKERS_WORKER_GLOBAL_SCOPE_H_
+ #define THIRD_PARTY_BLINK_RENDERER_CORE_WORKERS_WORKER_GLOBAL_SCOPE_H_
+ 
++#include <array>
++#include <cstdint>
++
+ #include <memory>
+ 
+ #include "base/memory/raw_ptr.h"
+@@ -142,6 +145,12 @@ class CORE_EXPORT WorkerGlobalScope
+ 
+   // ExecutionContext
+   const KURL& Url() const final;
++
++  // Internal C++ only. Captures an owned surface seed for readback work.
++  std::optional<std::array<uint8_t, 32>> GlintCanvasPartitionSeed() const {
++    DCHECK(IsContextThread());
++    return glint_canvas_partition_seed_;
++  }
+   KURL CompleteURL(const String&) const final;
+   bool IsWorkerGlobalScope() const final { return true; }
+   bool IsContextThread() const final;
+@@ -448,6 +457,7 @@ class CORE_EXPORT WorkerGlobalScope
+   // can be used, for instance, to check if the top level frame has an opaque
+   // origin.
+   scoped_refptr<const SecurityOrigin> top_level_frame_security_origin_;
++  const std::optional<std::array<uint8_t, 32>> glint_canvas_partition_seed_;
+ };
+ 
+ template <>

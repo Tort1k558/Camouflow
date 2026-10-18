@@ -1,0 +1,203 @@
+diff --git a/content/renderer/worker/embedded_shared_worker_stub.cc b/content/renderer/worker/embedded_shared_worker_stub.cc
+index 1c6d965..9e202cc 100644
+--- a/content/renderer/worker/embedded_shared_worker_stub.cc
++++ b/content/renderer/worker/embedded_shared_worker_stub.cc
+@@ -7,8 +7,11 @@
+ #include <stdint.h>
+ 
+ #include <algorithm>
++#include <array>
++#include <optional>
+ #include <utility>
+ 
++#include "base/command_line.h"
+ #include "base/containers/to_vector.h"
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
+@@ -125,27 +128,103 @@ EmbeddedSharedWorkerStub::EmbeddedSharedWorkerStub(
+                                cors_exempt_header_list,
+                                require_cross_site_request_for_cookies);
+ 
+-  impl_ = blink::WebSharedWorker::CreateAndStart(
+-      token, info->url, info->options->type, info->options->credentials,
+-      blink::WebString::FromUtf8(info->options->name),
+-      blink::WebSecurityOrigin(constructor_key.origin()),
+-      blink::WebSecurityOrigin(origin), is_constructor_secure_context,
+-      blink::WebString::FromUtf8(user_agent), ua_metadata,
+-      ToWebContentSecurityPolicies(info->content_security_policies),
+-      FetchClientSettingsObjectFromMojomToWeb(
+-          info->outside_fetch_client_settings_object),
+-      devtools_worker_token, std::move(content_settings),
+-      std::move(browser_interface_broker), pause_on_start,
+-      std::move(worker_main_script_load_params),
+-      ToWebPolicyContainer(std::move(policy_container)),
+-      std::move(web_worker_fetch_context), std::move(host), this, ukm_source_id,
+-      require_cross_site_request_for_cookies,
+-      std::move(coep_reporting_observer), std::move(dip_reporting_observer),
+-      cross_origin_isolated);
+-
+   // If the host drops its connection, then self-destruct.
+   receiver_.set_disconnect_handler(base::BindOnce(
+       &EmbeddedSharedWorkerStub::Terminate, base::Unretained(this)));
++  const bool privacy_required =
++      base::CommandLine::ForCurrentProcess()->HasSwitch(
++          "glint-worker-canvas-bootstrap-test");
++  mojo::PendingRemote<blink::mojom::NativePrivacyWorker> endpoint;
++  if (privacy_required) {
++    mojo::Remote<blink::mojom::BrowserInterfaceBroker> broker(
++        std::move(browser_interface_broker));
++    broker->GetInterface(endpoint.InitWithNewPipeAndPassReceiver());
++    browser_interface_broker = broker.Unbind();
++  }
++  auto start_worker = base::BindOnce(
++      [](base::WeakPtr<EmbeddedSharedWorkerStub> self,
++         blink::SharedWorkerToken token, blink::mojom::SharedWorkerInfoPtr info,
++         blink::StorageKey constructor_key, url::Origin origin,
++         bool is_constructor_secure_context, std::string user_agent,
++         blink::UserAgentMetadata ua_metadata, bool pause_on_start,
++         base::UnguessableToken devtools_worker_token,
++         mojo::PendingRemote<blink::mojom::WorkerContentSettingsProxy>
++             content_settings,
++         mojo::PendingRemote<blink::mojom::BrowserInterfaceBroker>
++             browser_interface_broker,
++         std::unique_ptr<blink::WorkerMainScriptLoadParameters>
++             worker_main_script_load_params,
++         blink::mojom::PolicyContainerPtr policy_container,
++         scoped_refptr<blink::WebWorkerFetchContext> web_worker_fetch_context,
++         mojo::PendingRemote<blink::mojom::SharedWorkerHost> host,
++         ukm::SourceId ukm_source_id, bool require_cross_site_request_for_cookies,
++         mojo::PendingReceiver<blink::mojom::ReportingObserver>
++             coep_reporting_observer,
++         mojo::PendingReceiver<blink::mojom::ReportingObserver>
++             dip_reporting_observer,
++         bool cross_origin_isolated,
++         std::optional<std::array<uint8_t, 32>> seed) {
++        if (!self) {
++          return;
++        }
++        worker_main_script_load_params->glint_canvas_partition_seed =
++            std::move(seed);
++        auto impl = blink::WebSharedWorker::CreateAndStart(
++            token, info->url, info->options->type, info->options->credentials,
++            blink::WebString::FromUtf8(info->options->name),
++            blink::WebSecurityOrigin(constructor_key.origin()),
++            blink::WebSecurityOrigin(origin), is_constructor_secure_context,
++            blink::WebString::FromUtf8(user_agent), ua_metadata,
++            ToWebContentSecurityPolicies(info->content_security_policies),
++            FetchClientSettingsObjectFromMojomToWeb(
++                info->outside_fetch_client_settings_object),
++            devtools_worker_token, std::move(content_settings),
++            std::move(browser_interface_broker), pause_on_start,
++            std::move(worker_main_script_load_params),
++            ToWebPolicyContainer(std::move(policy_container)),
++            std::move(web_worker_fetch_context), std::move(host), self.get(),
++            ukm_source_id,
++            require_cross_site_request_for_cookies,
++            std::move(coep_reporting_observer), std::move(dip_reporting_observer),
++            cross_origin_isolated);
++        if (!self) {
++          return;
++        }
++        self->impl_ = std::move(impl);
++        auto pending_controls = std::move(self->pending_controls_);
++        for (auto& control : pending_controls) {
++          std::move(control).Run();
++        }
++      },
++      weak_factory_.GetWeakPtr(), token, std::move(info), constructor_key, origin,
++      is_constructor_secure_context, user_agent, ua_metadata, pause_on_start,
++      devtools_worker_token, std::move(content_settings),
++      std::move(browser_interface_broker), std::move(worker_main_script_load_params),
++      std::move(policy_container), std::move(web_worker_fetch_context),
++      std::move(host),
++      ukm_source_id, require_cross_site_request_for_cookies,
++      std::move(coep_reporting_observer), std::move(dip_reporting_observer),
++      cross_origin_isolated);
++  if (!privacy_required) {
++    std::move(start_worker).Run(std::nullopt);
++    return;
++  }
++  privacy_bootstrap_ = std::make_unique<PrivacyWorkerBootstrap>(std::move(endpoint));
++  privacy_bootstrap_->Start(base::BindOnce(
++      [](base::WeakPtr<EmbeddedSharedWorkerStub> self,
++         base::OnceCallback<void(std::optional<std::array<uint8_t, 32>>)> start_worker,
++         PrivacyWorkerBootstrap::Result result) {
++        if (!self) {
++          return;
++        }
++        self->privacy_bootstrap_.reset();
++        if (!result.has_value()) {
++          self->Terminate();
++          return;
++        }
++        std::move(start_worker).Run(std::move(result).value());
++      },
++      weak_factory_.GetWeakPtr(), std::move(start_worker)));
+ }
+ 
+ EmbeddedSharedWorkerStub::~EmbeddedSharedWorkerStub() {
+@@ -200,18 +279,38 @@ EmbeddedSharedWorkerStub::CreateWorkerFetchContext(
+ 
+ void EmbeddedSharedWorkerStub::Connect(int connection_request_id,
+                                        blink::MessagePortDescriptor port) {
++  if (!impl_) {
++    pending_controls_.push_back(base::BindOnce(
++        &EmbeddedSharedWorkerStub::Connect, weak_factory_.GetWeakPtr(),
++        connection_request_id, std::move(port)));
++    return;
++  }
+   impl_->Connect(connection_request_id, std::move(port));
+ }
+ 
+ void EmbeddedSharedWorkerStub::Terminate() {
++  if (!impl_) {
++    delete this;
++    return;
++  }
+   impl_->TerminateWorkerContext();
+ }
+ 
+ void EmbeddedSharedWorkerStub::Freeze() {
++  if (!impl_) {
++    pending_controls_.push_back(base::BindOnce(
++        &EmbeddedSharedWorkerStub::Freeze, weak_factory_.GetWeakPtr()));
++    return;
++  }
+   impl_->Freeze();
+ }
+ 
+ void EmbeddedSharedWorkerStub::Resume() {
++  if (!impl_) {
++    pending_controls_.push_back(base::BindOnce(
++        &EmbeddedSharedWorkerStub::Resume, weak_factory_.GetWeakPtr()));
++    return;
++  }
+   impl_->Resume();
+ }
+ 
+diff --git a/content/renderer/worker/embedded_shared_worker_stub.h b/content/renderer/worker/embedded_shared_worker_stub.h
+index d3f6032..5c72d68 100644
+--- a/content/renderer/worker/embedded_shared_worker_stub.h
++++ b/content/renderer/worker/embedded_shared_worker_stub.h
+@@ -8,8 +8,11 @@
+ #include <memory>
+ #include <vector>
+ 
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
+ #include "base/unguessable_token.h"
+ #include "content/renderer/service_worker/service_worker_provider_context.h"
++#include "content/renderer/worker/privacy_worker_bootstrap.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "mojo/public/cpp/bindings/receiver.h"
+@@ -130,6 +133,9 @@ class EmbeddedSharedWorkerStub : public blink::WebSharedWorkerClient,
+   // used by this worker (typically the network service).
+   mojo::Remote<network::mojom::URLLoaderFactory>
+       default_factory_disconnect_handler_holder_;
++  std::vector<base::OnceClosure> pending_controls_;
++  std::unique_ptr<PrivacyWorkerBootstrap> privacy_bootstrap_;
++  base::WeakPtrFactory<EmbeddedSharedWorkerStub> weak_factory_{this};
+ };
+ 
+ }  // namespace content

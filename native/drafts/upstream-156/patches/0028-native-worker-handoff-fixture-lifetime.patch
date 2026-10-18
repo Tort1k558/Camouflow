@@ -1,0 +1,22 @@
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test.cc b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+index f8ff0a0..c6dbaff 100644
+--- a/third_party/blink/renderer/core/workers/worker_thread_test.cc
++++ b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+@@ -261,6 +261,9 @@ TEST_F(WorkerThreadTest, GlintSequentialScopesDoNotReusePreviousCanvasSeed) {
+   const std::optional<std::array<uint8_t, 32>> seeds[] = {
+       first, second, std::nullopt};
+   for (const auto& seed : seeds) {
++    if (!worker_thread_) {
++      worker_thread_ = std::make_unique<WorkerThreadForTest>(*reporting_proxy_);
++    }
+     testing::InSequence sequence;
+     EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
+         .WillOnce([seed](WorkerOrWorkletGlobalScope* scope) {
+@@ -278,7 +281,6 @@ TEST_F(WorkerThreadTest, GlintSequentialScopesDoNotReusePreviousCanvasSeed) {
+     EXPECT_EQ(ExitCode::kGracefullyTerminated, GetExitCode());
+     worker_thread_.reset();
+     ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(reporting_proxy_.get()));
+-    worker_thread_ = std::make_unique<WorkerThreadForTest>(*reporting_proxy_);
+   }
+ }
+ 

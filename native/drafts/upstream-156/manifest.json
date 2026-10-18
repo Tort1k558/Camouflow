@@ -210,6 +210,276 @@
       "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/test/BUILD.gn?format=TEXT",
       "bytes": 167268,
       "sha256": "fa3d3f098659ce74a9b59f54183fb06a2ca8231aa17e2d6765804d8f2c23af08"
+    },
+    {
+      "path": "third_party/blink/public/mojom/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/public/mojom/BUILD.gn?format=TEXT",
+      "bytes": 66124,
+      "sha256": "b2772fbf468b71b5fa417c5868bdbf3b033aa5ca81a1f53dff17ac4f81fb7f46"
+    },
+    {
+      "path": "content/browser/browser_interface_binders.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/browser_interface_binders.cc?format=TEXT",
+      "bytes": 91900,
+      "sha256": "349336579ab9f28517a8031cae6d8dbfa6df5d35ac91308efeac5bc75413c55c"
+    },
+    {
+      "path": "content/browser/worker_host/dedicated_worker_host.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/worker_host/dedicated_worker_host.h?format=TEXT",
+      "bytes": 21144,
+      "sha256": "b81a594160850734ac3c36c534a7a83b9541a977b3fb75e051a774ab95ef343a"
+    },
+    {
+      "path": "content/browser/worker_host/dedicated_worker_host.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/worker_host/dedicated_worker_host.cc?format=TEXT",
+      "bytes": 55673,
+      "sha256": "7e43fa2a8d99d62d2b3150ad66a559db5bd4b07b9d4dc94acd74e20b960783fa"
+    },
+    {
+      "path": "content/browser/worker_host/shared_worker_host.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/worker_host/shared_worker_host.h?format=TEXT",
+      "bytes": 17513,
+      "sha256": "e56c3d68fa488aae09ed27eab4fa5cfe402323e91bf84ccd9ca31bfa98ffcddc"
+    },
+    {
+      "path": "content/browser/worker_host/shared_worker_host.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/worker_host/shared_worker_host.cc?format=TEXT",
+      "bytes": 52779,
+      "sha256": "85c95af160a0fdd426844f33daa2aca00047989d3999347970d2d75cf63fb4bf"
+    },
+    {
+      "path": "content/browser/service_worker/service_worker_host.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/service_worker/service_worker_host.h?format=TEXT",
+      "bytes": 8520,
+      "sha256": "397f1e7b7a8c03ba480074c6bda8ad410d44399128050d5e86a14f8d3dace6ec"
+    },
+    {
+      "path": "content/browser/service_worker/service_worker_host.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/service_worker/service_worker_host.cc?format=TEXT",
+      "bytes": 14372,
+      "sha256": "6ddcaeb84c894cf8e9284a588c50437c4c405549d6d02c1b9d600f5706e993ee"
+    },
+    {
+      "path": "content/renderer/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/renderer/BUILD.gn?format=TEXT",
+      "bytes": 16167,
+      "sha256": "1353e1e2307cac6f02a7b85d0fce41159c6cbbdd84223ded2f9ffba28c196987"
+    },
+    {
+      "path": "content/renderer/worker/dedicated_worker_host_factory_client.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/renderer/worker/dedicated_worker_host_factory_client.h?format=TEXT",
+      "bytes": 5164,
+      "sha256": "1e39d4e0f4bb7ff1fb27c80b164ac4f9d1c0fd965279caa4bf046d519bf850c6"
+    },
+    {
+      "path": "content/renderer/worker/dedicated_worker_host_factory_client.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/renderer/worker/dedicated_worker_host_factory_client.cc?format=TEXT",
+      "bytes": 8917,
+      "sha256": "907e42f359716e2c74968e6692f177bc0674d8d918342ded6bb852c830d2403a"
+    },
+    {
+      "path": "third_party/blink/public/common/loader/worker_main_script_load_parameters.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/public/common/loader/worker_main_script_load_parameters.h?format=TEXT",
+      "bytes": 1315,
+      "sha256": "b39318ef2c41df730287ebfcdb7ff0d2932c7eb5cf77a36e65dcf9940991a077"
+    },
+    {
+      "path": "third_party/blink/renderer/core/workers/dedicated_worker.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/workers/dedicated_worker.cc?format=TEXT",
+      "bytes": 30805,
+      "sha256": "ce55bc7fb36ce8c970b81afc26276708943731bbd9c66d9cf6cc8a85844e4cf2"
+    },
+    {
+      "path": "third_party/blink/renderer/core/workers/global_scope_creation_params.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/workers/global_scope_creation_params.h?format=TEXT",
+      "bytes": 13802,
+      "sha256": "b32d3234e62a3e58da76a88df608249515a763fa46d02eed2fce8c9ec7f12342"
+    },
+    {
+      "path": "third_party/blink/renderer/core/workers/worker_global_scope.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/workers/worker_global_scope.h?format=TEXT",
+      "bytes": 19334,
+      "sha256": "ae8b06c3905e77113a663a801577e1d84921857b8923f83f0c5ce8fe7d942dcd"
+    },
+    {
+      "path": "third_party/blink/renderer/core/workers/worker_global_scope.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/workers/worker_global_scope.cc?format=TEXT",
+      "bytes": 47172,
+      "sha256": "144edb3ab37db5f5b9fdfa83b51cc625e2aa2f15eb3836295a01501ebdb10f0d"
+    },
+    {
+      "path": "third_party/blink/renderer/core/exported/web_shared_worker_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/exported/web_shared_worker_impl.cc?format=TEXT",
+      "bytes": 19666,
+      "sha256": "6172a66f62f7a233c7b4ba78d83e7951c7f2ad42c825fbbf25500c1e54540597"
+    },
+    {
+      "path": "content/renderer/worker/embedded_shared_worker_stub.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/renderer/worker/embedded_shared_worker_stub.h?format=TEXT",
+      "bytes": 6321,
+      "sha256": "1f7b6f8caadbbe815b3ff63de565ce3f3169f55c19e6949f0c1b83f72dabec16"
+    },
+    {
+      "path": "content/renderer/worker/embedded_shared_worker_stub.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/renderer/worker/embedded_shared_worker_stub.cc?format=TEXT",
+      "bytes": 10260,
+      "sha256": "73b7a54c14196c16316c0f4cccc9c00b992343bc464913529dfe60b1c0b02a0b"
+    },
+    {
+      "path": "third_party/blink/public/web/web_embedded_worker_start_data.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/public/web/web_embedded_worker_start_data.h?format=TEXT",
+      "bytes": 4091,
+      "sha256": "fbc883690693e78d668e35921fa69ffda6c8b2b8fc0c27a83f176cb8bd44635a"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/exported/web_embedded_worker_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/exported/web_embedded_worker_impl.cc?format=TEXT",
+      "bytes": 17951,
+      "sha256": "d5a82b2b7b147622f5b8097d6d6f71480181abd5314a48be56e6a75ad15fed5b"
+    },
+    {
+      "path": "content/renderer/service_worker/embedded_worker_instance_client_impl.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/renderer/service_worker/embedded_worker_instance_client_impl.h?format=TEXT",
+      "bytes": 3723,
+      "sha256": "5ececfe3a8537880b01602afa50955590ea19dbbcfce087864cab4546b6e9608"
+    },
+    {
+      "path": "content/renderer/service_worker/embedded_worker_instance_client_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/renderer/service_worker/embedded_worker_instance_client_impl.cc?format=TEXT",
+      "bytes": 9942,
+      "sha256": "37e7c63d819f002f9c64c460af590c33270c5ecb2d45093eeff95bd295727639"
+    },
+    {
+      "path": "third_party/blink/renderer/core/workers/worker_thread_test_helper.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/workers/worker_thread_test_helper.h?format=TEXT",
+      "bytes": 9460,
+      "sha256": "cc20e8f4a3e11ee135e18377f2290ab952e8c4a59adf5261d64470149b6972b8"
+    },
+    {
+      "path": "third_party/blink/renderer/core/workers/worker_thread_test.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/workers/worker_thread_test.cc?format=TEXT",
+      "bytes": 26011,
+      "sha256": "faa613e36a9da6b9800ca73c86e29f6a29a4f6f8a857b5aff3d1ccac15404fa3"
+    },
+    {
+      "path": "third_party/blink/public/common/BUILD.gn",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/public/common/BUILD.gn?format=TEXT",
+      "bytes": 15455,
+      "sha256": "94d365e4b2bb73c751ca291d08da6b7ba3fb2fc7eec5777883c70b2a2d5af8d9"
+    },
+    {
+      "path": "content/browser/renderer_host/navigation_controller_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/renderer_host/navigation_controller_impl.cc?format=TEXT",
+      "bytes": 261561,
+      "sha256": "d94985fa9191acf2fb0e15c266064d267a0b2e482d01dcf80e7142f9649d34df"
+    },
+    {
+      "path": "content/browser/renderer_host/navigation_entry_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/renderer_host/navigation_entry_impl.cc?format=TEXT",
+      "bytes": 55961,
+      "sha256": "e9fe70ca3f14d36438db7d9da825879addc915320c82143b12ce5ac093f6afec"
+    },
+    {
+      "path": "content/browser/renderer_host/navigation_request.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/renderer_host/navigation_request.cc?format=TEXT",
+      "bytes": 595791,
+      "sha256": "34d9adfe6de2b2b23c582a34c24337473bb4c930163e7efcca38f5067d8e9e52"
+    },
+    {
+      "path": "content/browser/renderer_host/navigation_throttle_registry_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/renderer_host/navigation_throttle_registry_impl.cc?format=TEXT",
+      "bytes": 13794,
+      "sha256": "136be4aa9ff718315ba9e18cb86c51a2b56bf5597fe2ad836dc1a4e5bcda1adb"
+    },
+    {
+      "path": "content/browser/renderer_host/render_frame_host_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/renderer_host/render_frame_host_impl.cc?format=TEXT",
+      "bytes": 876022,
+      "sha256": "79ad8104360b34a5a1ca953e3cc3a6c73b1463db3de11ce787264170bd3a1d9e"
+    },
+    {
+      "path": "content/browser/renderer_host/render_frame_host_impl.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/browser/renderer_host/render_frame_host_impl.h?format=TEXT",
+      "bytes": 265986,
+      "sha256": "595572a345bd441ac5d2816c26303e3c78a159afb457d10e9ebe9797fbae6724"
+    },
+    {
+      "path": "content/common/frame.mojom",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/common/frame.mojom?format=TEXT",
+      "bytes": 41693,
+      "sha256": "0e9bdc0d4c5f4e22bd5b8d289ec7f9eb63a3018515514318559249b6f67ca869"
+    },
+    {
+      "path": "content/renderer/render_frame_impl.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/renderer/render_frame_impl.cc?format=TEXT",
+      "bytes": 315064,
+      "sha256": "1dd6e75e357eb6fdbfa3cfcf710aaab8d3c5034faea9020fb045575b1d93e457"
+    },
+    {
+      "path": "third_party/blink/public/mojom/navigation/navigation_params.mojom",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/public/mojom/navigation/navigation_params.mojom?format=TEXT",
+      "bytes": 39305,
+      "sha256": "acfb5eb283e6c24340ae1d7966461cf08ae172a29f7c65f125fd21d082a768ce"
+    },
+    {
+      "path": "third_party/blink/public/web/web_navigation_params.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/public/web/web_navigation_params.h?format=TEXT",
+      "bytes": 32636,
+      "sha256": "6664c8bc5f9981c1f541fea72874f1f25fab2e49d9316698565e2278bfa6d3d0"
+    },
+    {
+      "path": "third_party/blink/renderer/core/dom/document.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/dom/document.cc?format=TEXT",
+      "bytes": 399813,
+      "sha256": "9f6b0a23062180fba604ebe4c73e6f03efdce2767af104605f9ffb0250466552"
+    },
+    {
+      "path": "third_party/blink/renderer/core/dom/document.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/dom/document.h?format=TEXT",
+      "bytes": 135433,
+      "sha256": "2a3c42f689b34a5ed5622da6283a0e31e65aec26cc80ad48bf9f83869363c051"
+    },
+    {
+      "path": "third_party/blink/renderer/core/dom/document_init.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/dom/document_init.cc?format=TEXT",
+      "bytes": 11637,
+      "sha256": "88e4365da29c007ee8c887b8cafe715c5af900f5c092a9bd6f0c4fea4f90ae15"
+    },
+    {
+      "path": "third_party/blink/renderer/core/dom/document_init.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/dom/document_init.h?format=TEXT",
+      "bytes": 7011,
+      "sha256": "ae26576104c8c0b6cbf00de0a2d64bca72e41fee31ec9bc3fb7b1a532cb20e0c"
+    },
+    {
+      "path": "third_party/blink/renderer/core/dom/document_test.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/dom/document_test.cc?format=TEXT",
+      "bytes": 101664,
+      "sha256": "f42f5d05502991dcee2be31809f3f33a933432ff6b20f416bd999a7911c7c984"
+    },
+    {
+      "path": "third_party/blink/renderer/core/loader/document_loader.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/loader/document_loader.cc?format=TEXT",
+      "bytes": 185551,
+      "sha256": "233436e5799c143bc0be090a59b7d51ae4bb1b8022279d946e4dbf516b51a305"
+    },
+    {
+      "path": "third_party/blink/renderer/core/loader/document_loader.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/loader/document_loader.h?format=TEXT",
+      "bytes": 41909,
+      "sha256": "1e3943853ce02d562cae9430dbc94fbca7e7b6884695a583eb761d31e7ff0b93"
+    },
+    {
+      "path": "third_party/blink/renderer/core/loader/document_loader_test.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/core/loader/document_loader_test.cc?format=TEXT",
+      "bytes": 48064,
+      "sha256": "1138978e3a38d8c51355e0879ee93fd0244591c2e14d4915434e89ea4b330186"
+    },
+    {
+      "path": "content/test/test_render_frame.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/content/test/test_render_frame.cc?format=TEXT",
+      "bytes": 19746,
+      "sha256": "a83676a9a4cc6a5cad61431bbb9bc1a39d14dc3c32fff1ffd5f844f274e791ce"
     }
   ],
   "patches": [
@@ -328,6 +598,71 @@
       "file": "0017-native-browser-context-tests.patch",
       "sha256": "024bd39b72dee2e6048eb127a300db919f8e78b267141ca211110ff8f6579d21",
       "original_sha256": "d9607a9e58950576e342e87e312660aa74b30599bc135947dcdf0c83070cd19c"
+    },
+    {
+      "file": "0018-native-document-policy-delivery.patch",
+      "sha256": "30b2fbd5fc338cd548861ec5b5350d0c889f7f78a9e995f884b5ea8142d3fc9b",
+      "original_sha256": "4bffa4afc7ec049406a8e8a846120c2011d33056621d0ad0a635df6898b29bc0"
+    },
+    {
+      "file": "0019-native-worker-policy-delivery.patch",
+      "sha256": "c92137390542a1414fe310ef75078a5b4f66fc6ca5b6e7c51a8ffbb58f8cfe8b",
+      "original_sha256": "18ea29ef41463776fd7e2661ba1d40619942ae8964eca30553e4057dac2a167b"
+    },
+    {
+      "file": "0020-native-worker-policy-consumer.patch",
+      "sha256": "3c7fcb5b81dca3354ef63825ffada1f98a2938169dc252b93efc9802cae69062",
+      "original_sha256": "1bfbb862d457053ba50512a2350760ac739c7b7d49e705a5056db73cea5de576"
+    },
+    {
+      "file": "0021-native-dedicated-worker-startup-gate.patch",
+      "sha256": "1eaeae116a334063ac4daca31e7016b6560b2f6cd72bc6c3035502b7bfbde564",
+      "original_sha256": "49a3dd2e66d596d33cb41819f4d420f948f2ed4b20dfc1d497e8503dd3b35b23"
+    },
+    {
+      "file": "0022-native-worker-canvas-thread-handoff.patch",
+      "sha256": "b79f7e3831531238fa683fd05ac71ee82866f41b67a613f82a471cb372a893e5",
+      "original_sha256": "030c959877651108070830f87fa9ee6c27ed8effec1a0b34af5fd2490941a9cb"
+    },
+    {
+      "file": "0023-native-shared-worker-startup-gate.patch",
+      "sha256": "64883039a72ac773c4ab50363cbde75dac99a685a68963710206baadf97ebeea",
+      "original_sha256": "4d68932429d3d0026bac9b03d2de3e6db7989926d6997d699a11f3df26ea5727"
+    },
+    {
+      "file": "0024-native-service-worker-canvas-thread-handoff.patch",
+      "sha256": "3c5a321e2d5d7eeeb27fe7ae77f015de29552db5733b231f177765b66891a6d5",
+      "original_sha256": "e9e251e9cc14f95c698f7e6ee12cb8fe1d4d764be87b2d672a487bc237fbf165"
+    },
+    {
+      "file": "0025-native-service-worker-startup-gate.patch",
+      "sha256": "8bfcee9a31922b71d611642400efcbb99b2b480a65eca4ef0738afab36728f7b",
+      "original_sha256": "62bd293c4098348b07c06326170f2d75589b659dd7f73d4f43ccde7fc851c290"
+    },
+    {
+      "file": "0026-native-worker-canvas-handoff-tests.patch",
+      "sha256": "3764a47cd80eb50757c2d8e258cbd134d8f2ed7c792ed429c52182a28f5b5302",
+      "original_sha256": "55926f338a4ae2650648654f41439c0cdaec83a1d3fd878acd722349e66a1981"
+    },
+    {
+      "file": "0027-native-shared-worker-bootstrap-failure.patch",
+      "sha256": "23c4a8052c1f0df512bcd5169c42b1d1c4d1227c5361f0841150bd086bc9379f",
+      "original_sha256": "40dab1d0d7f63ab6e20f3944fdf5004dcb4ec1c60327f313d71b07842f40b446"
+    },
+    {
+      "file": "0028-native-worker-handoff-fixture-lifetime.patch",
+      "sha256": "cf335721b818e9ff1b0a4fc8d408334e5c52d4bbb316801ecb128b52bd668ea2",
+      "original_sha256": "2f61cc9efd24134c168b2a24bf5663b5f61924d13d64e8e0024ef58239602a8c"
+    },
+    {
+      "file": "0029-native-document-partition-validator-tests.patch",
+      "sha256": "adeee2e5f1b6884ffed27abaa5edec4731313ffe8d7fb1bd9e97e2896b1bf9da",
+      "original_sha256": "0465b9a09f030daff88f82e947460c2a130be5e24e4f6edccaf87c8a33c21380"
+    },
+    {
+      "file": "0030-native-document-commit-prototype.patch",
+      "sha256": "8f43b1631b92f333139810c6a8c1fd0906d37847840df8301724e3e60e2d397b",
+      "original_sha256": "819cda896e05e4bc3b2acc5ce09a848886d9c4349017f97140f7118a303c17e7"
     }
   ],
   "scope": "Draft source-context port; no GN, compilation, runtime or production admission",

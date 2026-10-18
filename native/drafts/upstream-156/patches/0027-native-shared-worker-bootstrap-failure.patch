@@ -1,0 +1,41 @@
+diff --git a/content/renderer/worker/embedded_shared_worker_stub.cc b/content/renderer/worker/embedded_shared_worker_stub.cc
+index 9e202cc..2905971 100644
+--- a/content/renderer/worker/embedded_shared_worker_stub.cc
++++ b/content/renderer/worker/embedded_shared_worker_stub.cc
+@@ -162,11 +162,17 @@ EmbeddedSharedWorkerStub::EmbeddedSharedWorkerStub(
+              coep_reporting_observer,
+          mojo::PendingReceiver<blink::mojom::ReportingObserver>
+              dip_reporting_observer,
+-         bool cross_origin_isolated,
++         bool cross_origin_isolated, bool privacy_required,
+          std::optional<std::array<uint8_t, 32>> seed) {
+         if (!self) {
+           return;
+         }
++        if (privacy_required && !seed) {
++          mojo::Remote<blink::mojom::SharedWorkerHost> failure_host(std::move(host));
++          failure_host->OnScriptLoadFailed("Glint worker privacy policy unavailable");
++          self->Terminate();
++          return;
++        }
+         worker_main_script_load_params->glint_canvas_partition_seed =
+             std::move(seed);
+         auto impl = blink::WebSharedWorker::CreateAndStart(
+@@ -204,7 +210,7 @@ EmbeddedSharedWorkerStub::EmbeddedSharedWorkerStub(
+       std::move(host),
+       ukm_source_id, require_cross_site_request_for_cookies,
+       std::move(coep_reporting_observer), std::move(dip_reporting_observer),
+-      cross_origin_isolated);
++      cross_origin_isolated, privacy_required);
+   if (!privacy_required) {
+     std::move(start_worker).Run(std::nullopt);
+     return;
+@@ -219,7 +225,7 @@ EmbeddedSharedWorkerStub::EmbeddedSharedWorkerStub(
+         }
+         self->privacy_bootstrap_.reset();
+         if (!result.has_value()) {
+-          self->Terminate();
++          std::move(start_worker).Run(std::nullopt);
+           return;
+         }
+         std::move(start_worker).Run(std::move(result).value());

@@ -3113,7 +3113,7 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
     from scripts import verify_native_rebase_draft as draft
 
     manifest = json.loads((draft.DRAFT / "manifest.json").read_text(encoding="utf-8-sig"))
-    originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:17]
+    originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:30]
     assert [row["file"] for row in manifest["patches"]] == [path.name for path in originals]
     for row, original in zip(manifest["patches"], originals, strict=True):
         content = (draft.DRAFT / "patches" / row["file"]).read_bytes()
@@ -3150,6 +3150,28 @@ def test_upstream_privacy_batch_keeps_owned_key_implementations_and_test_binding
                     '"../browser/camouflow_native/privacy_context_unittest.cc"',
                     '"//content/browser:camouflow_native_privacy"'):
         assert binding in batch
+
+
+def test_upstream_worker_batch_retains_new_policy_container_and_fixture_contracts():
+    from scripts import verify_native_rebase_draft as draft
+
+    def additions(name):
+        text = (draft.DRAFT / "patches" / name).read_text(encoding="utf-8")
+        return "\n".join(line[1:] for line in text.splitlines() if line.startswith("+") and not line.startswith("+++"))
+
+    dedicated = additions("0021-native-dedicated-worker-startup-gate.patch")
+    assert dedicated.count("blink::mojom::PolicyContainerPtr policy_container") == 2
+    assert dedicated.count("std::move(policy_container)") == 2
+    shared = additions("0023-native-shared-worker-startup-gate.patch")
+    assert "WebString::FromUTF8" not in shared and shared.count("WebString::FromUtf8") == 2
+    fixture = additions("0026-native-worker-canvas-handoff-tests.patch")
+    assert "GlobalScopeCreationParams::CreateForWorkerForTesting(" in fixture
+    assert "nullptr, seed" not in fixture
+    assert fixture.count("DidEvaluateTopLevelScriptMock") == 4
+    commit = additions("0030-native-document-commit-prototype.patch")
+    assert commit.count("AddThrottle(std::make_unique<PrivacyNavigationThrottle>(*this))") == 2
+    commit_patch = (draft.DRAFT / "patches/0030-native-document-commit-prototype.patch").read_text(encoding="utf-8")
+    assert "CreateThrottlesForCommitWithoutUrlLoader(" in commit_patch
 
 
 def test_native_error_patch_covers_console_coercion_and_property_preview_paths():

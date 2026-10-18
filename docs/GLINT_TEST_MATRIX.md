@@ -1295,6 +1295,19 @@ their originals and retain all new key/context implementation/test-file bodies.
 These are source/syntax checks only: no new GN graph, compiled key/context tests
 or Chromium 156 profile-isolation runtime result is claimed.
 
+Document/worker delivery drafts extend replay through **0030: 30/30**,
+`upstream-156-replay-v6/report.json`, bound to 80 upstream source inputs.
+The port preserves the new dedicated-worker PolicyContainer in immediate and
+deferred startup, current shared-worker string APIs, upstream test-scope
+creation/mock signatures and both navigation-throttle registration paths.
+The UI-thread CHECK remains before service-worker binder registration.
+Eight resulting GN/GNI files passed read-only syntax parsing with the installed
+tool (`upstream-156-gn-syntax-v2.json`). These checks do not prove generated Mojo
+bindings, a valid target dependency graph, startup ordering or runtime policy
+delivery on 156. All those gates remain required after the complete port/build.
+The full application regression with this batch passed **2623 tests in
+109.48 seconds**; these Python tests do not execute the 156 C++ runtime.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

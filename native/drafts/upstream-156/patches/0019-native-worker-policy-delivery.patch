@@ -1,0 +1,702 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+index b462ee3..07dd905 100644
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -629,6 +629,8 @@ source_set("browser") {
+     "camouflow_native/privacy_context.cc",
+     "camouflow_native/privacy_document_service.cc",
+     "camouflow_native/privacy_document_service.h",
++    "camouflow_native/privacy_worker_service.cc",
++    "camouflow_native/privacy_worker_service.h",
+     "browser_context_impl.h",
+     "browser_interface_binders.cc",
+     "browser_interface_binders.h",
+diff --git a/content/browser/browser_interface_binders.cc b/content/browser/browser_interface_binders.cc
+index bf43e27..e4fcca3 100644
+--- a/content/browser/browser_interface_binders.cc
++++ b/content/browser/browser_interface_binders.cc
+@@ -1532,6 +1532,9 @@ const url::Origin& GetContextForHost(DedicatedWorkerHost* host) {
+ 
+ void PopulateDedicatedWorkerBinders(DedicatedWorkerHost* host,
+                                     mojo::BinderMap* map) {
++  map->Add<blink::mojom::NativePrivacyWorker>(base::BindRepeating(
++      &DedicatedWorkerHost::BindNativePrivacyPolicy, base::Unretained(host)));
++
+   // Do nothing for interfaces that the renderer might request, but doesn't
+   // always expect to be bound.
+   map->Add<blink::mojom::FeatureObserver>(base::DoNothing());
+@@ -1700,6 +1703,9 @@ url::Origin GetContextForHost(SharedWorkerHost* host) {
+ }
+ 
+ void PopulateSharedWorkerBinders(SharedWorkerHost* host, mojo::BinderMap* map) {
++  map->Add<blink::mojom::NativePrivacyWorker>(base::BindRepeating(
++      &SharedWorkerHost::BindNativePrivacyPolicy, base::Unretained(host)));
++
+   // Do nothing for interfaces that the renderer might request, but doesn't
+   // always expect to be bound.
+   map->Add<blink::mojom::FeatureObserver>(base::DoNothing());
+@@ -1846,6 +1852,8 @@ ServiceWorkerVersionInfo GetContextForHost(ServiceWorkerHost* host) {
+ void PopulateServiceWorkerBinders(ServiceWorkerHost* host,
+                                   mojo::BinderMap* map) {
+   CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M159);
++  map->Add<blink::mojom::NativePrivacyWorker>(base::BindRepeating(
++      &ServiceWorkerHost::BindNativePrivacyPolicy, base::Unretained(host)));
+ 
+   // Do nothing for interfaces that the renderer might request, but doesn't
+   // always expect to be bound.
+diff --git a/content/browser/camouflow_native/privacy_worker_service.cc b/content/browser/camouflow_native/privacy_worker_service.cc
+new file mode 100644
+index 0000000..38df736
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_worker_service.cc
+@@ -0,0 +1,90 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/camouflow_native/privacy_worker_service.h"
++
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/time/time.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/native_privacy_context.h"
++
++namespace content {
++namespace {
++using Status = blink::mojom::NativePrivacyDeliveryStatus;
++constexpr uint32_t kCanvasPolicyVersion = 1;
++constexpr base::TimeDelta kReadinessDeadline = base::Seconds(10);
++}  // namespace
++
++PrivacyWorkerService::PrivacyWorkerService(
++    mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>& receivers,
++    BrowserContext& context,
++    const blink::StorageKey& browser_partition,
++    Kind kind,
++    const url::Origin& browser_worker_origin)
++    : receivers_(receivers),
++      context_(context.GetWeakPtr()),
++      partition_(browser_partition),
++      kind_(kind),
++      origin_matches_partition_(partition_.origin() == browser_worker_origin) {}
++
++PrivacyWorkerService::~PrivacyWorkerService() = default;
++
++void PrivacyWorkerService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
++  if (requested_) {
++    // Removes the receiver before destroying this service and its replies.
++    receivers_->ReportBadMessage("Glint worker policy requested twice on one pipe");
++    return;
++  }
++  requested_ = true;
++  pending_reply_ = std::move(callback);
++  // Unpartitioned shared/service workers can serve multiple top-level sites.
++  // Do not invent a single client's site or silently use its document identity.
++  if (!context_ || context_->ShutdownStarted() || !origin_matches_partition_ ||
++      (kind_ != Kind::kDedicated &&
++       !blink::StorageKey::IsThirdPartyStoragePartitioningEnabled())) {
++    Complete(Status::kUnavailable, nullptr);
++    return;
++  }
++  timer_.Start(FROM_HERE, kReadinessDeadline,
++               base::BindOnce(&PrivacyWorkerService::OnTimeout,
++                              weak_factory_.GetWeakPtr()));
++  WhenNativePrivacyContextReady(
++      context_.get(), base::BindOnce(&PrivacyWorkerService::OnReady,
++                                     weak_factory_.GetWeakPtr()));
++}
++
++void PrivacyWorkerService::OnReady(bool ready) {
++  if (!pending_reply_) {
++    return;
++  }
++  if (!ready || !context_ || context_->ShutdownStarted() || !origin_matches_partition_ ||
++      (kind_ != Kind::kDedicated &&
++       !blink::StorageKey::IsThirdPartyStoragePartitioningEnabled())) {
++    Complete(Status::kUnavailable, nullptr);
++    return;
++  }
++  auto seed = DeriveNativePrivacyKey(context_.get(), partition_, "canvas");
++  if (!seed) {
++    Complete(Status::kUnavailable, nullptr);
++    return;
++  }
++  auto policy = blink::mojom::NativePrivacyCanvasPolicy::New();
++  policy->version = kCanvasPolicyVersion;
++  policy->partition_seed.assign(seed->begin(), seed->end());
++  Complete(Status::kReady, std::move(policy));
++}
++
++void PrivacyWorkerService::OnTimeout() {
++  Complete(Status::kTimedOut, nullptr);
++}
++
++void PrivacyWorkerService::Complete(
++    Status status, blink::mojom::NativePrivacyCanvasPolicyPtr policy) {
++  timer_.Stop();
++  weak_factory_.InvalidateWeakPtrs();
++  if (pending_reply_) {
++    std::move(pending_reply_).Run(status, std::move(policy));
++  }
++}
++}  // namespace content
+diff --git a/content/browser/camouflow_native/privacy_worker_service.h b/content/browser/camouflow_native/privacy_worker_service.h
+new file mode 100644
+index 0000000..fa74b77
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_worker_service.h
+@@ -0,0 +1,50 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_WORKER_SERVICE_H_
++#define CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_WORKER_SERVICE_H_
++
++#include "base/memory/raw_ref.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "mojo/public/cpp/bindings/unique_receiver_set.h"
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
++#include "url/origin.h"
++
++namespace content {
++class BrowserContext;
++
++// Owned by a worker host's UniqueReceiverSet, never a self-owned receiver.
++class PrivacyWorkerService final : public blink::mojom::NativePrivacyWorker {
++ public:
++  enum class Kind { kDedicated, kShared, kService };
++  PrivacyWorkerService(
++      mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>& receivers,
++      BrowserContext& context,
++                       const blink::StorageKey& browser_partition,
++                       Kind kind,
++                       const url::Origin& browser_worker_origin);
++  ~PrivacyWorkerService() override;
++  PrivacyWorkerService(const PrivacyWorkerService&) = delete;
++  PrivacyWorkerService& operator=(const PrivacyWorkerService&) = delete;
++
++  void GetCanvasPolicy(GetCanvasPolicyCallback callback) override;
++
++ private:
++  void OnReady(bool ready);
++  void OnTimeout();
++  void Complete(blink::mojom::NativePrivacyDeliveryStatus status,
++                blink::mojom::NativePrivacyCanvasPolicyPtr policy);
++
++  const raw_ref<mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>> receivers_;
++  const base::WeakPtr<BrowserContext> context_;
++  const blink::StorageKey partition_;
++  const Kind kind_;
++  const bool origin_matches_partition_;
++  bool requested_ = false;
++  GetCanvasPolicyCallback pending_reply_;
++  base::OneShotTimer timer_;
++  base::WeakPtrFactory<PrivacyWorkerService> weak_factory_{this};
++};
++}  // namespace content
++#endif
+diff --git a/content/browser/camouflow_native/privacy_worker_service_unittest.cc b/content/browser/camouflow_native/privacy_worker_service_unittest.cc
+new file mode 100644
+index 0000000..7efc38d
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_worker_service_unittest.cc
+@@ -0,0 +1,300 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/camouflow_native/privacy_worker_service.h"
++
++#include <memory>
++#include <vector>
++
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/run_loop.h"
++#include "base/test/bind.h"
++#include "base/test/scoped_feature_list.h"
++#include "base/time/time.h"
++#include "content/browser/worker_host/worker_util.h"
++#include "content/public/browser/native_privacy_context.h"
++#include "content/public/test/browser_task_environment.h"
++#include "content/public/test/test_browser_context.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "mojo/public/cpp/bindings/unique_receiver_set.h"
++#include "mojo/public/cpp/test_support/test_utils.h"
++#include "net/base/features.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/features.h"
++#include "url/gurl.h"
++#include "url/origin.h"
++
++namespace content {
++namespace {
++using Status = blink::mojom::NativePrivacyDeliveryStatus;
++using Policy = blink::mojom::NativePrivacyCanvasPolicyPtr;
++using Kind = PrivacyWorkerService::Kind;
++constexpr char kIdentity[] =
++    R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})";
++
++class NativePrivacyWorkerServiceTest : public testing::Test {
++ protected:
++  void SetUp() override {
++    features_.InitAndEnableFeature(net::features::kThirdPartyStoragePartitioning);
++    ASSERT_TRUE(owned_.CreateUniqueTempDir());
++    ASSERT_TRUE(base::WriteFile(
++        owned_.GetPath().AppendASCII("camouflow-native-privacy.json"), kIdentity));
++    context_ = std::make_unique<TestBrowserContext>();
++  }
++
++  void Initialize() {
++    ASSERT_TRUE(InitializeNativePrivacyContext(context_.get(), owned_.GetPath()));
++  }
++
++  blink::StorageKey Partition() {
++    return blink::StorageKey::CreateFirstParty(
++        url::Origin::Create(GURL("https://worker.test")));
++  }
++
++  mojo::Remote<blink::mojom::NativePrivacyWorker> Connect(
++      Kind kind = Kind::kDedicated) {
++    const auto partition = Partition();
++    return ConnectForPartition(partition, partition.origin(), kind);
++  }
++
++  mojo::Remote<blink::mojom::NativePrivacyWorker> ConnectForPartition(
++      const blink::StorageKey& partition,
++      const url::Origin& worker_origin,
++      Kind kind = Kind::kDedicated) {
++    mojo::Remote<blink::mojom::NativePrivacyWorker> remote;
++    receivers_.Add(std::make_unique<PrivacyWorkerService>(
++                       receivers_, *context_, partition, kind, worker_origin),
++                   remote.BindNewPipeAndPassReceiver());
++    return remote;
++  }
++
++  BrowserTaskEnvironment tasks_{
++      base::test::TaskEnvironment::TimeSource::MOCK_TIME,
++      base::test::TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
++  base::test::ScopedFeatureList features_;
++  base::ScopedTempDir owned_;
++  std::unique_ptr<TestBrowserContext> context_;
++  mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker> receivers_;
++};
++
++TEST_F(NativePrivacyWorkerServiceTest, MissingServiceReturnsUnavailable) {
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kUnavailable);
++        EXPECT_FALSE(policy);
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerServiceTest, ReadyPolicyMatchesTrustedPartition) {
++  Initialize();
++  tasks_.RunUntilIdle();
++  const auto expected = DeriveNativePrivacyKey(context_.get(), Partition(), "canvas");
++  ASSERT_TRUE(expected);
++  for (auto kind : {Kind::kDedicated, Kind::kShared, Kind::kService}) {
++    auto remote = Connect(kind);
++    int replies = 0;
++    remote->GetCanvasPolicy(base::BindLambdaForTesting(
++        [&](Status status, Policy policy) {
++          ++replies;
++          EXPECT_EQ(status, Status::kReady);
++          ASSERT_TRUE(policy);
++          EXPECT_EQ(policy->version, 1u);
++          EXPECT_EQ(policy->partition_seed,
++                    std::vector<uint8_t>(expected->begin(), expected->end()));
++        }));
++    remote.FlushForTesting();
++    EXPECT_EQ(replies, 1);
++  }
++}
++
++TEST_F(NativePrivacyWorkerServiceTest, LoadingDoesNotReplyBeforeReadiness) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kReady);
++        EXPECT_TRUE(policy);
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  tasks_.RunUntilIdle();
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerServiceTest, ShutdownSettlesLoadingOnce) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kUnavailable);
++        EXPECT_FALSE(policy);
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  ShutdownNativePrivacyContext(context_.get());
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++  tasks_.RunUntilIdle();
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerServiceTest, DeadlineRejectsLateReadiness) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kTimedOut);
++        EXPECT_FALSE(policy);
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  tasks_.AdvanceClock(base::Seconds(11));
++  base::RunLoop().RunUntilIdle();
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++  tasks_.RunUntilIdle();
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerServiceTest, ReceiverOwnerDestructionDropsLoadingReply) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status, Policy) { ++replies; }));
++  remote.FlushForTesting();
++  receivers_.Clear();
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(replies, 0);
++  EXPECT_FALSE(remote.is_connected());
++}
++
++TEST_F(NativePrivacyWorkerServiceTest, PipeDisconnectDropsLoadingReply) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status, Policy) { ++replies; }));
++  remote.FlushForTesting();
++  remote.reset();
++  base::RunLoop().RunUntilIdle();
++  tasks_.RunUntilIdle();
++  EXPECT_EQ(replies, 0);
++  EXPECT_TRUE(receivers_.empty());
++}
++
++TEST_F(NativePrivacyWorkerServiceTest, DestroyedContextCannotDeliverSeed) {
++  auto remote = Connect();
++  context_.reset();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kUnavailable);
++        EXPECT_FALSE(policy);
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerServiceTest, UnpartitionedSharedAndServiceWorkersFail) {
++  Initialize();
++  tasks_.RunUntilIdle();
++  base::test::ScopedFeatureList disabled;
++  disabled.InitAndDisableFeature(net::features::kThirdPartyStoragePartitioning);
++  for (auto kind : {Kind::kShared, Kind::kService}) {
++    auto remote = Connect(kind);
++    int replies = 0;
++    remote->GetCanvasPolicy(base::BindLambdaForTesting(
++        [&](Status status, Policy policy) {
++          ++replies;
++          EXPECT_EQ(status, Status::kUnavailable);
++          EXPECT_FALSE(policy);
++        }));
++    remote.FlushForTesting();
++    EXPECT_EQ(replies, 1);
++  }
++}
++
++TEST_F(NativePrivacyWorkerServiceTest, LegacyDataWorkerOriginMismatchIsRejected) {
++  Initialize();
++  tasks_.RunUntilIdle();
++  base::test::ScopedFeatureList legacy;
++  legacy.InitAndDisableFeature(blink::features::kDataUrlWorkerOpaqueOrigin);
++  const GURL script_url("data:text/javascript,void(0)");
++  const auto partition = CalculateWorkerStorageKey(script_url, Partition());
++  const auto origin = CalculateWorkerRendererOrigin(script_url, partition);
++  ASSERT_NE(partition.origin(), origin);
++  auto remote = ConnectForPartition(partition, origin);
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kUnavailable);
++        EXPECT_FALSE(policy);
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyWorkerServiceTest, MatchingOpaqueDataWorkerUsesOwnedPartition) {
++  Initialize();
++  tasks_.RunUntilIdle();
++  base::test::ScopedFeatureList opaque;
++  opaque.InitAndEnableFeature(blink::features::kDataUrlWorkerOpaqueOrigin);
++  const GURL script_url("data:text/javascript,void(0)");
++  const auto partition = CalculateWorkerStorageKey(script_url, Partition());
++  const auto origin = CalculateWorkerRendererOrigin(script_url, partition);
++  ASSERT_TRUE(origin.opaque());
++  ASSERT_EQ(partition.origin(), origin);
++  const auto expected = DeriveNativePrivacyKey(context_.get(), partition, "canvas");
++  ASSERT_TRUE(expected);
++  auto remote = ConnectForPartition(partition, origin);
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kReady);
++        ASSERT_TRUE(policy);
++        EXPECT_EQ(policy->partition_seed,
++                  std::vector<uint8_t>(expected->begin(), expected->end()));
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++TEST_F(NativePrivacyWorkerServiceTest, DuplicateRequestCancelsPendingDelivery) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status, Policy) { ++replies; }));
++  remote.FlushForTesting();
++  ASSERT_EQ(replies, 0);
++  mojo::test::BadMessageObserver observer;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status, Policy) { ++replies; }));
++  EXPECT_EQ(observer.WaitForBadMessage(),
++            "Glint worker policy requested twice on one pipe");
++  EXPECT_TRUE(receivers_.empty());
++  tasks_.RunUntilIdle();
++  tasks_.FastForwardBy(base::Seconds(11));
++  EXPECT_FALSE(remote.is_connected());
++  EXPECT_EQ(replies, 0);
++}
++
++}  // namespace
++}  // namespace content
+diff --git a/content/browser/service_worker/service_worker_host.cc b/content/browser/service_worker/service_worker_host.cc
+index 4a2ac94..8b4d905 100644
+--- a/content/browser/service_worker/service_worker_host.cc
++++ b/content/browser/service_worker/service_worker_host.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/service_worker/service_worker_host.h"
++#include "content/browser/camouflow_native/privacy_worker_service.h"
+ 
+ #include <utility>
+ 
+@@ -344,4 +345,19 @@ void ServiceWorkerHost::BindAIManager(
+   }
+ }
+ 
++void ServiceWorkerHost::BindNativePrivacyPolicy(
++    mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver) {
++  auto* process = GetProcessHost();
++  if (!process) {
++    return;
++  }
++  native_privacy_receivers_.Add(
++      std::make_unique<PrivacyWorkerService>(native_privacy_receivers_,
++                                              *process->GetBrowserContext(),
++                                              version()->key(),
++                                              PrivacyWorkerService::Kind::kService,
++                                              url::Origin::Create(version()->script_url())),
++      std::move(receiver));
++}
++
+ }  // namespace content
+diff --git a/content/browser/service_worker/service_worker_host.h b/content/browser/service_worker/service_worker_host.h
+index 81734ad..a3b02ad 100644
+--- a/content/browser/service_worker/service_worker_host.h
++++ b/content/browser/service_worker/service_worker_host.h
+@@ -16,6 +16,7 @@
+ #include "content/browser/buckets/bucket_context.h"
+ #include "content/browser/renderer_host/code_cache_host_impl.h"
+ #include "content/common/content_export.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
+ #include "content/public/browser/render_process_host.h"
+ #include "content/public/common/child_process_id.h"
+ #include "mojo/public/cpp/bindings/associated_receiver.h"
+@@ -149,6 +150,8 @@ class CONTENT_EXPORT ServiceWorkerHost : public BucketContext,
+   void BindAIManager(mojo::PendingReceiver<blink::mojom::AIManager> receiver);
+ 
+   RenderProcessHost* GetProcessHost() const;
++  void BindNativePrivacyPolicy(
++      mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver);
+ 
+  private:
+   ChildProcessId worker_process_id_;
+@@ -193,6 +196,8 @@ class CONTENT_EXPORT ServiceWorkerHost : public BucketContext,
+   mojo::AssociatedReceiver<blink::mojom::ServiceWorkerContainerHost>
+       host_receiver_;
+ 
++  mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>
++      native_privacy_receivers_;
+   base::WeakPtrFactory<ServiceWorkerHost> weak_factory_{this};
+ };
+ 
+diff --git a/content/browser/worker_host/dedicated_worker_host.cc b/content/browser/worker_host/dedicated_worker_host.cc
+index cf8c8f6..0843a3f 100644
+--- a/content/browser/worker_host/dedicated_worker_host.cc
++++ b/content/browser/worker_host/dedicated_worker_host.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/worker_host/dedicated_worker_host.h"
++#include "content/browser/camouflow_native/privacy_worker_service.h"
+ 
+ #include <memory>
+ #include <optional>
+@@ -1271,4 +1272,19 @@ DedicatedWorkerHost::BindAndPassRemoteForBackForwardCacheControllerHost() {
+       .BindNewPipeAndPassRemote();
+ }
+ 
++void DedicatedWorkerHost::BindNativePrivacyPolicy(
++    mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver) {
++  auto* process = GetProcessHost();
++  if (!process) {
++    return;
++  }
++  native_privacy_receivers_.Add(
++      std::make_unique<PrivacyWorkerService>(native_privacy_receivers_,
++                                              *process->GetBrowserContext(),
++                                              GetWorkerStorageKey(),
++                                              PrivacyWorkerService::Kind::kDedicated,
++                                              renderer_origin_),
++      std::move(receiver));
++}
++
+ }  // namespace content
+diff --git a/content/browser/worker_host/dedicated_worker_host.h b/content/browser/worker_host/dedicated_worker_host.h
+index 21a3f05..ccb673b 100644
+--- a/content/browser/worker_host/dedicated_worker_host.h
++++ b/content/browser/worker_host/dedicated_worker_host.h
+@@ -20,6 +20,7 @@
+ #include "content/browser/security/dip/document_isolation_policy_reporter.h"
+ #include "content/browser/worker_host/worker_script_fetcher.h"
+ #include "content/common/content_export.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
+ #include "content/public/browser/dedicated_worker_creator.h"
+ #include "content/public/browser/global_routing_id.h"
+ #include "content/public/browser/render_process_host.h"
+@@ -135,6 +136,8 @@ class CONTENT_EXPORT DedicatedWorkerHost final
+ 
+   const blink::DedicatedWorkerToken& GetToken() const { return token_; }
+   RenderProcessHost* GetProcessHost() const { return worker_process_host_; }
++  void BindNativePrivacyPolicy(
++      mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver);
+   const blink::StorageKey& GetWorkerStorageKey() const {
+     return worker_storage_key_;
+   }
+@@ -474,6 +477,8 @@ class CONTENT_EXPORT DedicatedWorkerHost final
+   // The policies of the creator context. Used for inheritance.
+   const PolicyContainerPolicies creator_policies_;
+ 
++  mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>
++      native_privacy_receivers_;
+   base::WeakPtrFactory<DedicatedWorkerHost> weak_factory_{this};
+ };
+ 
+diff --git a/content/browser/worker_host/shared_worker_host.cc b/content/browser/worker_host/shared_worker_host.cc
+index 4d2e7f7..fec9ae4 100644
+--- a/content/browser/worker_host/shared_worker_host.cc
++++ b/content/browser/worker_host/shared_worker_host.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/worker_host/shared_worker_host.h"
++#include "content/browser/camouflow_native/privacy_worker_service.h"
+ 
+ #include <algorithm>
+ #include <utility>
+@@ -1272,4 +1273,19 @@ void SharedWorkerHost::OnWorkerConnectionLost() {
+   Destruct();
+ }
+ 
++void SharedWorkerHost::BindNativePrivacyPolicy(
++    mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver) {
++  auto* process = GetProcessHost();
++  if (!process) {
++    return;
++  }
++  native_privacy_receivers_.Add(
++      std::make_unique<PrivacyWorkerService>(native_privacy_receivers_,
++                                              *process->GetBrowserContext(),
++                                              GetWorkerStorageKey(),
++                                              PrivacyWorkerService::Kind::kShared,
++                                              instance().renderer_origin()),
++      std::move(receiver));
++}
++
+ }  // namespace content
+diff --git a/content/browser/worker_host/shared_worker_host.h b/content/browser/worker_host/shared_worker_host.h
+index 7ddb670..c625c13 100644
+--- a/content/browser/worker_host/shared_worker_host.h
++++ b/content/browser/worker_host/shared_worker_host.h
+@@ -23,6 +23,7 @@
+ #include "content/browser/renderer_host/code_cache_host_impl.h"
+ #include "content/browser/renderer_host/policy_container_host.h"
+ #include "content/common/content_export.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
+ #include "content/public/browser/global_routing_id.h"
+ #include "content/public/browser/render_process_host.h"
+ #include "content/public/browser/render_process_host_observer.h"
+@@ -106,6 +107,8 @@ class CONTENT_EXPORT SharedWorkerHost
+   // Returns the RenderProcessHost where this shared worker lives.
+   // SharedWorkerHost can't outlive the RenderProcessHost so this can't be null.
+   RenderProcessHost* GetProcessHost() const;
++  void BindNativePrivacyPolicy(
++      mojo::PendingReceiver<blink::mojom::NativePrivacyWorker> receiver);
+ 
+   // Starts the SharedWorker in the renderer process.
+   //
+@@ -430,6 +433,8 @@ class CONTENT_EXPORT SharedWorkerHost
+ 
+   const base::UnguessableToken network_restrictions_id_;
+ 
++  mojo::UniqueReceiverSet<blink::mojom::NativePrivacyWorker>
++      native_privacy_receivers_;
+   base::WeakPtrFactory<SharedWorkerHost> weak_factory_{this};
+ };
+ 
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+index 17afeb0..98669cd 100644
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2555,6 +2555,7 @@ test("content_unittests") {
+   sources = [
+     "../browser/camouflow_native/privacy_context_unittest.cc",
+     "../browser/camouflow_native/privacy_document_service_unittest.cc",
++    "../browser/camouflow_native/privacy_worker_service_unittest.cc",
+     "../browser/accessibility/browser_accessibility_manager_unittest.cc",
+     "../browser/accessibility/browser_accessibility_state_impl_unittest.cc",
+     "../browser/accessibility/browser_accessibility_unittest.cc",
