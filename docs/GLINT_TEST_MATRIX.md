@@ -1187,9 +1187,7 @@ opaque identity, retained partition fields, nonce and binary commitment data.
 It does not prove pre-teardown cancellation, actual first-script delivery or
 Canvas protection. Those document runtime gates remain incomplete.
 
-## Sources and maintenance
-
-### Frozen desktop integration gate - October 18, 2026
+## Frozen desktop integration gate - October 18, 2026
 
 The Windows PyInstaller manager package passed all three engine checks from
 the actual frozen executable, not source Python. Evidence on D:
@@ -1211,6 +1209,30 @@ additional path/health rejection cases passed **612 tests** separately.
 Private build log: `desktop-validation-001-062-v1/release.log`.
 This is local Windows development-package evidence, not website publication,
 signed updates, external CAPTCHA acceptance or Linux/macOS runtime evidence.
+
+## Admitted-policy crash recovery - October 18, 2026
+
+`verify_native_admitted_policy.py` now reuses the existing multi-profile crash
+gate with the reviewed policy, rather than testing recovery only with native
+defaults. Actual proof: `admitted-policy-recovery-001-062-v1/report.json` on D.
+
+| Check | Result |
+| --- | --- |
+| Three concurrent profiles / independent drivers | PASS in all three rounds |
+| One real browser crash per round, rotating victim | PASS; unaffected profiles kept their own data |
+| Cookies, LocalStorage, IndexedDB, Cache, Service Worker | PASS after crash/restart and across rounds |
+| Six admitted controls after crash recovery | PASS; actual diagnostics had zero mismatches |
+| Owned process cleanup | 52 / 52 / 54 observed process identities; zero left per round |
+| Full package and verifier inputs unchanged | PASS |
+
+The existing concurrent rendering/restart phases and final manager health gate
+also passed in the same run. A graceful checkpoint precedes each deliberate
+crash: this proves recovery of checkpointed state, not durability of the most
+recent unflushed write or recovery from power loss. No customer profiles or
+unrelated browser processes were terminated. Existing default-policy coverage
+remains unchanged; Linux/macOS and external anti-bot acceptance are not claimed.
+
+## Sources and maintenance
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.
 - [Rebrowser detector source](https://github.com/rebrowser/rebrowser-bot-detector): automation checks and their prerequisites.

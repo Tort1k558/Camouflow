@@ -267,7 +267,8 @@ async def verify_controller_crash(profile_root: Path, executable: Path, origin: 
 
 
 async def verify_multi_profile_restarts(profile_root: Path, executable: Path, origin: str,
-                                       *, rounds: int = 3, profiles: int = 3) -> list[dict]:
+                                       *, rounds: int = 3, profiles: int = 3,
+                                       configuration: NativeConfiguration | None = None) -> list[dict]:
     if type(rounds) is not int or not 1 <= rounds <= 100 or type(profiles) is not int or not 2 <= profiles <= 4:
         raise ValueError("Native restart gate requires 1..100 rounds and 2..4 profiles")
     def expected(value):
@@ -275,6 +276,16 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
                 "cached": value, "workers": 1}
     blank = {"cookie": "", "local": None, "indexed": None, "cached": None, "workers": 0}
     observations = []
+    async def inspect_policy(runtime, page):
+        if configuration is None:
+            return
+        required = configuration.privacy_policy.required_capabilities()
+        if runtime.native_policy_capabilities != required:
+            raise ValueError("Restart gate lost the admitted runtime policy")
+        observed = await inspect_native_profile(page, configuration, runtime.context.browser.version)
+        if observed["mismatches"]:
+            raise ValueError("Restart gate observed inconsistent policy: " + str(observed["mismatches"]))
+
     for iteration in range(rounds):
         before = await asyncio.to_thread(process_snapshot)
         owned = {}
@@ -282,12 +293,14 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
         pages = []
         async with AsyncExitStack() as cleanup:
             for index in range(profiles):
-                runtime = NativeRuntime(profile_root / f"restart-{index}", executable, NativeConfiguration())
+                runtime = NativeRuntime(profile_root / f"restart-{index}", executable, configuration or NativeConfiguration())
                 cleanup.push_async_callback(runtime.close)
                 context = await runtime.start(headless=True)
                 runtimes.append(runtime)
                 pages.append(context.pages[0])
             await asyncio.gather(*(page.goto(origin) for page in pages))
+            for runtime, page in zip(runtimes, pages, strict=True):
+                await inspect_policy(runtime, page)
             initial = await asyncio.gather(*(page.evaluate(STORAGE, None) for page in pages))
             assert initial == ([blank] * profiles if iteration == 0 else
                                [expected(f"round-{iteration - 1}-profile-{index}") for index in range(profiles)]), initial
@@ -324,6 +337,7 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
             recovered = await runtimes[victim].start(headless=True)
             pages[victim] = recovered.pages[0]
             await pages[victim].goto(origin)
+            await inspect_policy(runtimes[victim], pages[victim])
             restored = await pages[victim].evaluate(STORAGE, None)
             assert restored == values[victim], f"Crash restore lost stores: {restored}; expected {values[victim]}"
             owned.update(controller_descendants(before, await asyncio.to_thread(process_snapshot), os.getpid()))
@@ -339,6 +353,8 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
         observations.append({"round": iteration + 1, "concurrent_profiles": profiles,
                              "independent_drivers": drivers, "crashed_profile": victim,
                              "checkpoint_before_crash": True,
+                             "policy_capabilities": (configuration.privacy_policy.required_capabilities()
+                                                     if configuration is not None else []),
                              "processes_observed": len(owned), "remaining_owned_processes": 0})
     return observations
 

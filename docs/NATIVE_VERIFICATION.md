@@ -62,7 +62,7 @@ that changed while it was being checked; this is integrity, not signing proof.
 | `scripts/verify_native_privacy_units.py --target identity-*` | **134/134 passed on 001-059**: keys 62, contexts 37, transport 20 and Blink handoff 15. Includes 50 new cases and 84 legacy cases; not a browser admission |
 | `scripts/verify_native_privacy_units.py --target gpu-metadata` | **33/33** Chromium codec/passthrough protocol/attachment cases passed on 001-058; not validating decoder, WebGPU or browser readback admission |
 | `scripts/verify_native_suite.py` | Runtime, hardware, WebRTC, automation, fonts, identity, CDP and combined gates |
-| `scripts/verify_native_admitted_policy.py` | Reviewed managed package through NativeRuntime: concurrent profiles, restarts, eight combined contexts, eight first-script rendering scopes, WebRTC positive/control checks, API compatibility and manager health diagnostics |
+| `scripts/verify_native_admitted_policy.py` | Reviewed managed package through NativeRuntime: concurrent profiles, restarts, eight combined contexts, eight first-script rendering scopes, WebRTC positive/control checks, API compatibility and manager health diagnostics; three-profile, three-round crash recovery with five checkpointed stores and admitted-policy observations |
 | `scripts/verify_native_storage_paths.py` | Windows path-depth/storage probes |
 | `scripts/verify_native_canvas.py` | Canvas verification tooling, not an implemented protection claim |
 | `scripts/verify_native_worker_startup.py` | Default: 40 owned startup/restart/shared-client cases; `--include-nested` adds 20 nested dedicated-worker cases; no Canvas admission |

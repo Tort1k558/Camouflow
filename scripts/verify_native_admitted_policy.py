@@ -23,7 +23,7 @@ from scripts import native_font_contexts, verify_native_canvas as canvas, verify
 from scripts import native_font_rendering, native_canvas_hdr
 from scripts import verify_native_font_rendering as rendering, verify_native_webrtc as webrtc
 from scripts.verify_native_privacy_units import require_idle_builder
-from scripts.verify_native_runtime import FixtureServer
+from scripts.verify_native_runtime import FixtureServer, FixtureHandler, verify_multi_profile_restarts
 
 POLICY = NativePrivacyPolicy(cpu_limit=1, memory_limit=.25, fonts=("Arial",),
                             restrict_webrtc=True, conceal_automation=True, native_user_agent=True)
@@ -71,7 +71,8 @@ async def verify(executable: Path, destination: Path) -> dict:
     inputs = [Path(__file__), *(ROOT / "app/core/native").glob("*.py"),
               *[ROOT / "scripts" / name for name in (
                   "native_font_contexts.py", "native_font_rendering.py", "native_canvas_formats.py", "native_canvas_hdr.py",
-                  "verify_native_canvas.py", "verify_native_combined.py", "verify_native_webrtc.py", "verify_native_font_rendering.py")]]
+                  "verify_native_canvas.py", "verify_native_combined.py", "verify_native_webrtc.py", "verify_native_font_rendering.py",
+                  "verify_native_runtime.py")]]
     hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
     destination.mkdir(exist_ok=False)
     report = {"passed": False, "scope": "Experimental managed policies on owned fixtures; not CAPTCHA or device realism",
@@ -130,6 +131,16 @@ async def verify(executable: Path, destination: Path) -> dict:
                     await runtime.close()
             (destination / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         validate_rendering(report["rendering"])
+        with FixtureServer(("127.0.0.1", 0), FixtureHandler) as recovery_server:
+            recovery_thread = threading.Thread(target=recovery_server.serve_forever, daemon=True)
+            recovery_thread.start()
+            try:
+                report["recovery"] = await verify_multi_profile_restarts(
+                    destination / "recovery", executable, f"http://127.0.0.1:{recovery_server.server_port}",
+                    configuration=runtimes["grayscale"].configuration)
+            finally:
+                recovery_server.shutdown()
+                recovery_thread.join(timeout=5)
         diagnostics = await probe_native_profile(executable, runtimes["grayscale"].configuration, destination / "health")
         if (diagnostics["mismatches"] or diagnostics["native_patch_capabilities"]
                 != runtimes["grayscale"].configuration.privacy_policy.required_capabilities()):

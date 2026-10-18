@@ -2006,6 +2006,39 @@ def test_native_multi_profile_restart_gate_closes_all_started_profiles_when_star
         runtime.close.assert_awaited_once()
 
 
+@pytest.mark.parametrize("failure", ["capabilities", "observations"])
+def test_restart_gate_rejects_lost_policy_and_closes_profiles(tmp_path, monkeypatch, failure):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from app.core.native.configuration import NativeConfiguration
+    from app.core.native.privacy import NativePrivacyPolicy
+    from scripts import verify_native_runtime as gate
+
+    configuration = NativeConfiguration(privacy_policy=NativePrivacyPolicy(cpu_limit=2))
+    required = configuration.privacy_policy.required_capabilities()
+    runtimes = []
+    def create(profile, executable, selected):
+        assert selected is configuration
+        page = SimpleNamespace(goto=AsyncMock())
+        context = SimpleNamespace(pages=[page], browser=SimpleNamespace(version="148.0.7778.96"))
+        runtime = SimpleNamespace(start=AsyncMock(return_value=context), close=AsyncMock(), context=context,
+                                  native_policy_capabilities=[] if failure == "capabilities" else required)
+        runtimes.append(runtime)
+        return runtime
+    monkeypatch.setattr(gate, "NativeRuntime", create)
+    monkeypatch.setattr(gate, "process_snapshot", lambda: {})
+    inspect = AsyncMock(return_value={"mismatches": ["CPU ceiling"]})
+    monkeypatch.setattr(gate, "inspect_native_profile", inspect)
+    with pytest.raises(ValueError, match="policy"):
+        asyncio.run(gate.verify_multi_profile_restarts(tmp_path, tmp_path / "chrome.exe", "http://127.0.0.1:1",
+                                                       configuration=configuration))
+    assert len(runtimes) == 3
+    for runtime in runtimes:
+        runtime.close.assert_awaited_once()
+    assert inspect.await_count == (1 if failure == "observations" else 0)
+
+
 def test_controller_tree_excludes_preexisting_processes_and_tracks_new_descendants_only():
     from scripts.verify_native_runtime import controller_descendants
 
