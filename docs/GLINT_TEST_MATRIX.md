@@ -1189,6 +1189,29 @@ Canvas protection. Those document runtime gates remain incomplete.
 
 ## Sources and maintenance
 
+### Frozen desktop integration gate - October 18, 2026
+
+The Windows PyInstaller manager package passed all three engine checks from
+the actual frozen executable, not source Python. Evidence on D:
+`desktop-validation-001-062-v1/reports/20261018-140938/`.
+
+| Engine | Fixed browser/Python imports | Hard-loop timeout | Admitted Glint health |
+| --- | --- | --- | --- |
+| Camoufox | PASS | PASS (3 seconds) | Not applicable |
+| CloakBrowser | PASS | PASS (3 seconds) | Not applicable |
+| Glint 001-062 | PASS | PASS (3 seconds) | PASS, six reviewed capabilities |
+
+Glint used the reviewed installed archive digest `84e8d2369be630825afbff2732b09d5d81bb699e3c60025b73756c3fc305c10a`.
+The frozen health and worker paths confirmed the requested policy; the worker
+also checked the CPU ceiling, webdriver value and absence of HeadlessChrome
+in UA. No owned frozen/browser processes remained after the gate. The clean
+manager build took about **88 seconds**; its pre-build regression passed
+**2580 tests in 107.26 seconds**. The completed release-tool regression including
+additional path/health rejection cases passed **612 tests** separately.
+Private build log: `desktop-validation-001-062-v1/release.log`.
+This is local Windows development-package evidence, not website publication,
+signed updates, external CAPTCHA acceptance or Linux/macOS runtime evidence.
+
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.
 - [Rebrowser detector source](https://github.com/rebrowser/rebrowser-bot-detector): automation checks and their prerequisites.
 - [Google sample source](https://github.com/google/recaptcha/tree/master/examples): client and backend verification examples.

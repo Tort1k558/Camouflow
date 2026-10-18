@@ -26,6 +26,21 @@ proof that a driver identity is plausible.
 
 ## Public gates
 
+For a Windows desktop package with all three engines, create an empty artifact
+directory on D: and use an already installed, reviewed Glint managed store:
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_release.py --build --runtime --engine camoufox --engine cloakbrowser --engine native --native-store D:\Glint\store --artifacts-dir D:\Glint\desktop-check
+```
+
+`--artifacts-dir` must already exist; build intermediates, packages and reports
+stay there. The Glint check uses disposable profile data outside the binary
+store, verifies the admitted policy through actual health observations, then
+runs the fixed Python/import and hard-timeout cases from the frozen executable.
+The existing 15-second script and 3-second hard-loop budgets are unchanged.
+Existing Glint evidence is never overwritten. This gate does not establish
+CAPTCHA results, signed updates or readiness on other operating systems.
+
 Health checks delete disposable profiles only after the runtime releases its
 tracked resources. SDK teardown errors or a close that leaves ownership active
 retain the owned directory and report its path, rather than returning success
@@ -40,7 +55,7 @@ that changed while it was being checked; this is integrity, not signing proof.
 
 | Tool | Scope |
 | --- | --- |
-| `scripts/verify_release.py --build --runtime` | Desktop package and packaged legacy-engine checks |
+| `scripts/verify_release.py --build --runtime` | Desktop package and packaged legacy-engine checks; explicitly add `--engine native --native-store <store>` for reviewed Glint policy checks |
 | `scripts/verify_native_cpp.py` | Standalone native policy primitives |
 | `scripts/verify_native_gpu_metadata_codec.py` | 14 actual candidate codec cases on standalone MSVC/GoogleTest; not a Chromium GN target, decoder/driver test or browser capability |
 | `scripts/verify_native_privacy_units.py` | Keys: 43; contexts: 26; surface navigation: 42; window transport: 13; worker surfaces: 55; GPU readback: 31/31 passed on 001-048. Legacy delivery remains a separate 34-case target |

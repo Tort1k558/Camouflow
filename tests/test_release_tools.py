@@ -237,18 +237,23 @@ def test_native_suite_refuses_to_write_profiles_or_reports_inside_binary_store(t
     ("linux", "CamouFlow/CamouFlow"),
     ("darwin", "CamouFlow.app/Contents/MacOS/CamouFlow"),
 ])
-def test_build_uses_native_package_executable(tmp_path, monkeypatch, platform, executable):
+@pytest.mark.parametrize("external", [False, True])
+def test_build_uses_native_package_executable(tmp_path, monkeypatch, platform, executable, external):
     python = Path(sys.executable)
+    artifacts = tmp_path / "external" if external else tmp_path
+    artifacts.mkdir(exist_ok=True)
     monkeypatch.setattr(verify_release, "ROOT", tmp_path)
     monkeypatch.setattr(verify_release.sys, "platform", platform)
     def fake_build(command):
         assert command[0] == str(python)
         dist = Path(command[command.index("--distpath") + 1])
+        assert dist.is_relative_to(artifacts / "dist")
+        assert Path(command[command.index("--workpath") + 1]).is_relative_to(artifacts / "build")
         target = dist / executable
         target.parent.mkdir(parents=True)
         target.touch()
     monkeypatch.setattr(verify_release, "run", fake_build)
-    assert verify_release.build(python).relative_to(tmp_path / "dist").as_posix().endswith(executable)
+    assert verify_release.build(python, artifacts_dir=artifacts if external else None).relative_to(artifacts / "dist").as_posix().endswith(executable)
 
 
 def test_missing_build_interpreter_fails_explicitly(tmp_path):
@@ -2829,6 +2834,92 @@ def test_native_metadata_codec_runner_binds_inputs_and_actual_results(tmp_path, 
     assert report.is_file()
     with pytest.raises(ValueError, match="overwrite"):
         codec.verify(workspace, report, vs)
+
+
+@pytest.mark.parametrize("engine,store", [("native", None), ("camoufox", "store")])
+def test_packaged_runtime_requires_native_store_pair(tmp_path, engine, store):
+    from app.python_runtime_check import check_runtime
+
+    with pytest.raises(ValueError, match="explicit managed"):
+        check_runtime(engine, tmp_path / "report.json", native_store=store)
+    assert not (tmp_path / "report.json").exists()
+
+
+def test_packaged_native_runtime_preserves_store_and_existing_evidence(tmp_path):
+    from app.python_runtime_check import check_runtime
+
+    store = tmp_path / "store"
+    store.mkdir()
+    with pytest.raises(ValueError, match="outside"):
+        check_runtime("native", store / "report.json", native_store=store)
+    report = tmp_path / "report.json"
+    report.write_text("original", encoding="utf-8")
+    with pytest.raises(ValueError, match="overwrite"):
+        check_runtime("native", report, native_store=store)
+    assert report.read_text(encoding="utf-8") == "original"
+    assert list(store.iterdir()) == []
+
+
+def test_release_native_runtime_command_and_evidence(tmp_path, monkeypatch):
+    import json
+    from scripts import verify_release as release
+
+    commands = []
+    def run(command):
+        commands.append(command)
+        Path(command[-1]).write_text(json.dumps({"passed": True}), encoding="utf-8")
+    monkeypatch.setattr(release, "run", run)
+    exe = tmp_path / "CamouFlow.exe"
+    store = tmp_path / "store"
+    reports = tmp_path / "reports"
+    release.runtime_check(exe, ["native"], native_store=store, report_dir=reports)
+    assert commands == [[str(exe), "--check-native-runtime", str(store), str(reports / "native.json")]]
+    with pytest.raises(SystemExit, match="overwrite"):
+        release.runtime_check(exe, ["native"], native_store=store, report_dir=reports)
+    assert len(commands) == 1
+
+
+@pytest.mark.parametrize("mismatch", [False, True])
+def test_packaged_native_runtime_requires_observed_policy(tmp_path, monkeypatch, mismatch):
+    import json
+    from app import python_runtime_check
+    from app.storage import db
+    from app.services import scenario_worker
+    from app.core.native import distribution, health
+
+    store = tmp_path / "store"
+    store.mkdir()
+    class Store:
+        def __init__(self, root):
+            self.root = root
+
+        def resolve_active(self):
+            return {"executable_path": str(store / "chrome.exe"), "release_sha256": "synthetic"}
+
+    async def probe(executable, configuration, profile):
+        assert profile.is_relative_to(tmp_path)
+        return {"mismatches": ["CPU"] if mismatch else [],
+                "native_patch_capabilities": configuration.privacy_policy.required_capabilities()}
+
+    calls = []
+    def worker(account, job, event):
+        step = job["steps"][1]
+        calls.append(step["timeout_ms"])
+        assert account["native_settings"]["binary_store"] == str(store)
+        return {"status": "failed" if job["scenario"] == "hard-timeout" else "success",
+                "error": "Python timeout" if job["scenario"] == "hard-timeout" else ""}
+
+    monkeypatch.setattr(db, "init_db", lambda: None)
+    monkeypatch.setattr(distribution, "NativeBinaryStore", Store)
+    monkeypatch.setattr(health, "probe_native_profile", probe)
+    monkeypatch.setattr(scenario_worker, "run_worker", worker)
+    monkeypatch.setenv("CAMOUFLOW_DATA_DIR", "preserved")
+    report = tmp_path / "report.json"
+    assert python_runtime_check.check_runtime("native", report, native_store=store) == int(mismatch)
+    assert calls == ([] if mismatch else [15000, 3000])
+    assert json.loads(report.read_text(encoding="utf-8"))["passed"] is not mismatch
+    import os
+    assert os.environ["CAMOUFLOW_DATA_DIR"] == "preserved"
 
 
 def test_native_error_patch_covers_console_coercion_and_property_preview_paths():
