@@ -101,6 +101,9 @@ def test_unavailable_webgpu_is_not_counted_as_coverage():
     (0, "packed", -1, 0), (0, "repeat", 256, 0),
     (1, "packed", 258, 85), (2, "packed", 258, 85), (5, "packed", 258, 85),
     (0, "packed", 256, True), (0, "repeat", 256, 1.0),
+    (0, "sampled", 256, 0), (1, "sampled", 258, 85),
+    (5, "sampled", 258, 85), (0, "sampled", 272, 0),
+    (0, "sampled", 256, True),
 ])
 def test_webgpu_texture_pixels_layers_mips_and_padding_are_checked(row, field, index, value):
     rows = expected_texture_readback()
@@ -121,7 +124,7 @@ def test_webgpu_texture_reference_has_distinct_layers_mips_and_untouched_padding
     assert rows[5]["packed"][260:] == [165] * 508
 
 
-@pytest.mark.parametrize("failure", ["missing", "duplicate", "order", "mip", "layer", "size", "short", "missing-field"])
+@pytest.mark.parametrize("failure", ["missing", "duplicate", "order", "mip", "layer", "size", "short", "missing-field", "missing-sampled"])
 def test_webgpu_texture_coverage_and_metadata_cannot_be_faked(failure):
     rows = expected_texture_readback()
     if failure == "missing":
@@ -138,6 +141,8 @@ def test_webgpu_texture_coverage_and_metadata_cannot_be_faked(failure):
         rows[0]["size"] = [True, 4]
     elif failure == "short":
         rows[0]["packed"].pop()
+    elif failure == "missing-sampled":
+        del rows[0]["sampled"]
     else:
         del rows[0]["repeat"]
     with pytest.raises(ValueError, match="texture/mip/layer"):

@@ -1422,6 +1422,36 @@ The complete local Python regression passed **2688 tests in 131.22 seconds**;
 the GPU verifier itself passes Ruff. Its tests file retains four existing
 import-order diagnostics outside the new cases, not a clean full-file lint run.
 
+### WebGPU fragment-shader texture reads — existing 001–062 Windows package
+
+The texture probe now also binds the real array texture, selects its mip/layer
+through a uniform, reads texels with WGSL `textureLoad`, renders a full-screen
+triangle to a separate rgba8unorm attachment and reads that attachment back.
+Rendered pixels and untouched packed-buffer padding must match the independent
+known pattern, not merely the earlier direct-copy output. Missing shader results
+and corrupted shader pixels/layer/mip/padding are rejected by negative tests.
+
+Real private report:
+`D:\CamouFlowNative\gpu-shader-textures-001-062-v1\report.json`.
+
+| Phase | WebGPU contexts | Shader-render subresources | Result |
+| --- | --- | --- | --- |
+| Feature off | 8 | 48 | Passed |
+| Feature off, restart | 8 | 48 | Passed |
+| Metadata minimization on | 8 | 48 | Passed |
+| Metadata minimization on, restart | 8 | 48 | Passed |
+
+**192 shader-render cases**, alongside the two direct reads per subresource,
+passed on the unchanged measured **148.0.7778.96** core. The existing WebGL and
+WebGPU buffer/compute gates also passed in all contexts; source/core postguards
+passed. `textureLoad` does not test filtered sampling, sampler behavior or mipmap
+generation. This is not WebGPU fingerprint protection, a capability admission,
+a 156 runtime result, or a new compiled browser. No compiler was launched.
+The full local Python regression passed **2694 tests in 127.32 seconds**.
+The GPU verifier itself passed Ruff; current probe hashes match the saved
+runtime evidence. The final missing/duplicate/malformed coverage subset passed
+all **9 negative-control cases**.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

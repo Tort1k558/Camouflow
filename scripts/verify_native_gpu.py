@@ -159,9 +159,29 @@ GPU_READ = """async () => {
   try {
     const textureReadback = async () => {
       const texture = device.createTexture({size: [4, 4, 2], mipLevelCount: 3,
-        format: 'rgba8unorm', usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST});
+        format: 'rgba8unorm', usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING});
       const rows = [];
+      let selection;
       try {
+        const shader = device.createShaderModule({code: `
+          struct Selection { mip: u32, layer: u32 }
+          @group(0) @binding(0) var image: texture_2d_array<f32>;
+          @group(0) @binding(1) var<uniform> selected: Selection;
+          @vertex fn vertex(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
+            let points = array<vec2f, 3>(vec2f(-1., -1.), vec2f(3., -1.), vec2f(-1., 3.));
+            return vec4f(points[index], 0., 1.);
+          }
+          @fragment fn fragment(@builtin(position) position: vec4f) -> @location(0) vec4f {
+            return textureLoad(image, vec2i(position.xy), i32(selected.layer), i32(selected.mip));
+          }`});
+        const pipeline = await device.createRenderPipelineAsync({layout: 'auto',
+          vertex: {module: shader, entryPoint: 'vertex'},
+          fragment: {module: shader, entryPoint: 'fragment', targets: [{format: 'rgba8unorm'}]},
+          primitive: {topology: 'triangle-list'}});
+        selection = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST});
+        const bindings = device.createBindGroup({layout: pipeline.getBindGroupLayout(0), entries: [
+          {binding: 0, resource: texture.createView({dimension: '2d-array'})},
+          {binding: 1, resource: {buffer: selection}}]});
         for (let mip = 0; mip < 3; mip++) {
           const width = 4 >> mip, height = 4 >> mip;
           for (let layer = 0; layer < 2; layer++) {
@@ -178,11 +198,20 @@ GPU_READ = """async () => {
           for (let layer = 0; layer < 2; layer++) {
             const buffer = device.createBuffer({size: 256 * (height + 2),
               usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ});
+            const output = device.createTexture({size: [width, height], format: 'rgba8unorm',
+              usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC});
             try {
               device.queue.writeBuffer(buffer, 0, new Uint8Array(buffer.size).fill(165));
-              const read = async () => {
+              device.queue.writeBuffer(selection, 0, new Uint32Array([mip, layer, 0, 0]));
+              const read = async (sampled = false) => {
                 const encoder = device.createCommandEncoder();
-                encoder.copyTextureToBuffer({texture, mipLevel: mip, origin: [0, 0, layer]},
+                if (sampled) {
+                  const pass = encoder.beginRenderPass({colorAttachments: [{view: output.createView(),
+                    clearValue: [0, 0, 0, 0], loadOp: 'clear', storeOp: 'store'}]});
+                  pass.setPipeline(pipeline); pass.setBindGroup(0, bindings); pass.draw(3); pass.end();
+                }
+                const source = sampled ? {texture: output} : {texture, mipLevel: mip, origin: [0, 0, layer]};
+                encoder.copyTextureToBuffer(source,
                   {buffer, offset: 256, bytesPerRow: 256, rowsPerImage: height}, [width, height, 1]);
                 device.queue.submit([encoder.finish()]);
                 await buffer.mapAsync(GPUMapMode.READ);
@@ -190,12 +219,13 @@ GPU_READ = """async () => {
                 buffer.unmap();
                 return bytes;
               };
-              rows.push({mip, layer, size: [width, height], packed: await read(), repeat: await read()});
-            } finally { buffer.destroy(); }
+              rows.push({mip, layer, size: [width, height], packed: await read(), repeat: await read(),
+                sampled: await read(true)});
+            } finally { buffer.destroy(); output.destroy(); }
           }
         }
         return rows;
-      } finally { texture.destroy(); }
+      } finally { selection?.destroy(); texture.destroy(); }
     };
     const input = new Uint32Array([17, 34, 51, 255]);
     device.queue.writeBuffer(source, 0, input);
@@ -247,7 +277,7 @@ def expected_texture_readback() -> list[dict]:
                 start = 256 * (y + 1)
                 packed[start:start + len(pixels)] = pixels
             rows.append({"mip": mip, "layer": layer, "size": [width, height],
-                         "packed": packed, "repeat": packed.copy()})
+                         "packed": packed, "repeat": packed.copy(), "sampled": packed.copy()})
     return rows
 
 
@@ -261,7 +291,7 @@ def validate_texture_readback(rows) -> None:
                 or not isinstance(row.get("size"), list) or any(type(value) is not int for value in row["size"])
                 or any(not isinstance(row.get(key), list)
                        or any(type(byte) is not int or not 0 <= byte <= 255 for byte in row[key])
-                       for key in ("packed", "repeat"))
+                       for key in ("packed", "repeat", "sampled"))
                 or row != reference):
             raise ValueError("WebGPU texture/mip/layer pixels or untouched padding disagree")
 
@@ -429,7 +459,7 @@ def main() -> int:
         parser.error("Refusing to overwrite existing GPU evidence")
     report = {"schema": 1, "platform": platform.platform(), "passed": False, "checks": [],
               "privacy_admitted": False, "contexts": sorted(CONTEXTS),
-              "scope": "Local GPU metadata, GLSL draw/crop/repeat, WebGL2 PBO/pack padding, WebGPU buffer/compute and texture/mip/layer readback diagnostics; no GPU readback privacy or anti-bot claim"}
+              "scope": "Local GPU metadata, GLSL draw/crop/repeat, WebGL2 PBO/pack padding, WebGPU buffer/compute and texture/mip/layer transfer plus shader-render readback diagnostics; no GPU readback privacy or anti-bot claim"}
     server = None
     thread = None
     try:
