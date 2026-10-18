@@ -2,14 +2,15 @@
 
 Glint is CamouFlow's own Chromium fork. This guide builds the **registered
 development patch chain**, not Camoufox/CloakBrowser and not an admitted release.
-Linux/macOS own-fork builds are deferred. The latest verified Windows browser is
-**001–061**: all eight runtime gates (160 checks) and compiled Glint branding
-passed. Registered source now includes **0062**, the experimental Windows font
-rasterization package. Its browser now links and its mode/restart/first-script
-compatibility comparison passed. The first full runtime regression hit a font
-download `NetworkError`; attributed repeats passed but the cause is unresolved.
-A fresh full-suite repeat is in progress;
-do not transfer the 001–061 results to it. Exact results and retained failures:
+Linux/macOS own-fork builds are deferred. The default build lock still targets
+**Chromium 148.0.7778.96**, registered patches **001–062**. Its reviewed experimental
+Windows package passed all eight runtime gates (160 checks), including the
+separate installed copy. The first font-regression `NetworkError` remains
+unexplained; successful repeats are not evidence that its cause was fixed.
+Experimental **Chromium 156** has a separate manifest, patch chain, workspace
+and SDK requirement. Its source replay and GPU generation checks do not prove
+a compiled browser. Use the [candidate guide](drafts/upstream-156/README.md),
+not the default 148 commands below. Exact results and retained failures:
 [test matrix](../docs/GLINT_TEST_MATRIX.md).
 
 The five new font-policy fixtures use the existing Chromium `gfx_unittests`
@@ -28,11 +29,22 @@ startup, actual pixels, worker delivery or fingerprint acceptance.
 - Git and the application Python 3.12 environment with `requirements.txt` installed.
 - At least **180 GiB free** before each heavy helper operation.
 - Visual Studio 2026 C++ Desktop workload with MFC/ATL; Windows SDK
-  10.0.26100.7705 and SDK Debugging Tools 10.0.26100.3323 or newer.
+  selected for the exact target below, plus SDK Debugging Tools
+  10.0.26100.3323 or newer.
 - A dedicated absolute workspace on **D:**, outside this repository.
 
-Toolchain requirements come from the pinned checkout's
-[`docs/windows_build_instructions.md`](https://chromium.googlesource.com/chromium/src/+/8625e066febc721e015ea99842da12901eb7ed73/docs/windows_build_instructions.md).
+| Target | Source/patch selection | Required Windows SDK |
+| --- | --- | --- |
+| Default 148.0.7778.96 | `native/build-lock.json`, `native/patches/` | 10.0.26100.7705 |
+| Experimental 156.0.8078.36 | Explicit `--candidate upstream-156`, separate empty workspace | 10.0.28000.2270 |
+
+Requirements come from the immutable upstream instructions for
+[148](https://chromium.googlesource.com/chromium/src/+/8625e066febc721e015ea99842da12901eb7ed73/docs/windows_build_instructions.md)
+and [156](https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/docs/windows_build_instructions.md).
+The SDK servicing version is distinct from its on-disk directory version
+(`10.0.26100.0` / `10.0.28000.0`). Do not relabel an older SDK or mix its headers
+with newer libraries to satisfy a path check. Keep the old workspace/toolchain
+available for comparison and rollback when preparing the separate candidate.
 Do not disable security or modify global Git/PATH to make a build pass.
 
 `build-lock.json` pins Chromium/depot_tools and limits builds to four jobs.
