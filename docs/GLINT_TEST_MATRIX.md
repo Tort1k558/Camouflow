@@ -1344,6 +1344,17 @@ all 62 patches and both invariants; altered ordinals, names, duplicate IDs,
 extra commands, changed resource IDs/structure and malformed XML are rejected
 by negative tests. This remains source-only evidence, with no compiler started.
 
+`upstream-156-replay-v10/report.json` adds actual GPU source regeneration:
+**30/30 generated files are byte-identical**, all 62 patches apply and source
+invariants/input guards pass. The public manifest now pins 185 upstream inputs,
+including the exact target generator library/style and all generated files.
+The supplied existing clang-format 21 executable is hash-bound before/after;
+it is **not verified as the target's pinned formatter**. Negative tests cover
+modified/removed/unexpected generated outputs, generator errors and formatter
+mutation. This does not compile C++, build GRIT or establish runtime readiness.
+The complete local Python regression with this gate passed **2643 tests in
+124.01 seconds**.
+
 ## Reference sources
 
 - [GitHub detector directory](https://github.com/TheGP/untidetect-tools): discovery only, not proof of Glint results.

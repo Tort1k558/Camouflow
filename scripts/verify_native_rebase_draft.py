@@ -6,6 +6,7 @@ import argparse
 import ast
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
@@ -52,7 +53,7 @@ def checked_child(root: Path, name: str) -> Path:
     return path
 
 
-def verify(source: Path, output: Path) -> dict:
+def verify(source: Path, output: Path, *, formatter: Path | None = None) -> dict:
     if (not source.is_absolute() or source != source.resolve() or not source.is_dir()
             or not output.is_absolute() or output != output.resolve() or not output.parent.is_dir()
             or output.exists() or output.is_relative_to(source) or output.is_relative_to(ROOT)):
@@ -90,6 +91,16 @@ def verify(source: Path, output: Path) -> dict:
             raise ValueError("Draft V8 revision does not match Chromium DEPS")
     if any(row.get("directory") == "v8" for row in manifest["patches"]) and v8 is None:
         raise ValueError("V8 drafts require a pinned Chromium DEPS dependency")
+    formatter_hash = None
+    if formatter is not None:
+        if not formatter.is_absolute() or formatter != formatter.resolve() or not formatter.is_file():
+            raise ValueError("Use an existing canonical formatter executable")
+        required = {".clang-format", "gpu/command_buffer/build_cmd_buffer_lib.py",
+                    "gpu/command_buffer/build_gles2_cmd_buffer.py",
+                    "gpu/command_buffer/gles2_cmd_buffer_functions.txt"}
+        if not required.issubset(inputs):
+            raise ValueError("GPU generation requires checksummed upstream generator inputs")
+        formatter_hash = hashlib.sha256(formatter.read_bytes()).hexdigest()
     output.mkdir()
     work = output / "src"
     work.mkdir()
@@ -116,6 +127,15 @@ def verify(source: Path, output: Path) -> dict:
             if path.is_file() and ".git" not in path.parts and (path.suffix == ".py" or path.name == "DEPS"):
                 ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path.relative_to(work)))
         report["source_invariants"] = verify_source_invariants(inputs, work)
+        if formatter is not None:
+            from scripts.verify_native_gpu_transport_draft import verify_codegen
+
+            report["codegen"] = {"passed": False, "formatter_sha256": formatter_hash,
+                                 "formatter_target_dependency_verified": False}
+            report["codegen"]["compared_files"] = verify_codegen(work, formatter, dict(os.environ))
+            if hashlib.sha256(formatter.read_bytes()).hexdigest() != formatter_hash:
+                raise ValueError("Formatter changed during source generation")
+            report["codegen"]["passed"] = True
         report["passed"] = True
     except (OSError, ValueError, SyntaxError, subprocess.SubprocessError) as error:
         report["error"] = str(error)
@@ -137,9 +157,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--formatter", type=Path,
+                        help="Also regenerate/compare all GPU outputs using this measured formatter; not a compiler or toolchain-admission gate")
     args = parser.parse_args()
     try:
-        report = verify(args.source, args.output)
+        report = verify(args.source, args.output, formatter=args.formatter)
     except (OSError, ValueError) as error:
         parser.exit(1, f"Rebase draft verification failed: {error}\n")
     print(json.dumps(report))

@@ -3044,8 +3044,33 @@ def test_upstream_audit_binds_lock_and_bounded_https_response(tmp_path, monkeypa
         assert lock.read_bytes() == original
 
 
+@pytest.mark.parametrize("change", [None, "modify", "add", "remove"])
+def test_gpu_codegen_compares_complete_generated_file_set(tmp_path, monkeypatch, change):
+    from scripts import verify_native_gpu_transport_draft as gpu
+
+    target = tmp_path / "gpu/original_autogen.h"
+    target.parent.mkdir()
+    target.write_bytes(b"original")
+    formatter = tmp_path / "formatter.exe"
+    formatter.write_bytes(b"owned formatter")
+    def generate(command, cwd, env):
+        assert cwd == tmp_path and command[-2:] == [str(tmp_path), str(formatter)]
+        if change == "modify":
+            target.write_bytes(b"changed")
+        elif change == "add":
+            (target.parent / "unexpected_autogen.h").write_bytes(b"new output")
+        elif change == "remove":
+            target.unlink()
+    monkeypatch.setattr(gpu.build, "run", generate)
+    if change:
+        with pytest.raises(ValueError, match="Regenerated GPU source differs"):
+            gpu.verify_codegen(tmp_path, formatter, {})
+    else:
+        assert gpu.verify_codegen(tmp_path, formatter, {}) == 1
+
+
 @pytest.mark.parametrize("directory", [".", "v8"])
-@pytest.mark.parametrize("failure", [None, "source", "patch", "apply", "postguard", "deleted-input", "dependency", "directory", "invariant"])
+@pytest.mark.parametrize("failure", [None, "source", "patch", "apply", "postguard", "deleted-input", "dependency", "directory", "invariant", "codegen", "formatter-changed"])
 def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path, monkeypatch, failure, directory):
     import hashlib
     import json
@@ -3073,6 +3098,25 @@ def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path
         manifest["dependencies"] = {"v8": {"revision": "b" * 40}}
     if failure == "directory":
         manifest["patches"][0]["directory"] = "../escape"
+    formatter = None
+    if failure in {"codegen", "formatter-changed"}:
+        from scripts import verify_native_gpu_transport_draft as gpu
+
+        formatter = tmp_path / "formatter.exe"
+        formatter.write_bytes(b"owned formatter")
+        for name in (".clang-format", "gpu/command_buffer/build_cmd_buffer_lib.py",
+                     "gpu/command_buffer/build_gles2_cmd_buffer.py", "gpu/command_buffer/gles2_cmd_buffer_functions.txt"):
+            path = source / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"# owned input\n")
+            manifest["source_files"].append({"path": name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+        def generate(owned, executable, env):
+            assert executable == formatter and owned == tmp_path / "output/src"
+            if failure == "codegen":
+                raise ValueError("Owned generation failure")
+            formatter.write_bytes(b"changed formatter")
+            return 1
+        monkeypatch.setattr(gpu, "verify_codegen", generate)
     (candidate / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     monkeypatch.setattr(draft, "DRAFT", candidate)
     if failure == "source":
@@ -3101,9 +3145,11 @@ def test_upstream_draft_replay_checks_inputs_application_and_postguards(tmp_path
         def reject_invariants(inputs, work):
             raise ValueError("Owned ABI drift")
         monkeypatch.setattr(draft, "verify_source_invariants", reject_invariants)
-    report = draft.verify(source, output)
+    report = draft.verify(source, output, formatter=formatter)
     assert report["passed"] is (failure is None)
     assert report["compiled"] is False and report["runtime_verified"] is False and report["production_admitted"] is False
+    if formatter is not None:
+        assert report["codegen"]["passed"] is False
     if failure is None:
         assert (output / "src" / directory / "value.cc").read_bytes() == b"int value = 2;\n"
     assert json.loads((output / "report.json").read_text(encoding="utf-8")) == report

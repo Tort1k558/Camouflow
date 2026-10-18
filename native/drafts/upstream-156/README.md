@@ -109,3 +109,25 @@ metadata command; branding may change GRIT text but not its element structure
 or attributes. Failure keeps `passed=false` in the report. The complete run
 `upstream-156-replay-v9/report.json` passed these checks (321 original commands,
 new ordinal 577). These checks do not replace code generation or compilation.
+
+## Optional GPU source regeneration
+
+The manifest now includes **185 inputs**: the earlier 165 plus the exact target
+generator library, `.clang-format` and the remaining generated GPU sources.
+With all inputs present, source regeneration is explicit:
+
+```powershell
+python scripts/verify_native_rebase_draft.py --source D:/path/to/verified-inputs --output D:/path/to/new-report --formatter D:/path/to/clang-format.exe
+```
+
+`--formatter` runs the actual target generator in the new owned replay tree,
+formats with the checksummed target style and requires the complete generated
+file set to remain byte-identical. Missing, changed or unexpected generated
+files fail the gate. The formatter executable is measured before/after, not
+automatically trusted as the target's pinned toolchain.
+
+Local evidence `upstream-156-replay-v10/report.json`: **62/62 patches, 30/30
+generated files unchanged**, source invariants and input guards passed. This
+used the existing clang-format 21 binary; its target dependency provenance is
+**not verified**. Target-toolchain reproduction, C++ compilation, GRIT build
+and runtime gates remain outstanding. No browser compilation was started.

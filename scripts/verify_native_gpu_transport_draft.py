@@ -118,7 +118,9 @@ if module.main(['--output-dir', str(owned)]) != 0:
     raise SystemExit('Owned GPU source generation failed')
 """
     build.run([sys.executable, "-c", command, str(overlay), str(formatter)], overlay, env)
-    if not generated or generated != {name: digest(overlay / name) for name in generated}:
+    regenerated = {path.relative_to(overlay).as_posix(): digest(path)
+                   for path in (overlay / "gpu").rglob("*autogen*") if path.is_file()}
+    if not generated or generated != regenerated:
         raise ValueError("Regenerated GPU source differs from the candidate")
     return len(generated)
 

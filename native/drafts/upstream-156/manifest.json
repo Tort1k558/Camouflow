@@ -990,6 +990,126 @@
       "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/ui/gfx/font_render_params_win.cc?format=TEXT",
       "bytes": 5106,
       "sha256": "b449d66c3bdbb5cf1a52d90f62cd57308a7d5d7c2f69e4daf6505419ce6d1175"
+    },
+    {
+      "path": ".clang-format",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/.clang-format?format=TEXT",
+      "bytes": 2962,
+      "sha256": "0a629ad26bab731867b3692c71156633ad0bc123980e8ec4a916c02510265bdc"
+    },
+    {
+      "path": "gpu/command_buffer/build_cmd_buffer_lib.py",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/build_cmd_buffer_lib.py?format=TEXT",
+      "bytes": 258645,
+      "sha256": "32416836edeadcde26a298eed3557ec7848293b715981ba31d3c23e541d2567d"
+    },
+    {
+      "path": "gpu/command_buffer/client/client_context_state_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/client_context_state_autogen.h?format=TEXT",
+      "bytes": 901,
+      "sha256": "71b8d0877bd4497649f03270efe6cd86f7226a51d003abde45fb23adb14c2c09"
+    },
+    {
+      "path": "gpu/command_buffer/client/client_context_state_impl_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/client_context_state_impl_autogen.h?format=TEXT",
+      "bytes": 4385,
+      "sha256": "a598d14f2e6ad498456104752e01d7224f1855a5c44f6b6290edfaef388ae36d"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_implementation_impl_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_implementation_impl_autogen.h?format=TEXT",
+      "bytes": 155945,
+      "sha256": "4053a6ff872bfc51ce039e395c4d86ab1903cee0dc0a5d774d2c763f6f1c9f1a"
+    },
+    {
+      "path": "gpu/command_buffer/client/gles2_implementation_unittest_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/client/gles2_implementation_unittest_autogen.h?format=TEXT",
+      "bytes": 97792,
+      "sha256": "3add6b067932186df46bc39bcee9373dfd2fe66227faa4685303ec60c3092155"
+    },
+    {
+      "path": "gpu/command_buffer/common/gles2_cmd_utils_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/common/gles2_cmd_utils_autogen.h?format=TEXT",
+      "bytes": 6251,
+      "sha256": "4910a3ae502ae9ccb828541c973c977717e1e549b77d4609b0af9f5702d5ffd8"
+    },
+    {
+      "path": "gpu/command_buffer/common/gles2_cmd_utils_implementation_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/common/gles2_cmd_utils_implementation_autogen.h?format=TEXT",
+      "bytes": 64596,
+      "sha256": "ba9ade66bb44d7da7718e79485803dea1803ea65baa89f038bc50a31799a73eb"
+    },
+    {
+      "path": "gpu/command_buffer/service/context_state_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/context_state_autogen.h?format=TEXT",
+      "bytes": 6486,
+      "sha256": "412a6598e7c5b539588bdeeb0cb683f8d510879817f755e5eaf95163f86fbf7b"
+    },
+    {
+      "path": "gpu/command_buffer/service/context_state_impl_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/context_state_impl_autogen.h?format=TEXT",
+      "bytes": 43538,
+      "sha256": "4bce2bf64c31cec4871e54e922a83f30c276670ff817959aec2f0ae04d0fa008"
+    },
+    {
+      "path": "gpu/command_buffer/service/context_state_test_helpers_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/context_state_test_helpers_autogen.h?format=TEXT",
+      "bytes": 4564,
+      "sha256": "8438bf80609e2586712f3e2bfdd4d5cfa45dfb401684c159494e646cc98472c2"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_autogen.h?format=TEXT",
+      "bytes": 221316,
+      "sha256": "6958a62f025d68f5b4f5f8f87012d32c8804fbf73aad46e5922c032ed27dbe3f"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_passthrough_handlers_autogen.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_handlers_autogen.cc?format=TEXT",
+      "bytes": 180096,
+      "sha256": "c0cc3662a3c80fa79247ce0b923c9f5755b596c1614be7f5975d24c9a6023813"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_unittest_1_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_unittest_1_autogen.h?format=TEXT",
+      "bytes": 46505,
+      "sha256": "a6fc799ee05cf802fe115bd05034682bd22e683bb6d7af29121512048372a03a"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_unittest_2_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_unittest_2_autogen.h?format=TEXT",
+      "bytes": 39738,
+      "sha256": "fa13e488c776c07318eb80cdf231b1adb9d735fe54462493eafc6121b67d2bf0"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_unittest_3_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_unittest_3_autogen.h?format=TEXT",
+      "bytes": 11236,
+      "sha256": "9ac9f4e959e2baea54a48cb23571c1d8b3182d877602d0c43ecd316f8a54962f"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_unittest_4_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_unittest_4_autogen.h?format=TEXT",
+      "bytes": 637,
+      "sha256": "4fa2bf98921b00a0e84c2cd9c67a67acf02de0f865a6cebc03a0d7cc19cd4f24"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_decoder_unittest_extensions_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_decoder_unittest_extensions_autogen.h?format=TEXT",
+      "bytes": 975,
+      "sha256": "8de233ef809e3fda8fe558f3d0250fcb8fefc8645d4d50c5ee6e137c7c532569"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_validation_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_validation_autogen.h?format=TEXT",
+      "bytes": 8436,
+      "sha256": "4ebca5683b133368e8c234a694aec32aea2f824775355d1f5690217fb556439b"
+    },
+    {
+      "path": "gpu/command_buffer/service/gles2_cmd_validation_implementation_autogen.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_validation_implementation_autogen.h?format=TEXT",
+      "bytes": 38629,
+      "sha256": "d9b741593b3e8db2fd071beaca91011b2d60ded23ec2b886d01eac565092659a"
     }
   ],
   "patches": [
