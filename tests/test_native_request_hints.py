@@ -8,6 +8,33 @@ import pytest
 from app.core.native.diagnostics import _hint_brands, audit_observed_request_identity
 
 
+def test_identity_versioned_library_check_closes_context_before_page_measurement(tmp_path, monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+    from scripts import verify_native_identity as identity
+
+    executable = tmp_path / "chrome.exe"
+    libraries = tmp_path / "148.0.7778.96"
+    measure = Mock(return_value={"chrome.exe": "a" * 64})
+    monkeypatch.setattr(identity, "measure_runtime_core", measure)
+    context = SimpleNamespace(browser=SimpleNamespace(version="149.0.0.0"), close=AsyncMock())
+    launch = AsyncMock(return_value=context)
+
+    class Driver:
+        async def __aenter__(self):
+            return SimpleNamespace(chromium=SimpleNamespace(launch_persistent_context=launch))
+
+        async def __aexit__(self, *args):
+            return False
+
+    monkeypatch.setattr(identity, "async_playwright", Driver)
+    with pytest.raises(ValueError, match="DLL directory"):
+        asyncio.run(identity.verify(executable, tmp_path, "http://127.0.0.1", [], library_directory=libraries))
+    measure.assert_called_once_with(executable, libraries)
+    context.close.assert_awaited_once()
+
+
 def coherent_request():
     brands = [{"brand": "Chromium", "version": "148"}, {"brand": 'Not"A\\Brand', "version": "99"}]
     versions = [{"brand": value["brand"], "version": "148.0.7778.96" if value["brand"] == "Chromium" else "99.0.0.0"}

@@ -121,8 +121,9 @@ def validate_observation(observed: dict, baseline: dict, *, protected: bool, wor
         raise ValueError("Native policy changed genuine plugins or window.chrome")
 
 
-async def verify(executable: Path, work_dir: Path, origin: str, checks: list, *, strict_client_hints: bool = False) -> dict:
-    core = measure_runtime_core(executable)
+async def verify(executable: Path, work_dir: Path, origin: str, checks: list, *, strict_client_hints: bool = False,
+                 library_directory: Path | None = None) -> dict:
+    core = measure_runtime_core(executable, library_directory)
     baselines = {}
     async with async_playwright() as driver:
         for name, args in (("native-default", []), ("native-identity", [FLAG])):
@@ -131,6 +132,9 @@ async def verify(executable: Path, work_dir: Path, origin: str, checks: list, *,
                     owned, executable_path=str(executable), headless=True, chromium_sandbox=True, args=args)
                 try:
                     version = context.browser.version
+                    if (library_directory is not None and library_directory != executable.parent
+                            and library_directory.name != version):
+                        raise ValueError("Identity DLL directory does not match the running browser")
                     page = context.pages[0]
                     await page.goto(origin)
                     await page.evaluate("""async ({origin, allow}) => {
@@ -183,7 +187,7 @@ async def verify(executable: Path, work_dir: Path, origin: str, checks: list, *,
                 check["passed"] = True
     with executable.open("rb") as stream:
         checksum = hashlib.file_digest(stream, "sha256").hexdigest()
-    if measure_runtime_core(executable) != core:
+    if measure_runtime_core(executable, library_directory) != core:
         raise ValueError("Native identity browser core changed during verification")
     return {"passed": True, "platform": platform.system(), "version": version,
             "strict_client_hints": strict_client_hints,
@@ -197,6 +201,8 @@ def main() -> int:
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--windows-library-directory", type=Path,
+                        help="Explicit package-owned DLL directory for a versioned Chrome-bin layout")
     parser.add_argument("--strict-client-hints", action="store_true",
                         help="Compare document/frame low/high-entropy HTTP hints with JS after owned Accept-CH")
     args = parser.parse_args()
@@ -210,7 +216,8 @@ def main() -> int:
     try:
         args.work_dir.mkdir(parents=True, exist_ok=True)
         report = asyncio.run(verify(args.executable.resolve(), args.work_dir, f"http://127.0.0.1:{server.server_port}", checks,
-                                   strict_client_hints=args.strict_client_hints))
+                                   strict_client_hints=args.strict_client_hints,
+                                   library_directory=args.windows_library_directory))
     except Exception as error:
         report = {"passed": False, "platform": platform.system(), "checks": checks,
                   "error_type": type(error).__name__, "error": str(error)}

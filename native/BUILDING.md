@@ -228,6 +228,25 @@ compiled payload source until the archive is published. Installation/activation/
 replace a working runtime based only on successful compilation. Windows
 development archives are unsigned. No production release is implied here.
 
+After installing the archive into a separate owned store with
+`native_release.py install`, verify the **installed** executable, not the original
+build output. Use the returned `executable_path`, release checksum and exact
+`chromium_version` directory; do not copy DLLs beside the launcher:
+
+```powershell
+& $python scripts/verify_native_suite.py --executable $installedExe --windows-library-directory $installedLibraries --release-store $store --release-sha256 $releaseSha256 --report-dir "$workspace\relocated-suite-new"
+if ($LASTEXITCODE -ne 0) { throw 'Glint relocated package verification failed' }
+```
+
+`$installedLibraries` is the installed EXE's parent joined with its declared
+Chromium version. The suite verifies the store's complete checksummed payload
+around each gate, binds lifecycle observations to that release, and stops on
+payload drift. Evidence/profiles must stay outside the binary store. Identity,
+runtime and combined gates receive the explicit versioned DLL directory.
+Success does not enable experimental policies or prove publisher signatures.
+Activate only after successful verification; test rollback in this owned store,
+not the user's configured installation or profiles.
+
 ## Verification boundary
 
 See the [clean-workspace audit](../docs/GLINT_WINDOWS_BUILD_AUDIT.md) for observed

@@ -122,7 +122,7 @@ def test_native_suite_propagates_explicit_versioned_dll_layout_only_to_supported
     core = suite.measure_runtime_core(executable, libraries)
     def run(command, **kwargs):
         gate = Path(command[1]).stem.removeprefix("verify_native_")
-        if gate in {"runtime", "combined"}:
+        if gate in {"runtime", "identity", "combined"}:
             assert command[command.index("--windows-library-directory") + 1] == str(libraries)
         else:
             assert "--windows-library-directory" not in command
@@ -134,7 +134,7 @@ def test_native_suite_propagates_explicit_versioned_dll_layout_only_to_supported
             "runtime_core_sha256_measured": core, "arguments": suite.ARGUMENTS}), encoding="utf-8")
         return SimpleNamespace(returncode=0)
     monkeypatch.setattr(suite.subprocess, "run", run)
-    report = suite.verify(executable, tmp_path / "reports", ["runtime", "hardware", "combined"], library_directory=libraries)
+    report = suite.verify(executable, tmp_path / "reports", ["runtime", "hardware", "identity", "combined"], library_directory=libraries)
     assert report["passed"] and not report["full_suite"]
     assert report["runtime_core_sha256_measured"] == core
 
@@ -147,6 +147,89 @@ def test_native_suite_requires_all_runtime_lifecycle_checks():
     report["checks"].pop()
     with pytest.raises(ValueError, match="missing"):
         validate_report("runtime", report, "owned")
+
+
+@pytest.mark.parametrize("failure", [None, "resource", "removed-resource", "metadata", "child-release"])
+def test_native_suite_binds_installed_payload_and_stops_on_drift(tmp_path, monkeypatch, failure):
+    import json
+    from types import SimpleNamespace
+    from app.core.native.distribution import NativeBinaryStore
+    from scripts import package_native_windows as packaging, verify_native_suite as suite
+
+    monkeypatch.setattr(suite.sys, "platform", "win32")
+    output, staged, runtime_report, archive = _native_windows_packaging_fixture(tmp_path, monkeypatch)
+    packaged = packaging.package(output, staged, runtime_report, archive)
+    store = NativeBinaryStore(tmp_path / "store")
+    release = store.install_archive(archive, packaged["sha256"])
+    executable = Path(release["executable_path"])
+    libraries = executable.parent / release["chromium_version"]
+    calls = []
+
+    def run(command, **kwargs):
+        gate = Path(command[1]).stem.removeprefix("verify_native_")
+        calls.append(gate)
+        assert command[command.index("--windows-library-directory") + 1] == str(libraries)
+        if gate == "runtime":
+            assert command[command.index("--release-store") + 1] == str(store.root)
+            assert command[command.index("--release-sha256") + 1] == packaged["sha256"]
+        else:
+            assert "--release-store" not in command
+        value = {"passed": True, "checks": sorted(suite.REQUIRED_RUNTIME_CHECKS) if gate == "runtime" else [{"passed": True}],
+                 "binary_sha256_measured": release["executable_sha256"],
+                 "release_sha256_measured": "0" * 64 if failure == "child-release" else packaged["sha256"],
+                 "payload_files_sha256_measured": release["files_sha256"]}
+        Path(command[command.index("--report") + 1]).write_text(json.dumps(value), encoding="utf-8")
+        if gate == "runtime":
+            resource = libraries / "locales/en-US.pak"
+            if failure == "resource":
+                resource.write_bytes(b"changed non-code resource")
+            elif failure == "removed-resource":
+                resource.unlink()
+            elif failure == "metadata":
+                path = executable.parent / "native-release.json"
+                metadata = json.loads(path.read_text(encoding="utf-8"))
+                metadata["unexpected_change"] = True
+                path.write_text(json.dumps(metadata), encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(suite.subprocess, "run", run)
+    destination = tmp_path / "reports"
+    result = suite.verify(executable, destination, ["runtime", "identity"], library_directory=libraries,
+                          release_store=store.root, release_digest=packaged["sha256"])
+    assert result["passed"] is (failure is None)
+    assert result["release_sha256_measured"] == packaged["sha256"]
+    assert result["payload_files_sha256_measured"] == release["files_sha256"]
+    assert calls == (["runtime", "identity"] if failure in {None, "child-release"} else ["runtime"])
+    assert result == json.loads((destination / "suite.json").read_text(encoding="utf-8"))
+    if failure == "child-release":
+        assert "bind" in result["gates"][0]["error"]
+    elif failure is not None:
+        assert "error" in result
+
+
+@pytest.mark.parametrize("store,digest", [(None, "a" * 64), (Path("unused"), "")])
+def test_native_suite_requires_paired_release_options_before_creating_evidence(tmp_path, monkeypatch, store, digest):
+    from scripts import verify_native_suite as suite
+
+    monkeypatch.setattr(suite.sys, "platform", "win32")
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"owned launcher")
+    destination = tmp_path / "evidence"
+    with pytest.raises(ValueError, match="both store and checksum"):
+        suite.verify(executable, destination, ["runtime"], release_store=store, release_digest=digest)
+    assert not destination.exists()
+
+
+def test_native_suite_refuses_to_write_profiles_or_reports_inside_binary_store(tmp_path, monkeypatch):
+    from scripts import verify_native_suite as suite
+
+    monkeypatch.setattr(suite.sys, "platform", "win32")
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"owned launcher")
+    destination = tmp_path / "reports"
+    with pytest.raises(ValueError, match="outside.*binary store"):
+        suite.verify(executable, destination, ["runtime"], release_store=tmp_path, release_digest="a" * 64)
+    assert not destination.exists()
 
 
 @pytest.mark.parametrize("platform,executable", [

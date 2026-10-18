@@ -111,8 +111,10 @@ not a linked 001-062 browser result.
 The public `stage_native_windows.py` command now invokes Chromium's official
 `mini_installer_archive` target, with pinned source/receipt/GN/core/patch-chain
 checks and postguards. It does not regenerate GN or replace the browser receipt.
-The actual 001-062 j4 action is in progress; no relocated-package or capability
-admission is claimed. Its proof/log use `official-staging-001-062-v2*` on D.
+The 001-062 j4 v2 attempt was interrupted without a terminal proof. On October 18,
+no builder or surviving tool handle remained; the same target was resumed with
+fresh `official-staging-001-062-v3*` evidence on D. No relocated-package or
+capability admission is claimed while that action is running.
 The first preflight refused equivalent LF/CRLF GN text before any compiler ran;
 the corrected text comparison retains exact receipt and post-run byte guards.
 That refusal is preserved in `official-staging-001-062-v1-preflight.json`.
@@ -126,6 +128,23 @@ staging cases and packaging failure/postguard coverage. The local Retype build
 also passed: 37 pages, zero errors/warnings. A previous docs CI run failed inside
 Retype with `InvalidOperationException` concerning concurrent collection updates;
 verbose CI logging is enabled to diagnose recurrence, not claimed as a fix.
+
+The suite now accepts paired `--release-store` / `--release-sha256` arguments,
+checks every installed payload file around each gate and stops on drift. The
+runtime child must bind its own observations to that exact release. Evidence
+and disposable profiles cannot be placed inside the binary store. Identity now
+supports the explicit versioned DLL directory and rejects a directory whose
+version differs from the running browser. These are package verification
+mechanisms, not new fingerprint capabilities or a completed relocated 001-062 run.
+An actual relocated **001-010 control** passed all 18 identity checks with the
+new explicit DLL-directory support (`relocated-identity-001-010-v1/report.json`
+on D). Its core was measured before/after; no DLLs were copied beside the EXE.
+This is a control for the verifier, not 001-062 evidence, strict Client Hints,
+TLS or third-party acceptance. The 52671fa desktop/docs CI runs both completed
+successfully; the earlier Retype concurrency exception remains historical.
+The full Python regression for the relocated-package support passed **2552
+tests in 147.11s**. Resource/manifest mutation stops, release-bound child reports,
+versioned identity DLL checks and refusal to write inside the store are covered.
 
 ## Previous verified baseline: 001-061 — 2026-10-14
 
