@@ -8,6 +8,29 @@ Target: **156.0.8078.36**, Chromium revision
 `manifest.json` binds each source input to an immutable Gitiles URL/hash and
 each draft patch to its hash and original registered patch hash.
 
+## Isolated Windows SDK
+
+The target requires SDK **10.0.28000.2270**, not the default 148 SDK. Keep the
+installed SDK and old workspace intact. `native/toolchain/windows-sdk-28000.json`
+pins four official Microsoft NuGet packages by URL, size and SHA-256: common
+headers/tools plus x64, x86 and ARM64 libraries. Download these exact archives
+to an external D: directory; the helper does not download alternative versions.
+It requires an installed .NET SDK for real NuGet signature verification and
+compatible, Authenticode-signed x64/x86 Debugging Tools 10.0.26100.3323 or newer.
+
+```powershell
+.venv\Scripts\python.exe scripts/native_windows_sdk.py --packages D:\Glint156Packages --output D:\Glint156Sdk --debuggers "C:\Program Files (x86)\Windows Kits\10\Debuggers"
+$env:WINDOWSSDKDIR = 'D:\Glint156Sdk\'
+$env:WindowsSDKVersion = '10.0.28000.0\'
+```
+
+The output must be new. Input hashes and NuGet repository signatures are checked
+before tool extraction; package libraries are mapped to the SDK's expected
+`Lib/10.0.28000.0/` layout without changing bytes or relabeling versions. No
+registry, global PATH, security or installed-SDK settings are changed. Failed
+assemblies retain an explicit failed provenance report, not a ready SDK receipt.
+The helper verifies layout, **not Chromium compilation or runtime readiness**.
+
 | Draft | Ported scope |
 | --- | --- |
 | 0001 | CPU/memory ceilings, renderer switches; updated Blink build/DEPS contexts |

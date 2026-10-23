@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "version": "10.0.28000.2270",
+  "directory_version": "10.0.28000.0",
+  "minimum_debugger_version": "10.0.26100.3323",
+  "repository_signer_sha256": "1f4b311d9acc115c8dc8018b5a49e00fce6da8e2855f9f014ca6f34570bc482d",
+  "packages": [
+    {
+      "package": "Microsoft.Windows.SDK.CPP",
+      "url": "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.cpp/10.0.28000.2270/microsoft.windows.sdk.cpp.10.0.28000.2270.nupkg",
+      "sha256": "0a4887a64d1b17128f9ffd80032f20debabf943f34eea927aac00cc46cb32879",
+      "bytes": 160882592
+    },
+    {
+      "package": "Microsoft.Windows.SDK.CPP.x64",
+      "url": "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.cpp.x64/10.0.28000.2270/microsoft.windows.sdk.cpp.x64.10.0.28000.2270.nupkg",
+      "sha256": "72076d00b16c3882bf9eab0c80e350f33d8bc65e5f29e2f0e9b66a3f2569ccb1",
+      "bytes": 52978506
+    },
+    {
+      "package": "Microsoft.Windows.SDK.CPP.x86",
+      "url": "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.cpp.x86/10.0.28000.2270/microsoft.windows.sdk.cpp.x86.10.0.28000.2270.nupkg",
+      "sha256": "5bf7b8811cd8e7640b5475ddbbf0a873f90077622c73bc6f6c2f1d368d5d55e3",
+      "bytes": 50607747
+    },
+    {
+      "package": "Microsoft.Windows.SDK.CPP.arm64",
+      "url": "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.cpp.arm64/10.0.28000.2270/microsoft.windows.sdk.cpp.arm64.10.0.28000.2270.nupkg",
+      "sha256": "543c2b31dfa77e00cc63860a587178c5c90837f64c05b05f73cb18b1c33f549a",
+      "bytes": 106092751
+    }
+  ]
+}
