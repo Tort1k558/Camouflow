@@ -29,6 +29,8 @@ def local_toolchain_fixture(tmp_path):
         return path
 
     put(vc / "Auxiliary/Build/Microsoft.VCToolsVersion.default.txt", version.encode())
+    for name in build.WINDOWS_DIA_FILES:
+        put(root / "DIA SDK" / name)
     for cpu in ("x86", "x64"):
         (vc / "Redist/MSVC" / version / cpu / "Microsoft.VC145.CRT").mkdir(parents=True)
         for name in ("cl.exe", "link.exe"):
@@ -58,7 +60,7 @@ def local_toolchain_fixture(tmp_path):
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows local toolchain environment")
 @pytest.mark.parametrize("mutation", [None, "sdk-file", "package", "missing-files", "duplicate", "escape",
-                                     "missing-script", "sdk-path", "runtime", "version"])
+                                     "missing-script", "sdk-path", "runtime", "version", "dia-header", "dia-library", "dia-runtime"])
 def test_local_toolchain_validates_owned_layout_and_every_recorded_sdk_input(local_toolchain_fixture, mutation):
     from scripts import native_build as build
 
@@ -83,6 +85,10 @@ def test_local_toolchain_validates_owned_layout_and_every_recorded_sdk_input(loc
         config["runtime_dirs"].reverse()
     elif mutation == "version":
         config["version"] = "2022"
+    elif mutation in ("dia-header", "dia-library", "dia-runtime"):
+        relative = {"dia-header": "include/dia2.h", "dia-library": "lib/amd64/diaguids.lib",
+                    "dia-runtime": "bin/amd64/msdia140.dll"}[mutation]
+        (vc.parent / "DIA SDK" / relative).unlink()
     (workspace / "chromium/src/build/win_toolchain.json").write_text(json.dumps(config), encoding="utf-8")
     (sdk_root / "glint-sdk-provenance.json").write_text(json.dumps(provenance), encoding="utf-8")
     if mutation:
@@ -102,7 +108,7 @@ def test_local_toolchain_validates_owned_layout_and_every_recorded_sdk_input(loc
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows local toolchain environment")
-@pytest.mark.parametrize("input_name", ["SetEnv.cmd", "SetEnv.x64.json", "cl.exe"])
+@pytest.mark.parametrize("input_name", ["SetEnv.cmd", "SetEnv.x64.json", "cl.exe", "dia2.h", "diaguids.lib", "msdia140.dll"])
 def test_local_toolchain_snapshot_detects_environment_and_compiler_drift(local_toolchain_fixture, input_name):
     from scripts import native_build as build
 
@@ -110,6 +116,10 @@ def test_local_toolchain_snapshot_detects_environment_and_compiler_drift(local_t
     before = build.local_windows_toolchain(workspace)["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]
     path = (vc / "Tools/MSVC/14.51.12345/bin/Hostx64/x64/cl.exe" if input_name == "cl.exe"
             else sdk_root / "bin" / input_name)
+    if input_name in ("dia2.h", "diaguids.lib", "msdia140.dll"):
+        relative = {"dia2.h": "include/dia2.h", "diaguids.lib": "lib/amd64/diaguids.lib",
+                    "msdia140.dll": "bin/amd64/msdia140.dll"}[input_name]
+        path = vc.parent / "DIA SDK" / relative
     path.write_bytes(b"changed toolchain input")
     assert build.local_windows_toolchain(workspace)["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"] != before
 
@@ -211,7 +221,7 @@ def test_prepares_materialized_toolchain_with_exact_environment_and_provenance(t
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows toolchain preparation")
-@pytest.mark.parametrize("mutation", ["existing-config", "existing-output", "sdk-changed", "prepared-sdk", "version", "candidate", "low-space"])
+@pytest.mark.parametrize("mutation", ["existing-config", "existing-output", "sdk-changed", "prepared-sdk", "version", "candidate", "low-space", "missing-dia"])
 def test_toolchain_preparation_rejects_invalid_inputs_without_replacing_config(toolchain_preparation_fixture, monkeypatch, mutation):
     from scripts import native_windows_toolchain as prep
 
@@ -228,6 +238,8 @@ def test_toolchain_preparation_rejects_invalid_inputs_without_replacing_config(t
         (sdk_root / "bin/SetEnv.cmd").write_bytes(b"existing environment")
     elif mutation == "version":
         (installation / "VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt").write_bytes(b"14.44.1")
+    elif mutation == "missing-dia":
+        (installation / "DIA SDK/include/dia2.h").unlink()
     elif mutation == "candidate":
         (workspace / "glint-build-candidate.json").write_text("{}", encoding="utf-8")
     elif mutation == "low-space":

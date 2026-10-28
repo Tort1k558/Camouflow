@@ -17,6 +17,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 LOCK = json.loads((ROOT / "native/build-lock.json").read_text(encoding="utf-8-sig"))
+WINDOWS_DIA_FILES = ("include/dia2.h", "include/cvconst.h", "include/diacreate.h", "lib/diaguids.lib",
+                     "lib/amd64/diaguids.lib", "bin/msdia140.dll", "bin/amd64/msdia140.dll")
 
 
 @contextmanager
@@ -183,6 +185,11 @@ def local_windows_toolchain(workspace: Path) -> dict[str, str]:
             if file != file.resolve() or not file.is_file():
                 raise ValueError("Actual local MSVC compiler tools are required")
             inputs[str(file)] = sha256(file)
+    for relative in WINDOWS_DIA_FILES:
+        file = root / "DIA SDK" / relative
+        if file != file.resolve() or not file.is_file():
+            raise ValueError("Local MSVC DIA SDK headers, libraries and runtime must be complete and canonical")
+        inputs[str(file)] = sha256(file)
     digest = hashlib.sha256(json.dumps(inputs, sort_keys=True).encode("utf-8")).hexdigest()
     return {"DEPOT_TOOLS_WIN_TOOLCHAIN": "1", "WINDOWSSDKDIR": str(sdk), "GYP_MSVS_VERSION": "2026",
             "vs2026_install": str(vc.parent), "WindowsSDKVersion": spec["directory_version"] + "\\",

@@ -30,6 +30,9 @@ def validate_paths(workspace: Path, installation: Path, sdk: Path, output: Path)
             raise ValueError("Toolchain inputs must be canonical directories on the approved drive")
     if (installation / "VC") != (installation / "VC").resolve() or not (installation / "VC").is_dir():
         raise ValueError("The installed VC source must be a canonical regular directory")
+    if any((installation / "DIA SDK" / name) != (installation / "DIA SDK" / name).resolve()
+           or not (installation / "DIA SDK" / name).is_file() for name in build.WINDOWS_DIA_FILES):
+        raise ValueError("A complete canonical installed DIA SDK is required")
     config = workspace / "chromium/src/build/win_toolchain.json"
     if (config != config.resolve() or config.exists() or not config.parent.is_dir()
             or not output.is_absolute() or output != output.resolve() or output.exists()
@@ -111,7 +114,8 @@ def prepare(workspace: Path, installation: Path, sdk: Path, output: Path, *, can
             raise ValueError("At least 20 GiB free is required for local toolchain preparation")
         output.mkdir()
         try:
-            for source, target in ((installation / "VC", output / "VC"), (sdk, output / "Windows Kits/10")):
+            for source, target in ((installation / "VC", output / "VC"), (installation / "DIA SDK", output / "DIA SDK"),
+                                   (sdk, output / "Windows Kits/10")):
                 for parent, directories, _ in os.walk(source, followlinks=False):
                     if any((Path(parent) / name) != (Path(parent) / name).resolve() for name in directories):
                         raise ValueError("Toolchain input contains a linked directory")

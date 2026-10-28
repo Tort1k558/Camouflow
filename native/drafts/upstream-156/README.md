@@ -259,7 +259,7 @@ the public helper. Supply the original signature-verified SDK assembly from
 python scripts/native_windows_toolchain.py --workspace D:/Glint156Fresh --candidate upstream-156 --vs-installation D:/CamouFlowNative/toolchain/BuildTools --sdk D:/Glint156Fresh/toolchain/windows-sdk-28000 --output D:/Glint156Fresh/toolchain/local-msvc-sdk
 ```
 
-The helper copies installed VC and the SDK into a **new** owned directory,
+The helper copies installed VC, **DIA SDK** and the Windows SDK into a **new** owned directory,
 checks source/destination hashes, generates x86/x64 SetEnv files in the same
 canonical namespace and writes Chromium's ignored toolchain metadata only
 after copying. It requires 20 GiB free and rejects links, input drift, excessive
@@ -272,7 +272,16 @@ is impersonated. Original installations and global settings remain untouched.
 Do not run this command against the currently active prepared workspace. Its
 existing config is deliberately not replaced. The initial VC junction layout
 failed Siso dependency resolution; materialized copies subsequently compiled
-both system module targets. The public preparer is covered by small real-file
+both system module targets. A subsequent full build stopped on 19 Dawn DXIL
+actions because the original composite omitted `DIA SDK/include/dia2.h`.
+The local selection now requires and hashes DIA headers, x86/x64 GUID libraries
+and runtime DLLs; the preparer copies the installed DIA tree without COM
+registration or global include-path changes. Missing DIA fails before copying.
+After materializing the installed DIA files, the actual Dawn `lib_dxildia.lib`
+target compiled successfully with unchanged source/toolchain postguards
+(`dia-sdk-compile-20261029-v1/report.json`). The full j4 build resumed with
+existing objects; this library probe is not a linked browser or WebGPU admission.
+The public preparer is covered by small real-file
 fixtures; running it through a fresh complete 156 build remains a separate gate.
 
 ### Rendering checks after linking
