@@ -418,13 +418,46 @@ def test_native_build_transport_is_process_scoped_and_preserves_existing_git_con
     assert env["GIT_CONFIG_KEY_0"] == "core.filemode"
     assert env["GIT_CONFIG_VALUE_0"] == "false"
     if os.name == "nt":
-        assert env["GIT_CONFIG_COUNT"] == "2"
+        assert env["GIT_CONFIG_COUNT"] == "6"
         assert env["GIT_CONFIG_KEY_1"] == "http.sslBackend"
         assert env["GIT_CONFIG_VALUE_1"] == "openssl"
+        assert {env[f"GIT_CONFIG_KEY_{index}"]: env[f"GIT_CONFIG_VALUE_{index}"] for index in range(2, 6)} == {
+            "core.autocrlf": "false", "core.filemode": "false", "core.fscache": "true", "core.preloadIndex": "true"}
+    else:
+        assert env["GIT_CONFIG_COUNT"] == "1"
     assert env["DEPOT_TOOLS_UPDATE"] == "0"
     assert env["DEPOT_TOOLS_METRICS"] == "0"
     assert env["GIT_CONFIG_GLOBAL"] == str(tmp_path / "build.gitconfig")
     assert env["CIPD_CACHE_DIR"] == str(tmp_path / "cipd-cache")
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows Git overrides only")
+@pytest.mark.parametrize("autocrlf", ["true", "input"])
+def test_native_dependency_git_settings_override_machine_defaults_without_editing_them(tmp_path, monkeypatch, autocrlf):
+    import os
+    import subprocess
+    from scripts.native_build import environment
+
+    system = tmp_path / "machine.gitconfig"
+    original = (f"[core]\n\tautocrlf = {autocrlf}\n\tfilemode = true\n"
+                "\tfscache = false\n\tpreloadindex = false\n")
+    system.write_text(original, encoding="utf-8")
+    monkeypatch.setenv("GIT_CONFIG_SYSTEM", str(system))
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "core.autocrlf")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", "true")
+    env = environment(tmp_path)
+    dependency = tmp_path / "dependency"
+    dependency.mkdir()
+    subprocess.run(["git", "init", str(dependency)], env=env, check=True, capture_output=True)
+    for key, value in {"core.autocrlf": "false", "core.filemode": "false",
+                       "core.fscache": "true", "core.preloadIndex": "true"}.items():
+        result = subprocess.run(["git", "config", "--get", key], cwd=dependency, env=env,
+                                check=True, capture_output=True, text=True)
+        assert result.stdout.strip() == value
+    assert system.read_text(encoding="utf-8") == original
+    assert os.environ["GIT_CONFIG_COUNT"] == "1"
+    assert os.environ["GIT_CONFIG_VALUE_0"] == "true"
 
 
 def test_native_build_rejects_relative_workspace():

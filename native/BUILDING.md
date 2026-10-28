@@ -311,6 +311,11 @@ steps and the unresolved first-download transport limitation.
   failed fresh download with cached files and call it a clean build.
 - depot_tools global-Git recommendations are warnings. Keep the project's
   workspace-local configuration instead of applying suggested global changes.
+  On Windows the helper also passes process-scoped Git settings for line endings,
+  file modes and filesystem/index caches. These cover dependency clones as well
+  as the root checkout: a root-local `core.autocrlf=false` alone does not override
+  machine defaults inside newly cloned V8/ANGLE repositories. Existing inherited
+  Git environment entries are preserved; system/global config files are not edited.
 - On `LLVM ERROR: out of memory`, retain the failed report/log/reproducer and
   inspect physical memory and Windows commit headroom. `-j4` limits concurrent
   local work, not total memory: see the [official Siso concurrency documentation](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/siso_tips.md).

@@ -129,9 +129,13 @@ def environment(workspace: Path) -> dict[str, str]:
         if sdk_python.is_file():
             env["PATH"] = str(sdk_python.parent) + os.pathsep + env["PATH"]
         count = int(env.get("GIT_CONFIG_COUNT", "0"))
-        env.update({"GIT_CONFIG_COUNT": str(count + 1),
-                    f"GIT_CONFIG_KEY_{count}": "http.sslBackend",
-                    f"GIT_CONFIG_VALUE_{count}": "openssl"})
+        overrides = (("http.sslBackend", "openssl"), ("core.autocrlf", "false"),
+                     ("core.filemode", "false"), ("core.fscache", "true"),
+                     ("core.preloadIndex", "true"))
+        env["GIT_CONFIG_COUNT"] = str(count + len(overrides))
+        for index, (key, value) in enumerate(overrides, start=count):
+            env[f"GIT_CONFIG_KEY_{index}"] = key
+            env[f"GIT_CONFIG_VALUE_{index}"] = value
         vpython = workspace / "depot_tools/.cipd_bin/vpython3.exe"
         if vpython.is_file():
             launchers = workspace / "tool-launchers"
