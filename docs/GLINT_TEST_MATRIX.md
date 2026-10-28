@@ -64,6 +64,31 @@ launch arguments remain compatible. Non-native rasterization combinations,
 Canvas/GPU/Audio privacy experiments, OS/GPU simulation, external anti-bot
 acceptance and Chromium 156 admission are not established by these runs.
 
+### Follow-up shutdown diagnosis
+
+A separate bounded comparison used the unchanged reviewed 148 package and
+application source: minimal pages versus workers/editing/export, Native versus
+contrast 0.5 versus gamma 2.2 / contrast 0.5. Each combination used two persistent
+profiles and two starts: **24 real manager starts**. All 24 browser processes
+reported graceful exit code zero; actual child launcher exit was zero. Owned
+process snapshots (19–21 observed descendants per pair) found no survivors after
+each close round. No forced cleanup, retained runtime resources, loop exception
+or checked unretrieved-future/teardown warning occurred. Close durations ranged
+from **0.687 to 13.625 seconds**, mean 1.982 seconds. This is an observed range
+under the concurrent build workload, not a shutdown latency guarantee.
+
+This did **not reproduce or fix** the earlier v4 timeout. Do not change the
+shutdown budgets or remove fallback based on this negative reproduction. The
+diagnostic retains close-phase samples and Python task locations when a close
+takes more than two seconds; driver logs and observed process identities remain
+private. Evidence: `manager-close-diagnostic-20261029-v2/{report,launcher}.json`
+and its adjacent `-driver.log` on D. Payload, fixture font and source postguards
+passed. The first diagnostic's assertions passed, but its PowerShell stderr
+redirection returned status one without recording the Python exit code; its
+report/log are retained and not used as a clean launcher gate. V2 captured the
+actual child exit via subprocess rather than treating shell status as browser
+failure or silently rewriting v1.
+
 ## Manager same-origin frame diagnostics — 2026-10-29
 
 The running-profile diagnostic now checks its own document and dedicated worker,
