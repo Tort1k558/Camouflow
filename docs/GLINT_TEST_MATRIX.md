@@ -3,6 +3,38 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Manager same-origin frame diagnostics — 2026-10-29
+
+The running-profile diagnostic now checks its own document and dedicated worker,
+plus a same-origin iframe and that iframe's dedicated worker. Each scope uses
+the existing native observation/validation path. Sixteen identity groups are
+also compared across the two documents: navigator/Client Hints, CPU/memory,
+locale/timezone, screen/DPR/touch, media preferences, WebGL and WebGPU metadata.
+This catches disagreements that could independently satisfy a configured ceiling.
+Frame mismatches join the existing top-level list with scope labels; detailed
+results are retained under `contexts.same_origin_frame`.
+
+Only the diagnostic page owns the routes and service-worker bypass. Its two
+explicit loopback URLs are fulfilled locally; every other request is aborted.
+The disposable page closes on success and on missing-frame/inspection failures.
+It does not navigate or attach routes to the user's original page. Standalone
+binary/settings probes retain their existing document/worker coverage.
+
+Installed **Glint 148 / 001-062** passed **eight real manager starts / 32 scope
+observations**: desktop and Mobile Web Emulation, pinned/inherited configurations,
+initial/restart phases. All document-pair identity groups agreed, all existing
+scope validators reported zero mismatches, original pages/URLs were retained,
+all runtimes released their resources, and the complete payload/core stayed
+unchanged. Evidence on D: `frame-diagnostics-summary-20261029-v1.json`,
+`frame-diagnostics-runtime-20261029-v2/` and
+`frame-diagnostics-mobile-20261029-v1/`.
+Focused health/consistency tests passed **56 cases**, including all 16 field
+groups with drift/missing values, frame failure/cancellation cleanup and route restrictions.
+
+These are **post-load same-origin** checks, not first-parser-script,
+cross-origin, shared/service-worker coverage, Android/iOS identity or 156 proof.
+They do not admit Canvas/GPU/Audio experiments or establish anti-bot acceptance.
+
 ## Pinned profile environment — 2026-10-29
 
 Profiles → Settings → Browser JSON → **Pin environment** copies the effective

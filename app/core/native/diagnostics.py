@@ -8,6 +8,17 @@ import re
 from .configuration import MEDIA_PREFERENCES, NativeConfiguration
 from .canvas_fidelity import READ as CANVAS_FIDELITY_READ, validate_measurement
 
+NAVIGATOR_IDENTITY_FIELDS = (
+    "userAgent", "platform", "language", "languages", "hardwareConcurrency", "deviceMemory",
+    "timezone", "intlLocale", "userAgentData", "userAgentHighEntropy",
+)
+
+
+def compare_document_identity(first: dict, second: dict) -> list[str]:
+    fields = (*NAVIGATOR_IDENTITY_FIELDS, "screen", "dpr", "touch", "mediaPreferences", "graphics", "webgpu")
+    return ["Document and same-origin iframe disagree on " + key for key in fields
+            if key not in first or key not in second or first[key] != second[key]]
+
 
 OBSERVE = """async () => {
     const canvasValues = async () => {
@@ -249,7 +260,7 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
     if worker is None:
         mismatches.append(observed.get("workerError") or "Worker values could not be observed")
     else:
-        for key in ("userAgent", "platform", "language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "intlLocale", "userAgentData", "userAgentHighEntropy"):
+        for key in NAVIGATOR_IDENTITY_FIELDS:
             if worker.get(key) != document.get(key):
                 mismatches.append(f"Document and dedicated worker disagree on {key}")
         if "canvas" in document and "canvas" in worker:

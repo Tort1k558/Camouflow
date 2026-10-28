@@ -1447,19 +1447,22 @@ def test_native_profile_probe_observes_owned_page_and_always_verifies_teardown(t
     assert not list((tmp_path / "health").iterdir())
 
 
-@pytest.mark.parametrize("failure", ["", "bypass", "navigate", "inspect"])
+@pytest.mark.parametrize("failure", ["", "bypass", "navigate", "inspect", "missing-frame", "frame-inspect", "cancel"])
 def test_native_context_health_owns_only_diagnostic_page_and_closes_on_failure(monkeypatch, failure):
     from types import SimpleNamespace
-    from unittest.mock import AsyncMock, call
+    from unittest.mock import AsyncMock, Mock, call
 
     from app.core.native import health
 
-    page = SimpleNamespace(route=AsyncMock(), goto=AsyncMock(), close=AsyncMock())
+    frame = SimpleNamespace()
+    page = SimpleNamespace(route=AsyncMock(), goto=AsyncMock(), close=AsyncMock(),
+                           frame=lambda **kwargs: None if failure == "missing-frame" else frame)
     session = SimpleNamespace(send=AsyncMock())
     context = SimpleNamespace(new_page=AsyncMock(return_value=page), route=AsyncMock(),
                               new_cdp_session=AsyncMock(return_value=session))
-    expected = {"mismatches": [], "native_patch_capabilities": []}
-    inspect = AsyncMock(return_value=expected)
+    expected = {"mismatches": [], "native_patch_capabilities": [], "observed": {"document": {}}}
+    frame_report = {"mismatches": ["owned discrepancy"], "observed": {"document": {}}}
+    inspect = AsyncMock(side_effect=[expected, frame_report])
     if failure == "bypass":
         async def fail_bypass(method, parameters):
             if method == "Network.setBypassServiceWorker":
@@ -1469,13 +1472,25 @@ def test_native_context_health_owns_only_diagnostic_page_and_closes_on_failure(m
         page.goto.side_effect = RuntimeError("Owned navigation failed")
     elif failure == "inspect":
         inspect.side_effect = RuntimeError("Owned inspection failed")
+    elif failure == "frame-inspect":
+        inspect.side_effect = [expected, RuntimeError("Owned iframe inspection failed")]
+    elif failure == "cancel":
+        inspect.side_effect = [expected, asyncio.CancelledError()]
     monkeypatch.setattr(health, "inspect_native_profile", inspect)
+    compare = Mock(return_value=["owned context discrepancy"])
+    monkeypatch.setattr(health, "compare_document_identity", compare)
     configuration = NativeConfiguration()
-    if failure:
-        with pytest.raises(RuntimeError, match="Owned"):
+    if failure == "cancel":
+        with pytest.raises(asyncio.CancelledError):
+            asyncio.run(health.inspect_native_context(context, configuration, "148.0.7778.96"))
+    elif failure:
+        with pytest.raises(RuntimeError, match="did not load" if failure == "missing-frame" else "Owned"):
             asyncio.run(health.inspect_native_context(context, configuration, "148.0.7778.96"))
     else:
-        assert asyncio.run(health.inspect_native_context(context, configuration, "148.0.7778.96")) is expected
+        report = asyncio.run(health.inspect_native_context(context, configuration, "148.0.7778.96"))
+        assert report["contexts"] == {"same_origin_frame": frame_report}
+        assert report["mismatches"] == ["owned context discrepancy", "Same-origin iframe: owned discrepancy"]
+        assert expected["mismatches"] == []
     context.route.assert_not_awaited()
     context.new_cdp_session.assert_awaited_once_with(page)
     assert session.send.await_args_list == [
@@ -1487,11 +1502,26 @@ def test_native_context_health_owns_only_diagnostic_page_and_closes_on_failure(m
     else:
         page.route.assert_awaited_once()
     page.close.assert_awaited_once()
-    if failure not in {"navigate", "bypass"}:
+    if failure in {"inspect", "missing-frame"}:
         inspect.assert_awaited_once_with(page, configuration, "148.0.7778.96")
+    elif failure in {"", "frame-inspect", "cancel"}:
+        assert inspect.await_args_list == [call(page, configuration, "148.0.7778.96"),
+                                          call(frame, configuration, "148.0.7778.96")]
 
 
-def test_native_health_fixture_blocks_other_requests_without_network_fallback():
+def test_native_context_health_rejects_invalid_configuration_before_opening_page():
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from app.core.native import health
+
+    context = SimpleNamespace(new_page=AsyncMock())
+    with pytest.raises(ValueError):
+        asyncio.run(health.inspect_native_context(context, NativeConfiguration(width=True), "148.0.7778.96"))
+    context.new_page.assert_not_awaited()
+
+
+@pytest.mark.parametrize("include_frame", [False, True])
+def test_native_health_fixture_blocks_other_requests_without_network_fallback(include_frame):
     import asyncio
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
@@ -1500,7 +1530,8 @@ def test_native_health_fixture_blocks_other_requests_without_network_fallback():
 
     page = SimpleNamespace(goto=AsyncMock())
     context = SimpleNamespace(route=AsyncMock(), pages=[page])
-    assert asyncio.run(health._prepare_diagnostic_page(context)) is page
+    kwargs = {"configuration": NativeConfiguration(width=390, height=844)} if include_frame else {}
+    assert asyncio.run(health._prepare_diagnostic_page(context, **kwargs)) is page
     pattern, handler = context.route.await_args.args
     assert pattern == "**/*"
     owned = SimpleNamespace(request=SimpleNamespace(url="http://127.0.0.1/glint-native-health"),
@@ -1510,12 +1541,49 @@ def test_native_health_fixture_blocks_other_requests_without_network_fallback():
     response = owned.fulfill.await_args.kwargs
     assert response["status"] == 200
     assert '<meta name="viewport" content="width=device-width, initial-scale=1">' in response["body"]
-    assert response["headers"]["Content-Security-Policy"] == "default-src 'none'; worker-src blob:"
+    policy = "default-src 'none'; worker-src blob:"
+    if include_frame:
+        policy += "; frame-src 'self'; style-src 'unsafe-inline'"
+    assert response["headers"]["Content-Security-Policy"] == policy
+    assert ('<iframe' in response["body"]) is include_frame
+    child = SimpleNamespace(request=SimpleNamespace(url=health.DIAGNOSTIC_FRAME_URL),
+                            abort=AsyncMock(), fulfill=AsyncMock())
+    asyncio.run(handler(child))
+    if include_frame:
+        child.abort.assert_not_awaited()
+        assert '<iframe' not in child.fulfill.await_args.kwargs["body"]
+        assert 'width="390" height="844"' in response["body"]
+    else:
+        child.abort.assert_awaited_once_with("blockedbyclient")
+        child.fulfill.assert_not_awaited()
     outside = SimpleNamespace(request=SimpleNamespace(url="https://example.com/"),
                               abort=AsyncMock(), fulfill=AsyncMock())
     asyncio.run(handler(outside))
     outside.abort.assert_awaited_once_with("blockedbyclient")
     outside.fulfill.assert_not_awaited()
+
+
+@pytest.mark.parametrize("key", ["userAgent", "platform", "language", "languages", "hardwareConcurrency",
+    "deviceMemory", "timezone", "intlLocale", "userAgentData", "userAgentHighEntropy", "screen", "dpr", "touch",
+    "mediaPreferences", "graphics", "webgpu"])
+@pytest.mark.parametrize("change", ["different", "missing"])
+def test_native_same_origin_document_identity_rejects_drift_and_missing_values(key, change):
+    from copy import deepcopy
+    from app.core.native.diagnostics import compare_document_identity
+
+    keys = ["userAgent", "platform", "language", "languages", "hardwareConcurrency", "deviceMemory", "timezone",
+            "intlLocale", "userAgentData", "userAgentHighEntropy", "screen", "dpr", "touch", "mediaPreferences",
+            "graphics", "webgpu"]
+    first = {name: {"owned": name} for name in keys}
+    original = deepcopy(first)
+    second = deepcopy(first)
+    assert compare_document_identity(first, second) == []
+    if change == "different":
+        second[key]["owned"] = "changed"
+    else:
+        del second[key]
+    assert compare_document_identity(first, second) == ["Document and same-origin iframe disagree on " + key]
+    assert first == original
 
 
 def test_native_health_navigation_failure_still_releases_owned_runtime(tmp_path, monkeypatch):

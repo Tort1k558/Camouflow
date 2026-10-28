@@ -30,6 +30,14 @@ release. It never substitutes another engine or adopts its profile directory.
 Profiles use persistent Chromium contexts with process-owner exclusion and
 bounded teardown. Recorder, scenarios and AI use the common browser contract.
 
+Running-profile diagnostics use a disposable, page-routed loopback document and
+same-origin iframe, each with a dedicated-worker observation. Existing document
+and worker checks run independently, then document identity groups are compared
+across the frame boundary. Original tabs/routes remain untouched. The extra
+scope is recorded under `contexts.same_origin_frame` and its mismatches join
+the root report. This post-load fixture is not cross-origin or first-script
+coverage; standalone binary probes still use their original two scopes.
+
 ## Configuration and privacy
 
 ### Product contract: coherent browser identity
