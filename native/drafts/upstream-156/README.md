@@ -322,6 +322,34 @@ resources. The final odd case runs alone. These bounded runner batches are not
 a two-profile application limit. Missing peers, storage leaks, timeouts or
 changed evidence do not silently downgrade to a sequential pass.
 
+### Full runtime suite after linking and identity units
+
+The existing eight-gate runner now accepts an explicit candidate selection:
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_suite.py --candidate upstream-156 --executable D:/Glint156Candidate/chromium/src/out/CamouFlowNative/chrome.exe --report-dir D:/Glint156Candidate/runtime-156-new
+```
+
+Wait for browser and native-unit builders to exit first. The candidate path
+rejects active builders, requires the matching adjacent build receipt/GN
+arguments, and binds every selected gate to the manifest, full ordered
+Chromium/V8 chain, executable/DLL core and exact observed browser version.
+Installed-copy verification instead validates the immutable package's embedded
+receipt and candidate metadata; use the existing explicit store/checksum/DLL
+directory options. No receipt search or automatic version fallback is used.
+Omitting `--candidate` retains the previous control/default verification path.
+
+Receipt/argument changes during initial measurement reject before creating
+evidence. Manifest/patch/receipt/argument or core drift between gates stops the
+remaining run and retains partial reports. Individual gate failures are kept
+without being converted into successful evidence. Only all eight selected gates
+can set `full_suite: true`; candidate reports keep `privacy_admitted: false`.
+`full_suite` records requested coverage, not success: `passed` must also be true.
+This binds local unsigned provenance, not a trusted publisher signature.
+
+The new paths passed synthetic flat/installed and failure fixtures. They have
+**not run on a linked 156 browser** yet and cannot establish new policy admission.
+
 ### Development staging and packaging after linking
 
 The Windows staging/packaging helpers now accept an explicit

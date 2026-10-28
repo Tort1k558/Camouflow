@@ -49,6 +49,29 @@ def read_record(path: Path) -> dict:
     return record
 
 
+def validate_build_receipt(receipt: dict, lock: dict, *, candidate: dict | None = None) -> None:
+    if not isinstance(receipt, dict):
+        raise ValueError("Native build receipt must be an object")
+    for key, expected in {"schema": 1, "platform": "win32", "binary": "chrome.exe",
+                          "native_version": lock["native_version"],
+                          "chromium_revision": lock["chromium_revision"],
+                          "depot_tools_revision": lock["depot_tools_revision"]}.items():
+        if type(receipt.get(key)) is not type(expected) or receipt[key] != expected:
+            raise ValueError("Native build receipt differs from the pinned build: " + key)
+    if candidate is not None:
+        manifest = candidate["manifest"]
+        expected_patches = []
+        for repository in (".", "v8"):
+            for row in manifest["patches"]:
+                if row.get("directory", ".") == repository:
+                    expected_patches.append({"name": row["file"], "sha256": row["sha256"],
+                        **({"repository": "v8", "revision": manifest["dependencies"]["v8"]["revision"]}
+                           if repository == "v8" else {})})
+        if (receipt.get("candidate_manifest_sha256") != candidate["manifest_sha256"]
+                or receipt.get("patches") != expected_patches):
+            raise ValueError("Native candidate receipt must bind the complete manifest and patch chain")
+
+
 def package(build_output: Path, staged: Path, runtime_report: Path, destination: Path,
             *, candidate_name: str | None = None) -> dict:
     if sys.platform != "win32":
@@ -72,27 +95,12 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
     input_hashes = {path: sha256_file(path) for path in (receipt_path, args_path, runtime_report)}
     receipt = read_record(receipt_path)
     report = read_record(runtime_report)
+    validate_build_receipt(receipt, lock, candidate=candidate)
     if candidate is not None:
         manifest = candidate["manifest"]
-        expected_patches = []
-        for repository in (".", "v8"):
-            for row in manifest["patches"]:
-                if row.get("directory", ".") == repository:
-                    expected_patches.append({"name": row["file"], "sha256": row["sha256"],
-                        **({"repository": "v8", "revision": manifest["dependencies"]["v8"]["revision"]}
-                           if repository == "v8" else {})})
-        if (receipt.get("candidate_manifest_sha256") != candidate["manifest_sha256"]
-                or receipt.get("patches") != expected_patches):
-            raise ValueError("Native candidate receipt must bind the complete manifest and patch chain")
         input_hashes[candidate["directory"] / "manifest.json"] = candidate["manifest_sha256"]
         input_hashes.update({candidate["directory"] / "patches" / row["file"]: row["sha256"]
                              for row in manifest["patches"]})
-    for key, expected in {"schema": 1, "platform": "win32", "binary": "chrome.exe",
-                          "native_version": lock["native_version"],
-                          "chromium_revision": lock["chromium_revision"],
-                          "depot_tools_revision": lock["depot_tools_revision"]}.items():
-        if type(receipt.get(key)) is not type(expected) or receipt[key] != expected:
-            raise ValueError("Native build receipt differs from the pinned build: " + key)
     binary_hash = sha256_file(build_output / "chrome.exe")
     if receipt.get("binary_sha256_measured") != binary_hash:
         raise ValueError("Native build executable changed after compilation")

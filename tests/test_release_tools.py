@@ -2036,6 +2036,218 @@ def _candidate_windows_packaging_fixture(tmp_path, monkeypatch):
     return output, staged, report, archive, candidate
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only candidate suite")
+@pytest.mark.parametrize("layout", ["flat", "installed"])
+def test_native_candidate_suite_binds_all_gates_to_receipt_version_and_inputs(tmp_path, monkeypatch, layout):
+    import json
+    from types import SimpleNamespace
+    from scripts import verify_native_suite as suite, verify_native_privacy_units as units, package_native_windows as packaging
+    from app.core.native.distribution import NativeBinaryStore
+
+    output, staged, runtime_report, archive, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
+    monkeypatch.setattr(units, "require_idle_builder", lambda: None)
+    executable = output / "chrome.exe"
+    options = {}
+    if layout == "installed":
+        result = packaging.package(output, staged, runtime_report, archive, candidate_name="upstream-156")
+        store = NativeBinaryStore(tmp_path / "store")
+        release = store.install_archive(archive, result["sha256"])
+        executable = Path(release["executable_path"])
+        options = {"release_store": store.root, "release_digest": result["sha256"],
+                   "library_directory": executable.parent / candidate["lock"]["chromium_version"]}
+    core = suite.measure_runtime_core(executable, options.get("library_directory"))
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        gate = Path(command[1]).stem.removeprefix("verify_native_")
+        checks = (sorted(suite.REQUIRED_RUNTIME_CHECKS) if gate == "runtime" else
+                  [{"name": name, "passed": True} for name in sorted(suite.REQUIRED_COMBINED_CHECKS)] if gate == "combined" else
+                  [{"passed": True}])
+        report = {"passed": True, "checks": checks, "binary_sha256_measured": core["chrome.exe"],
+                  "runtime_core_sha256_measured": core, "arguments": suite.ARGUMENTS,
+                  "browser_version" if gate == "hardware" else "version": candidate["lock"]["chromium_version"]}
+        if gate == "runtime" and layout == "installed":
+            report.update(release_sha256_measured=release["release_sha256"],
+                          payload_files_sha256_measured=release["files_sha256"])
+        Path(command[command.index("--report") + 1]).write_text(json.dumps(report), encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(suite.subprocess, "run", run)
+    proof = suite.verify(executable, tmp_path / "reports", list(suite.GATES), candidate_name="upstream-156", **options)
+    assert proof["passed"] and proof["full_suite"]
+    assert len(calls) == 8
+    assert proof["candidate"] == "upstream-156"
+    assert proof["expected_version"] == candidate["lock"]["chromium_version"]
+    assert proof["candidate_manifest_sha256"] == candidate["manifest_sha256"]
+    assert proof["privacy_admitted"] is False
+    assert proof["build_receipt_sha256"]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only candidate suite")
+@pytest.mark.parametrize("mutation", ["version", "receipt-drift", "args-drift", "patch-drift", "manifest-drift"])
+def test_native_candidate_suite_rejects_changed_version_or_inputs(tmp_path, monkeypatch, mutation):
+    import json
+    from types import SimpleNamespace
+    from scripts import verify_native_suite as suite, verify_native_privacy_units as units
+
+    output, _, _, _, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
+    monkeypatch.setattr(units, "require_idle_builder", lambda: None)
+    executable = output / "chrome.exe"
+    core = suite.measure_runtime_core(executable)
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        gate = Path(command[1]).stem.removeprefix("verify_native_")
+        if mutation == "receipt-drift":
+            (output / "camouflow-build.json").write_text("{}", encoding="utf-8")
+        elif mutation == "args-drift":
+            (output / "args.gn").write_text("changed", encoding="utf-8")
+        elif mutation == "patch-drift":
+            (candidate["directory"] / "patches" / candidate["manifest"]["patches"][0]["file"]).write_text("changed", encoding="utf-8")
+        elif mutation == "manifest-drift":
+            (candidate["directory"] / "manifest.json").write_text("{}", encoding="utf-8")
+        Path(command[command.index("--report") + 1]).write_text(json.dumps({
+            "passed": True, "checks": [{"passed": True}], "binary_sha256_measured": core["chrome.exe"],
+            "runtime_core_sha256_measured": core,
+            "browser_version" if gate == "hardware" else "version": "148.0.7778.96" if mutation == "version" else candidate["lock"]["chromium_version"]
+        }), encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(suite.subprocess, "run", run)
+    proof = suite.verify(executable, tmp_path / "reports", ["hardware", "webrtc"], candidate_name="upstream-156")
+    assert not proof["passed"] and all(not gate["passed"] for gate in proof["gates"])
+    assert len(calls) == (2 if mutation == "version" else 1)
+    assert json.loads((tmp_path / "reports/suite.json").read_text(encoding="utf-8")) == proof
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only candidate suite")
+@pytest.mark.parametrize("mutation", ["missing-manifest", "patch-chain", "revision", "core", "arguments", "missing-receipt"])
+def test_native_candidate_suite_rejects_bad_receipt_before_creating_evidence(tmp_path, monkeypatch, mutation):
+    import json
+    from unittest.mock import Mock
+    from scripts import verify_native_suite as suite, verify_native_privacy_units as units
+
+    output, _, _, _, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
+    monkeypatch.setattr(units, "require_idle_builder", lambda: None)
+    path = output / "camouflow-build.json"
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    if mutation == "missing-manifest":
+        del receipt["candidate_manifest_sha256"]
+    elif mutation == "patch-chain":
+        receipt["patches"].pop()
+    elif mutation == "revision":
+        receipt["chromium_revision"] = "e" * 40
+    elif mutation == "core":
+        receipt["runtime_core_sha256_measured"] = {}
+    elif mutation == "arguments":
+        receipt["args_sha256"] = "e" * 64
+    if mutation == "missing-receipt":
+        path.unlink()
+    else:
+        path.write_text(json.dumps(receipt), encoding="utf-8")
+    runner = Mock()
+    monkeypatch.setattr(suite.subprocess, "run", runner)
+    with pytest.raises((ValueError, OSError)):
+        suite.verify(output / "chrome.exe", tmp_path / "reports", ["hardware"], candidate_name="upstream-156")
+    runner.assert_not_called()
+    assert not (tmp_path / "reports").exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only candidate suite")
+def test_native_candidate_suite_refuses_live_builder_before_creating_evidence(tmp_path, monkeypatch):
+    from unittest.mock import Mock
+    from scripts import verify_native_suite as suite, verify_native_privacy_units as units
+
+    output, _, _, _, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
+    idle = Mock(side_effect=ValueError("Owned builder is active"))
+    monkeypatch.setattr(units, "require_idle_builder", idle)
+    runner = Mock()
+    monkeypatch.setattr(suite.subprocess, "run", runner)
+    with pytest.raises(ValueError, match="builder is active"):
+        suite.verify(output / "chrome.exe", tmp_path / "reports", ["hardware"], candidate_name="upstream-156")
+    idle.assert_called_once()
+    runner.assert_not_called()
+    assert not (tmp_path / "reports").exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only candidate suite")
+@pytest.mark.parametrize("target", ["camouflow-build.json", "args.gn"])
+def test_native_candidate_suite_rejects_input_change_during_initial_measurement(tmp_path, monkeypatch, target):
+    from unittest.mock import Mock
+    from scripts import verify_native_suite as suite, verify_native_privacy_units as units
+
+    output, _, _, _, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
+    monkeypatch.setattr(units, "require_idle_builder", lambda: None)
+    original = suite.checksum
+    changed = False
+    def race(path):
+        nonlocal changed
+        if path.name != target or changed:
+            return original(path)
+        changed = True
+        if target == "camouflow-build.json":
+            path.write_text("{}", encoding="utf-8")
+            return original(path)
+        digest = original(path)
+        path.write_text("changed", encoding="utf-8")
+        return digest
+    monkeypatch.setattr(suite, "checksum", race)
+    runner = Mock()
+    monkeypatch.setattr(suite.subprocess, "run", runner)
+    with pytest.raises(ValueError, match="changed"):
+        suite.verify(output / "chrome.exe", tmp_path / "reports", ["hardware"], candidate_name="upstream-156")
+    assert changed
+    runner.assert_not_called()
+    assert not (tmp_path / "reports").exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only candidate suite")
+@pytest.mark.parametrize("field,value", [("candidate", "other"), ("candidate_manifest_sha256", "e" * 64),
+    ("native_version", "0.1.0"), ("chromium_version", "148.0.7778.96"), ("build_receipt_sha256", "not-a-digest")])
+def test_native_candidate_suite_rejects_conflicting_installed_metadata(tmp_path, monkeypatch, field, value):
+    import json
+    from unittest.mock import Mock
+    from scripts import verify_native_suite as suite, verify_native_privacy_units as units, package_native_windows as packaging
+    from app.core.native.distribution import NativeBinaryStore
+
+    output, staged, runtime, archive, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
+    monkeypatch.setattr(units, "require_idle_builder", lambda: None)
+    packaged = packaging.package(output, staged, runtime, archive, candidate_name="upstream-156")
+    store = NativeBinaryStore(tmp_path / "store")
+    installed = store.install_archive(archive, packaged["sha256"])
+    executable = Path(installed["executable_path"])
+    path = executable.parent / "native-release.json"
+    metadata = json.loads(path.read_text(encoding="utf-8"))
+    metadata[field] = value
+    path.write_text(json.dumps(metadata), encoding="utf-8")
+    runner = Mock()
+    monkeypatch.setattr(suite.subprocess, "run", runner)
+    with pytest.raises(ValueError):
+        suite.verify(executable, tmp_path / "reports", ["hardware"], candidate_name="upstream-156",
+            release_store=store.root, release_digest=packaged["sha256"],
+            library_directory=executable.parent / candidate["lock"]["chromium_version"])
+    runner.assert_not_called()
+    assert not (tmp_path / "reports").exists()
+
+
+def test_native_candidate_suite_cli_forwards_explicit_selection(tmp_path, monkeypatch):
+    from unittest.mock import Mock
+    from scripts import verify_native_suite as suite
+
+    executable, report = tmp_path / "chrome.exe", tmp_path / "reports"
+    runner = Mock(return_value={"passed": True})
+    monkeypatch.setattr(suite, "verify", runner)
+    monkeypatch.setattr(sys, "argv", ["verify_native_suite.py", "--executable", str(executable),
+        "--report-dir", str(report), "--candidate", "upstream-156"])
+    assert suite.main() == 0
+    runner.assert_called_once_with(executable, report, list(suite.GATES), library_directory=None,
+        release_store=None, release_digest="", candidate_name="upstream-156")
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
 def test_native_windows_candidate_package_preserves_manifest_without_admitting_policy(tmp_path, monkeypatch):
     import json

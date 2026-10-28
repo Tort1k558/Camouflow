@@ -12,10 +12,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from scripts.package_native_windows import REQUIRED_RUNTIME_CHECKS
+from scripts.package_native_windows import REQUIRED_RUNTIME_CHECKS, read_record, validate_build_receipt
+from scripts import native_build
 from scripts.verify_native_combined import ARGUMENTS, REQUIRED_CHECKS as REQUIRED_COMBINED_CHECKS
 from scripts.verify_native_runtime import measure_runtime_core
-from app.core.native.distribution import NativeBinaryStore
+from app.core.native.distribution import NativeBinaryStore, checked_digest
 
 
 GATES = ("runtime", "hardware", "webrtc", "automation", "fonts", "identity", "cdp", "combined")
@@ -54,7 +55,7 @@ def validate_report(name: str, report: dict, expected_checksum: str) -> None:
 
 
 def verify(executable: Path, destination: Path, gates: list[str], *, library_directory: Path | None = None,
-           release_store: Path | None = None, release_digest: str = "") -> dict:
+           release_store: Path | None = None, release_digest: str = "", candidate_name: str | None = None) -> dict:
     if sys.platform != "win32":
         raise ValueError("This suite currently supports Windows only")
     if (not executable.is_absolute() or executable != executable.resolve()
@@ -80,12 +81,52 @@ def verify(executable: Path, destination: Path, gates: list[str], *, library_dir
             raise ValueError("Suite release identity or DLL layout differs from the installed package")
     core = measure_runtime_core(executable, library_directory)
     measured = core[executable.name]
+    candidate = None if candidate_name is None else native_build.load_candidate(candidate_name)
+    candidate_inputs = {}
+    receipt_hash = None
+    if candidate is not None:
+        from scripts.verify_native_privacy_units import require_idle_builder
+
+        require_idle_builder()
+        if release is None:
+            receipt_path = executable.parent / "camouflow-build.json"
+            receipt = read_record(receipt_path)
+            receipt_hash = checksum(receipt_path)
+            if read_record(receipt_path) != receipt:
+                raise ValueError("Candidate build receipt changed while being read")
+            arguments_path = executable.parent / "args.gn"
+            if arguments_path != arguments_path.resolve() or not arguments_path.is_file():
+                raise ValueError("Candidate GN arguments must be a canonical file")
+            arguments_hash = checksum(arguments_path)
+            if receipt.get("args_sha256") != arguments_hash:
+                raise ValueError("Candidate GN arguments differ from the compiled receipt")
+            candidate_inputs.update({receipt_path: receipt_hash, arguments_path: arguments_hash})
+        else:
+            if (release.get("candidate") != candidate["name"]
+                    or release.get("candidate_manifest_sha256") != candidate["manifest_sha256"]
+                    or release.get("native_version") != candidate["lock"]["native_version"]
+                    or release.get("chromium_version") != candidate["lock"]["chromium_version"]):
+                raise ValueError("Installed release does not match the selected candidate")
+            receipt = release.get("build_receipt")
+            receipt_hash = checked_digest(release.get("build_receipt_sha256"))
+        validate_build_receipt(receipt, candidate["lock"], candidate=candidate)
+        if (receipt.get("runtime_core_sha256_measured") != core
+                or receipt.get("binary_sha256_measured") != measured):
+            raise ValueError("Candidate receipt differs from the measured browser core")
+        candidate_inputs[candidate["directory"] / "manifest.json"] = candidate["manifest_sha256"]
+        candidate_inputs.update({candidate["directory"] / "patches" / row["file"]: row["sha256"]
+                                for row in candidate["manifest"]["patches"]})
 
     def check_inputs() -> None:
         if measure_runtime_core(executable, library_directory) != core:
             raise ValueError("Native executable code changed; remaining gates were not run")
         if store is not None and store.inspect(release_digest) != release:
             raise ValueError("Installed Native payload changed; remaining gates were not run")
+        for path, digest in candidate_inputs.items():
+            if path != path.resolve() or not path.is_file() or checksum(path) != digest:
+                raise ValueError("Candidate verification input changed: " + path.name)
+
+    check_inputs()
 
     # A fresh directory prevents stale reports from being admitted after a failed child.
     destination.mkdir(exist_ok=False)
@@ -94,6 +135,10 @@ def verify(executable: Path, destination: Path, gates: list[str], *, library_dir
               "runtime_core_sha256_measured": core,
               "release_sha256_measured": release_digest if release is not None else None,
               "payload_files_sha256_measured": release["files_sha256"] if release is not None else None,
+              **({"candidate": candidate["name"], "candidate_manifest_sha256": candidate["manifest_sha256"],
+                  "build_chromium_revision": candidate["lock"]["chromium_revision"],
+                  "expected_version": candidate["lock"]["chromium_version"], "build_receipt_sha256": receipt_hash,
+                  "privacy_admitted": False} if candidate is not None else {}),
               "full_suite": set(gates) == set(GATES), "passed": False, "gates": [],
               "scope": "Owned runtime fixtures only; not release provenance or third-party anti-bot acceptance"}
     try:
@@ -121,6 +166,9 @@ def verify(executable: Path, destination: Path, gates: list[str], *, library_dir
                     raise ValueError("Gate report is unsafe or exceeds the size limit")
                 observed = json.loads(child_report.read_text(encoding="utf-8-sig"))
                 validate_report(name, observed, measured)
+                version_key = "browser_version" if name == "hardware" else "version"
+                if candidate is not None and observed.get(version_key) != candidate["lock"]["chromium_version"]:
+                    raise ValueError("Gate browser version differs from the selected candidate")
                 if release is not None and name == "runtime" and (
                         observed.get("release_sha256_measured") != release_digest
                         or observed.get("payload_files_sha256_measured") != release["files_sha256"]):
@@ -155,10 +203,11 @@ def main() -> int:
                         help="Explicit package-owned DLL directory for a versioned Chrome-bin layout")
     parser.add_argument("--release-store", type=Path, help="Verify every file of an installed immutable Native release")
     parser.add_argument("--release-sha256", default="", help="Expected installed release archive checksum")
+    parser.add_argument("--candidate", choices=("upstream-156",), help="Bind all gates to the explicit candidate receipt and inputs")
     args = parser.parse_args()
     try:
         report = verify(args.executable, args.report_dir, args.gates, library_directory=args.windows_library_directory,
-                        release_store=args.release_store, release_digest=args.release_sha256)
+                        release_store=args.release_store, release_digest=args.release_sha256, candidate_name=args.candidate)
     except (OSError, ValueError) as error:
         parser.exit(1, str(error) + "\n")
     print(json.dumps(report))

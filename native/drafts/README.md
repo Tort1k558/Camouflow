@@ -1,8 +1,13 @@
 # Glint development candidates
 
-Both privacy candidates have moved to the registered patch chain. The existing
-linked browser is 001-027; registered source alone is not browser runtime proof.
-Do not modify or reapply patches during an active build.
+Current checkpoint (2026-10-29): the reviewed experimental Windows runtime is
+**Chromium 148 / 001-062**. The complete 62-patch Chromium 156 port is compiling
+separately; it has no linked/runtime result yet. See the authoritative
+[test matrix](../../docs/GLINT_TEST_MATRIX.md) and
+[architecture](../ARCHITECTURE.md) for current evidence and admission limits.
+The older checkpoints below describe how the registered components were built;
+they are not the current browser version. Do not modify or reapply promoted
+patches during an active build.
 
 ## Document and worker delivery infrastructure
 
@@ -17,9 +22,11 @@ The 001-027 browser passed 40 owned worker startup/restart/shared-client/rejecti
 checks; all four Blink handoff unit cases passed after test-only correction 0028.
 The verified browser core is unchanged. Document startup, worker delivery,
 Canvas/OfflineAudio and WebGL candidates are now registered in 0031–0034.
-That full browser batch is compiling; source promotion is not runtime proof.
-No new Canvas runtime capability is admitted. The separate
-[`next-readback/`](next-readback/README.md) halo optimization remains unregistered.
+That historical batch was subsequently linked and checked as recorded in the
+matrix; source promotion alone was not its runtime proof. Canvas/readback
+experiments still require their separate admission gates. The
+[`next-readback/`](next-readback/README.md) halo repair is registered as
+0046/0047; do not manually apply its canonical candidates a second time.
 
 The final-partition validator and its nine cases are registered separately as
 0029. The public `document-partition` target passed, and the original 43 key/service
@@ -48,8 +55,9 @@ Tests use public fixed fixture identities, never real user profile secrets.
 
 The patch passed `git apply --check`, was registered in the exact source replay
 gate and applied after readiness verification completed. Its original 20 named
-content-layer cases passed. The six additional startup cases introduced by 0032
-remain pending compilation and execution.
+content-layer cases passed. Later context/transport groups, including the
+profile-identity additions, have their executed 148 results in the matrix;
+the equivalent 156 groups have not run yet.
 The planned execution is the standard content unit target filtered to
 `NativePrivacyBrowserContextTest.*`, with single-process GoogleTest JSON output.
 All 20 named cases must finish successfully; a count alone is insufficient.
@@ -87,8 +95,8 @@ The readiness patch was promoted from this directory after the 001–015 build a
 verification processes completed. It is registered/applied in the development
 checkout; the strict verifier now requires **43** cases, including the ten new
 readiness cases. All 43 native cases compiled and passed after correcting test
-callbacks to Chromium's `BindLambdaForTesting` helper. The existing linked
-001–015 browser does not contain this new implementation.
-This is not yet a browser startup gate, document/worker IPC, a timeout policy or
-Canvas protection. Those consumers must bind cancellation to their own lifetime
+callbacks to Chromium's `BindLambdaForTesting` helper. The historical linked
+001–015 browser did not contain it; the current reviewed 148 / 001-062 does.
+The readiness primitive alone is not a browser startup gate, document/worker
+IPC, a timeout policy or Canvas protection. Consumers bind cancellation to their own lifetime
 and obtain partitions from trusted browser state, not renderer-provided URLs.

@@ -1,7 +1,15 @@
 # Windows font rasterization candidate
 
-**Registered/applied as patch 0062; 001–062 browser linked, 001–061 remains the
-verified runtime baseline. No new capability admitted.**
+**Registered as patch 0062. The reviewed Chromium 148 / 001-062 managed package
+has experimental `font-rasterization` admission; 001-061 is a retained rollback
+baseline, not the latest verified package. Chromium 156 is not runtime-verified.**
+
+Current admission is restricted to the exact package and manifest hashes in
+`app/core/native/admission.py`, with full payload verification before launch.
+The earlier admission-work checklist below is historical; remaining compatibility
+limits and newer text-tuning research are in the
+[test matrix](../../../docs/GLINT_TEST_MATRIX.md). Gamma/contrast controls are
+still research-only and have no manager admission.
 
 This candidate changes actual Windows text-rendering parameters, not Canvas
 readback bytes, JavaScript APIs, installed font names, OS identity or GPU strings.

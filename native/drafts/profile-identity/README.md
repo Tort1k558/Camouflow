@@ -1,8 +1,15 @@
 # Stable profile identity — derivation candidate
 
-**Canonical candidates promoted exactly as patches 0049–0054. Keys/service gate
-passed 62/62; context, transport, handoff and linked identity-mode browser remain
-unverified. No manager capability is admitted.**
+**Canonical candidates promoted exactly as patches 0049–0054. On Chromium 148 /
+001-059 all four native groups passed: keys 62, contexts 37, transport 20,
+handoff 15 (134/134). Chromium 156 execution is still pending.**
+
+The retained `identity-{keys,contexts,transport,handoff}-001-059-v1` reports on D:
+record these actual native results. Later browser-mode checks and remaining
+limits are in the [test matrix](../../../docs/GLINT_TEST_MATRIX.md). The
+profile-identity/partitioned-readback modes remain unadmitted; the separately
+reviewed native-UA control is not admission of this identity algorithm.
+The earlier checkpoints below remain historical, not the current execution state.
 
 The complete Identity/GPU package is integrated into registered source 001-058.
 Private proof: `identity-gpu-source-integration-0049-0058-v1/proof.json` on D.

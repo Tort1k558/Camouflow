@@ -217,6 +217,36 @@ source/font/artifact drift and cleanup failure while proving every owner gets
 a cleanup attempt. These are 148 observations, not a 156 runtime pass,
 exhaustive pairing of every setting or new product capability admission.
 
+## Chromium 156 runtime-suite provenance — 2026-10-29
+
+`verify_native_suite.py --candidate upstream-156` now binds the runtime cohort
+to the selected manifest and full ordered Chromium/V8 receipt chain, measured
+EXE/DLL core and each gate's exact reported browser version. The hardware gate
+uses its existing `browser_version` field; the other seven retain `version`.
+No child schema is renamed and no automatic field/version fallback is used.
+The shared receipt validator is also used by packaging.
+
+Flat builds require their adjacent receipt and compiled GN arguments; installed
+copies require consistent embedded receipt/candidate/version metadata and the
+explicit package/store/DLL layout. Candidate inputs are rechecked before and
+after gates. Initial receipt/argument read races, missing/incomplete receipts,
+wrong versions, input drift and active builders fail closed. Ordinary child
+failures remain recorded; changed inputs stop later gates with partial evidence.
+Candidate reports explicitly retain `privacy_admitted: false` and do not prove
+publisher authenticity or source replay from a receipt alone.
+
+**22 candidate-suite fixture tests passed**, including flat and installed
+eight-gate runs, version rejection, initial-read/inter-gate drift, conflicting
+installed metadata, active-builder refusal and CLI selection. The actual retained
+148 build receipt was also rejected for the 156 selection. These are validation
+and fixture results, **not a passing 156 runtime suite**. A private process-bound
+controller waits for the four native identity targets before starting the full
+suite; failure or changed reviewed code stops it without retrying or admission.
+The final Python suite passed **3,379 tests, one skipped** in 303.71 seconds;
+the CI Ruff selection passed. Draft READMEs now distinguish current 148 / 001-062
+and its experimental font admission from historical 001-015/027/061 checkpoints
+and the still-unverified 156 port.
+
 ## Chromium 156 delivery tooling — 2026-10-29
 
 Official Windows staging and archive packaging now require an explicit
@@ -235,6 +265,13 @@ Synthetic-file, CLI and installation fixtures passed: **36 staging tests**;
 the staging/release-tools modules together passed **979 tests, one skipped**.
 This includes candidate/default separation, omitted/reordered/changed patches,
 wrong V8 revision, manifest drift, concurrent ownership and toolchain drift.
+The real active 156 build also excluded a competing staging invocation: both
+builder handles remained live, no staging report/log was created, and GN/receipt
+state plus held-lock size/mtime stayed unchanged. Evidence:
+`active-staging-lock-refusal-20261029-v1.json` on D. The first private probe tried
+to read the Windows byte-locked marker and failed before invoking staging;
+the corrected probe measures its permitted metadata instead. This proves active
+builder exclusion, not successful staging or a new browser runtime.
 The complete Python suite passed **3,357 tests, one skipped** in 298.06 seconds;
 the repository's CI Ruff selection also passed on the final code.
 These are fixture results: **no real 156 staging, archive, installed-copy or
