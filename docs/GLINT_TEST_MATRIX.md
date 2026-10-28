@@ -70,6 +70,53 @@ compatibility or a result on 156. Manager admission remains disabled. The same
 verifier can explicitly bind `--candidate upstream-156` to the complete
 candidate receipt, manifest and patch chain, but that runtime run is pending.
 
+### Editing and export workloads — 2026-10-29
+
+The public rendering verifier optionally accepts `--workload-font` for a real
+explicit TTF/OTF input. It retains the existing idle-builder, receipt, source,
+core and resource guards, and additionally binds the font response, helper
+source, screenshots, downloaded text and PDF artifacts. Default invocations
+without this option are unchanged. Editing uses real browser input operations;
+no browser API getters or Canvas functions are replaced.
+
+Owned matched **stock/Glint 148** research passed **36 session observations**:
+nine baseline/independent/joint gamma-contrast cases, two starts each, both
+runtimes. Verified Unicode insertion, native undo/redo and selection, a genuine
+loopback-served Ahem font, matching DOM/SVG/Canvas font widths, nonblank Canvas,
+lossless PNG decoding, exact multilingual UTF-8 download content, PDF header/
+size and return to screen media. Semantic differences and paired font-pixel
+differences were both zero; core/resource/input/artifact guards passed.
+Evidence on D: `text-workloads-matched-20261029-v2/report.json`. Earlier v1 and
+measured source snapshots are retained. Stock and tuned Glint screenshots were
+visually inspected; Ahem's square glyphs are intentional test-font output.
+
+A separate **managed Glint 148 / 001-062** follow-up passed four workload runs
+and **32 first-script rendering scope observations** with admitted CPU/RAM
+ceilings (2/2), WebRTC routing policy, dark scheme and reduced motion. An
+unrestricted positive control reached the owned loopback STUN observer; every
+protected run completed gathering without direct UDP. Actual CPU/RAM/media
+values agreed with configuration. Default/joint text tuning remained restart-
+stable, changed text pixels in all eight scopes and preserved image/format/HDR
+controls. The complete installed payload and measured core stayed unchanged.
+Evidence: `text-workloads-admitted-20261029-v2/report.json` (v1 retained). The
+follow-up also corrected an initial channel-coverage statistic into a true
+integer ink-pixel count; this was diagnostic math, not an engine change.
+The developer
+rendering configuration now forwards the base admission keyword rather than
+rejecting otherwise reviewed combinations; no admission checks were removed.
+
+Limits: this is controlled-page compatibility, not third-party app coverage,
+IME/composition testing, PDF text/glyph equivalence, device-distribution
+realism, combined readback-experiment admission or an observation on 156.
+Manager text-tuning controls remain disabled. The first smoke fixture expected
+double-click selection without Windows' trailing word space; punctuation now
+delimits the sample. Failed smoke reports are retained; no engine patch or
+weaker word-selection assertion was used to hide that fixture mistake.
+The complete desktop Python suite passed **3,245 tests, one skipped** after
+these changes. Public verifier failure matrices cover both rendering series,
+148/candidate receipt selection and optional workloads, including changed font,
+helper source, artifacts, semantics and failed cleanup.
+
 ## Chromium 156 compilation checkpoint — 2026-10-29
 
 Dependency sync, hooks and the complete 62-patch Chromium/V8 chain completed.
@@ -89,9 +136,10 @@ Follow-up: the VC junction was retained, and a regular owned copy of all
 **3,637 MSVC files** was created with source/destination SHA-256 checks. Both
 modulemap actions and both failed PCM targets then completed successfully in
 the isolated j4 probe; neither modules nor engine checks were disabled.
-The process is still flushing its filesystem state before the wrapper's final
-toolchain/source guards and full-build continuation. PCM outputs alone are not
-a linked browser or a completed native-test gate. Evidence:
+The process finished saving its filesystem state, exited zero and passed the
+wrapper's final toolchain/source guards. The complete browser build then
+resumed at j4 (`build-20261029-004248.log`). PCM outputs alone are not a linked
+browser or a completed native-test gate. Evidence:
 `toolchain/local-msvc-sdk-28000-v1/materialization-v1.json` and
 `toolchain/system-module-materialized-20261029-v1/1.log`.
 

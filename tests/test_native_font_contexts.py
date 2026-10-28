@@ -195,6 +195,26 @@ def test_upstream_text_tuning_uses_only_explicit_existing_flags(mode, flags):
     assert not any("readback" in flag or "rasterization=" in flag for flag in arguments)
 
 
+@pytest.mark.parametrize("mode", ["off", "gamma-1400", "grayscale"])
+def test_developer_rendering_preserves_base_policy_admission_contract(monkeypatch, mode):
+    admission = object()
+    observed = []
+    def base_arguments(self, *, admission=None):
+        observed.append(admission)
+        return ["--owned-reviewed-base"]
+    monkeypatch.setattr(verifier.NativeConfiguration, "launch_arguments", base_arguments)
+    arguments = verifier.RenderingConfiguration(rasterization=mode).launch_arguments(admission=admission)
+    assert observed == [admission] and arguments[0] == "--owned-reviewed-base"
+
+
+def test_developer_rendering_does_not_bypass_required_runtime_admission():
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    configuration = verifier.RenderingConfiguration(privacy_policy=NativePrivacyPolicy(cpu_limit=2), rasterization="gamma-1400")
+    with pytest.raises(ValueError, match="verified"):
+        configuration.launch_arguments(admission=object())
+
+
 @pytest.mark.parametrize("series", ["", "unknown", None, True])
 def test_unknown_rendering_series_has_no_fallback(series):
     with pytest.raises(ValueError, match="Unknown rendering"):
@@ -320,7 +340,8 @@ def test_admitted_rendering_requires_restart_stability_and_effect_in_every_scope
 @pytest.mark.parametrize("failure", [None, "measurement", "core-change", "pack-change", "pack-removed", "source-change", "policy-change", "receipt-change", "screenshot-change", "screenshot-removed", "visual-restart", "cleanup", "bind"])
 @pytest.mark.parametrize("series", ["rasterization", "text-tuning"])
 @pytest.mark.parametrize("candidate_mode", [False, True])
-def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure, series, candidate_mode):
+@pytest.mark.parametrize("workload_mode", [False, True])
+def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure, series, candidate_mode, workload_mode):
     public = tmp_path / "public"
     runtime_dir = tmp_path / "runtime"
     runtime_dir.mkdir()
@@ -333,11 +354,14 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     patch.write_bytes(b"owned policy")
     for relative in ("scripts/native_font_contexts.py", "scripts/native_font_rendering.py",
                      "scripts/native_canvas_formats.py", "scripts/native_canvas_hdr.py", "scripts/native_font_visuals.py",
+                     "scripts/native_font_workloads.py",
                      "app/core/native/canvas_fidelity.py", "app/core/native/configuration.py",
                      "app/core/native/privacy.py", "app/core/native/runtime.py", "app/core/native/identity.py"):
         path = public / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"owned probe")
+    font_file = tmp_path / "owned-font.ttf"
+    font_file.write_bytes(b"\x00\x01\x00\x00" + b"owned font" * 16)
 
     def core(path):
         return {"chrome.exe": hashlib.sha256(path.read_bytes()).hexdigest(),
@@ -413,7 +437,27 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
                 (tmp_path / "evidence/font-off-0.png").write_bytes(b"changed screenshot")
             elif failure == "screenshot-removed":
                 (tmp_path / "evidence/font-off-0.png").unlink(missing_ok=True)
+            elif failure == "workload-font-change":
+                font_file.write_bytes(b"changed font")
+            elif failure == "workload-source-change":
+                (public / "scripts/native_font_workloads.py").write_bytes(b"changed workload helper")
+            elif failure == "workload-artifact-change":
+                (tmp_path / "evidence/workload-off-0/note.txt").write_bytes(b"changed note")
         return deepcopy(runs[mode][0])
+
+    async def workload_collect(page, base_url, artifacts, font_sha256):
+        if failure == "workload-measurement":
+            raise ValueError("owned editing failure")
+        value = workload_observation(font_sha256)
+        if failure == "workload-semantic-change" and page.mode == modes[-1]:
+            for name in ("domWidth", "svgWidth", "canvasWidth"):
+                value["font"][name] += 1
+        artifacts.mkdir()
+        for name, data in {"note.txt": value["download"]["text"].encode("utf-8"),
+                           "workspace.png": b"owned workload screenshot", "print.pdf": b"%PDF-" + b"x" * 4091}.items():
+            (artifacts / name).write_bytes(data)
+            value["artifacts"][name] = hashlib.sha256(data).hexdigest()
+        return value
 
     async def visual_collect(page):
         value = {"rows": [{"font": font, "domWidth": 160, "domHeight": 24, "svgWidth": 160,
@@ -443,10 +487,12 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     monkeypatch.setattr(verifier, "NativeRuntime", Runtime)
     monkeypatch.setattr(verifier.native_font_contexts, "collect", collect)
     monkeypatch.setattr(verifier.native_font_visuals, "collect", visual_collect)
+    monkeypatch.setattr(verifier.native_font_workloads, "collect", workload_collect)
     monkeypatch.setattr(verifier, "FixtureServer", Server)
     destination = tmp_path / "evidence"
     selector = None if candidate is None else candidate["name"]
-    report = asyncio.run(verifier.verify(executable, destination, series=series, candidate_name=selector))
+    report = asyncio.run(verifier.verify(executable, destination, series=series, candidate_name=selector,
+                                        workload_font=font_file if workload_mode else None))
     assert report["passed"] is (failure is None)
     assert report["capability_admitted"] is False
     assert report["series"] == series
@@ -456,13 +502,128 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
         assert "candidate" not in report
     assert json.loads((destination / "report.json").read_text(encoding="utf-8")) == report
     assert report["inputs_unchanged"] is (failure not in {
-        "core-change", "pack-change", "pack-removed", "source-change", "policy-change", "receipt-change", "screenshot-change", "screenshot-removed"})
+        "core-change", "pack-change", "pack-removed", "source-change", "policy-change", "receipt-change", "screenshot-change", "screenshot-removed",
+        "workload-font-change", "workload-source-change", "workload-artifact-change"})
     if failure == "cleanup":
         assert starts == ["off"]
     elif failure != "bind":
         assert starts == [mode for mode in modes for _ in range(2)]
     with pytest.raises(ValueError, match="Fresh private evidence"):
         asyncio.run(verifier.verify(executable, destination, series=series, candidate_name=selector))
+
+
+@pytest.mark.parametrize("failure", ["workload-measurement", "workload-font-change", "workload-source-change",
+                                     "workload-artifact-change", "workload-semantic-change"])
+@pytest.mark.parametrize("series", ["rasterization", "text-tuning"])
+@pytest.mark.parametrize("candidate_mode", [False, True])
+def test_workload_verifier_guards_fail_without_weakening_native_checks(tmp_path, monkeypatch, failure, series, candidate_mode):
+    test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure, series, candidate_mode, True)
+
+
+def workload_observation(font_sha256="b" * 64):
+    from scripts import native_font_workloads as workloads
+
+    text = workloads.NOTE + "\n" + workloads.APPROVED
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return {"note": {"value": workloads.NOTE, "undo": workloads.NOTE,
+                     "events": ["deleteContentBackward", "historyUndo", "insertText"], "trusted": True},
+            "editor": {"value": workloads.APPROVED, "undo": workloads.DRAFT,
+                       "events": ["historyRedo", "historyUndo", "insertText"], "trusted": True},
+            "selection": {"text": "Glint", "noteRange": [0, len(workloads.NOTE)]},
+            "font": {"loaded": True, "domWidth": 120, "svgWidth": 120, "canvasWidth": 120, "fallbackWidth": 72,
+                     "pixels": "a" * 64, "inkPixels": 1200, "pngBytes": 512, "roundTripMatches": True,
+                     "networkSha256": font_sha256},
+            "download": {"text": text, "sha256": digest},
+            "pdf": {"headerValid": True, "bytes": 4096, "screenMediaRestored": True},
+            "artifacts": {"workspace.png": "a" * 64, "print.pdf": "c" * 64, "note.txt": digest}}
+
+
+@pytest.mark.parametrize("section,field,value", [
+    ("note", "undo", "lost text"), ("note", "trusted", False), ("editor", "events", ["insertText"]),
+    ("editor", "value", "changed content"), ("selection", "text", "wrong word"),
+    ("selection", "noteRange", [False, 15]), ("font", "loaded", False), ("font", "roundTripMatches", False),
+    ("font", "networkSha256", "bad"), ("font", "pixels", "bad"), ("font", "domWidth", 121),
+    ("font", "fallbackWidth", 120), ("font", "canvasWidth", float("nan")), ("font", "inkPixels", 0),
+    ("font", "inkPixels", 1.5), ("font", "pngBytes", True), ("pdf", "screenMediaRestored", False), ("pdf", "bytes", 0),
+    ("download", "text", "lost Unicode"), ("artifacts", "note.txt", "a" * 64),
+])
+def test_text_workloads_reject_broken_editing_fonts_selection_and_exports(section, field, value):
+    from scripts import native_font_workloads as workloads
+
+    sample = workload_observation()
+    workloads.validate(sample)
+    sample[section][field] = value
+    with pytest.raises(ValueError):
+        workloads.validate(sample)
+
+
+@pytest.mark.parametrize("mutation", [None, "metric", "missing-mode", "missing-restart", "bad-control", "pixels"])
+def test_workload_matrix_requires_stable_semantics_not_identical_rasterization(mutation):
+    from scripts import native_font_workloads as workloads
+
+    modes = ("off", "gamma-1400")
+    runs = {mode: [workload_observation(), workload_observation()] for mode in modes}
+    if mutation == "metric":
+        for field in ("domWidth", "svgWidth", "canvasWidth"):
+            runs["gamma-1400"][0]["font"][field] += 1
+    elif mutation == "missing-mode":
+        del runs["gamma-1400"]
+    elif mutation == "missing-restart":
+        runs["gamma-1400"].pop()
+    elif mutation == "bad-control":
+        runs["off"][0]["editor"]["trusted"] = False
+    elif mutation == "pixels":
+        runs["gamma-1400"][0]["font"].update(pixels="d" * 64, inkPixels=1000, pngBytes=600)
+        runs["gamma-1400"][0]["pdf"]["bytes"] = 8192
+    if mutation in ("missing-mode", "missing-restart", "bad-control"):
+        with pytest.raises(ValueError):
+            workloads.assess(runs, modes)
+    else:
+        assert workloads.assess(runs, modes)["passed"] is (mutation != "metric")
+
+
+@pytest.mark.parametrize("kind", ["missing", "directory", "relative", "small", "large", "boolean"])
+def test_invalid_workload_font_rejects_before_builder_or_browser_access(tmp_path, monkeypatch, kind):
+    from pathlib import Path
+
+    font = tmp_path / "font.ttf"
+    if kind == "directory":
+        font.mkdir()
+    elif kind == "relative":
+        font = Path("font.ttf")
+    elif kind == "small":
+        font.write_bytes(b"bad")
+    elif kind == "large":
+        with font.open("wb") as stream:
+            stream.truncate(2 * 1024**2 + 1)
+    elif kind == "boolean":
+        font = True
+    monkeypatch.setattr(verifier.sys, "platform", "win32")
+    monkeypatch.setattr(verifier, "require_idle_builder", lambda: pytest.fail("Invalid font reached builder access"))
+    destination = tmp_path / "evidence"
+    with pytest.raises(ValueError, match="bounded canonical"):
+        asyncio.run(verifier.verify(tmp_path / "chrome.exe", destination, workload_font=font))
+    assert not destination.exists()
+
+
+@pytest.mark.parametrize("change", [None, "changed", "missing"])
+def test_workload_artifact_guard_measures_actual_exports(tmp_path, change):
+    from scripts import native_font_workloads as workloads
+
+    value = workload_observation()
+    for name in workloads.ARTIFACTS:
+        data = value["download"]["text"].encode("utf-8") if name == "note.txt" else name.encode("ascii")
+        (tmp_path / name).write_bytes(data)
+        value["artifacts"][name] = hashlib.sha256(data).hexdigest()
+    if change == "changed":
+        (tmp_path / "note.txt").write_bytes(b"changed artifact")
+    elif change == "missing":
+        (tmp_path / "workspace.png").unlink()
+    if change == "missing":
+        with pytest.raises(FileNotFoundError):
+            workloads.artifacts_unchanged(tmp_path, value)
+    else:
+        assert workloads.artifacts_unchanged(tmp_path, value) is (change is None)
 
 
 def candidate_receipt_patches(candidate):

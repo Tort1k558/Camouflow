@@ -288,3 +288,19 @@ resources, source inputs and screenshots. The nine-case series checks separate
 gamma-only and contrast-only effects in all eight scopes, fidelity and restart
 stability. Its completed 148 run does not count as a 156 result or enable
 manager admission. See the [test matrix](../../../docs/GLINT_TEST_MATRIX.md).
+
+To include controlled editing/web-font/export workloads, add an explicit real
+font with widths distinguishable from the native monospace control. The
+candidate checkout supplies the WPT Ahem test font:
+
+```powershell
+python scripts/verify_native_font_rendering.py --series text-tuning --candidate upstream-156 --executable D:/Glint156Candidate/chromium/src/out/CamouFlowNative/chrome.exe --output D:/Glint156Candidate/text-tuning-156-workloads-v1 --workload-font D:/Glint156Candidate/chromium/src/third_party/blink/web_tests/external/wpt/fonts/Ahem.ttf
+```
+
+The helper checks Unicode input, native selection/undo/redo, checksummed font
+loading, DOM/SVG/Canvas metrics, PNG round trips, UTF-8 download and bounded PDF
+output. Artifacts remain in the new private evidence directory. Semantic
+changes across modes/restarts or changed artifacts fail the gate. IME, PDF
+content equivalence and third-party application compatibility are not implied.
+Run the public verifier only after the builder exits; matched research on
+isolated 148 binaries is recorded separately from candidate verification.

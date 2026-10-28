@@ -19,6 +19,7 @@ from app.core.native.runtime import NativeRuntime
 from app.core.native.privacy import FONT_RASTERIZATION_MODES
 from app.core.native import canvas_fidelity
 from scripts import native_build, native_canvas_formats, native_canvas_hdr, native_font_contexts, native_font_rendering, native_font_visuals
+from scripts import native_font_workloads
 from scripts.verify_native_branding import measure_branding_resources
 from scripts.verify_native_privacy_units import require_idle_builder
 from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
@@ -54,8 +55,8 @@ class RenderingConfiguration(NativeConfiguration):
         if not isinstance(self.rasterization, str) or self.rasterization not in (*MODES, *TEXT_TUNING_CASES):
             raise ValueError("Unknown experimental Windows font mode")
 
-    def launch_arguments(self) -> list[str]:
-        arguments = super().launch_arguments()
+    def launch_arguments(self, *, admission=None) -> list[str]:
+        arguments = super().launch_arguments(admission=admission)
         if self.rasterization in TEXT_TUNING_CASES:
             arguments.extend(TEXT_TUNING_CASES[self.rasterization])
         else:
@@ -145,12 +146,16 @@ def assess(runs: dict, *, series: str = "rasterization") -> dict:
 
 
 async def verify(executable: Path, destination: Path, *, series: str = "rasterization",
-                 candidate_name: str | None = None) -> dict:
+                 candidate_name: str | None = None, workload_font: Path | None = None) -> dict:
     modes = series_modes(series)
     candidate = None if candidate_name is None else native_build.load_candidate(candidate_name)
     policy_patch = PATCH if candidate is None else candidate["directory"] / "patches" / PATCH.name
     if sys.platform != "win32":
         raise ValueError("Windows font rendering verification requires Windows")
+    if workload_font is not None and (not isinstance(workload_font, Path) or not workload_font.is_absolute()
+            or workload_font != workload_font.resolve() or not workload_font.is_file()
+            or not 64 <= workload_font.stat().st_size <= 2 * 1024**2):
+        raise ValueError("Workloads require a bounded canonical explicit TrueType/OpenType font")
     require_idle_builder()
     if executable != executable.resolve() or not executable.is_file() or executable.name != "chrome.exe":
         raise ValueError("An explicit canonical Chrome executable is required")
@@ -193,7 +198,14 @@ async def verify(executable: Path, destination: Path, *, series: str = "rasteriz
     if candidate is not None:
         inputs.extend([candidate["directory"] / "manifest.json", Path(native_build.__file__)])
         inputs.extend(candidate["directory"] / "patches" / row["file"] for row in candidate["manifest"]["patches"])
+    if workload_font is not None:
+        inputs.extend([ROOT / "scripts/native_font_workloads.py", workload_font])
     before = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
+    if workload_font is not None:
+        font_bytes = workload_font.read_bytes()
+        if (hashlib.sha256(font_bytes).hexdigest() != before[str(workload_font)]
+                or font_bytes[:4] not in (b"\x00\x01\x00\x00", b"OTTO")):
+            raise ValueError("Workload font changed or is not a supported explicit TrueType/OpenType input")
     resources = measure_branding_resources(executable)
     destination.mkdir()
     report = {"passed": False, "scope": __doc__, "series": series, "capability_admitted": False,
@@ -205,13 +217,19 @@ async def verify(executable: Path, destination: Path, *, series: str = "rasteriz
     thread = None
     server_started = False
     try:
-        server = FixtureServer(("127.0.0.1", 0), native_font_contexts.FontFixtureHandler)
+        handler = native_font_contexts.FontFixtureHandler if workload_font is None else native_font_workloads.WorkloadFixtureHandler
+        server = FixtureServer(("127.0.0.1", 0), handler)
+        if workload_font is not None:
+            server.workload_font_bytes = font_bytes
+            report["workloads"] = {}
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         server_started = True
         for mode in modes:
             report["runs"][mode] = []
             report["visuals"][mode] = []
+            if workload_font is not None:
+                report["workloads"][mode] = []
             for round_index in range(2):
                 runtime = NativeRuntime(destination / "profiles" / mode, executable,
                                         RenderingConfiguration(rasterization=mode))
@@ -225,6 +243,11 @@ async def verify(executable: Path, destination: Path, *, series: str = "rasteriz
                     await page.screenshot(path=str(destination / screenshot))
                     report["screenshots_sha256"][screenshot] = hashlib.sha256((destination / screenshot).read_bytes()).hexdigest()
                     report["visuals"][mode].append(visible)
+                    if workload_font is not None:
+                        workload = await native_font_workloads.collect(
+                            page, f"http://127.0.0.1:{server.server_address[1]}",
+                            destination / f"workload-{mode}-{round_index}", before[str(workload_font)])
+                        report["workloads"][mode].append(workload)
                 except Exception as error:
                     report["errors"].append({"mode": mode, "round": round_index,
                                               "error": type(error).__name__ + ": " + str(error)})
@@ -245,6 +268,9 @@ async def verify(executable: Path, destination: Path, *, series: str = "rasteriz
                                           for mode, values in report["visuals"].items() if mode != "off"}
             report["passed"] = (report["assessment"]["passed"] and not any(report["visual_restarts"].values())
                                 and (series == "text-tuning" or not report["visual_controls"]["native"]))
+            if workload_font is not None:
+                report["workload_assessment"] = native_font_workloads.assess(report["workloads"], modes)
+                report["passed"] = report["passed"] and report["workload_assessment"]["passed"]
     except Exception as error:
         report["error"] = type(error).__name__ + ": " + str(error)
     finally:
@@ -260,6 +286,9 @@ async def verify(executable: Path, destination: Path, *, series: str = "rasteriz
                 and resources == measure_branding_resources(executable)
                 and before == {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
                 and (candidate is None or native_build.load_candidate(candidate_name) == candidate)
+                and (workload_font is None or all(
+                    native_font_workloads.artifacts_unchanged(destination / f"workload-{mode}-{index}", value)
+                    for mode, rounds in report.get("workloads", {}).items() for index, value in enumerate(rounds)))
                 and all(value == hashlib.sha256((destination / name).read_bytes()).hexdigest()
                         for name, value in report["screenshots_sha256"].items()))
         except (ValueError, OSError) as error:
@@ -276,10 +305,11 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--series", choices=("rasterization", "text-tuning"), default="rasterization")
     parser.add_argument("--candidate", choices=("upstream-156",), help="Bind the complete candidate build receipt; not capability admission")
+    parser.add_argument("--workload-font", type=Path, help="Explicit real TTF/OTF for editing, web-font and export workloads")
     arguments = parser.parse_args()
     try:
         report = asyncio.run(verify(arguments.executable, arguments.output, series=arguments.series,
-                                    candidate_name=arguments.candidate))
+                                    candidate_name=arguments.candidate, workload_font=arguments.workload_font))
     except (OSError, ValueError) as error:
         parser.exit(1, f"Font rendering verification failed: {error}\n")
     summary = {key: report.get(key) for key in ("passed", "errors", "error", "inputs_unchanged")}
