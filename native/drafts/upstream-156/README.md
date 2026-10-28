@@ -70,6 +70,30 @@ including upstream test-font handling, remains unchanged when no policy is set.
 The conversion uses the documented
 [IDWriteFontCollection1::GetFontSet API](https://learn.microsoft.com/en-us/windows/win32/api/dwrite_3/nf-dwrite_3-idwritefontcollection1-getfontset).
 
+## Linked native unit targets
+
+After building the candidate, run the existing unit verifier with explicit
+`--candidate upstream-156`. It checks the candidate workspace, source revision,
+complete Chromium/V8 patch chain and manifest-bound sync/hooks records. It holds
+the same exclusive workspace lock as sync/build/patch operations. Preserve the
+baseline browser core, GN arguments and build receipt; their postguards run
+even when compilation or a test fails. This is unit evidence, not proof that the
+baseline browser implements the selected sources or that a policy is admitted.
+
+```powershell
+$evidence = 'D:\Glint156IdentityEvidence-1'
+New-Item -ItemType Directory -Path $evidence -ErrorAction Stop
+foreach ($target in 'identity-keys', 'identity-contexts', 'identity-transport', 'identity-handoff') {
+    .venv\Scripts\python.exe scripts/verify_native_privacy_units.py --workspace D:\Glint156Candidate --candidate upstream-156 --target $target --report "$evidence\$target.json" --vs-installation D:\BuildTools --jobs 4
+    if ($LASTEXITCODE -ne 0) { throw "Glint unit target failed: $target" }
+}
+```
+
+Keep the target SDK environment configured as above. `--git-ssl-backend` has the
+same explicit Windows selection as the build helper. Missing/skipped/failed test
+cases are rejected; source and core changes invalidate the report. The four
+filters contain 62/37/20/15 cases, not a claim that those cases ran on 156.
+
 ## Reproduce source-context verification
 
 Use an unmodified checkout of the exact target revision, or a directory with

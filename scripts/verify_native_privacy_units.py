@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from scripts import native_build as build
+from app.core.native.runtime import NativeRuntimeError
 from scripts.verify_native_runtime import measure_runtime_core
 
 
@@ -348,15 +349,21 @@ def require_idle_builder() -> None:
 
 
 def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None, jobs: int = 4,
-           target: str = "keys") -> dict:
+           target: str = "keys", candidate_name: str | None = None,
+           git_ssl_backend: str = "openssl") -> dict:
     required = required_tests(target)
     if sys.platform != "win32":
         raise ValueError("The owned-profile key loader verification currently supports Windows only")
-    if type(jobs) is not int or not 1 <= jobs <= min(4, build.LOCK["build_jobs"]):
+    candidate = None if candidate_name is None else build.load_candidate(candidate_name)
+    lock = build.LOCK if candidate is None else candidate["lock"]
+    if type(jobs) is not int or not 1 <= jobs <= min(4, lock["build_jobs"]):
         raise ValueError("Native privacy verification requires 1..4 jobs")
-    build.preflight(workspace)
+    if candidate is None:
+        build.preflight(workspace)
+    else:
+        build.preflight(workspace, lock=lock)
+    build.candidate_workspace(workspace, candidate)
     source = workspace / "chromium/src"
-    output = source / "out/CamouFlowNative"
     if source != source.resolve() or not source.is_dir():
         raise ValueError("A canonical pinned Chromium checkout is required")
     if (not report.is_absolute() or report != report.resolve() or not report.parent.is_dir()
@@ -366,18 +373,38 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     log_path = report.with_name(report.stem + "-build.log")
     if any(path.exists() or path.is_symlink() for path in (report, results, log_path)):
         raise ValueError("Refusing to overwrite native verification evidence")
+    with build.workspace_lock(workspace):
+        return _verify_locked(workspace, report, vs_installation=vs_installation, jobs=jobs, target=target,
+                              required=required, candidate=candidate, lock=lock, git_ssl_backend=git_ssl_backend)
+
+
+def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | None, jobs: int,
+                   target: str, required: dict, candidate: dict | None, lock: dict,
+                   git_ssl_backend: str) -> dict:
+    source = workspace / "chromium/src"
+    output = source / "out/CamouFlowNative"
+    results = report.with_name(report.stem + "-tests.json")
+    log_path = report.with_name(report.stem + "-build.log")
     require_idle_builder()
-    env = build.environment(workspace)
+    env = build.environment(workspace, git_ssl_backend=git_ssl_backend)
     env.update(GOMEMLIMIT="3GiB", PYTHONIOENCODING="utf-8")
     if vs_installation is not None:
         if vs_installation != vs_installation.resolve() or not vs_installation.is_dir():
             raise ValueError("Visual Studio installation must be an existing canonical directory")
         env["vs2026_install"] = str(vs_installation)
-    if build.run(["git", "rev-parse", "HEAD"], source, env, capture=True) != build.LOCK["chromium_revision"]:
-        raise ValueError("Chromium revision differs from the pinned build lock")
-    build.require_stage(workspace / "chromium", "sync")
-    build.require_stage(workspace / "chromium", "hooks")
-    patches = build.source_patches(source, env) + build.v8_source_patches(source, env)
+    def source_state():
+        build.candidate_workspace(workspace, candidate)
+        if build.run(["git", "rev-parse", "HEAD"], source, env, capture=True) != lock["chromium_revision"]:
+            raise ValueError("Chromium revision differs from the pinned build lock")
+        if candidate is not None:
+            build.require_stage(workspace / "chromium", "sync", candidate)
+            build.require_stage(workspace / "chromium", "hooks", candidate)
+            return build.candidate_source_patches(source, env, candidate)
+        build.require_stage(workspace / "chromium", "sync")
+        build.require_stage(workspace / "chromium", "hooks")
+        return build.source_patches(source, env) + build.v8_source_patches(source, env)
+
+    patches = source_state()
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
     if target == "font-rasterization":
         required_patches.add("0062-native-windows-font-rasterization.patch")
@@ -472,7 +499,11 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                     "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff"} else
                     "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
     proof = {"passed": False, "scope": scope, "target": target,
-             "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path)}
+             "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path),
+             "source_chromium_revision": lock["chromium_revision"], "browser_runtime_verified": False,
+             "privacy_admitted": False,
+             **({"candidate": candidate["name"], "candidate_manifest_sha256": candidate["manifest_sha256"]}
+                if candidate is not None else {})}
     with log_path.open("x", encoding="utf-8", newline="\n") as log:
         try:
             build.check_patch_dependencies(source, env)
@@ -485,15 +516,27 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                             "--single-process-tests", "--gtest_output=json:" + str(results)],
                            cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
             validate_results(json.loads(results.read_text(encoding="utf-8-sig")), target=target)
-            if delivery_sources is not None and require_delivery_sources(source) != delivery_sources:
-                raise ValueError("Delivery source inputs changed during verification")
-            if (measure_runtime_core(output / "chrome.exe") != core
-                    or (output / "args.gn").read_bytes() != arguments
-                    or (output / "camouflow-build.json").read_bytes() != receipt
-                    or build.source_patches(source, env) + build.v8_source_patches(source, env) != patches):
-                raise ValueError("Verification changed baseline browser code, receipt or source inputs")
             with executable.open("rb") as stream:
                 test_checksum = hashlib.file_digest(stream, "sha256").hexdigest()
+        except (ValueError, OSError, subprocess.SubprocessError, NativeRuntimeError) as error:
+            proof["error"] = str(error)
+            log.write(f"\nVerification failed: {error}\n")
+        finally:
+            try:
+                if delivery_sources is not None and require_delivery_sources(source) != delivery_sources:
+                    raise ValueError("Delivery source inputs changed during verification")
+                if (measure_runtime_core(output / "chrome.exe") != core
+                        or (output / "args.gn").read_bytes() != arguments
+                        or (output / "camouflow-build.json").read_bytes() != receipt
+                        or source_state() != patches):
+                    raise ValueError("Verification changed baseline browser code, receipt or source inputs")
+                proof["postguards_passed"] = True
+            except (ValueError, OSError, subprocess.SubprocessError, NativeRuntimeError) as error:
+                proof["postguards_passed"] = False
+                proof["postguard_error"] = str(error)
+                proof.setdefault("error", str(error))
+                log.write(f"\nPost-verification guard failed: {error}\n")
+        if "error" not in proof:
             proof.update(passed=True, tests=sum(map(len, required.values())),
                          test_binary_sha256=test_checksum,
                          baseline_browser_code_unchanged=True, baseline_runtime_core_sha256_measured=core,
@@ -501,9 +544,6 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
                          browser_receipt_sha256=hashlib.sha256(receipt).hexdigest())
             if delivery_sources is not None:
                 proof["delivery_source_sha256"] = delivery_sources
-        except (ValueError, OSError, subprocess.SubprocessError) as error:
-            proof["error"] = str(error)
-            log.write(f"\nVerification failed: {error}\n")
     with report.open("x", encoding="utf-8", newline="\n") as stream:
         json.dump(proof, stream, indent=2)
     return proof
@@ -515,11 +555,14 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--vs-installation", type=Path)
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
+    parser.add_argument("--candidate", choices=("upstream-156",), help="Explicit candidate source/manifest; not runtime admission")
+    parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl")
     parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS), default="keys")
     args = parser.parse_args()
     try:
-        report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs, target=args.target)
-    except (ValueError, OSError, subprocess.SubprocessError) as error:
+        report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs, target=args.target,
+                        candidate_name=args.candidate, git_ssl_backend=args.git_ssl_backend)
+    except (ValueError, OSError, subprocess.SubprocessError, NativeRuntimeError) as error:
         print(f"Native privacy verification failed: {error}", file=sys.stderr)
         return 1
     print(json.dumps({"passed": report["passed"], "report": str(args.report)}))

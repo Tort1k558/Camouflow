@@ -1277,9 +1277,11 @@ def test_native_privacy_verification_refuses_existing_compiler(monkeypatch, runn
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows owned-profile unit verifier")
-@pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure", "source_change"])
-@pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", "font-rasterization"])
-def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure, target):
+@pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure", "source_change", "compiler_and_browser_change", "compiler_and_browser_removed"])
+@pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", "font-rasterization",
+                                    "identity-keys", "identity-contexts", "identity-transport"])
+@pytest.mark.parametrize("candidate_mode", [False, True])
+def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure, target, candidate_mode):
     import json
     import subprocess
     from scripts import verify_native_privacy_units as privacy
@@ -1296,11 +1298,24 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
     (output / "args.gn").write_text("owned args\n", encoding="utf-8")
     (output / "camouflow-build.json").write_text("owned receipt", encoding="utf-8")
     report = tmp_path / "proof.json"
+    candidate = privacy.build.load_candidate("upstream-156") if candidate_mode else None
+    selected_lock = privacy.build.LOCK if candidate is None else candidate["lock"]
+    if candidate is not None:
+        (workspace / "glint-build-candidate.json").write_text(json.dumps({
+            "schema": 1, "candidate": candidate["name"], "chromium_revision": selected_lock["chromium_revision"]}), encoding="utf-8")
     monkeypatch.setattr(privacy.build, "preflight", lambda *args, **kwargs: None)
     monkeypatch.setattr(privacy, "require_idle_builder", lambda: None)
-    monkeypatch.setattr(privacy.build, "environment", lambda *args: {})
-    monkeypatch.setattr(privacy.build, "run", lambda *args, **kwargs: privacy.build.LOCK["chromium_revision"])
-    monkeypatch.setattr(privacy.build, "require_stage", lambda *args: None)
+    monkeypatch.setattr(privacy.build, "environment", lambda *args, **kwargs: {})
+    monkeypatch.setattr(privacy.build, "run", lambda *args, **kwargs: selected_lock["chromium_revision"])
+
+    def require_stage(*args):
+        assert args[:2] in ((workspace / "chromium", "sync"), (workspace / "chromium", "hooks"))
+        if candidate_mode:
+            assert len(args) == 3 and args[2]["manifest_sha256"] == candidate["manifest_sha256"]
+        else:
+            assert len(args) == 2
+
+    monkeypatch.setattr(privacy.build, "require_stage", require_stage)
     source_patches = [{"name": name, "sha256": "a" * 64} for name in (
         "0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch",
         "0017-native-browser-context-tests.patch", "0018-native-document-policy-delivery.patch",
@@ -1310,32 +1325,50 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         "0029-native-document-partition-validator-tests.patch",
         "0030-native-document-commit-prototype.patch", "0032-native-document-surface-policy.patch",
         "0042-native-initial-policy-fixture-scheme-lifetime.patch",
+        "0049-native-profile-identity-derivation.patch", "0050-native-immutable-fingerprint-mode.patch",
+        "0051-native-identity-context-tests.patch", "0052-native-surface-identity-v3-transport.patch",
+        "0053-native-identity-handoff-tests.patch", "0054-native-profile-identity-launch.patch",
         "0062-native-windows-font-rasterization.patch")]
     monkeypatch.setattr(privacy.build, "source_patches", lambda *args: [dict(item) for item in source_patches])
     monkeypatch.setattr(privacy.build, "v8_source_patches", lambda *args: [])
+    if candidate_mode:
+        source_patches = [{"name": row["file"], "sha256": row["sha256"]} for row in candidate["manifest"]["patches"]]
+
+        def candidate_sources(selected_source, env, selected):
+            assert selected_source == source and selected["manifest_sha256"] == candidate["manifest_sha256"]
+            return [dict(row) for row in source_patches]
+
+        monkeypatch.setattr(privacy.build, "candidate_source_patches", candidate_sources)
+        monkeypatch.setattr(privacy.build, "source_patches", lambda *args: pytest.fail("Candidate used default patch chain"))
+        monkeypatch.setattr(privacy.build, "v8_source_patches", lambda *args: pytest.fail("Candidate used default V8 chain"))
     monkeypatch.setattr(privacy.build, "check_patch_dependencies", lambda *args: None)
     monkeypatch.setattr(privacy.build, "depot_command", lambda *args: ["autoninja"])
     measurements = []
 
     def measure(*args):
         measurements.append(True)
-        return {"chrome.exe": "b" * 64 if failure == "browser_change" and len(measurements) > 1 else "a" * 64}
+        if failure == "compiler_and_browser_removed" and len(measurements) > 1:
+            raise privacy.NativeRuntimeError("Native browser is not installed")
+        return {"chrome.exe": "b" * 64 if failure in {"browser_change", "compiler_and_browser_change"} and len(measurements) > 1 else "a" * 64}
 
     monkeypatch.setattr(privacy, "measure_runtime_core", measure)
     commands = []
     build_target = ("gfx_unittests" if target == "font-rasterization" else
                     "blink_unittests" if target == "worker-handoff" else
-                    "content_unittests" if target in {"contexts", "delivery", "document-navigation"} else "camouflow_native_privacy_unittests")
+                    "content_unittests" if target in {"contexts", "delivery", "document-navigation", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
 
     def run(args, **kwargs):
+        with pytest.raises(ValueError, match="owns this workspace"):
+            with privacy.build.workspace_lock(workspace):
+                pytest.fail("Native compiler verification did not retain its workspace lock")
         commands.append(args)
         kwargs["stdout"].write("Owned subprocess output\n")
         if args[0] == "autoninja":
-            if failure == "compiler_failure":
+            if failure in {"compiler_failure", "compiler_and_browser_change", "compiler_and_browser_removed"}:
                 raise subprocess.CalledProcessError(1, args)
             (output / (build_target + ".exe")).write_bytes(b"owned unit executable")
         else:
-            results = {"tests": {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12, "font-rasterization": 5}[target],
+            results = {"tests": sum(map(len, privacy.required_tests(target).values())),
                        "failures": 1 if failure == "test_failure" else 0, "disabled": 0,
                        "testsuites": [{"name": suite, "testsuite": [
                            {"name": name, "status": "RUN", "result": "COMPLETED"} for name in sorted(cases)]}
@@ -1349,12 +1382,13 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         return subprocess.CompletedProcess(args, 0)
 
     monkeypatch.setattr(privacy.subprocess, "run", run)
-    proof = privacy.verify(workspace, report, target=target)
+    selected_name = candidate["name"] if candidate is not None else None
+    proof = privacy.verify(workspace, report, target=target, candidate_name=selected_name)
     assert proof["passed"] is (failure is None)
     assert json.loads(report.read_text(encoding="utf-8")) == proof
     assert "Owned subprocess output" in report.with_name("proof-build.log").read_text(encoding="utf-8")
     assert commands[0][-3:] == ["-j", "4", build_target]
-    if failure == "compiler_failure":
+    if failure in {"compiler_failure", "compiler_and_browser_change", "compiler_and_browser_removed"}:
         assert len(commands) == 1
     else:
         assert commands[1][0] == str(output / (build_target + ".exe"))
@@ -1363,15 +1397,67 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
             assert set(commands[1][1].removeprefix("--gtest_filter=").split(":")) == {
                 f"{suite}.{case}" for suite, cases in privacy.required_tests(target).items() for case in cases}
     assert proof["target"] == target
+    assert proof["source_chromium_revision"] == selected_lock["chromium_revision"]
+    assert proof["browser_runtime_verified"] is False and proof["privacy_admitted"] is False
+    assert proof["postguards_passed"] is (failure not in {"browser_change", "source_change", "compiler_and_browser_change", "compiler_and_browser_removed"})
+    if candidate_mode:
+        assert proof["candidate"] == "upstream-156" and proof["candidate_manifest_sha256"] == candidate["manifest_sha256"]
+    else:
+        assert "candidate" not in proof and "candidate_manifest_sha256" not in proof
     if failure is None:
-        assert proof["tests"] == {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12, "font-rasterization": 5}[target] and proof["baseline_browser_code_unchanged"]
+        assert proof["tests"] == {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12, "font-rasterization": 5,
+                                  "identity-keys": 62, "identity-contexts": 37, "identity-transport": 20}[target] and proof["baseline_browser_code_unchanged"]
         assert len(proof["test_binary_sha256"]) == 64
         if target == "delivery":
             assert len(proof["delivery_source_sha256"]) == 10
     else:
         assert proof.get("error") and "baseline_browser_code_unchanged" not in proof
+        if failure == "compiler_and_browser_change":
+            assert "autoninja" in proof["error"] and "Verification changed baseline" in proof["postguard_error"]
+        if failure == "compiler_and_browser_removed":
+            assert "autoninja" in proof["error"] and "Native browser is not installed" in proof["postguard_error"]
     with pytest.raises(ValueError, match="overwrite"):
-        privacy.verify(workspace, report, target=target)
+        privacy.verify(workspace, report, target=target, candidate_name=selected_name)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows candidate unit verifier")
+@pytest.mark.parametrize("mutation,expected", [
+    ("implicit", "explicit --candidate"), ("revision", "different revision"),
+    ("missing", "new empty workspace"), ("unknown", "Unknown Native build candidate"),
+])
+def test_privacy_units_reject_candidate_binding_before_lock_or_compiler(tmp_path, monkeypatch, mutation, expected):
+    import json
+    from scripts import verify_native_privacy_units as privacy
+
+    workspace = tmp_path / "workspace"
+    (workspace / "chromium/src").mkdir(parents=True)
+    candidate = privacy.build.load_candidate("upstream-156")
+    marker = {"schema": 1, "candidate": "upstream-156", "chromium_revision": candidate["lock"]["chromium_revision"]}
+    if mutation == "revision":
+        marker["chromium_revision"] = "f" * 40
+    if mutation != "missing":
+        (workspace / "glint-build-candidate.json").write_text(json.dumps(marker), encoding="utf-8")
+    monkeypatch.setattr(privacy.build, "preflight", lambda *args, **kwargs: None)
+    monkeypatch.setattr(privacy, "require_idle_builder", lambda: pytest.fail("Invalid candidate reached compiler setup"))
+    name = None if mutation == "implicit" else "unknown" if mutation == "unknown" else "upstream-156"
+    report = tmp_path / "proof.json"
+    with pytest.raises(ValueError, match=expected):
+        privacy.verify(workspace, report, candidate_name=name)
+    assert not report.exists() and not (workspace / "glint-build.lock").exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows native unit verifier")
+def test_privacy_units_refuse_a_workspace_owned_by_sync_before_compiler_setup(tmp_path, monkeypatch):
+    from scripts import verify_native_privacy_units as privacy
+
+    workspace = tmp_path / "workspace"
+    (workspace / "chromium/src").mkdir(parents=True)
+    monkeypatch.setattr(privacy.build, "preflight", lambda *args, **kwargs: None)
+    monkeypatch.setattr(privacy, "require_idle_builder", lambda: pytest.fail("Busy workspace reached compiler setup"))
+    with privacy.build.workspace_lock(workspace):
+        with pytest.raises(ValueError, match="owns this workspace"):
+            privacy.verify(workspace, tmp_path / "proof.json")
+    assert not (tmp_path / "proof.json").exists()
 
 
 def test_native_key_derivation_patch_reuses_canonical_message_header():
