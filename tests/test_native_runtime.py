@@ -377,6 +377,64 @@ def test_native_locale_is_configured_for_browser_and_worker_processes():
     assert NativeConfiguration(locale="de-DE").launch_arguments() == ["--lang=de-DE", "--accept-lang=de-DE"]
 
 
+@pytest.mark.parametrize("key,choices", [
+    ("color_scheme", ("light", "dark")), ("reduced_motion", ("no-preference", "reduce")),
+    ("forced_colors", ("none", "active")), ("contrast", ("no-preference", "more")),
+])
+def test_native_media_preferences_are_explicit_context_options(key, choices):
+    from dataclasses import asdict
+    from app.core.native.configuration import MEDIA_PREFERENCES
+    from app.storage.db import NATIVE_DEFAULTS
+
+    assert NATIVE_DEFAULTS[key] == "" and MEDIA_PREFERENCES[key] == choices
+    assert key not in NativeConfiguration().context_options()
+    for value in choices:
+        configuration = NativeConfiguration.from_settings({key: value})
+        assert configuration.context_options()[key] == value
+        assert asdict(configuration)[key] == value
+        assert configuration.launch_arguments() == NativeConfiguration().launch_arguments()
+
+
+@pytest.mark.parametrize("key", ["color_scheme", "reduced_motion", "forced_colors", "contrast"])
+@pytest.mark.parametrize("value", [None, True, 0, [], {}, "system", "DARK", " light"])
+def test_native_media_preferences_reject_invalid_values_without_fallback(key, value):
+    with pytest.raises(ValueError, match="media preference"):
+        NativeConfiguration.from_settings({key: value})
+    with pytest.raises(ValueError, match="media preference"):
+        NativeConfiguration(**{key: value}).context_options()
+
+
+@pytest.mark.parametrize("key,selected,other", [
+    ("color_scheme", "dark", "light"), ("reduced_motion", "reduce", "no-preference"),
+    ("forced_colors", "active", "none"), ("contrast", "more", "no-preference"),
+])
+@pytest.mark.parametrize("mutation", [None, "missing", "wrong", "both", "neither", "integer", "extra", "malformed"])
+def test_native_media_diagnostics_require_exact_native_observations(key, selected, other, mutation):
+    from app.core.native.diagnostics import compare_observed
+
+    document = {"width": 1366, "height": 768, "dpr": 1, "language": "en-US", "timezone": "UTC"}
+    values = {selected: True, other: False}
+    if mutation == "wrong":
+        values = {selected: False, other: True}
+    elif mutation == "both":
+        values[other] = True
+    elif mutation == "neither":
+        values[selected] = False
+    elif mutation == "integer":
+        values[selected] = 1
+    elif mutation == "extra":
+        values["invented"] = False
+    elif mutation == "malformed":
+        values = []
+    if mutation != "missing":
+        document["mediaPreferences"] = {key: values}
+    observed = {"document": document, "worker": dict(document)}
+    configuration = NativeConfiguration.from_settings({key: selected})
+    expected = [] if mutation is None else ["Document media preference differs from configured " + key]
+    assert compare_observed(configuration, observed) == expected
+    assert compare_observed(NativeConfiguration(), observed) == []
+
+
 @pytest.mark.parametrize("key", ["language", "languages", "hardwareConcurrency", "deviceMemory", "timezone", "intlLocale", "userAgentData", "userAgentHighEntropy"])
 def test_native_diagnostics_detects_document_worker_disagreement(key):
     from app.core.native.diagnostics import compare_observed
@@ -1174,15 +1232,15 @@ def test_native_profile_json_validates_merged_defaults_and_preserves_only_overri
 
     from app.ui.bridge import profiles
 
-    monkeypatch.setattr(profiles, "db_get_native_defaults", lambda: {"environment": "mobile_web", "window_height": 844})
+    monkeypatch.setattr(profiles, "db_get_native_defaults", lambda: {"environment": "mobile_web", "window_height": 844, "color_scheme": "dark"})
     update = Mock()
     monkeypatch.setattr(profiles, "db_update_account", update)
     bridge = SimpleNamespace(_emit_message=Mock(), _ensure_allowed=Mock(return_value=True), _mutate=Mock())
-    profiles.ProfilesBridge.saveProfileBrowserSettingsJson(bridge, "owned", "native", '{"window_width":420}')
+    profiles.ProfilesBridge.saveProfileBrowserSettingsJson(bridge, "owned", "native", '{"window_width":420,"color_scheme":"light"}')
     work, targets = bridge._mutate.call_args.args
     assert targets == ["owned"]
     work(None)
-    update.assert_called_once_with("owned", {"native_settings": {"window_width": 420}})
+    update.assert_called_once_with("owned", {"native_settings": {"window_width": 420, "color_scheme": "light"}})
     bridge._emit_message.assert_not_called()
 
 

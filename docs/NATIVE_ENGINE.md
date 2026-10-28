@@ -18,6 +18,7 @@ experimental, not a released replacement for Camoufox or CloakBrowser.
 | WebGPU protection | Incomplete; metadata diagnostics do not prove protected rendering/readback |
 | Linux/macOS own-fork runtime | Deferred; not released |
 | Mobile Web | Desktop viewport/touch emulation, not real Android/iOS |
+| CSS page preferences | Profile-configurable color scheme, motion, forced colors and contrast; checked on stock/Glint 148, not yet 156 |
 | Signed online engine updates | Not implemented |
 
 The manager uses the Glint display name while technical engine IDs, profile
@@ -34,6 +35,27 @@ device-passport or profile-key/Canvas/GPU privacy admission.
 Results and unresolved failures are linked in the
 [per-build test matrix](GLINT_TEST_MATRIX.md). Older external-site observations
 must not be attributed to the current binary without a new run.
+
+## Page preferences
+
+Glint configuration → **Page preferences** controls the context's CSS media
+preferences. Defaults preserve the existing launch options. Explicit values are
+validated, stored with browser defaults or profile overrides and passed through
+the existing [persistent-context API](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context).
+No JavaScript APIs are replaced, and these preferences do not simulate an OS,
+GPU or a complete device fingerprint.
+
+Example profile overrides:
+
+```json
+{"color_scheme":"dark","reduced_motion":"reduce","forced_colors":"none","contrast":"more"}
+```
+
+Each field accepts an empty string for default behavior. Other supported values:
+`light`/`dark`, `no-preference`/`reduce`, `none`/`active`, and
+`no-preference`/`more`, respectively. Invalid values fail rather than falling back.
+The health diagnostic checks configured preferences against actual `matchMedia`
+results. These are window/frame media queries, not a worker fingerprint control.
 
 ## Developer entry points
 

@@ -3,6 +3,28 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Context media preferences — 2026-10-28
+
+Manager configuration now persists explicit color scheme, reduced motion, forced
+colors and contrast. Empty/default selections leave the old launch options
+unchanged; invalid values reject. These are native browser context media
+emulation options, **not new Chromium patches or OS/GPU identity admission**.
+
+Owned fixture checks passed **32/32 observations**: matching stock Chromium 148
+and installed Glint 148 / 001-062, two simultaneously configured opposing
+profiles, initial/restart phases, document, same-origin frame, cross-origin
+loopback frame and new tab. First-parser-script values, subsequent `matchMedia`
+results and CSS custom properties selected by real media rules all agreed.
+Measured executable/DLL cores and the complete installed payload remained
+unchanged. Evidence: `media-preferences-20261028-v2/report.json` on D; the initial
+fixture-only v1 report is retained separately. The v2 run also called the real
+manager diagnostic eight times across both runtimes/profiles/phases: zero
+mismatches, with exact observed media values in every call.
+QML interactions/save persistence passed; a private manager screenshot was
+visually checked. The complete Python suite passed **2918 tests, one skipped**.
+This does not transfer these observations to 156, cover worker APIs or establish
+anti-bot acceptance.
+
 ## Follow-up Windows regression — 2026-10-28
 
 This is another run of the installed **148 / 001-062** package, not a new linked

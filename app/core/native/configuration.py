@@ -8,6 +8,13 @@ from PyQt6.QtCore import QTimeZone
 
 from .privacy import NativePrivacyPolicy
 
+MEDIA_PREFERENCES = {
+    "color_scheme": ("light", "dark"),
+    "reduced_motion": ("no-preference", "reduce"),
+    "forced_colors": ("none", "active"),
+    "contrast": ("no-preference", "more"),
+}
+
 
 @dataclass(frozen=True)
 class NativeConfiguration:
@@ -19,6 +26,10 @@ class NativeConfiguration:
     timezone: str = "UTC"
     permissions: tuple[str, ...] = ()
     privacy_policy: NativePrivacyPolicy = field(default_factory=NativePrivacyPolicy)
+    color_scheme: str = ""
+    reduced_motion: str = ""
+    forced_colors: str = ""
+    contrast: str = ""
 
     @classmethod
     def from_settings(cls, settings: dict) -> "NativeConfiguration":
@@ -42,6 +53,7 @@ class NativeConfiguration:
             width=settings.get("window_width", 1366), height=settings.get("window_height", 768),
             device_scale_factor=settings.get("device_scale_factor", 1.0),
             locale=settings.get("locale", "en-US"), timezone=settings.get("timezone", "UTC"),
+            **{key: settings.get(key, "") for key in MEDIA_PREFERENCES},
             permissions=tuple(permissions),
             privacy_policy=NativePrivacyPolicy.from_dict(settings.get("privacy_policy", {})),
         )
@@ -52,6 +64,10 @@ class NativeConfiguration:
         if not isinstance(self.privacy_policy, NativePrivacyPolicy):
             raise ValueError("Invalid Native privacy policy")
         self.privacy_policy.validate()
+        for key, choices in MEDIA_PREFERENCES.items():
+            value = getattr(self, key)
+            if not isinstance(value, str) or value not in ("", *choices):
+                raise ValueError("Invalid Native media preference: " + key)
         if not isinstance(self.environment, str) or self.environment not in {"desktop", "mobile_web"}:
             raise ValueError("Native supports desktop or mobile_web, not real Android/iOS")
         if any(type(value) is not int or not 240 <= value <= 8192 for value in (self.width, self.height)):
@@ -78,6 +94,7 @@ class NativeConfiguration:
             "is_mobile": mobile,
             "has_touch": mobile,
             "permissions": list(self.permissions),
+            **{key: getattr(self, key) for key in MEDIA_PREFERENCES if getattr(self, key)},
         }
 
     def launch_arguments(self, *, admission=None) -> list[str]:

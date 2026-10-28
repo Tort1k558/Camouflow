@@ -178,6 +178,10 @@ CLOAKBROWSER_DEFAULTS: Dict[str, Any] = {
 }
 
 NATIVE_DEFAULTS: Dict[str, Any] = {
+    "color_scheme": "",
+    "reduced_motion": "",
+    "forced_colors": "",
+    "contrast": "",
     "privacy_policy": {},
     "binary_source": "explicit",
     "binary_store": "",

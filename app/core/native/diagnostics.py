@@ -5,7 +5,7 @@ import json
 import math
 import re
 
-from .configuration import NativeConfiguration
+from .configuration import MEDIA_PREFERENCES, NativeConfiguration
 from .canvas_fidelity import READ as CANVAS_FIDELITY_READ, validate_measurement
 
 
@@ -155,6 +155,16 @@ OBSERVE = """async () => {
         };
     };
     const documentValues = {...await navigatorValues(),
+        mediaPreferences: {
+            color_scheme: {light: matchMedia('(prefers-color-scheme: light)').matches,
+                dark: matchMedia('(prefers-color-scheme: dark)').matches},
+            reduced_motion: {'no-preference': matchMedia('(prefers-reduced-motion: no-preference)').matches,
+                reduce: matchMedia('(prefers-reduced-motion: reduce)').matches},
+            forced_colors: {none: matchMedia('(forced-colors: none)').matches,
+                active: matchMedia('(forced-colors: active)').matches},
+            contrast: {'no-preference': matchMedia('(prefers-contrast: no-preference)').matches,
+                more: matchMedia('(prefers-contrast: more)').matches}
+        },
         width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
         touch: navigator.maxTouchPoints, webdriver: navigator.webdriver,
         secureContext: isSecureContext,
@@ -186,6 +196,16 @@ def compare_observed(configuration: NativeConfiguration, observed: dict) -> list
     mismatches = []
     document = observed["document"]
     policy = configuration.privacy_policy
+    for key, choices in MEDIA_PREFERENCES.items():
+        expected = getattr(configuration, key)
+        if not expected:
+            continue
+        preferences = document.get("mediaPreferences")
+        values = preferences.get(key) if isinstance(preferences, dict) else None
+        if (not isinstance(values, dict) or set(values) != set(choices)
+                or any(type(value) is not bool for value in values.values())
+                or any(values[choice] is not (choice == expected) for choice in choices)):
+            mismatches.append("Document media preference differs from configured " + key)
     for scope in ("document", "worker"):
         values = observed.get(scope)
         if not isinstance(values, dict):

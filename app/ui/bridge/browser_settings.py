@@ -127,6 +127,22 @@ class BrowserSettingsBridge(QObject):
         return float(self._native.get("device_scale_factor", 1.0))
 
     @pyqtProperty("QVariantMap", notify=changed)
+    def nativeMediaPreferences(self) -> dict:  # noqa: N802
+        from app.core.native.configuration import MEDIA_PREFERENCES
+        return {key: self._native.get(key, "") for key in MEDIA_PREFERENCES}
+
+    @pyqtProperty("QVariantList", constant=True)
+    def nativeMediaPreferenceOptions(self) -> list:  # noqa: N802
+        from app.core.native.configuration import MEDIA_PREFERENCES
+        names = {"color_scheme": "Color scheme", "reduced_motion": "Motion",
+                 "forced_colors": "Forced colors", "contrast": "Contrast"}
+        labels = {"light": "Light", "dark": "Dark", "no-preference": "No preference",
+                  "reduce": "Reduced", "none": "Off", "active": "On", "more": "More"}
+        return [{"key": key, "label": names[key], "choices": [
+            {"value": "", "label": "Default"}, *({"value": value, "label": labels[value]} for value in values)]}
+                for key, values in MEDIA_PREFERENCES.items()]
+
+    @pyqtProperty("QVariantMap", notify=changed)
     def nativePrivacyPolicy(self) -> dict:  # noqa: N802
         from dataclasses import asdict
         from app.core.native.privacy import NativePrivacyPolicy

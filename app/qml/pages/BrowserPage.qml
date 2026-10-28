@@ -216,6 +216,36 @@ Item {
                 }
             }
             SettingsSection {
+                objectName: "nativeMediaPreferencesSection"
+                visible: root.isNative && root.tab === "Runtime"
+                width: parent.width; height: nativeMediaFields.implicitHeight + 100
+                title: "Page preferences"
+                subtitle: "Per-profile CSS preferences, not OS or hardware emulation"
+                Column {
+                    id: nativeMediaFields
+                    width: parent.width; spacing: 12
+                    Repeater {
+                        model: browserSettingsBridge.nativeMediaPreferenceOptions
+                        delegate: RowLayout {
+                            id: mediaPreferenceRow
+                            required property var modelData
+                            objectName: "nativeMedia-" + modelData.key
+                            width: parent.width; spacing: 8
+                            Text { text: mediaPreferenceRow.modelData.label; color: Theme.text; font.pixelSize: 12; Layout.fillWidth: true }
+                            Repeater {
+                                model: mediaPreferenceRow.modelData.choices
+                                delegate: ModeButton {
+                                    required property var modelData
+                                    label: modelData.label
+                                    active: browserSettingsBridge.nativeMediaPreferences[mediaPreferenceRow.modelData.key] === modelData.value
+                                    onClicked: browserSettingsBridge.setValue(mediaPreferenceRow.modelData.key, modelData.value)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            SettingsSection {
                 objectName: "nativePrivacySection"
                 visible: root.isNative && root.tab === "Fingerprint"
                 width: parent.width; height: nativePrivacyFields.implicitHeight + 100

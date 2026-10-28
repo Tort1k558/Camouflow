@@ -55,9 +55,21 @@ try:
     width = find(section, 'label', 'Viewport width')
     width.setProperty('text', '420')
     QMetaObject.invokeMethod(width, 'editingFinished')
+    media = find(page, 'objectName', 'nativeMediaPreferencesSection')
+    assert media.isVisible()
+    preferences = {'color_scheme': ('Dark', 'dark'), 'reduced_motion': ('Reduced', 'reduce'),
+                   'forced_colors': ('On', 'active'), 'contrast': ('More', 'more')}
+    for key, (label, value) in preferences.items():
+        row = find(media, 'objectName', 'nativeMedia-' + key)
+        assert row is not None
+        button = find(row, 'label', label)
+        QMetaObject.invokeMethod(button, 'clicked')
+        pump(.05)
+        assert button.property('active') and ui.browser_settings.nativeMediaPreferences[key] == value
     QMetaObject.invokeMethod(find(page, 'text', 'Save changes'), 'clicked')
     pump()
     assert db.db_get_native_defaults()['window_width'] == 420
+    assert all(db.db_get_native_defaults()[key] == value for key, (_, value) in preferences.items())
     assert db.db_get_browser_engine() == 'native'
     page.setProperty('tab', 'Fingerprint')
     pump()
