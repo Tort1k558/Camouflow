@@ -85,8 +85,26 @@ diagnostic passed compilation. Original SDK/compiler files and the reviewed
 148 runtime remain untouched; compiler modules have not been disabled.
 Retained evidence: `build-20261028-235508.log` and
 `toolchain/system-module-namespace-20261029-v1/1.log` in `D:\Glint156Candidate`.
-Next: remove the toolchain path ambiguity, reproduce both module targets,
-then resume the existing j4 graph before native/runtime checks.
+Follow-up: the VC junction was retained, and a regular owned copy of all
+**3,637 MSVC files** was created with source/destination SHA-256 checks. Both
+modulemap actions and both failed PCM targets then completed successfully in
+the isolated j4 probe; neither modules nor engine checks were disabled.
+The process is still flushing its filesystem state before the wrapper's final
+toolchain/source guards and full-build continuation. PCM outputs alone are not
+a linked browser or a completed native-test gate. Evidence:
+`toolchain/local-msvc-sdk-28000-v1/materialization-v1.json` and
+`toolchain/system-module-materialized-20261029-v1/1.log`.
+
+Public follow-up tooling: `scripts/native_windows_toolchain.py` prepares a
+fresh canonical copy and refuses existing config/output, links, insufficient
+space, bounds violations, input drift and concurrent workspace ownership.
+Real-file fixture tests cover generated x86/x64 environments, copied hashes,
+failure evidence, lock contention and preservation of concurrent config edits.
+It has not yet been used for a new full-size candidate checkout/build; the
+existing candidate uses the retained diagnostic preparation above.
+The SDK/toolchain test module passed **57 tests**; the complete desktop Python
+suite passed **3,134 tests, one skipped**. Neither result substitutes for native
+compilation or runtime admission.
 
 ## Follow-up Windows regression — 2026-10-28
 

@@ -20,8 +20,6 @@ compatible, Authenticode-signed x64/x86 Debugging Tools 10.0.26100.3323 or newer
 
 ```powershell
 .venv\Scripts\python.exe scripts/native_windows_sdk.py --packages D:\Glint156Packages --output D:\Glint156Sdk --debuggers "C:\Program Files (x86)\Windows Kits\10\Debuggers"
-$env:WINDOWSSDKDIR = 'D:\Glint156Sdk\'
-$env:WindowsSDKVersion = '10.0.28000.0\'
 ```
 
 The output must be new. Input hashes and NuGet repository signatures are checked
@@ -30,6 +28,10 @@ before tool extraction; package libraries are mapped to the SDK's expected
 registry, global PATH, security or installed-SDK settings are changed. Failed
 assemblies retain an explicit failed provenance report, not a ready SDK receipt.
 The helper verifies layout, **not Chromium compilation or runtime readiness**.
+Assembly alone does not select this SDK for Chromium: setting `WINDOWSSDKDIR`
+was insufficient for the installed MSVC discovery path. Use the explicit owned
+[local toolchain preparation](#explicit-local-windows-toolchain-selection)
+below, rather than changing registry or installed SDK contents.
 
 | Draft | Ported scope |
 | --- | --- |
@@ -84,12 +86,13 @@ baseline browser implements the selected sources or that a policy is admitted.
 $evidence = 'D:\Glint156IdentityEvidence-1'
 New-Item -ItemType Directory -Path $evidence -ErrorAction Stop
 foreach ($target in 'identity-keys', 'identity-contexts', 'identity-transport', 'identity-handoff') {
-    .venv\Scripts\python.exe scripts/verify_native_privacy_units.py --workspace D:\Glint156Candidate --candidate upstream-156 --target $target --report "$evidence\$target.json" --vs-installation D:\BuildTools --jobs 4
+    .venv\Scripts\python.exe scripts/verify_native_privacy_units.py --workspace D:\Glint156Candidate --candidate upstream-156 --target $target --report "$evidence\$target.json" --local-windows-toolchain --git-ssl-backend schannel --jobs 4
     if ($LASTEXITCODE -ne 0) { throw "Glint unit target failed: $target" }
 }
 ```
 
-Keep the target SDK environment configured as above. `--git-ssl-backend` has the
+The local selection derives the compiler/SDK environment from the prepared
+layout; do not supply a different `--vs-installation`. `--git-ssl-backend` has the
 same explicit Windows selection as the build helper. Missing/skipped/failed test
 cases are rejected; source and core changes invalidate the report. The four
 filters contain 62/37/20/15 cases, not a claim that those cases ran on 156.
@@ -247,10 +250,30 @@ python scripts/verify_native_privacy_units.py --help
 The unit verifier accepts the same explicit local toolchain flag with a
 candidate selection, holds the workspace lock and checks toolchain drift even
 when compilation/testing fails. Do not run it alongside a browser build.
-Preparing the local composite toolchain is currently a retained private
-diagnostic procedure, **not yet a public reproducible preparation command**.
-The VC junction layout failed Siso dependency resolution; do not copy that
-layout as a working recipe. Original compiler/SDK installations remain intact.
+For a fresh, explicitly claimed candidate workspace with hooks complete and
+**no existing** `chromium/src/build/win_toolchain.json`, prepare the layout with
+the public helper. Supply the original signature-verified SDK assembly from
+`scripts/native_windows_sdk.py`, not a previously prepared composite layout:
+
+```powershell
+python scripts/native_windows_toolchain.py --workspace D:/Glint156Fresh --candidate upstream-156 --vs-installation D:/CamouFlowNative/toolchain/BuildTools --sdk D:/Glint156Fresh/toolchain/windows-sdk-28000 --output D:/Glint156Fresh/toolchain/local-msvc-sdk
+```
+
+The helper copies installed VC and the SDK into a **new** owned directory,
+checks source/destination hashes, generates x86/x64 SetEnv files in the same
+canonical namespace and writes Chromium's ignored toolchain metadata only
+after copying. It requires 20 GiB free and rejects links, input drift, excessive
+size/file counts, unsafe batch paths, existing output/configuration and a held
+workspace lock. A failed preparation retains provenance without admitting the
+layout; concurrent configuration edits are preserved. It does not install,
+download, redistribute or modify the original compiler/SDK. No Google toolchain
+is impersonated. Original installations and global settings remain untouched.
+
+Do not run this command against the currently active prepared workspace. Its
+existing config is deliberately not replaced. The initial VC junction layout
+failed Siso dependency resolution; materialized copies subsequently compiled
+both system module targets. The public preparer is covered by small real-file
+fixtures; running it through a fresh complete 156 build remains a separate gate.
 
 ### Rendering checks after linking
 
