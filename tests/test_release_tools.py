@@ -2005,6 +2005,112 @@ def _native_windows_packaging_fixture(tmp_path, monkeypatch):
     return output, staged, report, tmp_path / "native.tar.gz"
 
 
+def _candidate_windows_packaging_fixture(tmp_path, monkeypatch):
+    import json
+    from scripts import package_native_windows as packaging
+
+    output, staged, report, archive = _native_windows_packaging_fixture(tmp_path, monkeypatch)
+    candidate = packaging.load_candidate("upstream-156")
+    directory = tmp_path / "candidate-inputs"
+    (directory / "patches").mkdir(parents=True)
+    (directory / "manifest.json").write_bytes((candidate["directory"] / "manifest.json").read_bytes())
+    for row in candidate["manifest"]["patches"]:
+        (directory / "patches" / row["file"]).write_bytes((candidate["directory"] / "patches" / row["file"]).read_bytes())
+    candidate = {**candidate, "directory": directory}
+    monkeypatch.setattr(packaging, "load_candidate", lambda name: candidate)
+    lock = candidate["lock"]
+    old_version = staged / packaging.LOCK["chromium_version"]
+    new_version = staged / lock["chromium_version"]
+    assert old_version.resolve().is_relative_to(staged) and new_version.resolve().is_relative_to(staged)
+    old_version.rename(new_version)
+    receipt = json.loads((output / "camouflow-build.json").read_text(encoding="utf-8"))
+    receipt.update(native_version=lock["native_version"], chromium_revision=lock["chromium_revision"],
+                   depot_tools_revision=lock["depot_tools_revision"], candidate_manifest_sha256=candidate["manifest_sha256"])
+    receipt["patches"] = [{"name": row["file"], "sha256": row["sha256"],
+        **({"repository": "v8", "revision": candidate["manifest"]["dependencies"]["v8"]["revision"]} if repository == "v8" else {})}
+        for repository in (".", "v8") for row in candidate["manifest"]["patches"] if row.get("directory", ".") == repository]
+    (output / "camouflow-build.json").write_text(json.dumps(receipt), encoding="utf-8")
+    runtime = json.loads(report.read_text(encoding="utf-8"))
+    runtime["version"] = lock["chromium_version"]
+    report.write_text(json.dumps(runtime), encoding="utf-8")
+    return output, staged, report, archive, candidate
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
+def test_native_windows_candidate_package_preserves_manifest_without_admitting_policy(tmp_path, monkeypatch):
+    import json
+    import tarfile
+    from scripts import package_native_windows as packaging
+    from app.core.native.distribution import NativeBinaryStore
+
+    output, staged, report, archive, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
+    result = packaging.package(output, staged, report, archive, candidate_name="upstream-156")
+    assert result["native_patch_runtime_verified"] is False
+    with tarfile.open(archive, "r:gz") as bundle:
+        metadata = json.load(bundle.extractfile("native-release.json"))
+    assert metadata["candidate"] == "upstream-156"
+    assert metadata["candidate_manifest_sha256"] == candidate["manifest_sha256"]
+    assert metadata["chromium_version"] == candidate["lock"]["chromium_version"]
+    assert metadata["native_version"] == "0.2.0-dev"
+    assert len(metadata["build_receipt"]["patches"]) == 62
+    assert metadata["native_patch_runtime_verified"] is False
+    store = NativeBinaryStore(tmp_path / "store")
+    installed = store.install_archive(archive, result["sha256"])
+    assert installed["candidate"] == "upstream-156"
+    assert store.inspect(result["sha256"])["native_patch_runtime_verified"] is False
+
+
+def test_native_windows_candidate_packaging_cli_forwards_explicit_selection(monkeypatch, tmp_path):
+    from unittest.mock import Mock
+    from scripts import package_native_windows as packaging
+
+    output, staged, report, archive = [tmp_path / name for name in ("output", "staged", "report.json", "bundle.tar.gz")]
+    runner = Mock(return_value={"native_patch_runtime_verified": False})
+    monkeypatch.setattr(packaging, "package", runner)
+    monkeypatch.setattr(sys, "argv", ["package_native_windows.py", "--build-output", str(output), "--staged", str(staged),
+        "--runtime-report", str(report), "--archive", str(archive), "--candidate", "upstream-156"])
+    assert packaging.main() == 0
+    runner.assert_called_once_with(output, staged, report, archive, candidate_name="upstream-156")
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
+@pytest.mark.parametrize("mutation", ["missing-manifest", "wrong-manifest", "missing-patch", "patch-order",
+    "patch-hash", "v8-revision", "runtime-version", "implicit-selection", "manifest-drift", "patch-drift"])
+def test_native_windows_candidate_package_rejects_incomplete_identity_and_drift(tmp_path, monkeypatch, mutation):
+    import json
+    from scripts import package_native_windows as packaging
+
+    output, staged, report, archive, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
+    path = output / "camouflow-build.json"
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    if mutation == "missing-manifest":
+        del receipt["candidate_manifest_sha256"]
+    elif mutation == "wrong-manifest":
+        receipt["candidate_manifest_sha256"] = "e" * 64
+    elif mutation == "missing-patch":
+        receipt["patches"].pop()
+    elif mutation == "patch-order":
+        receipt["patches"].reverse()
+    elif mutation == "patch-hash":
+        receipt["patches"][0]["sha256"] = "e" * 64
+    elif mutation == "v8-revision":
+        receipt["patches"][-1]["revision"] = "e" * 40
+    elif mutation == "runtime-version":
+        runtime = json.loads(report.read_text(encoding="utf-8"))
+        runtime["version"] = packaging.LOCK["chromium_version"]
+        report.write_text(json.dumps(runtime), encoding="utf-8")
+    elif mutation == "manifest-drift":
+        (candidate["directory"] / "manifest.json").write_text("{}", encoding="utf-8")
+    elif mutation == "patch-drift":
+        (candidate["directory"] / "patches" / candidate["manifest"]["patches"][0]["file"]).write_text("changed", encoding="utf-8")
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+    with pytest.raises(ValueError):
+        packaging.package(output, staged, report, archive,
+                          candidate_name=None if mutation == "implicit-selection" else "upstream-156")
+    assert not archive.exists()
+    assert not list(tmp_path.glob("native-package-*"))
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only own-fork packager")
 def test_native_windows_package_is_reproducible_and_installable_without_claiming_patch_verification(tmp_path, monkeypatch):
     import hashlib

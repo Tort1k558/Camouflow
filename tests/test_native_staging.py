@@ -103,3 +103,110 @@ def test_official_staging_rejects_invalid_concurrency(jobs, monkeypatch):
     monkeypatch.setattr(staging.sys, "platform", "win32")
     with pytest.raises(ValueError, match="jobs"):
         staging.stage(Path("D:/unused"), Path("D:/unused.json"), jobs=jobs)
+
+
+@pytest.mark.parametrize("failure", [None, "manifest-receipt", "toolchain-receipt", "source-drift",
+                                      "toolchain-drift", "marker-drift", "vs-conflict"])
+def test_candidate_staging_binds_identity_toolchain_and_postguards(staging_fixture, monkeypatch, failure):
+    from unittest.mock import Mock
+
+    workspace, output, report, receipt = staging_fixture
+    lock = {**staging.build.LOCK, "native_version": "0.2.0-dev", "chromium_version": "156.0.8078.36",
+            "chromium_revision": "a" * 40}
+    candidate = {"name": "upstream-156", "lock": lock, "manifest_sha256": "b" * 64}
+    marker = workspace / "glint-build-candidate.json"
+    identity = {"schema": 1, "candidate": candidate["name"], "chromium_revision": lock["chromium_revision"]}
+    marker.write_text(json.dumps(identity), encoding="utf-8")
+    patches = [{"name": "owned-candidate.patch", "sha256": "c" * 64}]
+    receipt.update(native_version=lock["native_version"], chromium_revision=lock["chromium_revision"],
+                   candidate_manifest_sha256="b" * 64, local_windows_toolchain_sha256="d" * 64, patches=patches)
+    if failure in {"manifest-receipt", "toolchain-receipt"}:
+        receipt["candidate_manifest_sha256" if failure == "manifest-receipt" else "local_windows_toolchain_sha256"] = "e" * 64
+    (output / "camouflow-build.json").write_text(json.dumps(receipt), encoding="utf-8")
+    monkeypatch.setattr(staging.build, "load_candidate", lambda name: candidate)
+    preflight = Mock()
+    monkeypatch.setattr(staging.build, "preflight", preflight)
+    environment = Mock(return_value={"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "d" * 64})
+    monkeypatch.setattr(staging.build, "environment", environment)
+    stages = Mock()
+    monkeypatch.setattr(staging.build, "require_stage", stages)
+    monkeypatch.setattr(staging.build, "run", lambda *args, **kwargs: lock["chromium_revision"])
+    source_state = Mock(return_value=patches)
+    monkeypatch.setattr(staging.build, "candidate_source_patches", source_state)
+    monkeypatch.setattr(staging.build, "local_windows_toolchain", lambda _: {"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "d" * 64})
+
+    def execute(command, **kwargs):
+        assert kwargs["env"]["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"] == "d" * 64
+        if failure == "source-drift":
+            source_state.return_value = []
+        elif failure == "toolchain-drift":
+            monkeypatch.setattr(staging.build, "local_windows_toolchain", lambda _: {"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "e" * 64})
+        elif failure == "marker-drift":
+            marker.write_text(json.dumps({**identity, "chromium_revision": "e" * 40}), encoding="utf-8")
+
+    builder = Mock(side_effect=execute)
+    monkeypatch.setattr(staging.subprocess, "run", builder)
+    kwargs = {"candidate_name": "upstream-156", "local_toolchain": True, "git_ssl_backend": "schannel"}
+    if failure == "vs-conflict":
+        installed = workspace / "other-installed-vs"
+        installed.mkdir()
+        kwargs["vs_installation"] = installed
+    if failure in {"manifest-receipt", "toolchain-receipt", "vs-conflict"}:
+        with pytest.raises(ValueError, match="selection differs" if failure == "vs-conflict" else "matching pinned"):
+            staging.stage(workspace, report, **kwargs)
+        builder.assert_not_called()
+        assert not report.exists()
+    else:
+        proof = staging.stage(workspace, report, **kwargs)
+        assert proof["passed"] is (failure is None)
+        assert proof["inputs_unchanged"] is (failure is None)
+        assert proof["candidate"] == "upstream-156"
+        assert proof["candidate_manifest_sha256"] == "b" * 64
+        assert proof["local_windows_toolchain_sha256"] == "d" * 64
+        assert json.loads(report.read_text(encoding="utf-8")) == proof
+        builder.assert_called_once()
+    preflight.assert_called_once_with(workspace, lock=lock)
+    environment.assert_called_once_with(workspace, git_ssl_backend="schannel", local_toolchain=True)
+    if failure != "vs-conflict":
+        assert stages.call_args_list[0].args == (workspace / "chromium", "sync", candidate)
+
+
+def test_official_staging_refuses_concurrent_workspace_owner(staging_fixture, monkeypatch):
+    from unittest.mock import Mock
+
+    workspace, _, report, _ = staging_fixture
+    builder = Mock()
+    monkeypatch.setattr(staging.subprocess, "run", builder)
+    with staging.build.workspace_lock(workspace):
+        with pytest.raises(ValueError, match="owns this workspace"):
+            staging.stage(workspace, report)
+    builder.assert_not_called()
+    assert not report.exists()
+
+
+def test_official_staging_requires_explicit_candidate_for_marked_workspace(staging_fixture):
+    workspace, _, report, _ = staging_fixture
+    (workspace / "glint-build-candidate.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="explicit --candidate"):
+        staging.stage(workspace, report)
+
+
+@pytest.mark.parametrize("local_toolchain", [True, None, 1])
+def test_official_staging_rejects_local_toolchain_without_explicit_candidate(local_toolchain, monkeypatch):
+    monkeypatch.setattr(staging.sys, "platform", "win32")
+    with pytest.raises(ValueError, match="explicit candidate"):
+        staging.stage(Path("D:/unused"), Path("D:/unused.json"), local_toolchain=local_toolchain)
+
+
+def test_candidate_staging_cli_forwards_explicit_selection(monkeypatch, tmp_path):
+    import sys
+    from unittest.mock import Mock
+
+    workspace, report = tmp_path / "workspace", tmp_path / "report.json"
+    runner = Mock(return_value={"passed": True})
+    monkeypatch.setattr(staging, "stage", runner)
+    monkeypatch.setattr(sys, "argv", ["stage_native_windows.py", "--workspace", str(workspace), "--report", str(report),
+        "--candidate", "upstream-156", "--git-ssl-backend", "schannel", "--local-windows-toolchain", "--jobs", "4"])
+    assert staging.main() == 0
+    runner.assert_called_once_with(workspace, report, vs_installation=None, jobs=4,
+        candidate_name="upstream-156", git_ssl_backend="schannel", local_toolchain=True)

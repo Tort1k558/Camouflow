@@ -321,3 +321,39 @@ same controls, closes every owner even if its peer fails and stops on retained
 resources. The final odd case runs alone. These bounded runner batches are not
 a two-profile application limit. Missing peers, storage leaks, timeouts or
 changed evidence do not silently downgrade to a sequential pass.
+
+### Development staging and packaging after linking
+
+The Windows staging/packaging helpers now accept an explicit
+`--candidate upstream-156`. Omitting it still selects the original 148 lock;
+there is no receipt-driven version fallback. Staging holds the same OS workspace
+lock as compilation, validates candidate sync/hooks/source/receipt and local
+toolchain, and rechecks all inputs afterward. A marked candidate workspace
+cannot be staged through the default path.
+
+**Do not run these commands beside the active browser/unit build.** After the
+156 browser links and the selected native tests finish, use new evidence paths:
+
+```powershell
+$workspace = 'D:/Glint156Candidate'
+$output = "$workspace/chromium/src/out/CamouFlowNative"
+$evidence = "$workspace/package-156-new"
+New-Item -ItemType Directory -Path $evidence -ErrorAction Stop
+.venv\Scripts\python.exe scripts/verify_native_runtime.py --executable "$output/chrome.exe" --work-dir $evidence --report "$evidence/runtime.json"
+if ($LASTEXITCODE -ne 0) { throw 'Candidate runtime checks failed' }
+.venv\Scripts\python.exe scripts/stage_native_windows.py --workspace $workspace --candidate upstream-156 --git-ssl-backend schannel --local-windows-toolchain --jobs 4 --report "$evidence/staging.json"
+if ($LASTEXITCODE -ne 0) { throw 'Candidate staging failed' }
+.venv\Scripts\python.exe scripts/package_native_windows.py --candidate upstream-156 --build-output $output --staged "$output/gen/chrome/installer/mini_installer/mini_installer/temp_installer_archive/Chrome-bin" --runtime-report "$evidence/runtime.json" --archive "$evidence/glint-156-dev.tar.gz"
+if ($LASTEXITCODE -ne 0) { throw 'Candidate packaging failed' }
+```
+
+Packaging requires the complete ordered Chromium/V8 receipt chain and current
+manifest/patch hashes, the exact executable/DLL core, all required lifecycle
+checks and matching official staged files. Manifest/patch changes during
+archiving fail before publication. The archive retains candidate provenance,
+uses `0.2.0-dev`, and keeps `native_patch_runtime_verified: false`.
+
+These helpers passed synthetic-file/CLI/installation fixtures, **not actual
+156 staging, packaging or relocated runtime**. Their availability does not
+admit new policies or authorize production publication. Complete runtime,
+surface/compatibility, installed-copy and rollback gates remain separate.

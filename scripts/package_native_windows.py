@@ -19,7 +19,7 @@ from app.core.native.distribution import (  # noqa: E402
     MAX_ARCHIVE_BYTES, MAX_FILES, MAX_UNPACKED_BYTES, checked_archive_name,
     host_architecture, sha256_file,
 )
-from scripts.native_build import LOCK  # noqa: E402
+from scripts.native_build import LOCK, load_candidate  # noqa: E402
 from scripts.verify_native_runtime import measure_runtime_core  # noqa: E402
 
 RELEASE_VOLUME = "D:"
@@ -49,9 +49,12 @@ def read_record(path: Path) -> dict:
     return record
 
 
-def package(build_output: Path, staged: Path, runtime_report: Path, destination: Path) -> dict:
+def package(build_output: Path, staged: Path, runtime_report: Path, destination: Path,
+            *, candidate_name: str | None = None) -> dict:
     if sys.platform != "win32":
         raise ValueError("Own-fork packaging currently supports Windows only")
+    candidate = None if candidate_name is None else load_candidate(candidate_name)
+    lock = LOCK if candidate is None else candidate["lock"]
     for directory in (build_output, staged):
         if not directory.is_absolute() or not directory.is_dir() or directory != directory.resolve():
             raise ValueError("Packaging directories must be absolute and not linked")
@@ -69,10 +72,25 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
     input_hashes = {path: sha256_file(path) for path in (receipt_path, args_path, runtime_report)}
     receipt = read_record(receipt_path)
     report = read_record(runtime_report)
+    if candidate is not None:
+        manifest = candidate["manifest"]
+        expected_patches = []
+        for repository in (".", "v8"):
+            for row in manifest["patches"]:
+                if row.get("directory", ".") == repository:
+                    expected_patches.append({"name": row["file"], "sha256": row["sha256"],
+                        **({"repository": "v8", "revision": manifest["dependencies"]["v8"]["revision"]}
+                           if repository == "v8" else {})})
+        if (receipt.get("candidate_manifest_sha256") != candidate["manifest_sha256"]
+                or receipt.get("patches") != expected_patches):
+            raise ValueError("Native candidate receipt must bind the complete manifest and patch chain")
+        input_hashes[candidate["directory"] / "manifest.json"] = candidate["manifest_sha256"]
+        input_hashes.update({candidate["directory"] / "patches" / row["file"]: row["sha256"]
+                             for row in manifest["patches"]})
     for key, expected in {"schema": 1, "platform": "win32", "binary": "chrome.exe",
-                          "native_version": LOCK["native_version"],
-                          "chromium_revision": LOCK["chromium_revision"],
-                          "depot_tools_revision": LOCK["depot_tools_revision"]}.items():
+                          "native_version": lock["native_version"],
+                          "chromium_revision": lock["chromium_revision"],
+                          "depot_tools_revision": lock["depot_tools_revision"]}.items():
         if type(receipt.get(key)) is not type(expected) or receipt[key] != expected:
             raise ValueError("Native build receipt differs from the pinned build: " + key)
     binary_hash = sha256_file(build_output / "chrome.exe")
@@ -84,7 +102,7 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
     if receipt.get("runtime_core_sha256_measured") != core:
         raise ValueError("Native build receipt does not match the complete browser core")
     if (report.get("passed") is not True or report.get("platform") != "Windows"
-            or report.get("version") != LOCK["chromium_version"]
+            or report.get("version") != lock["chromium_version"]
             or report.get("binary_sha256_measured") != binary_hash
             or report.get("runtime_core_sha256_measured") != core
             or not isinstance(report.get("checks"), list)
@@ -105,9 +123,9 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
                 or path.suffix.lower() == ".pdb" or relative.parts[0].casefold() in {"obj", "gen", "pyproto", ".git"}):
             raise ValueError("Unsafe or colliding Native staged file")
         names.add(name.casefold())
-        source_relative = Path(*relative.parts[1:]) if relative.parts[0] == LOCK["chromium_version"] else Path(*relative.parts)
+        source_relative = Path(*relative.parts[1:]) if relative.parts[0] == lock["chromium_version"] else Path(*relative.parts)
         # chrome.release stages these two root-output assets in VisualElements.
-        if relative.parts[0] == LOCK["chromium_version"] and source_relative.parts in {
+        if relative.parts[0] == lock["chromium_version"] and source_relative.parts in {
                 ("VisualElements", "Logo.png"), ("VisualElements", "SmallLogo.png")}:
             source_relative = Path(source_relative.name)
         source = build_output / source_relative
@@ -119,8 +137,8 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
         if len(files) + 1 >= MAX_FILES or total > MAX_UNPACKED_BYTES:
             raise ValueError("Native staged files exceed installation limits")
         files.append((name, path, checksum))
-    required = {"chrome.exe", LOCK["chromium_version"] + "/chrome.dll",
-                LOCK["chromium_version"] + "/chrome_elf.dll", LOCK["chromium_version"] + "/locales/en-us.pak"}
+    required = {"chrome.exe", lock["chromium_version"] + "/chrome.dll",
+                lock["chromium_version"] + "/chrome_elf.dll", lock["chromium_version"] + "/locales/en-us.pak"}
     if not required.issubset(names):
         raise ValueError("Expected Chromium mini-installer Chrome-bin layout")
     for name, path in (("licenses/Chromium-LICENSE", build_output.parent.parent / "LICENSE"),
@@ -135,11 +153,13 @@ def package(build_output: Path, staged: Path, runtime_report: Path, destination:
         names.add(name.casefold())
     if len(files) + 1 > MAX_FILES:
         raise ValueError("Native staged files exceed installation limits")
-    metadata = {"schema": 1, "native_version": LOCK["native_version"],
-                "chromium_version": LOCK["chromium_version"], "platform": "win32",
+    metadata = {"schema": 1, "native_version": lock["native_version"],
+                "chromium_version": lock["chromium_version"], "platform": "win32",
                 "architecture": host_architecture(), "build_kind": "chromium-fork",
                 "executable": "chrome.exe", "executable_sha256": binary_hash,
                 "build_receipt": receipt, "native_patch_runtime_verified": False,
+                **({"candidate": candidate["name"], "candidate_manifest_sha256": candidate["manifest_sha256"]}
+                   if candidate is not None else {}),
                 "build_receipt_sha256": input_hashes[receipt_path],
                 "runtime_report_sha256": input_hashes[runtime_report],
                 "files_sha256": {name: checksum for name, _, checksum in files}}
@@ -178,9 +198,10 @@ def main() -> int:
     parser.add_argument("--staged", required=True, type=Path, help="Official mini-installer staged Chrome-bin directory")
     parser.add_argument("--runtime-report", required=True, type=Path)
     parser.add_argument("--archive", required=True, type=Path)
+    parser.add_argument("--candidate", choices=("upstream-156",))
     args = parser.parse_args()
     try:
-        result = package(args.build_output, args.staged, args.runtime_report, args.archive)
+        result = package(args.build_output, args.staged, args.runtime_report, args.archive, candidate_name=args.candidate)
     except Exception as error:
         print(f"Native packaging failed ({type(error).__name__}): {error}", file=sys.stderr)
         return 1

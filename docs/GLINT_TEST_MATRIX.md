@@ -30,6 +30,10 @@ unchanged. Evidence on D: `frame-diagnostics-summary-20261029-v1.json`,
 `frame-diagnostics-mobile-20261029-v1/`.
 Focused health/consistency tests passed **56 cases**, including all 16 field
 groups with drift/missing values, frame failure/cancellation cleanup and route restrictions.
+The full Python run passed **3,331 tests, one skipped** in 292.07 seconds;
+the final native runtime module passed **519 tests**, including a cancellation
+case added after the full run had collected its tests. The CI Ruff selection
+also passed. These are application tests, not additional Chromium runtime cases.
 
 These are **post-load same-origin** checks, not first-parser-script,
 cross-origin, shared/service-worker coverage, Android/iOS identity or 156 proof.
@@ -212,6 +216,30 @@ cover partial startup, storage sharing/loss, late peer writes, storage timeout,
 source/font/artifact drift and cleanup failure while proving every owner gets
 a cleanup attempt. These are 148 observations, not a 156 runtime pass,
 exhaustive pairing of every setting or new product capability admission.
+
+## Chromium 156 delivery tooling — 2026-10-29
+
+Official Windows staging and archive packaging now require an explicit
+`--candidate upstream-156` for 156. Default invocations retain the original 148
+lock; candidate workspace markers prevent implicit staging. Staging holds the
+OS workspace lock and binds the candidate manifest, sync/hooks, ordered source
+chain, receipt, executable/DLL core, GN arguments and prepared local toolchain,
+with postguards on success and failure. A conflicting compiler selection or
+changed toolchain/marker/source fails closed.
+
+Packaging requires the same manifest and complete ordered Chromium/V8 receipt
+chain, the exact passing lifecycle report and staged core/files. Candidate
+manifest/patch hashes are checked again before publication. The archive records
+candidate provenance and keeps `native_patch_runtime_verified: false`.
+Synthetic-file, CLI and installation fixtures passed: **36 staging tests**;
+the staging/release-tools modules together passed **979 tests, one skipped**.
+This includes candidate/default separation, omitted/reordered/changed patches,
+wrong V8 revision, manifest drift, concurrent ownership and toolchain drift.
+The complete Python suite passed **3,357 tests, one skipped** in 298.06 seconds;
+the repository's CI Ruff selection also passed on the final code.
+These are fixture results: **no real 156 staging, archive, installed-copy or
+rollback result exists yet**. Commands and remaining gates are in the
+[candidate guide](../native/drafts/upstream-156/README.md#development-staging-and-packaging-after-linking).
 
 ## Chromium 156 compilation checkpoint — 2026-10-29
 
