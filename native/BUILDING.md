@@ -289,6 +289,20 @@ steps and the unresolved first-download transport limitation.
 
 ### Troubleshooting
 
+- An interrupted initial checkout can leave files on disk without a valid
+  `HEAD`, plus an `index.lock`. Preserve the files and inspect the actual process
+  tree before touching that lock; a lock file alone does not prove a live Git
+  process. The helper intentionally refuses to overwrite uncommitted content.
+  Complete recovery against the pinned revision before restarting `sync`; do not
+  erase the checkout or cached objects to make its guard pass.
+- Raw blob hashes are not always working-tree hashes on Windows. Chromium's
+  test-fixture attributes can produce CRLF files even with `core.autocrlf=false`.
+  Compare the expected object ID with Git's clean-filter result using
+  `git hash-object --path=<relative-path> <relative-path>`, with the intended
+  workspace-local configuration and verified upstream attributes. Do not apply
+  blanket newline normalization to binary or encoding fixtures. A truncated or
+  empty file whose pinned blob is nonempty is a different problem: retain an
+  original copy, identify the interruption, and restore only that verified file.
 - Bootstrap requires HTTPS access to `chrome-infra-packages.appspot.com` and its
   download redirects. A successful Git clone is not sufficient. The pinned
   upstream PowerShell downloader has no explicit request timeout; if it stalls,
