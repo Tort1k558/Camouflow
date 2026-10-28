@@ -254,6 +254,70 @@ def test_native_font_rasterization_rejects_invalid_modes(mode):
         NativePrivacyPolicy.from_dict({"font_rasterization": mode})
 
 
+@pytest.mark.parametrize("preset,arguments", [
+    ("native", []), ("gamma-1400", ["--text-gamma=1.4"]), ("gamma-2200", ["--text-gamma=2.2"]),
+    ("contrast-300", ["--text-contrast=0.3"]), ("contrast-500", ["--text-contrast=0.5"]),
+    ("gamma-1400-contrast-300", ["--text-gamma=1.4", "--text-contrast=0.3"]),
+    ("gamma-1400-contrast-500", ["--text-gamma=1.4", "--text-contrast=0.5"]),
+    ("gamma-2200-contrast-300", ["--text-gamma=2.2", "--text-contrast=0.3"]),
+    ("gamma-2200-contrast-500", ["--text-gamma=2.2", "--text-contrast=0.5"]),
+])
+def test_native_text_tuning_prepares_only_bounded_upstream_arguments(preset, arguments, tmp_path, monkeypatch):
+    from dataclasses import asdict
+    from unittest.mock import Mock
+    from app.core.native import runtime as module
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    policy = NativePrivacyPolicy.from_dict({"text_tuning": preset})
+    assert NativePrivacyPolicy.from_dict(asdict(policy)) == policy
+    assert policy.prepared_arguments() == arguments
+    assert NativeConfiguration(privacy_policy=policy).environment_settings()["privacy_policy"].get("text_tuning", "native") == preset
+    assert policy.required_capabilities() == ([] if preset == "native" else ["text-rendering"])
+    if preset == "native":
+        assert policy == NativePrivacyPolicy()
+        return
+    driver = Mock()
+    monkeypatch.setattr(module, "async_playwright", driver)
+    runtime = NativeRuntime(tmp_path / "not-created", tmp_path / "unknown.exe", NativeConfiguration(privacy_policy=policy))
+    with pytest.raises(ValueError, match="verified"):
+        asyncio.run(runtime.start())
+    driver.assert_not_called()
+    assert not runtime.has_resources and not runtime.profile_dir.exists()
+
+
+@pytest.mark.parametrize("preset", [None, True, 1, 1.4, [], {}, "", "off", "gamma-2000", "contrast-400", "--text-gamma=1.4"])
+def test_native_text_tuning_rejects_unknown_or_unbounded_inputs(preset):
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    with pytest.raises(ValueError, match="text tuning"):
+        NativePrivacyPolicy.from_dict({"text_tuning": preset})
+
+
+def test_native_text_tuning_default_serialization_keeps_legacy_policy_shape_and_pins_native():
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    policy = NativePrivacyPolicy(fonts=("Arial", "Courier New"))
+    serialized = policy.to_dict()
+    assert set(serialized) == {"cpu_limit", "memory_limit", "fonts", "restrict_webrtc", "conceal_automation",
+                               "native_user_agent", "font_rasterization"}
+    assert NativePrivacyPolicy.from_dict(serialized) == policy
+    serialized["fonts"].append("Tahoma")
+    assert policy.fonts == ("Arial", "Courier New")
+    pinned = NativeConfiguration(privacy_policy=policy).environment_settings()
+    effective = NativeConfiguration.from_settings({"privacy_policy": {"text_tuning": "gamma-2200"}, **pinned})
+    assert effective.privacy_policy.text_tuning == "native"
+
+
+@pytest.mark.parametrize("rasterization", ["aliased", "grayscale", "cleartype-rgb", "cleartype-bgr"])
+@pytest.mark.parametrize("preset", ["gamma-1400", "gamma-2200", "contrast-300", "contrast-500",
+    "gamma-1400-contrast-300", "gamma-1400-contrast-500", "gamma-2200-contrast-300", "gamma-2200-contrast-500"])
+def test_native_text_tuning_refuses_unverified_rasterization_composition(rasterization, preset):
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    with pytest.raises(ValueError, match="requires Native"):
+        NativePrivacyPolicy.from_dict({"font_rasterization": rasterization, "text_tuning": preset})
+
+
 @pytest.mark.parametrize("mode", ["native", "aliased", "grayscale", "cleartype-rgb", "cleartype-bgr"])
 def test_native_font_rasterization_drafts_never_enable_unverified_runtime(mode, tmp_path, monkeypatch):
     from dataclasses import asdict
@@ -1242,6 +1306,81 @@ def test_native_profile_json_validates_merged_defaults_and_preserves_only_overri
     work(None)
     update.assert_called_once_with("owned", {"native_settings": {"window_width": 420, "color_scheme": "light"}})
     bridge._emit_message.assert_not_called()
+
+
+@pytest.mark.parametrize("failure", [None, "timeout", "teardown", "cleanup", "cancel", "cleanup-cancel"])
+def test_native_manager_close_reports_do_not_turn_failure_into_graceful_success(tmp_path, monkeypatch, failure):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+    import app.core.browser_interface as interface
+
+    monkeypatch.setattr(interface, "checked_profile_dir_for_email", lambda name: tmp_path / "profile")
+    monkeypatch.setattr(interface, "db_get_native_defaults", lambda: {})
+    monkeypatch.setattr(interface, "db_get_camoufox_defaults", lambda: {})
+    monkeypatch.setattr(interface, "db_get_cloakbrowser_defaults", lambda: {})
+    monkeypatch.setattr(interface.BrowserInterface, "_init_proxy_logger", lambda self: Mock())
+    browser = interface.BrowserInterface("Owned close report", browser_engine="native", keep_browser_open=False)
+    assert browser.native_close_report is None
+    runtime = SimpleNamespace(has_resources=True, CLOSE_TIMEOUT_SECONDS=.1)
+    async def cleanup():
+        if failure == "cleanup":
+            raise RuntimeError("Sensitive raw cleanup message must not enter the report")
+        if failure == "cleanup-cancel":
+            raise asyncio.CancelledError()
+        runtime.has_resources = False
+    runtime.close = cleanup
+    browser._native_runtime = runtime
+    browser.browser = Mock()
+    browser.context = Mock()
+    browser._teardown_browser = AsyncMock(side_effect={"timeout": TimeoutError(), "teardown": RuntimeError("private"),
+                                                      "cancel": asyncio.CancelledError()}.get(failure))
+    kill = Mock()
+    monkeypatch.setattr(browser._lifecycle, "kill_profile_processes", kill)
+    if failure in {"cancel", "cleanup-cancel"}:
+        with pytest.raises(asyncio.CancelledError):
+            asyncio.run(browser.close())
+    else:
+        assert asyncio.run(browser.close()) is None
+    report = browser.native_close_report
+    assert report["forced"] is (failure == "timeout")
+    assert report["resources_retained"] is (failure in {"cleanup", "cleanup-cancel"})
+    assert report["teardown_error"] == {"timeout": "timeout", "teardown": "RuntimeError", "cancel": "cancelled"}.get(failure)
+    assert report["cleanup_error"] == {"cleanup": "RuntimeError", "cleanup-cancel": "cancelled"}.get(failure)
+    assert report["complete"] is (failure != "cleanup-cancel")
+    assert report["kept_open"] is False
+    assert "private" not in str(report) and "Sensitive" not in str(report)
+    if failure == "timeout":
+        kill.assert_called_once()
+    else:
+        kill.assert_not_called()
+    report["forced"] = not report["forced"]
+    assert browser.native_close_report["forced"] is (failure == "timeout")
+    if failure not in {"cleanup", "cleanup-cancel"}:
+        previous = browser.native_close_report
+        browser._teardown_browser.side_effect = None
+        asyncio.run(browser.close())
+        assert browser.native_close_report == previous
+
+
+def test_native_manager_close_kept_open_is_not_reported_as_completed(tmp_path, monkeypatch):
+    from unittest.mock import AsyncMock, Mock
+    import app.core.browser_interface as interface
+
+    monkeypatch.setattr(interface, "checked_profile_dir_for_email", lambda name: tmp_path / "profile")
+    monkeypatch.setattr(interface, "db_get_native_defaults", lambda: {})
+    monkeypatch.setattr(interface, "db_get_camoufox_defaults", lambda: {})
+    monkeypatch.setattr(interface, "db_get_cloakbrowser_defaults", lambda: {})
+    monkeypatch.setattr(interface.BrowserInterface, "_init_proxy_logger", lambda self: Mock())
+    browser = interface.BrowserInterface("Owned keep open", browser_engine="native", keep_browser_open=True)
+    browser.context = Mock()
+    browser._teardown_browser = AsyncMock()
+    asyncio.run(browser.close())
+    assert browser.native_close_report["kept_open"] is True
+    assert browser.native_close_report["complete"] is False
+    browser._teardown_browser.assert_not_awaited()
+    asyncio.run(browser.close(force=True))
+    assert browser.native_close_report["kept_open"] is False and browser.native_close_report["complete"] is True
+    assert browser.native_close_report["forced"] is False
 
 
 def test_native_environment_settings_are_validated_copies_without_grants_or_paths():

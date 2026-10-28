@@ -1,9 +1,19 @@
 """Validated source-level policies; verified runtime admission required."""
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import math
 
 FONT_RASTERIZATION_MODES = ("native", "aliased", "grayscale", "cleartype-rgb", "cleartype-bgr")
+TEXT_TUNING_ARGUMENTS = {
+    "native": (),
+    "gamma-1400": ("--text-gamma=1.4",),
+    "gamma-2200": ("--text-gamma=2.2",),
+    "contrast-300": ("--text-contrast=0.3",),
+    "contrast-500": ("--text-contrast=0.5",),
+    **{f"gamma-{gamma}-contrast-{contrast}": (f"--text-gamma={gamma / 1000:g}",
+                                               f"--text-contrast={contrast / 1000:g}")
+       for gamma in (1400, 2200) for contrast in (300, 500)},
+}
 
 
 @dataclass(frozen=True)
@@ -15,6 +25,7 @@ class NativePrivacyPolicy:
     conceal_automation: bool = False
     native_user_agent: bool = False
     font_rasterization: str = "native"
+    text_tuning: str = "native"
 
     @classmethod
     def from_dict(cls, value: dict) -> "NativePrivacyPolicy":
@@ -27,6 +38,13 @@ class NativePrivacyPolicy:
         policy.validate()
         return policy
 
+    def to_dict(self) -> dict:
+        self.validate()
+        values = {**asdict(self), "fonts": list(self.fonts)}
+        if self.text_tuning == "native":
+            del values["text_tuning"]
+        return values
+
     def validate(self) -> None:
         if type(self.cpu_limit) is not int or not 0 <= self.cpu_limit <= 64:
             raise ValueError("Native CPU limit must be 0 (native) or 1..64")
@@ -37,6 +55,10 @@ class NativePrivacyPolicy:
             raise ValueError("Native privacy switches must be booleans")
         if not isinstance(self.font_rasterization, str) or self.font_rasterization not in FONT_RASTERIZATION_MODES:
             raise ValueError("Unknown Windows font rasterization mode")
+        if not isinstance(self.text_tuning, str) or self.text_tuning not in TEXT_TUNING_ARGUMENTS:
+            raise ValueError("Unknown Windows text tuning preset")
+        if self.text_tuning != "native" and self.font_rasterization != "native":
+            raise ValueError("Text tuning requires Native font rasterization; combining these controls is not verified")
         if not isinstance(self.fonts, tuple) or len(self.fonts) > 64:
             raise ValueError("Native font selection permits at most 64 families")
         if self.fonts:
@@ -56,7 +78,8 @@ class NativePrivacyPolicy:
             ("hardware", bool(self.cpu_limit or self.memory_limit)), ("fonts", bool(self.fonts)),
             ("webrtc", self.restrict_webrtc), ("automation", self.conceal_automation),
             ("identity", self.native_user_agent),
-            ("font-rasterization", self.font_rasterization != "native")) if requested]
+            ("font-rasterization", self.font_rasterization != "native"),
+            ("text-rendering", self.text_tuning != "native")) if requested]
 
     def prepared_arguments(self) -> list[str]:
         self.validate()
@@ -75,6 +98,7 @@ class NativePrivacyPolicy:
             arguments.append("--camouflow-native-user-agent")
         if self.font_rasterization != "native":
             arguments.append("--glint-windows-font-rasterization=" + self.font_rasterization)
+        arguments.extend(TEXT_TUNING_ARGUMENTS[self.text_tuning])
         return arguments
 
     def require_verified_runtime(self, admission=None) -> None:

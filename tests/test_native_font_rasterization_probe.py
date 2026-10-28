@@ -31,6 +31,18 @@ def test_png_byte_length_is_not_rendering_acceptance():
     assert rendering.compare_control(measurement(), candidate) == []
 
 
+@pytest.mark.parametrize("mode", ["native", "grayscale", "gamma-1400", "contrast-500"])
+@pytest.mark.parametrize("policy", [{"text_tuning": "gamma-2200"}, {"font_rasterization": "grayscale"}])
+def test_research_configuration_never_overrides_explicit_profile_rendering(mode, policy):
+    from scripts.verify_native_font_rendering import RenderingConfiguration
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    requested = NativePrivacyPolicy.from_dict(policy)
+    with pytest.raises(ValueError, match="must not override"):
+        RenderingConfiguration(rasterization=mode, privacy_policy=requested).validate()
+    RenderingConfiguration(rasterization="off", privacy_policy=requested).validate()
+
+
 @pytest.mark.parametrize("field,value", [("opaque", 1), ("inkPixels", 0), ("inkPixels", True),
                                         ("pngBytes", 0), ("font", "fake"), ("mime", "image/jpeg")])
 def test_invalid_observation_rejects(field, value):

@@ -166,11 +166,19 @@ class BrowserSettingsBridge(QObject):
                   "cleartype-rgb": "ClearType RGB", "cleartype-bgr": "ClearType BGR"}
         return [{"value": mode, "label": labels[mode]} for mode in FONT_RASTERIZATION_MODES]
 
+    @pyqtProperty("QVariantList", constant=True)
+    def nativeTextTuningOptions(self) -> list:  # noqa: N802
+        from app.core.native.privacy import TEXT_TUNING_ARGUMENTS
+        labels = {"native": "Native", "gamma-1400": "Gamma 1.4", "gamma-2200": "Gamma 2.2",
+                  "contrast-300": "Contrast 0.3", "contrast-500": "Contrast 0.5",
+                  **{f"gamma-{gamma}-contrast-{contrast}": f"Gamma {gamma / 1000:g} / Contrast {contrast / 1000:g}"
+                     for gamma in (1400, 2200) for contrast in (300, 500)}}
+        return [{"value": name, "label": labels[name]} for name in TEXT_TUNING_ARGUMENTS]
+
     @pyqtSlot(str, "QVariant")
     def setNativePrivacyValue(self, key: str, value: Any) -> None:  # noqa: N802
         if self._engine != "native":
             return
-        from dataclasses import asdict
         from app.core.native.privacy import NativePrivacyPolicy
         try:
             if key == "cpu_limit":
@@ -183,13 +191,13 @@ class BrowserSettingsBridge(QObject):
                 value = float(value) if str(value).strip() else 0
             elif key == "fonts":
                 value = self._text_list(value)
-            elif key not in {"restrict_webrtc", "conceal_automation", "native_user_agent", "font_rasterization"}:
+            elif key not in {"restrict_webrtc", "conceal_automation", "native_user_agent", "font_rasterization", "text_tuning"}:
                 raise ValueError("Unknown Native privacy field")
             policy = NativePrivacyPolicy.from_dict({**self._native.get("privacy_policy", {}), key: value})
         except (ValueError, TypeError) as error:
             self._emit_message(str(error))
             return
-        self._native["privacy_policy"] = asdict(policy)
+        self._native["privacy_policy"] = policy.to_dict()
         self._compatibility_report = "Not checked"
         self.changed.emit()
 
@@ -197,18 +205,18 @@ class BrowserSettingsBridge(QObject):
     def applyNativePrivacyPreset(self, name: str) -> None:  # noqa: N802
         if self._engine != "native":
             return
-        from dataclasses import asdict
         from app.core.native.privacy import NativePrivacyPolicy
         if name == "native":
             policy = NativePrivacyPolicy()
         elif name == "privacy":
-            policy = NativePrivacyPolicy(cpu_limit=4, memory_limit=4, fonts=("Arial", "Segoe UI", "Tahoma"),
+            policy = NativePrivacyPolicy(cpu_limit=4, memory_limit=4,
+                                         fonts=("Arial", "Segoe UI", "Tahoma", "Times New Roman", "Courier New", "Consolas"),
                                          restrict_webrtc=True, conceal_automation=True, native_user_agent=True)
         else:
             self._emit_message("Unknown Native privacy preset")
             return
         policy.validate()
-        self._native["privacy_policy"] = asdict(policy)
+        self._native["privacy_policy"] = policy.to_dict()
         self._compatibility_report = "Not checked"
         self._emit_message("Native policy prepared. Save changes to persist.")
         self.changed.emit()

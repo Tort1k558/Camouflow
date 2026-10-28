@@ -11,7 +11,7 @@ _REVIEWED_PACKAGES = {
     "84e8d2369be630825afbff2732b09d5d81bb699e3c60025b73756c3fc305c10a": {
         "manifest_sha256": "465b32ab5ad0488543ac3d9410e3f8576faa621e87399fa1d5db9959b5c0ed27",
         "platform": "win32",
-        "capabilities": ("hardware", "fonts", "webrtc", "automation", "identity", "font-rasterization"),
+        "capabilities": ("hardware", "fonts", "webrtc", "automation", "identity", "font-rasterization", "text-rendering"),
     },
 }
 

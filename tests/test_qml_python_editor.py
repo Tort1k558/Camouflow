@@ -78,6 +78,7 @@ try:
     assert privacy.isVisible() and not section.isVisible()
     QMetaObject.invokeMethod(find(privacy, 'text', 'Privacy preset'), 'clicked')
     pump()
+    assert {'Arial', 'Times New Roman', 'Courier New', 'Consolas'}.issubset(ui.browser_settings.nativePrivacyPolicy['fonts'])
     cpu = find(privacy, 'objectName', 'nativeCpuLimit')
     cpu.setProperty('text', '2')
     QMetaObject.invokeMethod(cpu, 'editingFinished')
@@ -96,6 +97,26 @@ try:
     assert policy['cpu_limit'] == 2 and policy['restrict_webrtc']
     assert policy['font_rasterization'] == 'grayscale'
     assert 'reviewed local runtime required' in ui.browser_settings.nativePrivacyStatus
+    tuning = find(privacy, 'objectName', 'nativeTextTuning')
+    assert tuning is not None and not tuning.property('enabled')
+    text_options = ui.browser_settings.nativeTextTuningOptions
+    assert len(text_options) == 9 and text_options[0] == {'value': 'native', 'label': 'Native'}
+    native_mode = find(privacy, 'label', 'Native')
+    QMetaObject.invokeMethod(native_mode, 'clicked')
+    pump()
+    assert tuning.property('enabled')
+    selected = next(index for index, option in enumerate(text_options) if option['value'] == 'gamma-2200-contrast-500')
+    QMetaObject.invokeMethod(tuning, 'activated', Qt.ConnectionType.DirectConnection, Q_ARG('int', selected))
+    pump()
+    assert tuning.property('currentIndex') == selected
+    assert ui.browser_settings.nativePrivacyPolicy['text_tuning'] == 'gamma-2200-contrast-500'
+    ui.browser_settings.setNativePrivacyValue('text_tuning', 'gamma-2000')
+    ui.browser_settings.setNativePrivacyValue('font_rasterization', 'grayscale')
+    assert ui.browser_settings.nativePrivacyPolicy['text_tuning'] == 'gamma-2200-contrast-500'
+    assert ui.browser_settings.nativePrivacyPolicy['font_rasterization'] == 'native'
+    QMetaObject.invokeMethod(find(page, 'text', 'Save changes'), 'clicked')
+    pump()
+    assert db.db_get_native_defaults()['privacy_policy']['text_tuning'] == 'gamma-2200-contrast-500'
     from app.core.native.configuration import NativeConfiguration
     try:
         NativeConfiguration.from_settings(db.db_get_native_defaults()).launch_arguments()

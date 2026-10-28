@@ -37,6 +37,7 @@ refresh this comparison; it never changes the source pin or admits a release.
 | GPU metadata codec | Registered 0055 | **14/14** actual codec fixtures executed with standalone MSVC/GoogleTest; not GN decoder/attachment execution or browser admission |
 | Native GPU metadata | 001-058 | **33/33** Chromium `gpu_unittests` cases passed: codec 14, passthrough protocol 5, attachment 14. Not validating-decoder, WebGPU or browser readback admission |
 | Windows font rendering policy | 001-062 | **5/5** Chromium units and standalone/combined rendering comparisons passed; raw/HDR controls retained. Experimental reviewed-package activation, not five distinct identities |
+| Windows text gamma/contrast | Reviewed 148 / 001-062 | Nine bounded presets; **36 manager starts / 288 first-script scope observations**, desktop and Mobile Web. Three-profile recovery passed for one combined policy. Not 156 or OS/GPU simulation |
 | Current linked Windows candidate | 001-062 | Incremental j4 build succeeded in **29m02s**, 52 executed steps; separate runnable 001-061 rollback copy retained |
 | Windows development package | 001-062 | 261 checksummed files, 220.95 MiB archive; installed-copy **160/160** and same-Chromium rollback passed. Selected controls have experimental local admission; artifact remains unsigned |
 | Complete eight-gate runtime suite | 001-062 | **160 checks passed** in continuation v2; first-run font NetworkError remains unexplained and recorded |

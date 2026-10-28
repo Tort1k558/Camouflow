@@ -3,6 +3,67 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Windows text tuning and close observability — 2026-10-29
+
+Experimental manager admission is limited to the exact reviewed **148 / 001-062**
+package, not Chromium 156. Nine presets use native Chromium gamma/contrast
+switches with Native rasterization. They are bounded rendering options, not
+nine proven identities. [Configuration](NATIVE_ENGINE.md#windows-text-tuning).
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Desktop, real manager | 18 starts, 144 first-script scope observations, 18 editing/export workloads; passed | Nine presets, two starts each; paired profiles, not arbitrary concurrency |
+| Mobile Web, real manager | 18 starts, 144 scopes, 18 workloads; passed | Windows viewport 420×844 / DPR 3, not Android/iOS |
+| Independent mobile control | Nine stock Chromium 148 starts, 72 scopes; matched corresponding glyph controls | One stock start per preset, no stock restart claim |
+| Lifecycle | All 36 manager close reports complete, no forced cleanup/errors/retained runtime resources | Does not establish the cause of earlier intermittent failures |
+| Crash recovery | Three profiles, three rounds; rotating crash/restart, five stores checked, zero remaining owned processes | One combined gamma-2.2 / contrast-0.5 policy with CPU/RAM/fonts/WebRTC/automation/UA controls, not all preset combinations |
+| Excluded named font | Consolas excluded in all eight scopes; allowed Arial/Times measurements unchanged, two starts | One excluded family, not all installed-font combinations |
+| UI and application regression | Real QML selection, conflict rejection, Save and profile pinning; **3,455 passed, one skipped**, 318.75s | Python/QML tests, not additional Chromium tests |
+
+Desktop and mobile runs checked repeat/restart glyph consistency, actual
+DOM/SVG/Canvas output, loaded-font use, Unicode editing/undo/redo/selection,
+PNG round trips, UTF-8 download and bounded PDF header/size checks. These are
+controlled fixtures, not IME coverage or semantic PDF validation. Raw-image,
+format and HDR controls remained intact. Five stores stayed isolated and
+persisted across restarts; complete package payload and reviewed application
+source snapshots stayed unchanged. The mobile driver log contained none of
+the checked teardown/cleanup/unretrieved-future warnings.
+
+Private evidence on D: `managed-text-tuning-20261029-v5/report.json`,
+`managed-mobile-text-tuning-20261029-v1/report.json`,
+`mobile-text-controls-20261029-v1/report.json`,
+`text-policy-recovery-20261029-v1/report.json`, and
+`selected-font-contexts-20261029-v1/{report,validation}.json`.
+
+Retained failures and limits:
+
+- The first manager harness attempted the next Save before the existing busy
+  guard cleared. It now waits for both persistence and readiness; this was not
+  an engine bug or a reason to bypass the guard.
+- Desktop v3 remains failed: its selected-font policy omitted Consolas while
+  the reference was unfiltered. Generic monospace fallback changed even in
+  Native mode. The corrected control retains Consolas; the excluded-family
+  probe separately verifies filtering. Shared/service generic fallback already
+  differs in the native baseline; unconditional cross-scope font equality is
+  not a valid assertion. The new Privacy preset retains normal serif/monospace
+  families; existing profile font lists are not silently migrated.
+- Desktop v4 passed rendering but logged a teardown timeout and forced owned
+  process cleanup. Its original result and separate `close-audit.json` remain;
+  **v4 is not accepted as graceful lifecycle evidence**. The cause is still
+  unknown. Passing desktop v5/mobile runs do not prove it fixed.
+
+`BrowserInterface.native_close_report` now exposes completion, kept-open state,
+forced cleanup, teardown/cleanup error categories, elapsed time and runtime-owned
+resources. `complete` alone is not success: strict gates reject forced cleanup,
+errors, kept-open sessions and retained resources. It is observability, not a
+new shutdown fallback or a global process detector. Close remains idempotent,
+cancellation propagates, and no raw error message is stored in the report.
+
+Unknown/modified binaries remain blocked; default policy serialization and
+launch arguments remain compatible. Non-native rasterization combinations,
+Canvas/GPU/Audio privacy experiments, OS/GPU simulation, external anti-bot
+acceptance and Chromium 156 admission are not established by these runs.
+
 ## Manager same-origin frame diagnostics — 2026-10-29
 
 The running-profile diagnostic now checks its own document and dedicated worker,

@@ -37,7 +37,7 @@ def reviewed_package(tmp_path, monkeypatch):
     manifest.write_text(json.dumps(metadata), encoding="utf-8")
     monkeypatch.setattr(admission, "_REVIEWED_PACKAGES", {digest: {
         "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(), "platform": "win32",
-        "capabilities": ("hardware", "fonts", "webrtc", "automation", "identity", "font-rasterization"),
+        "capabilities": ("hardware", "fonts", "webrtc", "automation", "identity", "font-rasterization", "text-rendering"),
     }})
     return root / "chrome.exe", manifest
 
@@ -46,6 +46,21 @@ def policy():
     return NativePrivacyPolicy(cpu_limit=4, memory_limit=4, fonts=("Arial", "Segoe UI", "Tahoma"),
                                restrict_webrtc=True, conceal_automation=True, native_user_agent=True,
                                font_rasterization="grayscale")
+
+
+@pytest.mark.parametrize("preset", ["gamma-1400", "gamma-2200", "contrast-300", "contrast-500",
+    "gamma-1400-contrast-300", "gamma-1400-contrast-500", "gamma-2200-contrast-300", "gamma-2200-contrast-500"])
+def test_reviewed_text_tuning_admission_is_exact_and_optional(reviewed_package, preset):
+    executable, _ = reviewed_package
+    requested = replace(policy(), font_rasterization="native", text_tuning=preset)
+    verified = admission.verify_runtime_policy(executable, requested)
+    assert "text-rendering" in verified.capabilities and "font-rasterization" not in verified.capabilities
+    assert NativeConfiguration(privacy_policy=requested).launch_arguments(admission=verified)[2:] == requested.prepared_arguments()
+    with pytest.raises(ValueError, match="differs"):
+        NativeConfiguration(privacy_policy=replace(requested, text_tuning="native")).launch_arguments(admission=verified)
+    admission._REVIEWED_PACKAGES[executable.parent.name]["capabilities"] = ("hardware", "fonts", "webrtc", "automation", "identity")
+    with pytest.raises(ValueError, match="not verified"):
+        admission.verify_runtime_policy(executable, requested)
 
 
 def test_admission_is_bound_to_policy_and_never_reads_a_verified_boolean(reviewed_package):

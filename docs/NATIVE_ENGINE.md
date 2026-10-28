@@ -14,6 +14,7 @@ experimental, not a released replacement for Camoufox or CloakBrowser.
 | Document/worker startup and readiness | Dedicated/shared/service, classic/module and nested-worker checks recorded per build; not universal page compatibility |
 | Glint product name and existing CamouFlow logo in Chromium | Compiled 001-062 icons, ProductName and version-page branding verified; not all cached shortcuts/taskbar surfaces |
 | Windows text rendering | Five native cases; standalone and combined rendering checks passed. Available experimentally in the reviewed package; not five distinct identities |
+| Windows text gamma/contrast | Nine bounded presets, Native rasterization only; real manager desktop/Mobile Web and recovery checks passed on reviewed 148. Experimental, not OS/GPU identity emulation |
 | Native Canvas/WebGL/audio protection | Experimental combined/readback checks recorded per build; fidelity limitations remain. Not advertised as production-active |
 | WebGPU protection | Incomplete; metadata diagnostics do not prove protected rendering/readback |
 | Linux/macOS own-fork runtime | Deferred; not released |
@@ -35,6 +36,34 @@ device-passport or profile-key/Canvas/GPU privacy admission.
 Results and unresolved failures are linked in the
 [per-build test matrix](GLINT_TEST_MATRIX.md). Older external-site observations
 must not be attributed to the current binary without a new run.
+
+## Windows text tuning
+
+Glint configuration → Fingerprint → **Text gamma / contrast** selects native
+Chromium rendering parameters for the next launch. Native preserves existing
+behavior. Eight optional presets select gamma 1.4/2.2, contrast 0.3/0.5 or their
+four pairs. No JavaScript replacement, pixel-readback noise, registry changes
+or automatic random assignment is used. Non-native rasterization and text tuning
+cannot be combined: that combination has not been verified.
+
+Profile Browser JSON can override the entire privacy policy, for example:
+
+```json
+{"privacy_policy":{"text_tuning":"gamma-2200-contrast-500"}}
+```
+
+This replaces the inherited privacy policy, not just one nested field. Use
+**Pin environment** first to retain the other effective policy values, then edit
+the draft and Save. Accepted names are `native`, `gamma-1400`, `gamma-2200`,
+`contrast-300`, `contrast-500` and all four `gamma-…-contrast-…` pairs.
+Arbitrary numbers and unknown names are rejected. The Native default is omitted
+from serialized policy JSON to preserve the previous default wire format.
+
+Activation requires the exact reviewed Windows 148 package and full payload
+verification, including the `text-rendering` capability. Stock, modified and
+unreviewed binaries do not gain admission. This changes Windows glyph rendering,
+not the OS/GPU identity or all Canvas pixels; nine presets are not nine proven
+realistic identities. See the [evidence and retained failures](GLINT_TEST_MATRIX.md#windows-text-tuning-and-close-observability--2026-10-29).
 
 ## Page preferences
 

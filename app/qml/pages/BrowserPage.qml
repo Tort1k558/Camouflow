@@ -280,6 +280,24 @@ Item {
                         }
                     }
                     Text { width: parent.width; wrapMode: Text.WordWrap; text: "Requires a reviewed managed runtime. Aliased reduces smoothness. ClearType modes may produce identical results."; color: Theme.muted; font.pixelSize: 12 }
+                    Text { text: "Text gamma / contrast · experimental"; color: Theme.text; font.pixelSize: 13; font.weight: Font.DemiBold }
+                    PlainComboBox {
+                        objectName: "nativeTextTuning"
+                        Accessible.name: "Windows text gamma and contrast"
+                        width: parent.width; height: 40
+                        enabled: browserSettingsBridge.nativePrivacyPolicy.font_rasterization === "native"
+                        model: browserSettingsBridge.nativeTextTuningOptions; textRole: "label"
+                        palette.text: Theme.text
+                        currentIndex: {
+                            var choices = browserSettingsBridge.nativeTextTuningOptions
+                            for (var i = 0; i < choices.length; i++)
+                                if (choices[i].value === browserSettingsBridge.nativePrivacyPolicy.text_tuning) return i
+                            return -1
+                        }
+                        onActivated: function(index) { browserSettingsBridge.setNativePrivacyValue("text_tuning", browserSettingsBridge.nativeTextTuningOptions[index].value) }
+                        background: Rectangle { radius: Theme.radiusSm; color: Theme.input; border.color: Theme.border }
+                    }
+                    Text { width: parent.width; wrapMode: Text.WordWrap; text: "Requires Native rasterization and a reviewed Windows runtime. Changes native text rendering, not OS/GPU identity. No automatic random assignment."; color: Theme.muted; font.pixelSize: 12 }
                     ToggleRow { width: parent.width; label: "Restrict non-proxied WebRTC UDP"; hint: "Routing policy, not a fake IP; some media connections may be unavailable."; checked: browserSettingsBridge.nativePrivacyPolicy.restrict_webrtc; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("restrict_webrtc", value) } }
                     ToggleRow { width: parent.width; label: "Conceal webdriver exposure"; hint: "Native getter policy; not general CDP invisibility."; checked: browserSettingsBridge.nativePrivacyPolicy.conceal_automation; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("conceal_automation", value) } }
                     ToggleRow { width: parent.width; label: "Native headless UA policy"; hint: "Keep the real version, OS and Client Hints; remove only the headless product prefix."; checked: browserSettingsBridge.nativePrivacyPolicy.native_user_agent; onToggled: function(value) { browserSettingsBridge.setNativePrivacyValue("native_user_agent", value) } }

@@ -8,8 +8,11 @@ Current admission is restricted to the exact package and manifest hashes in
 `app/core/native/admission.py`, with full payload verification before launch.
 The earlier admission-work checklist below is historical; remaining compatibility
 limits and newer text-tuning research are in the
-[test matrix](../../../docs/GLINT_TEST_MATRIX.md). Gamma/contrast controls are
-still research-only and have no manager admission.
+[test matrix](../../../docs/GLINT_TEST_MATRIX.md). Nine bounded gamma/contrast
+presets now have experimental manager admission for that exact reviewed 148
+package, using upstream text-rendering switches with Native rasterization only.
+See [configuration and limits](../../../docs/NATIVE_ENGINE.md#windows-text-tuning).
+This does not admit Chromium 156 or combinations with non-native rasterization.
 
 This candidate changes actual Windows text-rendering parameters, not Canvas
 readback bytes, JavaScript APIs, installed font names, OS identity or GPU strings.
@@ -24,7 +27,9 @@ Canvas readback candidate** or a promise of undetectable/unique fingerprints.
 | `cleartype-rgb` | On | On | RGB |
 | `cleartype-bgr` | On | On | BGR |
 
-Gamma, contrast, hinting, embedded bitmap and autohinter fields are preserved.
+Patch 0062 preserves gamma, contrast, hinting, embedded bitmap and autohinter
+fields. The separate manager text-tuning option changes gamma/contrast through
+upstream Chromium switches, without modifying this patch.
 The explicit switch is validated before copying it to renderer commands.
 Windows cached font parameters apply the selected mode before Skia cache setup;
 upstream renderer preferences already carry these parameters into Blink.

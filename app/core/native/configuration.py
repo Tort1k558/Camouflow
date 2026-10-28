@@ -1,6 +1,6 @@
 """Explicit Chromium capabilities without injected JavaScript fingerprint masks."""
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 import math
 import re
 
@@ -63,7 +63,7 @@ class NativeConfiguration:
     def environment_settings(self) -> dict:
         """Snapshot requested environment values, not grants, paths or key material."""
         self.validate()
-        policy = {**asdict(self.privacy_policy), "fonts": list(self.privacy_policy.fonts)}
+        policy = self.privacy_policy.to_dict()
         return {
             "environment": self.environment,
             "window_width": self.width, "window_height": self.height,
@@ -121,4 +121,6 @@ class NativeConfiguration:
                  ["Chromium fingerprint APIs retain their native values; Canvas/WebGL/Audio/fonts/hardware are not masked."])
         if self.environment == "mobile_web":
             notes.append("Mobile Web is desktop Chromium with viewport/touch emulation, not an Android Chrome or iOS Safari identity.")
+        if self.privacy_policy.text_tuning != "native":
+            notes.append("Text tuning changes native Windows glyph rendering, not OS/GPU identity or all Canvas pixels; fingerprint realism is not guaranteed.")
         return notes

@@ -4,6 +4,7 @@ import locale
 import logging
 import os
 import random
+import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 from urllib.parse import urlsplit
@@ -114,6 +115,7 @@ class BrowserInterface:
         self._camoufox_ctx: Optional[AsyncCamoufox] = None
         self._cloakbrowser_context = None
         self._native_runtime = None
+        self._last_native_close_report = None
         self._storage_state_payload: Optional[Dict[str, object]] = None
         self._storage_state_native = False
         self._proxy_config, self._proxy_details = parse_proxy(proxy, profile_name=self.profile_name)
@@ -385,6 +387,7 @@ class BrowserInterface:
         return self._proxy_service.detect_timezone()
 
     async def start(self):
+        self._last_native_close_report = None
         self._lifecycle.reset_for_start()
         self._storage_state_payload = self._load_storage_state_payload()
         self._storage_state_native = False
@@ -522,8 +525,27 @@ class BrowserInterface:
         elif self.page:
             await self.page.close()
 
+    @property
+    def native_close_report(self) -> Optional[Dict[str, Any]]:
+        report = getattr(self, "_last_native_close_report", None)
+        if report is None:
+            return None
+        runtime = self._native_runtime
+        return {**report, "resources_retained": runtime is not None and runtime.has_resources}
+
     async def close(self, force: bool = False):
+        close_started = time.monotonic()
+        native_report = None
+        if self.browser_engine == BROWSER_ENGINE_NATIVE:
+            if (getattr(self, "_last_native_close_report", None) is None or self.browser or self.context
+                    or (self._native_runtime is not None and self._native_runtime.has_resources)):
+                self._last_native_close_report = {"complete": False, "kept_open": False, "forced": False,
+                                                  "teardown_error": None, "cleanup_error": None,
+                                                  "elapsed_seconds": None}
+            native_report = self._last_native_close_report
         if self.keep_browser_open and (self.browser or self.context) and not force:
+            if native_report is not None:
+                native_report["kept_open"] = True
             self.logger.info(
                 "Keeping %s session for %s open; force close when finished.",
                 self.browser_engine,
@@ -537,15 +559,23 @@ class BrowserInterface:
         try:
             await asyncio.wait_for(self._teardown_browser(), timeout=teardown_timeout)
         except asyncio.TimeoutError:
+            if native_report is not None:
+                native_report.update(forced=True, teardown_error="timeout")
             # Firefox persistent contexts occasionally hang in teardown until
             # Playwright's internal ~30s timeout; kill the process tree instead.
             self.logger.warning(
-                "Browser teardown timed out for %s after %ss; killing browser processes",
+                "Browser teardown timed out for %s (budget %ss); killing browser processes",
                 self.profile_name,
                 teardown_timeout,
             )
             await asyncio.to_thread(self._lifecycle.kill_profile_processes)
-        except Exception:
+        except asyncio.CancelledError:
+            if native_report is not None:
+                native_report["teardown_error"] = "cancelled"
+            raise
+        except Exception as error:
+            if native_report is not None:
+                native_report["teardown_error"] = type(error).__name__
             self.logger.warning(
                 "Browser teardown failed for %s", self.profile_name, exc_info=True
             )
@@ -553,7 +583,13 @@ class BrowserInterface:
             if self._native_runtime is not None:
                 try:
                     await self._native_runtime.close()
-                except Exception:
+                except asyncio.CancelledError:
+                    if native_report is not None:
+                        native_report["cleanup_error"] = "cancelled"
+                    raise
+                except Exception as error:
+                    if native_report is not None:
+                        native_report["cleanup_error"] = type(error).__name__
                     self.logger.warning("Native driver cleanup failed for %s", self.profile_name, exc_info=True)
                 else:
                     self._native_runtime = None
@@ -585,6 +621,10 @@ class BrowserInterface:
             self._notify_process_exited()
             self._notify_browser_closed()
             self._lifecycle.reset_ready()
+            if native_report is not None:
+                native_report["complete"] = True
+                if native_report["elapsed_seconds"] is None:
+                    native_report["elapsed_seconds"] = round(time.monotonic() - close_started, 3)
 
     def add_process_exit_callback(self, callback: Callable[[], None]) -> None:
         self._lifecycle.add_process_exit_callback(callback)

@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime
-from app.core.native.privacy import FONT_RASTERIZATION_MODES
+from app.core.native.privacy import FONT_RASTERIZATION_MODES, TEXT_TUNING_ARGUMENTS
 from app.core.native import canvas_fidelity
 from scripts import native_build, native_canvas_formats, native_canvas_hdr, native_font_contexts, native_font_rendering, native_font_visuals
 from scripts import native_font_workloads
@@ -25,16 +25,8 @@ from scripts.verify_native_privacy_units import require_idle_builder
 from scripts.verify_native_runtime import FixtureServer, STORAGE, measure_runtime_core
 
 MODES = ("off", *FONT_RASTERIZATION_MODES)
-TEXT_TUNING_CASES = {
-    "off": (),
-    "gamma-1400": ("--text-gamma=1.4",),
-    "gamma-2200": ("--text-gamma=2.2",),
-    "contrast-300": ("--text-contrast=0.3",),
-    "contrast-500": ("--text-contrast=0.5",),
-    **{f"gamma-{gamma}-contrast-{contrast}": (f"--text-gamma={gamma / 1000:g}",
-                                               f"--text-contrast={contrast / 1000:g}")
-       for gamma in (1400, 2200) for contrast in (300, 500)},
-}
+TEXT_TUNING_CASES = {"off" if name == "native" else name: arguments
+                     for name, arguments in TEXT_TUNING_ARGUMENTS.items()}
 PATCH = ROOT / "native/patches/0062-native-windows-font-rasterization.patch"
 
 
@@ -54,6 +46,9 @@ class RenderingConfiguration(NativeConfiguration):
         super().validate()
         if not isinstance(self.rasterization, str) or self.rasterization not in (*MODES, *TEXT_TUNING_CASES):
             raise ValueError("Unknown experimental Windows font mode")
+        if self.rasterization != "off" and (self.privacy_policy.text_tuning != "native"
+                                             or self.privacy_policy.font_rasterization != "native"):
+            raise ValueError("Research rendering flags must not override an explicit profile rendering policy")
 
     def launch_arguments(self, *, admission=None) -> list[str]:
         arguments = super().launch_arguments(admission=admission)
