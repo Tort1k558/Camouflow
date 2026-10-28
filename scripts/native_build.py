@@ -15,6 +15,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 LOCK = json.loads((ROOT / "native/build-lock.json").read_text(encoding="utf-8-sig"))
 
 
@@ -116,8 +117,84 @@ def _validate_git_ssl_backend(backend: str) -> None:
         raise ValueError("The Schannel Git TLS backend requires Windows")
 
 
-def environment(workspace: Path, *, git_ssl_backend: str = "openssl") -> dict[str, str]:
+def local_windows_toolchain(workspace: Path) -> dict[str, str]:
+    from scripts.native_windows_sdk import sha256
+
+    if os.name != "nt":
+        raise ValueError("Local Windows toolchain selection requires Windows")
+    config = workspace / "chromium/src/build/win_toolchain.json"
+    if config != config.resolve() or not config.is_file() or config.stat().st_size > 65536:
+        raise ValueError("A bounded owned Chromium win_toolchain.json is required")
+    data = json.loads(config.read_text(encoding="utf-8-sig"))
+    if (not isinstance(data, dict) or set(data) != {"path", "version", "win_sdk", "wdk", "runtime_dirs"}
+            or data["version"] != "2026" or data["wdk"] != ""
+            or any(not isinstance(data[key], str) for key in ("path", "win_sdk"))):
+        raise ValueError("Invalid local VS 2026 toolchain selection")
+    root, sdk = Path(data["path"]), Path(data["win_sdk"])
+    if (root != root.resolve() or not root.is_dir() or not root.is_relative_to(workspace / "toolchain")
+            or sdk != root / "Windows Kits/10" or sdk != sdk.resolve()):
+        raise ValueError("Local toolchain and SDK must stay in the owned workspace layout")
+    vc = root / "VC"
+    if vc != vc.resolve() or not vc.is_dir() or vc.parent.drive.upper() != workspace.drive.upper():
+        raise ValueError("Local MSVC must be materialized without junctions on the approved backing drive")
+    version_file = vc / "Auxiliary/Build/Microsoft.VCToolsVersion.default.txt"
+    version = version_file.read_text(encoding="utf-8-sig").strip()
+    if not re.fullmatch(r"14\.51\.[0-9]+", version):
+        raise ValueError("Local toolchain requires the selected VS 2026 MSVC toolset")
+    expected_runtimes = [str(vc / "Redist/MSVC" / version / cpu / "Microsoft.VC145.CRT")
+                         for cpu in ("x64", "x86")] + ["Arm64Unused"]
+    if data["runtime_dirs"] != expected_runtimes or any(not Path(p).is_dir() for p in expected_runtimes[:2]):
+        raise ValueError("Local MSVC runtime directories differ")
+    provenance = sdk / "glint-sdk-provenance.json"
+    if provenance != provenance.resolve() or provenance.stat().st_size > 8 * 1024 * 1024:
+        raise ValueError("Invalid local SDK provenance")
+    observed = json.loads(provenance.read_text(encoding="utf-8-sig"))
+    spec = json.loads((ROOT / "native/toolchain/windows-sdk-28000.json").read_text(encoding="utf-8-sig"))
+    if (not isinstance(observed, dict) or observed.get("layout_verified") is not True
+            or observed.get("sdk_package_version") != spec["version"]
+            or not isinstance(observed.get("packages"), list)
+            or len(observed["packages"]) != len(spec["packages"])
+            or [(p.get("package"), p.get("sha256")) for p in observed["packages"]
+                if isinstance(p, dict)] != [(p["package"], p["sha256"]) for p in spec["packages"]]):
+        raise ValueError("Local SDK does not bind the pinned official package assembly")
+    records = observed.get("files")
+    debuggers = observed.get("debuggers")
+    if (not isinstance(records, list) or not 1 <= len(records) <= 20000
+            or not isinstance(debuggers, list) or len(debuggers) != 6):
+        raise ValueError("Local SDK file provenance is incomplete")
+    inputs = {str(config): sha256(config), str(provenance): sha256(provenance),
+              str(version_file): sha256(version_file)}
+    for entry in [*records, *debuggers]:
+        if (not isinstance(entry, dict) or not isinstance(entry.get("path"), str)
+                or not isinstance(entry.get("sha256"), str)):
+            raise ValueError("Malformed local SDK file provenance")
+        file = sdk / entry["path"]
+        if (not file.is_relative_to(sdk) or file != file.resolve() or not file.is_file()
+                or sha256(file) != entry["sha256"] or str(file) in inputs):
+            raise ValueError("Local SDK file changed or escaped its owned assembly")
+        inputs[str(file)] = entry["sha256"]
+    for file in [sdk / "bin" / name for name in ("SetEnv.cmd", "SetEnv.x86.json", "SetEnv.x64.json")]:
+        if file != file.resolve() or not file.is_file():
+            raise ValueError("Local SDK environment scripts must be owned regular files")
+        inputs[str(file)] = sha256(file)
+    for cpu in ("x86", "x64"):
+        for name in ("cl.exe", "link.exe"):
+            file = vc / "Tools/MSVC" / version / "bin/Hostx64" / cpu / name
+            if file != file.resolve() or not file.is_file():
+                raise ValueError("Actual local MSVC compiler tools are required")
+            inputs[str(file)] = sha256(file)
+    digest = hashlib.sha256(json.dumps(inputs, sort_keys=True).encode("utf-8")).hexdigest()
+    return {"DEPOT_TOOLS_WIN_TOOLCHAIN": "1", "WINDOWSSDKDIR": str(sdk), "GYP_MSVS_VERSION": "2026",
+            "vs2026_install": str(vc.parent), "WindowsSDKVersion": spec["directory_version"] + "\\",
+            "GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": digest}
+
+
+def environment(workspace: Path, *, git_ssl_backend: str = "openssl",
+                local_toolchain: bool = False) -> dict[str, str]:
     _validate_git_ssl_backend(git_ssl_backend)
+    if type(local_toolchain) is not bool:
+        raise ValueError("Local Windows toolchain selection must be explicit")
+    toolchain_environment = local_windows_toolchain(workspace) if local_toolchain else {}
     env = dict(os.environ)
     env.pop("GIT_SSL_NO_VERIFY", None)
     temporary = workspace / "tmp"
@@ -157,6 +234,7 @@ def environment(workspace: Path, *, git_ssl_backend: str = "openssl") -> dict[st
                 raise ValueError("Refusing to overwrite an unrelated vpython launcher")
             launcher.write_text(contents, encoding="utf-8")
             env["PATH"] = str(launchers) + os.pathsep + env["PATH"]
+    env.update(toolchain_environment)
     return env
 
 
@@ -570,8 +648,12 @@ def apply_candidate_patches(source: Path, env: dict[str, str], candidate: dict) 
 
 
 def execute(action: str, workspace: Path, *, backing_volume: Path | None = None, jobs: int | None = None,
-            candidate_name: str | None = None, git_ssl_backend: str = "openssl") -> None:
+            candidate_name: str | None = None, git_ssl_backend: str = "openssl",
+            local_toolchain: bool = False) -> None:
     _validate_git_ssl_backend(git_ssl_backend)
+    if type(local_toolchain) is not bool or (local_toolchain and (
+            action != "build" or candidate_name is None or os.name != "nt")):
+        raise ValueError("Local Windows toolchain selection is explicit and supported only for candidate build")
     candidate = None if candidate_name is None else load_candidate(candidate_name)
     if action == "patch" and candidate is None:
         raise ValueError("Patch application requires an explicit --candidate selection")
@@ -587,12 +669,13 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
     workspace.mkdir(parents=True, exist_ok=True)
     with workspace_lock(workspace):
         candidate_workspace(workspace, candidate)
-        _execute_locked(action, workspace, jobs, candidate, lock, git_ssl_backend=git_ssl_backend)
+        _execute_locked(action, workspace, jobs, candidate, lock, git_ssl_backend=git_ssl_backend,
+                        local_toolchain=local_toolchain)
 
 
 def _execute_locked(action: str, workspace: Path, jobs: int, candidate: dict | None, lock: dict,
-                    *, git_ssl_backend: str = "openssl") -> None:
-    env = environment(workspace, git_ssl_backend=git_ssl_backend)
+                    *, git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> None:
+    env = environment(workspace, git_ssl_backend=git_ssl_backend, local_toolchain=local_toolchain)
     checkout(workspace / "depot_tools", lock["depot_tools_repository"], lock["depot_tools_revision"], env)
     if os.name == "nt":
         bootstrap_windows_git(workspace, env)
@@ -656,6 +739,9 @@ def _execute_locked(action: str, workspace: Path, jobs: int, candidate: dict | N
                 else source_patches(source, env) + v8_source_patches(source, env))
     if verified != patches:
         raise ValueError("Native source patches changed during compilation; refusing a build receipt")
+    if local_toolchain and (local_windows_toolchain(workspace)["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]
+                            != env["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]):
+        raise ValueError("Local Windows toolchain inputs changed during compilation; refusing a build receipt")
     if (output.joinpath("args.gn").read_text(encoding="utf-8-sig") != arguments
             or (ROOT / "native/args.gn").read_text(encoding="utf-8-sig") != arguments):
         raise ValueError("Native GN arguments changed during compilation; refusing a build receipt")
@@ -667,6 +753,8 @@ def _execute_locked(action: str, workspace: Path, jobs: int, candidate: dict | N
                "chromium_revision": lock["chromium_revision"],
                "depot_tools_revision": lock["depot_tools_revision"],
                **({"candidate_manifest_sha256": candidate["manifest_sha256"]} if candidate else {}),
+               **({"local_windows_toolchain_sha256": env["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]}
+                  if local_toolchain else {}),
                "platform": sys.platform, "binary": relative_binary, "build_jobs": jobs,
                "binary_sha256_measured": core[binary.name],
                "runtime_core_sha256_measured": core,
@@ -685,10 +773,13 @@ def main() -> int:
     parser.add_argument("--jobs", type=int, choices=range(1, LOCK["build_jobs"] + 1), help="Parallel jobs for sync/build; defaults to the build lock")
     parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl",
                         help="Explicit Windows Git TLS backend; no automatic switching or certificate-check bypass")
+    parser.add_argument("--local-windows-toolchain", action="store_true",
+                        help="Explicit prepared owned local hermetic SDK/MSVC layout; candidate build only")
     args = parser.parse_args()
     try:
         execute(args.action, args.workspace, backing_volume=args.backing_volume, jobs=args.jobs,
-                candidate_name=args.candidate, git_ssl_backend=args.git_ssl_backend)
+                candidate_name=args.candidate, git_ssl_backend=args.git_ssl_backend,
+                local_toolchain=args.local_windows_toolchain)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f"Native build failed: {error}", file=sys.stderr)
         return 1

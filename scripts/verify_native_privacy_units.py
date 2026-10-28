@@ -350,11 +350,13 @@ def require_idle_builder() -> None:
 
 def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None, jobs: int = 4,
            target: str = "keys", candidate_name: str | None = None,
-           git_ssl_backend: str = "openssl") -> dict:
+           git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
     required = required_tests(target)
     if sys.platform != "win32":
         raise ValueError("The owned-profile key loader verification currently supports Windows only")
     candidate = None if candidate_name is None else build.load_candidate(candidate_name)
+    if type(local_toolchain) is not bool or (local_toolchain and candidate is None):
+        raise ValueError("Local Windows toolchain verification requires an explicit candidate")
     lock = build.LOCK if candidate is None else candidate["lock"]
     if type(jobs) is not int or not 1 <= jobs <= min(4, lock["build_jobs"]):
         raise ValueError("Native privacy verification requires 1..4 jobs")
@@ -375,22 +377,25 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
         raise ValueError("Refusing to overwrite native verification evidence")
     with build.workspace_lock(workspace):
         return _verify_locked(workspace, report, vs_installation=vs_installation, jobs=jobs, target=target,
-                              required=required, candidate=candidate, lock=lock, git_ssl_backend=git_ssl_backend)
+                              required=required, candidate=candidate, lock=lock, git_ssl_backend=git_ssl_backend,
+                              local_toolchain=local_toolchain)
 
 
 def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | None, jobs: int,
                    target: str, required: dict, candidate: dict | None, lock: dict,
-                   git_ssl_backend: str) -> dict:
+                   git_ssl_backend: str, local_toolchain: bool = False) -> dict:
     source = workspace / "chromium/src"
     output = source / "out/CamouFlowNative"
     results = report.with_name(report.stem + "-tests.json")
     log_path = report.with_name(report.stem + "-build.log")
     require_idle_builder()
-    env = build.environment(workspace, git_ssl_backend=git_ssl_backend)
+    env = build.environment(workspace, git_ssl_backend=git_ssl_backend, local_toolchain=local_toolchain)
     env.update(GOMEMLIMIT="3GiB", PYTHONIOENCODING="utf-8")
     if vs_installation is not None:
         if vs_installation != vs_installation.resolve() or not vs_installation.is_dir():
             raise ValueError("Visual Studio installation must be an existing canonical directory")
+        if local_toolchain and str(vs_installation) != env.get("vs2026_install"):
+            raise ValueError("Visual Studio selection differs from the prepared local toolchain")
         env["vs2026_install"] = str(vs_installation)
     def source_state():
         build.candidate_workspace(workspace, candidate)
@@ -499,6 +504,8 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
                     "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff"} else
                     "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
     proof = {"passed": False, "scope": scope, "target": target,
+             **({"local_windows_toolchain_sha256": env["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]}
+                if local_toolchain else {}),
              "jobs": jobs, "patches": patches, "results": str(results), "log": str(log_path),
              "source_chromium_revision": lock["chromium_revision"], "browser_runtime_verified": False,
              "privacy_admitted": False,
@@ -523,6 +530,9 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
             log.write(f"\nVerification failed: {error}\n")
         finally:
             try:
+                if local_toolchain and (build.local_windows_toolchain(workspace)["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]
+                                       != env["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]):
+                    raise ValueError("Local Windows toolchain changed during native test compilation")
                 if delivery_sources is not None and require_delivery_sources(source) != delivery_sources:
                     raise ValueError("Delivery source inputs changed during verification")
                 if (measure_runtime_core(output / "chrome.exe") != core
@@ -557,11 +567,13 @@ def main() -> int:
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
     parser.add_argument("--candidate", choices=("upstream-156",), help="Explicit candidate source/manifest; not runtime admission")
     parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl")
+    parser.add_argument("--local-windows-toolchain", action="store_true")
     parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS), default="keys")
     args = parser.parse_args()
     try:
         report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs, target=args.target,
-                        candidate_name=args.candidate, git_ssl_backend=args.git_ssl_backend)
+                        candidate_name=args.candidate, git_ssl_backend=args.git_ssl_backend,
+                        local_toolchain=args.local_windows_toolchain)
     except (ValueError, OSError, subprocess.SubprocessError, NativeRuntimeError) as error:
         print(f"Native privacy verification failed: {error}", file=sys.stderr)
         return 1

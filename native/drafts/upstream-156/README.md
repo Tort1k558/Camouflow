@@ -212,7 +212,8 @@ rollback and are retained for inspection. Private deltas and a JSON report remai
 under `chromium/glint-candidate-patches-*`. This is not a power-loss-atomic
 transaction across two repositories. Tiny real Git fixtures cover binary edits,
 new files, preflight failures, second-repository failure, rollback and concurrent
-edit preservation; the full Chromium 156 checkout has not run this action yet.
+edit preservation. On 2026-10-28 the complete chain was also applied to the full
+owned Chromium 156/V8 checkout and passed the source-chain guards.
 All mutating `native_build.py` stages also hold an OS-backed workspace lock.
 A concurrent script invocation fails before tool/source changes; read-only
 preflight remains available. The OS releases the lock after a process exits,
@@ -225,7 +226,42 @@ Stage records and build receipts bind the candidate manifest hash; a default
 148 stage record cannot satisfy the 156 gate. Runtime verification remains false.
 
 The candidate explicitly reuses depot_tools revision
-`a03dfbf7f2d1cefa2795d81d59ca4f16c8616a8f`; compatibility with the full 156
-dependency set/toolchain has **not** been demonstrated. No downloads, hooks,
-GN generation or compilation were run for this selection. Local read-only
-preflight saw 300.6 GiB free on D: and did not create the proposed workspace.
+`a03dfbf7f2d1cefa2795d81d59ca4f16c8616a8f`. Dependency sync and hooks completed
+on 2026-10-28. GN generation passed; the first compilation failed in unified
+system modules before linking. This is **not** a verified 156 runtime.
+
+### Explicit local Windows toolchain selection
+
+For a deliberately prepared owned `build/win_toolchain.json`, the candidate
+build accepts `--local-windows-toolchain`. It validates the exact VS 2026 local
+layout without VC junctions, pinned official SDK provenance and every recorded SDK file, and binds
+environment scripts/compiler executables to a before/after digest. The flag is
+Windows-only and build-only; it is rejected for default 148 and for sync/hooks.
+There is no automatic SDK fallback or global environment change.
+
+```powershell
+python scripts/native_build.py build --workspace D:/Glint156Candidate --candidate upstream-156 --jobs 4 --git-ssl-backend schannel --local-windows-toolchain
+python scripts/verify_native_privacy_units.py --help
+```
+
+The unit verifier accepts the same explicit local toolchain flag with a
+candidate selection, holds the workspace lock and checks toolchain drift even
+when compilation/testing fails. Do not run it alongside a browser build.
+Preparing the local composite toolchain is currently a retained private
+diagnostic procedure, **not yet a public reproducible preparation command**.
+The VC junction layout failed Siso dependency resolution; do not copy that
+layout as a working recipe. Original compiler/SDK installations remain intact.
+
+### Rendering checks after linking
+
+The existing rendering verifier supports independent gamma/contrast checks:
+
+```powershell
+python scripts/verify_native_font_rendering.py --series text-tuning --candidate upstream-156 --executable D:/Glint156Candidate/chromium/src/out/CamouFlowNative/chrome.exe --output D:/Glint156Candidate/text-tuning-156-v1
+```
+
+This requires a complete matching candidate receipt and unchanged runtime,
+resources, source inputs and screenshots. The nine-case series checks separate
+gamma-only and contrast-only effects in all eight scopes, fidelity and restart
+stability. Its completed 148 run does not count as a 156 result or enable
+manager admission. See the [test matrix](../../../docs/GLINT_TEST_MATRIX.md).

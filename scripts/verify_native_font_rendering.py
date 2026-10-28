@@ -18,13 +18,31 @@ from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime
 from app.core.native.privacy import FONT_RASTERIZATION_MODES
 from app.core.native import canvas_fidelity
-from scripts import native_canvas_formats, native_canvas_hdr, native_font_contexts, native_font_rendering, native_font_visuals
+from scripts import native_build, native_canvas_formats, native_canvas_hdr, native_font_contexts, native_font_rendering, native_font_visuals
 from scripts.verify_native_branding import measure_branding_resources
 from scripts.verify_native_privacy_units import require_idle_builder
 from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
 
 MODES = ("off", *FONT_RASTERIZATION_MODES)
+TEXT_TUNING_CASES = {
+    "off": (),
+    "gamma-1400": ("--text-gamma=1.4",),
+    "gamma-2200": ("--text-gamma=2.2",),
+    "contrast-300": ("--text-contrast=0.3",),
+    "contrast-500": ("--text-contrast=0.5",),
+    **{f"gamma-{gamma}-contrast-{contrast}": (f"--text-gamma={gamma / 1000:g}",
+                                               f"--text-contrast={contrast / 1000:g}")
+       for gamma in (1400, 2200) for contrast in (300, 500)},
+}
 PATCH = ROOT / "native/patches/0062-native-windows-font-rasterization.patch"
+
+
+def series_modes(series: str) -> tuple[str, ...]:
+    if series == "rasterization":
+        return MODES
+    if series == "text-tuning":
+        return tuple(TEXT_TUNING_CASES)
+    raise ValueError("Unknown rendering verification series")
 
 
 @dataclass(frozen=True)
@@ -33,12 +51,14 @@ class RenderingConfiguration(NativeConfiguration):
 
     def validate(self) -> None:
         super().validate()
-        if not isinstance(self.rasterization, str) or self.rasterization not in MODES:
+        if not isinstance(self.rasterization, str) or self.rasterization not in (*MODES, *TEXT_TUNING_CASES):
             raise ValueError("Unknown experimental Windows font mode")
 
     def launch_arguments(self) -> list[str]:
         arguments = super().launch_arguments()
-        if self.rasterization != "off":
+        if self.rasterization in TEXT_TUNING_CASES:
+            arguments.extend(TEXT_TUNING_CASES[self.rasterization])
+        else:
             arguments.append("--glint-windows-font-rasterization=" + self.rasterization)
         return arguments
 
@@ -63,12 +83,13 @@ def compare(control: dict, candidate: dict) -> dict:
     return result
 
 
-def assess(runs: dict) -> dict:
-    if (not isinstance(runs, dict) or set(runs) != set(MODES)
+def assess(runs: dict, *, series: str = "rasterization") -> dict:
+    modes = series_modes(series)
+    if (not isinstance(runs, dict) or set(runs) != set(modes)
             or any(not isinstance(value, list) or len(value) != 2 for value in runs.values())):
         raise ValueError("Each font mode requires two complete profile starts")
     restarts = {mode: compare(values[0], values[1]) for mode, values in runs.items()}
-    controls = {mode: compare(runs["off"][0], runs[mode][0]) for mode in MODES[1:]}
+    controls = {mode: compare(runs["off"][0], runs[mode][0]) for mode in modes[1:]}
     failures = []
     for mode, rounds in runs.items():
         for round_index, scopes in enumerate(rounds):
@@ -99,10 +120,22 @@ def assess(runs: dict) -> dict:
             if (not observed["fidelity"]["matches_control"] or observed["formats"] or observed["hdr"]
                     or observed["consistency_changed"] or (mode == "native" and observed["text"])):
                 failures.append({"mode": mode, "scope": scope, "reason": "control-compatibility-changed"})
-    effects = {scope: any(first["hashes"]["pixels"] != second["hashes"]["pixels"]
-                          for first, second in zip(runs["aliased"][0][scope]["text"]["rows"],
-                                                   runs["grayscale"][0][scope]["text"]["rows"], strict=True))
-               for scope in native_font_contexts.SCOPES}
+    def pixel_effects(first_mode, second_mode):
+        return {scope: any(first["hashes"]["pixels"] != second["hashes"]["pixels"]
+                          for first, second in zip(runs[first_mode][0][scope]["text"]["rows"],
+                                                   runs[second_mode][0][scope]["text"]["rows"], strict=True))
+                for scope in native_font_contexts.SCOPES}
+
+    if series == "text-tuning":
+        effects = {"gamma": pixel_effects("gamma-1400", "gamma-2200"),
+                   "contrast": pixel_effects("contrast-300", "contrast-500")}
+        for parameter, scopes in effects.items():
+            if not all(scopes.values()):
+                failures.append({"reason": "no-isolated-parameter-pixel-effect", "parameter": parameter,
+                                 "scopes": [scope for scope, changed in scopes.items() if not changed]})
+        return {"passed": not failures, "failures": failures, "restarts": restarts,
+                "controls": controls, "independent_parameter_effects": effects}
+    effects = pixel_effects("aliased", "grayscale")
     effect = all(effects.values())
     if not effect:
         failures.append({"reason": "no-measured-aliased-versus-grayscale-pixel-effect",
@@ -111,7 +144,11 @@ def assess(runs: dict) -> dict:
             "controls": controls, "aliased_grayscale_pixel_effect": effect, "pixel_effects_by_scope": effects}
 
 
-async def verify(executable: Path, destination: Path) -> dict:
+async def verify(executable: Path, destination: Path, *, series: str = "rasterization",
+                 candidate_name: str | None = None) -> dict:
+    modes = series_modes(series)
+    candidate = None if candidate_name is None else native_build.load_candidate(candidate_name)
+    policy_patch = PATCH if candidate is None else candidate["directory"] / "patches" / PATCH.name
     if sys.platform != "win32":
         raise ValueError("Windows font rendering verification requires Windows")
     require_idle_builder()
@@ -127,21 +164,41 @@ async def verify(executable: Path, destination: Path) -> dict:
     receipt = receipt_path.read_bytes()
     record = json.loads(receipt.decode("utf-8-sig"))
     core = measure_runtime_core(executable)
-    expected = {"name": PATCH.name, "sha256": hashlib.sha256(PATCH.read_bytes()).hexdigest()}
+    expected = {"name": policy_patch.name, "sha256": hashlib.sha256(policy_patch.read_bytes()).hexdigest()}
     if (not isinstance(record, dict) or record.get("platform") != "win32"
             or record.get("binary") != "chrome.exe" or record.get("runtime_core_sha256_measured") != core
             or not isinstance(record.get("patches"), list) or record["patches"].count(expected) != 1):
         raise ValueError("The exact compiled font policy and runtime core receipt are required")
-    inputs = [PATCH, Path(__file__), ROOT / "scripts/native_font_contexts.py",
+    if candidate is None:
+        if "candidate_manifest_sha256" in record:
+            raise ValueError("Candidate rendering verification requires explicit --candidate selection")
+    else:
+        manifest = candidate["manifest"]
+        expected_patches = [
+            {"name": row["file"], "sha256": row["sha256"],
+             **({"repository": "v8", "revision": manifest["dependencies"]["v8"]["revision"]}
+                if directory == "v8" else {})}
+            for directory in (".", "v8") for row in manifest["patches"] if row.get("directory", ".") == directory]
+        if (record.get("candidate_manifest_sha256") != candidate["manifest_sha256"]
+                or record.get("chromium_revision") != candidate["lock"]["chromium_revision"]
+                or record.get("depot_tools_revision") != candidate["lock"]["depot_tools_revision"]
+                or record["patches"] != expected_patches):
+            raise ValueError("Candidate rendering receipt differs from its complete pinned source/patch manifest")
+    inputs = [policy_patch, Path(__file__), ROOT / "scripts/native_font_contexts.py",
               ROOT / "scripts/native_font_rendering.py", ROOT / "scripts/native_canvas_formats.py",
               ROOT / "scripts/native_canvas_hdr.py",
               ROOT / "scripts/native_font_visuals.py",
               ROOT / "app/core/native/canvas_fidelity.py"]
     inputs.extend(ROOT / "app/core/native" / name for name in ("configuration.py", "privacy.py", "runtime.py", "identity.py"))
+    if candidate is not None:
+        inputs.extend([candidate["directory"] / "manifest.json", Path(native_build.__file__)])
+        inputs.extend(candidate["directory"] / "patches" / row["file"] for row in candidate["manifest"]["patches"])
     before = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
     resources = measure_branding_resources(executable)
     destination.mkdir()
-    report = {"passed": False, "scope": __doc__, "capability_admitted": False,
+    report = {"passed": False, "scope": __doc__, "series": series, "capability_admitted": False,
+              **({"candidate": candidate_name, "candidate_manifest_sha256": candidate["manifest_sha256"]}
+                 if candidate is not None else {}),
               "runtime_core_sha256_measured": core, "inputs_sha256": before,
               "resource_pack_sha256": resources, "runs": {}, "visuals": {}, "screenshots_sha256": {}, "errors": []}
     server = None
@@ -152,7 +209,7 @@ async def verify(executable: Path, destination: Path) -> dict:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         server_started = True
-        for mode in MODES:
+        for mode in modes:
             report["runs"][mode] = []
             report["visuals"][mode] = []
             for round_index in range(2):
@@ -181,13 +238,13 @@ async def verify(executable: Path, destination: Path) -> dict:
                         raise RuntimeError("Font probe retains browser resources; remaining modes were not run")
                     (destination / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")
         if not report["errors"]:
-            report["assessment"] = assess(report["runs"])
+            report["assessment"] = assess(report["runs"], series=series)
             report["visual_restarts"] = {mode: native_font_visuals.compare_control(values[0], values[1])
                                           for mode, values in report["visuals"].items()}
             report["visual_controls"] = {mode: native_font_visuals.compare_control(report["visuals"]["off"][0], values[0])
                                           for mode, values in report["visuals"].items() if mode != "off"}
             report["passed"] = (report["assessment"]["passed"] and not any(report["visual_restarts"].values())
-                                and not report["visual_controls"]["native"])
+                                and (series == "text-tuning" or not report["visual_controls"]["native"]))
     except Exception as error:
         report["error"] = type(error).__name__ + ": " + str(error)
     finally:
@@ -202,6 +259,7 @@ async def verify(executable: Path, destination: Path) -> dict:
                 core == measure_runtime_core(executable) and receipt == receipt_path.read_bytes()
                 and resources == measure_branding_resources(executable)
                 and before == {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}
+                and (candidate is None or native_build.load_candidate(candidate_name) == candidate)
                 and all(value == hashlib.sha256((destination / name).read_bytes()).hexdigest()
                         for name, value in report["screenshots_sha256"].items()))
         except (ValueError, OSError) as error:
@@ -216,9 +274,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--series", choices=("rasterization", "text-tuning"), default="rasterization")
+    parser.add_argument("--candidate", choices=("upstream-156",), help="Bind the complete candidate build receipt; not capability admission")
     arguments = parser.parse_args()
     try:
-        report = asyncio.run(verify(arguments.executable, arguments.output))
+        report = asyncio.run(verify(arguments.executable, arguments.output, series=arguments.series,
+                                    candidate_name=arguments.candidate))
     except (OSError, ValueError) as error:
         parser.exit(1, f"Font rendering verification failed: {error}\n")
     summary = {key: report.get(key) for key in ("passed", "errors", "error", "inputs_unchanged")}

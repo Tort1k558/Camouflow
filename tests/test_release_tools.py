@@ -573,9 +573,15 @@ def test_native_build_rejects_invalid_job_budgets_before_filesystem_changes(tmp_
 
 @pytest.mark.parametrize("missing_dll", [None, "chrome.dll", "chrome_elf.dll"])
 @pytest.mark.parametrize("candidate_name", [None, "upstream-156"])
-def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_path, monkeypatch, missing_dll, candidate_name):
+@pytest.mark.parametrize("local_toolchain", [False, True])
+def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_path, monkeypatch, missing_dll, candidate_name, local_toolchain):
     import json
     from scripts import native_build
+    if local_toolchain and (not candidate_name or sys.platform != "win32"):
+        with pytest.raises(ValueError, match="explicit.*candidate build"):
+            native_build.execute("build", tmp_path, candidate_name=candidate_name, local_toolchain=True)
+        assert not (tmp_path / "chromium").exists()
+        return
     if missing_dll and sys.platform != "win32":
         pytest.skip("Windows core DLL receipt")
     candidate = native_build.load_candidate(candidate_name) if candidate_name else None
@@ -607,7 +613,9 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
                         (binary.parent / name).write_bytes(name.encode("ascii"))
         return ""
     monkeypatch.setattr(native_build, "preflight", lambda *a, **kw: {})
-    monkeypatch.setattr(native_build, "environment", lambda *a, **kwargs: {})
+    selected_environment = {"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "a" * 64} if local_toolchain else {}
+    monkeypatch.setattr(native_build, "environment", lambda *a, **kwargs: dict(selected_environment))
+    monkeypatch.setattr(native_build, "local_windows_toolchain", lambda *a: dict(selected_environment))
     monkeypatch.setattr(native_build, "checkout", lambda *a: None)
     monkeypatch.setattr(native_build, "bootstrap_windows_git", lambda *a: None)
     monkeypatch.setattr(native_build, "require_stage", lambda *a: None)
@@ -622,14 +630,18 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
     monkeypatch.setattr(native_build, "run", run)
     if missing_dll:
         with pytest.raises(ValueError, match=missing_dll):
-            native_build.execute("build", tmp_path, jobs=1, candidate_name=candidate_name)
+            native_build.execute("build", tmp_path, jobs=1, candidate_name=candidate_name, local_toolchain=local_toolchain)
         assert not receipt_path.exists()
         return
-    native_build.execute("build", tmp_path, jobs=1, candidate_name=candidate_name)
+    native_build.execute("build", tmp_path, jobs=1, candidate_name=candidate_name, local_toolchain=local_toolchain)
     assert ["autoninja", "-C", "out/CamouFlowNative", "-j", "1", "chrome"] in commands
     receipt = json.loads((source / "out/CamouFlowNative/camouflow-build.json").read_text(encoding="utf-8"))
     assert receipt["build_jobs"] == 1
     assert receipt["native_patch_runtime_verified"] is False
+    if local_toolchain:
+        assert receipt["local_windows_toolchain_sha256"] == "a" * 64
+    else:
+        assert "local_windows_toolchain_sha256" not in receipt
     assert receipt["chromium_revision"] == selected_lock["chromium_revision"]
     if candidate:
         assert candidate_checks == [candidate, candidate]
@@ -641,9 +653,13 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
     assert receipt["binary_sha256_measured"] == core[Path(relative).name]
 
 
-@pytest.mark.parametrize("changed", ["patches", "v8_patches", "output_arguments", "input_arguments"])
+@pytest.mark.parametrize("changed", ["patches", "v8_patches", "output_arguments", "input_arguments", "toolchain"])
 def test_native_build_does_not_record_success_if_inputs_change_during_compilation(tmp_path, monkeypatch, changed):
     from scripts import native_build
+    candidate = native_build.load_candidate("upstream-156") if changed == "toolchain" else None
+    if candidate:
+        native_build.candidate_workspace(tmp_path, candidate, claim=True)
+        monkeypatch.setattr(native_build, "load_candidate", lambda name: candidate)
 
     source = tmp_path / "chromium/src"
     output = source / "out/CamouFlowNative"
@@ -661,7 +677,7 @@ def test_native_build_does_not_record_success_if_inputs_change_during_compilatio
     def run(args, *a, **kwargs):
         nonlocal compiled
         if args[:3] == ["git", "rev-parse", "HEAD"]:
-            return native_build.LOCK["chromium_revision"]
+            return (candidate["lock"] if candidate else native_build.LOCK)["chromium_revision"]
         if args[0] == "autoninja":
             compiled = True
             if changed == "output_arguments":
@@ -674,14 +690,17 @@ def test_native_build_does_not_record_success_if_inputs_change_during_compilatio
     monkeypatch.setattr(native_build, "checkout", lambda *a: None)
     monkeypatch.setattr(native_build, "v8_source_patches", lambda *a: [{"name": "changed-v8"}] if compiled and changed == "v8_patches" else [])
     monkeypatch.setattr(native_build, "preflight", lambda *a, **kw: {})
-    monkeypatch.setattr(native_build, "environment", lambda *a, **kwargs: {})
+    monkeypatch.setattr(native_build, "environment", lambda *a, **kwargs: {"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "a" * 64})
+    monkeypatch.setattr(native_build, "local_windows_toolchain", lambda *a: {"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "b" * 64})
+    monkeypatch.setattr(native_build, "candidate_source_patches", lambda *a: [])
     monkeypatch.setattr(native_build, "bootstrap_windows_git", lambda *a: None)
     monkeypatch.setattr(native_build, "require_stage", lambda *a: None)
     monkeypatch.setattr(native_build, "source_patches", lambda *a: [{"name": "changed"}] if compiled and changed == "patches" else [])
     monkeypatch.setattr(native_build, "depot_command", lambda name, *a: [name])
     monkeypatch.setattr(native_build, "run", run)
     with pytest.raises(ValueError, match="changed during compilation"):
-        native_build.execute("build", tmp_path, jobs=1)
+        native_build.execute("build", tmp_path, jobs=1, candidate_name="upstream-156" if candidate else None,
+                             local_toolchain=changed == "toolchain")
     assert compiled and not receipt.exists()
 
 
@@ -1277,11 +1296,11 @@ def test_native_privacy_verification_refuses_existing_compiler(monkeypatch, runn
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows owned-profile unit verifier")
-@pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure", "source_change", "compiler_and_browser_change", "compiler_and_browser_removed"])
+@pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure", "source_change", "compiler_and_browser_change", "compiler_and_browser_removed", "toolchain_change"])
 @pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", "font-rasterization",
                                     "identity-keys", "identity-contexts", "identity-transport"])
-@pytest.mark.parametrize("candidate_mode", [False, True])
-def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure, target, candidate_mode):
+@pytest.mark.parametrize("candidate_mode,local_toolchain", [(False, False), (True, False), (True, True)])
+def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(tmp_path, monkeypatch, failure, target, candidate_mode, local_toolchain):
     import json
     import subprocess
     from scripts import verify_native_privacy_units as privacy
@@ -1305,7 +1324,9 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
             "schema": 1, "candidate": candidate["name"], "chromium_revision": selected_lock["chromium_revision"]}), encoding="utf-8")
     monkeypatch.setattr(privacy.build, "preflight", lambda *args, **kwargs: None)
     monkeypatch.setattr(privacy, "require_idle_builder", lambda: None)
-    monkeypatch.setattr(privacy.build, "environment", lambda *args, **kwargs: {})
+    monkeypatch.setattr(privacy.build, "environment", lambda *args, **kwargs: {"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "a" * 64})
+    monkeypatch.setattr(privacy.build, "local_windows_toolchain", lambda *args: {
+        "GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": ("b" if failure == "toolchain_change" else "a") * 64})
     monkeypatch.setattr(privacy.build, "run", lambda *args, **kwargs: selected_lock["chromium_revision"])
 
     def require_stage(*args):
@@ -1383,8 +1404,9 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
 
     monkeypatch.setattr(privacy.subprocess, "run", run)
     selected_name = candidate["name"] if candidate is not None else None
-    proof = privacy.verify(workspace, report, target=target, candidate_name=selected_name)
-    assert proof["passed"] is (failure is None)
+    proof = privacy.verify(workspace, report, target=target, candidate_name=selected_name, local_toolchain=local_toolchain)
+    expected_pass = failure is None or (failure == "toolchain_change" and not local_toolchain)
+    assert proof["passed"] is expected_pass
     assert json.loads(report.read_text(encoding="utf-8")) == proof
     assert "Owned subprocess output" in report.with_name("proof-build.log").read_text(encoding="utf-8")
     assert commands[0][-3:] == ["-j", "4", build_target]
@@ -1399,12 +1421,17 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
     assert proof["target"] == target
     assert proof["source_chromium_revision"] == selected_lock["chromium_revision"]
     assert proof["browser_runtime_verified"] is False and proof["privacy_admitted"] is False
-    assert proof["postguards_passed"] is (failure not in {"browser_change", "source_change", "compiler_and_browser_change", "compiler_and_browser_removed"})
+    assert proof["postguards_passed"] is (failure not in {"browser_change", "source_change", "compiler_and_browser_change", "compiler_and_browser_removed"}
+                                         and not (failure == "toolchain_change" and local_toolchain))
+    if local_toolchain:
+        assert proof["local_windows_toolchain_sha256"] == "a" * 64
+    else:
+        assert "local_windows_toolchain_sha256" not in proof
     if candidate_mode:
         assert proof["candidate"] == "upstream-156" and proof["candidate_manifest_sha256"] == candidate["manifest_sha256"]
     else:
         assert "candidate" not in proof and "candidate_manifest_sha256" not in proof
-    if failure is None:
+    if expected_pass:
         assert proof["tests"] == {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12, "font-rasterization": 5,
                                   "identity-keys": 62, "identity-contexts": 37, "identity-transport": 20}[target] and proof["baseline_browser_code_unchanged"]
         assert len(proof["test_binary_sha256"]) == 64
@@ -1417,7 +1444,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         if failure == "compiler_and_browser_removed":
             assert "autoninja" in proof["error"] and "Native browser is not installed" in proof["postguard_error"]
     with pytest.raises(ValueError, match="overwrite"):
-        privacy.verify(workspace, report, target=target, candidate_name=selected_name)
+        privacy.verify(workspace, report, target=target, candidate_name=selected_name, local_toolchain=local_toolchain)
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows candidate unit verifier")
@@ -1458,6 +1485,17 @@ def test_privacy_units_refuse_a_workspace_owned_by_sync_before_compiler_setup(tm
         with pytest.raises(ValueError, match="owns this workspace"):
             privacy.verify(workspace, tmp_path / "proof.json")
     assert not (tmp_path / "proof.json").exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows native unit verifier")
+@pytest.mark.parametrize("selection", [True, "true", 1, None])
+def test_privacy_units_require_explicit_candidate_for_local_toolchain(tmp_path, selection):
+    from scripts import verify_native_privacy_units as privacy
+
+    report = tmp_path / "proof.json"
+    with pytest.raises(ValueError, match="explicit candidate"):
+        privacy.verify(tmp_path, report, local_toolchain=selection)
+    assert not report.exists() and not (tmp_path / "glint-build.lock").exists()
 
 
 def test_native_key_derivation_patch_reuses_canonical_message_header():

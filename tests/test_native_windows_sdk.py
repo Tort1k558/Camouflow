@@ -1,12 +1,165 @@
 import hashlib
 import json
+import os
 import stat
 import subprocess
+import sys
 import zipfile
 
 import pytest
 
 from scripts import native_windows_sdk as sdk
+
+
+@pytest.fixture
+def local_toolchain_fixture(tmp_path):
+    from scripts import native_build as build
+
+    workspace = tmp_path / "workspace"
+    root = workspace / "toolchain/local"
+    sdk_root = root / "Windows Kits/10"
+    vc = root / "VC"
+    version = "14.51.12345"
+    spec = json.loads((build.ROOT / "native/toolchain/windows-sdk-28000.json").read_text(encoding="utf-8"))
+
+    def put(path, content=b"owned input"):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        return path
+
+    put(vc / "Auxiliary/Build/Microsoft.VCToolsVersion.default.txt", version.encode())
+    for cpu in ("x86", "x64"):
+        (vc / "Redist/MSVC" / version / cpu / "Microsoft.VC145.CRT").mkdir(parents=True)
+        for name in ("cl.exe", "link.exe"):
+            put(vc / "Tools/MSVC" / version / "bin/Hostx64" / cpu / name)
+    entries = []
+    for relative in ("Include/10.0.28000.0/um/Windows.h", "Lib/10.0.28000.0/um/x64/kernel32.lib"):
+        path = put(sdk_root / relative)
+        entries.append({"path": relative, "sha256": sdk.sha256(path)})
+    debuggers = []
+    for cpu in ("x86", "x64"):
+        for name in ("dbghelp.dll", "dbgcore.dll", "symsrv.dll"):
+            relative = f"Debuggers/{cpu}/{name}"
+            path = put(sdk_root / relative)
+            debuggers.append({"path": relative, "sha256": sdk.sha256(path)})
+    for name in ("SetEnv.cmd", "SetEnv.x86.json", "SetEnv.x64.json"):
+        put(sdk_root / "bin" / name)
+    provenance = {"layout_verified": True, "sdk_package_version": spec["version"],
+                  "packages": [{"package": p["package"], "sha256": p["sha256"]} for p in spec["packages"]],
+                  "files": entries, "debuggers": debuggers}
+    put(sdk_root / "glint-sdk-provenance.json", json.dumps(provenance).encode())
+    config = {"path": str(root), "version": "2026", "win_sdk": str(sdk_root), "wdk": "",
+              "runtime_dirs": [str(vc / "Redist/MSVC" / version / cpu / "Microsoft.VC145.CRT")
+                               for cpu in ("x64", "x86")] + ["Arm64Unused"]}
+    put(workspace / "chromium/src/build/win_toolchain.json", json.dumps(config).encode())
+    return workspace, sdk_root, vc, config, provenance
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows local toolchain environment")
+@pytest.mark.parametrize("mutation", [None, "sdk-file", "package", "missing-files", "duplicate", "escape",
+                                     "missing-script", "sdk-path", "runtime", "version"])
+def test_local_toolchain_validates_owned_layout_and_every_recorded_sdk_input(local_toolchain_fixture, mutation):
+    from scripts import native_build as build
+
+    workspace, sdk_root, vc, config, provenance = local_toolchain_fixture
+    if mutation == "sdk-file":
+        (sdk_root / provenance["files"][0]["path"]).write_bytes(b"changed SDK")
+    elif mutation == "package":
+        provenance["packages"][0]["sha256"] = "f" * 64
+    elif mutation == "missing-files":
+        provenance["files"] = []
+    elif mutation == "duplicate":
+        provenance["files"].append(dict(provenance["files"][0]))
+    elif mutation == "escape":
+        path = sdk_root.parent / "outside"
+        path.write_bytes(b"outside")
+        provenance["files"][0] = {"path": "../outside", "sha256": sdk.sha256(path)}
+    elif mutation == "missing-script":
+        (sdk_root / "bin/SetEnv.cmd").unlink()
+    elif mutation == "sdk-path":
+        config["win_sdk"] = str(sdk_root.parent)
+    elif mutation == "runtime":
+        config["runtime_dirs"].reverse()
+    elif mutation == "version":
+        config["version"] = "2022"
+    (workspace / "chromium/src/build/win_toolchain.json").write_text(json.dumps(config), encoding="utf-8")
+    (sdk_root / "glint-sdk-provenance.json").write_text(json.dumps(provenance), encoding="utf-8")
+    if mutation:
+        with pytest.raises(ValueError):
+            build.environment(workspace, local_toolchain=True)
+        assert not (workspace / "tmp").exists() and not (workspace / "build.gitconfig").exists()
+    else:
+        before = dict(os.environ)
+        selected = build.environment(workspace, local_toolchain=True)
+        assert selected["DEPOT_TOOLS_WIN_TOOLCHAIN"] == "1"
+        assert selected["WINDOWSSDKDIR"] == str(sdk_root)
+        assert selected["vs2026_install"] == str(vc.parent)
+        assert len(selected["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]) == 64
+        assert dict(os.environ) == before
+        assert build.environment(workspace)["DEPOT_TOOLS_WIN_TOOLCHAIN"] == "0"
+        assert build.local_windows_toolchain(workspace)["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"] == selected["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows local toolchain environment")
+@pytest.mark.parametrize("input_name", ["SetEnv.cmd", "SetEnv.x64.json", "cl.exe"])
+def test_local_toolchain_snapshot_detects_environment_and_compiler_drift(local_toolchain_fixture, input_name):
+    from scripts import native_build as build
+
+    workspace, sdk_root, vc, _, _ = local_toolchain_fixture
+    before = build.local_windows_toolchain(workspace)["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]
+    path = (vc / "Tools/MSVC/14.51.12345/bin/Hostx64/x64/cl.exe" if input_name == "cl.exe"
+            else sdk_root / "bin" / input_name)
+    path.write_bytes(b"changed toolchain input")
+    assert build.local_windows_toolchain(workspace)["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"] != before
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows junction regression")
+def test_local_toolchain_rejects_vc_junction_before_environment_changes(local_toolchain_fixture):
+    import _winapi
+    from scripts import native_build as build
+
+    workspace, _, vc, _, _ = local_toolchain_fixture
+    original = workspace / "installed-VC"
+    vc.rename(original)
+    _winapi.CreateJunction(str(original), str(vc))
+    assert vc.is_junction()
+    try:
+        with pytest.raises(ValueError, match="materialized without junctions"):
+            build.environment(workspace, local_toolchain=True)
+        assert not (workspace / "tmp").exists()
+        assert not (workspace / "build.gitconfig").exists()
+        assert (original / "Auxiliary/Build/Microsoft.VCToolsVersion.default.txt").read_text() == "14.51.12345"
+    finally:
+        vc.rmdir()
+
+
+@pytest.mark.parametrize("action,candidate", [("hooks", "upstream-156"), ("sync", "upstream-156"),
+                                           ("preflight", "upstream-156"), ("build", None)])
+def test_local_toolchain_is_never_an_implicit_sdk_fallback(tmp_path, action, candidate):
+    from scripts import native_build as build
+
+    workspace = tmp_path / "not-created"
+    with pytest.raises(ValueError, match="explicit.*candidate build"):
+        build.execute(action, workspace, candidate_name=candidate, local_toolchain=True)
+    assert not workspace.exists()
+
+
+def test_build_script_sdk_import_works_without_project_on_pythonpath(tmp_path):
+    from scripts import native_build as build
+
+    script = """import runpy,sys
+from pathlib import Path
+module = runpy.run_path(sys.argv[1])
+try:
+    module['local_windows_toolchain'](Path(sys.argv[2]))
+except ValueError as error:
+    assert 'Windows' in str(error) or 'win_toolchain.json' in str(error), str(error)
+else:
+    raise AssertionError('An unprepared toolchain must not be accepted')
+"""
+    result = subprocess.run([sys.executable, "-I", "-c", script, str(build.ROOT / "scripts/native_build.py"), str(tmp_path)],
+                            cwd=tmp_path, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 @pytest.mark.parametrize("name", ["c/../escape", "c/a/../../escape", "c/a\\escape", "c/D:escape", "c//empty", "c/./dot", "/c/absolute"])

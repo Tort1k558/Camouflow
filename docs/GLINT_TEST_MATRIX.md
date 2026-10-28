@@ -54,6 +54,40 @@ workloads, then decide the supported profile contract. Reuse verified upstream
 controls instead of duplicating them in a custom patch unless a measured gap
 requires one.
 
+### Independent gamma/contrast controls — 2026-10-29
+
+The public rendering verifier now provides `--series text-tuning`: baseline,
+two gamma-only cases, two contrast-only cases and four joint cases. A run on
+the unchanged **Glint 148 / 001-062** output passed **144 scope observations**
+(nine cases, two starts, eight scopes). Gamma-only and contrast-only changes
+each affected text pixels independently in every scope. Assessment failures
+and screenshot restart differences were both zero. Core, resource, source,
+receipt and screenshot guards passed. Evidence on D:
+`text-tuning-factorial-001-062-20261028-v1/report.json`.
+
+This does not establish natural hardware distributions, general application
+compatibility or a result on 156. Manager admission remains disabled. The same
+verifier can explicitly bind `--candidate upstream-156` to the complete
+candidate receipt, manifest and patch chain, but that runtime run is pending.
+
+## Chromium 156 compilation checkpoint — 2026-10-29
+
+Dependency sync, hooks and the complete 62-patch Chromium/V8 chain completed.
+GN succeeded using installed VS 2026 MSVC and the checksummed official SDK
+assembly in a workspace-local layout. The first j4 compilation stopped after
+140 completed actions with errors in two unified system module targets, not
+an engine test failure or a completed browser build. Remaining actions at that
+failure: 88,298; this is not an ETA.
+
+Aligning MSVC include paths with the projected toolchain namespace exposed a
+separate Siso dependency-resolution failure at the VC junction. Neither
+diagnostic passed compilation. Original SDK/compiler files and the reviewed
+148 runtime remain untouched; compiler modules have not been disabled.
+Retained evidence: `build-20261028-235508.log` and
+`toolchain/system-module-namespace-20261029-v1/1.log` in `D:\Glint156Candidate`.
+Next: remove the toolchain path ambiguity, reproduce both module targets,
+then resume the existing j4 graph before native/runtime checks.
+
 ## Follow-up Windows regression — 2026-10-28
 
 This is another run of the installed **148 / 001-062** package, not a new linked

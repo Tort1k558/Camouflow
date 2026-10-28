@@ -134,6 +134,73 @@ def mode_runs():
     return result
 
 
+def tuning_runs():
+    result = {mode: [{scope: observation(scope) for scope in native_font_contexts.SCOPES}
+                     for _ in range(2)] for mode in verifier.TEXT_TUNING_CASES}
+    for mode, rounds in result.items():
+        digest = hashlib.sha256(mode.encode()).hexdigest()
+        for scopes in rounds:
+            for value in scopes.values():
+                for row in value["text"]["rows"]:
+                    row["hashes"] = {name: digest for name in native_font_rendering.HASHES}
+    return result
+
+
+@pytest.mark.parametrize("failure", [None, "gamma", "contrast-worker", "raw", "format", "hdr",
+                                   "restart", "unstable-export", "missing-case", "missing-scope"])
+def test_text_tuning_requires_isolated_effects_and_full_compatible_factorial_matrix(failure):
+    runs = tuning_runs()
+    mode = "gamma-2200-contrast-500"
+    if failure == "gamma":
+        runs["gamma-2200"] = deepcopy(runs["gamma-1400"])
+    elif failure == "contrast-worker":
+        for phase in range(2):
+            runs["contrast-500"][phase]["shared-module"] = deepcopy(runs["contrast-300"][phase]["shared-module"])
+    elif failure == "raw":
+        for scopes in runs[mode]:
+            scopes["document"]["fidelity"]["rows"][0]["input"] = {
+                "changedChannels": 1, "changedPixels": 1, "alphaChanges": 0, "maximumError": 1}
+    elif failure in {"format", "hdr"}:
+        section = "formats" if failure == "format" else "hdr"
+        for scopes in runs[mode]:
+            scopes["document"][section]["rows"][0]["read"] = {"status": "error", "name": "NotReadableError"}
+    elif failure == "restart":
+        runs[mode][1]["service-classic"]["text"]["rows"][0]["metrics"]["width"] += 1
+    elif failure == "unstable-export":
+        for scopes in runs[mode]:
+            scopes["document"]["text"]["rows"][0]["hashes"]["pngRepeat"] = "c" * 64
+    elif failure == "missing-case":
+        del runs[mode]
+    elif failure == "missing-scope":
+        del runs[mode][0]["service-module"]
+    if failure in {"missing-case", "missing-scope"}:
+        with pytest.raises(ValueError):
+            verifier.assess(runs, series="text-tuning")
+        return
+    result = verifier.assess(runs, series="text-tuning")
+    assert result["passed"] is (failure is None)
+    assert "aliased_grayscale_pixel_effect" not in result
+    if failure == "gamma":
+        assert not any(result["independent_parameter_effects"]["gamma"].values())
+    elif failure == "contrast-worker":
+        assert not result["independent_parameter_effects"]["contrast"]["shared-module"]
+    elif failure is None:
+        assert all(all(scopes.values()) for scopes in result["independent_parameter_effects"].values())
+
+
+@pytest.mark.parametrize("mode,flags", verifier.TEXT_TUNING_CASES.items())
+def test_upstream_text_tuning_uses_only_explicit_existing_flags(mode, flags):
+    arguments = verifier.RenderingConfiguration(rasterization=mode).launch_arguments()
+    assert arguments == ["--lang=en-US", "--accept-lang=en-US", *flags]
+    assert not any("readback" in flag or "rasterization=" in flag for flag in arguments)
+
+
+@pytest.mark.parametrize("series", ["", "unknown", None, True])
+def test_unknown_rendering_series_has_no_fallback(series):
+    with pytest.raises(ValueError, match="Unknown rendering"):
+        verifier.assess({}, series=series)
+
+
 def test_all_modes_require_stable_compatible_observations_and_pixel_effect():
     result = verifier.assess(mode_runs())
     assert result["passed"] and result["aliased_grayscale_pixel_effect"]
@@ -251,7 +318,9 @@ def test_admitted_rendering_requires_restart_stability_and_effect_in_every_scope
 
 
 @pytest.mark.parametrize("failure", [None, "measurement", "core-change", "pack-change", "pack-removed", "source-change", "policy-change", "receipt-change", "screenshot-change", "screenshot-removed", "visual-restart", "cleanup", "bind"])
-def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure):
+@pytest.mark.parametrize("series", ["rasterization", "text-tuning"])
+@pytest.mark.parametrize("candidate_mode", [False, True])
+def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure, series, candidate_mode):
     public = tmp_path / "public"
     runtime_dir = tmp_path / "runtime"
     runtime_dir.mkdir()
@@ -274,9 +343,17 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
         return {"chrome.exe": hashlib.sha256(path.read_bytes()).hexdigest(),
                 "chrome.dll": "d" * 64, "chrome_elf.dll": "e" * 64}
 
+    candidate = verifier.native_build.load_candidate("upstream-156") if candidate_mode else None
+    binding = {} if candidate is None else {
+        "candidate_manifest_sha256": candidate["manifest_sha256"],
+        "chromium_revision": candidate["lock"]["chromium_revision"],
+        "depot_tools_revision": candidate["lock"]["depot_tools_revision"],
+    }
+    patches = ([{"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]
+               if candidate is None else candidate_receipt_patches(candidate))
     (runtime_dir / "camouflow-build.json").write_text(json.dumps({
         "platform": "win32", "binary": "chrome.exe", "runtime_core_sha256_measured": core(executable),
-        "patches": [{"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}],
+        "patches": patches, **binding,
     }), encoding="utf-8")
     monkeypatch.setattr(verifier, "ROOT", public)
     monkeypatch.setattr(verifier, "PATCH", patch)
@@ -285,7 +362,8 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     monkeypatch.setattr(verifier, "measure_runtime_core", core)
     monkeypatch.setattr(verifier, "measure_branding_resources",
                         lambda path: {"resources.pak": hashlib.sha256(pack.read_bytes()).hexdigest()})
-    runs = mode_runs()
+    runs = mode_runs() if series == "rasterization" else tuning_runs()
+    modes = verifier.series_modes(series)
     starts = []
 
     class Page:
@@ -318,7 +396,7 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
         mode = page.mode
         if failure == "measurement" and mode == "off":
             raise ValueError("owned measurement failure")
-        if mode == "cleartype-bgr":
+        if mode == modes[-1]:
             if failure == "core-change":
                 executable.write_bytes(b"changed executable")
             elif failure == "pack-change":
@@ -341,7 +419,8 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
         value = {"rows": [{"font": font, "domWidth": 160, "domHeight": 24, "svgWidth": 160,
                            "canvasWidth": 160, "canvasPixelSha256": "a" * 64}
                           for font in verifier.native_font_visuals.FONTS]}
-        if failure == "visual-restart" and page.mode == "native" and starts.count("native") == 2:
+        visual_mode = "native" if series == "rasterization" else "gamma-1400"
+        if failure == "visual-restart" and page.mode == visual_mode and starts.count(visual_mode) == 2:
             value["rows"][0]["domWidth"] += 1
         return value
 
@@ -366,15 +445,67 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     monkeypatch.setattr(verifier.native_font_visuals, "collect", visual_collect)
     monkeypatch.setattr(verifier, "FixtureServer", Server)
     destination = tmp_path / "evidence"
-    report = asyncio.run(verifier.verify(executable, destination))
+    selector = None if candidate is None else candidate["name"]
+    report = asyncio.run(verifier.verify(executable, destination, series=series, candidate_name=selector))
     assert report["passed"] is (failure is None)
     assert report["capability_admitted"] is False
+    assert report["series"] == series
+    if candidate_mode:
+        assert report["candidate"] == selector and report["candidate_manifest_sha256"] == candidate["manifest_sha256"]
+    else:
+        assert "candidate" not in report
     assert json.loads((destination / "report.json").read_text(encoding="utf-8")) == report
     assert report["inputs_unchanged"] is (failure not in {
         "core-change", "pack-change", "pack-removed", "source-change", "policy-change", "receipt-change", "screenshot-change", "screenshot-removed"})
     if failure == "cleanup":
         assert starts == ["off"]
     elif failure != "bind":
-        assert starts == [mode for mode in verifier.MODES for _ in range(2)]
+        assert starts == [mode for mode in modes for _ in range(2)]
     with pytest.raises(ValueError, match="Fresh private evidence"):
-        asyncio.run(verifier.verify(executable, destination))
+        asyncio.run(verifier.verify(executable, destination, series=series, candidate_name=selector))
+
+
+def candidate_receipt_patches(candidate):
+    manifest = candidate["manifest"]
+    return [{"name": row["file"], "sha256": row["sha256"],
+             **({"repository": "v8", "revision": manifest["dependencies"]["v8"]["revision"]}
+                if directory == "v8" else {})}
+            for directory in (".", "v8") for row in manifest["patches"] if row.get("directory", ".") == directory]
+
+
+@pytest.mark.parametrize("mutation", ["implicit", "revision", "manifest", "missing-patch", "duplicate", "order", "v8", "unknown"])
+def test_rendering_candidate_rejects_wrong_or_incomplete_receipt_before_launch(tmp_path, monkeypatch, mutation):
+    candidate = verifier.native_build.load_candidate("upstream-156")
+    executable = tmp_path / "runtime" / "chrome.exe"
+    executable.parent.mkdir()
+    executable.write_bytes(b"owned candidate")
+    core = {"chrome.exe": "a" * 64, "chrome.dll": "b" * 64, "chrome_elf.dll": "c" * 64}
+    record = {"platform": "win32", "binary": "chrome.exe", "runtime_core_sha256_measured": core,
+              "candidate_manifest_sha256": candidate["manifest_sha256"],
+              "chromium_revision": candidate["lock"]["chromium_revision"],
+              "depot_tools_revision": candidate["lock"]["depot_tools_revision"],
+              "patches": candidate_receipt_patches(candidate)}
+    if mutation == "revision":
+        record["chromium_revision"] = "f" * 40
+    elif mutation == "manifest":
+        record["candidate_manifest_sha256"] = "f" * 64
+    elif mutation == "missing-patch":
+        record["patches"].pop(0)
+    elif mutation == "duplicate":
+        record["patches"].append(dict(record["patches"][0]))
+    elif mutation == "order":
+        record["patches"][0], record["patches"][1] = record["patches"][1], record["patches"][0]
+    elif mutation == "v8":
+        record["patches"][-1]["revision"] = "f" * 40
+    (executable.parent / "camouflow-build.json").write_text(json.dumps(record), encoding="utf-8")
+    monkeypatch.setattr(verifier.sys, "platform", "win32")
+    monkeypatch.setattr(verifier, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(verifier, "measure_runtime_core", lambda path: core)
+    monkeypatch.setattr(verifier, "NativeRuntime", lambda *args: pytest.fail("Invalid candidate reached launch"))
+    monkeypatch.setattr(verifier, "PATCH", candidate["directory"] / "patches" / verifier.PATCH.name)
+    selector = None if mutation == "implicit" else "unknown" if mutation == "unknown" else candidate["name"]
+    expected = "explicit --candidate" if mutation == "implicit" else "Unknown Native" if mutation == "unknown" else "complete pinned"
+    destination = tmp_path / "evidence"
+    with pytest.raises(ValueError, match=expected):
+        asyncio.run(verifier.verify(executable, destination, candidate_name=selector))
+    assert not destination.exists()
