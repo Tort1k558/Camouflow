@@ -89,6 +89,40 @@ report/log are retained and not used as a clean launcher gate. V2 captured the
 actual child exit via subprocess rather than treating shell status as browser
 failure or silently rewriting v1.
 
+## Canvas taint propagation and reset baseline — 2026-10-29
+
+The existing `verify_native_canvas.py` now checks 14 additional security/reset
+observations without changing browser code: origin taint survives `clearRect`
+and propagation through ImageBitmap, same-width resize resets taint/pixels/
+transform/fill/alpha, PNG export works again after reset, and another foreign
+draw taints the surface again. Both HTMLCanvas and OffscreenCanvas paths are
+covered in document, same-origin iframe and cross-origin iframe. Worker taint
+propagation is not claimed by these document-owned foreign-image fixtures.
+
+Stock **148.0.7778.96** and reviewed Glint **148 / 001-062** each passed initial
+and persistent restart: **12 security-scope observations, 22 fields each** across
+both engines, with identical security/reset results. The existing eight-scope
+readback/geometry/export checks also passed, 32 scope observations across these
+four starts. Both verifier child exits were zero. Complete managed payload and
+verification source postguards passed. Private evidence:
+`canvas-reset-contract-20261029-v2/{report,stock/report,managed/report}.json` on D.
+Focused Canvas validator tests passed **57 cases**; the full release-tool module
+passed **979 tests, one skipped**. The full application suite passed
+**3,469 tests, one skipped** in 294.30 seconds; CI Ruff selection passed.
+These are **feature-off compatibility controls**, not enabled Canvas protection,
+156 runtime proof, JPEG fidelity or a new product capability admission.
+
+The first control remains failed: it expected `IndexSizeError` for zero-width
+reads on a tainted surface, following the current
+[HTML algorithm](https://html.spec.whatwg.org/multipage/canvas.html#dom-context-2d-getimagedata).
+Actual stock 148 returns `SecurityError` first. The checked 156 source also tests
+origin cleanliness before zero dimensions in `getImageDataInternal`; source
+inspection is not 156 runtime proof. The baseline now explicitly preserves that
+measured upstream Chromium ordering, rather than silently claiming current HTML
+exception-order conformance. Untainted zero dimensions still require
+`IndexSizeError`. Original `canvas-reset-contract-20261029-v1` evidence is retained;
+no Chromium exception handling was changed to satisfy the verifier.
+
 ## Manager same-origin frame diagnostics — 2026-10-29
 
 The running-profile diagnostic now checks its own document and dedicated worker,

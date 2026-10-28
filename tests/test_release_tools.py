@@ -2707,7 +2707,11 @@ def test_native_canvas_baseline_requires_complete_consistent_readbacks(failure):
             validate_observations(observed, previous)
 
 
-@pytest.mark.parametrize("failure", [None, "taintedRead", "taintedDataUrl", "taintedBlob", "taintedOffscreenRead", "taintedOffscreenBlob", "zeroWidthRead", "emptyDataUrl", "emptyBlob", "missing-frame"])
+@pytest.mark.parametrize("failure", [None, "taintedRead", "taintedDataUrl", "taintedBlob", "taintedOffscreenRead", "taintedOffscreenBlob", "zeroWidthRead", "emptyDataUrl", "emptyBlob", "missing-frame",
+                                    "taintedZeroWidth", "taintedOffscreenZeroWidth", "htmlBitmapTaint", "offscreenBitmapTaint",
+                                    "clearedTaint", "clearedOffscreenTaint", "resetHtmlBlank", "resetOffscreenBlank",
+                                    "resetHtmlState", "resetOffscreenState", "resetHtmlExport", "resetOffscreenExport",
+                                    "retaintedRead", "retaintedOffscreenRead"])
 def test_native_canvas_security_requires_unchanged_origin_checks_and_empty_behavior(failure):
     from scripts.verify_native_canvas import SECURITY_EXPECTED, validate_security
 

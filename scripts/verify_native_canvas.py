@@ -137,18 +137,64 @@ SECURITY_READ = """async () => {
   let taintedOffscreenBlob = 'no-error';
   try { await offscreen.convertToBlob(); }
   catch (error) { taintedOffscreenBlob = error instanceof DOMException ? error.name : 'non-DOM-exception'; }
+  const taintedZeroWidth = failure(() => context.getImageData(0, 0, 0, 1));
+  const taintedOffscreenZeroWidth = failure(() => target.getImageData(0, 0, 0, 1));
+  const propagated = {};
+  for (const [name, source] of [['html', canvas], ['offscreen', offscreen]]) {
+    const bitmap = await createImageBitmap(source);
+    try {
+      const copy = new OffscreenCanvas(16, 16);
+      const copyContext = copy.getContext('2d'); copyContext.drawImage(bitmap, 0, 0);
+      propagated[name] = failure(() => copyContext.getImageData(0, 0, 1, 1));
+    } finally { bitmap.close(); }
+  }
+  context.clearRect(0, 0, 16, 16); target.clearRect(0, 0, 16, 16);
+  const clearedTaint = failure(() => context.getImageData(0, 0, 1, 1));
+  const clearedOffscreenTaint = failure(() => target.getImageData(0, 0, 1, 1));
+  for (const active of [context, target]) {
+    active.fillStyle = '#112233'; active.globalAlpha = 0.5; active.setTransform(2, 0, 0, 2, 1, 1);
+  }
+  canvas.width = canvas.width; offscreen.width = offscreen.width;
+  const resetBlank = active => active.getImageData(0, 0, 16, 16).data.every(value => value === 0);
+  const resetState = active => {
+    const matrix = active.getTransform();
+    return active.fillStyle === '#000000' && active.globalAlpha === 1
+      && [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f].every(
+        (value, index) => value === [1, 0, 0, 1, 0, 0][index]);
+  };
+  const resetHtmlBlank = resetBlank(context), resetOffscreenBlank = resetBlank(target);
+  const resetHtmlState = resetState(context), resetOffscreenState = resetState(target);
+  const resetHtmlExport = await new Promise(resolve => canvas.toBlob(value => resolve(value?.type === 'image/png')));
+  const resetOffscreenExport = (await offscreen.convertToBlob()).type === 'image/png';
+  context.drawImage(image, 0, 0); target.drawImage(image, 0, 0);
+  const retaintedRead = failure(() => context.getImageData(0, 0, 1, 1));
+  const retaintedOffscreenRead = failure(() => target.getImageData(0, 0, 1, 1));
   const empty = document.createElement('canvas'); empty.width = 0;
   const zeroWidthRead = failure(() => empty.getContext('2d').getImageData(0, 0, 0, 1));
   const emptyDataUrl = empty.toDataURL();
   const emptyBlob = await new Promise(resolve => empty.toBlob(blob => resolve(blob === null)));
   return {taintedRead, taintedDataUrl, taintedBlob, taintedOffscreenRead,
-          taintedOffscreenBlob, zeroWidthRead, emptyDataUrl, emptyBlob};
+          taintedOffscreenBlob, zeroWidthRead, emptyDataUrl, emptyBlob,
+          taintedZeroWidth, taintedOffscreenZeroWidth,
+          htmlBitmapTaint: propagated.html, offscreenBitmapTaint: propagated.offscreen,
+          clearedTaint, clearedOffscreenTaint, resetHtmlBlank, resetOffscreenBlank,
+          resetHtmlState, resetOffscreenState, resetHtmlExport, resetOffscreenExport,
+          retaintedRead, retaintedOffscreenRead};
 }"""
 
 SECURITY_EXPECTED = {"taintedRead": "SecurityError", "taintedDataUrl": "SecurityError",
                      "taintedBlob": "SecurityError", "taintedOffscreenRead": "SecurityError",
                      "taintedOffscreenBlob": "SecurityError", "zeroWidthRead": "IndexSizeError",
-                     "emptyDataUrl": "data:,", "emptyBlob": True}
+                     "emptyDataUrl": "data:,", "emptyBlob": True,
+                     # Pinned Chromium checks origin cleanliness before zero dimensions;
+                     # this baseline is not a claim of current HTML exception-order conformance.
+                     "taintedZeroWidth": "SecurityError", "taintedOffscreenZeroWidth": "SecurityError",
+                     "htmlBitmapTaint": "SecurityError", "offscreenBitmapTaint": "SecurityError",
+                     "clearedTaint": "SecurityError", "clearedOffscreenTaint": "SecurityError",
+                     "resetHtmlBlank": True, "resetOffscreenBlank": True,
+                     "resetHtmlState": True, "resetOffscreenState": True,
+                     "resetHtmlExport": True, "resetOffscreenExport": True,
+                     "retaintedRead": "SecurityError", "retaintedOffscreenRead": "SecurityError"}
 
 
 class CanvasFixtureHandler(FixtureHandler):
