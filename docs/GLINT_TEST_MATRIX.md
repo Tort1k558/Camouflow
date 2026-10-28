@@ -28,6 +28,17 @@ unchanged; only diagnostic exception notes were added. This is **not a new full
 suite pass**, does not isolate cold-cache versus I/O effects and does not fix or
 explain the earlier close timeout. Both reports are retained separately.
 
+A separate, bounded **10-round / three-concurrent-profile** lifecycle stress
+also passed on the same installed 148 package, with fingerprint policies off.
+Each round checked five-store persistence, a graceful checkpoint, one deliberate
+browser crash, unaffected surviving profiles, recovery and owned-process exit.
+All ten rounds recorded zero remaining owned processes; full payload/core
+postguards passed. Evidence: `rollback-restarts-20261028-v4/report.json` on D.
+The run took approximately 3m29s while the isolated 156 dependency sync was
+active. It reused the existing assertions and deadlines without retries. This
+is neither a full-suite rerun nor evidence for 156 or enabled privacy policies;
+it did not reproduce or establish a fix for the earlier close timeout.
+
 ## Latest linked build: 001-062 — 2026-10-14
 
 Patch 0062 is registered/applied to source: Windows font parameter policy,
