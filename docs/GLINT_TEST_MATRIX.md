@@ -30,6 +30,10 @@ access, oversized/deep JSON, invalid identity inputs and preservation of explici
 overrides; the real QML configuration/profile test passed separately. Browser
 JSON now scrolls internally and keeps Save/Cancel visible at the normal dialog
 size. Screenshot validation does not replace the runtime checks above.
+The complete Python run passed **3,291 tests, one skipped** in 324.77 seconds.
+The final runtime/toolchain/QML subset passed **554 tests**, including four
+input-bound cases added after that full run had already collected its tests.
+The repository's CI Ruff selection (`F821,F822,F823,E9`) also passed.
 
 This pins requested configuration, **not an entire fingerprint**: browser/OS
 updates, host GPU, network, permissions and other inherited settings can still
