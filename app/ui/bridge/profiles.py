@@ -727,6 +727,31 @@ class ProfilesBridge(QObject):
         settings = self._settings_dict(acc.get(key)) or {}
         return json.dumps(settings, ensure_ascii=False, indent=2)
 
+    @pyqtSlot(str, result=str)
+    def pinNativeProfileDefaultsJson(self, settings_json: str) -> str:  # noqa: N802
+        if not self._ensure_allowed("manager"):
+            return ""
+        from app.core.native.configuration import NativeConfiguration
+
+        try:
+            if not isinstance(settings_json, str) or len(settings_json) > 1024 * 1024:
+                raise ValueError("Glint settings draft must be text up to 1,048,576 characters")
+            overrides = json.loads(settings_json)
+            if not isinstance(overrides, dict):
+                raise ValueError("Browser settings must be a JSON object")
+            effective = {**db_get_native_defaults(), **overrides}
+            headless = effective.get("headless", False)
+            if type(headless) is not bool:
+                raise ValueError("Glint headless setting must be a boolean")
+            environment = NativeConfiguration.from_settings(effective).environment_settings()
+            prepared = {**overrides, **environment, "headless": headless, "persistent_context": True}
+            result = json.dumps(prepared, ensure_ascii=False, indent=2, allow_nan=False)
+            result.encode("utf-8")
+            return result
+        except (ValueError, TypeError, RecursionError) as error:
+            self._emit_message(f"Cannot pin Glint environment: {error}")
+            return ""
+
     @pyqtSlot(str, str, str)
     def saveProfileBrowserSettingsJson(self, name: str, engine: str, settings_json: str) -> None:  # noqa: N802
         if getattr(self, "operations", None) and self.operations.isReserved(name):

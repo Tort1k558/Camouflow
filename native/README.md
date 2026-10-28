@@ -91,6 +91,18 @@ The first build's LLVM OOM and initial typed-result preflight failures remain
 recorded. These native byte-copy/planning cases do not prove GPU-driver,
 WebGPU, future identity mode or third-party acceptance.
 
+## Pin a profile's requested environment
+
+In **Profiles → Settings → Browser JSON**, click **Pin environment**, review the
+draft and **Save**. Viewport/DPR, locale/timezone, media preferences, privacy
+policy and headless mode then stop following global defaults. Other explicit
+overrides are preserved. Nothing is saved by previewing; invalid JSON stays
+untouched. Inherited permissions, binary paths, headers, storage paths and
+private keys are not copied. Existing launch-time capability checks still apply.
+This is configuration pinning, not a promise to freeze host hardware or all
+fingerprint signals. Actual manager/restart evidence is in the
+[test matrix](../docs/GLINT_TEST_MATRIX.md#pinned-profile-environment--2026-10-29).
+
 ## Source layout
 
 | Directory/file | Purpose |

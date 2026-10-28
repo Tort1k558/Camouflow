@@ -397,7 +397,7 @@ Item {
                 y: 22
                 spacing: 18
                 Text { text: "Profile Settings"; color: Theme.text; font.pixelSize: 24; font.weight: Font.DemiBold }
-                Text { text: "Profile engine: " + root.editingEngine + " / ID: " + (root.editingId || "local"); color: Theme.muted; font.pixelSize: 13 }
+                Text { text: "Profile engine: " + (root.editingEngine === "native" ? "Glint" : root.editingEngine) + " / ID: " + (root.editingId || "local"); color: Theme.muted; font.pixelSize: 13 }
                 Row {
                     spacing: 8
                     ProfileTab { title: "Profile"; tabId: "profile" }
@@ -466,9 +466,26 @@ Item {
                     spacing: 12
                     visible: root.profileSettingsTab === "browser"
                     Text { text: "Browser JSON"; color: Theme.text; font.pixelSize: 18; font.weight: Font.DemiBold }
-                    Text { text: "Overrides for current engine: " + root.editingEngine; color: Theme.muted; font.pixelSize: 12 }
-                    Rectangle { width: parent.width; height: 400; radius: 14; color: Theme.subtle; border.color: Theme.border
-                        TextArea { id: profileBrowserSettingsJson; anchors.fill: parent; anchors.margins: 12; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} wrapMode: TextArea.Wrap }
+                    Text { text: "Overrides for current engine: " + (root.editingEngine === "native" ? "Glint" : root.editingEngine); color: Theme.muted; font.pixelSize: 12 }
+                    RowLayout {
+                        width: parent.width
+                        visible: root.editingEngine === "native"
+                        Text { Layout.fillWidth: true; text: "Omitted values follow app defaults."; color: Theme.muted; font.pixelSize: 12; wrapMode: Text.WordWrap }
+                        PrimaryButton {
+                            objectName: "nativePinEnvironment"
+                            text: "Pin environment"; secondary: true
+                            enabled: profilesBridge.canManage && !profilesBridge.busy
+                            tooltip: "Copy requested viewport, locale, media and privacy values into this draft. Permissions, binaries and headers are not copied. Save to apply."
+                            onClicked: {
+                                var prepared = profilesBridge.pinNativeProfileDefaultsJson(profileBrowserSettingsJson.text)
+                                if (prepared !== "") profileBrowserSettingsJson.text = prepared
+                            }
+                        }
+                    }
+                    Rectangle { width: parent.width; height: Math.max(180, Math.min(400, profileDialog.height - (root.editingEngine === "native" ? 360 : 310))); radius: 14; color: Theme.subtle; border.color: Theme.border
+                        ScrollView { anchors.fill: parent; anchors.margins: 12; clip: true
+                            TextArea { id: profileBrowserSettingsJson; objectName: "profileBrowserSettingsEditor"; color: Theme.text; font.family: "Consolas"; font.pixelSize: 12; background: Item {} wrapMode: TextArea.Wrap }
+                        }
                     }
                 }
                 Row {
@@ -500,7 +517,7 @@ Item {
                 Row {
                     spacing: 12
                     visible: root.profileSettingsTab === "browser"
-                    PrimaryButton { width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: profilesBridge.saveProfileBrowserSettingsJson(root.editingProfile, root.editingEngine, profileBrowserSettingsJson.text) }
+                    PrimaryButton { objectName: "profileBrowserSettingsSave"; width: 120; text: "Save"; icon: "save"; enabled: profilesBridge.canManage && !profilesBridge.busy; onClicked: profilesBridge.saveProfileBrowserSettingsJson(root.editingProfile, root.editingEngine, profileBrowserSettingsJson.text) }
                     PrimaryButton { width: 110; text: "Cancel"; secondary: true; onClicked: profileDialog.close() }
                 }
             }

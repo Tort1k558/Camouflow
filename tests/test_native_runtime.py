@@ -1244,6 +1244,111 @@ def test_native_profile_json_validates_merged_defaults_and_preserves_only_overri
     bridge._emit_message.assert_not_called()
 
 
+def test_native_environment_settings_are_validated_copies_without_grants_or_paths():
+    from app.core.native.configuration import NativeConfiguration
+    from app.core.native.privacy import NativePrivacyPolicy
+
+    configuration = NativeConfiguration(environment="mobile_web", width=420, height=844, device_scale_factor=3,
+        locale="de-DE", timezone="Europe/Berlin", permissions=("camera",), color_scheme="dark",
+        reduced_motion="reduce", forced_colors="active", contrast="more",
+        privacy_policy=NativePrivacyPolicy(cpu_limit=2, memory_limit=2, fonts=("Arial", "Courier New"), restrict_webrtc=True))
+    settings = configuration.environment_settings()
+    assert set(settings) == {"environment", "window_width", "window_height", "device_scale_factor", "locale", "timezone",
+                             "privacy_policy", "color_scheme", "reduced_motion", "forced_colors", "contrast"}
+    assert "permissions" not in settings
+    assert settings["privacy_policy"]["fonts"] == ["Arial", "Courier New"]
+    assert NativeConfiguration.from_settings(settings).privacy_policy == configuration.privacy_policy
+    settings["privacy_policy"]["fonts"].append("Changed draft")
+    assert configuration.privacy_policy.fonts == ("Arial", "Courier New")
+    with pytest.raises(ValueError, match="verified"):
+        configuration.launch_arguments()
+    with pytest.raises(ValueError):
+        NativeConfiguration(width=True).environment_settings()
+
+
+@pytest.mark.parametrize("explicit_grants", [False, True])
+def test_native_pin_defaults_prepares_only_environment_and_keeps_existing_overrides(monkeypatch, explicit_grants):
+    import json
+    from copy import deepcopy
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from app.ui.bridge import profiles
+    from app.core.native.configuration import NativeConfiguration
+
+    defaults = {"environment": "mobile_web", "window_width": 390, "window_height": 844, "device_scale_factor": 3,
+                "locale": "de-DE", "timezone": "Europe/Berlin", "color_scheme": "dark", "headless": True,
+                "privacy_policy": {"cpu_limit": 2, "fonts": ["Arial"]}, "permissions": ["camera"],
+                "binary_source": "managed", "binary_store": "global-store", "executable_path": "global-exe",
+                "storage_state_path": "global-state", "extra_http_headers": {"Authorization": "global-secret"}}
+    original = deepcopy(defaults)
+    monkeypatch.setattr(profiles, "db_get_native_defaults", lambda: defaults)
+    bridge = SimpleNamespace(_ensure_allowed=Mock(return_value=True), _emit_message=Mock(), _mutate=Mock())
+    overrides = {"window_width": 420, "color_scheme": "light", "executable_path": "owned-exe",
+                 "extra_http_headers": {"X-Owned": "preserved"}, "variables": {"owned": "value"}}
+    if explicit_grants:
+        overrides["permissions"] = ["notifications"]
+    prepared = json.loads(profiles.ProfilesBridge.pinNativeProfileDefaultsJson(bridge, json.dumps(overrides)))
+    assert prepared["window_width"] == 420 and prepared["window_height"] == 844
+    assert prepared["locale"] == "de-DE" and prepared["timezone"] == "Europe/Berlin"
+    assert prepared["color_scheme"] == "light" and prepared["headless"] is True and prepared["persistent_context"] is True
+    assert prepared["privacy_policy"]["fonts"] == ["Arial"]
+    assert prepared["executable_path"] == "owned-exe" and prepared["extra_http_headers"] == {"X-Owned": "preserved"}
+    assert prepared["variables"] == overrides["variables"]
+    assert (prepared.get("permissions") == ["notifications"]) is explicit_grants
+    assert not {"binary_store", "binary_source", "storage_state_path"} & prepared.keys()
+    assert "global-secret" not in json.dumps(prepared) and defaults == original
+    changed_defaults = {**defaults, "locale": "fr-FR", "window_width": 900, "color_scheme": "dark", "privacy_policy": {}}
+    effective = NativeConfiguration.from_settings({**changed_defaults, **prepared})
+    assert effective.locale == "de-DE" and effective.width == 420 and effective.color_scheme == "light"
+    assert effective.privacy_policy.cpu_limit == 2
+    bridge._mutate.assert_not_called()
+    bridge._emit_message.assert_not_called()
+    bridge._ensure_allowed.assert_called_once_with("manager")
+
+
+@pytest.mark.parametrize("draft", ["", "[", "[]", "null", '{"locale":null}', '{"device_scale_factor":true}',
+                                    '{"privacy_policy":{"unknown":true}}', '{"headless":1}',
+                                    '{"user_agent":"invented"}', '{"extra_http_headers":{"Accept-Language":"other"}}',
+                                    '{"variables":{"number":NaN}}', '{"variables":{"text":"\\ud800"}}'])
+def test_native_pin_defaults_rejects_invalid_drafts_without_mutation(monkeypatch, draft):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from app.ui.bridge import profiles
+
+    monkeypatch.setattr(profiles, "db_get_native_defaults", lambda: {})
+    bridge = SimpleNamespace(_ensure_allowed=Mock(return_value=True), _emit_message=Mock(), _mutate=Mock())
+    assert profiles.ProfilesBridge.pinNativeProfileDefaultsJson(bridge, draft) == ""
+    assert "Cannot pin Glint environment:" in bridge._emit_message.call_args.args[0]
+    bridge._mutate.assert_not_called()
+
+
+def test_native_pin_defaults_requires_manager_before_reading_defaults(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from app.ui.bridge import profiles
+
+    read = Mock(side_effect=AssertionError("Denied preview read defaults"))
+    monkeypatch.setattr(profiles, "db_get_native_defaults", read)
+    bridge = SimpleNamespace(_ensure_allowed=Mock(return_value=False))
+    assert profiles.ProfilesBridge.pinNativeProfileDefaultsJson(bridge, "{}") == ""
+    read.assert_not_called()
+
+
+@pytest.mark.parametrize("draft", [None, {}, " " * (1024 * 1024 + 1), "[" * 2000 + "]" * 2000],
+                         ids=["null", "object", "oversized", "deeply-nested"])
+def test_native_pin_defaults_bounds_input_before_reading_defaults(monkeypatch, draft):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from app.ui.bridge import profiles
+
+    read = Mock(side_effect=AssertionError("Invalid draft read defaults"))
+    monkeypatch.setattr(profiles, "db_get_native_defaults", read)
+    bridge = SimpleNamespace(_ensure_allowed=Mock(return_value=True), _emit_message=Mock())
+    assert profiles.ProfilesBridge.pinNativeProfileDefaultsJson(bridge, draft) == ""
+    read.assert_not_called()
+    assert "Cannot pin Glint environment:" in bridge._emit_message.call_args.args[0]
+
+
 def test_native_binary_health_uses_disposable_storage_and_verifies_teardown(tmp_path, monkeypatch):
     from types import SimpleNamespace
     from unittest.mock import AsyncMock

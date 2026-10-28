@@ -1,6 +1,6 @@
 """Explicit Chromium capabilities without injected JavaScript fingerprint masks."""
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import math
 import re
 
@@ -59,6 +59,19 @@ class NativeConfiguration:
         )
         configuration.validate()
         return configuration
+
+    def environment_settings(self) -> dict:
+        """Snapshot requested environment values, not grants, paths or key material."""
+        self.validate()
+        policy = {**asdict(self.privacy_policy), "fonts": list(self.privacy_policy.fonts)}
+        return {
+            "environment": self.environment,
+            "window_width": self.width, "window_height": self.height,
+            "device_scale_factor": float(self.device_scale_factor),
+            "locale": self.locale, "timezone": self.timezone,
+            "privacy_policy": policy,
+            **{key: getattr(self, key) for key in MEDIA_PREFERENCES},
+        }
 
     def validate(self) -> None:
         if not isinstance(self.privacy_policy, NativePrivacyPolicy):

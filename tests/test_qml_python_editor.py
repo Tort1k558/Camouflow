@@ -13,9 +13,10 @@ os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 def test_native_qml_configuration_and_profile_creation(tmp_path):
     script = '''
+import json
 import time
 from PyQt6 import sip
-from PyQt6.QtCore import QCoreApplication, QEvent, QMetaObject, QUrl
+from PyQt6.QtCore import Q_ARG, QCoreApplication, QEvent, QMetaObject, Qt, QUrl
 from app.storage import db
 from app.ui.qml_app import QmlApplication
 db.init_db()
@@ -150,6 +151,41 @@ try:
     pump(.8)
     rows = db.db_get_accounts()
     assert len(rows) == 1 and rows[0]['_browser_engine'] == 'native'
+    defaults = db.db_get_native_defaults()
+    profile = rows[0]['name']
+    profiles_page = find(root, 'objectName', 'pageLoader').property('item')
+    QMetaObject.invokeMethod(profiles_page, 'openBrowserOverridesModal', Qt.ConnectionType.DirectConnection,
+                             Q_ARG('QVariant', profile))
+    pump()
+    pin = find(root, 'objectName', 'nativePinEnvironment')
+    editor = find(root, 'objectName', 'profileBrowserSettingsEditor')
+    assert pin.isVisible() and pin.isEnabled()
+    original = rows[0].get('native_settings')
+    QMetaObject.invokeMethod(pin, 'clicked')
+    pump()
+    prepared_text = editor.property('text')
+    prepared = json.loads(prepared_text)
+    assert prepared['window_width'] == 420 and prepared['environment'] == 'mobile_web'
+    assert prepared['color_scheme'] == 'dark' and prepared['contrast'] == 'more'
+    assert not {'permissions', 'binary_store', 'executable_path', 'extra_http_headers', 'storage_state_path'} & prepared.keys()
+    assert db.db_get_accounts()[0].get('native_settings') == original
+    editor.setProperty('text', '{')
+    QMetaObject.invokeMethod(pin, 'clicked')
+    pump()
+    assert editor.property('text') == '{'
+    editor.setProperty('text', prepared_text)
+    QMetaObject.invokeMethod(find(root, 'objectName', 'profileBrowserSettingsSave'), 'clicked')
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        pump(.1)
+        stored = db.db_get_accounts()[0].get('native_settings') or {}
+        if stored.get('window_width') == 420: break
+    assert stored == prepared
+    assert db.db_get_native_defaults() == defaults
+    db.db_set_native_defaults({**defaults, 'window_width': 900, 'color_scheme': 'light'})
+    from app.core.native.configuration import NativeConfiguration
+    effective = NativeConfiguration.from_settings({**db.db_get_native_defaults(), **stored})
+    assert effective.width == 420 and effective.color_scheme == 'dark'
     assert not warnings, warnings
 finally:
     ui.recorder.shutdown(); ui.operations.shutdown(); ui.ai.shutdown()

@@ -3,6 +3,39 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Pinned profile environment — 2026-10-29
+
+Profiles → Settings → Browser JSON → **Pin environment** copies the effective
+requested viewport, DPR, locale, timezone, media preferences, privacy policy
+and headless mode into the current draft. Existing explicit overrides stay
+intact. The action does not save, start a browser or change global defaults;
+normal Save and runtime admission remain required. Inherited permission grants,
+binary/store paths, headers, storage paths and private identity keys are not
+copied. Those settings still inherit unless already explicitly overridden.
+
+Real QML interactions covered preview without mutation, invalid-draft retention,
+explicit Save and persistence after global defaults changed. A separate real
+manager run used installed **Glint 148 / 001-062**: two profiles, two starts each,
+36 document values covering viewport/DPR, locale/timezone, media and CPU/memory.
+Pinned values remained stable while the unpinned profile inherited new defaults.
+All owners closed without retained resources; the complete managed payload and
+executable/DLL core stayed unchanged. Evidence on D:
+`pinned-environment-runtime-20261029-v2/report.json` and
+`pinned-environment-ui-20261029-v3/` (real QML screenshot).
+The first private runtime probe read the account before asynchronous Save
+completed; v2 waits for persistence. The first offscreen screenshot had no
+registered fonts; later captures load installed fonts in the harness only.
+The focused configuration/preview suite passed **20 tests**, including denied
+access, oversized/deep JSON, invalid identity inputs and preservation of explicit
+overrides; the real QML configuration/profile test passed separately. Browser
+JSON now scrolls internally and keeps Save/Cancel visible at the normal dialog
+size. Screenshot validation does not replace the runtime checks above.
+
+This pins requested configuration, **not an entire fingerprint**: browser/OS
+updates, host GPU, network, permissions and other inherited settings can still
+change observable results. It does not admit experimental privacy controls,
+prove worker consistency, test 156 or establish anti-bot acceptance.
+
 ## Context media preferences — 2026-10-28
 
 Manager configuration now persists explicit color scheme, reduced motion, forced
@@ -170,9 +203,24 @@ browser or a completed native-test gate. Evidence:
 `toolchain/local-msvc-sdk-28000-v1/materialization-v1.json` and
 `toolchain/system-module-materialized-20261029-v1/1.log`.
 
+That full attempt later exited nonzero after **49m34.89s**: 11,839 completed
+actions, 19 failures, 71,178 remaining. Every failure reported missing `dia2.h`
+in Dawn DXIL DIA sources; this was an incomplete toolchain layout, not a passed
+build or a reason to disable WebGPU/DXC. The installed DIA SDK was copied to the
+owned composite with hash checks (24 files), leaving the installation intact.
+The real Dawn `lib_dxildia.lib` target then compiled and the before/after
+source/toolchain guards passed. Evidence:
+`toolchain/dia-sdk-compile-20261029-v1/report.json` and
+`toolchain/local-msvc-sdk-28000-v1/dia-materialization-20261029-v1.json`.
+The full j4 build resumed with existing objects; the controller remains
+`dia-build-continuation-20261029-v1.json`. A passed library target is not a
+linked browser or permission to enable any new runtime capability.
+
 Public follow-up tooling: `scripts/native_windows_toolchain.py` prepares a
 fresh canonical copy and refuses existing config/output, links, insufficient
 space, bounds violations, input drift and concurrent workspace ownership.
+It now requires/copies installed DIA SDK and measures its essential headers,
+GUID libraries and runtime DLLs; missing or changed DIA fails closed.
 Real-file fixture tests cover generated x86/x64 environments, copied hashes,
 failure evidence, lock contention and preservation of concurrent config edits.
 It has not yet been used for a new full-size candidate checkout/build; the
