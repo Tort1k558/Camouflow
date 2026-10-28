@@ -3563,3 +3563,68 @@ def test_native_error_patch_covers_console_coercion_and_property_preview_paths()
     assert "ValueMirror::getErrorDescription(" in patch
     assert "/*includeStack=*/false" in patch
     assert "? getErrorProperty(context, object, v8Name)" in patch
+
+
+@pytest.mark.parametrize("phase", ["checkpoint-before-crash", "crashed-profile-cleanup", "round-finalizer"])
+def test_restart_close_failure_retains_original_error_and_adds_context(phase):
+    import asyncio
+    import re
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from scripts.verify_native_runtime import _close_restart_profile
+
+    error = TimeoutError("Native browser context close timed out")
+    runtime = SimpleNamespace(close=AsyncMock(side_effect=error))
+    with pytest.raises(TimeoutError) as observed:
+        asyncio.run(_close_restart_profile(runtime, round_number=2, profile_slot=1, phase=phase))
+    assert observed.value is error
+    assert str(error) == "Native browser context close timed out"
+    assert len(error.__notes__) == 1
+    assert error.__notes__[0].startswith(f"Native restart gate: round=2, profile_slot=1, phase={phase}, ")
+    assert re.search(r"close_elapsed_seconds=\d+\.\d{3}$", error.__notes__[0])
+    runtime.close.assert_awaited_once()
+
+
+def test_restart_close_success_has_no_extra_shutdown_or_retry():
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from scripts.verify_native_runtime import _close_restart_profile
+
+    runtime = SimpleNamespace(close=AsyncMock())
+    asyncio.run(_close_restart_profile(runtime, round_number=1, profile_slot=0, phase="round-finalizer"))
+    runtime.close.assert_awaited_once()
+
+
+def test_restart_close_does_not_swallow_or_relabel_cancellation():
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from scripts.verify_native_runtime import _close_restart_profile
+
+    error = asyncio.CancelledError()
+    runtime = SimpleNamespace(close=AsyncMock(side_effect=error))
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(_close_restart_profile(runtime, round_number=1, profile_slot=0, phase="round-finalizer"))
+    assert not getattr(error, "__notes__", [])
+    runtime.close.assert_awaited_once()
+
+
+def test_restart_finalizer_error_identifies_slot_and_closes_other_profiles(tmp_path, monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from scripts import verify_native_runtime as gate
+
+    error = TimeoutError("Native browser context close timed out")
+    runtimes = [SimpleNamespace(start=AsyncMock(return_value=SimpleNamespace(pages=[object()])), close=AsyncMock()),
+                SimpleNamespace(start=AsyncMock(side_effect=RuntimeError("owned startup failed")), close=AsyncMock(side_effect=error))]
+    created = iter(runtimes)
+    monkeypatch.setattr(gate, "NativeRuntime", lambda *args: next(created))
+    monkeypatch.setattr(gate, "process_snapshot", lambda: {})
+    with pytest.raises(TimeoutError) as observed:
+        asyncio.run(gate.verify_multi_profile_restarts(tmp_path, tmp_path / "missing", "http://127.0.0.1:1"))
+    assert observed.value is error
+    assert "round=1, profile_slot=1, phase=round-finalizer" in error.__notes__[0]
+    for runtime in runtimes:
+        runtime.close.assert_awaited_once()

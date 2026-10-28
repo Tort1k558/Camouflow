@@ -3,6 +3,31 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Follow-up Windows regression — 2026-10-28
+
+This is another run of the installed **148 / 001-062** package, not a new linked
+browser or evidence for the 156 candidate. The full payload and three core
+hashes remained unchanged. All eight gates ran: **seven passed, 142 checks**;
+the runtime gate stopped after 17 completed checks with
+`Native browser context close timed out` during multi-profile restart cleanup.
+The run **failed**; do not describe it as a new 160/160 pass. Retained evidence:
+`rollback-regression-20261028-v2/suite.json`, `runtime.json` and `runtime.log` on D.
+
+Chromium source recovery was running concurrently on the same HDD. A live
+sample showed approximately 95% disk activity, but this observation does not
+establish the timeout's cause. The failure remains unresolved. The restart
+verifier now records round, profile slot, close phase and elapsed time in
+exception notes, without changing the timeout, retrying, skipping checks or
+converting failures/cancellation into success. Further repeats must retain this
+failure and distinguish idle from concurrent-I/O conditions.
+
+The context-instrumented runtime-only repeat **passed 18/18 checks** on the same
+installed payload: `rollback-runtime-context-20261028-v3/suite.json` on D.
+Concurrent source recovery was still active. Runtime deadlines/assertions were
+unchanged; only diagnostic exception notes were added. This is **not a new full
+suite pass**, does not isolate cold-cache versus I/O effects and does not fix or
+explain the earlier close timeout. Both reports are retained separately.
+
 ## Latest linked build: 001-062 — 2026-10-14
 
 Patch 0062 is registered/applied to source: Windows font parameter policy,

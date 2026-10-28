@@ -266,6 +266,17 @@ async def verify_controller_crash(profile_root: Path, executable: Path, origin: 
             stream.close()
 
 
+async def _close_restart_profile(runtime, *, round_number: int, profile_slot: int, phase: str) -> None:
+    started = asyncio.get_running_loop().time()
+    try:
+        await runtime.close()
+    except Exception as error:
+        elapsed = asyncio.get_running_loop().time() - started
+        error.add_note(f"Native restart gate: round={round_number}, profile_slot={profile_slot}, "
+                       f"phase={phase}, close_elapsed_seconds={elapsed:.3f}")
+        raise
+
+
 async def verify_multi_profile_restarts(profile_root: Path, executable: Path, origin: str,
                                        *, rounds: int = 3, profiles: int = 3,
                                        configuration: NativeConfiguration | None = None) -> list[dict]:
@@ -294,7 +305,8 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
         async with AsyncExitStack() as cleanup:
             for index in range(profiles):
                 runtime = NativeRuntime(profile_root / f"restart-{index}", executable, configuration or NativeConfiguration())
-                cleanup.push_async_callback(runtime.close)
+                cleanup.push_async_callback(_close_restart_profile, runtime, round_number=iteration + 1,
+                                            profile_slot=index, phase="round-finalizer")
                 context = await runtime.start(headless=True)
                 runtimes.append(runtime)
                 pages.append(context.pages[0])
@@ -314,7 +326,8 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
             assert drivers == profiles, f"Expected {profiles} independent drivers, observed {drivers}"
             assert any(executable_name(row).lower() == executable.name.lower() for row in owned.values()), "Owned Chromium was not observed"
             victim = iteration % profiles
-            await runtimes[victim].close()
+            await _close_restart_profile(runtimes[victim], round_number=iteration + 1,
+                                         profile_slot=victim, phase="checkpoint-before-crash")
             checkpoint = await runtimes[victim].start(headless=True)
             pages[victim] = checkpoint.pages[0]
             await pages[victim].goto(origin)
@@ -333,7 +346,8 @@ async def verify_multi_profile_restarts(profile_root: Path, executable: Path, or
             assert not browser.is_connected(), "Crash target remained connected"
             survivors = [index for index in range(profiles) if index != victim]
             assert await asyncio.gather(*(pages[index].evaluate(STORAGE, None) for index in survivors)) == [values[index] for index in survivors], "One browser crash affected another profile"
-            await runtimes[victim].close()
+            await _close_restart_profile(runtimes[victim], round_number=iteration + 1,
+                                         profile_slot=victim, phase="crashed-profile-cleanup")
             recovered = await runtimes[victim].start(headless=True)
             pages[victim] = recovered.pages[0]
             await pages[victim].goto(origin)
@@ -763,7 +777,8 @@ def main() -> int:
                     os.environ["CAMOUFLOW_DATA_DIR"] = previous_data_dir
     except Exception as error:
         report = {"passed": False, "platform": platform.system(), "completed_checks": checks, "error_type": type(error).__name__,
-                  "error": str(error)[:1000], "traceback": traceback.format_exc()[-6000:]}
+                  "error": str(error)[:1000], "traceback": traceback.format_exc()[-6000:],
+                  "error_notes": [note[:1000] for note in getattr(error, "__notes__", [])[-8:]]}
     finally:
         for item in (server, proxy_server):
             item.shutdown()
