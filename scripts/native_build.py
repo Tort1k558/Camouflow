@@ -109,8 +109,17 @@ def preflight(workspace: Path, *, backing_volume: Path | None = None, lock: dict
             "depot_tools_revision": lock["depot_tools_revision"], **backing}
 
 
-def environment(workspace: Path) -> dict[str, str]:
+def _validate_git_ssl_backend(backend: str) -> None:
+    if backend not in ("openssl", "schannel"):
+        raise ValueError("Select an explicit supported Git TLS backend: openssl or schannel")
+    if backend == "schannel" and os.name != "nt":
+        raise ValueError("The Schannel Git TLS backend requires Windows")
+
+
+def environment(workspace: Path, *, git_ssl_backend: str = "openssl") -> dict[str, str]:
+    _validate_git_ssl_backend(git_ssl_backend)
     env = dict(os.environ)
+    env.pop("GIT_SSL_NO_VERIFY", None)
     temporary = workspace / "tmp"
     temporary.mkdir(parents=True, exist_ok=True)
     git_config = workspace / "build.gitconfig"
@@ -129,9 +138,9 @@ def environment(workspace: Path) -> dict[str, str]:
         if sdk_python.is_file():
             env["PATH"] = str(sdk_python.parent) + os.pathsep + env["PATH"]
         count = int(env.get("GIT_CONFIG_COUNT", "0"))
-        overrides = (("http.sslBackend", "openssl"), ("core.autocrlf", "false"),
+        overrides = (("http.sslBackend", git_ssl_backend), ("core.autocrlf", "false"),
                      ("core.filemode", "false"), ("core.fscache", "true"),
-                     ("core.preloadIndex", "true"))
+                     ("core.preloadIndex", "true"), ("http.sslVerify", "true"))
         env["GIT_CONFIG_COUNT"] = str(count + len(overrides))
         for index, (key, value) in enumerate(overrides, start=count):
             env[f"GIT_CONFIG_KEY_{index}"] = key
@@ -561,7 +570,8 @@ def apply_candidate_patches(source: Path, env: dict[str, str], candidate: dict) 
 
 
 def execute(action: str, workspace: Path, *, backing_volume: Path | None = None, jobs: int | None = None,
-            candidate_name: str | None = None) -> None:
+            candidate_name: str | None = None, git_ssl_backend: str = "openssl") -> None:
+    _validate_git_ssl_backend(git_ssl_backend)
     candidate = None if candidate_name is None else load_candidate(candidate_name)
     if action == "patch" and candidate is None:
         raise ValueError("Patch application requires an explicit --candidate selection")
@@ -577,11 +587,12 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
     workspace.mkdir(parents=True, exist_ok=True)
     with workspace_lock(workspace):
         candidate_workspace(workspace, candidate)
-        _execute_locked(action, workspace, jobs, candidate, lock)
+        _execute_locked(action, workspace, jobs, candidate, lock, git_ssl_backend=git_ssl_backend)
 
 
-def _execute_locked(action: str, workspace: Path, jobs: int, candidate: dict | None, lock: dict) -> None:
-    env = environment(workspace)
+def _execute_locked(action: str, workspace: Path, jobs: int, candidate: dict | None, lock: dict,
+                    *, git_ssl_backend: str = "openssl") -> None:
+    env = environment(workspace, git_ssl_backend=git_ssl_backend)
     checkout(workspace / "depot_tools", lock["depot_tools_repository"], lock["depot_tools_revision"], env)
     if os.name == "nt":
         bootstrap_windows_git(workspace, env)
@@ -672,10 +683,12 @@ def main() -> int:
     parser.add_argument("--candidate", choices=("upstream-156",), help="Explicit research build in a separate owned workspace; not runtime admission")
     parser.add_argument("--backing-volume", type=Path, help="Also require free space on this backing volume (WSL: /mnt/d)")
     parser.add_argument("--jobs", type=int, choices=range(1, LOCK["build_jobs"] + 1), help="Parallel jobs for sync/build; defaults to the build lock")
+    parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl",
+                        help="Explicit Windows Git TLS backend; no automatic switching or certificate-check bypass")
     args = parser.parse_args()
     try:
         execute(args.action, args.workspace, backing_volume=args.backing_volume, jobs=args.jobs,
-                candidate_name=args.candidate)
+                candidate_name=args.candidate, git_ssl_backend=args.git_ssl_backend)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f"Native build failed: {error}", file=sys.stderr)
         return 1

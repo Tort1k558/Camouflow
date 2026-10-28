@@ -418,11 +418,13 @@ def test_native_build_transport_is_process_scoped_and_preserves_existing_git_con
     assert env["GIT_CONFIG_KEY_0"] == "core.filemode"
     assert env["GIT_CONFIG_VALUE_0"] == "false"
     if os.name == "nt":
-        assert env["GIT_CONFIG_COUNT"] == "6"
+        assert env["GIT_CONFIG_COUNT"] == "7"
         assert env["GIT_CONFIG_KEY_1"] == "http.sslBackend"
         assert env["GIT_CONFIG_VALUE_1"] == "openssl"
         assert {env[f"GIT_CONFIG_KEY_{index}"]: env[f"GIT_CONFIG_VALUE_{index}"] for index in range(2, 6)} == {
             "core.autocrlf": "false", "core.filemode": "false", "core.fscache": "true", "core.preloadIndex": "true"}
+        assert env["GIT_CONFIG_KEY_6"] == "http.sslVerify"
+        assert env["GIT_CONFIG_VALUE_6"] == "true"
     else:
         assert env["GIT_CONFIG_COUNT"] == "1"
     assert env["DEPOT_TOOLS_UPDATE"] == "0"
@@ -458,6 +460,45 @@ def test_native_dependency_git_settings_override_machine_defaults_without_editin
     assert system.read_text(encoding="utf-8") == original
     assert os.environ["GIT_CONFIG_COUNT"] == "1"
     assert os.environ["GIT_CONFIG_VALUE_0"] == "true"
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows Git TLS backends")
+@pytest.mark.parametrize("backend", ["openssl", "schannel"])
+def test_native_git_backend_is_explicit_and_keeps_certificate_validation(tmp_path, monkeypatch, backend):
+    import os
+    import subprocess
+    from scripts.native_build import environment
+
+    monkeypatch.setenv("GIT_SSL_NO_VERIFY", "1")
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "http.sslVerify")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", "false")
+    env = environment(tmp_path, git_ssl_backend=backend)
+    assert "GIT_SSL_NO_VERIFY" not in env
+    assert os.environ["GIT_SSL_NO_VERIFY"] == "1"
+    assert os.environ["GIT_CONFIG_VALUE_0"] == "false"
+    for key, value in {"http.sslBackend": backend, "http.sslVerify": "true"}.items():
+        result = subprocess.run(["git", "config", "--get", key], cwd=tmp_path, env=env,
+                                check=True, capture_output=True, text=True)
+        assert result.stdout.strip() == value
+
+
+@pytest.mark.parametrize("backend", ["auto", "curl", "", None])
+def test_native_git_backend_rejects_unknown_selection_before_writes(tmp_path, backend):
+    from scripts.native_build import environment
+
+    with pytest.raises(ValueError, match="explicit supported"):
+        environment(tmp_path, git_ssl_backend=backend)
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Schannel is supported on Windows")
+def test_native_git_backend_rejects_schannel_off_windows(tmp_path):
+    from scripts.native_build import environment
+
+    with pytest.raises(ValueError, match="requires Windows"):
+        environment(tmp_path, git_ssl_backend="schannel")
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_native_build_rejects_relative_workspace():
@@ -566,7 +607,7 @@ def test_native_build_passes_selected_concurrency_to_compiler_and_receipt(tmp_pa
                         (binary.parent / name).write_bytes(name.encode("ascii"))
         return ""
     monkeypatch.setattr(native_build, "preflight", lambda *a, **kw: {})
-    monkeypatch.setattr(native_build, "environment", lambda *a: {})
+    monkeypatch.setattr(native_build, "environment", lambda *a, **kwargs: {})
     monkeypatch.setattr(native_build, "checkout", lambda *a: None)
     monkeypatch.setattr(native_build, "bootstrap_windows_git", lambda *a: None)
     monkeypatch.setattr(native_build, "require_stage", lambda *a: None)
@@ -633,7 +674,7 @@ def test_native_build_does_not_record_success_if_inputs_change_during_compilatio
     monkeypatch.setattr(native_build, "checkout", lambda *a: None)
     monkeypatch.setattr(native_build, "v8_source_patches", lambda *a: [{"name": "changed-v8"}] if compiled and changed == "v8_patches" else [])
     monkeypatch.setattr(native_build, "preflight", lambda *a, **kw: {})
-    monkeypatch.setattr(native_build, "environment", lambda *a: {})
+    monkeypatch.setattr(native_build, "environment", lambda *a, **kwargs: {})
     monkeypatch.setattr(native_build, "bootstrap_windows_git", lambda *a: None)
     monkeypatch.setattr(native_build, "require_stage", lambda *a: None)
     monkeypatch.setattr(native_build, "source_patches", lambda *a: [{"name": "changed"}] if compiled and changed == "patches" else [])

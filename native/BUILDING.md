@@ -316,6 +316,14 @@ steps and the unresolved first-download transport limitation.
   as the root checkout: a root-local `core.autocrlf=false` alone does not override
   machine defaults inside newly cloned V8/ANGLE repositories. Existing inherited
   Git environment entries are preserved; system/global config files are not edited.
+- Windows Git defaults to the OpenSSL backend. If a diagnosed transfer problem
+  requires testing the Windows certificate store instead, select it explicitly
+  with `--git-ssl-backend schannel` on the build helper. The selection covers
+  dependency subprocesses, never switches automatically and does not affect
+  browser TLS or admit fingerprint capabilities. The helper forces certificate
+  verification and removes `GIT_SSL_NO_VERIFY` only from the child environment;
+  the caller's environment and global settings remain unchanged. Preserve failed
+  transfer logs and verify the exact fetched commit before resuming work.
 - On `LLVM ERROR: out of memory`, retain the failed report/log/reproducer and
   inspect physical memory and Windows commit headroom. `-j4` limits concurrent
   local work, not total memory: see the [official Siso concurrency documentation](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/siso_tips.md).
