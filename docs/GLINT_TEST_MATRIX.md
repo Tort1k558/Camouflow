@@ -117,6 +117,33 @@ these changes. Public verifier failure matrices cover both rendering series,
 148/candidate receipt selection and optional workloads, including changed font,
 helper source, artifacts, semantics and failed cleanup.
 
+### Concurrent rendering and five-store isolation — 2026-10-29
+
+`verify_native_font_rendering.py --profile-concurrency 2` now starts bounded
+batches of private profiles before measuring either peer. Default concurrency
+remains one. The existing storage fixture checks cookies, localStorage,
+IndexedDB, Cache Storage and service-worker registrations before writes, after
+both peers write, after workloads and at the final peer barrier. Restart must
+recover the same per-mode marker. A failed owner does not prevent attempting
+cleanup of its peer; retained resources stop subsequent batches. Storage,
+font-response and download operations have explicit deadlines.
+
+An isolated **Glint 148 / 001-062** run passed all nine text-tuning cases with
+two starts each: **18 profile starts, 144 rendering scope observations and 18
+editing/export workloads**. Peak live profiles was two; the odd final case ran
+alone. Every mode's rendering matched its earlier sequential measured baseline.
+Independent gamma/contrast effects held in all eight scopes; restart, raw pixel,
+format/HDR and workload semantics stayed consistent. Five-store markers remained
+private and persisted correctly. Core/resource/source/font/artifact guards
+passed. Evidence: `concurrent-rendering-text-tuning-20261029-v1/report.json` on
+D; the preceding extreme off/high-pair smoke is retained separately.
+
+The full Python suite passed **3,268 tests, one skipped**. Failure fixtures
+cover partial startup, storage sharing/loss, late peer writes, storage timeout,
+source/font/artifact drift and cleanup failure while proving every owner gets
+a cleanup attempt. These are 148 observations, not a 156 runtime pass,
+exhaustive pairing of every setting or new product capability admission.
+
 ## Chromium 156 compilation checkpoint — 2026-10-29
 
 Dependency sync, hooks and the complete 62-patch Chromium/V8 chain completed.

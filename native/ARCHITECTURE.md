@@ -1,5 +1,23 @@
 # Glint architecture
 
+## Current implementation boundary
+
+The reviewed Windows runtime is **Chromium 148 / 001-062**. Its exact managed
+package admits only the individually reviewed experimental capabilities;
+source ports, Python tests and diagnostic reports cannot expand that admission.
+Chromium **156.0.8078.36** has the complete candidate chain applied and is being
+built in its separate D: workspace. The two system module targets and their
+source/toolchain guards passed; the complete 156 browser is not yet linked or
+runtime-verified. Linux/macOS runtime work remains deferred.
+
+Persistent profiles own their separate browser processes/contexts; tabs inside
+one profile share its identity and storage. The rendering verifier can keep at
+most two private profiles live for bounded cross-profile checks, reusing the
+existing five-store persistence fixture. This is a verification-runner limit,
+not a two-profile product restriction. Current evidence and open gates live in
+the [test matrix](../docs/GLINT_TEST_MATRIX.md) and
+[roadmap](../docs/GLINT_ROADMAP.ru.md).
+
 ## Manager integration
 
 `app/core/native/` owns configuration, identity, diagnostics, browser lifecycle
@@ -82,8 +100,8 @@ with the six halo/clipping/GPU metadata candidates in one isolated source tree.
 The exact combined source and pinned Mojo/GPU generation passed before
 integration. C++ type checks covered 22 identity and six GPU units. These
 preflight results do not replace the remaining native/runtime gates or admit
-protection. The earlier browser was 001-047; the latest linked baseline is
-001-059, with its actual scope recorded in the test matrix.
+protection. At that stage the earlier browser was 001-047 and the next linked
+baseline was 001-059; subsequent 001-062 evidence is recorded in the test matrix.
 
 Configuration validates viewport, DPR, locale, timezone, permissions and privacy
 requests before startup. Unsupported requests fail rather than silently falling

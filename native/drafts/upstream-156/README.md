@@ -304,3 +304,11 @@ changes across modes/restarts or changed artifacts fail the gate. IME, PDF
 content equivalence and third-party application compatibility are not implied.
 Run the public verifier only after the builder exits; matched research on
 isolated 148 binaries is recorded separately from candidate verification.
+
+Add `--profile-concurrency 2` to keep pairs of differently configured private
+profiles live during measurement. The sequential default stays unchanged.
+The runner checks five-store separation/persistence and rendering against the
+same controls, closes every owner even if its peer fails and stops on retained
+resources. The final odd case runs alone. These bounded runner batches are not
+a two-profile application limit. Missing peers, storage leaks, timeouts or
+changed evidence do not silently downgrade to a sequential pass.

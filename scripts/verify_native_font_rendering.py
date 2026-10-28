@@ -22,7 +22,7 @@ from scripts import native_build, native_canvas_formats, native_canvas_hdr, nati
 from scripts import native_font_workloads
 from scripts.verify_native_branding import measure_branding_resources
 from scripts.verify_native_privacy_units import require_idle_builder
-from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
+from scripts.verify_native_runtime import FixtureServer, STORAGE, measure_runtime_core
 
 MODES = ("off", *FONT_RASTERIZATION_MODES)
 TEXT_TUNING_CASES = {
@@ -145,13 +145,103 @@ def assess(runs: dict, *, series: str = "rasterization") -> dict:
             "controls": controls, "aliased_grayscale_pixel_effect": effect, "pixel_effects_by_scope": effects}
 
 
+async def collect_profiles(executable: Path, destination: Path, origin: str, modes: tuple[str, ...], report: dict,
+                           *, profile_concurrency: int = 1, workload_font_sha256: str | None = None) -> None:
+    if (not isinstance(modes, tuple) or not modes
+            or any(not isinstance(mode, str) or mode not in (*MODES, *TEXT_TUNING_CASES) for mode in modes)
+            or len(set(modes)) != len(modes)):
+        raise ValueError("Rendering profile modes must be explicit, supported and unique")
+    if type(profile_concurrency) is not int or not 1 <= profile_concurrency <= min(2, len(modes)):
+        raise ValueError("Rendering profile concurrency must be explicitly 1 or 2")
+
+    async def observe_storage(page, value):
+        return await asyncio.wait_for(page.evaluate(STORAGE, value), timeout=30)
+
+    report["profile_concurrency"] = profile_concurrency
+    report["peak_live_profiles"] = 0
+    report["profile_storage"] = {mode: [] for mode in modes}
+    for mode in modes:
+        report["runs"][mode] = []
+        report["visuals"][mode] = []
+        if workload_font_sha256 is not None:
+            report["workloads"][mode] = []
+    for offset in range(0, len(modes), profile_concurrency):
+        batch = modes[offset:offset + profile_concurrency]
+        for round_index in range(2):
+            runtimes, pages, stored = {}, {}, {}
+            try:
+                for mode in batch:
+                    runtime = NativeRuntime(destination / "profiles" / mode, executable,
+                                            RenderingConfiguration(rasterization=mode))
+                    runtimes[mode] = runtime
+                    try:
+                        context = await runtime.start(headless=True)
+                        pages[mode] = await context.new_page()
+                    except Exception as error:
+                        report["errors"].append({"mode": mode, "round": round_index, "phase": "start",
+                                                  "error": type(error).__name__ + ": " + str(error)})
+                report["peak_live_profiles"] = max(report["peak_live_profiles"], len(pages))
+                for mode, page in pages.items():
+                    await page.goto(origin, wait_until="domcontentloaded", timeout=30000)
+                    before = await observe_storage(page, None)
+                    populated = {"cookie": "owned=" + mode, "local": mode, "indexed": mode, "cached": mode, "workers": 1}
+                    expected = ({"cookie": "", "local": None, "indexed": None, "cached": None, "workers": 0}
+                                if round_index == 0 else populated)
+                    if before != expected:
+                        raise ValueError("Rendering profile storage was shared or lost before measurement: " + mode)
+                    after = await observe_storage(page, mode)
+                    if after != populated:
+                        raise ValueError("Rendering profile did not persist its owned storage marker: " + mode)
+                    stored[mode] = {"before": before, "after": after}
+                for mode, page in pages.items():
+                    try:
+                        if await observe_storage(page, None) != stored[mode]["after"]:
+                            raise ValueError("Another rendering profile overwrote owned storage: " + mode)
+                        measured = await native_font_contexts.collect(page, origin)
+                        report["runs"][mode].append(measured)
+                        visible = await native_font_visuals.collect(page)
+                        screenshot = f"font-{mode}-{round_index}.png"
+                        await page.screenshot(path=str(destination / screenshot))
+                        report["screenshots_sha256"][screenshot] = hashlib.sha256((destination / screenshot).read_bytes()).hexdigest()
+                        report["visuals"][mode].append(visible)
+                        if workload_font_sha256 is not None:
+                            workload = await native_font_workloads.collect(
+                                page, origin, destination / f"workload-{mode}-{round_index}", workload_font_sha256)
+                            report["workloads"][mode].append(workload)
+                        if await observe_storage(page, None) != stored[mode]["after"]:
+                            raise ValueError("Rendering workload changed owned profile storage: " + mode)
+                        report["profile_storage"][mode].append(stored[mode])
+                    except Exception as error:
+                        report["errors"].append({"mode": mode, "round": round_index, "phase": "measure",
+                                                  "error": type(error).__name__ + ": " + str(error)})
+                for mode, page in pages.items():
+                    if await observe_storage(page, None) != stored[mode]["after"]:
+                        raise ValueError("A rendering peer changed another profile's storage: " + mode)
+            except Exception as error:
+                report["errors"].append({"batch": list(batch), "round": round_index, "phase": "storage",
+                                          "error": type(error).__name__ + ": " + str(error)})
+            finally:
+                for mode, runtime in runtimes.items():
+                    try:
+                        await runtime.close()
+                    except Exception as error:
+                        report["errors"].append({"mode": mode, "round": round_index,
+                                                  "cleanup_error": type(error).__name__ + ": " + str(error)})
+                (destination / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")
+                if any(runtime.has_resources for runtime in runtimes.values()):
+                    raise RuntimeError("Font probe retains browser resources; remaining modes were not run")
+
+
 async def verify(executable: Path, destination: Path, *, series: str = "rasterization",
-                 candidate_name: str | None = None, workload_font: Path | None = None) -> dict:
+                 candidate_name: str | None = None, workload_font: Path | None = None,
+                 profile_concurrency: int = 1) -> dict:
     modes = series_modes(series)
     candidate = None if candidate_name is None else native_build.load_candidate(candidate_name)
     policy_patch = PATCH if candidate is None else candidate["directory"] / "patches" / PATCH.name
     if sys.platform != "win32":
         raise ValueError("Windows font rendering verification requires Windows")
+    if type(profile_concurrency) is not int or profile_concurrency not in (1, 2):
+        raise ValueError("Rendering profile concurrency must be explicitly 1 or 2")
     if workload_font is not None and (not isinstance(workload_font, Path) or not workload_font.is_absolute()
             or workload_font != workload_font.resolve() or not workload_font.is_file()
             or not 64 <= workload_font.stat().st_size <= 2 * 1024**2):
@@ -193,6 +283,7 @@ async def verify(executable: Path, destination: Path, *, series: str = "rasteriz
               ROOT / "scripts/native_font_rendering.py", ROOT / "scripts/native_canvas_formats.py",
               ROOT / "scripts/native_canvas_hdr.py",
               ROOT / "scripts/native_font_visuals.py",
+              ROOT / "scripts/verify_native_runtime.py",
               ROOT / "app/core/native/canvas_fidelity.py"]
     inputs.extend(ROOT / "app/core/native" / name for name in ("configuration.py", "privacy.py", "runtime.py", "identity.py"))
     if candidate is not None:
@@ -225,48 +316,17 @@ async def verify(executable: Path, destination: Path, *, series: str = "rasteriz
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         server_started = True
-        for mode in modes:
-            report["runs"][mode] = []
-            report["visuals"][mode] = []
-            if workload_font is not None:
-                report["workloads"][mode] = []
-            for round_index in range(2):
-                runtime = NativeRuntime(destination / "profiles" / mode, executable,
-                                        RenderingConfiguration(rasterization=mode))
-                try:
-                    context = await runtime.start(headless=True)
-                    page = await context.new_page()
-                    measured = await native_font_contexts.collect(page, f"http://127.0.0.1:{server.server_address[1]}")
-                    report["runs"][mode].append(measured)
-                    visible = await native_font_visuals.collect(page)
-                    screenshot = f"font-{mode}-{round_index}.png"
-                    await page.screenshot(path=str(destination / screenshot))
-                    report["screenshots_sha256"][screenshot] = hashlib.sha256((destination / screenshot).read_bytes()).hexdigest()
-                    report["visuals"][mode].append(visible)
-                    if workload_font is not None:
-                        workload = await native_font_workloads.collect(
-                            page, f"http://127.0.0.1:{server.server_address[1]}",
-                            destination / f"workload-{mode}-{round_index}", before[str(workload_font)])
-                        report["workloads"][mode].append(workload)
-                except Exception as error:
-                    report["errors"].append({"mode": mode, "round": round_index,
-                                              "error": type(error).__name__ + ": " + str(error)})
-                finally:
-                    try:
-                        await runtime.close()
-                    except Exception as error:
-                        report["errors"].append({"mode": mode, "round": round_index,
-                                                  "cleanup_error": type(error).__name__ + ": " + str(error)})
-                    if runtime.has_resources:
-                        raise RuntimeError("Font probe retains browser resources; remaining modes were not run")
-                    (destination / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")
+        await collect_profiles(executable, destination, f"http://127.0.0.1:{server.server_address[1]}", modes, report,
+                               profile_concurrency=profile_concurrency,
+                               workload_font_sha256=before[str(workload_font)] if workload_font is not None else None)
         if not report["errors"]:
             report["assessment"] = assess(report["runs"], series=series)
             report["visual_restarts"] = {mode: native_font_visuals.compare_control(values[0], values[1])
                                           for mode, values in report["visuals"].items()}
             report["visual_controls"] = {mode: native_font_visuals.compare_control(report["visuals"]["off"][0], values[0])
                                           for mode, values in report["visuals"].items() if mode != "off"}
-            report["passed"] = (report["assessment"]["passed"] and not any(report["visual_restarts"].values())
+            report["passed"] = (report["peak_live_profiles"] == profile_concurrency
+                                and report["assessment"]["passed"] and not any(report["visual_restarts"].values())
                                 and (series == "text-tuning" or not report["visual_controls"]["native"]))
             if workload_font is not None:
                 report["workload_assessment"] = native_font_workloads.assess(report["workloads"], modes)
@@ -306,10 +366,13 @@ def main() -> int:
     parser.add_argument("--series", choices=("rasterization", "text-tuning"), default="rasterization")
     parser.add_argument("--candidate", choices=("upstream-156",), help="Bind the complete candidate build receipt; not capability admission")
     parser.add_argument("--workload-font", type=Path, help="Explicit real TTF/OTF for editing, web-font and export workloads")
+    parser.add_argument("--profile-concurrency", type=int, choices=(1, 2), default=1,
+                        help="Explicit maximum simultaneously live private profiles; default sequential")
     arguments = parser.parse_args()
     try:
         report = asyncio.run(verify(arguments.executable, arguments.output, series=arguments.series,
-                                    candidate_name=arguments.candidate, workload_font=arguments.workload_font))
+                                    candidate_name=arguments.candidate, workload_font=arguments.workload_font,
+                                    profile_concurrency=arguments.profile_concurrency))
     except (OSError, ValueError) as error:
         parser.exit(1, f"Font rendering verification failed: {error}\n")
     summary = {key: report.get(key) for key in ("passed", "errors", "error", "inputs_unchanged")}

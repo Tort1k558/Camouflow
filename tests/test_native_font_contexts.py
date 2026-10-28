@@ -341,7 +341,8 @@ def test_admitted_rendering_requires_restart_stability_and_effect_in_every_scope
 @pytest.mark.parametrize("series", ["rasterization", "text-tuning"])
 @pytest.mark.parametrize("candidate_mode", [False, True])
 @pytest.mark.parametrize("workload_mode", [False, True])
-def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure, series, candidate_mode, workload_mode):
+def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure, series, candidate_mode, workload_mode,
+                                                         profile_concurrency=1):
     public = tmp_path / "public"
     runtime_dir = tmp_path / "runtime"
     runtime_dir.mkdir()
@@ -355,6 +356,7 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     for relative in ("scripts/native_font_contexts.py", "scripts/native_font_rendering.py",
                      "scripts/native_canvas_formats.py", "scripts/native_canvas_hdr.py", "scripts/native_font_visuals.py",
                      "scripts/native_font_workloads.py",
+                     "scripts/verify_native_runtime.py",
                      "app/core/native/canvas_fidelity.py", "app/core/native/configuration.py",
                      "app/core/native/privacy.py", "app/core/native/runtime.py", "app/core/native/identity.py"):
         path = public / relative
@@ -389,6 +391,17 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     runs = mode_runs() if series == "rasterization" else tuning_runs()
     modes = verifier.series_modes(series)
     starts = []
+    closed = []
+    storage = {}
+    storage_deadlines = []
+    wait_for = asyncio.wait_for
+    async def bounded_storage(awaitable, *, timeout):
+        if getattr(awaitable, "cr_code", None) and awaitable.cr_code.co_name == "evaluate":
+            storage_deadlines.append(timeout)
+            if failure == "storage-timeout":
+                timeout = .001
+        return await wait_for(awaitable, timeout=timeout)
+    monkeypatch.setattr(verifier.asyncio, "wait_for", bounded_storage)
 
     class Page:
         def __init__(self, mode):
@@ -398,20 +411,39 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
             from pathlib import Path
             Path(path).write_bytes(b"owned screenshot")
 
+        async def goto(self, *args, **kwargs):
+            pass
+
+        async def evaluate(self, script, value):
+            assert script == verifier.STORAGE
+            if failure == "storage-timeout":
+                await asyncio.sleep(60)
+            key = "shared" if failure == "storage-share" else self.mode
+            if value is not None:
+                storage[key] = value
+            marker = storage.get(key)
+            return {"cookie": "" if marker is None else "owned=" + marker, "local": marker,
+                    "indexed": marker, "cached": marker, "workers": 0 if marker is None else 1}
+
     class Runtime:
         def __init__(self, profile, path, configuration):
             self.mode = configuration.rasterization
             self.has_resources = False
+            if failure == "storage-loss":
+                storage.pop(self.mode, None)
 
         async def start(self, **kwargs):
             self.has_resources = True
             starts.append(self.mode)
+            if failure == "start" and self.mode == "off":
+                raise RuntimeError("owned startup failure")
             return self
 
         async def new_page(self):
             return Page(self.mode)
 
         async def close(self):
+            closed.append(self.mode)
             if failure == "cleanup":
                 raise RuntimeError("owned cleanup failure")
             self.has_resources = False
@@ -452,6 +484,10 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
         if failure == "workload-semantic-change" and page.mode == modes[-1]:
             for name in ("domWidth", "svgWidth", "canvasWidth"):
                 value["font"][name] += 1
+        if failure == "storage-after-workload":
+            storage[page.mode] = "changed-by-workload"
+        elif failure == "storage-peer-late" and page.mode == modes[1]:
+            storage[modes[0]] = "changed-by-peer"
         artifacts.mkdir()
         for name, data in {"note.txt": value["download"]["text"].encode("utf-8"),
                            "workspace.png": b"owned workload screenshot", "print.pdf": b"%PDF-" + b"x" * 4091}.items():
@@ -492,7 +528,8 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     destination = tmp_path / "evidence"
     selector = None if candidate is None else candidate["name"]
     report = asyncio.run(verifier.verify(executable, destination, series=series, candidate_name=selector,
-                                        workload_font=font_file if workload_mode else None))
+                                        workload_font=font_file if workload_mode else None,
+                                        profile_concurrency=profile_concurrency))
     assert report["passed"] is (failure is None)
     assert report["capability_admitted"] is False
     assert report["series"] == series
@@ -505,9 +542,19 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
         "core-change", "pack-change", "pack-removed", "source-change", "policy-change", "receipt-change", "screenshot-change", "screenshot-removed",
         "workload-font-change", "workload-source-change", "workload-artifact-change"})
     if failure == "cleanup":
-        assert starts == ["off"]
+        assert starts == list(modes[:profile_concurrency])
+        assert closed == starts
     elif failure != "bind":
-        assert starts == [mode for mode in modes for _ in range(2)]
+        assert starts == [mode for offset in range(0, len(modes), profile_concurrency) for _ in range(2)
+                          for mode in modes[offset:offset + profile_concurrency]]
+        assert sorted(closed) == sorted(starts)
+    if failure == "storage-peer-late":
+        assert any(error.get("round") == 0 and error.get("phase") == "storage"
+                   and "peer changed" in error.get("error", "") for error in report["errors"])
+    if failure is None:
+        assert report["peak_live_profiles"] == profile_concurrency
+        assert all(len(values) == 2 for values in report["profile_storage"].values())
+        assert storage_deadlines and set(storage_deadlines) == {30}
     with pytest.raises(ValueError, match="Fresh private evidence"):
         asyncio.run(verifier.verify(executable, destination, series=series, candidate_name=selector))
 
@@ -518,6 +565,29 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
 @pytest.mark.parametrize("candidate_mode", [False, True])
 def test_workload_verifier_guards_fail_without_weakening_native_checks(tmp_path, monkeypatch, failure, series, candidate_mode):
     test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure, series, candidate_mode, True)
+
+
+@pytest.mark.parametrize("failure", [None, "start", "measurement", "cleanup", "source-change", "screenshot-change",
+                                     "workload-font-change", "workload-artifact-change", "storage-share", "storage-loss",
+                                     "storage-after-workload", "storage-peer-late", "storage-timeout"])
+def test_concurrent_rendering_profiles_preserve_guards_and_close_every_owner(tmp_path, monkeypatch, failure):
+    test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch, failure, "text-tuning", True, True, 2)
+
+
+@pytest.mark.parametrize("concurrency", [0, 3, True, 1.0, None])
+def test_rendering_concurrency_rejects_before_builder_access(tmp_path, monkeypatch, concurrency):
+    monkeypatch.setattr(verifier.sys, "platform", "win32")
+    monkeypatch.setattr(verifier, "require_idle_builder", lambda: pytest.fail("Invalid concurrency reached the builder"))
+    with pytest.raises(ValueError, match="explicitly 1 or 2"):
+        asyncio.run(verifier.verify(tmp_path / "chrome.exe", tmp_path / "output", profile_concurrency=concurrency))
+    assert not (tmp_path / "output").exists()
+
+
+@pytest.mark.parametrize("modes", [(), ("off", "off"), ("unknown",), ["off"], (True,)])
+def test_profile_collector_rejects_ambiguous_modes_before_start(tmp_path, monkeypatch, modes):
+    monkeypatch.setattr(verifier, "NativeRuntime", lambda *args: pytest.fail("Ambiguous profile modes reached runtime"))
+    with pytest.raises(ValueError, match="explicit, supported and unique"):
+        asyncio.run(verifier.collect_profiles(tmp_path / "chrome.exe", tmp_path, "http://127.0.0.1:1234", modes, {}))
 
 
 def workload_observation(font_sha256="b" * 64):

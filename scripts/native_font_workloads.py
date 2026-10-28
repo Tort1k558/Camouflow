@@ -211,15 +211,15 @@ async def collect(page, base_url: str, artifacts: Path, font_sha256: str) -> dic
     async with page.expect_response(font_url, timeout=10000) as response_info:
         font = await asyncio.wait_for(page.evaluate(READ_FONT, font_url), timeout=30)
     response = await response_info.value
-    font["networkSha256"] = hashlib.sha256(await response.body()).hexdigest()
+    font["networkSha256"] = hashlib.sha256(await asyncio.wait_for(response.body(), timeout=30)).hexdigest()
     if response.status != 200 or font["networkSha256"] != font_sha256:
         raise ValueError("Workload font response differs from the measured input")
     async with page.expect_download(timeout=10000) as download_info:
         await page.locator("#export").click()
     download = await download_info.value
-    if download.suggested_filename != "glint-note.txt" or await download.failure() is not None:
+    if download.suggested_filename != "glint-note.txt" or await asyncio.wait_for(download.failure(), timeout=30) is not None:
         raise ValueError("Owned note download failed")
-    await download.save_as(artifacts / "note.txt")
+    await asyncio.wait_for(download.save_as(artifacts / "note.txt"), timeout=30)
     downloaded = (artifacts / "note.txt").read_bytes()
     pdf = await asyncio.wait_for(page.pdf(print_background=True), timeout=30)
     (artifacts / "print.pdf").write_bytes(pdf)
