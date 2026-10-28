@@ -25,6 +25,35 @@ visually checked. The complete Python suite passed **2918 tests, one skipped**.
 This does not transfer these observations to 156, cover worker APIs or establish
 anti-bot acceptance.
 
+## Native text-tuning research — 2026-10-28
+
+Before adding another Chromium patch, the existing upstream `text-gamma` and
+`text-contrast` launch controls were inspected and measured. Source 156 already
+forwards both controls to renderers and applies them through Skia surface
+properties. No source, registered patch, GN or manager admission was changed.
+
+Owned **148** calibration completed with unchanged stock and installed Glint
+cores/payload: baseline plus two joint gamma/contrast settings, two starts per
+profile, both runtimes, all eight first-script document/frame/worker scopes:
+**96 scope observations**. Evidence: `text-tuning-research-20261028-v1/report.json`
+and twelve checksum-bound screenshots on D.
+
+Both explicit settings changed all six text samples in each scope in both
+runtimes. Text metrics, explicit-pixel fidelity, format/HDR observations and
+repeat/PNG/ImageBitmap consistency retained their controls. Restart comparisons
+had no drift. Corresponding stock/Glint screenshots were byte-identical for
+each setting and unchanged across restart; baseline and tuned screenshots were
+visually inspected. This measures real rendering, not a readback-only mask.
+
+These are joint-control experiments, not isolated causal tests of each flag,
+proof of natural device distributions, general application compatibility or
+anti-bot acceptance. Manager controls/admission are **not enabled** by this
+research. Next: isolate gamma/contrast effects, repeat on the linked 156 runtime,
+check combinations with existing policies and ordinary text/editing/web-font
+workloads, then decide the supported profile contract. Reuse verified upstream
+controls instead of duplicating them in a custom patch unless a measured gap
+requires one.
+
 ## Follow-up Windows regression — 2026-10-28
 
 This is another run of the installed **148 / 001-062** package, not a new linked
