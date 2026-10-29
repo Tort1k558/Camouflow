@@ -99,7 +99,33 @@ was registered/selected for building. The active .36 build remains frozen.
 The next tooling step is a reproducible guarded sparse-cache/replay entry point;
 the next engine step remains actual compilation and native/runtime validation.
 
-### Public replay entry point and refresh manifest
+### Chromium 157 bounded port — 2026-10-29
+
+The resumed immutable-source discovery validated the previous 28 cache entries
+before HTTP and reached **72 of 185 inputs**, then stopped on a read timeout.
+Requests were serial, at least two seconds apart, after a cooldown exceeding
+15 minutes. No automatic retry or mirror was used. The failed discovery remains
+`upstream-forward-preflight-20261029-v3/report.json` on D. All 301 active build
+inputs, the separately reviewed helper and prior cache stayed unchanged.
+
+Offline replay exposed real porting failures at 0006, 0018, 0022, 0026 and 0029.
+Five isolated adaptations now pass the **001–029 source prefix**. The worker
+handoff uses upstream's current three-argument creation API; document bootstrap
+and worker tests retain their seed ownership/checks. Earlier failed reports
+remain under `cached-157-prefix-20261029-v1` and `ported-157-prefix-20261029-v1`
+through `v4`; the successful isolated report is `ported-157-prefix-20261029-v5`.
+
+The public [157 prefix draft](../native/drafts/upstream-157-prefix/README.md)
+stores only the five changed patch payloads, with a manifest referencing the
+24 unchanged originals. Public cache-fetch/replay passed **72 validated cache
+files / zero HTTP requests / 29 patch applications**. Evidence:
+`public-157-prefix-inputs-20261029-v1/source-fetch-report.json` and
+`public-157-prefix-replay-20261029-v1/report.json` on D. Input/patch postguards
+passed; this is not 29 compiled tests. GPU/GRIT invariants were unavailable in
+this prefix. Eight missing inputs block 0030; **0030–0062 are unverified**.
+There is no C++/runtime/security/package admission or target switch.
+
+### Public 156 refresh replay evidence
 
 The .75 input manifest is now public under
 `native/drafts/upstream-156-refresh/manifest.json`, bound to the original manifest

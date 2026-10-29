@@ -1,0 +1,478 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+index 4d778b6..b462ee3 100644
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -627,6 +627,8 @@ source_set("browser") {
+     "browser_context.cc",
+     "browser_context_impl.cc",
+     "camouflow_native/privacy_context.cc",
++    "camouflow_native/privacy_document_service.cc",
++    "camouflow_native/privacy_document_service.h",
+     "browser_context_impl.h",
+     "browser_interface_binders.cc",
+     "browser_interface_binders.h",
+diff --git a/content/browser/browser_interface_binders.cc b/content/browser/browser_interface_binders.cc
+index 68a1a2f..bf43e27 100644
+--- a/content/browser/browser_interface_binders.cc
++++ b/content/browser/browser_interface_binders.cc
+@@ -27,6 +27,7 @@
+ #include "content/browser/bluetooth/web_bluetooth_service_impl.h"
+ #include "content/browser/browser_context_impl.h"
+ #include "content/browser/browser_main_loop.h"
++#include "content/browser/camouflow_native/privacy_document_service.h"
+ #include "content/browser/connection_allowlist_utils.h"
+ #include "content/browser/contacts/contacts_manager_impl.h"
+ #include "content/browser/content_index/content_index_service_impl.h"
+@@ -990,6 +991,8 @@ void PopulateBinderMapWithContext(
+       &BindRenderFrameHostImpl<
+           &RenderFrameHostImpl::CreateDedicatedWorkerHostFactory>);
+ 
++  map->Add<blink::mojom::NativePrivacyDocument>(&PrivacyDocumentService::Create);
++
+   map->Add<blink::mojom::DevicePostureProvider>(&BindDevicePostureProvider);
+ 
+   map->Add<blink::mojom::FeatureObserver>(
+diff --git a/content/browser/camouflow_native/privacy_document_service.cc b/content/browser/camouflow_native/privacy_document_service.cc
+new file mode 100644
+index 0000000..aa8c750
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_document_service.cc
+@@ -0,0 +1,94 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/camouflow_native/privacy_document_service.h"
++
++#include <utility>
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/time/time.h"
++#include "content/public/browser/native_privacy_context.h"
++
++namespace content {
++namespace {
++using Status = blink::mojom::NativePrivacyDeliveryStatus;
++constexpr uint32_t kCanvasPolicyVersion = 1;
++constexpr base::TimeDelta kReadinessDeadline = base::Seconds(10);
++}  // namespace
++
++void PrivacyDocumentService::Create(
++    RenderFrameHost* frame,
++    mojo::PendingReceiver<blink::mojom::NativePrivacyDocument> receiver) {
++  CHECK(frame);
++  new PrivacyDocumentService(*frame, std::move(receiver));
++}
++
++PrivacyDocumentService::PrivacyDocumentService(
++    RenderFrameHost& frame,
++    mojo::PendingReceiver<blink::mojom::NativePrivacyDocument> receiver)
++    : DocumentService(frame, std::move(receiver)),
++      partition_(frame.GetStorageKey()),
++      partition_encoding_(partition_.SerializeForNativePrivacy()) {}
++
++PrivacyDocumentService::~PrivacyDocumentService() = default;
++
++void PrivacyDocumentService::GetCanvasPolicy(GetCanvasPolicyCallback callback) {
++  if (requested_) {
++    ReportBadMessageAndDeleteThis("Glint policy requested twice on one pipe");
++    return;
++  }
++  requested_ = true;
++  pending_reply_ = std::move(callback);
++  if (!render_frame_host().IsActive() || !IsCurrentPartition()) {
++    Complete(Status::kUnavailable, nullptr);
++    return;
++  }
++  timer_.Start(FROM_HERE, kReadinessDeadline,
++               base::BindOnce(&PrivacyDocumentService::OnTimeout,
++                              weak_factory_.GetWeakPtr()));
++  // Terminal readiness invokes inline. Do not access members after registering.
++  WhenNativePrivacyContextReady(
++      render_frame_host().GetBrowserContext(),
++      base::BindOnce(&PrivacyDocumentService::OnReady,
++                     weak_factory_.GetWeakPtr()));
++}
++
++void PrivacyDocumentService::OnReady(bool ready) {
++  if (!pending_reply_) {
++    return;
++  }
++  if (!ready || !render_frame_host().IsActive() || !IsCurrentPartition()) {
++    Complete(Status::kUnavailable, nullptr);
++    return;
++  }
++  auto seed = DeriveNativePrivacyKey(render_frame_host().GetBrowserContext(),
++                                     partition_, "canvas");
++  if (!seed) {
++    Complete(Status::kUnavailable, nullptr);
++    return;
++  }
++  auto policy = blink::mojom::NativePrivacyCanvasPolicy::New();
++  policy->version = kCanvasPolicyVersion;
++  policy->partition_seed.assign(seed->begin(), seed->end());
++  Complete(Status::kReady, std::move(policy));
++}
++
++void PrivacyDocumentService::OnTimeout() {
++  Complete(Status::kTimedOut, nullptr);
++}
++
++bool PrivacyDocumentService::IsCurrentPartition() const {
++  return partition_encoding_.has_value() &&
++         render_frame_host().GetStorageKey().SerializeForNativePrivacy() ==
++             partition_encoding_;
++}
++
++void PrivacyDocumentService::Complete(
++    Status status, blink::mojom::NativePrivacyCanvasPolicyPtr policy) {
++  timer_.Stop();
++  weak_factory_.InvalidateWeakPtrs();
++  if (pending_reply_) {
++    std::move(pending_reply_).Run(status, std::move(policy));
++  }
++}
++}  // namespace content
+diff --git a/content/browser/camouflow_native/privacy_document_service.h b/content/browser/camouflow_native/privacy_document_service.h
+new file mode 100644
+index 0000000..8864297
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_document_service.h
+@@ -0,0 +1,50 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_DOCUMENT_SERVICE_H_
++#define CONTENT_BROWSER_CAMOUFLOW_NATIVE_PRIVACY_DOCUMENT_SERVICE_H_
++
++#include <optional>
++#include <string>
++
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "content/public/browser/document_service.h"
++#include "third_party/blink/public/common/storage_key/storage_key.h"
++#include "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom.h"
++
++namespace content {
++
++class PrivacyDocumentService final
++    : public DocumentService<blink::mojom::NativePrivacyDocument> {
++ public:
++  static void Create(
++      RenderFrameHost* frame,
++      mojo::PendingReceiver<blink::mojom::NativePrivacyDocument> receiver);
++
++  PrivacyDocumentService(const PrivacyDocumentService&) = delete;
++  PrivacyDocumentService& operator=(const PrivacyDocumentService&) = delete;
++
++  void GetCanvasPolicy(GetCanvasPolicyCallback callback) override;
++
++ private:
++  PrivacyDocumentService(
++      RenderFrameHost& frame,
++      mojo::PendingReceiver<blink::mojom::NativePrivacyDocument> receiver);
++  ~PrivacyDocumentService() override;
++
++  void OnReady(bool ready);
++  void OnTimeout();
++  bool IsCurrentPartition() const;
++  void Complete(blink::mojom::NativePrivacyDeliveryStatus status,
++                blink::mojom::NativePrivacyCanvasPolicyPtr policy);
++
++  const blink::StorageKey partition_;
++  const std::optional<std::string> partition_encoding_;
++  bool requested_ = false;
++  GetCanvasPolicyCallback pending_reply_;
++  base::OneShotTimer timer_;
++  base::WeakPtrFactory<PrivacyDocumentService> weak_factory_{this};
++};
++
++}  // namespace content
++#endif
+diff --git a/content/browser/camouflow_native/privacy_document_service_unittest.cc b/content/browser/camouflow_native/privacy_document_service_unittest.cc
+new file mode 100644
+index 0000000..8035df9
+--- /dev/null
++++ b/content/browser/camouflow_native/privacy_document_service_unittest.cc
+@@ -0,0 +1,225 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "content/browser/camouflow_native/privacy_document_service.h"
++
++#include <vector>
++
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/run_loop.h"
++#include "base/test/bind.h"
++#include "base/time/time.h"
++#include "content/public/browser/native_privacy_context.h"
++#include "content/public/test/test_renderer_host.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "mojo/public/cpp/test_support/test_utils.h"
++#include "net/base/schemeful_site.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++
++namespace content {
++namespace {
++using Status = blink::mojom::NativePrivacyDeliveryStatus;
++using Policy = blink::mojom::NativePrivacyCanvasPolicyPtr;
++constexpr char kIdentity[] =
++    R"({"schema":1,"seed":"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"})";
++
++class NativePrivacyDocumentServiceTest : public RenderViewHostTestHarness {
++ public:
++  NativePrivacyDocumentServiceTest()
++      : RenderViewHostTestHarness(
++            base::test::TaskEnvironment::TimeSource::MOCK_TIME,
++            base::test::TaskEnvironment::ThreadPoolExecutionMode::QUEUED) {}
++
++ protected:
++  void SetUp() override {
++    RenderViewHostTestHarness::SetUp();
++    ASSERT_TRUE(owned_.CreateUniqueTempDir());
++    ASSERT_TRUE(base::WriteFile(
++        owned_.GetPath().AppendASCII("camouflow-native-privacy.json"),
++        kIdentity));
++    NavigateAndCommit(GURL("https://canvas.test/first"));
++  }
++
++  void Initialize() {
++    ASSERT_TRUE(InitializeNativePrivacyContext(browser_context(),
++                                               owned_.GetPath()));
++  }
++
++  mojo::Remote<blink::mojom::NativePrivacyDocument> Connect() {
++    mojo::Remote<blink::mojom::NativePrivacyDocument> remote;
++    PrivacyDocumentService::Create(main_rfh(),
++                                    remote.BindNewPipeAndPassReceiver());
++    return remote;
++  }
++
++  base::ScopedTempDir owned_;
++};
++
++TEST_F(NativePrivacyDocumentServiceTest, MissingServiceReturnsUnavailable) {
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kUnavailable);
++        EXPECT_FALSE(policy);
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyDocumentServiceTest, ReadyContextDeliversOnlyCanvasSubkey) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  const auto expected = DeriveNativePrivacyKey(
++      browser_context(), main_rfh()->GetStorageKey(), "canvas");
++  ASSERT_TRUE(expected);
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kReady);
++        ASSERT_TRUE(policy);
++        EXPECT_EQ(policy->version, 1u);
++        EXPECT_EQ(policy->partition_seed,
++                  std::vector<uint8_t>(expected->begin(), expected->end()));
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyDocumentServiceTest, LoadingDoesNotReplyBeforeReadiness) {
++  Initialize();
++  ASSERT_FALSE(IsNativePrivacyContextReady(browser_context()));
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kReady);
++        ASSERT_TRUE(policy);
++        EXPECT_EQ(policy->partition_seed.size(), 32u);
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  task_environment()->RunUntilIdle();
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyDocumentServiceTest,
++       NativePartitionEncodingRetainsDisabledStoragePartitionFields) {
++  Initialize();
++  task_environment()->RunUntilIdle();
++  const auto origin = url::Origin::Create(GURL("https://canvas.test/"));
++  const auto first = blink::StorageKey::Create(
++      origin, net::SchemefulSite(GURL("https://first.test/")),
++      blink::mojom::AncestorChainBit::kCrossSite, false);
++  const auto second = blink::StorageKey::Create(
++      origin, net::SchemefulSite(GURL("https://second.test/")),
++      blink::mojom::AncestorChainBit::kCrossSite, false);
++  ASSERT_EQ(first, second);
++  const auto first_encoding = first.SerializeForNativePrivacy();
++  const auto second_encoding = second.SerializeForNativePrivacy();
++  ASSERT_TRUE(first_encoding);
++  ASSERT_TRUE(second_encoding);
++  EXPECT_NE(first_encoding, second_encoding);
++  const auto first_seed = DeriveNativePrivacyKey(browser_context(), first, "canvas");
++  const auto second_seed = DeriveNativePrivacyKey(browser_context(), second, "canvas");
++  ASSERT_TRUE(first_seed);
++  ASSERT_TRUE(second_seed);
++  EXPECT_NE(first_seed, second_seed);
++}
++
++TEST_F(NativePrivacyDocumentServiceTest, ShutdownSettlesOnceWithoutSeed) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kUnavailable);
++        EXPECT_FALSE(policy);
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  ShutdownNativePrivacyContext(browser_context());
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++  task_environment()->RunUntilIdle();
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyDocumentServiceTest, TimeoutRejectsLateReadyReply) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status status, Policy policy) {
++        ++replies;
++        EXPECT_EQ(status, Status::kTimedOut);
++        EXPECT_FALSE(policy);
++      }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  // Do not run queued ThreadPool loading before the deadline.
++  task_environment()->AdvanceClock(base::Seconds(11));
++  base::RunLoop().RunUntilIdle();
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++  task_environment()->RunUntilIdle();
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 1);
++}
++
++TEST_F(NativePrivacyDocumentServiceTest, PipeDisconnectDropsLoadingReply) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status, Policy) { ++replies; }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  remote.reset();
++  base::RunLoop().RunUntilIdle();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(replies, 0);
++}
++
++TEST_F(NativePrivacyDocumentServiceTest, DocumentDestructionDropsLoadingReply) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status, Policy) { ++replies; }));
++  remote.FlushForTesting();
++  EXPECT_EQ(replies, 0);
++  DeleteContents();
++  task_environment()->RunUntilIdle();
++  EXPECT_EQ(replies, 0);
++  EXPECT_FALSE(remote.is_connected());
++}
++
++TEST_F(NativePrivacyDocumentServiceTest, DuplicateRequestClosesLoadingPipe) {
++  Initialize();
++  auto remote = Connect();
++  int replies = 0;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status, Policy) { ++replies; }));
++  remote.FlushForTesting();
++  ASSERT_EQ(replies, 0);
++  mojo::test::BadMessageObserver observer;
++  remote->GetCanvasPolicy(base::BindLambdaForTesting(
++      [&](Status, Policy) { ++replies; }));
++  EXPECT_EQ(observer.WaitForBadMessage(),
++            "Glint policy requested twice on one pipe");
++  task_environment()->RunUntilIdle();
++  EXPECT_FALSE(remote.is_connected());
++  EXPECT_EQ(replies, 0);
++}
++
++}  // namespace
++}  // namespace content
+diff --git a/content/test/BUILD.gn b/content/test/BUILD.gn
+index 28ee9c1..17afeb0 100644
+--- a/content/test/BUILD.gn
++++ b/content/test/BUILD.gn
+@@ -2554,6 +2554,7 @@ test("content_unittests") {
+   defines = []
+   sources = [
+     "../browser/camouflow_native/privacy_context_unittest.cc",
++    "../browser/camouflow_native/privacy_document_service_unittest.cc",
+     "../browser/accessibility/browser_accessibility_manager_unittest.cc",
+     "../browser/accessibility/browser_accessibility_state_impl_unittest.cc",
+     "../browser/accessibility/browser_accessibility_unittest.cc",
+diff --git a/third_party/blink/public/mojom/BUILD.gn b/third_party/blink/public/mojom/BUILD.gn
+index afcb7c2..9070ecb 100644
+--- a/third_party/blink/public/mojom/BUILD.gn
++++ b/third_party/blink/public/mojom/BUILD.gn
+@@ -139,6 +139,7 @@ mojom("mojom_platform") {
+     "haptics/haptics.mojom",
+     "hid/hid.mojom",
+     "hyphenation/hyphenation.mojom",
++    "native_privacy/native_privacy_document.mojom",
+     "idle/idle_manager.mojom",
+     "image_downloader/image_downloader.mojom",
+     "image_replacement/image_replacement.mojom",
+diff --git a/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom b/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom
+new file mode 100644
+index 0000000..8431c85
+--- /dev/null
++++ b/third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom
+@@ -0,0 +1,27 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++module blink.mojom;
++
++enum NativePrivacyDeliveryStatus {
++  kReady,
++  kUnavailable,
++  kTimedOut,
++};
++
++struct NativePrivacyCanvasPolicy {
++  uint32 version;
++  array<uint8, 32> partition_seed;
++};
++
++// Internal browser-to-Blink transport, never exposed through JavaScript.
++// No caller-provided origin, StorageKey, profile path or derivation domain.
++interface NativePrivacyDocument {
++  GetCanvasPolicy() => (NativePrivacyDeliveryStatus status,
++                       NativePrivacyCanvasPolicy? policy);
++};
++
++// Bound by a browser worker host and destroyed with that host/pipe, not a frame.
++interface NativePrivacyWorker {
++  GetCanvasPolicy() => (NativePrivacyDeliveryStatus status,
++                       NativePrivacyCanvasPolicy? policy);
++};
