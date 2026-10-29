@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "passed": false,
+  "measurement_complete": true,
+  "git_head": "b6aa9c5767be2e3d1882829f3b0965540066a9a0",
+  "tracked_file_count": 795,
+  "duration_seconds": 655.156,
+  "returncode": 1,
+  "counts": {
+    "tests": 4256,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4254
+  },
+  "postguards_passed": true,
+  "changed_tracked_files": [],
+  "log_sha256": "ad8d3c55d1ee7c3453cd4022b7a87e86eaf9151b0c0f1666cdce0fb3649435a5",
+  "junit_sha256": "6abc110f36f45fda244d93ca124d9a57d93844e34033448a6ec747d7e9ec1f92",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "raw_report_sha256": "baf8df487b1deb47bcdb32b5030427c153683a0a5b9d4f0388cfc5581711bded",
+  "tracked_snapshot_sha256": "b4c10967ad0e73ccdd1dc507c59b8c69fc4a600c6a7ffd922701ebd5f5f1068b",
+  "failed_test": "tests/test_qml_python_editor.py::test_native_qml_configuration_and_profile_creation",
+  "root_cause": "The fixture used DB write completion plus a fixed 800-ms pump, but the QML dialog reads the asynchronously delivered bridge model. Calling open before model delivery does not open the dialog; waiting afterwards cannot reopen it.",
+  "fix_scope": "Test-only wait for the public getProfile model within the existing 3-second deadline; add explicit 1500-ms delayed-delivery case. No production UI/code change or deadline increase.",
+  "controlled_race_report_sha256": "353c5cabc1e441c0a97a9c4cca8652b3930fef43c901c14e9af38b4f404579eb",
+  "controlled_race": {
+    "schema": 1,
+    "scope": "Controlled 1500-ms delivery delay after DB completion, same existing 3-second deadline; no production change",
+    "original": {
+      "returncode": 1,
+      "source_sha256": "2a3b7576bc8b1b1b7982441365ac7df497814b1334c98de3d66f5c8e62ba2947",
+      "expected_dialog_failure": true
+    },
+    "model-ready": {
+      "returncode": 0,
+      "source_sha256": "62be4638fdd7e9dfa9244101ac4fe7224ed3cd32a89df58ab2426489301904f4",
+      "expected_dialog_failure": false
+    }
+  },
+  "corrected_test_source": "tests/test_qml_python_editor.py",
+  "corrected_test_source_sha256": "95aa85e6526d507da0a504438fc49e0ca3d2b1d1b094e2e740b6abd4c5e0a23f",
+  "qml_module_followup": {
+    "passed": 9,
+    "duration_seconds": 49.36,
+    "evidence_kind": "Observed terminal exit 0 for the complete QML test module after synchronization repair"
+  },
+  "full_regression_after_repair_verified": false,
+  "note": "Historical full run at the named Git head, with the pre-existing foreign HUB edit preserved. Follow-up QML success is not a full-suite PASS."
+}

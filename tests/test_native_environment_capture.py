@@ -1027,3 +1027,22 @@ def test_queued_widget_verifier_applies_and_rejects_incomplete_results(tmp_path,
     with pytest.raises(ValueError, match="explicit upstream-156"):
         proposed["verify"](tmp_path, tmp_path / "not-created.json", target="screen-widget", candidate_name=None)
     assert not (tmp_path / "not-created.json").exists()
+
+
+def test_failed_full_regression_retains_failure_and_distinguishes_qml_followup():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/canonical-python69-preparation-observations.json").read_bytes())
+    assert record["measurement_complete"] and record["postguards_passed"]
+    assert record["passed"] is False and record["returncode"] == 1
+    assert record["counts"] == {"tests": 4256, "passed": 4254, "failures": 1, "errors": 0, "skipped": 1}
+    assert record["failed_test"].endswith("::test_native_qml_configuration_and_profile_creation")
+    assert record["changed_tracked_files"] == []
+    assert record["controlled_race"]["original"]["returncode"] == 1
+    assert record["controlled_race"]["original"]["expected_dialog_failure"]
+    assert record["controlled_race"]["model-ready"]["returncode"] == 0
+    assert record["qml_module_followup"]["passed"] == 9
+    assert all(record[name] is False for name in ("full_regression_after_repair_verified", "native_runtime_verified",
+        "privacy_admitted", "production_admitted"))
+    assert hashlib.sha256((root / record["corrected_test_source"]).read_bytes()).hexdigest() == record["corrected_test_source_sha256"]

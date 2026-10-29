@@ -1,5 +1,12 @@
 # Glint browser test matrix
 
+## Canonical Python regression — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Full main b6aa9c5 | **4254 passed, 1 failed, 1 skipped**; 655.156s; tracked-source guards passed | [Retained failure](../native/drafts/environment/canonical-python69-preparation-observations.json); not a full-suite PASS |
+| QML race diagnosis/repair | Controlled 1500-ms model-delivery delay reproduces original failure; waiting for public `getProfile()` within the unchanged 3-second deadline passes; corrected full QML module **9 passed** | Test-only synchronization; production UI unchanged; full regression after repair still pending |
+
 ## Screen/DPR source package 0069, selected for build — 2026-10-30
 
 | Gate | Observed result | Boundary |
@@ -22,6 +29,7 @@
 | --- | --- | --- |
 | Source build | Completed incremental browser build, j4; core bytes unchanged from 001–067 | [Build evidence](../native/drafts/upstream-156/build68-observations.json); patch 0068 changes fixtures only |
 | Native batch | **18/18 groups passed**, including **12/12 AudioMath**; all postguards passed | [Native evidence](../native/drafts/upstream-156/native-batch68-observations.json); overlapping filters are not independent coverage |
+| Owned TLS negotiation | TLS 1.3 and TLS 1.2 completed with ALPN/HTTP 1.1; unrelated-key certificate rejected before HTTP; source/core/receipt/cleanup guards passed | [Evidence](../native/drafts/network/negotiation68-observations.json); one ephemeral diagnostic SPKI allowlist, no system-store/global-ignore change. Not ordinary certificate-path validation, TLS impersonation, resumption or HTTP/2/3 |
 | Large WebGL2 attachment | Four baseline/protected/restart phases passed on RGBA8 4096×4096 with a 2×2 viewport; full CPU/repeat/PBO hashes agree, three crops match full pixels, outside bytes and GL state preserved; two protected profiles differ | [Evidence](../native/drafts/next-readback/large-attachment68-observations.json); one document/OffscreenCanvas, caller buffers 64 MiB; not private/RSS memory, isolated latency, workers, other GPU APIs, 0069 or privacy admission |
 | Actual NativeRuntime ownership/storage | **8 lifecycle checks passed** on two simultaneous desktop/mobile-web profiles; duplicate owner/double start rejected; cookies/localStorage and private identity survived peer closes and both restarts; resources released | [Evidence](../native/drafts/environment/runtime-ownership68-observations.json); **screen consistency FAIL**, 36 document snapshots. Same-process lock owners only; not cross-process/crash/server-team/policy or release admission |
 | Separate-process profile ownership | Challenger Python process rejected while owner stayed usable; after orderly close another process acquired the profile; private identity retained and parent/children released resources | [Windows evidence](../native/drafts/environment/runtime-owner-process68-observations.json); current user, unprotected 001–068 only; not crash recovery, forced unlock, server/team isolation or release admission |

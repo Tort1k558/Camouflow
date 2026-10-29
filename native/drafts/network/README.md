@@ -31,9 +31,32 @@ and closed runtime resources. Glint is bound to its exact 001–065 receipt/core
 checkpoint, not a real CDP Git stamp (the current non-official build reports zeros).
 [Matched observations](matched-clienthello-observations.json).
 
-This does not verify successful TLS negotiation,
+The ClientHello captures themselves do not verify successful TLS negotiation,
 session resumption, certificate validation, DNS/proxy routes, HTTP/2, HTTP/3,
 external detector acceptance or cross-platform identity.
+
+## Owned TLS negotiation on preserved 001–068
+
+The separate [`negotiation.py`](negotiation.py) collector completed three owned
+loopback cases: actual TLS **1.3** and **1.2** with ALPN/HTTP **1.1**, and rejection
+of an unrelated self-signed key with `ERR_CERT_AUTHORITY_INVALID` before an HTTP
+request. [Source-bound evidence](negotiation68-observations.json). Actual protocol,
+cipher and ALPN are recorded by the Python SSL server, not inferred from a
+ClientHello offer or a page's own claims. Runtime cleanup/core/receipt/source
+guards passed, and temporary fixture private-key files were removed.
+
+This control explicitly allows **one ephemeral fixture SPKI** in the disposable
+browser process. It does not install certificates or enable global
+`--ignore-certificate-errors`/`--allow-insecure-localhost` exceptions. Chromium's
+[SPKI allowlist design](https://codereview.chromium.org/2753123002/diff/240001/chrome/browser/ssl/ignore_errors_cert_verifier.h)
+and the pinned checkout's `services/network/ignore_errors_cert_verifier.{h,cc}`
+describe this narrow diagnostic mechanism. It **bypasses certificate errors for
+that key**, so ordinary public-CA/path validation is not claimed. An unmatched
+key still fails. The collector uses standard-library SSL and existing project
+dependencies; caller-owned certificate generation/lifecycle stays outside it.
+
+This is not a new TLS stack, TLS impersonation, JA3/JA4 parity, resumption,
+HTTP/2/3, proxy routing, another OS/device identity or release admission.
 
 ## Use on an owned page
 

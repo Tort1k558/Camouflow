@@ -8,6 +8,61 @@ from urllib.parse import urlsplit
 import pytest
 
 from native.drafts.network import client_hello
+from native.drafts.network import negotiation
+
+
+def test_owned_tls_configuration_uses_only_one_canonical_diagnostic_key():
+    import base64
+
+    pin = base64.b64encode(bytes(range(32))).decode("ascii")
+    arguments = negotiation.Configuration(owned_spki=pin).launch_arguments()
+    assert "--ignore-certificate-errors-spki-list=" + pin in arguments
+    assert "--enable-automation" in arguments
+    assert not any(argument.split("=", 1)[0] in {"--ignore-certificate-errors", "--allow-insecure-localhost"}
+                   for argument in arguments)
+
+
+@pytest.mark.parametrize("pin", [None, False, 1, "", "not-base64", "YQ==", "A" * 44])
+def test_owned_tls_configuration_rejects_missing_or_noncanonical_pin(pin):
+    with pytest.raises(ValueError):
+        negotiation.Configuration(owned_spki=pin).launch_arguments()
+
+
+@pytest.mark.parametrize("version,label", [("TLS1.3", "tls13"), (771, "tls12"), (None, "tls12")])
+def test_owned_tls_factory_rejects_implicit_protocol_before_opening_files(tmp_path, version, label):
+    with pytest.raises(ValueError, match="explicit owned TLS"):
+        negotiation.create_server(tmp_path / "certificate.pem", tmp_path / "key.pem", version, label, {})
+
+
+def test_owned_tls_factory_rejects_unknown_case_and_missing_fixture_files(tmp_path):
+    import ssl
+
+    with pytest.raises(ValueError, match="Unknown owned TLS"):
+        negotiation.create_server(tmp_path / "certificate.pem", tmp_path / "key.pem", ssl.TLSVersion.TLSv1_3, "other", {})
+    with pytest.raises(ValueError, match="canonical files"):
+        negotiation.create_server(tmp_path / "certificate.pem", tmp_path / "key.pem", ssl.TLSVersion.TLSv1_3, "tls13", {})
+
+
+def test_owned_tls_runtime_evidence_is_negotiation_not_general_trust_or_impersonation():
+    import hashlib
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / "native/drafts/network/negotiation68-observations.json").read_bytes())
+    assert all(record[name] is True for name in ("passed", "measurement_complete", "postguards_passed",
+        "runtime_resource_free", "ephemeral_private_key_files_removed", "diagnostic_spki_allowlist_used"))
+    assert [row["name"] for row in record["cases"]] == ["tls13", "tls12", "unmatched-key"]
+    assert all(row["passed"] for row in record["cases"])
+    assert record["unmatched_key_error"] == "ERR_CERT_AUTHORITY_INVALID"
+    assert [row["tls_version"] for row in record["negotiated"]] == ["TLSv1.3", "TLSv1.2"]
+    assert all(row["alpn"] == "http/1.1" and row["http_version"] == "HTTP/1.1" for row in record["negotiated"])
+    assert all(record[name] is False for name in ("ordinary_certificate_path_validation_verified", "system_trust_store_changed",
+        "global_ignore_certificate_errors_used", "certificate_store_changed", "http2_verified", "http3_verified",
+        "session_resumption_verified", "native_0069_verified", "tls_impersonation_implemented",
+        "privacy_admitted", "production_admitted"))
+    for name, value in record["source_sha256"].items():
+        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
 
 
 def vector(value, width=2):

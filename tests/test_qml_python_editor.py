@@ -11,12 +11,13 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 
-def test_native_qml_configuration_and_profile_creation(tmp_path):
+@pytest.mark.parametrize("refresh_delay_ms", [0, 1500])
+def test_native_qml_configuration_and_profile_creation(tmp_path, refresh_delay_ms):
     script = '''
 import json
 import time
 from PyQt6 import sip
-from PyQt6.QtCore import Q_ARG, QCoreApplication, QEvent, QMetaObject, Qt, QUrl
+from PyQt6.QtCore import Q_ARG, QCoreApplication, QEvent, QMetaObject, Qt, QTimer, QUrl
 from app.storage import db
 from app.ui.qml_app import QmlApplication
 db.init_db()
@@ -168,10 +169,18 @@ try:
     pump()
     combo = find(root, 'objectName', 'newProfileEngine')
     assert combo.property('currentIndex') == 2
+    if REFRESH_DELAY_MS:
+        apply_accounts = ui.profiles._refresh_task._apply
+        ui.profiles._refresh_task._apply = lambda value: QTimer.singleShot(REFRESH_DELAY_MS, lambda: apply_accounts(value))
     QMetaObject.invokeMethod(find(root, 'text', 'New Profile'), 'clicked')
-    pump(.8)
-    rows = db.db_get_accounts()
-    assert len(rows) == 1 and rows[0]['_browser_engine'] == 'native'
+    deadline = time.monotonic() + 3
+    while True:
+        pump(.05)
+        rows = db.db_get_accounts()
+        if len(rows) == 1 and ui.profiles.getProfile(rows[0]['name'], '').get('engine') == 'native':
+            break
+        assert time.monotonic() < deadline, 'Created Glint profile was not delivered to the UI model'
+    assert rows[0]['_browser_engine'] == 'native'
     defaults = db.db_get_native_defaults()
     profile = rows[0]['name']
     profiles_page = find(root, 'objectName', 'pageLoader').property('item')
@@ -217,6 +226,7 @@ finally:
     sip.delete(ui.engine)
     ui._workspace_lock.unlock()
 '''
+    script = script.replace('REFRESH_DELAY_MS', str(refresh_delay_ms))
     result = subprocess.run([sys.executable, "-c", script], cwd=Path(__file__).resolve().parents[1],
         env={**os.environ, "CAMOUFLOW_DATA_DIR": str(tmp_path), "QT_QPA_PLATFORM": "offscreen"},
         capture_output=True, text=True, encoding="utf-8", timeout=30)

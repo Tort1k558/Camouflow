@@ -75,3 +75,5 @@ native/drafts/audio-dsp-math-v2/*.js text eol=lf
 native/drafts/audio-dsp-math-v2/*.json text eol=lf
 native/drafts/next-readback/large_attachment.* text eol=lf
 native/drafts/next-readback/large-attachment68-observations.json text eol=lf
+native/drafts/network/negotiation.py text eol=lf
+native/drafts/network/negotiation68-observations.json text eol=lf
