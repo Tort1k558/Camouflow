@@ -29,6 +29,11 @@ before identity loading/driver startup, including explicit EXE selection.
 Its owned 148-to156 upgrade preserved five stores and the private identity;
 the subsequent older selection was blocked without opening the upgraded data.
 This is one controlled transition, not general migration or rollback admission.
+The isolated guard-enabled Runtime passed the extended 18-check lifecycle CLI,
+including backup/restore, manager/Recorder and cancelled startup. Separately,
+three baseline lifecycle repeats passed during observed native-build activity;
+the original close timeout remains unexplained. Native context (37) and
+transport (20) units passed with postguards, not browser identity admission.
 The current candidate chain is 001–065;
 0063–0064 address the actual unsafe-buffer compilation failures without disabling
 diagnostics. Test-only 0065 updates worker synchronization/API calls and the GPU

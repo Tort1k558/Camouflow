@@ -148,7 +148,7 @@
   ],
   "frozen_inputs_unchanged": 201,
   "remaining_unverified": [
-    "Canonical application and complete Runtime/manager regression after queue quiescence",
+    "Canonical application and source-bound Runtime/manager regression after queue quiescence; isolated eighteen-check CLI passed",
     "Unknown or corrupted real profiles; this does not repair their data",
     "General cross-version migration, private snapshot recovery or rollback compatibility",
     "Linux/macOS guard implementation and runtime checks",
@@ -156,5 +156,45 @@
   ],
   "application_gate": "After existing source-bound queues are terminal; normalize target text, apply patch and rebind inputs",
   "no_fallback": true,
-  "profile_data_rewritten_by_guard": false
+  "profile_data_rewritten_by_guard": false,
+  "isolated_extended_lifecycle": {
+    "passed": true,
+    "scope": "One extended baseline lifecycle CLI with exact unapplied version guard modules; not canonical policy-suite or release admission",
+    "canonical_runtime_changed": false,
+    "canonical_verifier_changed": false,
+    "production_admitted": false,
+    "guard_sha256": "b911cea8e1d2eed4e2d8f9d4c78cbe5ba8f9dfbfce16365f5675b5b213150081",
+    "runtime_sha256": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "execution_copy_sha256": "b09e7a1a778be0f59138c3b8f567440d1a82b07ce98b1d3b897a9fd84664fc98",
+    "source_verifier_sha256": "bf7e6086b6e7b0997fd7b4b43d4595d2439b81f9131ff39d233497b4de9e401d",
+    "runtime_core_sha256": {
+      "chrome.exe": "0596afb2bd1a84731ebbe4d276edd3797d67b262bebb332e76a8aa9d21db5567",
+      "chrome.dll": "bd75c5c6ab3c45946edc0ea4e8f1d684286dd588d7cc46999a0b2bb1236aab44",
+      "chrome_elf.dll": "14597f88689361a016bce4a648e6b18a50ed065d6fc524dc8112f4b7d6e115d0"
+    },
+    "applied_to_cli_child_processes": true,
+    "exit_code": 0,
+    "check_count": 18,
+    "checks": [
+      "concurrent-profile-isolation",
+      "cross-process-owner-exclusion",
+      "navigation-tabs-fill-click-extract-screenshot",
+      "mobile-web-viewport-dpr-touch",
+      "native-document-worker-configuration-diagnostics",
+      "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+      "configured-permissions-isolation-revocation-and-restart",
+      "dead-owner-profile-lock-recovery",
+      "browser-crash-restart-preserves-committed-storage",
+      "authenticated-http-proxy-no-direct-dns-route",
+      "existing-browser-interface-and-scenario-executor",
+      "existing-recorder-capture-and-replay",
+      "native-profile-backup-restore-storage-and-engine-isolation",
+      "native-binary-headless-health-and-disposable-profile-cleanup",
+      "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+      "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+      "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+      "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+    ],
+    "postguards_passed": true
+  }
 }

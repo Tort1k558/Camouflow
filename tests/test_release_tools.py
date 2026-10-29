@@ -4518,6 +4518,21 @@ def test_first_156_runtime_observations_preserve_baseline_and_failure_boundaries
     keys = data["native_identity_keys"]
     assert keys["passed"] and keys["tests"] == 62 and keys["target"] == "identity-keys"
     assert keys["postguards_passed"] and keys["baseline_browser_code_unchanged"]
+    for target, count in (("identity-contexts", 37), ("identity-transport", 20)):
+        units = data["native_" + target.replace("-", "_")]
+        assert units["passed"] and units["target"] == target and units["tests"] == count
+        assert units["postguards_passed"] and units["baseline_browser_code_unchanged"]
+        assert len(units["test_binary_sha256"]) == 64 and units["scope"]
+    repeats = data["baseline_lifecycle_under_build"]
+    assert repeats["passed"] and repeats["postguards_passed"]
+    assert repeats["retention_patched_verifier_copy"] and repeats["execution_copy_root_adjusted"]
+    assert repeats["canonical_verifier_changed"] is False
+    assert repeats["timeout_increased"] is repeats["forced_kill_added"] is False
+    assert repeats["first_close_timeout_resolved"] is False and repeats["not_a_performance_benchmark"]
+    assert len(repeats["repetitions"]) == 3 and len(repeats["verifier_sha256"]) == 64
+    assert {row["repetition"] for row in repeats["repetitions"]} == {1, 2, 3}
+    assert all(row["passed"] and row["checks"] == 18 and row["elapsed_seconds"] > 0
+               and row["owned_build_activity_observed_before"] for row in repeats["repetitions"])
     attempts = data["expanded_runtime_attempts"]
     assert len(attempts) == 3 and attempts[0]["passed"] is False
     assert len(attempts[0]["completed_checks"]) == 5
@@ -4661,6 +4676,16 @@ def test_unapplied_windows_profile_version_guard_binds_runtime_and_readonly_cont
     assert upgrade["resources_closed"] and upgrade["postguards_passed"]
     assert upgrade["after_upgrade_storage"] == {"cookie": "owned=owned-upgrade-control",
         "local": "owned-upgrade-control", "indexed": "owned-upgrade-control", "cached": "owned-upgrade-control", "workers": 1}
+    lifecycle = data["isolated_extended_lifecycle"]
+    assert lifecycle["passed"] and lifecycle["postguards_passed"] and lifecycle["exit_code"] == 0
+    assert lifecycle["canonical_runtime_changed"] is lifecycle["canonical_verifier_changed"] is False
+    assert lifecycle["production_admitted"] is False and lifecycle["applied_to_cli_child_processes"]
+    assert lifecycle["guard_sha256"] == data["guard"]["sha256"]
+    assert lifecycle["runtime_sha256"] == data["source_after_sha256"]
+    assert len(lifecycle["checks"]) == len(set(lifecycle["checks"])) == lifecycle["check_count"] == 18
+    assert {"native-profile-backup-restore-storage-and-engine-isolation",
+            "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+            "existing-browser-interface-and-scenario-executor"}.issubset(lifecycle["checks"])
     assert data["frozen_inputs_unchanged"] == 201 and data["application_gate"] and data["remaining_unverified"]
 
 

@@ -18,11 +18,17 @@ Ninja из другого проекта. Исправлена область п
 Старые failed-отчёты сохранены; новая связанная очередь запущена.
 
 Свежие результаты: startup прошёл; target identity-keys выполнил 62 C++-теста
-с постпроверками. Два расширенных baseline-прогона прошли все 18 проверок:
+с постпроверками. Также прошли identity-contexts (37) и identity-transport (20),
+включая postguards; это unit-level проверки, не допуск identity в браузере.
+Два расширенных baseline-прогона прошли все 18 проверок:
 пять хранилищ, изоляция, permissions, crash/restart, controlled HTTP proxy,
 менеджер/сценарии, Recorder и backup/restore. Первый прогон не прошёл из-за
 таймаута закрытия; очистка временной папки замаскировала исходную ошибку.
 Этот отрицательный результат сохранён и не считается исправленным повторами.
+Ещё три serial-прогона по 18 checks прошли во время реально наблюдавшейся
+native-сборки: 160.532 / 146.031 / 146.297 с. Использована isolated verifier-копия
+с сохранением failed evidence, без DEBUG/повышения timeout. Все 201 вход и core
+хеши неизменны; это не performance benchmark и не устранение первого таймаута.
 
 Отдельная матрица: 16 закрытий 148/156 прошли без изменения timeout/forced kill,
 1.140–2.703 с. Новый 156 Audio baseline: 15 cases × 3 = 45 bit-exact совпадений
@@ -44,6 +50,8 @@ ProductName EXE/DLL и заголовок chrome://version — Glint. Кеш tas
 и запуска driver. Прошли 22 marker/PE/mocked-launch контроля и один реальный
 owned upgrade 148→156: пять хранилищ и private identity сохранились; обратный
 выбор 148 заблокирован до открытия профиля, его файлы не изменились.
+Точная patched Runtime-копия прошла ещё 18 lifecycle checks, включая manager,
+Recorder, backup/restore и отмену запуска; guard действует и в owned child CLI.
 Канонический Runtime пока не изменён. Это не общая гарантия миграций/rollback
 и не реализация Linux/macOS: `native/drafts/profile-version/README.md`.
 

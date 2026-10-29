@@ -279,7 +279,7 @@
     "scripts/verify_native_runtime.py": "9869fe04065d3914ac07e81614253b266c7ab141b8bd9f3e1582c81d3a1db56e"
   },
   "remaining_unverified": [
-    "Remaining identity/context/transport/handoff and native fixture targets",
+    "Identity-handoff and remaining native fixture targets; unit cases do not admit browser policy",
     "Canonical source-bound eight-gate candidate suite and installed-package suite",
     "Close-timeout root cause and a source-bound repeat within the full eight-gate suite",
     "Native policy composition, fingerprint/anti-bot sites and CAPTCHA server-side outcomes",
@@ -344,5 +344,62 @@
       "chrome_200_percent.pak": "0c2fff1a2c02f47c64ed8013175ee885aba3c30b6943dc6619dc1cfd195def2a",
       "locales/en-US.pak": "7b09da0a9b2134cf8231523b42d583198bf53135d042d81dd60293c1e3944e4c"
     }
+  },
+  "native_identity_contexts": {
+    "passed": true,
+    "target": "identity-contexts",
+    "tests": 37,
+    "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+    "postguards_passed": true,
+    "baseline_browser_code_unchanged": true,
+    "scope": "Selected identity and legacy policy units; not an enabled browser identity or capability admission"
+  },
+  "native_identity_transport": {
+    "passed": true,
+    "target": "identity-transport",
+    "tests": 20,
+    "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+    "postguards_passed": true,
+    "baseline_browser_code_unchanged": true,
+    "scope": "Selected identity and legacy policy units; not an enabled browser identity or capability admission"
+  },
+  "baseline_lifecycle_under_build": {
+    "passed": true,
+    "scope": "Three extended baseline lifecycle runs during observed owned build activity; not fingerprint-policy admission or a browser-close timeout fix",
+    "canonical_verifier_changed": false,
+    "retention_patched_verifier_copy": true,
+    "execution_copy_root_adjusted": true,
+    "verifier_sha256": "bf7e6086b6e7b0997fd7b4b43d4595d2439b81f9131ff39d233497b4de9e401d",
+    "timeout_increased": false,
+    "forced_kill_added": false,
+    "postguards_passed": true,
+    "repetitions": [
+      {
+        "repetition": 1,
+        "passed": true,
+        "checks": 18,
+        "elapsed_seconds": 160.532,
+        "owned_build_activity_observed_before": true,
+        "owned_build_activity_observed_after": true
+      },
+      {
+        "repetition": 2,
+        "passed": true,
+        "checks": 18,
+        "elapsed_seconds": 146.031,
+        "owned_build_activity_observed_before": true,
+        "owned_build_activity_observed_after": true
+      },
+      {
+        "repetition": 3,
+        "passed": true,
+        "checks": 18,
+        "elapsed_seconds": 146.297,
+        "owned_build_activity_observed_before": true,
+        "owned_build_activity_observed_after": true
+      }
+    ],
+    "first_close_timeout_resolved": false,
+    "not_a_performance_benchmark": true
   }
 }

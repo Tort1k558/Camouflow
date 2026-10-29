@@ -17,6 +17,10 @@ Evidence in [`windows-profile-version-guard.json`](windows-profile-version-guard
   IndexedDB, Cache Storage, the service-worker registration and private identity;
 - selecting 148 afterwards rejected before identity/driver calls, with all
   owned profile files unchanged. The old browser never opened the upgraded data.
+- the isolated patched Runtime also passed the extended **18-check lifecycle**
+  CLI, including manager/scenario integration, Recorder, backup/restore,
+  cancelled startup/teardown and owner recovery. The exact guard is injected
+  into the CLI's owned child processes too; canonical source stays unchanged.
 
 This is **not** general migration/rollback compatibility or executable
 authentication. Managed payload checksums remain required; tampered version
