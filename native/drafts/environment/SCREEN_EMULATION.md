@@ -260,6 +260,16 @@ patches. It changes no public header/IPC schema; actual incremental build time,
 compilation, case execution and runtime behavior remain unmeasured. Wait for
 the current producer's terminal state and postguards before promotion.
 
+The paired [`screen-widget-gate.patch`](screen-widget-gate.patch) extends the
+existing `verify_native_privacy_units`/batch mechanism instead of adding a new
+runner. It requires the seven exact widget cases in `blink_unittests`, explicit
+upstream-156 and both registered 0069/0070 patch names. Twelve Python controls
+passed, preserving all existing 19 target mappings and rejecting incomplete,
+duplicated, disabled or failed results and a chain without 0070.
+[Preparation](screen-widget-gate-preparation.json). The proposed target count
+is 20, but the frozen live verifier remains unchanged with 19 groups. These
+are parser/selection controls, **not execution of seven C++ cases**.
+
 | Contract | Checks |
 | --- | --- |
 | First-script consistency | Same-origin, cross-origin, inherited and nested frames; no late `framenavigated` repair |

@@ -1,0 +1,75 @@
+diff --git a/scripts/verify_native_privacy_units.py b/scripts/verify_native_privacy_units.py
+index a9f3ea6..b80fbbd 100644
+--- a/scripts/verify_native_privacy_units.py
++++ b/scripts/verify_native_privacy_units.py
+@@ -200,7 +200,21 @@ REQUIRED_GPU_READBACK_TESTS = {
+ NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "gpu-metadata", "worker-surfaces", "font-rasterization")
+ IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
+ SUPPORTED_TARGETS = ("keys", "contexts", "delivery", "worker-handoff", "document-partition",
+-                     "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "screen-metrics")
++                     "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "screen-metrics", "screen-widget")
++
++SCREEN_WIDGET_TESTS = {
++    "WebFrameWidgetSimTest": {
++        "GlintClearedMainDprRestoresNativeInspectorRules",
++        "GlintMainLogicalDprFollowsLatestSnapshot",
++        "GlintMainLogicalDprIgnoresForeignPageInspectorState",
++        "GlintMainLogicalDprTracksWidgetZoomAndCss",
++    },
++    "WebFrameWidgetImplRemoteFrameSimTest": {
++        "GlintLogicalRemoteDprIgnoresForeignInspectorAndKeepsZoom",
++        "GlintLogicalScreenClearRestoresNativeSnapshot",
++        "GlintLogicalScreenUpdatePreservesPhysicalCompositorMetrics",
++    },
++}
+ 
+ SCREEN_METRICS_TESTS = {"GlintLogicalScreenTest": {
+     "DesktopExplicitScreenDoesNotMutatePhysicalState", "DesktopDefaultRetainsOriginalScreenAndDsf",
+@@ -248,6 +262,8 @@ def snapshot_delivery_sources(source: Path) -> dict[str, str]:
+ 
+ 
+ def required_tests(target: str) -> dict[str, set[str]]:
++    if target == "screen-widget":
++        return SCREEN_WIDGET_TESTS
+     if target == "screen-metrics":
+         return SCREEN_METRICS_TESTS
+     if target == "audio-math":
+@@ -447,6 +463,9 @@ def verified_source_chain(workspace: Path, candidate: dict | None, lock: dict, e
+ 
+ def require_target_sources(source: Path, patches: list[dict], target: str) -> dict[str, str] | None:
+     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
++    if target == "screen-widget":
++        required_patches.update({"0069-native-logical-screen-inheritance.patch",
++                                 "0070-native-logical-screen-lifecycle.patch"})
+     if target == "screen-metrics":
+         required_patches.add("0069-native-logical-screen-inheritance.patch")
+     if target == "audio-math":
+@@ -519,7 +538,7 @@ def unit_binary_target(target: str) -> str:
+     return ("blink_common_unittests" if target == "screen-metrics" else
+                     "gfx_unittests" if target == "font-rasterization" else
+                     "gpu_unittests" if target == "gpu-metadata" else
+-                    "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff", "audio-math"} else
++                    "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff", "audio-math", "screen-widget"} else
+                     "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
+ 
+ 
+@@ -529,6 +548,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
+     required = required_tests(target)
+     if target == "audio-math" and candidate_name != "upstream-156":
+         raise ValueError("AudioMath unit verification requires the explicit upstream-156 candidate")
++    if target == "screen-widget" and candidate_name != "upstream-156":
++        raise ValueError("Screen widget unit verification requires the explicit upstream-156 candidate")
+     if target == "screen-metrics" and candidate_name != "upstream-156":
+         raise ValueError("Screen metrics unit verification requires the explicit upstream-156 candidate")
+     if sys.platform != "win32":
+@@ -577,7 +598,9 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
+     arguments = (output / "args.gn").read_bytes()
+     receipt = (output / "camouflow-build.json").read_bytes()
+     core = measure_runtime_core(output / "chrome.exe")
+-    scope = ("Logical screen calculations, isolation and nullable IPC units; not first-script delivery, geometry or browser admission"
++    scope = ("Widget-scoped logical screen update/clear and DPR/zoom units; not first-script, workers, BFCache or browser admission"
++             if target == "screen-widget" else
++             "Logical screen calculations, isolation and nullable IPC units; not first-script delivery, geometry or browser admission"
+              if target == "screen-metrics" else
+              "OfflineAudioContext immutable math policy/error/lifetime units; not device-cohort, full DSP fidelity or Audio admission"
+              if target == "audio-math" else

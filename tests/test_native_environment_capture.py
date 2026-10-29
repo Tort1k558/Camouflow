@@ -962,3 +962,68 @@ def test_consolidated_screen_batch_is_two_files_and_seven_cases_without_early_ad
     cases = re.findall(r"TEST_F\((WebFrameWidget(?:SimTest|ImplRemoteFrameSimTest)),\s*(Glint\w+)\)", added)
     assert [".".join(row) for row in cases] == record["prepared_cases"] and len(cases) == 7
     assert "  if (!glint_logical_screen_infos_)" in added
+
+
+def test_queued_screen_widget_gate_binds_seven_cases_without_claiming_native_execution():
+    import hashlib
+
+    root = environment.ROOT
+    directory = root / "native/drafts/environment"
+    record = json.loads((directory / "screen-widget-gate-preparation.json").read_bytes())
+    linked = json.loads((directory / "linked-screen70-preparation.json").read_bytes())
+    assert record["required_cases"] == linked["prepared_cases"] and len(record["required_cases"]) == 7
+    assert record["target"] == "screen-widget" and record["binary_target"] == "blink_unittests"
+    assert record["current_target_groups"] == 19 and record["proposed_target_groups"] == 20
+    assert record["apply_check_passed"] and record["active_source_postguards_passed"]
+    assert record["existing_target_mappings_unchanged"] and record["requires_idle_producer_before_integration"]
+    assert len(record["python_controls_passed"]) == 12
+    assert all(record[name] is False for name in ("selected", "cpp_compiled", "native_tests_executed",
+        "runtime_verified", "privacy_admitted", "production_admitted"))
+    assert hashlib.sha256((directory / record["patch"]).read_bytes()).hexdigest() == record["patch_sha256"]
+    assert hashlib.sha256((directory / record["linked_native_patch"]).read_bytes()).hexdigest() == record["linked_native_patch_sha256"]
+    assert hashlib.sha256((root / record["base_source"]).read_bytes()).hexdigest() == record["base_source_sha256"]
+
+
+def test_queued_widget_verifier_applies_and_rejects_incomplete_results(tmp_path, monkeypatch):
+    import runpy
+    import subprocess
+    import sys
+
+    root = environment.ROOT
+    directory = root / "native/drafts/environment"
+    metadata = json.loads((directory / "screen-widget-gate-preparation.json").read_bytes())
+    path = tmp_path / metadata["base_source"]
+    path.parent.mkdir(parents=True)
+    path.write_bytes((root / metadata["base_source"]).read_bytes())
+    subprocess.run(["git", "apply", "--whitespace=error", str(directory / metadata["patch"])],
+                   cwd=tmp_path, check=True, capture_output=True)
+    monkeypatch.setattr(sys, "path", sys.path.copy())
+    current = runpy.run_path(str(root / metadata["base_source"]))
+    proposed = runpy.run_path(str(path))
+    for target in current["SUPPORTED_TARGETS"]:
+        assert current["required_tests"](target) == proposed["required_tests"](target)
+        assert current["unit_binary_target"](target) == proposed["unit_binary_target"](target)
+    assert proposed["unit_binary_target"]("screen-widget") == "blink_unittests"
+    required = proposed["required_tests"]("screen-widget")
+    good = {"tests": 7, "disabled": 0, "failures": 0, "testsuites": [
+        {"name": suite, "testsuite": [{"name": case, "status": "RUN", "result": "COMPLETED"}
+                                     for case in sorted(cases)]} for suite, cases in required.items()]}
+    proposed["validate_results"](good, target="screen-widget")
+    for failure in ("missing", "duplicate", "not-run", "disabled", "failed"):
+        value = copy.deepcopy(good)
+        rows = value["testsuites"][0]["testsuite"]
+        if failure == "missing":
+            rows.pop()
+        elif failure == "duplicate":
+            rows[0]["name"] = rows[1]["name"]
+        elif failure == "not-run":
+            rows[0]["status"] = "NOTRUN"
+        elif failure == "disabled":
+            value["disabled"] = 1
+        else:
+            rows[0]["failures"] = [{"failure": "owned control"}]
+        with pytest.raises(ValueError):
+            proposed["validate_results"](value, target="screen-widget")
+    with pytest.raises(ValueError, match="explicit upstream-156"):
+        proposed["verify"](tmp_path, tmp_path / "not-created.json", target="screen-widget", candidate_name=None)
+    assert not (tmp_path / "not-created.json").exists()
