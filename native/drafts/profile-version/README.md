@@ -1,7 +1,9 @@
 # Windows profile version guard
 
-**Unapplied Runtime patch.** Managed releases already block binary downgrade;
-this adds a per-profile check for an explicitly selected executable as well.
+**Integrated into `app/core/native/`.** Managed releases already block binary
+downgrade; the per-profile guard also covers explicitly selected executables.
+The full canonical Python regression passed **3862 tests, one skipped**.
+Post-integration owned browser gates are being repeated separately.
 
 The Windows Runtime checks Chromium's bounded `Last Version` marker against
 the selected EXE's fixed PE FileVersion while holding the profile owner lock,
@@ -26,8 +28,6 @@ This is **not** general migration/rollback compatibility or executable
 authentication. Managed payload checksums remain required; tampered version
 markers cannot authenticate a binary. Linux/macOS protection is not implemented.
 
-Do not apply while the current source-bound queues are live. After they become
-terminal, verify normalized source hashes, normalize only the target Runtime as
-UTF-8 without BOM/LF, run `git -c core.autocrlf=false apply --check`, apply, and
-rebind/repeat canonical Runtime/manager verification. No production admission
-follows from this draft. Retained test profiles/keys stay private on D:.
+The patch and original isolated observations remain as provenance; do not apply
+the patch again. Source integration does not grant policy or production
+admission. Retained test profiles/keys stay private on D:.

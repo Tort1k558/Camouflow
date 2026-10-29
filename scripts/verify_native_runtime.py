@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import sysconfig
@@ -761,30 +762,46 @@ def main() -> int:
     for thread in threads:
         thread.start()
     checks = []
+    owned = None
+    report = {"passed": False}
     try:
-        with tempfile.TemporaryDirectory(prefix="native-owned-", dir=args.work_dir.resolve()) as owned:
-            previous_data_dir = os.environ.get("CAMOUFLOW_DATA_DIR")
-            os.environ["CAMOUFLOW_DATA_DIR"] = str(Path(owned).resolve() / "workspace")
+        owned = Path(tempfile.mkdtemp(prefix="native-owned-", dir=args.work_dir.resolve()))
+        previous_data_dir = os.environ.get("CAMOUFLOW_DATA_DIR")
+        os.environ["CAMOUFLOW_DATA_DIR"] = str(owned / "workspace")
+        try:
+            report = asyncio.run(verify(owned, executable, f"http://127.0.0.1:{server.server_port}", proxy_server,
+                                        checks=checks, library_directory=args.windows_library_directory,
+                                        release_store=args.release_store, release_digest=args.release_sha256))
+        finally:
             try:
-                report = asyncio.run(verify(Path(owned).resolve(), executable, f"http://127.0.0.1:{server.server_port}", proxy_server,
-                                            checks=checks, library_directory=args.windows_library_directory,
-                                            release_store=args.release_store, release_digest=args.release_sha256))
+                close_owned_log_handlers(owned)
+            except Exception as error:
+                report.update(passed=False, log_cleanup_error=str(error)[:1000])
             finally:
-                close_owned_log_handlers(Path(owned))
                 if previous_data_dir is None:
                     os.environ.pop("CAMOUFLOW_DATA_DIR", None)
                 else:
                     os.environ["CAMOUFLOW_DATA_DIR"] = previous_data_dir
     except Exception as error:
-        report = {"passed": False, "platform": platform.system(), "completed_checks": checks, "error_type": type(error).__name__,
-                  "error": str(error)[:1000], "traceback": traceback.format_exc()[-6000:],
-                  "error_notes": [note[:1000] for note in getattr(error, "__notes__", [])[-8:]]}
+        report.update(passed=False, platform=platform.system(), completed_checks=checks, error_type=type(error).__name__,
+                      error=str(error)[:1000], traceback=traceback.format_exc()[-6000:],
+                      error_notes=[note[:1000] for note in getattr(error, "__notes__", [])[-8:]])
     finally:
         for item in (server, proxy_server):
             item.shutdown()
             item.server_close()
         for thread in threads:
             thread.join()
+        if owned is not None:
+            if not report["passed"]:
+                report["retained_profile_directory"] = str(owned)
+            else:
+                try:
+                    if owned != owned.resolve() or not owned.is_relative_to(args.work_dir.resolve()):
+                        raise ValueError("Refusing cleanup outside owned runtime workspace")
+                    shutil.rmtree(owned)
+                except (OSError, ValueError) as error:
+                    report.update(passed=False, cleanup_error=str(error)[:1000], retained_profile_directory=str(owned))
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report))

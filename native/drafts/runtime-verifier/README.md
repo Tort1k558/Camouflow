@@ -1,6 +1,7 @@
 # Owned runtime evidence retention
 
-**Staged fix, not applied to the canonical verifier.**
+**Integrated into the canonical verifier.** Full Python regression:
+**3862 passed, one skipped**. Canonical browser gates are repeated separately.
 
 The first expanded 156 run hit a browser-close timeout. `TemporaryDirectory`
 then tried to remove a still-locked SQLite file and replaced the useful failure
@@ -19,11 +20,9 @@ fallback or forced-process termination was added. **The browser timeout itself
 is not fixed by this patch.** Scope and hashes are in
 [`owned-runtime-evidence-retention.json`](owned-runtime-evidence-retention.json).
 
-Do not apply while source-bound native/runtime/package queues remain live.
-After they are terminal, verify the normalized before-hash, normalize only the
-target file as UTF-8 without BOM/LF, and use `git -c core.autocrlf=false apply
---check` followed by `apply`. Rebind verification snapshots and repeat the
-canonical runtime gate; do not reuse the isolated-copy result as admission.
+The archived patch and isolated-copy evidence remain as provenance; do not
+apply the patch again or treat that earlier result as current admission.
+No timeout was increased and no forced process termination was introduced.
 
 Retained profiles can contain private keys and browser data. Keep them local;
 never add them to Git or public reports. Full local evidence stays under

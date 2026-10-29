@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Unapplied verifier-only evidence retention; not a browser shutdown/root-cause fix",
+  "scope": "Integrated verifier-only evidence retention; not a browser shutdown/root-cause fix",
   "source_file": "scripts/verify_native_runtime.py",
   "source_text_normalization": "UTF-8 without BOM, LF before source comparison/application",
   "captured_source_raw_sha256": "9869fe04065d3914ac07e81614253b266c7ab141b8bd9f3e1582c81d3a1db56e",
@@ -10,7 +10,7 @@
     "file": "owned-runtime-evidence-retention.patch",
     "sha256": "62ced802ef2f925630d3a4e4dba45184ca4f29dbe821b16eb464d5f0e76f084b"
   },
-  "applied_to_canonical_verifier": false,
+  "applied_to_canonical_verifier": true,
   "source_application_passed": true,
   "browser_close_timeout_resolved": false,
   "timeout_changed": false,
@@ -82,6 +82,14 @@
     "scope": "Patched copy of canonical verifier, not the canonical bound suite"
   },
   "frozen_inputs_unchanged": 201,
-  "application_gate": "Only after all existing source-bound queues are terminal; rebind later verification inputs",
-  "retained_profile_privacy": "Owned local evidence only; never export or commit retained browser profiles/keys"
+  "application_gate": "Applied after the 001-066 source-bound native/runtime/installed and owned surface queues terminated; canonical regression pending",
+  "retained_profile_privacy": "Owned local evidence only; never export or commit retained browser profiles/keys",
+  "canonical_runtime_verified": false,
+  "isolated_python_batch_regression": {
+    "passed": true,
+    "tests": 1257,
+    "full_patch_sha256": "8e19458de08aaaa8abbc901343d46b5f576da20e4299370ce3eb9cefba5d7df9",
+    "canonical_source_changed_during_controls": false,
+    "scope": "Isolated combined Runtime/retention/candidate-diagnostics controls, before canonical application"
+  }
 }

@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime
+from scripts.native_build import load_candidate
 from scripts.native_build import LOCK
 from scripts.verify_native_runtime import (
     FixtureHandler,
@@ -356,20 +357,43 @@ async def verify_nested_workers(page, server: WorkerStartupServer, mode: str, ph
         check["passed"] = True
 
 
-def validate_receipt(executable: Path, core: dict, *, bootstrap_policy: str = "canvas") -> bytes:
+def validate_receipt(executable: Path, core: dict, *, bootstrap_policy: str = "canvas", candidate_name: str | None = None) -> bytes:
     if bootstrap_policy not in {"canvas", "surfaces"}:
         raise ValueError("Unknown worker bootstrap policy")
+    candidate = None if candidate_name is None else load_candidate(candidate_name)
+    lock = LOCK if candidate is None else candidate["lock"]
+    patch_directory = ROOT / "native/patches" if candidate is None else candidate["directory"] / "patches"
     path = executable.parent / "camouflow-build.json"
-    if path != path.resolve() or path.is_symlink():
+    if path != path.resolve() or path.is_symlink() or path.stat().st_size > 8 * 1024**2:
         raise ValueError("Worker startup requires a canonical local build receipt")
-    raw = path.read_bytes()
+    with path.open("rb") as stream:
+        raw = stream.read(8 * 1024**2 + 1)
+    if len(raw) > 8 * 1024**2:
+        raise ValueError("Worker receipt exceeds its size bound")
     receipt = json.loads(raw.decode("utf-8-sig"))
     if (not isinstance(receipt, dict) or not isinstance(receipt.get("patches"), list)
-            or receipt.get("chromium_revision") != LOCK["chromium_revision"]
+            or receipt.get("chromium_revision") != lock["chromium_revision"]
             or receipt.get("binary_sha256_measured") != core[executable.name]):
         raise ValueError("Worker startup receipt does not match the pinned executable")
+    if candidate is not None:
+        from scripts.package_native_windows import validate_build_receipt
+        validate_build_receipt(receipt, lock, candidate=candidate)
+        if (set(core) != {"chrome.exe", "chrome.dll", "chrome_elf.dll"}
+                or receipt.get("runtime_core_sha256_measured") != core):
+            raise ValueError("Candidate worker receipt must bind every Windows runtime core file")
+        arguments_path = executable.parent / "args.gn"
+        if arguments_path != arguments_path.resolve() or arguments_path.stat().st_size > 65536:
+            raise ValueError("Candidate diagnostics require canonical bounded build arguments")
+        with arguments_path.open("rb") as stream:
+            arguments = stream.read(65537)
+        if len(arguments) > 65536:
+            raise ValueError("Candidate arguments exceed their size bound")
+        if (hashlib.sha256(arguments).hexdigest() != receipt.get("args_sha256")
+                or arguments.decode("utf-8-sig").replace("\r\n", "\n")
+                != (ROOT / "native/args.gn").read_text(encoding="utf-8-sig")):
+            raise ValueError("Candidate worker build arguments changed or differ from the selected recipe")
     for number in range(15, 28):
-        candidates = list((ROOT / "native/patches").glob(f"{number:04d}-*.patch"))
+        candidates = list(patch_directory.glob(f"{number:04d}-*.patch"))
         if len(candidates) != 1:
             raise ValueError("Worker startup requires the exact registered source chain")
         patch = candidates[0]
@@ -377,7 +401,7 @@ def validate_receipt(executable: Path, core: dict, *, bootstrap_policy: str = "c
         if expected not in receipt.get("patches", []):
             raise ValueError("Worker startup receipt lacks a required exact patch")
     if bootstrap_policy == "surfaces":
-        patch = ROOT / "native/patches" / SURFACE_PATCH
+        patch = patch_directory / SURFACE_PATCH
         if not patch.is_file() or patch.is_symlink():
             raise ValueError("Surface worker runtime requires a registered source patch, not uncompiled drafts")
         expected = {"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}
@@ -455,7 +479,10 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--bootstrap-policy", choices=("canvas", "surfaces"), default="canvas")
     parser.add_argument("--include-nested", action="store_true", help="Add 20 classic/module nested dedicated-worker checks")
+    parser.add_argument("--candidate", choices=("upstream-156",),
+                        help="Bind owned diagnostics to the exact selected candidate receipt/patches; not admission")
     args = parser.parse_args()
+    selection = {} if args.candidate is None else {"candidate_name": args.candidate}
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite worker startup evidence")
     report = {"schema": 1, "passed": False, "checks": [], "arguments": {}, "platform": platform.platform(),
@@ -468,10 +495,13 @@ def main() -> int:
     runtimes = []
     try:
         executable = args.executable.resolve(strict=True)
+        if args.candidate is not None:
+            report.update(candidate=args.candidate,
+                          candidate_manifest_sha256=load_candidate(args.candidate)["manifest_sha256"])
         probe_checksum = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
         report["probe_sha256"] = probe_checksum
         core = measure_runtime_core(executable)
-        receipt = validate_receipt(executable, core, bootstrap_policy=args.bootstrap_policy)
+        receipt = validate_receipt(executable, core, bootstrap_policy=args.bootstrap_policy, **selection)
         report.update(runtime_core_sha256_measured=core, binary_sha256_measured=core[executable.name],
                       receipt_sha256=hashlib.sha256(receipt).hexdigest())
         args.work_dir.mkdir(parents=True, exist_ok=True)
@@ -484,7 +514,7 @@ def main() -> int:
         asyncio.run(verify(executable, owned, server, report, runtimes,
                            bootstrap_policy=args.bootstrap_policy, include_nested=args.include_nested))
         if (measure_runtime_core(executable) != core
-                or validate_receipt(executable, core, bootstrap_policy=args.bootstrap_policy) != receipt
+                or validate_receipt(executable, core, bootstrap_policy=args.bootstrap_policy, **selection) != receipt
                 or hashlib.sha256(Path(__file__).read_bytes()).hexdigest() != probe_checksum):
             raise ValueError("Worker runtime code, receipt or probe changed during verification")
         expected = {f"{mode}-{phase}-{kind}-{script_type}" for mode, phases in PHASES.items()

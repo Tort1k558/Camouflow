@@ -2553,3 +2553,105 @@ def test_native_release_ui_runs_verified_store_operations_and_preserves_changed_
     if changed:
         assert "Settings changed" in bridge._native_release_report
         assert bridge._native["binary_store"] == str(tmp_path / "other-store")
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only profile version guard")
+@pytest.mark.parametrize("raw,selected,rejected,reads_version", [
+    (b"156.0.8078.36", (156, 0, 8078, 36), False, True),
+    (b"148.0.7778.96", (156, 0, 8078, 36), False, True),
+    (b"156.0.8078.36", (157, 0, 8103, 27), False, True),
+    (b"156.0.8078.36", (148, 0, 7778, 96), True, True),
+    (b"156.0.8078.37", (156, 0, 8078, 36), True, True),
+    (b"\xef\xbb\xbf156.0.8078.36\r\n", (156, 0, 8078, 36), False, True),
+    (b"", (156, 0, 8078, 36), True, False),
+    (b"\xff", (156, 0, 8078, 36), True, False),
+    (b"156", (156, 0, 8078, 36), True, False),
+    (b"156.0.8078.-1", (156, 0, 8078, 36), True, False),
+    (b"156.0.8078.99999", (156, 0, 8078, 36), True, False),
+    (b"0.0.0.0", (156, 0, 8078, 36), True, False),
+    (b" " * 129, (156, 0, 8078, 36), True, False),
+])
+def test_native_profile_version_guard_validates_marker_before_reading_binary(tmp_path, monkeypatch, raw, selected, rejected, reads_version):
+    from app.core.native import profile_version as guard
+
+    profile = tmp_path / "owned-profile"
+    profile.mkdir()
+    marker = profile / "Last Version"
+    marker.write_bytes(raw)
+    executable = tmp_path / "chrome.exe"
+    calls = []
+    def measured(path):
+        calls.append(path)
+        return selected
+    monkeypatch.setattr(guard, "windows_binary_version", measured)
+    if rejected:
+        with pytest.raises(ValueError):
+            guard.ensure_profile_version_compatible(profile, executable)
+    else:
+        guard.ensure_profile_version_compatible(profile, executable)
+    assert calls == ([executable] if reads_version else [])
+    assert marker.read_bytes() == raw
+    assert [path.name for path in profile.iterdir()] == ["Last Version"]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only profile version guard")
+@pytest.mark.parametrize("existing", ["", "Default", "Local State", "directory-marker"])
+def test_native_profile_version_guard_rejects_unversioned_browser_data_without_fallback(tmp_path, monkeypatch, existing):
+    from app.core.native import profile_version as guard
+
+    profile = tmp_path / "owned-profile"
+    profile.mkdir()
+    if existing == "Default":
+        (profile / existing).mkdir()
+    elif existing == "Local State":
+        (profile / existing).write_bytes(b"owned existing browser state")
+    elif existing == "directory-marker":
+        (profile / "Last Version").mkdir()
+    before = sorted(path.name for path in profile.iterdir())
+    def forbidden(*args):
+        pytest.fail("Missing or invalid marker reached binary inspection")
+    monkeypatch.setattr(guard, "windows_binary_version", forbidden)
+    if existing:
+        with pytest.raises(ValueError):
+            guard.ensure_profile_version_compatible(profile, tmp_path / "chrome.exe")
+    else:
+        guard.ensure_profile_version_compatible(profile, tmp_path / "chrome.exe")
+    assert sorted(path.name for path in profile.iterdir()) == before
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Actual Windows fixed PE version API")
+def test_native_profile_version_reader_measures_real_python_and_rejects_invalid_pe(tmp_path):
+    from app.core.native.profile_version import windows_binary_version
+
+    observed = windows_binary_version(Path(sys.executable))
+    assert len(observed) == 4 and observed[0] == sys.version_info.major
+    assert all(type(part) is int and 0 <= part <= 65535 for part in observed)
+    invalid = tmp_path / "invalid.exe"
+    invalid.write_bytes(b"owned file without PE version resources")
+    with pytest.raises(ValueError):
+        windows_binary_version(invalid)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-only prelaunch profile downgrade protection")
+def test_native_profile_downgrade_rejects_before_identity_and_driver_and_releases_owner(tmp_path, monkeypatch):
+    import json
+    from app.core.native import runtime as native_runtime
+    from app.core.native import profile_version as guard
+
+    profile = tmp_path / "owned-profile"
+    profile.mkdir()
+    (profile / "camouflow-native.json").write_text(json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
+    (profile / "Last Version").write_bytes(b"156.0.8078.36")
+    executable = tmp_path / "chrome.exe"
+    executable.write_bytes(b"owned executable with mocked measured version")
+    before = {path.name: path.read_bytes() for path in profile.iterdir()}
+    monkeypatch.setattr(guard, "windows_binary_version", lambda path: (148, 0, 7778, 96))
+    def forbidden(*args, **kwargs):
+        pytest.fail("Rejected downgrade reached private identity or driver")
+    monkeypatch.setattr(native_runtime, "load_or_create_identity", forbidden)
+    monkeypatch.setattr(native_runtime, "async_playwright", forbidden)
+    runtime = native_runtime.NativeRuntime(profile, executable, NativeConfiguration())
+    with pytest.raises(native_runtime.NativeRuntimeError, match="downgrade"):
+        asyncio.run(runtime.start())
+    assert not runtime.has_resources
+    assert {path.name: path.read_bytes() for path in profile.iterdir()} == before

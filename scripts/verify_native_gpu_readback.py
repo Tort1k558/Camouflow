@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 from PyQt6.QtGui import QImage
 
 from app.core.native.runtime import NativeRuntime
+from scripts.native_build import load_candidate
 from scripts.verify_native_canvas import CONTEXTS, observe
 from scripts.verify_native_gpu import (
     GPU_READ,
@@ -245,8 +246,11 @@ class ReadbackConfiguration(SurfaceConfiguration):
         return arguments
 
 
-def validate_receipt(executable: Path, core: dict, *, derivation_mode: str = "partitioned-privacy") -> bytes:
-    raw = validate_surface_receipt(executable, core, derivation_mode=derivation_mode)
+def validate_receipt(executable: Path, core: dict, *, derivation_mode: str = "partitioned-privacy", candidate_name: str | None = None) -> bytes:
+    candidate = None if candidate_name is None else load_candidate(candidate_name)
+    selection = {} if candidate is None else {"candidate_name": candidate_name}
+    patch_directory = ROOT / "native/patches" if candidate is None else candidate["directory"] / "patches"
+    raw = validate_surface_receipt(executable, core, derivation_mode=derivation_mode, **selection)
     names = (GPU_PATCH,)
     if derivation_mode == "profile-identity":
         names += ("0046-native-webgl-bounded-readback.patch", "0047-native-webgl-clipped-publication.patch",
@@ -254,7 +258,7 @@ def validate_receipt(executable: Path, core: dict, *, derivation_mode: str = "pa
                   "0057-native-gpu-metadata-attachment-tests.patch", "0058-native-gpu-passthrough-attachment-tests.patch")
     receipt = json.loads(raw.decode("utf-8-sig"))
     for name in names:
-        patch = ROOT / "native/patches" / name
+        patch = patch_directory / name
         if not patch.is_file() or patch.is_symlink():
             raise ValueError("GPU readback requires a registered compiled patch, not a draft")
         expected = {"name": name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}
@@ -580,7 +584,10 @@ def main() -> int:
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--derivation-mode", choices=DERIVATION_MODES, default="partitioned-privacy")
+    parser.add_argument("--candidate", choices=("upstream-156",),
+                        help="Bind owned diagnostics to the exact selected candidate receipt/patches; not admission")
     args = parser.parse_args()
+    selection = {} if args.candidate is None else {"candidate_name": args.candidate}
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite GPU readback evidence")
     report = {"schema": 1, "passed": False, "privacy_admitted": False, "checks": [],
@@ -590,7 +597,10 @@ def main() -> int:
     try:
         executable = args.executable.resolve(strict=True)
         core = measure_runtime_core(executable)
-        receipt = validate_receipt(executable, core, derivation_mode=args.derivation_mode)
+        receipt = validate_receipt(executable, core, derivation_mode=args.derivation_mode, **selection)
+        if args.candidate is not None:
+            report.update(candidate=args.candidate,
+                          candidate_manifest_sha256=load_candidate(args.candidate)["manifest_sha256"])
         inputs = probe_inputs()
         report.update(runtime_core_sha256_measured=core, probe_inputs_sha256=inputs,
                       receipt_sha256=hashlib.sha256(receipt).hexdigest(),
@@ -603,7 +613,7 @@ def main() -> int:
         thread.start()
         owned = Path(tempfile.mkdtemp(prefix="glint-gpu-readback-", dir=args.work_dir.resolve()))
         asyncio.run(verify(executable, owned, server, report, runtimes, derivation_mode=args.derivation_mode))
-        if (measure_runtime_core(executable) != core or validate_receipt(executable, core, derivation_mode=args.derivation_mode) != receipt
+        if (measure_runtime_core(executable) != core or validate_receipt(executable, core, derivation_mode=args.derivation_mode, **selection) != receipt
                 or probe_inputs() != inputs):
             raise ValueError("GPU runtime, receipt or probe changed during verification")
         expected = {f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b")

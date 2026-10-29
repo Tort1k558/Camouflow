@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## Python integration and additional 156 gates — 2026-10-29
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Canonical Python regression | **3862 passed, one skipped** after Runtime downgrade guard, failure retention and explicit 156 diagnostic support | Full `tests/`; source postguards passed; browser repeats are separate |
+| Actual development payload | Official staging, archive and isolated install completed; **160 raw + 160 installed checks passed** | No activation; before the Python integration batch; compatible rollback not verified |
+| Worker startup/denial | **60/60** classic/module dedicated/shared/service/nested cases passed, including restart and unavailable-policy rejection | Isolated candidate-aware CLI copy before canonical application; not worker pixel fidelity |
+| Combined profile-identity surfaces | **12 phases passed**, including 24 nested Canvas cases, simultaneous profiles, restart and settled WebGL readback | Isolated CLI copy; not WebGPU or device-cohort admission |
+| Audio-v1 fidelity | Baseline **54/54**; protected **42/54**, 12 identity/half-gain failures | **Failed gate** despite stable repeats, passing mutation controls and closed resources; no policy admission |
+
+Canonical post-integration lifecycle/workers and both surface derivation modes
+are being repeated. Earlier green results do not erase the Audio fidelity failure.
+
 ## GPU fixture 0066 — canonical native gates passed
 
 | Checkpoint | Result | Boundary |

@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT))
 from playwright.async_api import async_playwright
 
 from app.core.native.runtime import NativeRuntime
+from scripts.native_build import load_candidate
 from scripts.verify_native_audio import AUDIO_READ
 from scripts.verify_native_audio import validate_observations as validate_audio
 from scripts.verify_native_audio_quality import compare_quality, strip_quality
@@ -312,16 +313,19 @@ def split_combined_observation(observed: dict, *, include_gpu_readback: bool) ->
             {name: row["gpu"] for name, row in observed.items()})
 
 
-def validate_receipt(executable: Path, core: dict, *, derivation_mode: str = "partitioned-privacy") -> bytes:
+def validate_receipt(executable: Path, core: dict, *, derivation_mode: str = "partitioned-privacy", candidate_name: str | None = None) -> bytes:
     if not isinstance(derivation_mode, str) or derivation_mode not in DERIVATION_MODES:
         raise ValueError("Unknown combined surface derivation mode")
-    raw = validate_worker_receipt(executable, core, bootstrap_policy="surfaces")
+    candidate = None if candidate_name is None else load_candidate(candidate_name)
+    selection = {} if candidate is None else {"candidate_name": candidate_name}
+    patch_directory = ROOT / "native/patches" if candidate is None else candidate["directory"] / "patches"
+    raw = validate_worker_receipt(executable, core, bootstrap_policy="surfaces", **selection)
     receipt = json.loads(raw.decode("utf-8-sig"))
     # An EXE hash alone does not bind Blink code in chrome.dll on Windows.
     if receipt.get("runtime_core_sha256_measured") != core:
         raise ValueError("Combined surface gate requires a receipt binding every runtime core file")
     for name in REQUIRED_PATCHES + (IDENTITY_PATCHES if derivation_mode == "profile-identity" else ()):
-        patch = ROOT / "native/patches" / name
+        patch = patch_directory / name
         if not patch.is_file() or patch.is_symlink():
             raise ValueError("Combined surfaces require registered patches, not uncompiled drafts")
         expected = {"name": name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}
@@ -602,7 +606,10 @@ def main() -> int:
                         help="Also check two live profiles and symmetric close/restart isolation")
     parser.add_argument("--include-gpu-readback", action="store_true",
                         help="Measure actual Canvas, Audio and WebGL readback in the same contexts and profiles")
+    parser.add_argument("--candidate", choices=("upstream-156",),
+                        help="Bind owned diagnostics to the exact selected candidate receipt/patches; not admission")
     args = parser.parse_args()
+    selection = {} if args.candidate is None else {"candidate_name": args.candidate}
     if args.report.exists() or args.report.is_symlink():
         parser.error("Refusing to overwrite surface evidence")
     report = {"schema": 1, "passed": False, "privacy_admitted": False, "checks": [],
@@ -627,7 +634,10 @@ def main() -> int:
         receipt_validator = validate_receipt
         if args.include_gpu_readback:
             from scripts.verify_native_gpu_readback import validate_receipt as receipt_validator
-        receipt = receipt_validator(executable, core, derivation_mode=args.derivation_mode)
+        receipt = receipt_validator(executable, core, derivation_mode=args.derivation_mode, **selection)
+        if args.candidate is not None:
+            report.update(candidate=args.candidate,
+                          candidate_manifest_sha256=load_candidate(args.candidate)["manifest_sha256"])
         inputs = probe_inputs(include_gpu_readback=args.include_gpu_readback)
         report.update(runtime_core_sha256_measured=core, probe_inputs_sha256=inputs,
                       receipt_sha256=hashlib.sha256(receipt).hexdigest(),
@@ -642,7 +652,7 @@ def main() -> int:
         asyncio.run(verify(executable, owned, server, report, runtimes,
                            include_nested_canvas=args.include_nested_canvas, derivation_mode=args.derivation_mode,
                            include_concurrent_profiles=args.include_concurrent_profiles, include_gpu_readback=args.include_gpu_readback))
-        if (measure_runtime_core(executable) != core or receipt_validator(executable, core, derivation_mode=args.derivation_mode) != receipt
+        if (measure_runtime_core(executable) != core or receipt_validator(executable, core, derivation_mode=args.derivation_mode, **selection) != receipt
                 or probe_inputs(include_gpu_readback=args.include_gpu_readback) != inputs):
             raise ValueError("Surface runtime, receipt or probe code changed during verification")
         expected = {f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b")

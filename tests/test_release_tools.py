@@ -321,7 +321,10 @@ def test_native_gate_missing_binary_is_reported_without_fallback(tmp_path, monke
     assert result["passed"] is False
     assert result["error_type"] == "NativeRuntimeError"
     assert "not installed" in result["error"]
-    assert list((tmp_path / "owned").iterdir()) == []
+    retained = Path(result["retained_profile_directory"])
+    assert retained == retained.resolve() and retained.is_dir()
+    assert retained.parent == tmp_path / "owned"
+    assert list((tmp_path / "owned").iterdir()) == [retained]
 
 
 def test_native_gate_lock_abandonment_refuses_customer_directories(tmp_path):
@@ -5117,7 +5120,7 @@ def test_156_compiled_branding_record_matches_the_project_logo():
     assert data["release_admitted"] is data["production_admitted"] is False
 
 
-def test_unapplied_runtime_retention_draft_preserves_original_failure_scope():
+def test_runtime_retention_preserves_original_failure_scope():
     import hashlib
     import json
     from scripts import native_build as build
@@ -5128,12 +5131,13 @@ def test_unapplied_runtime_retention_draft_preserves_original_failure_scope():
     assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
     data = json.loads(raw)
     assert data["schema"] == 1 and data["source_application_passed"]
-    for field in ("applied_to_canonical_verifier", "browser_close_timeout_resolved", "timeout_changed",
+    assert data["applied_to_canonical_verifier"] is True
+    for field in ("browser_close_timeout_resolved", "timeout_changed",
                   "forced_termination", "release_admitted", "production_admitted"):
         assert data[field] is False
     source = build.ROOT / data["source_file"]
     normalized = source.read_text(encoding="utf-8-sig").encode("utf-8")
-    assert hashlib.sha256(normalized).hexdigest() == data["source_before_sha256"]
+    assert hashlib.sha256(normalized).hexdigest() == data["source_after_sha256"]
     patch = (root / data["patch"]["file"]).read_bytes()
     assert hashlib.sha256(patch).hexdigest() == data["patch"]["sha256"]
     observations = json.loads((build.ROOT / "native/drafts/upstream-156/windows-runtime-observations.json").read_text(encoding="utf-8"))
@@ -5152,7 +5156,7 @@ def test_unapplied_runtime_retention_draft_preserves_original_failure_scope():
     assert data["frozen_inputs_unchanged"] == 201 and data["application_gate"]
 
 
-def test_unapplied_windows_profile_version_guard_binds_runtime_and_readonly_controls():
+def test_windows_profile_version_guard_binds_runtime_and_readonly_controls():
     import ast
     import hashlib
     import json
@@ -5163,14 +5167,15 @@ def test_unapplied_windows_profile_version_guard_binds_runtime_and_readonly_cont
     assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
     data = json.loads(raw)
     assert data["schema"] == 1 and data["platform"] == "win32"
-    for field in ("applied_to_canonical_runtime", "other_platforms_implemented", "production_admitted",
+    assert data["applied_to_canonical_runtime"] is True
+    for field in ("other_platforms_implemented", "production_admitted",
                   "profile_data_rewritten_by_guard"):
         assert data[field] is False
     assert data["source_application_passed"] and data["no_fallback"]
     runtime = build.ROOT / data["source_file"]
     normalized = runtime.read_text(encoding="utf-8-sig").encode("utf-8")
-    assert hashlib.sha256(normalized).hexdigest() == data["source_before_normalized_sha256"]
-    assert not (build.ROOT / "app/core/native/profile_version.py").exists()
+    assert hashlib.sha256(normalized).hexdigest() == data["source_after_sha256"]
+    assert (build.ROOT / "app/core/native/profile_version.py").read_bytes() == (root / data["guard"]["file"]).read_bytes()
     for field in ("guard", "patch"):
         artifact = (root / data[field]["file"]).read_bytes()
         assert hashlib.sha256(artifact).hexdigest() == data[field]["sha256"]

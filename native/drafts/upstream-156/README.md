@@ -546,7 +546,9 @@ and successful relocated tests do not grant production or experimental policy
 admission. Compatible rollback needs its own measured previous release; the
 store intentionally blocks an older Chromium version, including 156 → 148.
 
-These helpers passed synthetic-file/CLI/installation fixtures, **not actual
-156 staging, packaging or relocated runtime**. Their availability does not
-admit new policies or authorize production publication. Complete runtime,
-surface/compatibility, installed-copy and rollback gates remain separate.
+The first actual 001–066 development payload completed official staging
+(39 build actions, 6m29.21s), archive creation and isolated installation without
+activation. All eight raw and installed browser gates passed, **160 checks per
+layout**. This precedes the Python integration batch; canonical post-integration
+checks remain separate. Audio-v1 fidelity still fails and no new policy or
+production admission follows. Compatible cross-version rollback is not verified.

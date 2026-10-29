@@ -38,13 +38,22 @@ The eight-gate owned runtime suite passed all 160 checks on the source-build bin
 installed-package or complete Canvas/GPU/Audio admission.
 Compiled 156 main/app-list icons match `logo.ico`; EXE/DLL ProductName and the
 internal version page identify Glint. Taskbar/shortcut caching is not covered.
-The verifier evidence-retention fix is staged separately and tested on an
-isolated copy; it is not applied to the frozen queue or a browser-timeout fix.
-A separate unapplied Windows Runtime guard rejects per-profile downgrades
+The verifier evidence-retention fix is now integrated; it is not a browser
+timeout/root-cause fix. The integrated Windows Runtime guard rejects per-profile downgrades
 before identity loading/driver startup, including explicit EXE selection.
 Its owned 148-to156 upgrade preserved five stores and the private identity;
 the subsequent older selection was blocked without opening the upgraded data.
 This is one controlled transition, not general migration or rollback admission.
+The full canonical Python regression passed 3862 cases with one skipped. Explicit
+candidate diagnostics now bind workers/combined surfaces/WebGL to the complete
+156 receipt, every core file and the selected GN recipe. The installed 001–066
+development payload passed all eight baseline gates (160 checks), without
+activation. Canonical post-integration browser gates are repeated separately.
+Owned pre-integration diagnostics passed 60 worker startup/denial cases and 12
+combined profile-identity phases with 24 nested Canvas cases. These are not
+device-cohort or external anti-bot admission. The additional Audio fidelity
+fixture passed 54/54 baseline graphs but failed 12/54 protected identity/half-gain
+graphs; Audio-v1 therefore remains outside admission despite the combined pass.
 The isolated guard-enabled Runtime passed the extended 18-check lifecycle CLI,
 including backup/restore, manager/Recorder and cancelled startup. Separately,
 three baseline lifecycle repeats passed during observed native-build activity;

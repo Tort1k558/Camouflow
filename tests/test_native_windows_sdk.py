@@ -144,8 +144,8 @@ def test_local_toolchain_rejects_vc_junction_before_environment_changes(local_to
         vc.rmdir()
 
 
-@pytest.mark.parametrize("action,candidate", [("hooks", "upstream-156"), ("sync", "upstream-156"),
-                                           ("preflight", "upstream-156"), ("build", None)])
+@pytest.mark.parametrize("action,candidate", [("bootstrap", "upstream-156"), ("preflight", "upstream-156"),
+                                           ("patch", None), ("sync", None), ("hooks", None), ("build", None)])
 def test_local_toolchain_is_never_an_implicit_sdk_fallback(tmp_path, action, candidate):
     from scripts import native_build as build
 
@@ -153,6 +153,24 @@ def test_local_toolchain_is_never_an_implicit_sdk_fallback(tmp_path, action, can
     with pytest.raises(ValueError, match="explicit.*candidate build"):
         build.execute(action, workspace, candidate_name=candidate, local_toolchain=True)
     assert not workspace.exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Explicit owned Windows SDK stages")
+@pytest.mark.parametrize("action", ["sync", "hooks", "patch", "build"])
+def test_explicit_local_toolchain_missing_sdk_does_not_run_default_tools(tmp_path, monkeypatch, action):
+    from scripts import native_build as build
+
+    monkeypatch.setattr(build, "preflight", lambda *args, **kwargs: {})
+    def forbidden(*args, **kwargs):
+        pytest.fail("Missing explicitly selected SDK reached default tools")
+    monkeypatch.setattr(build, "checkout", forbidden)
+    monkeypatch.setattr(build, "run", forbidden)
+    workspace = tmp_path / "owned"
+    with pytest.raises(ValueError, match="win_toolchain.json"):
+        build.execute(action, workspace, candidate_name="upstream-156", local_toolchain=True)
+    assert not (workspace / "depot_tools").exists()
+    assert not (workspace / "chromium/camouflow-sync.json").exists()
+    assert not (workspace / "chromium/camouflow-hooks.json").exists()
 
 
 def test_build_script_sdk_import_works_without_project_on_pythonpath(tmp_path):

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QLockFile
@@ -9,6 +10,7 @@ from playwright.async_api import async_playwright
 
 from .configuration import NativeConfiguration
 from .identity import load_or_create_identity
+from .profile_version import ensure_profile_version_compatible
 
 
 class NativeRuntimeError(RuntimeError):
@@ -88,6 +90,11 @@ class NativeRuntime:
                 raise NativeRuntimeError("Another process owns this Native profile")
             self._profile_lock = lock
             try:
+                if sys.platform == "win32":
+                    try:
+                        ensure_profile_version_compatible(self.profile_dir, self.executable)
+                    except (OSError, ValueError) as error:
+                        raise NativeRuntimeError(str(error)) from error
                 if not marker.exists():
                     marker.write_text(json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
                 self._privacy_identity = load_or_create_identity(self.profile_dir)

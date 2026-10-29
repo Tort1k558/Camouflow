@@ -1,5 +1,16 @@
 # Compressor math experiment
 
+## Actual Audio-v1 fidelity failure on 156
+
+The calibrated 54-graph fixture passed **54/54** with Glint policy off. With
+profile-identity Audio-v1 enabled, **42/54** passed; identity and half-gain
+graphs failed (12 rows across two sample rates and three repetitions).
+Repeated reads remained stable, copy mutation controls passed, resources closed
+and source/core postguards passed. This is one owned profile/Windows host, not
+all possible keys or device cohorts. It demonstrates why readback perturbation
+cannot be admitted from fingerprint isolation or SNR checks alone. No flat-buffer
+exception was added and AudioMath remains unselected/unverified at browser level.
+
 **Windows-only, unselected prototype. Not a shipped profile option or a verified device cohort.**
 
 Instead of changing completed samples, an immutable, instance-owned
