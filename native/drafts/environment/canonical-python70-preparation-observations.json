@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "passed": false,
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "measurement_complete": true,
+  "git_head": "8bbca7c075986427560c7d11398ab9d286f78caf",
+  "tracked_file_count": 803,
+  "duration_seconds": 817.734,
+  "returncode": 1,
+  "counts": {
+    "tests": 4274,
+    "failures": 5,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4268
+  },
+  "postguards_passed": true,
+  "changed_tracked_files": [],
+  "log_sha256": "fe0ffa509092701f052703cb9329a6d357e5e3e143e1e02785cfc24ab4aabf00",
+  "junit_sha256": "1b92ba7a21aa0f7c9632d5ad225cfacb793d07253fdd9086abaab82ca506e8b5",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "raw_report_sha256": "6dc50d2e86af8872fdc9899fa0c0a6525e80e530a411f8324c823497cba84b43",
+  "failed_tests": [
+    "tests.test_release_tools::test_native_windows_candidate_package_preserves_manifest_without_admitting_policy",
+    "tests.test_release_tools::test_native_candidate_requires_exact_checkout_and_complete_patch_chain[None]",
+    "tests.test_release_tools::test_baseline_native_batch_keeps_gpu_failure_and_all_later_results",
+    "tests.test_release_tools::test_native_66_batch_binds_frozen_manifest_and_complete_native_filters",
+    "tests.test_release_tools::test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches"
+  ],
+  "failure_scope": "Stale test contracts after explicit 0070 selection: three current patch counts/list expectations still said 69; two historical 65/66 batch comparisons incorrectly included the newly added screen-widget group.",
+  "fix_scope": "Current candidate checks now require exact 70/list including 0070; historical 65/66 still exclude all later audio/screen groups. No packaging, source-chain validation or runtime code changed.",
+  "corrected_test_source": "tests/test_release_tools.py",
+  "corrected_test_source_sha256": "a94b30b29507bac7b0c301a5e45646aadbb8ba9bf4149d3e7b1ec4caeb33a744",
+  "release_module_followup": {
+    "passed": 1131,
+    "skipped": 1,
+    "duration_seconds": 40.28,
+    "evidence_kind": "Observed complete release-tools pytest module terminal exit 0 after exact versioned-contract updates"
+  },
+  "full_regression_after_contract_updates_verified": false,
+  "note": "Retained failing full run; follow-up module success is not a new full-suite PASS."
+}

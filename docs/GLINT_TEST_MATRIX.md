@@ -14,6 +14,8 @@
 | --- | --- | --- |
 | Full main b6aa9c5 | **4254 passed, 1 failed, 1 skipped**; 655.156s; tracked-source guards passed | [Retained failure](../native/drafts/environment/canonical-python69-preparation-observations.json); not a full-suite PASS |
 | QML race diagnosis/repair | Controlled 1500-ms model-delivery delay reproduces original failure; waiting for public `getProfile()` within the unchanged 3-second deadline passes; corrected full QML module **9 passed** | Test-only synchronization; production UI unchanged; full regression after repair still pending |
+| Full main 8bbca7c after 0070 selection | **4268 passed, 5 failed, 1 skipped**; tracked-source guards passed; QML case no longer failed | [Retained full result](../native/drafts/environment/canonical-python70-preparation-observations.json); five stale release-test contracts, not full-suite PASS |
+| Versioned release-test contracts | Current candidate checks updated to exact 70 and its patch list; historical 65/66 batch lists still exclude later groups; complete release-tools module **1131 passed, 1 skipped** | Test-only contract update; source/package/runtime guards unchanged; another full run pending |
 
 ## Screen/DPR source package 0069, compiled / partial runtime checks — 2026-10-30
 

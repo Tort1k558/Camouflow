@@ -1,5 +1,16 @@
 # Glint: план проверки и развития
 
+## Полная регрессия после выбора 0070: пять устаревших тестовых контрактов
+
+На 8bbca7c: **4268 passed, 5 failed, 1 skipped**, tracked-source guards прошли;
+QML-гонка больше не воспроизвелась. Все пять сбоев — release-tests: три проверки
+текущего manifest ещё ожидали 69, две сравнивали исторические 65/66 batch со
+списком, куда уже добавлен `screen-widget`.
+Исправлены точные ожидания версии/списков, без изменений package/runtime guards.
+Полный release-tools модуль после исправления: **1131 passed, 1 skipped**.
+[Сохранённый результат](../native/drafts/environment/canonical-python70-preparation-observations.json).
+Новый full-suite PASS ещё не заявляется.
+
 ## 0070 выбран: связанный DPR-пакет и gate, следующая сборка запущена
 
 В manifest/checkpoint выбран единый двухфайловый 0070: main-root DPR + семь

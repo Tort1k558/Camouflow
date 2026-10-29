@@ -1113,3 +1113,18 @@ def test_selected_0070_is_exact_linked_batch_with_active_strict_gate_not_runtime
     assert cases == set(record["prepared_cases"]) and len(cases) == record["native_cases_required"] == 7
     assert all(record[name] is False for name in ("cpp_compiled", "native_tests_executed", "runtime_verified",
         "privacy_admitted", "production_admitted"))
+
+
+def test_second_full_regression_retains_contract_failures_without_claiming_full_followup():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/canonical-python70-preparation-observations.json").read_bytes())
+    assert record["measurement_complete"] and record["postguards_passed"] and record["changed_tracked_files"] == []
+    assert record["passed"] is False and record["returncode"] == 1
+    assert record["counts"] == {"tests": 4274, "passed": 4268, "failures": 5, "errors": 0, "skipped": 1}
+    assert len(record["failed_tests"]) == 5 and all(name.startswith("tests.test_release_tools::") for name in record["failed_tests"])
+    assert record["release_module_followup"]["passed"] == 1131 and record["release_module_followup"]["skipped"] == 1
+    assert all(record[name] is False for name in ("full_regression_after_contract_updates_verified", "native_runtime_verified",
+        "privacy_admitted", "production_admitted"))
+    assert hashlib.sha256((root / record["corrected_test_source"]).read_bytes()).hexdigest() == record["corrected_test_source_sha256"]
