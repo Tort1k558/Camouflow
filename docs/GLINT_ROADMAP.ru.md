@@ -3,6 +3,24 @@
 Это рабочий контракт для следующих этапов, не отчёт о готовых функциях.
 Текущий статус всегда подтверждается исходниками, процессами и свежими отчётами.
 
+## Следующий пакет: AudioContext math policy — 29 октября 2026
+
+Подготовлен отдельный draft 0068 для Chromium 156 после 001–065:
+режим/error фиксируется при первом затронутом использовании AudioContext,
+backend выводится из Audio surface seed через отдельный HMAC-домен,
+компрессор получает собственную неизменяемую политику. Math-only путь не смешивается
+с v1 readback farbling; отсутствие политики не разрешает возврат сырых данных.
+
+Полный source replay 65+0068 прошёл на 193 pinned inputs; GPU ordinals и GRIT
+сохранены. Семь C++ fixtures подготовлены, **не скомпилированы и не выполнены**.
+Фича выключена по умолчанию, патч не выбран в manifest; 201 frozen input активной
+сборки не изменился. Это не runtime-допуск и не готовая модель реальных устройств.
+
+Далее: завершить текущий 156 baseline и связанные проверки; затем отдельно
+собрать пакет AudioMath, выполнить fixtures, снять matched-version browser controls,
+проверить lifecycle/AudioWorklet/realtime, качество звука и производительность.
+См. `native/drafts/audio-dsp-math-v2/context-integration.json` и README workbench.
+
 ## Новый результат: Audio-v1 fidelity на Glint 148 — 29 октября 2026
 
 Расчётный риск подтверждён matched-version прогоном: stock Chromium и Glint

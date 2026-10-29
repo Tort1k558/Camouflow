@@ -1,0 +1,772 @@
+diff --git a/third_party/blink/public/common/features.h b/third_party/blink/public/common/features.h
+--- a/third_party/blink/public/common/features.h
++++ b/third_party/blink/public/common/features.h
+@@ -532,6 +532,9 @@
+ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
+     kFrequencyCappingForOverlayPopupDetection);
+ 
++// Experimental developer opt-in; not Audio capability or production admission.
++BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGlintAudioMathCandidate);
++
+ // Developer opt-in only; not GPU capability or production admission.
+ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGlintGpuMetadataMinimization);
+ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGlintWebGLReadbackCandidate);
+diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
+--- a/third_party/blink/common/features.cc
++++ b/third_party/blink/common/features.cc
+@@ -777,6 +777,7 @@
+ BASE_FEATURE(kFrequencyCappingForOverlayPopupDetection,
+              base::FEATURE_ENABLED_BY_DEFAULT);
+ 
++BASE_FEATURE(kGlintAudioMathCandidate, base::FEATURE_DISABLED_BY_DEFAULT);
+ BASE_FEATURE(kGlintGpuMetadataMinimization, base::FEATURE_DISABLED_BY_DEFAULT);
+ BASE_FEATURE(kGlintWebGLReadbackCandidate, base::FEATURE_DISABLED_BY_DEFAULT);
+ 
+diff --git a/third_party/blink/renderer/platform/BUILD.gn b/third_party/blink/renderer/platform/BUILD.gn
+--- a/third_party/blink/renderer/platform/BUILD.gn
++++ b/third_party/blink/renderer/platform/BUILD.gn
+@@ -413,6 +413,7 @@
+     "audio/down_sampler.h",
+     "audio/dynamics_compressor.cc",
+     "audio/dynamics_compressor.h",
++    "audio/glint/compressor_math_policy.h",
+     "audio/equal_power_panner.cc",
+     "audio/equal_power_panner.h",
+     "audio/fft_convolver.cc",
+diff --git a/third_party/blink/renderer/platform/audio/dynamics_compressor.h b/third_party/blink/renderer/platform/audio/dynamics_compressor.h
+--- a/third_party/blink/renderer/platform/audio/dynamics_compressor.h
++++ b/third_party/blink/renderer/platform/audio/dynamics_compressor.h
+@@ -33,6 +33,7 @@
+ #include <memory>
+ 
+ #include "third_party/blink/renderer/platform/audio/audio_array.h"
++#include "third_party/blink/renderer/platform/audio/glint/compressor_math_policy.h"
+ #include "third_party/blink/renderer/platform/platform_export.h"
+ #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+ #include "third_party/blink/renderer/platform/wtf/vector.h"
+@@ -61,6 +62,9 @@
+   };
+ 
+   DynamicsCompressor(float sample_rate, unsigned number_of_channels);
++  DynamicsCompressor(float sample_rate,
++                     unsigned number_of_channels,
++                     glint::candidate::CompressorMathPolicy math_policy);
+   DynamicsCompressor(const DynamicsCompressor&) = delete;
+   DynamicsCompressor& operator=(const DynamicsCompressor&) = delete;
+ 
+@@ -95,6 +99,8 @@
+   float UpdateStaticCurveParameters(float db_threshold,
+                                     float db_knee,
+                                     float ratio);
++
++  const glint::candidate::CompressorMathPolicy glint_math_policy_;
+ 
+   unsigned number_of_channels_;
+ 
+diff --git a/third_party/blink/renderer/platform/audio/dynamics_compressor.cc b/third_party/blink/renderer/platform/audio/dynamics_compressor.cc
+--- a/third_party/blink/renderer/platform/audio/dynamics_compressor.cc
++++ b/third_party/blink/renderer/platform/audio/dynamics_compressor.cc
+@@ -91,7 +91,16 @@
+ 
+ DynamicsCompressor::DynamicsCompressor(float sample_rate,
+                                        unsigned number_of_channels)
+-    : number_of_channels_(number_of_channels),
++    : DynamicsCompressor(sample_rate,
++                         number_of_channels,
++                         *glint::candidate::CompressorMathPolicy::Create(0)) {}
++
++DynamicsCompressor::DynamicsCompressor(
++    float sample_rate,
++    unsigned number_of_channels,
++    glint::candidate::CompressorMathPolicy math_policy)
++    : glint_math_policy_(math_policy),
++      number_of_channels_(number_of_channels),
+       sample_rate_(sample_rate),
+       ratio_(kUninitializedValue),
+       slope_(kUninitializedValue),
+@@ -142,7 +151,8 @@
+   const float k = UpdateStaticCurveParameters(db_threshold, db_knee, ratio);
+ 
+   // Makeup gain with empirical/perceptual tuning.
+-  const float linear_post_gain = fdlibm::powf(1 / Saturate(1, k), 0.6f);
++  const float linear_post_gain =
++      glint_math_policy_.Pow(1 / Saturate(1, k), 0.6f);
+ 
+   // Attack parameters.
+   const float attack_frames = std::max(0.001f, attack_time) * sample_rate;
+@@ -185,7 +195,7 @@
+ 
+     // Pre-warp so we get desired_gain after sin() warp below.
+     const float scaled_desired_gain =
+-        fdlibm::asinf(desired_gain) / kPiOverTwoFloat;
++        glint_math_policy_.Asin(desired_gain) / kPiOverTwoFloat;
+ 
+     // Deal with envelopes
+ 
+@@ -249,7 +259,7 @@
+           std::max(0.5f, db_max_attack_compression_diff_);
+ 
+       const float x = 0.25f / db_eff_atten_diff;
+-      envelope_rate = 1 - fdlibm::powf(x, 1 / attack_frames);
++      envelope_rate = 1 - glint_math_policy_.Pow(x, 1 / attack_frames);
+     }
+ 
+     // Inner loop - calculate shaped power average - apply compression.
+@@ -327,8 +337,9 @@
+ 
+       // Warp pre-compression gain to smooth out sharp exponential transition
+       // points.
+-      const float post_warp_compressor_gain = static_cast<float>(
+-          sin(static_cast<double>(kPiOverTwoFloat * compressor_gain)));
++      const float post_warp_compressor_gain =
++          static_cast<float>(glint_math_policy_.Sin(
++              static_cast<double>(kPiOverTwoFloat * compressor_gain)));
+ 
+       // Calculate total gain using the linear post-gain.
+       const float total_gain = linear_post_gain * post_warp_compressor_gain;
+@@ -474,9 +485,10 @@
+     return x;
+   }
+ 
+-  return linear_threshold_ + (1 - static_cast<float>(exp(static_cast<double>(
+-                                      -k * (x - linear_threshold_))))) /
+-                                 k;
++  return linear_threshold_ +
++         (1 - static_cast<float>(glint_math_policy_.Exp(
++                  static_cast<double>(-k * (x - linear_threshold_))))) /
++             k;
+ }
+ 
+ // Full compression curve with constant ratio after knee.
+diff --git a/third_party/blink/renderer/modules/webaudio/BUILD.gn b/third_party/blink/renderer/modules/webaudio/BUILD.gn
+--- a/third_party/blink/renderer/modules/webaudio/BUILD.gn
++++ b/third_party/blink/renderer/modules/webaudio/BUILD.gn
+@@ -6,6 +6,7 @@
+ 
+ blink_modules_sources("webaudio") {
+   sources = [
++    "glint/audio_math_pipeline.h",
+     "glint/offline_audio_candidate.h",
+     "glint/offline_audio_candidate.cc",
+     "glint/offline_audio_limits.h",
+diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.h b/third_party/blink/renderer/modules/webaudio/base_audio_context.h
+--- a/third_party/blink/renderer/modules/webaudio/base_audio_context.h
++++ b/third_party/blink/renderer/modules/webaudio/base_audio_context.h
+@@ -26,6 +26,8 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_BASE_AUDIO_CONTEXT_H_
+ #define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_BASE_AUDIO_CONTEXT_H_
+ 
++#include <optional>
++
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
+@@ -39,6 +41,7 @@
+ #include "third_party/blink/renderer/modules/modules_export.h"
+ #include "third_party/blink/renderer/modules/webaudio/audio_destination_node.h"
+ #include "third_party/blink/renderer/modules/webaudio/deferred_task_handler.h"
++#include "third_party/blink/renderer/modules/webaudio/glint/audio_math_pipeline.h"
+ #include "third_party/blink/renderer/modules/webaudio/inspector_helper_mixin.h"
+ #include "third_party/blink/renderer/platform/audio/audio_callback_metric_reporter.h"
+ #include "third_party/blink/renderer/platform/audio/audio_io_callback.h"
+@@ -102,6 +105,9 @@
+   const AtomicString& InterfaceName() const final;
+   ExecutionContext* GetExecutionContext() const final;
+ 
++  // Freeze enabled, disabled or failed policy at first affected use.
++  glint::candidate::AudioMathPipelineResult GetGlintAudioMathPipeline();
++
+   // ActiveScriptWrappable
+   bool HasPendingActivity() const override;
+ 
+@@ -431,6 +437,10 @@
+   // This cannot be nullptr once it is assigned from AudioWorkletThread until
+   // the BaseAudioContext goes away.
+   raw_ptr<WorkerThread, DanglingUntriaged> audio_worklet_thread_ = nullptr;
++
++  // Only the selected mode/error is retained, never the derived seed.
++  std::optional<glint::candidate::AudioMathPipelineResult>
++      glint_audio_math_pipeline_;
+ };
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.cc b/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
+--- a/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
++++ b/third_party/blink/renderer/modules/webaudio/base_audio_context.cc
+@@ -25,9 +25,15 @@
+ 
+ #include "third_party/blink/renderer/modules/webaudio/base_audio_context.h"
+ 
++#include <array>
++#include <cstdint>
++
++#include "base/containers/span.h"
++#include "base/feature_list.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "build/build_config.h"
+ #include "media/base/audio_bus.h"
++#include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/public/mojom/devtools/console_message.mojom-blink.h"
+ #include "third_party/blink/public/mojom/frame/lifecycle.mojom-shared.h"
+ #include "third_party/blink/public/platform/platform.h"
+@@ -38,6 +44,7 @@
+ #include "third_party/blink/renderer/core/dom/dom_exception.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/settings.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ #include "third_party/blink/renderer/core/html/media/html_media_element.h"
+ #include "third_party/blink/renderer/core/inspector/console_message.h"
+ #include "third_party/blink/renderer/modules/webaudio/analyser_node.h"
+@@ -85,6 +92,8 @@
+ #include "third_party/blink/renderer/platform/wtf/text/strcat.h"
+ #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+ #include "third_party/blink/renderer/platform/wtf/uuid.h"
++#include "third_party/boringssl/src/include/openssl/hmac.h"
++#include "third_party/boringssl/src/include/openssl/mem.h"
+ 
+ namespace blink {
+ 
+@@ -128,6 +137,39 @@
+                           blink::RetainedRef(std::move(bus)),
+                           MakeUnwrappingCrossThreadHandle(resolver),
+                           MakeUnwrappingCrossThreadHandle(context)));
++}
++
++glint::candidate::AudioMathPipelineResult CaptureGlintAudioMathPipeline(
++    ExecutionContext* context) {
++  using glint::candidate::AudioMathPipeline;
++  using glint::candidate::AudioMathPolicyError;
++  if (!base::FeatureList::IsEnabled(features::kGlintAudioMathCandidate)) {
++    return AudioMathPipeline::kLegacyReadback;
++  }
++  if (!context || context->IsContextDestroyed()) {
++    return base::unexpected(AudioMathPolicyError::kUnavailablePolicy);
++  }
++  auto seed = glint::candidate::SurfacePartitionSeed(
++      context, glint::candidate::SurfaceSeedKind::kAudio);
++  if (!seed.has_value() || !seed->has_value()) {
++    return base::unexpected(AudioMathPolicyError::kUnavailablePolicy);
++  }
++  constexpr char kDomain[] = "glint.audio.math.backend.v1";
++  const auto domain = base::as_byte_span(kDomain).first(sizeof(kDomain) - 1);
++  std::array<uint8_t, 32> digest{};
++  unsigned length = 0;
++  auto& key = seed->value();
++  const bool derived = HMAC(EVP_sha256(), key.data(), key.size(), domain.data(),
++                            domain.size(), digest.data(), &length) &&
++                       length == digest.size();
++  const auto selector = digest.front() & 1u;
++  OPENSSL_cleanse(key.data(), key.size());
++  OPENSSL_cleanse(digest.data(), digest.size());
++  if (!derived) {
++    return base::unexpected(AudioMathPolicyError::kDerivationFailed);
++  }
++  return selector ? AudioMathPipeline::kFloat32Math
++                  : AudioMathPipeline::kNativeMath;
+ }
+ 
+ }  // namespace
+@@ -264,6 +306,16 @@
+ void BaseAudioContext::ContextDestroyed() {
+   destinationNode()->GetAudioDestinationHandler().ContextDestroyed();
+   Uninitialize();
++}
++
++glint::candidate::AudioMathPipelineResult
++BaseAudioContext::GetGlintAudioMathPipeline() {
++  DCHECK(IsMainThread());
++  if (!glint_audio_math_pipeline_) {
++    glint_audio_math_pipeline_.emplace(
++        CaptureGlintAudioMathPipeline(GetExecutionContext()));
++  }
++  return glint_audio_math_pipeline_.value();
+ }
+ 
+ bool BaseAudioContext::HasPendingActivity() const {
+diff --git a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc
+--- a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc
++++ b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc
+@@ -25,6 +25,7 @@
+ 
+ #include "third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h"
+ 
++#include "base/check.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_automation_rate.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_dynamics_compressor_options.h"
+ #include "third_party/blink/renderer/modules/webaudio/audio_graph_tracer.h"
+@@ -110,9 +111,13 @@
+                                   AudioParamHandler::AutomationRateMode::kFixed,
+                                   kMinReleaseValue,
+                                   kMaxReleaseValue)) {
++  const auto pipeline = context.GetGlintAudioMathPipeline();
++  CHECK(pipeline.has_value());
++  const auto math = glint::candidate::CompressorPolicyForPipeline(*pipeline);
++  CHECK(math.has_value());
+   SetHandler(DynamicsCompressorHandler::Create(
+       *this, context.sampleRate(), threshold_->Handler(), knee_->Handler(),
+-      ratio_->Handler(), attack_->Handler(), release_->Handler()));
++      ratio_->Handler(), attack_->Handler(), release_->Handler(), *math));
+ }
+ 
+ DynamicsCompressorNode* DynamicsCompressorNode::Create(
+@@ -120,6 +125,14 @@
+     ExceptionState& exception_state) {
+   DCHECK(IsMainThread());
+ 
++  const auto pipeline = context.GetGlintAudioMathPipeline();
++  if (!pipeline.has_value() ||
++      !glint::candidate::CompressorPolicyForPipeline(*pipeline)) {
++    exception_state.ThrowDOMException(
++        DOMExceptionCode::kNotReadableError,
++        "Glint Audio math policy is unavailable.");
++    return nullptr;
++  }
+   return MakeGarbageCollected<DynamicsCompressorNode>(context);
+ }
+ 
+diff --git a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.h b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.h
+--- a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.h
++++ b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.h
+@@ -12,6 +12,7 @@
+ #include "third_party/blink/renderer/modules/modules_export.h"
+ #include "third_party/blink/renderer/modules/webaudio/audio_node.h"
+ #include "third_party/blink/renderer/modules/webaudio/audio_param.h"
++#include "third_party/blink/renderer/platform/audio/glint/compressor_math_policy.h"
+ 
+ namespace blink {
+ 
+@@ -28,7 +29,8 @@
+       AudioParamHandler& knee,
+       AudioParamHandler& ratio,
+       AudioParamHandler& attack,
+-      AudioParamHandler& release);
++      AudioParamHandler& release,
++      glint::candidate::CompressorMathPolicy math_policy);
+ 
+   ~DynamicsCompressorHandler() override;
+ 
+@@ -51,11 +53,13 @@
+                             AudioParamHandler& knee,
+                             AudioParamHandler& ratio,
+                             AudioParamHandler& attack,
+-                            AudioParamHandler& release);
++                            AudioParamHandler& release,
++                            glint::candidate::CompressorMathPolicy math_policy);
+   bool RequiresTailProcessing() const final;
+   double TailTime() const override;
+   double LatencyTime() const override;
+ 
++  const glint::candidate::CompressorMathPolicy glint_math_policy_;
+   std::unique_ptr<DynamicsCompressor> dynamics_compressor_;
+   scoped_refptr<AudioParamHandler> threshold_;
+   scoped_refptr<AudioParamHandler> knee_;
+diff --git a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc
+--- a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc
++++ b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc
+@@ -30,8 +30,10 @@
+     AudioParamHandler& knee,
+     AudioParamHandler& ratio,
+     AudioParamHandler& attack,
+-    AudioParamHandler& release)
++    AudioParamHandler& release,
++    glint::candidate::CompressorMathPolicy math_policy)
+     : AudioHandler(NodeType::kNodeTypeDynamicsCompressor, node, sample_rate),
++      glint_math_policy_(math_policy),
+       threshold_(&threshold),
+       knee_(&knee),
+       ratio_(&ratio),
+@@ -54,9 +56,10 @@
+     AudioParamHandler& knee,
+     AudioParamHandler& ratio,
+     AudioParamHandler& attack,
+-    AudioParamHandler& release) {
++    AudioParamHandler& release,
++    glint::candidate::CompressorMathPolicy math_policy) {
+   return base::AdoptRef(new DynamicsCompressorHandler(
+-      node, sample_rate, threshold, knee, ratio, attack, release));
++      node, sample_rate, threshold, knee, ratio, attack, release, math_policy));
+ }
+ 
+ DynamicsCompressorHandler::~DynamicsCompressorHandler() {
+@@ -120,7 +123,8 @@
+ 
+   AudioHandler::Initialize();
+   dynamics_compressor_ = std::make_unique<DynamicsCompressor>(
+-      Context()->sampleRate(), kDefaultNumberOfOutputChannels);
++      Context()->sampleRate(), kDefaultNumberOfOutputChannels,
++      glint_math_policy_);
+ }
+ 
+ bool DynamicsCompressorHandler::RequiresTailProcessing() const {
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+@@ -247,8 +247,21 @@
+ 
+   DCHECK(!is_rendering_started_);
+ 
+-  const auto seed = glint::candidate::SurfacePartitionSeed(
+-      GetExecutionContext(), glint::candidate::SurfaceSeedKind::kAudio);
++  const auto pipeline = GetGlintAudioMathPipeline();
++  if (!pipeline.has_value()) {
++    exception_state.ThrowDOMException(
++        DOMExceptionCode::kNotReadableError,
++        "Glint Audio math policy is unavailable.");
++    return EmptyPromise();
++  }
++  // Math-only processing and v1 post-read farbling are mutually exclusive.
++  const auto seed =
++      *pipeline == glint::candidate::AudioMathPipeline::kLegacyReadback
++          ? glint::candidate::SurfacePartitionSeed(
++                GetExecutionContext(),
++                glint::candidate::SurfaceSeedKind::kAudio)
++          : glint::candidate::SurfaceSeedResult(
++                std::optional<std::array<uint8_t, 32>>{});
+   if (!seed.has_value()) {
+     exception_state.ThrowDOMException(DOMExceptionCode::kNotReadableError,
+                                      "Glint offline Audio policy is unavailable.");
+diff --git a/third_party/blink/renderer/platform/audio/glint/compressor_math_policy.h b/third_party/blink/renderer/platform/audio/glint/compressor_math_policy.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/renderer/platform/audio/glint/compressor_math_policy.h
+@@ -0,0 +1,68 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_DRAFT_COMPRESSOR_MATH_POLICY_H_
++#define GLINT_DRAFT_COMPRESSOR_MATH_POLICY_H_
++
++#include <cmath>
++#include <cstdint>
++#include <limits>
++#include <optional>
++
++#include "third_party/fdlibm/ieee754.h"
++
++namespace glint::candidate {
++
++enum class CompressorMathBackend : uint32_t { kNative = 0, kFloat32 = 1 };
++
++// Unselected DSP prototype. This does not admit Audio fingerprint emulation or
++// install a profile policy; reference/runtime compatibility is still required.
++class CompressorMathPolicy {
++ public:
++  static constexpr std::optional<CompressorMathPolicy> Create(uint32_t value) {
++    if (value > static_cast<uint32_t>(CompressorMathBackend::kFloat32)) {
++      return std::nullopt;
++    }
++    return CompressorMathPolicy(static_cast<CompressorMathBackend>(value));
++  }
++
++  constexpr CompressorMathBackend backend() const { return backend_; }
++
++  float Pow(float base, float exponent) const {
++    if (backend_ == CompressorMathBackend::kNative) {
++      return fdlibm::powf(base, exponent);
++    }
++    // Preserve Chromium fdlibm's unit-base rules, not the CRT's power rules.
++    if ((base == 1.f && !std::isfinite(exponent)) ||
++        (base == -1.f && std::isinf(exponent))) {
++      return std::numeric_limits<float>::quiet_NaN();
++    }
++    return ::powf(base, exponent);
++  }
++
++  float Asin(float value) const {
++    return backend_ == CompressorMathBackend::kNative ? fdlibm::asinf(value)
++                                                      : ::asinf(value);
++  }
++
++  float Sin(double value) const {
++    return backend_ == CompressorMathBackend::kNative
++               ? static_cast<float>(::sin(value))
++               : ::sinf(static_cast<float>(value));
++  }
++
++  float Exp(double value) const {
++    return backend_ == CompressorMathBackend::kNative
++               ? static_cast<float>(::exp(value))
++               : ::expf(static_cast<float>(value));
++  }
++
++ private:
++  explicit constexpr CompressorMathPolicy(CompressorMathBackend backend)
++      : backend_(backend) {}
++
++  const CompressorMathBackend backend_;
++};
++
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/audio_math_pipeline.h b/third_party/blink/renderer/modules/webaudio/glint/audio_math_pipeline.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webaudio/glint/audio_math_pipeline.h
+@@ -0,0 +1,34 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_AUDIO_MATH_PIPELINE_H_
++#define GLINT_AUDIO_MATH_PIPELINE_H_
++#include <cstdint>
++#include <optional>
++
++#include "base/types/expected.h"
++#include "third_party/blink/renderer/platform/audio/glint/compressor_math_policy.h"
++namespace glint::candidate {
++enum class AudioMathPipeline : uint8_t {
++  kLegacyReadback,
++  kNativeMath,
++  kFloat32Math
++};
++enum class AudioMathPolicyError : uint8_t {
++  kUnavailablePolicy,
++  kDerivationFailed
++};
++using AudioMathPipelineResult =
++    base::expected<AudioMathPipeline, AudioMathPolicyError>;
++inline std::optional<CompressorMathPolicy> CompressorPolicyForPipeline(
++    AudioMathPipeline pipeline) {
++  switch (pipeline) {
++    case AudioMathPipeline::kLegacyReadback:
++    case AudioMathPipeline::kNativeMath:
++      return CompressorMathPolicy::Create(0);
++    case AudioMathPipeline::kFloat32Math:
++      return CompressorMathPolicy::Create(1);
++  }
++  return std::nullopt;
++}
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+@@ -4,29 +4,35 @@
+ 
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_context.h"
+ 
++#include <algorithm>
+ #include <memory>
+ #include <utility>
+ 
++#include "base/test/scoped_feature_list.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
++#include "third_party/blink/public/platform/web_runtime_features.h"
+ #include "third_party/blink/public/web/web_navigation_params.h"
+-#include "third_party/blink/renderer/core/loader/frame_loader.h"
+-#include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
+-#include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
+-#include "url/gurl.h"
+-#include "url/origin.h"
+-#include "testing/gtest/include/gtest/gtest.h"
+-#include "third_party/blink/public/platform/web_runtime_features.h"
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise_tester.h"
+ #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_offline_audio_context_options.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_union_audiocontextrendersizecategory_unsignedlong.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
++#include "third_party/blink/renderer/core/loader/frame_loader.h"
++#include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
+ #include "third_party/blink/renderer/core/testing/page_test_base.h"
+ #include "third_party/blink/renderer/modules/webaudio/audio_buffer.h"
++#include "third_party/blink/renderer/modules/webaudio/audio_param.h"
++#include "third_party/blink/renderer/modules/webaudio/constant_source_node.h"
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
+ #include "third_party/blink/renderer/platform/heap/thread_state.h"
++#include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
++#include "url/gurl.h"
++#include "url/origin.h"
+ 
+ namespace blink {
+ 
+@@ -177,7 +183,9 @@
+ }
+ 
+ namespace {
+-std::unique_ptr<DummyPageHolder> GlintOfflineAudioPolicyHolder(bool ready) {
++std::unique_ptr<DummyPageHolder> GlintOfflineAudioPolicyHolder(
++    bool ready,
++    uint8_t audio_seed = 4) {
+   auto holder = std::make_unique<DummyPageHolder>();
+   const KURL url(NullUrl(), "https://audio-surface.test/");
+   auto params = WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
+@@ -192,7 +200,7 @@
+     policy.canvas.fill(1);
+     policy.webgl.fill(2);
+     policy.webgpu.fill(3);
+-    policy.audio.fill(4);
++    policy.audio.fill(audio_seed);
+     params->glint_document_surface_policy = glint::candidate::DocumentSurfacePolicy{
+         params->storage_key, std::move(policy)};
+   }
+@@ -231,5 +239,166 @@
+   EXPECT_EQ(context->state().AsStringView(), "suspended");
+ }
+ 
++TEST_F(OfflineAudioContextTest, GlintMathDisabledCaptureRemainsLegacy) {
++  auto holder = GlintOfflineAudioPolicyHolder(false);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                              128, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  {
++    base::test::ScopedFeatureList features;
++    features.InitAndDisableFeature(blink::features::kGlintAudioMathCandidate);
++    EXPECT_EQ(context->GetGlintAudioMathPipeline(),
++              glint::candidate::AudioMathPipeline::kLegacyReadback);
++    EXPECT_TRUE(context->createDynamicsCompressor(ASSERT_NO_EXCEPTION));
++  }
++  base::test::ScopedFeatureList features;
++  features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++  EXPECT_EQ(context->GetGlintAudioMathPipeline(),
++            glint::candidate::AudioMathPipeline::kLegacyReadback);
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintMathMissingPolicyRejectsBeforeNodeOrResolver) {
++  base::test::ScopedFeatureList features;
++  features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++  auto holder = GlintOfflineAudioPolicyHolder(false);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                              128, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  DummyExceptionStateForTesting node_exception;
++  EXPECT_FALSE(context->createDynamicsCompressor(node_exception));
++  ASSERT_TRUE(node_exception.HadException());
++  EXPECT_EQ(node_exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kNotReadableError);
++  DummyExceptionStateForTesting render_exception;
++  EXPECT_TRUE(
++      context->startOfflineRendering(nullptr, render_exception).IsEmpty());
++  ASSERT_TRUE(render_exception.HadException());
++  EXPECT_EQ(render_exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kNotReadableError);
++  EXPECT_EQ(context->state().AsStringView(), "suspended");
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintMathFailedCaptureDoesNotFallBackAfterDisable) {
++  auto holder = GlintOfflineAudioPolicyHolder(false);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                              128, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  {
++    base::test::ScopedFeatureList features;
++    features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++    const auto pipeline = context->GetGlintAudioMathPipeline();
++    ASSERT_FALSE(pipeline.has_value());
++    EXPECT_EQ(pipeline.error(),
++              glint::candidate::AudioMathPolicyError::kUnavailablePolicy);
++  }
++  base::test::ScopedFeatureList features;
++  features.InitAndDisableFeature(blink::features::kGlintAudioMathCandidate);
++  EXPECT_FALSE(context->GetGlintAudioMathPipeline().has_value());
++  DummyExceptionStateForTesting exception;
++  EXPECT_FALSE(context->createDynamicsCompressor(exception));
++  ASSERT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kNotReadableError);
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintMathContextModesAreIndependentAndSeedUnchanged) {
++  base::test::ScopedFeatureList features;
++  features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++  // Public fixed fixture bytes, not profile secrets. HMAC selectors are 1 and
++  // 0.
++  auto float_holder = GlintOfflineAudioPolicyHolder(true, 3);
++  auto native_holder = GlintOfflineAudioPolicyHolder(true, 4);
++  ASSERT_TRUE(float_holder);
++  ASSERT_TRUE(native_holder);
++  auto* float_context = OfflineAudioContext::Create(
++      float_holder->GetFrame().DomWindow(), 1, 128, 44100, ASSERT_NO_EXCEPTION);
++  auto* native_context =
++      OfflineAudioContext::Create(native_holder->GetFrame().DomWindow(), 1, 128,
++                                  44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(float_context);
++  ASSERT_TRUE(native_context);
++  for (int i = 0; i < 3; ++i) {
++    EXPECT_EQ(float_context->GetGlintAudioMathPipeline(),
++              glint::candidate::AudioMathPipeline::kFloat32Math);
++    EXPECT_EQ(native_context->GetGlintAudioMathPipeline(),
++              glint::candidate::AudioMathPipeline::kNativeMath);
++  }
++  const auto float_seed = glint::candidate::SurfacePartitionSeed(
++      float_context->GetExecutionContext(),
++      glint::candidate::SurfaceSeedKind::kAudio);
++  const auto native_seed = glint::candidate::SurfacePartitionSeed(
++      native_context->GetExecutionContext(),
++      glint::candidate::SurfaceSeedKind::kAudio);
++  ASSERT_TRUE(float_seed.has_value() && float_seed->has_value());
++  ASSERT_TRUE(native_seed.has_value() && native_seed->has_value());
++  EXPECT_TRUE(
++      std::ranges::all_of(**float_seed, [](uint8_t v) { return v == 3; }));
++  EXPECT_TRUE(
++      std::ranges::all_of(**native_seed, [](uint8_t v) { return v == 4; }));
++  EXPECT_TRUE(float_context->createDynamicsCompressor(ASSERT_NO_EXCEPTION));
++  EXPECT_TRUE(native_context->createDynamicsCompressor(ASSERT_NO_EXCEPTION));
++}
++
++TEST_F(OfflineAudioContextTest, GlintMathEnabledCaptureRemainsAfterDisable) {
++  auto holder = GlintOfflineAudioPolicyHolder(true, 3);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                              128, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  {
++    base::test::ScopedFeatureList features;
++    features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++    EXPECT_EQ(context->GetGlintAudioMathPipeline(),
++              glint::candidate::AudioMathPipeline::kFloat32Math);
++  }
++  base::test::ScopedFeatureList features;
++  features.InitAndDisableFeature(blink::features::kGlintAudioMathCandidate);
++  EXPECT_EQ(context->GetGlintAudioMathPipeline(),
++            glint::candidate::AudioMathPipeline::kFloat32Math);
++  EXPECT_TRUE(context->createDynamicsCompressor(ASSERT_NO_EXCEPTION));
++}
++
++TEST_F(OfflineAudioContextTest, GlintMathUnknownPipelineIsRejected) {
++  EXPECT_FALSE(glint::candidate::CompressorPolicyForPipeline(
++      static_cast<glint::candidate::AudioMathPipeline>(255)));
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintMathDirectConstantDoesNotUseReadbackFarbling) {
++  base::test::ScopedFeatureList features;
++  features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++  for (uint8_t seed : {3, 4, 5}) {
++    auto holder = GlintOfflineAudioPolicyHolder(true, seed);
++    ASSERT_TRUE(holder);
++    auto* context = OfflineAudioContext::Create(
++        holder->GetFrame().DomWindow(), 1, 128, 44100, ASSERT_NO_EXCEPTION);
++    ASSERT_TRUE(context);
++    V8TestingScope scope(std::move(holder));
++    auto* source = context->createConstantSource(ASSERT_NO_EXCEPTION);
++    ASSERT_TRUE(source);
++    source->offset()->setValue(0.25f);
++    source->connect(context->destination(), 0, 0, ASSERT_NO_EXCEPTION);
++    source->start(0, ASSERT_NO_EXCEPTION);
++    ScriptPromiseTester tester(
++        scope.GetScriptState(),
++        context->startOfflineRendering(scope.GetScriptState(),
++                                       ASSERT_NO_EXCEPTION));
++    tester.WaitUntilSettled();
++    ASSERT_TRUE(tester.IsFulfilled());
++    auto* buffer = ToScriptWrappable<AudioBuffer>(
++        scope.GetIsolate(), tester.Value().V8Value().As<v8::Object>());
++    ASSERT_TRUE(buffer);
++    ASSERT_EQ(buffer->length(), 128u);
++    for (float sample : buffer->getChannelData(0)->AsSpan()) {
++      EXPECT_EQ(sample, 0.25f);
++    }
++  }
++}
+ 
+ }  // namespace blink

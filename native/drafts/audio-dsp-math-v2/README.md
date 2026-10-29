@@ -85,6 +85,33 @@ runtime; running the C++ matrix alone cannot grant admission.
 
 ## Still required
 
+### Unselected AudioContext integration
+
+[0068](0068-native-audio-math-context-candidate.patch) targets **156.0.8078.36
+after selected patches 001–065**. It does not depend on the separate 157-only
+0066/0067 fixtures and is not part of either engine manifest.
+
+| Prepared behavior | Boundary |
+| --- | --- |
+| Capture one immutable mode or error per AudioContext at first affected use | Not a process-global backend or a per-read random choice |
+| Domain-separated HMAC of the existing Audio surface seed selects native/float32 math | Two experimental backends, not a real-device identity database |
+| Compressor nodes pass the captured policy to their own processor | No new key/seed wire format; no public manager capability |
+| Math-only offline rendering bypasses v1 post-read farbling | Missing policy still fails; no raw-result fallback |
+| Seven native fixtures cover caching, errors, independent contexts and literal DC | Prepared, **not compiled or executed** |
+
+`GlintAudioMathCandidate` is **disabled by default**. The legacy branch preserves
+the old readback path. Enabled contexts keep only the selected mode/error; the
+local seed copy and derivation digest are cleansed after selection. This does
+not prove operating-system memory sanitization or all-context lifetime safety.
+
+[The descriptor](context-integration.json) binds the base manifest, patch,
+before/after files and eight additional pristine inputs. A full isolated replay
+of **65 selected patches + this draft** passed on **193 pinned source files**,
+including GPU ordinal/GRIT checks. All 201 active-build inputs remained unchanged.
+This is source application, **not GN, compilation, native execution or runtime
+admission**. Existing matrix/browser evidence above still measures the previous
+standalone prototype/native baseline, not this integration.
+
 The float32 output has **not** been observed as a real device cohort. A changed
 hash is not evidence of ordinary-browser plausibility. The experiment does not
 repair or admit Audio-v1 farbling, and is not a complete Audio identity model.

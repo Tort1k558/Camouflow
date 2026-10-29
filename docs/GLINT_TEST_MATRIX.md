@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Unselected AudioContext math integration — 2026-10-29
+
+| Check | Result | Boundary |
+| --- | --- | --- |
+| Full source replay | 65 selected patches + draft 0068 applied to 193 pinned 156.0.8078.36 inputs; GPU ordinals and GRIT preserved | Not GN or compilation |
+| Context policy code | Captures mode/error once; domain-separated derivation; instance-owned compressor backend; math/readback paths exclusive | Feature disabled by default; manager admission unchanged |
+| Native fixtures | Seven prepared: feature-state caching, missing-policy rejection, independent contexts, seed preservation, invalid enum, exact direct DC | None compiled or executed |
+| Active build isolation | All 201 frozen inputs unchanged | Draft is outside both selected engine manifests |
+
+Sources and hash-bound scope: [`context-integration.json`](../native/drafts/audio-dsp-math-v2/context-integration.json).
+The earlier 90 stock/Glint-off 148 captures calibrate the standalone native DSP
+baseline only; they do **not** verify this AudioContext integration or a float32
+device cohort. Fresh-156 calibration, native execution, lifecycle, realtime,
+AudioWorklet and audible-quality/performance checks remain required.
+
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 

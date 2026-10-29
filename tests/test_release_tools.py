@@ -4433,6 +4433,77 @@ def test_compressor_math_workbench_binds_sources_without_granting_profile_admiss
     assert data["active_build_input_count_unchanged"] == 201 and data["remaining_unverified"]
 
 
+def test_audio_math_context_draft_binds_source_only_integration():
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/audio-dsp-math-v2"
+    raw = (root / "context-integration.json").read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    descriptor = json.loads(raw)
+    assert descriptor["schema"] == 1
+    base = root / descriptor["required_base_manifest"]
+    assert hashlib.sha256(base.read_bytes()).hexdigest() == descriptor["required_base_manifest_sha256"]
+    manifest = json.loads(base.read_bytes())
+    assert len(manifest["patches"]) == 65
+    assert descriptor["target_revision"] == manifest["target_revision"]
+    assert descriptor["target_version"] == manifest["target_version"] == "156.0.8078.36"
+    for field in ("selected_in_manifest", "compiled", "native_tests_executed",
+                  "runtime_verified", "variant_device_cohort_verified", "production_admitted"):
+        assert descriptor[field] is False
+    patch = descriptor["patch"]
+    body = (root / patch["file"]).read_bytes()
+    assert hashlib.sha256(body).hexdigest() == patch["sha256"]
+    assert b"\r" not in body and not body.startswith(b"\xef\xbb\xbf")
+    assert not any(Path(row["file"]).name == patch["file"] for row in manifest["patches"])
+    extra = descriptor["extra_pristine_sources"]
+    assert len(extra) == len({row["path"] for row in extra}) == 8
+    assert not {row["path"] for row in extra} & {row["path"] for row in manifest["source_files"]}
+    evidence = descriptor["source_application"]
+    assert evidence["passed"] and evidence["patch_count"] == 66
+    assert evidence["pristine_inputs"] == len(extra) + len(manifest["source_files"]) == 193
+    assert evidence["frozen_build_inputs_unchanged"] == 201
+    assert evidence["source_invariants"] == {
+        "gpu_commands": {"preserved": 321, "appended": 577}, "grit_structure_preserved": True}
+    assert len(descriptor["source_files"]) == 15 and descriptor["remaining_unverified"]
+
+
+def test_audio_math_context_draft_separates_caching_and_readback_pipelines():
+    import hashlib
+    import hmac
+    import json
+    import re
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/audio-dsp-math-v2"
+    data = json.loads((root / "context-integration.json").read_text(encoding="utf-8"))
+    patch = (root / data["patch"]["file"]).read_text(encoding="utf-8")
+    added = "\n".join(line[1:] for line in patch.splitlines()
+                      if line.startswith("+") and not line.startswith("+++"))
+    policy = data["policy"]
+    assert policy["enabled_by_default"] is False and policy["captured_once_per_context"]
+    assert policy["math_and_readback_farbling_mutually_exclusive"]
+    assert policy["backends"] == ["native", "float32"]
+    assert "BASE_FEATURE(kGlintAudioMathCandidate, base::FEATURE_DISABLED_BY_DEFAULT);" in added
+    assert "glint_audio_math_pipeline_.emplace(" in added
+    assert "CompressorMathPolicy math_policy" in added
+    assert "glint_math_policy_(math_policy)" in added
+    assert "AudioMathPipeline::kLegacyReadback" in added
+    assert re.search(r"SurfaceSeedResult\(\s*std::optional", added)
+    assert "OPENSSL_cleanse(key.data(), key.size())" in added
+    assert "OPENSSL_cleanse(digest.data(), digest.size())" in added
+    assert policy["domain"] in added
+    selectors = [hmac.new(bytes([seed]) * 32, policy["domain"].encode("ascii"),
+                          hashlib.sha256).digest()[0] & 1 for seed in (3, 4, 5)]
+    assert selectors == [1, 0, 0]
+    fixtures = re.findall(r"TEST_F\(OfflineAudioContextTest,\s*(GlintMath\w+)\)", added)
+    assert set(fixtures) == set(data["prepared_tests"]) and len(fixtures) == 7
+    assert "source->offset()->setValue(0.25f)" in added
+    assert "EXPECT_EQ(sample, 0.25f)" in added
+    assert "kNotReadableError" in added and "kUnavailablePolicy" in added
+
+
 def test_compressor_browser_calibration_covers_native_baseline_only():
     import json
     from scripts import native_build as build
