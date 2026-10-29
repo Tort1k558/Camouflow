@@ -52,6 +52,21 @@ and its exact Chromium revision. Neither outcome admits production: patch
 security review, updated dependencies, clean builds and runtime gates remain
 required. The script never fetches source, updates the pin or changes binaries.
 
+### Explicit source-replay manifests
+
+`verify_native_rebase_draft.py` accepts paired `--manifest` and
+`--patch-directory` arguments for an isolated source-context check. Supplying
+only one refuses the operation; omitting both retains the default 156 draft.
+All paths must be canonical, output must be new/external, and the selected
+manifest is bounded. Source/patch hashes, dependency binding, source invariants
+and postguards apply in both modes. No downloads or candidate activation occur.
+
+The [156.0.8078.75 refresh manifest](../native/drafts/upstream-156-refresh/README.md)
+reuses the 62 original candidate patch files without duplicating them. Its public
+CLI replay and optional generated-GPU-output comparison passed; C++ compilation,
+runtime and toolchain admission remain separate. The refresh is not accepted
+by the build command's candidate selection.
+
 For a Windows desktop package with all three engines, create an empty artifact
 directory on D: and use an already installed, reviewed Glint managed store:
 

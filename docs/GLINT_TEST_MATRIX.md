@@ -78,6 +78,36 @@ was registered/selected for building. The active .36 build remains frozen.
 The next tooling step is a reproducible guarded sparse-cache/replay entry point;
 the next engine step remains actual compilation and native/runtime validation.
 
+### Public replay entry point and refresh manifest
+
+The .75 input manifest is now public under
+`native/drafts/upstream-156-refresh/manifest.json`, bound to the original manifest
+hash and reusing its 62 exact patch files. No second patch payload directory is
+committed, and the build command intentionally rejects this unregistered target.
+The replay verifier accepts explicit paired `--manifest`/`--patch-directory`
+paths instead of process-global constant overrides. Missing pairs, bad/oversized
+metadata, duplicate inputs/patches, non-string paths, input drift and unsafe
+output placement refuse or fail the gate; all original postguards remain.
+
+Actual public CLI checks passed all **62 patches** for .75, then independently
+for the unchanged default .36 target. The .36 input control reused 178 matching
+cache files and read seven exact pinned Git blobs without a checkout or network.
+The explicit .75 output tree matched the earlier private replay byte-for-byte.
+The optional codegen gate reproduced **30 generated GPU files**, with unchanged
+formatter bytes; `formatter_target_dependency_verified=false` remains explicit.
+Initial selection of a nonexistent formatter was rejected before creating output;
+the successful invocation used the actual `buildtools/win-format` executable.
+None of these checks compiled C++ or admitted a browser/runtime capability.
+
+Focused source-replay tests passed **39 cases**. Full application regression:
+**3,524 passed, one skipped**, 295.28 seconds; CI Ruff selection passed.
+Private proof: `public-refresh-replay-20261029-v1/report.json`,
+`public-refresh-codegen-20261029-v1/report.json` and
+`public-replay-compatibility-20261029-v1/report.json` on D. The latter checks 301
+unchanged build/source inputs plus the separately reviewed replay-verifier hash;
+the verifier itself was intentionally updated after the earlier 302-input proof.
+The build pin, manifest, patch bytes, Chromium sources and GN inputs did not change.
+
 ### Queued native target coverage
 
 The current process-bound sequence is: frozen 156 browser build → four identity
@@ -88,12 +118,15 @@ transport, GPU pack/readback/metadata, worker surfaces and font rasterization.
 Some selections overlap earlier fixtures; do not add their counts as unique
 tests. None of these queued 156 results is passing evidence yet.
 
-`remaining-native-after-runtime-20261029-v1/controller.json` on D binds the
+`remaining-native-after-runtime-20261029-v2/controller.json` on D binds the
 actual current runtime-controller process handle and requires its successful
 exit/source postguards before building anything. A failed, retired or expired
 observation starts no targets. Each selected native verifier retains its own
 report/log and stops the queue on the first failed execution or postguard.
 This queues work; it does not expand runtime capability or production admission.
+The waiting runtime/native controllers were refreshed to the reviewed public
+verifier cohort; old pending reports remain marked retired. The active browser
+build and initial native identity controller were not stopped or restarted.
 
 ## Windows private identity-file ACL — 2026-10-29
 

@@ -4059,6 +4059,79 @@ def test_native_candidate_requires_exact_checkout_and_complete_patch_chain(tmp_p
         assert len(rows) == 62 and sum(row.get("repository") == "v8" for row in rows) == 1
 
 
+@pytest.mark.parametrize("failure", [None, "manifest-only", "patch-directory-only", "bad-source", "bad-patch",
+                                    "duplicate-source", "duplicate-patch", "non-string-path", "oversized-manifest",
+                                    "bad-schema", "bad-revision", "bad-version", "bad-dependency", "manifest-drift", "patch-drift", "output-in-patches"])
+def test_explicit_rebase_manifest_reuses_shared_patches_without_implicit_fallback(tmp_path, monkeypatch, failure):
+    import hashlib
+    import json
+    from scripts import verify_native_rebase_draft as draft
+
+    source = tmp_path / "source"
+    source.mkdir()
+    original = b"int value = 1;\n"
+    (source / "value.cc").write_bytes(original)
+    shared = tmp_path / "shared-patches"
+    shared.mkdir()
+    patch = shared / "change.patch"
+    patch.write_bytes(b"diff --git a/value.cc b/value.cc\n--- a/value.cc\n+++ b/value.cc\n@@ -1 +1 @@\n-int value = 1;\n+int value = 2;\n")
+    manifest = tmp_path / "forward.json"
+    value = {"schema": 1, "target_revision": "a" * 40,
+             "source_files": [{"path": "value.cc", "sha256": hashlib.sha256(original).hexdigest()}],
+             "patches": [{"file": "change.patch", "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}]}
+    if failure == "duplicate-source":
+        value["source_files"] *= 2
+    elif failure == "duplicate-patch":
+        value["patches"] *= 2
+    elif failure == "non-string-path":
+        value["source_files"][0]["path"] = []
+    elif failure == "bad-schema":
+        value["schema"] = True
+    elif failure == "bad-revision":
+        value["target_revision"] = "moving-head"
+    elif failure == "bad-version":
+        value["target_version"] = True
+    elif failure == "bad-dependency":
+        value["dependencies"] = []
+    manifest.write_text(json.dumps(value), encoding="utf-8")
+    if failure == "oversized-manifest":
+        manifest.write_bytes(b" " * (4 * 1024**2 + 1))
+    elif failure == "bad-source":
+        (source / "value.cc").write_bytes(b"changed")
+    elif failure == "bad-patch":
+        patch.write_bytes(b"changed")
+    monkeypatch.setattr(draft, "DRAFT", tmp_path / "must-not-be-used")
+    output = shared / "report" if failure == "output-in-patches" else tmp_path / "output"
+    arguments = {"manifest_path": manifest, "patch_directory": shared}
+    if failure == "manifest-only":
+        del arguments["patch_directory"]
+    elif failure == "patch-directory-only":
+        del arguments["manifest_path"]
+    run = draft.subprocess.run
+
+    def wrapped(command, **kwargs):
+        result = run(command, **kwargs)
+        if "apply" in command and "--check" not in command:
+            if failure == "manifest-drift":
+                manifest.write_text(json.dumps(value) + " ", encoding="utf-8")
+            elif failure == "patch-drift":
+                patch.write_bytes(patch.read_bytes() + b"\n")
+        return result
+
+    monkeypatch.setattr(draft.subprocess, "run", wrapped)
+    if failure not in {None, "manifest-drift", "patch-drift"}:
+        with pytest.raises(ValueError):
+            draft.verify(source, output, **arguments)
+        assert not output.exists()
+    else:
+        report = draft.verify(source, output, **arguments)
+        assert report["passed"] is (failure is None)
+        assert report["inputs_unchanged"] is (failure is None)
+        assert not report["compiled"] and not report["runtime_verified"] and not report["production_admitted"]
+        assert (source / "value.cc").read_bytes() == original
+        assert (output / "src/value.cc").read_bytes() == b"int value = 2;\n"
+
+
 def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches():
     import hashlib
     import json
@@ -4078,6 +4151,37 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
     inspector = (draft.DRAFT / "patches" / manifest["patches"][6]["file"]).read_text(encoding="utf-8")
     assert "+  if (!isBuiltinGetter(function))" in inspector
     assert "-bool isBuiltinGetter" not in inspector
+
+
+def test_forward_refresh_manifest_reuses_exact_patch_bytes_without_registering_a_build():
+    import hashlib
+    import json
+    from scripts import native_build, verify_native_rebase_draft as draft
+
+    original = draft.DRAFT / "manifest.json"
+    refresh = draft.ROOT / "native/drafts/upstream-156-refresh"
+    before = json.loads(original.read_text(encoding="utf-8"))
+    value = json.loads((refresh / "manifest.json").read_text(encoding="utf-8"))
+    assert value["base_manifest_sha256"] == hashlib.sha256(original.read_bytes()).hexdigest()
+    assert value["target_version"] == "156.0.8078.75"
+    assert value["target_revision"] == "861389936bf33ea77529ee5dcc0605e68f6bb620"
+    assert value["dependencies"]["v8"]["revision"] == "235050a0df6db2c9d92a419af2b72fbf3b2dd73b"
+    assert value["patches"] == before["patches"] and len(value["patches"]) == 62
+    assert not (refresh / "patches").exists()
+    assert len(value["source_files"]) == 185
+    assert [row["path"] for row in value["source_files"]] == [row["path"] for row in before["source_files"]]
+    for row in value["source_files"]:
+        if row["path"].startswith("v8/"):
+            prefix = "https://chromium.googlesource.com/v8/v8/+/" + value["dependencies"]["v8"]["revision"] + "/"
+            name = row["path"][3:]
+        else:
+            prefix = "https://chromium.googlesource.com/chromium/src/+/" + value["target_revision"] + "/"
+            name = row["path"]
+        assert row["url"] == prefix + name + "?format=TEXT"
+        assert type(row["bytes"]) is int and 0 <= row["bytes"] <= 16 * 1024**2
+    assert sum(a["sha256"] != b["sha256"] for a, b in zip(before["source_files"], value["source_files"], strict=True)) == 7
+    with pytest.raises(ValueError, match="Unknown Native build candidate"):
+        native_build.load_candidate("upstream-156-refresh")
 
 
 def test_upstream_privacy_batch_keeps_owned_key_implementations_and_test_bindings():

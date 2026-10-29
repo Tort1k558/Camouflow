@@ -44,6 +44,8 @@ def verify_source_invariants(inputs: dict[str, bytes], work: Path) -> dict:
 
 
 def checked_child(root: Path, name: str) -> Path:
+    if not isinstance(name, str):
+        raise ValueError("Unsafe rebase input path")
     relative = PurePosixPath(name)
     if not relative.parts or relative.is_absolute() or ".." in relative.parts or "\\" in name or ":" in name:
         raise ValueError("Unsafe rebase input path")
@@ -53,38 +55,72 @@ def checked_child(root: Path, name: str) -> Path:
     return path
 
 
-def verify(source: Path, output: Path, *, formatter: Path | None = None) -> dict:
+def verify(source: Path, output: Path, *, formatter: Path | None = None,
+           manifest_path: Path | None = None, patch_directory: Path | None = None) -> dict:
     if (not source.is_absolute() or source != source.resolve() or not source.is_dir()
             or not output.is_absolute() or output != output.resolve() or not output.parent.is_dir()
             or output.exists() or output.is_relative_to(source) or output.is_relative_to(ROOT)):
         raise ValueError("Use canonical source files and a new external output directory")
-    manifest_path = DRAFT / "manifest.json"
-    manifest_bytes = manifest_path.read_bytes()
+    if (manifest_path is None) != (patch_directory is None):
+        raise ValueError("Explicit replay requires both manifest and patch directory")
+    if manifest_path is None:
+        manifest_path = DRAFT / "manifest.json"
+        patch_directory = DRAFT / "patches"
+    if (not manifest_path.is_absolute() or manifest_path != manifest_path.resolve() or not manifest_path.is_file()
+            or manifest_path.stat().st_size > 4 * 1024**2
+            or not patch_directory.is_absolute() or patch_directory != patch_directory.resolve() or not patch_directory.is_dir()):
+        raise ValueError("Use a bounded canonical manifest and canonical patch directory")
+    if output.is_relative_to(patch_directory) or output == manifest_path:
+        raise ValueError("Replay evidence must not overwrite its manifest or patch directory")
+    with manifest_path.open("rb") as stream:
+        manifest_bytes = stream.read(4 * 1024**2 + 1)
+    if len(manifest_bytes) > 4 * 1024**2:
+        raise ValueError("Draft manifest exceeds the replay safety limit")
     manifest = json.loads(manifest_bytes)
-    if (not isinstance(manifest, dict) or manifest.get("schema") != 1
+    if (not isinstance(manifest, dict) or type(manifest.get("schema")) is not int or manifest.get("schema") != 1
+            or not isinstance(manifest.get("target_revision"), str)
+            or not re.fullmatch(r"[0-9a-f]{40}", manifest["target_revision"])
             or not isinstance(manifest.get("source_files"), list) or not manifest["source_files"]
             or not isinstance(manifest.get("patches"), list) or not manifest["patches"]):
         raise ValueError("Draft manifest requires nonempty versioned source and patch lists")
+    if "target_version" in manifest and (not isinstance(manifest["target_version"], str)
+            or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", manifest["target_version"])):
+        raise ValueError("Invalid draft target version")
     inputs = {}
     patches = []
     for row in manifest["source_files"]:
-        path = checked_child(source, row["path"])
+        if (not isinstance(row, dict) or not isinstance(row.get("sha256"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", row["sha256"])):
+            raise ValueError("Invalid checksummed source entry")
+        path = checked_child(source, row.get("path"))
+        if row["path"] in inputs:
+            raise ValueError("Duplicate source input")
         content = path.read_bytes()
         if hashlib.sha256(content).hexdigest() != row["sha256"]:
             raise ValueError("Upstream source checksum differs: " + row["path"])
         inputs[row["path"]] = content
     for row in manifest["patches"]:
-        path = checked_child(DRAFT / "patches", row["file"])
+        if (not isinstance(row, dict) or not isinstance(row.get("sha256"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", row["sha256"])):
+            raise ValueError("Invalid checksummed patch entry")
+        path = checked_child(patch_directory, row.get("file"))
+        if path in patches:
+            raise ValueError("Duplicate draft patch")
         content = path.read_bytes()
         if hashlib.sha256(content).hexdigest() != row["sha256"]:
             raise ValueError("Draft patch checksum differs: " + row["file"])
         if b"\r" in content or content.startswith(b"\xef\xbb\xbf"):
             raise ValueError("Draft patches require UTF-8 without BOM and LF line endings")
-        if row.get("directory", ".") not in {".", "v8"}:
+        if not isinstance(row.get("directory", "."), str) or row.get("directory", ".") not in {".", "v8"}:
             raise ValueError("Unsupported draft repository directory")
         patches.append(path)
-    v8 = manifest.get("dependencies", {}).get("v8")
+    dependencies = manifest.get("dependencies", {})
+    if not isinstance(dependencies, dict):
+        raise ValueError("Invalid draft dependency map")
+    v8 = dependencies.get("v8")
     if v8 is not None:
+        if not isinstance(v8, dict) or not isinstance(v8.get("revision"), str) or not re.fullmatch(r"[0-9a-f]{40}", v8["revision"]):
+            raise ValueError("Invalid pinned V8 dependency")
         dependencies = inputs.get("DEPS", b"").decode("utf-8-sig")
         revisions = re.findall(r"'v8_revision':\s*'([0-9a-f]{40})'", dependencies)
         if revisions != [v8.get("revision")]:
@@ -106,6 +142,8 @@ def verify(source: Path, output: Path, *, formatter: Path | None = None) -> dict
     work.mkdir()
     report = {"passed": False, "scope": "Source-context replay only; not compilation or runtime admission",
               "target_revision": manifest["target_revision"], "checks": [], "compiled": False,
+              "target_version": manifest.get("target_version"),
+              "manifest_path": str(manifest_path), "patch_directory": str(patch_directory),
               "runtime_verified": False, "production_admitted": False,
               "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest()}
     try:
@@ -141,7 +179,8 @@ def verify(source: Path, output: Path, *, formatter: Path | None = None) -> dict
         report["error"] = str(error)
     finally:
         try:
-            report["inputs_unchanged"] = (manifest_path.read_bytes() == manifest_bytes
+            report["inputs_unchanged"] = (manifest_path.stat().st_size == len(manifest_bytes)
+                and manifest_path.read_bytes() == manifest_bytes
                 and all(checked_child(source, name).read_bytes() == content for name, content in inputs.items())
                 and all(hashlib.sha256(path.read_bytes()).hexdigest() == row["sha256"]
                         for path, row in zip(patches, manifest["patches"], strict=True)))
@@ -159,9 +198,13 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--formatter", type=Path,
                         help="Also regenerate/compare all GPU outputs using this measured formatter; not a compiler or toolchain-admission gate")
+    parser.add_argument("--manifest", type=Path,
+                        help="Explicit immutable-input manifest; requires --patch-directory, never changes the active candidate")
+    parser.add_argument("--patch-directory", type=Path, help="Canonical directory holding exactly the manifest-selected patch bytes")
     args = parser.parse_args()
     try:
-        report = verify(args.source, args.output, formatter=args.formatter)
+        report = verify(args.source, args.output, formatter=args.formatter,
+                        manifest_path=args.manifest, patch_directory=args.patch_directory)
     except (OSError, ValueError) as error:
         parser.exit(1, f"Rebase draft verification failed: {error}\n")
     print(json.dumps(report))
