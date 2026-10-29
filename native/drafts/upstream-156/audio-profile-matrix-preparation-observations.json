@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Fixed-profile Audio diagnostic implementation, fresh stock calibration and isolated full Python regression; not a multi-profile Glint runtime result",
+  "delivered_commit": "0a7d535fc65d5356ba9f8a27ddd8710c663959ec",
+  "isolated_commit": "7fe38f65a954cfbe6cb88cbbbdd2a98916b6ad9b",
+  "source_sha256": {
+    "scripts/verify_native_audio_compatibility.py": "7e6b68cb98b13aa13758d14d474be2ab593edd328dbaf99445691933a5b500c8",
+    "native/fixtures/audio/stock156-observations.json": "2ae88d411f2dc2cf413fcdbdc8f5ede7bea25abb52200549f1d3dc0afd02780f"
+  },
+  "full_isolated_python": {
+    "passed": true,
+    "passed_tests": 4138,
+    "skipped": 1,
+    "elapsed_seconds": 513.4850000000151,
+    "postguards_passed": true,
+    "log_sha256": "5330bb9744514227cab46bebd5f4f71cd960b3d9e5eeec0daf3d774130bd5e25",
+    "raw_report_sha256": "ca95bc6a5fdbfb72c88cbc0436541118848b2980c86e83f4bf72f1134a2b5b94"
+  },
+  "canonical_targeted_python": {
+    "passed_tests": 210,
+    "scope": "Audio, native-batch and environment diagnostics after main integration"
+  },
+  "calibrated_stock_only": true,
+  "glint_profile_matrix_executed": false,
+  "internal_backend_observed": false,
+  "device_cohort_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

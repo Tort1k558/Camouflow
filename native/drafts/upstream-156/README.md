@@ -7,7 +7,7 @@ lock and reviewed 001-062 chain still target Chromium 148.0.7778.96. The separat
 gates remain separate. The manifest is a source
 contract, not a mutable binary-readiness flag.
 
-### Selected 0068: fixture-only repair, not yet compiled
+### Selected 0068: browser build complete, native fixture gate pending
 
 The 001–067 browser is built and passed all eight existing raw runtime gates
 (**160/160**). GPU metadata diagnostics passed four phases. The native batch
@@ -22,8 +22,15 @@ It changes only the OfflineAudioContext fixture: independent float seed 10,
 actual document readiness assertions and a duplicate-seed negative case.
 The native gate requires all **12** context/error/lifetime cases, with no skips.
 Production DSP, readiness checks and feature defaults are unchanged.
-The patch has not yet been compiled or executed. Source 001–067 and its runtime
+The [browser build](build68-observations.json) completed with one action; its
+production core hashes stayed equal to 001–067. The fixture patch has not yet
+passed native compilation/execution. Source 001–067 and its runtime
 remain preserved separately; evidence is bound to `checkpoints/001-067.json`.
+
+The fixed-profile Audio diagnostic is integrated in main. Its isolated full
+Python regression passed 4138 cases with one skip; 210 targeted tests passed
+after integration. [Scoped evidence](audio-profile-matrix-preparation-observations.json)
+does not claim execution of the multi-profile Glint browser matrix.
 
 Browser AudioMath passed the diagnostic probes on one owned profile, but both
 backend branches and device cohorts remain unverified. Legacy Audio failed

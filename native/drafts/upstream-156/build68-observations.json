@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "passed": true,
+  "candidate_manifest_sha256": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
+  "postguards_passed": true,
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "36d1a7c35d059d60c41c9c46d48c623918cd2ed63e746d6473c4993d1d729a7d",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "build_receipt_sha256": "1250a9c4c72d3e85736b7ff99cccbd2ff0c0ca7ccebf56fb7d7ed025b8480dbc",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "001-068 Windows browser build and provenance only; fixture-only patch 0068 still requires native test compilation/execution",
+  "required_manifest": "checkpoints/001-068.json",
+  "candidate_patch_count": 68,
+  "jobs": 4,
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "gn_duration_ms": 279266,
+  "ninja_reported_duration": "7m04.21s",
+  "executed_build_steps": 1,
+  "ninja_skipped": 97225,
+  "browser_core_unchanged_from67": true,
+  "native_fixture_tests_executed": false,
+  "browser_runtime_verified": false,
+  "installed_payload_verified": false,
+  "raw_controller_report_sha256": "e06245e585907146a3654b65a59970e23505e579205bbe3e9d24579f7fde6e1a",
+  "actual_sync_hooks_patch_completed": true,
+  "manual_stage_marker_rewrite": false,
+  "previous_failed_report_sha256": "af993ae9009eefcbda0a9bd565118d41191f52a341509100bd134cfa078558a8",
+  "lf_replay": {
+    "passed": true,
+    "actual_source_sha256": "55e5cdaa6c821ac6f3b1811ae113157275cbc23728fef507eb361d9558b0926c",
+    "prior_draft_overlay_had_crlf": true,
+    "old_failure_retained": true
+  },
+  "shell_wrapper": {
+    "observed_exit_code": 1,
+    "controller_and_build_passed": true,
+    "stderr_warning": "gpu/command_buffer/build_gles2_cmd_buffer.py executable mode 100755 expected 100644",
+    "original_utf16_log_sha256": "3329b29e19275cd6e6f006de6af7582e2a0f93b8a773cf0184d24dfb54636ca0",
+    "normalized_utf8_log_sha256": "4eb3969dc1c4835630c6961918b09f8a3c2631e75d3a0b48b1e3737a3df2b5d0"
+  }
+}
