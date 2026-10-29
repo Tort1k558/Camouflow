@@ -3045,24 +3045,50 @@ def test_native_worker_surface_verifier_covers_registered_fixtures_and_legacy_wo
     assert sum(map(len, observed.values())) == 55
 
 
-def test_native_delivery_verifier_rejects_unpromoted_and_modified_sources(tmp_path):
-    from scripts.verify_native_privacy_units import (
-        DELIVERY_SOURCE_FILES,
-        ROOT,
-        require_delivery_sources,
-    )
+def test_native_delivery_verifier_snapshots_composed_sources(tmp_path):
+    import hashlib
+    from scripts.verify_native_privacy_units import DELIVERY_SOURCE_FILES, ROOT, snapshot_delivery_sources
 
-    with pytest.raises(ValueError, match="Promote the exact delivery draft"):
-        require_delivery_sources(tmp_path)
+    with pytest.raises(ValueError, match="canonical regular file"):
+        snapshot_delivery_sources(tmp_path)
     for name, relative in DELIVERY_SOURCE_FILES.items():
         destination = tmp_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes((ROOT / "native/drafts/document_delivery" / name).read_bytes())
-    assert len(require_delivery_sources(tmp_path)) == 10
-    path = tmp_path / DELIVERY_SOURCE_FILES["privacy_worker_service.cc"]
-    path.write_text("// modified source\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="Promote the exact delivery draft"):
-        require_delivery_sources(tmp_path)
+    before = snapshot_delivery_sources(tmp_path)
+    assert len(before) == 10
+    relative = DELIVERY_SOURCE_FILES["privacy_worker_service.cc"]
+    path = tmp_path / relative
+    path.write_text("// later composed patch changes this file\n", encoding="utf-8")
+    after = snapshot_delivery_sources(tmp_path)
+    assert after != before and after[relative] == hashlib.sha256(path.read_bytes()).hexdigest()
+    path.unlink()
+    path.mkdir()
+    with pytest.raises(ValueError, match="canonical regular file"):
+        snapshot_delivery_sources(tmp_path)
+
+
+def test_delivery_snapshot_never_replaces_full_source_chain_verification(tmp_path, monkeypatch):
+    from scripts import verify_native_privacy_units as privacy
+
+    revision = "a" * 40
+    monkeypatch.setattr(privacy, "require_idle_builder", lambda *args: None)
+    monkeypatch.setattr(privacy.build, "environment", lambda *args, **kwargs: {})
+    monkeypatch.setattr(privacy.build, "candidate_workspace", lambda *args: None)
+    monkeypatch.setattr(privacy.build, "run", lambda *args, **kwargs: revision)
+    monkeypatch.setattr(privacy.build, "require_stage", lambda *args: None)
+
+    def invalid_chain(*args):
+        raise ValueError("Unrecognized composed source changes")
+
+    monkeypatch.setattr(privacy.build, "candidate_source_patches", invalid_chain)
+    monkeypatch.setattr(privacy, "snapshot_delivery_sources", lambda *args: pytest.fail("Unverified source was accepted"))
+    monkeypatch.setattr(privacy.subprocess, "run", lambda *args, **kwargs: pytest.fail("Unverified source started a compiler"))
+    with pytest.raises(ValueError, match="Unrecognized composed source"):
+        privacy._verify_locked(tmp_path, tmp_path / "proof.json", vs_installation=None, jobs=4,
+                               target="delivery", required=privacy.required_tests("delivery"),
+                               candidate={"name": "upstream-156"}, lock={"chromium_revision": revision},
+                               git_ssl_backend="schannel")
 
 
 @pytest.mark.parametrize("draft,patch_name,prefix,files", [
@@ -4770,6 +4796,11 @@ def test_public_156_runtime_suite_evidence_keeps_release_gates_separate():
     handoff = baseline["native_identity_handoff"]
     assert handoff["tests"] == 15 and handoff["passed"] and handoff["postguards_passed"]
     assert handoff["baseline_browser_code_unchanged"] and data["remaining_unverified"]
+    delivery = baseline["native_delivery_units"]
+    assert delivery["tests"] == 34 and delivery["passed"] and delivery["postguards_passed"]
+    assert delivery["baseline_browser_code_unchanged"] and delivery["native_source_changed"] is False
+    assert delivery["old_draft_comparison_replaced"] and delivery["complete_ordered_chain_guard_retained"]
+    assert len(delivery["delivery_source_sha256"]) == 10 and len(delivery["verifier_sha256"]) == 64
 
 
 def test_audio_fidelity_stock_fixture_preserves_exact_signals_and_rejects_faults():

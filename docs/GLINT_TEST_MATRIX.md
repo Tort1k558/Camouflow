@@ -13,6 +13,7 @@
 | Native BrowserContext identity target | 37 cases passed; source/toolchain/browser-core postguards passed | Unit-level BrowserContext coverage; renderer/worker transport and browser policy admission remain unverified |
 | Native identity transport target | 20 cases passed; source/toolchain/browser-core postguards passed | Unit-level transport coverage; not browser identity admission or native handoff completion |
 | Native identity handoff target | 15 cases passed: three window-surface and twelve DocumentLoader inline-script policy units; source/toolchain/browser-core postguards passed | Native unit coverage, not full enabled renderer/worker lifecycle or browser-policy admission |
+| Native document/worker delivery target | 34 cases passed with the corrected canonical verifier and independently with an identical isolated copy; full ordered patch-chain pre/postguards and ten delivery-source hashes retained | Old initial-draft comparison rejected later Surface Policy changes incorrectly; verifier-only correction, no Chromium-source change; not browser first-script/lifecycle admission |
 | Chromium 156 full owned runtime suite | All eight gates passed: runtime 18, hardware 9, WebRTC 7, automation 55, fonts 42, identity 18, CDP 6, combined 5; 160 checks total | Source-build binary only; remaining native targets and installed-package gates are separate; no external anti-bot or complete Canvas/GPU/Audio admission |
 | Disposable startup | 156.0.8078.36 opened the controlled page; sandbox requested, effective `--no-sandbox` absent; runtime resources closed | Regular raw/headless baseline, not concealed-automation admission |
 | Extended baseline lifecycle | Two repeats each passed all 18 checks: isolation/five stores, permissions, crash/restarts, owned-process cleanup, controlled authenticated proxy, manager/scenarios, Recorder and backup/restore | One repeat had diagnostic logging, the other ordinary verbosity; not the full eight-gate policy suite |
@@ -49,6 +50,20 @@ raw `D:\Glint156Candidate\audio-fidelity-stock156-20261029-v1` and
 After adding the fidelity fixture: `tests/test_release_tools.py` — 1102 passed,
 one skipped in 105.31s; isolated log:
 `D:\Glint156Candidate\audio-fidelity-python-regression-20261029-v1\pytest.log`.
+Delivery correction: `D:\Glint156Candidate\delivery-composition-runtime-20261029-v1`;
+isolated verifier regression: 242 passed (23.98s). Queue v8 stopped at the stale
+delivery guard; recovery v9 stopped on a scoped compiler conflict. Both retained.
+After checking that scope idle, v10 resumed the remaining targets; package v7 is
+bound to its live process. Prior passing keys/contexts reports are explicitly reused.
+
+Full desktop regression at `90ab928`: **3619 passed, one failed, one skipped**
+(448.16s), unchanged source guards. Failure: the QML test read a profile-dialog
+button before it existed. The original focused test then passed; its fixed
+version now waits for dialog readiness with a bounded deadline. All eight QML
+tests passed (36.60s). This does not turn the earlier full run into a pass.
+Corrected canonical verifier and QML regression: **1111 passed, one skipped**
+(107.59s), `tests/test_release_tools.py` plus `tests/test_qml_python_editor.py`;
+log: `D:\Glint156Candidate\delivery-guard-python-regression-20261029-v1\pytest.log`.
 Transport target: `identity-transport.json` in that directory; lifecycle repetitions:
 `D:\Glint156Candidate\lifecycle156-under-build-20261029-v1\report.json`.
 Sanitized evidence: [`windows-runtime-observations.json`](../native/drafts/upstream-156/windows-runtime-observations.json).

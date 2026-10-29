@@ -410,5 +410,31 @@
     ],
     "first_close_timeout_resolved": false,
     "not_a_performance_benchmark": true
+  },
+  "native_delivery_units": {
+    "passed": true,
+    "target": "delivery",
+    "tests": 34,
+    "scope": "Document/worker Mojo endpoints and bootstrap consumer units; not actual worker-host lifecycle, first-script ordering, Canvas or admission",
+    "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+    "postguards_passed": true,
+    "baseline_browser_code_unchanged": true,
+    "delivery_source_sha256": {
+      "content/browser/camouflow_native/privacy_document_service.h": "ef17d1d5c79f5718e1d1469b6b0bfcca9cf2ca08395cc6c6628ebdf84eb414c9",
+      "content/browser/camouflow_native/privacy_document_service.cc": "6669aae1c5dbabd775a5f7fee090d32aa37ac7db0d7d1e2ffa84991a68a2e8e4",
+      "content/browser/camouflow_native/privacy_document_service_unittest.cc": "02b943a8b53ce11ca9aed2d67a972b6a5083851d10773424c4b5ef3897943f62",
+      "content/browser/camouflow_native/privacy_worker_service.h": "1740e5e5092da22fd99d0a4b5e35d88d9027a0d7dacd7481ad38664fd38ca658",
+      "content/browser/camouflow_native/privacy_worker_service.cc": "ee6a2f3995268ee139f10cea2804920c9d7998e0aefae06cda5f4090bc491dd8",
+      "content/browser/camouflow_native/privacy_worker_service_unittest.cc": "9e76c4ad42339bcfe84ae08552931573cab4f0af092c6b16c084a17c24c760f7",
+      "content/renderer/worker/privacy_worker_bootstrap.h": "6f42019c88b40acc4fdee400307f6e13faf09d54c068df6a38b20a6923895f23",
+      "content/renderer/worker/privacy_worker_bootstrap.cc": "cf23e05ba8edd7966b42e118ec70ced23a369879f5b1787b45c50cd29f4e4afa",
+      "content/renderer/worker/privacy_worker_bootstrap_unittest.cc": "3ecd723f14dcc36fd1552a1088ca1876219a4ac20eda4d912dd5750ed61031b9",
+      "third_party/blink/public/mojom/native_privacy/native_privacy_document.mojom": "a277a5262a32529721ec87bfb01f03091eb6d7fc6ddb5ff8c6280293a3a75800"
+    },
+    "verifier_sha256": "531deeaa83161dff01d34fec6b7fdf40a806bc7177f70f4ad259b9b88a886db7",
+    "verifier_scope": "Canonical corrected verifier; independent identical isolated copy also passed",
+    "old_draft_comparison_replaced": true,
+    "complete_ordered_chain_guard_retained": true,
+    "native_source_changed": false
   }
 }

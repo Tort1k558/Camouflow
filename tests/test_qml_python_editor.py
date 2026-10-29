@@ -177,9 +177,13 @@ try:
     profiles_page = find(root, 'objectName', 'pageLoader').property('item')
     QMetaObject.invokeMethod(profiles_page, 'openBrowserOverridesModal', Qt.ConnectionType.DirectConnection,
                              Q_ARG('QVariant', profile))
-    pump()
-    pin = find(root, 'objectName', 'nativePinEnvironment')
-    editor = find(root, 'objectName', 'profileBrowserSettingsEditor')
+    deadline = time.monotonic() + 3
+    while True:
+        pin = find(root, 'objectName', 'nativePinEnvironment')
+        editor = find(root, 'objectName', 'profileBrowserSettingsEditor')
+        if pin is not None and editor is not None and pin.isVisible(): break
+        assert time.monotonic() < deadline, ('Native profile dialog did not become ready', warnings)
+        pump(.05)
     assert pin.isVisible() and pin.isEnabled()
     original = rows[0].get('native_settings')
     QMetaObject.invokeMethod(pin, 'clicked')

@@ -214,14 +214,15 @@ DELIVERY_SOURCE_FILES["native_privacy_document.mojom"] = (
 )
 
 
-def require_delivery_sources(source: Path) -> dict[str, str]:
+def snapshot_delivery_sources(source: Path) -> dict[str, str]:
+    """Snapshot delivery inputs after the complete ordered source chain is verified."""
+    if source != source.resolve() or not source.is_dir():
+        raise ValueError("Delivery source checkout must be canonical")
     checksums = {}
-    for name, relative in DELIVERY_SOURCE_FILES.items():
+    for relative in DELIVERY_SOURCE_FILES.values():
         path = source / relative
-        expected = ROOT / "native/drafts/document_delivery" / name
-        if (path.is_symlink() or path != path.resolve() or not path.is_file()
-                or path.read_text(encoding="utf-8-sig") != expected.read_text(encoding="utf-8-sig")):
-            raise ValueError(f"Promote the exact delivery draft before verification: {relative}")
+        if path.is_symlink() or path != path.resolve() or not path.is_file():
+            raise ValueError(f"Delivery source must be a canonical regular file: {relative}")
         checksums[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
     return checksums
 
@@ -513,7 +514,7 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
         required_patches.add("0030-native-document-commit-prototype.patch")
     if not required_patches.issubset(item["name"] for item in patches):
         raise ValueError("The exact context ownership and readiness patches are required")
-    delivery_sources = require_delivery_sources(source) if target == "delivery" else None
+    delivery_sources = snapshot_delivery_sources(source) if target == "delivery" else None
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
@@ -576,7 +577,7 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
                 if local_toolchain and (build.local_windows_toolchain(workspace)["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]
                                        != env["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]):
                     raise ValueError("Local Windows toolchain changed during native test compilation")
-                if delivery_sources is not None and require_delivery_sources(source) != delivery_sources:
+                if delivery_sources is not None and snapshot_delivery_sources(source) != delivery_sources:
                     raise ValueError("Delivery source inputs changed during verification")
                 if (measure_runtime_core(output / "chrome.exe") != core
                         or (output / "args.gn").read_bytes() != arguments

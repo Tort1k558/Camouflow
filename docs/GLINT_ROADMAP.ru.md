@@ -109,6 +109,18 @@ copyFromChannel/copyToChannel и lifecycle. Два stock156 запуска пр�
 ожидаемо. `audio-fidelity-control.js` / `audio-fidelity-observations.json` находятся
 в `native/drafts/audio-dsp-math-v2/`. Следующий шаг — эти же fixtures на Glint-off
 и protected policy; stock-калибровка не доказывает работу AudioMath 0068.
+Очередь v8 прошла keys 43 / contexts 26, затем устаревший delivery guard отверг
+Surface Policy, сравнивая итоговый код с первоначальным черновиком. Исправлена
+только проверка: полный ordered replay остаётся обязательным до/после тестов,
+десять delivery-файлов дополнительно snapshot/hash-bound. Изолированная копия,
+идентичная опубликованному исправлению, прошла все 34 native delivery cases;
+242 verifier-регрессии прошли. Chromium source/core не менялись. После сохранённого
+scoped-compiler отказа v9 проверено idle-состояние и запущены native v10 / package v7.
+Канонический delivery-target v10 также прошёл 34 cases с postguards; очередь
+перешла к worker-handoff, где четыре native cases уже выполнены.
+Полная Python-регрессия `90ab928`: 3619 passed / 1 failed / 1 skipped; QML-тест
+не дождался создания диалога. Добавлено bounded ожидание readiness, все восемь
+QML-тестов прошли; исходный неуспешный полный прогон сохранён.
 
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 
