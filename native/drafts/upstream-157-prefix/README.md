@@ -4,7 +4,7 @@
 
 Pins Chromium `157.0.8103.27` / `f9d7b13a569b352a0267234ea5740fdecc83ffa2`
 and its DEPS-selected V8 `a4889e05285021952e2ca9648c805a4c989345ae`.
-Eleven ported patches are stored here; unchanged payloads reference
+Eleven selected ported patches are stored here; unchanged payloads reference
 `upstream-156/patches`. No upstream source files are committed.
 
 | Manifest | Pristine inputs | Patch selection | Measured result |
@@ -68,6 +68,32 @@ failed historical evidence. Verified cached objects supplied the complete corpus
 this was not a successful full checkout or a claim that Git transport never fails.
 
 ### Next validation: chunked OfflineAudioContext
+
+`0066-native-chunked-audio-tests.patch` is a **pending, unselected** fixture
+extension outside `patches/`. `chunked-audio-tests.json` binds its exact bytes to
+the full 001–065 manifest and test-source input. It does not change either
+selected manifest or the live 156 build.
+
+Eight test bodies are prepared; **none has been compiled or executed on 157**:
+
+| Fixture scope | Intended assertion |
+| --- | --- |
+| Missing required policy | Explicit chunk call rejects before resolver/thread creation |
+| Zero and overflowing chunks | Upstream exception types/messages precede missing-policy errors |
+| Rounded allocation budget | A three-channel request fits before rounding but exceeds 64 MiB after rounding; rejection allows a small retry |
+| Large finite render length | A small requested chunk is not rejected using the entire context length |
+| Three queued chunks | 128/128/44 frames; one final event; the event and final Promise share a mutable buffer |
+| Separate policy vectors | Real constant-source samples match independent seed-4/seed-5 HMAC vectors, not merely silence |
+| Flag-off indefinite rendering | Raw samples remain unchanged; closing settles without a completion event |
+
+The patch preserves all 12 existing test cases. Source application and five API
+header blobs were verified against pinned 157 Git objects. Header validation,
+formatting, HMAC-vector calculations and Python assertions are **not C++ or native
+test results**. Evidence: `D:\Glint157ObjectCache\chunked-audio-fixtures-20261029-v3`.
+Apply it only to a separate 157 tree after the selected 001–065 replay, never to
+the active 156 checkout. A 157 build/test run is still required before selection.
+Injected copy-failure cleanup, policy lifetime under teardown and combined
+suspend/resume with a protected queue remain uncovered.
 
 157 makes total render length optional and supports finite/indefinite chunks;
 the old 0033 hunks no longer apply. The prototype preserves upstream chunking,

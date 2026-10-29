@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "scope": "Pending Chromium 157 chunked Audio fixtures; source-only, no compiler or runtime admission",
+  "target_version": "157.0.8103.27",
+  "target_revision": "f9d7b13a569b352a0267234ea5740fdecc83ffa2",
+  "required_base_manifest_sha256": "993a96741731d2e9dcfd214ec694be4ebdca47e60641be0692ceb1641806d7ed",
+  "patch": {
+    "file": "0066-native-chunked-audio-tests.patch",
+    "sha256": "5fefd52cc2d25c5857be5011ad7a748cf2ef77f52b6350ab72642b2c6b493c8f"
+  },
+  "source": {
+    "path": "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc",
+    "before_sha256": "44c12a73e27117c11065618d67087e14fc0ffebb2b01fdad099c985e126ee16a"
+  },
+  "selected_in_manifest": false,
+  "compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "preserved_existing_test_count": 12,
+  "expected_tests": [
+    "GlintChunkMissingPolicyRejectsBeforeResolverOrRenderThread",
+    "GlintZeroChunkRetainsNativeExceptionPrecedence",
+    "GlintOverflowRetainsNativeExceptionPrecedence",
+    "GlintRoundedChunkBudgetRejectsAndAllowsRetry",
+    "GlintBudgetUsesChunkNotEntireFiniteLength",
+    "GlintQueuedChunksShareOnlyFinalMutableEventResult",
+    "GlintSeparatePoliciesUseIndependentAudioVectors",
+    "GlintFlagOffIndefiniteChunksKeepRawSamplesAndClose"
+  ],
+  "api_headers": [
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/constant_source_node.h",
+      "git_blob_sha1": "ecbcb46cabfc489d538fbde77a3c8a964800e2e4",
+      "sha256": "c12d62428c608b65733f3054ff09dc533e783c38d84fa5b3f8597e13b2bddc5a",
+      "bytes": 1414,
+      "same_pinned_156_blob": true
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/audio_node.h",
+      "git_blob_sha1": "daac0c4cbbaa41bf5e0343b511af267a77006bef",
+      "sha256": "ad049b3df988038eaffd67f50110073d1798a4606edea5a7df4e4bac3ffd28e1",
+      "bytes": 7153,
+      "same_pinned_156_blob": false
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/audio_param.h",
+      "git_blob_sha1": "2edd0d869caa60e2767e7f00b5e4139e815fe84c",
+      "sha256": "37503ffe8013036c9e9306b71735c762a1ae253accaaeb0de56bf1bdd7e856a9",
+      "bytes": 5688,
+      "same_pinned_156_blob": true
+    },
+    {
+      "path": "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h",
+      "git_blob_sha1": "f88db9deff73d3fe5909a30730071adfca01b1a3",
+      "sha256": "c218b9c741ff517be02130c94b35b0276f6ff4f445ca59f4bd396dc1265d129a",
+      "bytes": 3154,
+      "same_pinned_156_blob": true
+    },
+    {
+      "path": "third_party/blink/renderer/core/dom/events/native_event_listener.h",
+      "git_blob_sha1": "0e387c0571900ac475e10545c8bab2f1a34f64b7",
+      "sha256": "25ea73aeafea9382992f2f287bdb637729f7fa5683670054d6c95cbf0b389e36",
+      "bytes": 1385,
+      "same_pinned_156_blob": true
+    }
+  ],
+  "hmac_vectors": [
+    {
+      "seed_byte": 4,
+      "input_bits": "3e800000",
+      "hmac_sha256": "a092b0ebffb3b90ecbd597ec5656db035694c89b5efdbdc6e11d45bc5ac0f7e9",
+      "output_bits": "3e800000"
+    },
+    {
+      "seed_byte": 5,
+      "input_bits": "3e800000",
+      "hmac_sha256": "9f09f1599698129080ed412ca996815b30536d1c7d308cbccba564960bfb6424",
+      "output_bits": "3e800001"
+    }
+  ],
+  "remaining_uncovered_cases": [
+    "injected copy-failure queue/suspend cleanup",
+    "policy capture lifetime under teardown",
+    "combined suspend/resume with protected chunk queue"
+  ]
+}

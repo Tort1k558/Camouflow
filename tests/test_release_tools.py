@@ -4190,6 +4190,51 @@ def test_157_audio_port_preserves_chunk_queue_and_checks_actual_buffer_budget():
                    for line in section.splitlines())
 
 
+def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
+    import hashlib
+    import hmac
+    import json
+    import re
+    import struct
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/upstream-157-prefix"
+    descriptor = json.loads((root / "chunked-audio-tests.json").read_text(encoding="utf-8"))
+    manifest_path = root / "full-inputs-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert descriptor["schema"] == 1
+    assert descriptor["target_revision"] == manifest["target_revision"]
+    assert descriptor["target_version"] == manifest["target_version"]
+    assert descriptor["required_base_manifest_sha256"] == hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    for field in ("selected_in_manifest", "compiled", "native_tests_executed", "runtime_verified", "production_admitted"):
+        assert descriptor[field] is False
+    row = descriptor["patch"]
+    assert row["file"] == "0066-native-chunked-audio-tests.patch"
+    assert all(Path(patch["file"]).name != row["file"] for patch in manifest["patches"])
+    assert not (root / "patches" / row["file"]).exists()
+    raw = (root / row["file"]).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == row["sha256"]
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    patch = raw.decode("utf-8")
+    assert [line[6:] for line in patch.splitlines() if line.startswith("+++ b/")] == [descriptor["source"]["path"]]
+    assert descriptor["source"]["path"].endswith("/offline_audio_context_test.cc")
+    additions = "\n".join(line[1:] for line in patch.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    names = re.findall(r"TEST_F\(OfflineAudioContextTest,\s*(\w+)\)", additions)
+    assert names == descriptor["expected_tests"] and len(names) == len(set(names)) == 8
+    assert len(descriptor["api_headers"]) == 5 and descriptor["remaining_uncovered_cases"]
+    for header in descriptor["api_headers"]:
+        assert len(header["git_blob_sha1"]) == 40 and len(header["sha256"]) == 64
+        assert 0 < header["bytes"] < 1024 * 1024
+    assert {vector["seed_byte"] for vector in descriptor["hmac_vectors"]} == {4, 5}
+    for vector in descriptor["hmac_vectors"]:
+        bits = int(vector["input_bits"], 16)
+        message = b"glint.audio.offline.f32.candidate.v1" + struct.pack(">I", bits & ~1)
+        digest = hmac.new(bytes([vector["seed_byte"]]) * 32, message, hashlib.sha256).digest()
+        assert digest.hex() == vector["hmac_sha256"]
+        assert f"{(bits & ~1) | (digest[0] & 1):08x}" == vector["output_bits"]
+
+
 @pytest.mark.parametrize("failure", [None, "manifest-only", "patch-directory-only", "bad-source", "bad-patch",
                                     "duplicate-source", "duplicate-patch", "non-string-path", "oversized-manifest",
                                     "bad-schema", "bad-revision", "bad-version", "bad-dependency", "manifest-drift", "patch-drift", "output-in-patches"])

@@ -3,6 +3,40 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Pending 157 chunked-Audio fixtures — 2026-10-29
+
+`native/drafts/upstream-157-prefix/0066-native-chunked-audio-tests.patch` prepares
+eight native test bodies but is **outside the selected manifests and `patches/`**.
+It modifies only `offline_audio_context_test.cc`; all 12 existing test cases remain.
+The companion descriptor binds the patch and source input to the complete 001–065
+157 manifest. Current selection stays at 65; compiled/executed/admitted stay false.
+
+| Preparation check | Actual result | Limit |
+| --- | --- | --- |
+| Patch application | Applied to an isolated copy after full 65-patch replay | Not C++ compilation |
+| API header provenance | Five exact pinned Git blob hashes verified; four match 156, one changed header fetched once from pinned Gitiles and validated | Not include-closure or ABI/codegen validation |
+| Fixture coverage in code | Missing policy, native zero/overflow precedence, rounded budget/retry, small chunk of large finite context, queued final event identity, nonzero signal vectors, flag-off indefinite close | Eight cases prepared, none run |
+| Independent signal vectors | Seed 4 maps `3e800000` to `3e800000`; seed 5 maps it to `3e800001` | Python HMAC calculation, not native rendering |
+| Active-build isolation | All 201 sealed 156 inputs remain unchanged | The current browser build is still required |
+| Focused local Python source/metadata checks | 73 passed, 969 deselected in 13.09s | Not execution of the eight C++ fixtures |
+| Full local Python suite after final fixture preparation | 3,559 passed, one skipped in 296.08s | Not a 157 compilation or native/runtime result |
+
+The three-channel budget case deliberately uses 5,592,405 requested frames:
+67,108,860 bytes fits, but 128-frame rounding requires 67,109,376 bytes and must
+reject before allocation. A following 128-frame request exercises retry cleanup.
+The queued event changes the final sample to test Promise/event object identity;
+nonzero constant-source samples separately distinguish raw from protected output.
+The final fixture also checks separate channel storage, exact 128-frame signal
+shapes and seed order 4/5/4 so empty buffers or stale latest-policy state cannot
+make the vector loops pass vacuously. Fatal source-setup assertions propagate
+to the outer test instead of continuing with silence.
+
+Copy-failure injection/queue cleanup, teardown lifetime and combined protected
+suspend/resume still need additional fixtures and actual execution. No new pass
+is claimed for any browser fingerprinting site or CAPTCHA service.
+Evidence: `D:\Glint157ObjectCache\chunked-audio-fixtures-20261029-v3\report.json`;
+patch SHA-256 `5fefd52cc2d25c5857be5011ad7a748cf2ef77f52b6350ab72642b2c6b493c8f`.
+
 ## Current 001–065 compilation gate — 2026-10-29
 
 The test-only 0065 repair is now selected and applied. Candidate manifest SHA-256:

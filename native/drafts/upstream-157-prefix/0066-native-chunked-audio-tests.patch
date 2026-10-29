@@ -1,0 +1,381 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_context.h"
++#include <bit>
++#include <cstdint>
++#include <initializer_list>
+ #include <memory>
+ #include <utility>
+ 
+@@ -21,10 +24,14 @@
+ #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_offline_audio_context_options.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_union_audiocontextrendersizecategory_unsignedlong.h"
++#include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/testing/page_test_base.h"
+ #include "third_party/blink/renderer/modules/webaudio/audio_buffer.h"
++#include "third_party/blink/renderer/modules/webaudio/constant_source_node.h"
++#include "third_party/blink/renderer/modules/webaudio/glint/offline_audio_limits.h"
++#include "third_party/blink/renderer/modules/webaudio/offline_audio_completion_event.h"
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
+ #include "third_party/blink/renderer/platform/heap/thread_state.h"
+@@ -388,7 +395,8 @@
+ }
+ 
+ namespace {
+-std::unique_ptr<DummyPageHolder> GlintOfflineAudioPolicyHolder(bool ready) {
++std::unique_ptr<DummyPageHolder> GlintOfflineAudioPolicyHolder(
++    bool ready, uint8_t audio_seed = 4) {
+   auto holder = std::make_unique<DummyPageHolder>();
+   const KURL url(NullUrl(), "https://audio-surface.test/");
+   auto params = WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
+@@ -403,7 +411,7 @@
+     policy.canvas.fill(1);
+     policy.webgl.fill(2);
+     policy.webgpu.fill(3);
+-    policy.audio.fill(4);
++    policy.audio.fill(audio_seed);
+     params->glint_document_surface_policy = glint::candidate::DocumentSurfacePolicy{
+         params->storage_key, std::move(policy)};
+   }
+@@ -443,4 +451,333 @@
+ }
+ 
+ 
++namespace {
++
++class GlintOfflineCompletionProbe final : public NativeEventListener {
++ public:
++  explicit GlintOfflineCompletionProbe(OfflineAudioContext* context,
++                                       bool mutate_last_sample = false)
++      : context_(context), mutate_last_sample_(mutate_last_sample) {}
++
++  void Invoke(ExecutionContext*, Event* event) override {
++    ASSERT_TRUE(event);
++    ASSERT_EQ(event->InterfaceName(),
++              event_interface_names::kOfflineAudioCompletionEvent);
++    auto* completion = static_cast<OfflineAudioCompletionEvent*>(event);
++    ++count_;
++    buffer_ = completion->renderedBuffer();
++    ASSERT_TRUE(buffer_);
++    EXPECT_EQ(context_->ContextState(), V8AudioContextState::Enum::kClosed);
++    if (mutate_last_sample_) {
++      auto channel = buffer_->getChannelData(0);
++      ASSERT_TRUE(channel);
++      auto samples = channel->AsSpan();
++      ASSERT_FALSE(samples.empty());
++      samples.back() = 0.5f;
++    }
++  }
++
++  int count() const { return count_; }
++  AudioBuffer* buffer() const { return buffer_.Get(); }
++
++  void Trace(Visitor* visitor) const override {
++    visitor->Trace(context_);
++    visitor->Trace(buffer_);
++    NativeEventListener::Trace(visitor);
++  }
++
++ private:
++  Member<OfflineAudioContext> context_;
++  Member<AudioBuffer> buffer_;
++  bool mutate_last_sample_;
++  int count_ = 0;
++};
++
++void GlintConnectConstantSource(OfflineAudioContext& context) {
++  auto* source = ConstantSourceNode::Create(context, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(source);
++  source->offset()->setValue(0.25f);
++  source->connect(context.destinationNode(), 0, 0, ASSERT_NO_EXCEPTION);
++  source->start(0.0, ASSERT_NO_EXCEPTION);
++}
++
++}  // namespace
++
++TEST_F(OfflineAudioContextTest,
++       GlintChunkMissingPolicyRejectsBeforeResolverOrRenderThread) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(false);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                              256, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  DummyExceptionStateForTesting exception;
++  auto promise = context->startOfflineRendering(nullptr, 128, exception);
++  EXPECT_TRUE(promise.IsEmpty());
++  ASSERT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kNotReadableError);
++  EXPECT_EQ(context->ContextState(), V8AudioContextState::Enum::kSuspended);
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintZeroChunkRetainsNativeExceptionPrecedence) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(false);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                              256, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  DummyExceptionStateForTesting exception;
++  auto promise = context->startOfflineRendering(nullptr, 0, exception);
++  EXPECT_TRUE(promise.IsEmpty());
++  ASSERT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kNotSupportedError);
++  EXPECT_EQ(exception.Message(), "The requested chunk size cannot be zero.");
++}
++
++TEST_F(OfflineAudioContextTest, GlintOverflowRetainsNativeExceptionPrecedence) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(false);
++  ASSERT_TRUE(holder);
++  auto* options = OfflineAudioContextOptions::Create();
++  options->setNumberOfChannels(1);
++  options->setSampleRate(44100);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(),
++                                              options, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  EXPECT_FALSE(context->length().has_value());
++  DummyExceptionStateForTesting exception;
++  auto promise = context->startOfflineRendering(
++      nullptr, std::numeric_limits<uint32_t>::max(), exception);
++  EXPECT_TRUE(promise.IsEmpty());
++  ASSERT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kNotSupportedError);
++  EXPECT_EQ(exception.Message(), "The requested chunk size is too large.");
++}
++
++TEST_F(OfflineAudioContextTest, GlintRoundedChunkBudgetRejectsAndAllowsRetry) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(true);
++  ASSERT_TRUE(holder);
++  V8TestingScope scope(std::move(holder));
++  auto* options = OfflineAudioContextOptions::Create();
++  options->setNumberOfChannels(3);
++  options->setSampleRate(44100);
++  auto* context = OfflineAudioContext::Create(scope.GetFrame().DomWindow(),
++                                              options, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  ASSERT_EQ(context->renderQuantumSize(), 128u);
++  constexpr uint32_t kUnroundedFrames =
++      glint::candidate::kMaxOfflineAudioCopyBytes / (3 * sizeof(float));
++  static_assert(glint::candidate::CanCopyOfflineAudio(3, kUnroundedFrames));
++  static_assert(kUnroundedFrames % 128 != 0);
++  DummyExceptionStateForTesting exception;
++  auto promise =
++      context->startOfflineRendering(nullptr, kUnroundedFrames, exception);
++  EXPECT_TRUE(promise.IsEmpty());
++  ASSERT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kNotReadableError);
++  EXPECT_EQ(context->ContextState(), V8AudioContextState::Enum::kSuspended);
++
++  ScriptPromiseTester retry(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  retry.WaitUntilSettled();
++  ASSERT_TRUE(retry.IsFulfilled());
++  auto* buffer = ToScriptWrappable<AudioBuffer>(
++      scope.GetIsolate(), retry.Value().V8Value().As<v8::Object>());
++  ASSERT_TRUE(buffer);
++  EXPECT_EQ(buffer->length(), 128u);
++  EXPECT_EQ(buffer->numberOfChannels(), 3u);
++  ScriptPromiseTester closed(
++      scope.GetScriptState(),
++      context->closeContext(scope.GetScriptState(), ASSERT_NO_EXCEPTION));
++  closed.WaitUntilSettled();
++  EXPECT_TRUE(closed.IsFulfilled());
++}
++
++TEST_F(OfflineAudioContextTest, GlintBudgetUsesChunkNotEntireFiniteLength) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(true);
++  ASSERT_TRUE(holder);
++  V8TestingScope scope(std::move(holder));
++  constexpr uint32_t kLongLength =
++      glint::candidate::kMaxOfflineAudioCopyBytes / (2 * sizeof(float)) + 1;
++  static_assert(!glint::candidate::CanCopyOfflineAudio(2, kLongLength));
++  auto* context = OfflineAudioContext::Create(
++      scope.GetFrame().DomWindow(), 2, kLongLength, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  ScriptPromiseTester rendered(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  rendered.WaitUntilSettled();
++  ASSERT_TRUE(rendered.IsFulfilled());
++  auto* buffer = ToScriptWrappable<AudioBuffer>(
++      scope.GetIsolate(), rendered.Value().V8Value().As<v8::Object>());
++  ASSERT_TRUE(buffer);
++  EXPECT_EQ(buffer->length(), 128u);
++  EXPECT_EQ(buffer->numberOfChannels(), 2u);
++  ScriptPromiseTester closed(
++      scope.GetScriptState(),
++      context->closeContext(scope.GetScriptState(), ASSERT_NO_EXCEPTION));
++  closed.WaitUntilSettled();
++  EXPECT_TRUE(closed.IsFulfilled());
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintQueuedChunksShareOnlyFinalMutableEventResult) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(true, 5);
++  ASSERT_TRUE(holder);
++  V8TestingScope scope(std::move(holder));
++  auto* context = OfflineAudioContext::Create(scope.GetFrame().DomWindow(), 1,
++                                              300, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  ASSERT_NO_FATAL_FAILURE(GlintConnectConstantSource(*context));
++  auto* completion =
++      MakeGarbageCollected<GlintOfflineCompletionProbe>(context, true);
++  context->addEventListener(AtomicString("complete"), completion);
++  ScriptPromiseTester first(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester second(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester final_tester(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  first.WaitUntilSettled();
++  second.WaitUntilSettled();
++  final_tester.WaitUntilSettled();
++  ASSERT_TRUE(first.IsFulfilled());
++  ASSERT_TRUE(second.IsFulfilled());
++  ASSERT_TRUE(final_tester.IsFulfilled());
++  auto* first_buffer = ToScriptWrappable<AudioBuffer>(
++      scope.GetIsolate(), first.Value().V8Value().As<v8::Object>());
++  auto* second_buffer = ToScriptWrappable<AudioBuffer>(
++      scope.GetIsolate(), second.Value().V8Value().As<v8::Object>());
++  auto* final_buffer = ToScriptWrappable<AudioBuffer>(
++      scope.GetIsolate(), final_tester.Value().V8Value().As<v8::Object>());
++  ASSERT_TRUE(first_buffer);
++  ASSERT_TRUE(second_buffer);
++  ASSERT_TRUE(final_buffer);
++  EXPECT_EQ(first_buffer->length(), 128u);
++  EXPECT_EQ(second_buffer->length(), 128u);
++  ASSERT_EQ(final_buffer->length(), 44u);
++  EXPECT_EQ(completion->count(), 1);
++  EXPECT_EQ(completion->buffer(), final_buffer);
++  EXPECT_NE(first_buffer, second_buffer);
++  EXPECT_NE(first_buffer, final_buffer);
++  EXPECT_NE(second_buffer, final_buffer);
++  // Independent HMAC vector: seed=32 bytes of 0x05, input float bits=3e800000.
++  for (auto* buffer : {first_buffer, second_buffer, final_buffer}) {
++    auto channel = buffer->getChannelData(0);
++    ASSERT_TRUE(channel);
++    auto samples = channel->AsSpan();
++    ASSERT_FALSE(samples.empty());
++    EXPECT_EQ(std::bit_cast<uint32_t>(samples.front()), 0x3e800001u);
++  }
++  auto final_channel = final_buffer->getChannelData(0);
++  ASSERT_TRUE(final_channel);
++  EXPECT_EQ(final_channel->AsSpan().back(), 0.5f);
++  auto first_channel = first_buffer->getChannelData(0);
++  auto second_channel = second_buffer->getChannelData(0);
++  ASSERT_TRUE(first_channel);
++  ASSERT_TRUE(second_channel);
++  EXPECT_EQ(std::bit_cast<uint32_t>(first_channel->AsSpan().back()),
++            0x3e800001u);
++  first_channel->AsSpan().back() = 0.75f;
++  EXPECT_EQ(std::bit_cast<uint32_t>(second_channel->AsSpan().back()),
++            0x3e800001u);
++  EXPECT_EQ(context->ContextState(), V8AudioContextState::Enum::kClosed);
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintSeparatePoliciesUseIndependentAudioVectors) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  for (uint8_t seed : {uint8_t{4}, uint8_t{5}, uint8_t{4}}) {
++    auto holder = GlintOfflineAudioPolicyHolder(true, seed);
++    ASSERT_TRUE(holder);
++    V8TestingScope scope(std::move(holder));
++    auto* context = OfflineAudioContext::Create(
++        scope.GetFrame().DomWindow(), 1, 128, 44100, ASSERT_NO_EXCEPTION);
++    ASSERT_TRUE(context);
++    ASSERT_NO_FATAL_FAILURE(GlintConnectConstantSource(*context));
++    ScriptPromiseTester rendered(
++        scope.GetScriptState(),
++        context->startOfflineRendering(scope.GetScriptState(), 128,
++                                       ASSERT_NO_EXCEPTION));
++    rendered.WaitUntilSettled();
++    ASSERT_TRUE(rendered.IsFulfilled());
++    auto* buffer = ToScriptWrappable<AudioBuffer>(
++        scope.GetIsolate(), rendered.Value().V8Value().As<v8::Object>());
++    ASSERT_TRUE(buffer);
++    ASSERT_EQ(buffer->length(), 128u);
++    auto channel = buffer->getChannelData(0);
++    ASSERT_TRUE(channel);
++    ASSERT_EQ(channel->AsSpan().size(), 128u);
++    const uint32_t expected = seed == 4 ? 0x3e800000u : 0x3e800001u;
++    for (float sample : channel->AsSpan()) {
++      EXPECT_EQ(std::bit_cast<uint32_t>(sample), expected);
++    }
++  }
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintFlagOffIndefiniteChunksKeepRawSamplesAndClose) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  V8TestingScope scope;
++  auto* options = OfflineAudioContextOptions::Create();
++  options->setNumberOfChannels(1);
++  options->setSampleRate(44100);
++  auto* context = OfflineAudioContext::Create(scope.GetFrame().DomWindow(),
++                                              options, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  ASSERT_FALSE(context->length().has_value());
++  ASSERT_NO_FATAL_FAILURE(GlintConnectConstantSource(*context));
++  auto* completion = MakeGarbageCollected<GlintOfflineCompletionProbe>(context);
++  context->addEventListener(AtomicString("complete"), completion);
++  ScriptPromiseTester first(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester second(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  first.WaitUntilSettled();
++  second.WaitUntilSettled();
++  ASSERT_TRUE(first.IsFulfilled());
++  ASSERT_TRUE(second.IsFulfilled());
++  for (auto* tester : {&first, &second}) {
++    auto* buffer = ToScriptWrappable<AudioBuffer>(
++        scope.GetIsolate(), tester->Value().V8Value().As<v8::Object>());
++    ASSERT_TRUE(buffer);
++    ASSERT_EQ(buffer->length(), 128u);
++    auto channel = buffer->getChannelData(0);
++    ASSERT_TRUE(channel);
++    ASSERT_EQ(channel->AsSpan().size(), 128u);
++    for (float sample : channel->AsSpan()) {
++      EXPECT_EQ(std::bit_cast<uint32_t>(sample), 0x3e800000u);
++    }
++  }
++  EXPECT_EQ(completion->count(), 0);
++  ScriptPromiseTester closed(
++      scope.GetScriptState(),
++      context->closeContext(scope.GetScriptState(), ASSERT_NO_EXCEPTION));
++  closed.WaitUntilSettled();
++  EXPECT_TRUE(closed.IsFulfilled());
++  EXPECT_EQ(completion->count(), 0);
++  EXPECT_EQ(context->ContextState(), V8AudioContextState::Enum::kClosed);
++}
++
+ }  // namespace blink
