@@ -1,7 +1,31 @@
 # Chromium 156 rebase candidate
 
-**Draft source port, not an enabled engine or a compiled browser.** The active
-build lock and registered 001-062 chain still target Chromium 148.0.7778.96.
+**Development candidate, not a production/default engine.** The default build
+lock and reviewed 001-062 chain still target Chromium 148.0.7778.96. The separate
+156 / 001–065 browser is linked and has baseline runtime evidence; full native,
+policy and installed-package gates remain pending. The manifest is a source
+contract, not a mutable binary-readiness flag.
+
+## Exact-version stock control and Audio calibration
+
+An official CfT Windows archive for **156.0.8078.36** was downloaded with its
+GCS generation pinned and MD5 checked. Runtime `Browser.getVersion` independently
+reported revision `5a93aa59e3043e747eff68659dcf7d20193d160e`. The per-version JSON
+lookup returned 404, but that did **not** establish absence of the Windows asset.
+URLs, archive/core hashes and scope: [`stock-control-observations.json`](stock-control-observations.json).
+
+The Glint-off → CfT → Glint-off Audio matrix produced **135 captures**, all
+15 configurations bit-exact across browsers and repeated Glint runs. This is
+same-upstream-base calibration on one Windows host, not identical GN/toolchain
+settings, math-mode/device-cohort verification or privacy admission.
+[Audio evidence](../audio-dsp-math-v2/matched-stock-observations.json).
+
+Glint's current non-official GN defaults deliberately emit a dummy CDP revision;
+its source binding is the reviewed receipt plus exact runtime-core hashes, **not**
+a real runtime-reported Git stamp. The unapplied [`revision-stamp.args.gn`](revision-stamp.args.gn)
+selects the real LASTCHANGE without claiming an official build. Isolated upstream
+header generation changed only LAST_CHANGE; GN/binaries remain frozen. Apply only
+after current queues finish, rebind inputs and verify the rebuilt runtime.
 
 ## Fixture portability batch 0065
 
@@ -16,8 +40,10 @@ The selected 001–065 tree then passed both keep-going compile batches: **85
 production object targets and all 38 mapped fixture object targets**, with final
 source/toolchain/GN postguards. Dependency inputs were verified unchanged and
 sync/hooks records rebound; those stages were not rerun. The browser build has
-resumed at **j4**, with fresh identity/runtime/native/package observers.
-No native tests have executed yet. Failed earlier reports remain retained.
+completed, followed by 62 identity-key, 37 context and 20 transport cases with
+postguards. Handoff and the remaining gates are still pending. The interrupted
+queue was replaced only after confirming its processes missing and all 201
+reviewed inputs/browser cores unchanged; cached objects were retained, j4 unchanged.
 Evidence on D: `fixture-activation65-20261029-v2/report.json`; the isolated-copy
 proof remains `fixture-portability-20261029-v2/probe-v2/compile-report.json`.
 
@@ -28,7 +54,7 @@ on three production objects with Clang unsafe-buffer errors. Append 0063 uses
 bounded word spans and typed hardware option ranges; it does not suppress the
 diagnostics or change identity-policy admission. See the
 [test matrix](../../../docs/GLINT_TEST_MATRIX.md) for measured object/semantic
-checks and the resumed browser build; no linked 156 runtime is established yet.
+checks and linked browser baseline; no full 156 policy/runtime admission follows.
 The next 001–063 run found the remaining direct Audio `memcpy`; 0064 replaces it
 with a bounded domain copy. A keep-going compile batch passed all 85 selected
 production object targets covering 83 patched source files. Native fixture

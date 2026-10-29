@@ -72,6 +72,22 @@ orphan/lifetime учёт и безопасная интеграция лимит
 1 096 release-tool cases, а не добавляется к ним; native/runtime admission
 по-прежнему определяется отдельными gates, не Python-счётчиком.
 
+Получен точный официальный CfT 156.0.8078.36: generation-pinned ZIP/MD5/PE version
+и реальный CDP revision подтвердились. JSON lookup 404 не означал отсутствия
+Windows-архива. Новый Glint-off → CfT → Glint-off прогон: 135 captures, 15 cases,
+полное побитовое совпадение и стабильный повтор Glint. Float32 prototype не
+совпал с тремя различающими cases; его правдоподобность этим не подтверждена.
+У Glint CDP revision нулевой из-за штатного non-official GN default, не из-за
+повреждённого checkout. Source binding идёт через receipt/core hashes; реальный
+stamp подготовлен отдельным GN fragment и проверен isolated header generation,
+но не применён к активной сборке. Full policy/device-cohort admission остаётся false.
+
+Очередь прервалась на handoff 1062/1498: старые процессы подтверждённо отсутствуют,
+причина/exit codes неизвестны. Все 201 source input и browser cores сохранились;
+объекты не удалялись. Восстановлена связанная очередь identity v6 → runtime v13
+→ remaining-native v8 → package v6, j4, без activation. Старые отчёты и неполные
+Audio-попытки сохранены; новый A/B/A выполнен полностью с нуля.
+
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 
 Подготовлен отдельный draft 0068 для Chromium 156 после 001–065:

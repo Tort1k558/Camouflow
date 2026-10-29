@@ -195,7 +195,7 @@
   ],
   "remaining_unverified": [
     "Official Chromium GN build, linking and native fixture execution",
-    "fresh 156 baseline and math-mode actual browser captures",
+    "Math-mode actual browser captures; native-off exact-version CfT calibration is now recorded",
     "Execute node-handler backend fixtures and interleaved-context runtime controls",
     "navigation, lifecycle, realtime audio and AudioWorklet coverage",
     "HMAC failure injection, cleanup and concurrency stress",
@@ -276,5 +276,10 @@
   "lifecycle_baseline_calibration": {
     "file": "audio-context-lifecycle-observations.json",
     "sha256": "a782810a7caf90076215824124c198de0e0920e3a66d93bfe1fdcf74ba976015"
+  },
+  "stock_baseline_calibration": {
+    "file": "matched-stock-observations.json",
+    "sha256": "73bfae5d7b6845e48c7f88c4a55534b2339842ba592c4b3af8c2585976aef227",
+    "scope": "135 native-off/CfT/native-off captures; no math-mode or device-cohort admission"
   }
 }

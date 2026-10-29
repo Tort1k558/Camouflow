@@ -17,14 +17,17 @@
 | First extended baseline failure | Close timed out after five checks; temporary-directory cleanup then masked the primary failure | Negative retained; passing repeats do not explain or repair the timeout |
 | Independent close diagnosis | 16 cycles across reviewed 148 and candidate 156, desktop/mobile, storage/diagnostics; 1.140–2.703s, owned processes exited | Same-host cross-version control, not matched stock156; no timeout increase or forced kill |
 | Lifecycle during observed native build | Three serial runs each passed all 18 checks in 160.532 / 146.031 / 146.297 seconds; core/source postguards passed | Retention-patched verifier copy, ordinary logging; first close timeout remains unexplained; not a performance benchmark or the canonical policy suite |
-| Native156 Audio calibration | 15 cases × three repetitions = 45 bit-exact native156 prototype matches; cleanup/postguards passed | Unprotected baseline only; AudioMath/float32 runtime and stock156 comparison unverified |
+| Native156 Audio calibration | 15 cases × three repetitions = 45 bit-exact native156 prototype matches; cleanup/postguards passed | Original unprotected baseline; the subsequent stock comparison is recorded separately below |
+| Exact-version CfT source control | Official generation-pinned archive passed MD5/PE-version checks; live CfT reported 156.0.8078.36 / exact upstream revision | Per-version JSON 404 did not imply asset absence; not equal GN/toolchain/branding or full policy admission |
+| Matched Audio Glint-off → CfT → Glint-off | 135 captures across 15 cases were bit-exact; all contexts closed and core/source postguards passed | One Windows host, policies off; float32 prototype differed on three discriminating cases; not math-mode/device-cohort admission |
+| Native revision stamping | Current zero CDP stamp explained by upstream non-official GN default; isolated real-LASTCHANGE generation preserved version/branding and changed only stamp | Override staged, not applied/compiled; current native source binding is receipt/core hashes, not a runtime Git report |
 | Compiled Glint branding | Main/app-list icons match project logo; ProductName in EXE/DLL and internal version-page heading are Glint; resource-pack postguards passed | Not OS taskbar/shortcut cache migration or fingerprint admission |
 | Staged verifier evidence retention | Five actual held-file controls and an 18-check browser regression passed on a patched copy; original exception/profile retained on failure | Canonical verifier unchanged; underlying browser-close timeout is not fixed |
 | Staged Windows profile-version guard | 22 owned marker/real-PE/mocked-launch controls; one real 148-to156 upgrade preserved five stores and identity; older selection rejected without changing files; isolated extended lifecycle passed all 18 checks, including backup/restore and cancelled startup | Unapplied Runtime patch; no older browser opened upgraded data; not general migration/rollback or Linux/macOS protection |
 | Read-only Windows resource observer | 24 controls passed; one owned Glint sample covered seven OS-parent/creation-bound processes; 100 reads did not grow the handle count | Separate draft, not manager integration or a new memory limit; summed working sets are not unique RAM; not lifetime accounting or a performance benchmark |
 | Read-only process-tree observer | 18 Windows controls passed; 100 subtree captures did not grow handles; two live Glint trees (nine/eight processes) were disjoint and covered their CDP-reported sets; child replacement invalidated CPU intervals | Stable observed topology, not an atomic/lifetime snapshot or profile authentication; no watchdog integration, limit change or performance admission |
-| Current release-tool validators | 1,096 passed, one skipped in 44.49 seconds | Includes resource/tree arithmetic, churn/reuse/input checks and a live Windows self-process read; report validation is not additional native execution |
-| Full desktop Python regression | 3,614 passed, one skipped in 340.52 seconds; Windows/offscreen with isolated data/temp/cache on D | Includes the release-tool cases above, not an additional disjoint count; not native fixture execution or remote CI |
+| Current release-tool validators | 1,098 passed, one skipped in 61.40 seconds | Includes source/control and resource/tree checks; report validation is not additional native execution |
+| Full desktop Python regression | 3,614 passed, one skipped in 340.52 seconds; Windows/offscreen with isolated data/temp/cache on D | Full run at 1c8ac38, before stock-control record additions; not native fixture execution or remote CI |
 
 Build evidence: `D:\Glint156Candidate\fixture-build-continuation-20261029-v2.json`;
 core receipt: `chromium\src\out\CamouFlowNative\camouflow-build.json` below that workspace.
@@ -39,6 +42,15 @@ Resource observer: [`resources/README.md`](../native/drafts/resources/README.md)
 raw owned evidence: `D:\Glint156Candidate\windows-resource-reader-20261029-v4\report.json`.
 Tree evidence: `D:\Glint156Candidate\windows-process-tree-20261029-v2\report.json`.
 Full Python regression: `D:\Glint156Candidate\python-resource-tree-regression-20261029-v1\report.json`.
+Stock control: [`stock-control-observations.json`](../native/drafts/upstream-156/stock-control-observations.json);
+matched Audio: [`matched-stock-observations.json`](../native/drafts/audio-dsp-math-v2/matched-stock-observations.json).
+
+The old identity/runtime/native/package processes were confirmed missing after
+handoff step 1062/1498; cause/exit codes are unknown, not labelled a compiler failure.
+Source/core audit passed and cached objects remain. The resumed handoff invocation
+initially scheduled 435 steps, not a clean 1498-step rebuild. Recovery queues are identity v6
+→ runtime v13 → remaining-native v8 → package v6, still j4 and no activation.
+Audit: `D:\Glint156Candidate\interruption-recovery-20261029-v1\report.json`.
 Remaining identity/native targets, canonical eight-gate policy suite, installed
 runtime, compatible rollback and shutdown reliability evidence remain required
 before any candidate release claim. No detector/CAPTCHA outcomes are asserted.

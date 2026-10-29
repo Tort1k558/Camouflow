@@ -4551,6 +4551,97 @@ def test_first_156_runtime_observations_preserve_baseline_and_failure_boundaries
     assert data["frozen_build_inputs_unchanged"] == 201 and data["remaining_unverified"]
 
 
+def test_exact_stock_156_control_and_unapplied_revision_stamp_are_bound():
+    import base64
+    import hashlib
+    import json
+    from urllib.parse import parse_qs, urlsplit
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/upstream-156"
+    raw = (root / "stock-control-observations.json").read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    manifest = json.loads((root / "manifest.json").read_bytes())
+    assert data["schema"] == 1 and data["platform"] == "win32" and data["passed"]
+    assert data["target_version"] == data["executable_pe_version"] == manifest["target_version"]
+    assert data["target_revision"] == manifest["target_revision"]
+    assert data["browser_get_version"]["product"] == "Chrome/" + data["target_version"]
+    assert data["browser_get_version"]["revision"] == "@" + data["target_revision"]
+    assert data["exact_stock_runtime_source_verified"] and data["official_md5_matched"]
+    metadata = data["official_object_metadata"]
+    assert metadata["name"] == "156.0.8078.36/win64/chrome-win64.zip"
+    assert len(base64.b64decode(metadata["md5Hash"], validate=True)) == 16
+    assert int(metadata["size"]) == data["archive_bytes"] == 209126017
+    assert len(data["archive_sha256"]) == 64 and metadata["generation"].isdecimal()
+    archive = urlsplit(data["archive_url"])
+    assert archive.scheme == "https" and archive.netloc == "storage.googleapis.com"
+    assert archive.path == "/chrome-for-testing-public/" + metadata["name"]
+    assert parse_qs(archive.query) == {"generation": [metadata["generation"]]}
+    assert data["version_metadata_http_status"] == 404 and data["exact_asset_head_http_status"] == 200
+    assert data["resources_closed"] and data["controlled_page_passed"] and data["postguards_passed"]
+    for field in ("production_admitted", "managed_activation_performed", "same_build_flags_verified",
+                  "matched_full_surface_calibration_passed", "effective_sandbox_flags_verified"):
+        assert data[field] is False
+    stamp = data["native_build_revision_stamp"]
+    assert stamp["passed"] and stamp["dummy_generation_matches_active_header"]
+    assert stamp["real_generation_only_changes_last_change"] and stamp["official_build_remains_false"]
+    assert stamp["branding_and_version_preserved"] and stamp["source_and_output_unchanged"]
+    assert stamp["real_lastchange"].startswith(data["target_revision"] + "-")
+    assert stamp["override_applied"] is stamp["compiled"] is stamp["runtime_real_stamp_verified"] is False
+    fragment = (root / stamp["override_file"]).read_bytes()
+    assert hashlib.sha256(fragment).hexdigest() == stamp["override_sha256"] and b"\r" not in fragment
+    assert [line for line in fragment.decode().splitlines() if line and not line.startswith("#")] == ["use_dummy_lastchange = false"]
+    assert "use_dummy_lastchange" not in (build.ROOT / "native/args.gn").read_text()
+    assert data["frozen_inputs_unchanged"] == stamp["frozen_inputs_unchanged"] == 201
+
+
+def test_same_upstream_156_audio_aba_records_only_unprotected_calibration():
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/audio-dsp-math-v2"
+    raw = (root / "matched-stock-observations.json").read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    stock_raw = (root / data["stock_control_file"]).read_bytes()
+    stock = json.loads(stock_raw)
+    baseline = json.loads((root.parent / "upstream-156/windows-runtime-observations.json").read_bytes())
+    assert hashlib.sha256(stock_raw).hexdigest() == data["stock_control_sha256"]
+    assert hashlib.sha256((root / "cases.json").read_bytes()).hexdigest() == data["cases_sha256"]
+    assert hashlib.sha256((root / "compressor-matrix-control.js").read_bytes()).hexdigest() == data["probe_sha256"]
+    assert data["schema"] == 1 and data["passed"] and data["measurement_complete"] and data["postguards_passed"]
+    assert data["capture_count"] == 135 and data["case_count"] == 15 and data["repetitions_per_case_per_phase"] == 3
+    assert data["native_matches_stock_all_cases"] and data["stock_float32_exact_cases"] == 12
+    assert data["native_core_sha256"] == baseline["runtime_core_sha256"]
+    assert data["stock_core_sha256"] == stock["stock_core_sha256"]
+    assert data["candidate_build_receipt_sha256"] == baseline["build_receipt_sha256"]
+    for field in ("native_policy_enabled", "audio_math_included", "float32_backend_runtime_verified",
+                  "variant_device_cohort_verified", "privacy_admitted", "production_admitted",
+                  "same_build_flags_verified", "native_runtime_revision_self_reported"):
+        assert data[field] is False
+    assert data["native_dummy_revision_expected"] and data["native_receipt_revision_verified"] and data["stock_runtime_revision_verified"]
+    assert [row["label"] for row in data["phases"]] == ["native-before", "stock", "native-after"]
+    for phase in data["phases"]:
+        assert phase["capture_count"] == 45 and phase["resources_closed"]
+        assert phase["all_event_promise_buffers_identical"] and phase["all_audio_contexts_closed"] and phase["all_case_repetitions_bit_exact"]
+        assert phase["source_base_revision"] == stock["target_revision"]
+        assert phase["observed_runtime_revision"] == (stock["target_revision"] if phase["label"] == "stock" else "0" * 40)
+    assert len(data["comparisons"]) == len({row["id"] for row in data["comparisons"]}) == 15
+    assert all(row["native_repeat_exact"] and row["native_prototype_exact"] and row["stock_native_prototype_exact"]
+               and row["native_and_stock_exact"] and row["native_sha256"] == row["stock_sha256"]
+               and row["mismatched_channel_samples"] == row["maximum_ulp"] == row["maximum_absolute_error"] == row["rms_error"] == 0
+               for row in data["comparisons"])
+    assert sum(not row["stock_float32_prototype_exact"] for row in data["comparisons"]) == 3
+    assert [row["passed"] for row in data["prior_incomplete_attempts"]] == [False, False]
+    integration = json.loads((root / "context-integration.json").read_bytes())
+    calibration = integration["stock_baseline_calibration"]
+    assert calibration["file"] == "matched-stock-observations.json"
+    assert calibration["sha256"] == hashlib.sha256(raw).hexdigest()
+    assert data["frozen_inputs_unchanged"] == 201 and data["remaining_unverified"]
+
+
 def test_first_156_audio_calibration_does_not_admit_the_math_variant():
     import hashlib
     import json

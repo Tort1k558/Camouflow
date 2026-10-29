@@ -20,6 +20,12 @@ The resumed identity-key target passed 62 C++ cases with postguards; remaining
 identity/native targets and the canonical eight-gate/installed suite are pending.
 The unprotected 156 Audio baseline also matched the standalone native156 DSP
 matrix bit-for-bit in 45 captures. This does not execute AudioMath 0068.
+An official CfT archive now provides the exact 156.0.8078.36/upstream revision
+control: 135 Glint-off/CfT/Glint-off Audio captures matched bit-for-bit across
+15 cases. CfT reports the real Git revision; current non-official Glint uses the
+upstream dummy-CDP-stamp default and is bound by its source receipt/core hashes.
+The real-stamp GN override is staged only. These measurements do not equate
+build flags or admit math-mode/device-cohort plausibility.
 Compiled 156 main/app-list icons match `logo.ico`; EXE/DLL ProductName and the
 internal version page identify Glint. Taskbar/shortcut caching is not covered.
 The verifier evidence-retention fix is staged separately and tested on an
@@ -230,8 +236,9 @@ separate checks. Source registration is not browser linkage or privacy admission
 Canonical public source and historical integration inputs live under
 `drafts/policy`, `drafts/gpu` and `drafts/audio`. They were promoted together into
 registered patches 0031–0034 after the corrected 12-case document gate passed.
-Exact registered-source replay passed across 125 paths; the full browser batch
-is compiling. Do not modify these frozen inputs during that build.
+Exact registered-source replay passed across 125 paths in that earlier batch.
+The current compiled-candidate boundary is listed above; earlier source gates
+do not admit subsequent binaries. Do not modify a live batch's frozen inputs.
 Document/worker v2 transport and final-owner handoff have
 candidate code, not compiled/runtime proof. Canvas and OfflineAudio API candidates
 consume explicit owned seed results; API admission and GPU readback
@@ -279,12 +286,14 @@ complete GPU readback protection or verified fingerprint-resistance claim is imp
 The registered WebGL hook covers default sRGB RGBA8/RGB8 and single-sample
 RGB8/RGBA8 renderbuffer attachments, using actual selected attachment extents.
 CPU/PBO pack handling, pending GL errors, resize and export consistency have
-prepared gates; only the feature-off 001–027 fixture baseline has run.
+prepared gates. The next-readback notes record earlier protected 148 checks;
+those results do not admit the current 156 candidate.
 Texture, float/integer/HDR attachments and WebGPU readback remain unsupported.
-The subsequent unregistered `drafts/next-readback` candidate replaces redundant
+The subsequently registered 0046/0047 `drafts/next-readback` pair replaces redundant
 full-frame allocation with an exact full-frame private transform or a clipped
-one-pixel halo. Its 58,860 independent model comparisons and source replay passed;
-11 native fixtures, driver compatibility and performance measurements are pending.
+one-pixel halo. Its notes record 58,860 model comparisons, source replay and
+earlier native/browser checks. Current-version fixture execution, broader driver
+compatibility and performance measurements remain separate gates.
 
 `scripts/native_build.py` pins upstream revisions, records sync/hooks dependency
 snapshots and checks applied changes by replaying registered patches into a
@@ -330,8 +339,9 @@ Before creating profiles or launching a browser, the gate requires exact
 registered surface patches and a build receipt binding **every runtime core
 file**, not just `chrome.exe` while Blink resides in `chrome.dll`. Reserved patch
 names 0031 (worker policy), 0032 (document policy) and 0033 (surface readback)
-are registered and applied, **not yet compiled or runtime verified**.
-The current 001–027 browser is deliberately rejected before launch.
+are registered and compiled as part of the current 001–065 candidate, **not
+admitted by the pending full protected-runtime suite**.
+An old 001–027 browser is deliberately rejected before launch.
 
 Measured float32 bit arrays are bound to each Audio digest. The combined gate
 compares them against the unprotected baseline: at most the lowest mantissa bit

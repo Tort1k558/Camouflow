@@ -14,6 +14,17 @@ modified. No Chromium source files or binaries are committed here.
 
 ## Measured result
 
+**Fresh 156 stock control:** Glint-off → official CfT → Glint-off, 15 cases ×
+three repetitions per phase = **135 captures**. All outputs were bit-exact, with
+unchanged event/Promise buffer identity and closed Audio contexts. CfT reported
+the exact upstream Git revision; Glint is bound by its compiled receipt/core
+hashes because the current non-official GN build emits a dummy CDP stamp.
+[Source-bound results and retained incomplete attempts](matched-stock-observations.json).
+
+The float32 prototype matched 12 non-discriminating cases, **not** the other
+three stock cases. This is not evidence that its variant represents an ordinary
+device cohort; do not promote that mode from these baseline measurements.
+
 One mono pseudorandom input, stereo output, 8192 frames at 44100 Hz.
 [Exact source and evidence bindings](observations.json).
 
@@ -142,7 +153,7 @@ The float32 output has **not** been observed as a real device cohort. A changed
 hash is not evidence of ordinary-browser plausibility. The experiment does not
 repair or admit Audio-v1 farbling, and is not a complete Audio identity model.
 
-Next: matched fresh-156 calibration; more graph/parameter families and special
+Next: math-mode browser execution; more graph/parameter families and special
 values; empirical reference devices; profile/context capture and transport;
 real-time audio, broader Audio APIs, audible quality and performance. No new
 capability may be enabled from these measurements alone.
@@ -155,5 +166,7 @@ under the same cache directory.
 Context integration evidence: `D:\Glint156Candidate\audio-math-context-full-replay-20261029-v6`
 and `audio-math-context-objects-20261029-v5`; failed object evidence remains in v2.
 Lifecycle baseline: `D:\Glint157ObjectCache\audio-context-lifecycle148-20261029-v1`.
+Matched 156 calibration: `D:\Glint156Candidate\audio156-matched-aba-20261029-v3`;
+official stock control: `D:\Glint156Candidate\stock-control156-20261029-v4`.
 Earlier failed adapter/link experiments and the initial power-category failure
 remain retained separately. The active 156 build's 201 input hashes stayed unchanged.

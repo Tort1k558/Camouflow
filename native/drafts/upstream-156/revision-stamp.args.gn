@@ -1,0 +1,2 @@
+# Unapplied: merge only after the source-bound queues finish and rebind GN inputs.
+use_dummy_lastchange = false
