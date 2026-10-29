@@ -1,5 +1,20 @@
 # Glint: план проверки и развития
 
+## Пакет screen/DPR 0069 — подготовлен, не включён в браузер
+
+Подготовлен связанный [черновик из 19 файлов](../native/drafts/environment/screen-inheritance69.patch):
+browser-owned логический экран, nullable IPC, widget-scoped DOM/CSS и DPR,
+общий расчёт с main-frame emulation, обновление/отключение и события.
+Физические данные compositor/input остаются отдельными; JS-подмен нет.
+Добавлены **9 C++-кейсов**, но они ещё не выполнены.
+
+Apply-check на неизменённые исходники 001–068 прошёл; официальный Mojom parser
+и генераторы typed native/Blink/shared C++ bindings прошли в отдельном каталоге.
+[Подготовительные проверки](../native/drafts/environment/screen-inheritance69-preparation.json).
+**C++ не скомпилирован, runtime не проверен, manifest остаётся 001–068.**
+Следующий допуск: native-кейсы и реальный браузер — первый script, вложенные
+iframe, смена процесса/BFCache, zoom, отключение политики, скриншоты и ввод.
+
 ## Пакет 0068 — браузер собран, 18/18 native-наборов прошли
 
 В manifest добавлен fixture-only патч: независимый float seed `10`, проверки

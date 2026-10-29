@@ -28,6 +28,32 @@ driver-default controls are also retained privately; they are not Glint results.
 
 ## Source evidence, not a one-line repair
 
+### Unselected source package 0069
+
+[`screen-inheritance69.patch`](screen-inheritance69.patch) prepares a linked
+19-file change against exact 001–068. It is **not selected, C++-compiled or
+runtime-verified**, and does not change the current browser or its receipt.
+[Preparation evidence](screen-inheritance69-preparation.json).
+
+- Browser-owned main-frame metrics feed an optional logical screen snapshot in
+  widget visual properties, including their initial creation path. Remote-frame
+  geometry continues to carry the original physical screen information.
+- Main-frame emulation and browser snapshot calculation share the existing
+  screen/viewport calculation, rather than maintain divergent formulas.
+- DOM/CSS screen reads and child DPR use widget-scoped logical state; compositor,
+  screenshot and input geometry keep the physical data. No JS getter patch or
+  process-global identity cache is introduced.
+- Clearing uses an absent snapshot. The draft also wires media-query, screen and
+  orientation notifications, preserves native GPU/display restrictions and adds
+  nine C++ cases for calculations, copy/isolation and nullable IPC validation.
+
+Apply-check against the untouched active 001–068 source passed. The pinned Mojom
+parser and native/Blink/shared typed C++ binding generators passed in a separate
+D: output directory. **The nine C++ cases have not run.** Initial-script delivery
+on process swaps, nested roots/BFCache, zoom/text-scale behavior, event ordering,
+render/input compatibility and the complete linked-browser matrix below remain
+required. Source preparation is not a screen/DPR fix result.
+
 Pinned Chromium 156 separates physical/compositor screen data from the main
 widget's emulated values:
 

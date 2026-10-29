@@ -296,3 +296,29 @@ def test_glint67_screen_record_preserves_failed_manager_modes_without_false_admi
             assert (cross["width"], cross["height"], cross["dpr"]) == (800, 600, 1)
             assert (main == cross) is passed
             assert all(phase["screen"][name] is None for name in ("dedicated", "shared", "service"))
+
+
+def test_screen69_source_package_does_not_claim_a_compiled_or_runtime_fix():
+    import hashlib
+    import re
+
+    root = environment.ROOT
+    directory = root / "native/drafts/environment"
+    record = json.loads((directory / "screen-inheritance69-preparation.json").read_bytes())
+    assert all(record[key] is False for key in (
+        "selected", "cpp_compiled", "native_tests_executed", "runtime_verified",
+        "screen_inheritance_fixed", "privacy_admitted", "production_admitted"))
+    assert record["apply_check_passed"] and record["binding_generation_passed"]
+    assert record["active_source_postguards_passed"] and record["active_browser_core_unchanged"]
+    raw = (directory / record["patch"]).read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    assert hashlib.sha256(raw).hexdigest() == record["patch_sha256"]
+    assert raw.count(b"diff --git ") == record["patch_files"] == 19
+    added = "\n".join(line[1:] for line in raw.decode("utf-8").splitlines()
+                      if line.startswith("+") and not line.startswith("+++"))
+    cases = re.findall(r"TEST\(GlintLogicalScreenTest,\s*(\w+)\)", added)
+    assert cases == record["prepared_native_cases"] and len(cases) == 9
+    checkpoint = directory / record["base_manifest"]
+    assert hashlib.sha256(checkpoint.read_bytes()).hexdigest() == record["base_manifest_sha256"]
+    manifest = json.loads((root / "native/drafts/upstream-156/manifest.json").read_bytes())
+    assert len(manifest["patches"]) == 68
