@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "All eight existing raw Glint 001-067 runtime gates; not installed-package, AudioMath, full protected-surface or release admission",
+  "candidate_manifest_sha256": "109ad3d33e18ddea1c1a2ea1d03936a938cfbdce1a7057f5608958a5c8e4de14",
+  "required_manifest": "checkpoints/001-067.json",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "36d1a7c35d059d60c41c9c46d48c623918cd2ed63e746d6473c4993d1d729a7d",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "build_receipt_sha256": "bf3de312f5506a6e405ae4139c7a5cd13b209be648447c3b532e80f7a94df8f2",
+  "suite_report_sha256": "7dba5d5f4fc90333afdb9b820cb933fc4c4d714c5d8ffdf450e96d4dd39b4cb2",
+  "controller_report_sha256": "6ecf673aec575b6e7ff90eea6907c3c6541d34474f69870bf469529cbb654c0c",
+  "check_count": 160,
+  "postguards_passed": true,
+  "gates": [
+    {
+      "name": "runtime",
+      "passed": true,
+      "checks": 18,
+      "report_sha256": "80abbf74f78db5f7b5d26b110cc5624a7179d37d899efbf4fc9d0c915fdede2f"
+    },
+    {
+      "name": "hardware",
+      "passed": true,
+      "checks": 9,
+      "report_sha256": "6484a148c09732e4bb7dccac33bb0cd044436fe938ace18acb5d72fb5f5623b6"
+    },
+    {
+      "name": "webrtc",
+      "passed": true,
+      "checks": 7,
+      "report_sha256": "fa864b259d664032d2a60f8fe2ce437df2283cbbcd1d5f3dfdf1e722c9b05880"
+    },
+    {
+      "name": "automation",
+      "passed": true,
+      "checks": 55,
+      "report_sha256": "c4066e979b32a9c7c590fd50593d947841332853c9cdff61ed4baf6ef793d8d8"
+    },
+    {
+      "name": "fonts",
+      "passed": true,
+      "checks": 42,
+      "report_sha256": "c7852d4eaf0b515ddffb44234f4b96d1ff6b245bbcd43e3fb22629dd29136dd0"
+    },
+    {
+      "name": "identity",
+      "passed": true,
+      "checks": 18,
+      "report_sha256": "8a218ab7b8ceee9ae622e910ab9ecba641e0d986dfca0b4458d71973dba66a04"
+    },
+    {
+      "name": "cdp",
+      "passed": true,
+      "checks": 6,
+      "report_sha256": "077b4e66c6d2746abee8f0fbcdb28200dc010a7e73ec87785370252ffef8dce1"
+    },
+    {
+      "name": "combined",
+      "passed": true,
+      "checks": 5,
+      "report_sha256": "b062eafc1b375f9482ec62e735dc372f9ff1bc6cbfdbe713003f58b30c5c7ec2"
+    }
+  ],
+  "native_audio_math_gate_passed": false,
+  "math_backend_coverage_verified": false,
+  "installed_package_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "third_party_antibot_verified": false
+}

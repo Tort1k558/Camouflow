@@ -27,6 +27,7 @@ scripts/verify_native_worker_startup.py text eol=lf
 scripts/verify_native_surfaces.py text eol=lf
 scripts/verify_native_gpu_readback.py text eol=lf
 native/drafts/upstream-156/runtime-suite-observations.json text eol=lf
+native/drafts/upstream-156/runtime-suite67-observations.json text eol=lf
 native/drafts/upstream-156/stock-control-observations.json text eol=lf
 native/drafts/upstream-156/revision-stamp.args.gn text eol=lf
 native/drafts/runtime-verifier/*.json text eol=lf

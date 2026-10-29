@@ -23,6 +23,13 @@
 
 ### Actual 001–067 Audio/GPU diagnostics
 
+The existing eight-gate **raw runtime suite passed 160/160** with unchanged
+source/core/receipt: runtime 18, hardware 9, WebRTC 7, automation 55, fonts 42,
+identity 18, CDP 6 and combined 5.
+[Scoped runtime evidence](../native/drafts/upstream-156/runtime-suite67-observations.json)
+does not admit the failed native AudioMath group, both math backends, the installed
+package, remaining protected-surface combinations or external anti-bot results.
+
 | Mode/gate | Fidelity | Analyser | Worklet | Realtime |
 | --- | --- | --- | --- | --- |
 | Baseline | **54/54** | **12/12** | **12/12** | **11/11** |

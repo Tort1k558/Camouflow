@@ -10,7 +10,9 @@ prove compilation only. Subsequent GPU off/on/restart phases verified the real
 CDP stamp and all eight WebGL1/2/WebGPU contexts. One Math-mode profile passed
 four Audio API probes, while Legacy failed three; both backend branches are not
 verified. Package validation and policy admission remain open.
-The last complete 156 runtime baseline remains 001–066. The historical evidence
+The existing raw 001–067 runtime suite subsequently passed all eight gates and
+160 checks with source/core/receipt postguards. The last installed-package
+baseline remains 001–066. The historical evidence
 below must not be read as verification of 0067.
 
 The completed 001–067 native batch passed 17/18 groups with source/SDK/core/receipt
