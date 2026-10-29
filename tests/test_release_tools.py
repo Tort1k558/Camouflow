@@ -4858,6 +4858,31 @@ def test_audio_fidelity_stock_fixture_preserves_exact_signals_and_rejects_faults
     assert data["remaining_unverified"]
 
 
+def test_native_156_baseline_manifest_checkpoint_preserves_exact_public_patch_inputs():
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/upstream-156"
+    raw = (root / "checkpoints/001-065.json").read_bytes()
+    manifest = json.loads(raw)
+    baseline = json.loads((root / "windows-runtime-observations.json").read_bytes())
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    assert hashlib.sha256(raw).hexdigest() == baseline["candidate_manifest_sha256"]
+    assert len(manifest["patches"]) == baseline["compiled_patch_count"] == 65
+    assert manifest["target_revision"] == baseline["target_revision"]
+    assert manifest["target_version"] == baseline["target_version"]
+    for row in manifest["patches"]:
+        assert hashlib.sha256((root / "patches" / row["file"]).read_bytes()).hexdigest() == row["sha256"]
+    candidate = build.load_candidate("upstream-156")
+    assert candidate["manifest"]["patches"][:65] == manifest["patches"]
+    for name in ("audio-dsp-math-v2/context-integration.json", "gpu-transport/optional-query-fixture-observations.json"):
+        path = root.parent / name
+        descriptor = json.loads(path.read_bytes())
+        assert (path.parent / descriptor["required_base_manifest"]).resolve() == root / "checkpoints/001-065.json"
+        assert descriptor["required_base_manifest_sha256"] == hashlib.sha256(raw).hexdigest()
+
+
 def test_gpu_optional_query_fixture_evidence_keeps_canonical_admission_separate():
     import hashlib
     import json

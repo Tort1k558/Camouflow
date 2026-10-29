@@ -3,7 +3,7 @@
   "scope": "Unselected AudioContext math integration; source replay and isolated object compilation only",
   "target_version": "156.0.8078.36",
   "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
-  "required_base_manifest": "../upstream-156/manifest.json",
+  "required_base_manifest": "../upstream-156/checkpoints/001-065.json",
   "required_base_manifest_sha256": "4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0",
   "patch": {
     "file": "0068-native-audio-math-context-candidate.patch",

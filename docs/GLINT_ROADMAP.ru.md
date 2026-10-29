@@ -140,6 +140,11 @@ patch replay/reverse-check и неизменность checkout/core/201 вхо�
 Патч пока не выбран, canonical gate и package v7 не допускаются. Далее — явно
 продвинуть fixture в проверяемую цепочку, завершить worker-surfaces/font targets,
 повторить canonical native queue и установленный пакет.
+Перед продвижением fixture сохранён byte-identical manifest 001–065:
+`native/drafts/upstream-156/checkpoints/001-065.json`. Исторические Audio/GPU
+дескрипторы теперь ссылаются на него с прежним SHA-256, а не на изменяемый
+`manifest.json`. Все 65 patch-хешей проверены; release-tools регрессия прошла
+1105 тестов, один skipped. Текущая selected-цепочка и Chromium checkout не менялись.
 
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 

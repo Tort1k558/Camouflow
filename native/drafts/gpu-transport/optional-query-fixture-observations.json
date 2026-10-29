@@ -2,7 +2,7 @@
   "schema": 1,
   "passed": true,
   "scope": "Isolated corrected GPU unit fixture; no production-code or browser-runtime admission",
-  "required_base_manifest": "../upstream-156/manifest.json",
+  "required_base_manifest": "../upstream-156/checkpoints/001-065.json",
   "required_base_manifest_sha256": "4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0",
   "patch": {
     "file": "gpu_readback_metadata_optional_query_fixture.patch",

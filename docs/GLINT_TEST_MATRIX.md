@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | Chromium 156.0.8078.36 / 001–065 | Build Succeeded: 19,487 steps, 3h46m37.79s; browser owner exited zero | Not runtime admission; AudioMath 0068 excluded |
 | Build postguards | Source/SDK/GN checks completed; `camouflow-build.json` records all three core hashes | No native fixture execution |
+| Baseline manifest preservation | Byte-identical 001–065 manifest archived; all 65 referenced patch hashes checked; existing Audio/GPU-fixture records bind the frozen file | Reproducibility metadata only; no new source selection, runtime or package admission |
 | First post-link identity queue | Stopped before tests because an unrelated project's live Ninja triggered the global compiler guard | Failed reports retained; downstream runtime/package queues did not run |
 | Scoped guard correction | Workspace/binary scopes; unknown process details block; legacy unscoped calls stay conservative | Not a compiler lock bypass |
 | Actual guard controls | Two owned sleeping Ninja processes: foreign scope accepted, own scope rejected with PID; both finished naturally | No foreign user processes modified; not native test execution |
@@ -87,6 +88,9 @@ Patch/evidence and network regression: **1136 passed, one skipped** (64.67s),
 `D:\Glint156Candidate\gpu-fixture-python-regression-20261029-v1\pytest.log`.
 The unaffected worker-surfaces/font targets are running separately under
 `native-tail-after-gpu-diagnosis-20261029-v1`; they cannot admit the failed full queue.
+Frozen source contract: [`001-065.json`](../native/drafts/upstream-156/checkpoints/001-065.json).
+Checkpoint/release-tools regression: **1105 passed, one skipped** (63.19s),
+`D:\Glint156Candidate\native65-checkpoint-python-regression-20261029-v1\pytest.log`.
 Stock control: [`stock-control-observations.json`](../native/drafts/upstream-156/stock-control-observations.json);
 matched Audio: [`matched-stock-observations.json`](../native/drafts/audio-dsp-math-v2/matched-stock-observations.json).
 Public runner and scoped evidence: [`browser_matrix.py`](../native/drafts/audio-dsp-math-v2/browser_matrix.py),

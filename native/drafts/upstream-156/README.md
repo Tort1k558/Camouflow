@@ -6,6 +6,15 @@ lock and reviewed 001-062 chain still target Chromium 148.0.7778.96. The separat
 policy and installed-package gates remain pending. The manifest is a source
 contract, not a mutable binary-readiness flag.
 
+### Reproducible 001–065 checkpoint
+
+[`checkpoints/001-065.json`](checkpoints/001-065.json) preserves the exact manifest
+bytes used by the first compiled 156 baseline. Its hash is bound by
+`windows-runtime-observations.json`; all 65 patch files remain in `patches/`.
+Historical Audio integration and GPU-fixture observations reference this frozen
+manifest rather than silently inheriting future changes to `manifest.json`.
+This archive neither selects a new patch nor admits a different binary.
+
 ## Exact-version stock control and Audio calibration
 
 An official CfT Windows archive for **156.0.8078.36** was downloaded with its
