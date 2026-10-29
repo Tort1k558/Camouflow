@@ -191,6 +191,29 @@ build and initial native identity controller were not stopped or restarted.
 The bound runtime report is `runtime-after-identity-20261029-v8/controller.json`;
 it captures the reviewed shared replay helper used by the source fetcher.
 
+### Queued installed-payload verification — 2026-10-29
+
+`package-after-native-20261029-v1/controller.json` on D is bound to the actual
+remaining-native queue process handle. Only successful process exit, the exact
+13 completed selections, each final native postguard and the original passing
+runtime controller permit staging. Observation expiry or a failed/retired queue
+starts nothing. A changed reviewed input stops the chain; **198 input hashes**
+include the candidate patches, public verification/application code and the
+private controller itself.
+
+The pending chain reuses public commands: official mini-installer staging at
+j4 → archive from the exact runtime report → checksum-verified installation in
+a fresh isolated D: store → all eight runtime gates against that installed
+candidate and versioned DLL directory. It does **not** activate the package,
+touch the reviewed 148 store/user profiles, publish a release or bypass version
+downgrade checks. Compatible rollback remains a separate unverified gate.
+
+One positive and six negative prerequisite fixtures passed, as did selected
+undefined-name/syntax checks for the controller. This validates only the queue
+decision logic: **no actual 156 staging/archive/install/relocated runtime has
+run yet**. Reproduction commands are in the
+[candidate README](../native/drafts/upstream-156/README.md#verify-the-installed-development-payload).
+
 ## Windows private identity-file ACL — 2026-10-29
 
 An actual disposable profile on D inherited Users/Authenticated Users data

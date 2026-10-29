@@ -393,6 +393,31 @@ checks and matching official staged files. Manifest/patch changes during
 archiving fail before publication. The archive retains candidate provenance,
 uses `0.2.0-dev`, and keeps `native_patch_runtime_verified: false`.
 
+### Verify the installed development payload
+
+After successful packaging, install into a **new isolated store**, without
+activation. Do not point this check at the manager's working binary store:
+
+```powershell
+$archive = "$evidence/glint-156-dev.tar.gz"
+$store = "$evidence/isolated-store"
+if (Test-Path -LiteralPath $store) { throw 'Use a new isolated binary store' }
+$digest = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+$installedJson = .venv\Scripts\python.exe scripts/native_release.py --store $store install --archive $archive --sha256 $digest
+if ($LASTEXITCODE -ne 0) { throw 'Candidate installation failed' }
+$installed = $installedJson | ConvertFrom-Json
+$libraries = Join-Path (Split-Path -Parent $installed.executable_path) $installed.chromium_version
+.venv\Scripts\python.exe scripts/verify_native_suite.py --candidate upstream-156 --executable $installed.executable_path --windows-library-directory $libraries --release-store $store --release-sha256 $digest --report-dir "$evidence/installed-suite"
+if ($LASTEXITCODE -ne 0) { throw 'Installed candidate runtime checks failed' }
+```
+
+The store verifies every payload file; the suite binds the installed candidate,
+embedded receipt, versioned DLL layout and runtime core to all eight gates.
+Do not add `--activate` or replace a user profile for this check. Installation
+and successful relocated tests do not grant production or experimental policy
+admission. Compatible rollback needs its own measured previous release; the
+store intentionally blocks an older Chromium version, including 156 → 148.
+
 These helpers passed synthetic-file/CLI/installation fixtures, **not actual
 156 staging, packaging or relocated runtime**. Their availability does not
 admit new policies or authorize production publication. Complete runtime,
