@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_completed": true,
+  "scope": "Actual stock156 with driver defaults versus exact manager context options; no Glint execution",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+    "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+    "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+  },
+  "source_sha256": {
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "scripts/capture_native_environment.py": "2ff5d97a34941326f687a24d889de1b4c676b250bde2869690210b7858cfbf2d",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2"
+  },
+  "modes": [
+    {
+      "name": "driver-default",
+      "passed": false,
+      "options": {},
+      "phases": [
+        {
+          "name": "initial",
+          "coherent": false,
+          "document": {
+            "width": 1280,
+            "height": 720,
+            "availWidth": 1280,
+            "availHeight": 720,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          },
+          "cross_origin_frame": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          }
+        },
+        {
+          "name": "restart",
+          "coherent": false,
+          "document": {
+            "width": 1280,
+            "height": 720,
+            "availWidth": 1280,
+            "availHeight": 720,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          },
+          "cross_origin_frame": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "manager-desktop",
+      "passed": false,
+      "options": {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "screen": {
+          "width": 1366,
+          "height": 768
+        },
+        "device_scale_factor": 1.0,
+        "locale": "en-US",
+        "timezone_id": "UTC",
+        "is_mobile": false,
+        "has_touch": false,
+        "permissions": []
+      },
+      "phases": [
+        {
+          "name": "initial",
+          "coherent": false,
+          "document": {
+            "width": 1366,
+            "height": 768,
+            "availWidth": 1366,
+            "availHeight": 768,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          },
+          "cross_origin_frame": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          }
+        },
+        {
+          "name": "restart",
+          "coherent": false,
+          "document": {
+            "width": 1366,
+            "height": 768,
+            "availWidth": 1366,
+            "availHeight": 768,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          },
+          "cross_origin_frame": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "manager-mobile-web",
+      "passed": false,
+      "options": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "screen": {
+          "width": 390,
+          "height": 844
+        },
+        "device_scale_factor": 3.0,
+        "locale": "en-US",
+        "timezone_id": "UTC",
+        "is_mobile": true,
+        "has_touch": true,
+        "permissions": []
+      },
+      "phases": [
+        {
+          "name": "initial",
+          "coherent": false,
+          "document": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 3,
+            "touch": 1
+          },
+          "cross_origin_frame": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 1
+          }
+        },
+        {
+          "name": "restart",
+          "coherent": false,
+          "document": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 3,
+            "touch": 1
+          },
+          "cross_origin_frame": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "no-viewport-emulation",
+      "passed": true,
+      "options": {
+        "no_viewport": true
+      },
+      "phases": [
+        {
+          "name": "initial",
+          "coherent": true,
+          "document": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          },
+          "cross_origin_frame": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          }
+        },
+        {
+          "name": "restart",
+          "coherent": true,
+          "document": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          },
+          "cross_origin_frame": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "touch": 0
+          }
+        }
+      ]
+    }
+  ],
+  "raw_report_sha256": "8b5f84aeb9048c87afa301d07bf25796bab496b138f35f7e0ad08b1ce8f47262",
+  "postguards_passed": true,
+  "glint_runtime_verified": false,
+  "screen_inheritance_fixed": false,
+  "profile_generation_admitted": false,
+  "production_admitted": false
+}
