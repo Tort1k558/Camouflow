@@ -32,6 +32,43 @@ publication. No automatic rebase, download or production activation was added.
 Focused auditor tests passed **27 cases**. The full application suite passed
 **3,507 tests, one skipped** in 293.48 seconds; CI Ruff selection passed.
 
+### Isolated forward-source preflight
+
+Sparse retrieval for observed 156.0.8078.75 stopped at **75 of 185 recorded
+inputs** after Gitiles returned HTTP 429. Pending requests were cancelled;
+there was no retry loop, mirror fallback or checkout update. The 157 target
+was not fetched and the complete 62-patch replay was not attempted. The retained
+failed preflight is `upstream-forward-preflight-20261029-v1/report.json` on D.
+All **302 active source/build input hashes** stayed unchanged.
+
+An offline follow-up reused only hash-validated cached files and applied the
+supported **001–029 prefix** to the exact 156.0.8078.75 revision. Its Chromium
+DEPS pins V8 `235050a0df6db2c9d92a419af2b72fbf3b2dd73b`; the three fetched
+inspector inputs matched the old candidate bytes. Patch 0030 needs five source
+files absent from this cache, so the prefix was explicitly bounded there.
+No new network requests were made for this follow-up. Evidence:
+`cached-forward-prefix-20261029-v1/{report,replay/report}.json` on D.
+This is **29 source-context applications, not 29 compiled/native tests**, a
+complete security update or a usable newer browser. Continue retrieval later
+with cache validation and a lower request rate, respecting server cooldown.
+
+### Queued native target coverage
+
+The current process-bound sequence is: frozen 156 browser build → four identity
+targets → full eight-gate runtime suite → **13 remaining/default native target
+selections**, serially at j4. The final queue covers keys/contexts/delivery,
+worker handoff, document partition/navigation, surface navigation, window
+transport, GPU pack/readback/metadata, worker surfaces and font rasterization.
+Some selections overlap earlier fixtures; do not add their counts as unique
+tests. None of these queued 156 results is passing evidence yet.
+
+`remaining-native-after-runtime-20261029-v1/controller.json` on D binds the
+actual current runtime-controller process handle and requires its successful
+exit/source postguards before building anything. A failed, retired or expired
+observation starts no targets. Each selected native verifier retains its own
+report/log and stops the queue on the first failed execution or postguard.
+This queues work; it does not expand runtime capability or production admission.
+
 ## Windows private identity-file ACL — 2026-10-29
 
 An actual disposable profile on D inherited Users/Authenticated Users data
