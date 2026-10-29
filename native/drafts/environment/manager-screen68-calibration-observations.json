@@ -1,0 +1,4172 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "paired_calibration_complete": true,
+  "postguards_passed": true,
+  "scope": "NativeConfiguration.context_options/launch_arguments with one Playwright page controller, no extra page CDP sessions; not full NativeRuntime or installed-package admission",
+  "same_screen_viewport_css": true,
+  "compared_document_snapshots": 216,
+  "glint_screen_consistency_passed": false,
+  "stock_screen_consistency_passed": false,
+  "chromium_version": "156.0.8078.36",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "runtime_core_sha256": {
+    "glint68": {
+      "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+      "chrome.dll": "36d1a7c35d059d60c41c9c46d48c623918cd2ed63e746d6473c4993d1d729a7d",
+      "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+    },
+    "stock156": {
+      "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+      "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+      "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+    }
+  },
+  "glint_receipt_sha256": "1250a9c4c72d3e85736b7ff99cccbd2ff0c0ca7ccebf56fb7d7ed025b8480dbc",
+  "stock_reference_sha256": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+  "raw_report_sha256": {
+    "glint68": "16fb3882677153e55d29b836160204632b90ec8de96ca3c602f54eafb05f9853",
+    "stock156": "dda812b625c443a79f1530ff09c35563101c7b1d4fd5207374d9c74c84f3aa72"
+  },
+  "source_sha256": {
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "native/drafts/environment/first-script/manager.py": "71d0e333e682205beda57e963fa8df1483505bf7bac24f44caaed27a527a3e6d",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "native/drafts/upstream-156/checkpoints/001-068.json": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2"
+  },
+  "extra_page_cdp_sessions": false,
+  "full_native_runtime_lifecycle_verified": false,
+  "bfcache_verified": false,
+  "process_swap_verified": false,
+  "native_0069_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "prior_attempt": {
+    "kind": "glint68-v1",
+    "measurement_complete": true,
+    "raw_report_sha256": "8ad5ddb51f45981102129eb83c3d75028e58ec89009f0fcb0f1064e3245313fd",
+    "collector_sha256": "3d567c9aa8a4f4223c0e59451e71972549522070517246a5d0052b0865d83c41",
+    "limitation": "Explicit locator position was padding-box-relative; replaced with existing center-click fixture contract, raw trusted click arrays retained in v2. No browser API/policy changes."
+  },
+  "stages": [
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "name": "baseline",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/cross: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "stock_errors": [
+        "A/cross: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1366,
+            768
+          ],
+          "stock_screenshot_size": [
+            1366,
+            768
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1366,
+            "height": 768
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1366,
+            768
+          ],
+          "stock_screenshot_size": [
+            1366,
+            768
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1366,
+            "height": 768
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "name": "resize-A",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1000,
+            700
+          ],
+          "stock_screenshot_size": [
+            1000,
+            700
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1366,
+            768
+          ],
+          "stock_screenshot_size": [
+            1366,
+            768
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1366,
+            "height": 768
+          },
+          "glint_peer_unchanged": true,
+          "stock_peer_unchanged": true,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "name": "resize-B",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1000,
+            700
+          ],
+          "stock_screenshot_size": [
+            1000,
+            700
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": true,
+          "stock_peer_unchanged": true,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            420,
+            900
+          ],
+          "stock_screenshot_size": [
+            420,
+            900
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "name": "cross-site-navigation",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1000,
+            700
+          ],
+          "stock_screenshot_size": [
+            1000,
+            700
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": true,
+          "stock_peer_unchanged": true,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            420,
+            900
+          ],
+          "stock_screenshot_size": [
+            420,
+            900
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "name": "close-peer",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "stock_errors": [
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "pages": {
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            420,
+            900
+          ],
+          "stock_screenshot_size": [
+            420,
+            900
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "restart",
+      "name": "baseline",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/cross: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "stock_errors": [
+        "A/cross: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1366,
+            768
+          ],
+          "stock_screenshot_size": [
+            1366,
+            768
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1366,
+            "height": 768
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1366,
+            768
+          ],
+          "stock_screenshot_size": [
+            1366,
+            768
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1366,
+            "height": 768
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "restart",
+      "name": "resize-A",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1000,
+            700
+          ],
+          "stock_screenshot_size": [
+            1000,
+            700
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1366,
+            768
+          ],
+          "stock_screenshot_size": [
+            1366,
+            768
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1366,
+            "height": 768
+          },
+          "glint_peer_unchanged": true,
+          "stock_peer_unchanged": true,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "restart",
+      "name": "resize-B",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1000,
+            700
+          ],
+          "stock_screenshot_size": [
+            1000,
+            700
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": true,
+          "stock_peer_unchanged": true,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            420,
+            900
+          ],
+          "stock_screenshot_size": [
+            420,
+            900
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "restart",
+      "name": "cross-site-navigation",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1000,
+            700
+          ],
+          "stock_screenshot_size": [
+            1000,
+            700
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": true,
+          "stock_peer_unchanged": true,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            420,
+            900
+          ],
+          "stock_screenshot_size": [
+            420,
+            900
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "restart",
+      "name": "close-peer",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "stock_errors": [
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "pages": {
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            420,
+            900
+          ],
+          "stock_screenshot_size": [
+            420,
+            900
+          ],
+          "glint_touch_points": 0,
+          "stock_touch_points": 0,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "name": "baseline",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1170,
+            2532
+          ],
+          "stock_screenshot_size": [
+            1170,
+            2532
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1170,
+            2532
+          ],
+          "stock_screenshot_size": [
+            1170,
+            2532
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "name": "resize-A",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Other tab operation changed screen/viewport/CSS"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Other tab operation changed screen/viewport/CSS"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            3000,
+            2100
+          ],
+          "stock_screenshot_size": [
+            3000,
+            2100
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1170,
+            2532
+          ],
+          "stock_screenshot_size": [
+            1170,
+            2532
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "glint_peer_unchanged": false,
+          "stock_peer_unchanged": false,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "name": "resize-B",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            3000,
+            2100
+          ],
+          "stock_screenshot_size": [
+            3000,
+            2100
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": true,
+          "stock_peer_unchanged": true,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1260,
+            2700
+          ],
+          "stock_screenshot_size": [
+            1260,
+            2700
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "name": "cross-site-navigation",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            3000,
+            2100
+          ],
+          "stock_screenshot_size": [
+            3000,
+            2100
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": true,
+          "stock_peer_unchanged": true,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1260,
+            2700
+          ],
+          "stock_screenshot_size": [
+            1260,
+            2700
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "name": "close-peer",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "stock_errors": [
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "pages": {
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1260,
+            2700
+          ],
+          "stock_screenshot_size": [
+            1260,
+            2700
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "restart",
+      "name": "baseline",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1170,
+            2532
+          ],
+          "stock_screenshot_size": [
+            1170,
+            2532
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1170,
+            2532
+          ],
+          "stock_screenshot_size": [
+            1170,
+            2532
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "restart",
+      "name": "resize-A",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Other tab operation changed screen/viewport/CSS"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Other tab operation changed screen/viewport/CSS"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            3000,
+            2100
+          ],
+          "stock_screenshot_size": [
+            3000,
+            2100
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1170,
+            2532
+          ],
+          "stock_screenshot_size": [
+            1170,
+            2532
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "glint_peer_unchanged": false,
+          "stock_peer_unchanged": false,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "restart",
+      "name": "resize-B",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            3000,
+            2100
+          ],
+          "stock_screenshot_size": [
+            3000,
+            2100
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": true,
+          "stock_peer_unchanged": true,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1260,
+            2700
+          ],
+          "stock_screenshot_size": [
+            1260,
+            2700
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "restart",
+      "name": "cross-site-navigation",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "stock_errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            3000,
+            2100
+          ],
+          "stock_screenshot_size": [
+            3000,
+            2100
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 1000,
+            "height": 700
+          },
+          "glint_peer_unchanged": true,
+          "stock_peer_unchanged": true,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1260,
+            2700
+          ],
+          "stock_screenshot_size": [
+            1260,
+            2700
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "restart",
+      "name": "close-peer",
+      "glint_passed": false,
+      "stock_passed": false,
+      "glint_errors": [
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "stock_errors": [
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B/Main first-script identity changed across tabs/navigation/restart"
+      ],
+      "pages": {
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "glint_screenshot_size": [
+            1260,
+            2700
+          ],
+          "stock_screenshot_size": [
+            1260,
+            2700
+          ],
+          "glint_touch_points": 1,
+          "stock_touch_points": 1,
+          "requested_viewport": {
+            "width": 420,
+            "height": 900
+          },
+          "glint_peer_unchanged": null,
+          "stock_peer_unchanged": null,
+          "glint_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          },
+          "stock_trusted_last_clicks": {
+            "main": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "same": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "cross": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "srcdoc": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "about-blank": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            },
+            "nested-return": {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          }
+        }
+      }
+    }
+  ]
+}

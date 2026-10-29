@@ -11,6 +11,7 @@
 | Queued main-root correction | Two-file 0070 draft, three Blink simulation cases, read-only apply-check passed against 0069 | [Preparation](../native/drafts/environment/main-dpr70-preparation.json); unselected/uncompiled; the live 0069 build is unchanged |
 | Public first-script CLI | All six phases completed; four manager failures reproduced, both controls passed; core/receipt/source guards and final owned-process cleanup passed | [CLI execution](../native/drafts/environment/public-first-script-cli-observations.json); previous incomplete attempts retained; no retry loop or timeout increase; not 0069 execution |
 | Paired lifecycle stress | Glint 001–068 and stock156 completed seven stages; **78 screen/viewport/CSS snapshots matched**; all six documents genuinely restored from BFCache in both | [Calibration](../native/drafts/environment/screen-lifecycle68-calibration-observations.json); both fail the same mixed-controller state checks, not a Glint-specific regression or supported-manager-path admission |
+| Manager context-options control | Desktop/mobile-web, two tabs, viewport updates, navigation, peer close and persistent restart; **216 screen/viewport/CSS snapshots matched stock156**; both fail strict stable-screen identity checks | [Calibration](../native/drafts/environment/manager-screen68-calibration-observations.json); no extra page CDP sessions. `set_viewport_size` can reset screen by API contract; not full NativeRuntime, BFCache, new 0069/0070 execution or package admission |
 
 ## Chromium 156 / 001–068 — 2026-10-30
 

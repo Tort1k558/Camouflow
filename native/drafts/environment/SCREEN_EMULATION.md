@@ -163,8 +163,8 @@ preserved Glint 001–068 and official stock156 at the same Git revision. All
 **78 screen/viewport/CSS snapshots matched**. Both runs completed all seven
 stages and restored all **six documents** from BFCache, but both also failed the
 same requested-state/independence checks. These failures are not attributed to
-Glint: the next control must use manager-owned context options and supported
-viewport changes, before changing native policy ownership based on this stress.
+Glint. The separate manager-options control below removes the additional page
+CDP sessions before drawing conclusions about native policy ownership.
 
 BFCache is measured with native `Page.frameNavigated` type
 `BackForwardCacheRestore` plus retained `pageshow.persisted` evidence from every
@@ -179,6 +179,32 @@ The cacheable loopback response and removal of the driver's BFCache-disable
 argument are explicit diagnostic settings, not product defaults. PID-level
 process-swap proof, post-restore screenshot/input, actual 0069/0070 binaries,
 protected workers/surfaces and installed-package admission remain open.
+
+### Manager-owned context options, without extra page CDP sessions
+
+[`first-script/manager.py`](first-script/manager.py) calls actual
+`NativeConfiguration.context_options()` / `launch_arguments()`, then uses one
+Playwright page controller. Both preserved Glint 001–068 and pinned stock156
+completed desktop/mobile-web, initial/restart and five stages per phase:
+two tabs, resize A/B, cross-site navigation and peer close. All **216 measured
+screen/viewport/CSS snapshots matched**. Raw clicks, screenshot dimensions,
+touch availability and immutable source/core/reference guards are retained.
+[Paired evidence](manager-screen68-calibration-observations.json).
+
+Both fail the strict product-level requirement to keep the configured screen
+identity stable. This is not a claim of a Chromium API violation:
+[`Page.set_viewport_size`](https://playwright.dev/python/docs/api/class-page#page-set-viewport-size)
+explicitly can reset screen size. Baseline cross-origin screen leakage and
+mobile root DPR also remain reproducible without an extra CDP page controller.
+The input calibration's first attempt used padding-box-relative click offsets;
+it is retained separately, while the completed run uses the existing fixture's
+center-click contract and records the actual trusted events. No API masking,
+runtime policy changes or deadline increases were used.
+
+This verifies the manager configuration-options path, not the complete
+`NativeRuntime.start()` lifecycle, package admission, BFCache, real process
+swap or the still-building 0069/queued 0070. Repeat against the linked new
+binary before claiming inheritance or stable profile identity is fixed.
 
 The frozen 0069 draft's logical DPR accessor still restricts its override to
 subframes, leaving the main root on Page-global inspector state. The queued

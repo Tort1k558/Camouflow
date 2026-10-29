@@ -693,3 +693,78 @@ def test_screen_lifecycle_calibration_matches_stock_without_false_manager_or_nat
     for name, expected in record["source_sha256"].items():
         assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == expected
     assert record["prior_incomplete_attempt"]["measurement_complete"] is False
+
+
+@pytest.fixture
+def manager_screen_collector():
+    import runpy
+
+    return runpy.run_path(str(environment.ROOT / "native/drafts/environment/first-script/manager.py"))
+
+
+def test_manager_screen_validator_uses_context_identity_and_actual_child_embedding(manager_screen_collector):
+    from types import SimpleNamespace
+
+    observed = manager_screen_collector["LIFECYCLE"]["restored_observations"](restored_screen_state())
+    original = copy.deepcopy(observed)
+    root = observed["main"]["snapshot"]
+    configuration = SimpleNamespace(width=root["screen"]["width"], height=root["screen"]["height"],
+                                    device_scale_factor=root["screen"]["dpr"])
+    assert not manager_screen_collector["validate_capture"](observed, configuration, root["viewport"], root["screen"])
+    assert observed == original
+
+
+@pytest.mark.parametrize("mutation", ["viewport", "configuration", "child-screen", "child-embedding", "css", "coverage"])
+def test_manager_screen_validator_rejects_inconsistent_supported_path(manager_screen_collector, mutation):
+    from types import SimpleNamespace
+
+    observed = manager_screen_collector["LIFECYCLE"]["restored_observations"](restored_screen_state())
+    root = observed["main"]["snapshot"]
+    viewport = dict(root["viewport"])
+    baseline = dict(root["screen"])
+    configuration = SimpleNamespace(width=baseline["width"], height=baseline["height"],
+                                    device_scale_factor=baseline["dpr"])
+    if mutation == "viewport":
+        viewport["width"] += 1
+    elif mutation == "configuration":
+        configuration.device_scale_factor += 1
+    elif mutation == "child-screen":
+        observed["cross"]["snapshot"]["screen"]["width"] += 1
+    elif mutation == "child-embedding":
+        observed["cross"]["embedding_size"]["width"] += 1
+    elif mutation == "css":
+        observed["same"]["snapshot"]["media"]["resolution"] = False
+    else:
+        observed.pop("about-blank")
+        with pytest.raises(ValueError, match="six"):
+            manager_screen_collector["validate_capture"](observed, configuration, viewport, baseline)
+        return
+    assert manager_screen_collector["validate_capture"](observed, configuration, viewport, baseline)
+
+
+def test_manager_screen_calibration_binds_sources_and_retains_failed_identity_contract():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/manager-screen68-calibration-observations.json").read_bytes())
+    assert record["measurement_complete"] and record["paired_calibration_complete"] and record["postguards_passed"]
+    assert record["same_screen_viewport_css"] and record["compared_document_snapshots"] == 216
+    assert not record["passed"] and not record["glint_screen_consistency_passed"] and not record["stock_screen_consistency_passed"]
+    assert all(record[name] is False for name in ("extra_page_cdp_sessions", "full_native_runtime_lifecycle_verified",
+        "bfcache_verified", "process_swap_verified", "native_0069_verified", "privacy_admitted", "production_admitted"))
+    assert len(record["stages"]) == 20
+    assert {(row["mode"], row["phase"]) for row in record["stages"]} == {
+        (mode, phase) for mode in ("manager-desktop", "manager-mobile-web") for phase in ("initial", "restart")}
+    assert sum(page["document_contexts"] for row in record["stages"] for page in row["pages"].values()) == 216
+    for row in record["stages"]:
+        for page in row["pages"].values():
+            assert page["same_screen_viewport_css"]
+            assert page["glint_screenshot_size"] == page["stock_screenshot_size"]
+            for kind in ("glint", "stock"):
+                assert (page[kind + "_touch_points"] > 0) == (row["mode"] == "manager-mobile-web")
+                assert set(page[kind + "_trusted_last_clicks"]) == {
+                    "main", "same", "cross", "nested-return", "srcdoc", "about-blank"}
+                assert all(click == {"trusted": True, "x": 52, "y": 38, "inside": True}
+                           for click in page[kind + "_trusted_last_clicks"].values())
+    for name, value in record["source_sha256"].items():
+        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
