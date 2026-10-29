@@ -123,6 +123,32 @@ exception-order conformance. Untainted zero dimensions still require
 `IndexSizeError`. Original `canvas-reset-contract-20261029-v1` evidence is retained;
 no Chromium exception handling was changed to satisfy the verifier.
 
+### Combined protected-surface regression
+
+The expanded security/reset fixture also passed with the existing experimental
+Canvas/OfflineAudio/WebGL readback paths together on the preserved flat-layout
+**148 / 001-062** binary. Both `partitioned-privacy` and `profile-identity` runs
+completed with child exit zero: **12 named phases each**, including baseline and
+two protected profiles before/after restart, concurrent ownership, symmetric
+peer close/restart isolation and missing-document-policy rejection. All six
+baseline/protected sequential phases in each mode checked the new security/reset
+fields in three document/frame scopes. Native core, exact receipt and verifier
+source snapshots remained unchanged.
+
+Each mode additionally passed **24 nested classic/module Canvas cases** across
+the six sequential phases. Canvas/Audio and GPU cross-profile isolation passed;
+WebGL1/2 readback was measured in the same contexts/profiles. Audio float32/SNR
+observations remain in the raw reports, not a listening-quality guarantee.
+GPU results are settled reads, not first-script/nested GPU or WebGPU protection.
+Evidence: `expanded-combined-surfaces-20261029-v1/report.json` and its two
+mode-specific `report.json`/`driver.log` files on D.
+
+These are **24 combined phase checks, not a repeat of the full eight-gate
+runtime suite or new native unit tests**. The runs keep `privacy_admitted=false`.
+The known explicit-pixel fidelity/detectability limits of the old Canvas
+readback transform remain: passing reset/security/isolation does not repair
+those pixels, admit product capabilities or prove Chromium 156 behavior.
+
 ## Manager same-origin frame diagnostics — 2026-10-29
 
 The running-profile diagnostic now checks its own document and dedicated worker,
