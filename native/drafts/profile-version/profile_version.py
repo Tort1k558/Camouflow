@@ -1,0 +1,76 @@
+"""Windows-only prelaunch profile-version protection; no migration or fallback."""
+
+import ctypes
+from ctypes import wintypes
+from pathlib import Path
+import re
+import stat
+import struct
+import sys
+
+
+def windows_binary_version(executable: Path) -> tuple[int, int, int, int]:
+    if sys.platform != "win32":
+        raise ValueError("Native PE version measurement currently supports Windows only")
+    version = ctypes.WinDLL("version", use_last_error=True)
+    version.GetFileVersionInfoSizeW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(wintypes.DWORD)]
+    version.GetFileVersionInfoSizeW.restype = wintypes.DWORD
+    version.GetFileVersionInfoW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p]
+    version.GetFileVersionInfoW.restype = wintypes.BOOL
+    version.VerQueryValueW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR,
+                                      ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.UINT)]
+    version.VerQueryValueW.restype = wintypes.BOOL
+    ignored = wintypes.DWORD()
+    size = version.GetFileVersionInfoSizeW(str(executable), ctypes.byref(ignored))
+    if not 0 < size <= 16 * 1024 * 1024:
+        raise ValueError("Native executable version information is missing or exceeds its bound")
+    buffer = ctypes.create_string_buffer(size)
+    if not version.GetFileVersionInfoW(str(executable), 0, size, buffer):
+        raise ctypes.WinError(ctypes.get_last_error())
+    pointer = ctypes.c_void_p()
+    count = wintypes.UINT()
+    if not version.VerQueryValueW(buffer, "\\", ctypes.byref(pointer), ctypes.byref(count)):
+        raise ValueError("Native executable fixed version information is missing")
+    if (not pointer.value or not 52 <= count.value <= size
+            or pointer.value < ctypes.addressof(buffer)
+            or pointer.value + 52 > ctypes.addressof(buffer) + size):
+        raise ValueError("Native executable fixed version information is invalid")
+    fields = struct.unpack("<13I", ctypes.string_at(pointer, 52))
+    if fields[0] != 0xFEEF04BD:
+        raise ValueError("Native executable fixed version signature is invalid")
+    result = (fields[2] >> 16, fields[2] & 0xffff, fields[3] >> 16, fields[3] & 0xffff)
+    if not result[0]:
+        raise ValueError("Native executable does not report a usable Chromium file version")
+    return result
+
+
+def ensure_profile_version_compatible(profile: Path, executable: Path) -> None:
+    if sys.platform != "win32":
+        raise ValueError("Native profile version protection currently supports Windows only")
+    version_file = profile / "Last Version"
+    try:
+        info = version_file.lstat()
+    except FileNotFoundError:
+        if (profile / "Default").exists() or (profile / "Local State").exists():
+            raise ValueError("Native browser data exists without Last Version; compatibility cannot be established")
+        return
+    if (not stat.S_ISREG(info.st_mode) or info.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
+            or not 0 < info.st_size <= 128):
+        raise ValueError("Native profile Last Version must be a bounded regular file")
+    with version_file.open("rb") as stream:
+        raw = stream.read(129)
+    if len(raw) > 128:
+        raise ValueError("Native profile Last Version exceeds its bound")
+    try:
+        text = raw.decode("utf-8-sig").strip()
+    except UnicodeError as error:
+        raise ValueError("Native profile Last Version is not valid UTF-8") from error
+    if not re.fullmatch(r"[0-9]{1,5}(?:\.[0-9]{1,5}){3}", text):
+        raise ValueError("Native profile Last Version is invalid")
+    previous = tuple(int(part) for part in text.split("."))
+    if not previous[0] or any(part > 65535 for part in previous):
+        raise ValueError("Native profile Last Version is outside Chromium file-version bounds")
+    selected = windows_binary_version(executable)
+    if previous > selected:
+        raise ValueError("Native Chromium downgrade is blocked: profile " + ".".join(map(str, previous))
+                         + " is newer than selected executable " + ".".join(map(str, selected)))

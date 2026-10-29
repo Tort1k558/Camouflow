@@ -10,6 +10,7 @@
 | Scoped guard correction | Workspace/binary scopes; unknown process details block; legacy unscoped calls stay conservative | Not a compiler lock bypass |
 | Actual guard controls | Two owned sleeping Ninja processes: foreign scope accepted, own scope rejected with PID; both finished naturally | No foreign user processes modified; not native test execution |
 | Resumed native identity-key target | 62 cases passed; native source/toolchain/browser-core postguards passed | Not document/worker identity or the remaining fixture targets |
+| Native BrowserContext identity target | 37 cases passed; source/toolchain/browser-core postguards passed | Unit-level BrowserContext coverage; renderer/worker transport and browser policy admission remain unverified |
 | Disposable startup | 156.0.8078.36 opened the controlled page; sandbox requested, effective `--no-sandbox` absent; runtime resources closed | Regular raw/headless baseline, not concealed-automation admission |
 | Extended baseline lifecycle | Two repeats each passed all 18 checks: isolation/five stores, permissions, crash/restarts, owned-process cleanup, controlled authenticated proxy, manager/scenarios, Recorder and backup/restore | One repeat had diagnostic logging, the other ordinary verbosity; not the full eight-gate policy suite |
 | First extended baseline failure | Close timed out after five checks; temporary-directory cleanup then masked the primary failure | Negative retained; passing repeats do not explain or repair the timeout |
@@ -17,14 +18,17 @@
 | Native156 Audio calibration | 15 cases × three repetitions = 45 bit-exact native156 prototype matches; cleanup/postguards passed | Unprotected baseline only; AudioMath/float32 runtime and stock156 comparison unverified |
 | Compiled Glint branding | Main/app-list icons match project logo; ProductName in EXE/DLL and internal version-page heading are Glint; resource-pack postguards passed | Not OS taskbar/shortcut cache migration or fingerprint admission |
 | Staged verifier evidence retention | Five actual held-file controls and an 18-check browser regression passed on a patched copy; original exception/profile retained on failure | Canonical verifier unchanged; underlying browser-close timeout is not fixed |
-| Current release-tool validators | 1,090 passed, one skipped in 44.47 seconds | Validates report/probe bindings and scopes, not execution of additional native gates |
+| Staged Windows profile-version guard | 22 owned marker/real-PE/mocked-launch controls; one real 148-to156 upgrade preserved five stores and identity; selecting 148 afterwards rejected before identity/driver calls, with files unchanged | Unapplied Runtime patch; no older browser opened upgraded data; not general migration/rollback or Linux/macOS protection |
+| Current release-tool validators | 1,091 passed, one skipped in 41.12 seconds | Validates report/probe bindings and scopes, not execution of additional native gates |
 | Python validation | 1,439 passed, one skipped across changed tooling tests; 15 focused guard cases passed | Not browser/native execution or remote CI |
 
 Build evidence: `D:\Glint156Candidate\fixture-build-continuation-20261029-v2.json`;
 core receipt: `chromium\src\out\CamouFlowNative\camouflow-build.json` below that workspace.
 Guard process controls: `D:\GlintBuilderGuardProbe-20261029-v2\report.json`.
+Context target evidence: `D:\Glint156Candidate\identity-after-link-20261029-v5\identity-contexts.json`.
 Sanitized evidence: [`windows-runtime-observations.json`](../native/drafts/upstream-156/windows-runtime-observations.json).
 Staged fix and application boundary: [`runtime-verifier/README.md`](../native/drafts/runtime-verifier/README.md).
+Per-profile version guard: [`profile-version/README.md`](../native/drafts/profile-version/README.md).
 Remaining identity/native targets, canonical eight-gate policy suite, installed
 runtime, compatible rollback and shutdown reliability evidence remain required
 before any candidate release claim. No detector/CAPTCHA outcomes are asserted.

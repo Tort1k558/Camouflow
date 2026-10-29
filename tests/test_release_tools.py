@@ -4623,6 +4623,47 @@ def test_unapplied_runtime_retention_draft_preserves_original_failure_scope():
     assert data["frozen_inputs_unchanged"] == 201 and data["application_gate"]
 
 
+def test_unapplied_windows_profile_version_guard_binds_runtime_and_readonly_controls():
+    import ast
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/profile-version"
+    raw = (root / "windows-profile-version-guard.json").read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    assert data["schema"] == 1 and data["platform"] == "win32"
+    for field in ("applied_to_canonical_runtime", "other_platforms_implemented", "production_admitted",
+                  "profile_data_rewritten_by_guard"):
+        assert data[field] is False
+    assert data["source_application_passed"] and data["no_fallback"]
+    runtime = build.ROOT / data["source_file"]
+    normalized = runtime.read_text(encoding="utf-8-sig").encode("utf-8")
+    assert hashlib.sha256(normalized).hexdigest() == data["source_before_normalized_sha256"]
+    assert not (build.ROOT / "app/core/native/profile_version.py").exists()
+    for field in ("guard", "patch"):
+        artifact = (root / data[field]["file"]).read_bytes()
+        assert hashlib.sha256(artifact).hexdigest() == data[field]["sha256"]
+        assert b"\r" not in artifact and not artifact.startswith(b"\xef\xbb\xbf")
+    ast.parse((root / data["guard"]["file"]).read_text(encoding="utf-8"))
+    controls = data["marker_and_mocked_launch_controls"]
+    assert len(controls) == data["control_count"] == len({row["name"] for row in controls}) == 22
+    assert all(row["passed"] for row in controls)
+    assert {"blocked-before-identity-and-driver", "invalid-pe-version", "missing-marker-existing-data",
+            "local-state-without-marker", "invalid-utf8", "directory-marker"}.issubset({row["name"] for row in controls})
+    assert data["measured_pe_versions"] == {"reviewed148": [148, 0, 7778, 96], "candidate156": [156, 0, 8078, 36]}
+    upgrade = data["real_owned_upgrade"]
+    assert upgrade["passed"] and upgrade["real_upgrade_five_stores_preserved"]
+    assert upgrade["owned_identity_payload_unchanged"] and upgrade["rejected_profile_files_unchanged"]
+    assert upgrade["downgrade_rejected_before_identity_and_driver"]
+    assert upgrade["older_browser_started_on_upgraded_profile"] is False
+    assert upgrade["resources_closed"] and upgrade["postguards_passed"]
+    assert upgrade["after_upgrade_storage"] == {"cookie": "owned=owned-upgrade-control",
+        "local": "owned-upgrade-control", "indexed": "owned-upgrade-control", "cached": "owned-upgrade-control", "workers": 1}
+    assert data["frozen_inputs_unchanged"] == 201 and data["application_gate"] and data["remaining_unverified"]
+
+
 def test_audio_math_context_draft_binds_source_only_integration():
     import hashlib
     import json

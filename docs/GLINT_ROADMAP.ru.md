@@ -39,6 +39,14 @@ ProductName EXE/DLL и заголовок chrome://version — Glint. Кеш tas
 объявлен исправленным. Применять только после завершения source-bound очередей
 с новой фиксацией входов: `native/drafts/runtime-verifier/README.md`.
 
+Также подготовлен Windows per-profile version guard для прямого выбора EXE:
+проверка Last Version/PE FileVersion выполняется под owner lock до чтения ключа
+и запуска driver. Прошли 22 marker/PE/mocked-launch контроля и один реальный
+owned upgrade 148→156: пять хранилищ и private identity сохранились; обратный
+выбор 148 заблокирован до открытия профиля, его файлы не изменились.
+Канонический Runtime пока не изменён. Это не общая гарантия миграций/rollback
+и не реализация Linux/macOS: `native/drafts/profile-version/README.md`.
+
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 
 Подготовлен отдельный draft 0068 для Chromium 156 после 001–065:

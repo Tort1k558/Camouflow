@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "scope": "Unapplied Windows per-profile prelaunch downgrade protection; not general migration or binary authenticity",
+  "applied_to_canonical_runtime": false,
+  "source_application_passed": true,
+  "platform": "win32",
+  "other_platforms_implemented": false,
+  "production_admitted": false,
+  "source_file": "app/core/native/runtime.py",
+  "source_text_normalization": "UTF-8 without BOM, LF",
+  "source_before_normalized_sha256": "3272444b6849509472d22d0251c40766f4486509c2fd7fb99ad1964e5c4f5850",
+  "source_after_sha256": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+  "captured_source_raw_sha256": "3272444b6849509472d22d0251c40766f4486509c2fd7fb99ad1964e5c4f5850",
+  "patch": {
+    "file": "windows-profile-version-guard.patch",
+    "sha256": "befcfd50aa72fa07ab883e8715854e95727ff45c3a6f032d2f81925779791046"
+  },
+  "guard": {
+    "file": "profile_version.py",
+    "sha256": "b911cea8e1d2eed4e2d8f9d4c78cbe5ba8f9dfbfce16365f5675b5b213150081"
+  },
+  "measured_pe_versions": {
+    "reviewed148": [
+      148,
+      0,
+      7778,
+      96
+    ],
+    "candidate156": [
+      156,
+      0,
+      8078,
+      36
+    ]
+  },
+  "marker_and_mocked_launch_controls": [
+    {
+      "name": "same148",
+      "passed": true
+    },
+    {
+      "name": "same156",
+      "passed": true
+    },
+    {
+      "name": "upgrade148-to156",
+      "passed": true
+    },
+    {
+      "name": "downgrade156-to148",
+      "passed": true
+    },
+    {
+      "name": "newer-micro",
+      "passed": true
+    },
+    {
+      "name": "older-micro",
+      "passed": true
+    },
+    {
+      "name": "bom-and-newline",
+      "passed": true
+    },
+    {
+      "name": "missing-marker-existing-data",
+      "passed": true
+    },
+    {
+      "name": "fresh-no-marker",
+      "passed": true
+    },
+    {
+      "name": "malformed",
+      "passed": true
+    },
+    {
+      "name": "extra-component",
+      "passed": true
+    },
+    {
+      "name": "empty",
+      "passed": true
+    },
+    {
+      "name": "oversize",
+      "passed": true
+    },
+    {
+      "name": "zero-major",
+      "passed": true
+    },
+    {
+      "name": "outside-word",
+      "passed": true
+    },
+    {
+      "name": "blocked-before-identity-and-driver",
+      "passed": true
+    },
+    {
+      "name": "same-version-launch-contract",
+      "passed": true
+    },
+    {
+      "name": "upgrade-launch-contract",
+      "passed": true
+    },
+    {
+      "name": "local-state-without-marker",
+      "passed": true
+    },
+    {
+      "name": "directory-marker",
+      "passed": true
+    },
+    {
+      "name": "invalid-utf8",
+      "passed": true
+    },
+    {
+      "name": "invalid-pe-version",
+      "passed": true
+    }
+  ],
+  "control_count": 22,
+  "real_owned_upgrade": {
+    "passed": true,
+    "scope": "One real owned-profile 148-to156 upgrade plus prelaunch rejection; not general migration/downgrade admission",
+    "older_browser_started_on_upgraded_profile": false,
+    "after_upgrade_storage": {
+      "cookie": "owned=owned-upgrade-control",
+      "local": "owned-upgrade-control",
+      "indexed": "owned-upgrade-control",
+      "cached": "owned-upgrade-control",
+      "workers": 1
+    },
+    "owned_identity_payload_unchanged": true,
+    "real_upgrade_five_stores_preserved": true,
+    "downgrade_rejected_before_identity_and_driver": true,
+    "rejected_profile_files_unchanged": true,
+    "resources_closed": true,
+    "postguards_passed": true
+  },
+  "validated_version_transition": [
+    "148.0.7778.96",
+    "156.0.8078.36"
+  ],
+  "frozen_inputs_unchanged": 201,
+  "remaining_unverified": [
+    "Canonical application and complete Runtime/manager regression after queue quiescence",
+    "Unknown or corrupted real profiles; this does not repair their data",
+    "General cross-version migration, private snapshot recovery or rollback compatibility",
+    "Linux/macOS guard implementation and runtime checks",
+    "Executable authenticity remains the managed checksum/admission responsibility"
+  ],
+  "application_gate": "After existing source-bound queues are terminal; normalize target text, apply patch and rebind inputs",
+  "no_fallback": true,
+  "profile_data_rewritten_by_guard": false
+}
