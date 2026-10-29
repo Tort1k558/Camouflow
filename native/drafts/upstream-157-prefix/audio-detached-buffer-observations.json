@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "scope": "Public AudioBuffer transfer on matched stock/Glint 148; not native protected-copy cleanup or 157 execution",
+  "browser_version": "148.0.7778.96",
+  "measurement_complete": true,
+  "buffer_transfer_controls_passed": true,
+  "postguards_passed": true,
+  "all_runtime_resources_closed": true,
+  "owned_identity_payloads_unchanged": true,
+  "sandbox_requested": true,
+  "no_sandbox_flag_absent": true,
+  "native156_verified": false,
+  "native157_verified": false,
+  "protected_copy_path_executed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "probe": {
+    "file": "audio-detached-buffer-control.js",
+    "sha256": "68f7828506fe7c02798b01c63424ba3ee48f5a9f3f4304efcf5bdae86efcb78c"
+  },
+  "receipt_sha256": "e39654a2a45f981e3ef87b7fd187af60329bd38ec482e8e8e18728c5e9f4bb12",
+  "native_core_sha256": {
+    "chrome.exe": "275ad4eaa4b51b3e53a9a57496ecb17f6bc90b8c687e252567ce7d2050c0088c",
+    "chrome.dll": "9b65965659f4ba78f2da12d18c858519a68066df232f0cd67a92bdb004e7a24a",
+    "chrome_elf.dll": "f26f09cadfc9fbfe1384c2df2a7549151e4afa988568e6468d296d4fd61303fb"
+  },
+  "stock_core_sha256": {
+    "chrome.exe": "290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635",
+    "chrome.dll": "2dec55e969120a4f365942ddf143df869dad9bc7595400da87af247c74c867fd",
+    "chrome_elf.dll": "994bc5cc8de982bdc8aecb92c7fc639a7801ae62745e6a38e7ffc0a9664c164e"
+  },
+  "capture_count": 15,
+  "phases": [
+    {
+      "phase": "stock-baseline",
+      "repetitions": 3
+    },
+    {
+      "phase": "a-native-baseline",
+      "repetitions": 3
+    },
+    {
+      "phase": "a-partitioned",
+      "repetitions": 3
+    },
+    {
+      "phase": "a-identity",
+      "repetitions": 3
+    },
+    {
+      "phase": "a-identity-restart",
+      "repetitions": 3
+    }
+  ],
+  "identical_observation_for_all_captures": {
+    "beforeFrames": 128,
+    "afterFrames": 0,
+    "originalBytes": 0,
+    "transferredBytes": 512,
+    "sourceFrames": 128,
+    "passed": true
+  }
+}

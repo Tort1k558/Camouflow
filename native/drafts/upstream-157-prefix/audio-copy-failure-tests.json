@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "scope": "Source application only; deterministic detached-target injection",
+  "target_version": "157.0.8103.27",
+  "target_revision": "f9d7b13a569b352a0267234ea5740fdecc83ffa2",
+  "required_base_manifest_sha256": "993a96741731d2e9dcfd214ec694be4ebdca47e60641be0692ceb1641806d7ed",
+  "required_patches": [
+    {
+      "file": "0066-native-chunked-audio-tests.patch",
+      "sha256": "486078280053322f6a4081280b4ad5bc88dd37c8bfd41ac5001fdf54e2a40ead"
+    }
+  ],
+  "patch": {
+    "file": "0067-native-audio-copy-failure-tests.patch",
+    "sha256": "0b7f92d150a39cddea331180847f4491be8ec7c24cc7a3334fc4cac61f69f399"
+  },
+  "selected_in_manifest": false,
+  "compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "source_files": [
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/offline_audio_context.h",
+      "before_sha256": "f717b7c26c3118bcae6c935f4cefdbb5f86fd462274cf107814a6f6c29e8d268",
+      "after_sha256": "3501fd48c1a0d0ae5bf94cf65bc10b8756e932a254c1ea3e106a91690617594e",
+      "preserved_tests": 0,
+      "added_tests": []
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc",
+      "before_sha256": "d4239c8bbc0d506105f19ae14913b4ae08f5c5e966fec002c1f374c0e3bef5ec",
+      "after_sha256": "120d89073e20063fa4e315b0099249132b9ecaed3125604c3d28dc4e30ef0d6c",
+      "preserved_tests": 25,
+      "added_tests": [
+        "OfflineAudioContextTest.GlintProtectedCopyFailureRejectsPendingQueueWithoutRawResult"
+      ]
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer_unittest.cc",
+      "before_sha256": "9f560630a324ebca14806a427178076fa861241def83853a453757a5ba298ce1",
+      "after_sha256": "0ccdc10499972f5096a0c1ce049e6fc30255bbc8871974b19d3306babc50326e",
+      "preserved_tests": 4,
+      "added_tests": [
+        "GlintOfflineAudioBufferTest.DetachedSourceRejectsWithoutRawFallback"
+      ]
+    }
+  ],
+  "api_sources": [
+    {
+      "path": "base/gtest_prod_util.h",
+      "git_blob_sha1": "21adcfe2e031b391f0ca4aee50f4670c03a8faa8",
+      "sha256": "ffcf29d9afbf76513b49d392fc9b44e389efb0c5119a93745c5c549498ddc733",
+      "bytes": 1988,
+      "same_pinned_156_blob": true
+    },
+    {
+      "path": "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h",
+      "git_blob_sha1": "814c71b8e19fbd559b2b51cab1e42c4ca77aa2fc",
+      "sha256": "db51ff4d7285c04910d582a02a957ff3791fe964a14c3c450ce1cbbb0c854671",
+      "bytes": 5494,
+      "same_pinned_156_blob": false
+    },
+    {
+      "path": "third_party/blink/renderer/core/typed_arrays/dom_array_buffer_view.h",
+      "git_blob_sha1": "7fa7e3c48be704e87ab32de4b4a9a8c54d88f8e0",
+      "sha256": "2e1589eaac8fd0e0068226c5f38ab9d0c5c97fb14c799205a11a01af8f986b0b",
+      "bytes": 4623,
+      "same_pinned_156_blob": false
+    },
+    {
+      "path": "third_party/blink/renderer/core/typed_arrays/array_buffer/array_buffer_contents.h",
+      "git_blob_sha1": "2461254ba65ad9cd660b0784129ff0f106421e1a",
+      "sha256": "7910ce6f5cb01718b3f6686f903ca9713b9ee350ced866d6394b638ff5c89966",
+      "bytes": 7489,
+      "same_pinned_156_blob": false
+    },
+    {
+      "path": "third_party/blink/renderer/core/dom/dom_exception.h",
+      "git_blob_sha1": "4a263116149b9236f6f7827117e8f6172ee47f04",
+      "sha256": "685b81c705ccf7ff78fc76d1a00b623ba0e71b10405d649ea0b85c776eed7295",
+      "bytes": 4596,
+      "same_pinned_156_blob": true
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/audio_buffer.h",
+      "git_blob_sha1": "0dd11f830ee2829778b6c89ec51edeb1da839f74",
+      "sha256": "7695aaaa41e5e2bb329ffc483a4ede420df376f86a2f2b24fdb27fb4b19b7938",
+      "bytes": 6367,
+      "same_pinned_156_blob": true
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/audio_buffer.cc",
+      "git_blob_sha1": "7a899b0d8cf249d1a01bbc08be8e83e23e6735d9",
+      "sha256": "0bcbb8f5b03f4a82130e11d25f2086e0a7ad69ef6e80536ed209029422179e25",
+      "bytes": 12886,
+      "same_pinned_156_blob": true
+    }
+  ],
+  "expected_tests": [
+    "OfflineAudioContextTest.GlintProtectedCopyFailureRejectsPendingQueueWithoutRawResult",
+    "GlintOfflineAudioBufferTest.DetachedSourceRejectsWithoutRawFallback"
+  ],
+  "injection_scope": "Replace only pending completed target with a separately detached AudioBuffer while paused at frame zero; do not detach the audio-thread shared buffer",
+  "production_seam": "One FRIEND_TEST_ALL_PREFIXES declaration; no implementation, allocator, HMAC, CLI or runtime failure hook",
+  "transfer_calibration": {
+    "file": "audio-detached-buffer-observations.json",
+    "sha256": "e893d2f147b8c8cf3757c8d5f96e7b898b54494d4d606070e4c3af6b3948f3f5",
+    "protected_copy_path_executed": false,
+    "chunked157_runtime_verified": false
+  },
+  "remaining_unverified": [
+    "Native compilation and execution on pinned 157",
+    "Allocator/HMAC failures and close-request race",
+    "Concurrent teardown/navigation and GC stress",
+    "Ordinary Audio fidelity; v1 calibration still fails"
+  ]
+}

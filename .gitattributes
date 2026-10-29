@@ -8,3 +8,5 @@ native/drafts/**/audio-constant-observations.json text eol=lf
 native/drafts/**/audio-kernel-observations.json text eol=lf
 native/drafts/**/audio-teardown-control.js text eol=lf
 native/drafts/**/audio-teardown-observations.json text eol=lf
+native/drafts/**/audio-detached-buffer-control.js text eol=lf
+native/drafts/**/audio-detached-buffer-observations.json text eol=lf

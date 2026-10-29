@@ -1,0 +1,178 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.h b/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
+@@ -30,6 +30,7 @@
+ #include <cstdint>
+ #include <optional>
+ 
++#include "base/gtest_prod_util.h"
+ #include "base/synchronization/lock.h"
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+@@ -131,6 +132,10 @@
+   bool HasPendingActivity() const final;
+ 
+  private:
++  FRIEND_TEST_ALL_PREFIXES(
++      OfflineAudioContextTest,
++      GlintProtectedCopyFailureRejectsPendingQueueWithoutRawResult);
++
+   void DetachPendingResolvers() override;
+ 
+   // Rejects promises associated with offline rendering without affecting
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+@@ -24,11 +24,14 @@
+ #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_offline_audio_context_options.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_union_audiocontextrendersizecategory_unsignedlong.h"
++#include "third_party/blink/renderer/core/dom/dom_exception.h"
+ #include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/frame.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/testing/page_test_base.h"
++#include "third_party/blink/renderer/core/typed_arrays/array_buffer/array_buffer_contents.h"
++#include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
+ #include "third_party/blink/renderer/modules/webaudio/audio_buffer.h"
+ #include "third_party/blink/renderer/modules/webaudio/constant_source_node.h"
+ #include "third_party/blink/renderer/modules/webaudio/glint/offline_audio_limits.h"
+@@ -1036,4 +1039,97 @@
+             "state.");
+ }
+ 
++TEST_F(OfflineAudioContextTest,
++       GlintProtectedCopyFailureRejectsPendingQueueWithoutRawResult) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(true, 5);
++  ASSERT_TRUE(holder);
++  V8TestingScope scope(std::move(holder));
++  auto* context = OfflineAudioContext::Create(scope.GetFrame().DomWindow(), 1,
++                                              256, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  ASSERT_NO_FATAL_FAILURE(GlintConnectConstantSource(*context));
++  auto* completion = MakeGarbageCollected<GlintOfflineCompletionProbe>(context);
++  context->addEventListener(AtomicString("complete"), completion);
++  ScriptPromiseTester suspended(
++      scope.GetScriptState(),
++      context->suspendContext(scope.GetScriptState(), 0.0,
++                              ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester future_suspend(
++      scope.GetScriptState(),
++      context->suspendContext(scope.GetScriptState(), 128.0 / 44100.0,
++                              ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester first(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester second(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  suspended.WaitUntilSettled();
++  ASSERT_TRUE(suspended.IsFulfilled());
++  ASSERT_EQ(context->ContextState(), V8AudioContextState::Enum::kSuspended);
++  ASSERT_TRUE(context->glint_audio_partition_seed_.has_value());
++  ASSERT_EQ(context->pending_render_targets_.size(), 2u);
++  ASSERT_EQ(context->start_rendering_resolvers_.size(), 2u);
++  ASSERT_FALSE(first.IsFulfilled());
++  ASSERT_FALSE(first.IsRejected());
++  ASSERT_FALSE(second.IsFulfilled());
++  ASSERT_FALSE(second.IsRejected());
++  ASSERT_FALSE(future_suspend.IsFulfilled());
++  ASSERT_FALSE(future_suspend.IsRejected());
++
++  // Inject an invalid completed target, not the audio thread's shared buffer.
++  // Rendering is paused at frame zero; no allocator/HMAC failure hook is added.
++  auto* invalid_target = AudioBuffer::Create(1, 128, 44100);
++  ASSERT_TRUE(invalid_target);
++  auto channel = invalid_target->getChannelData(0);
++  ASSERT_TRUE(channel);
++  ASSERT_TRUE(channel->buffer()->IsDetachable(scope.GetIsolate()));
++  ArrayBufferContents transferred;
++  DummyExceptionStateForTesting transfer_exception;
++  ASSERT_TRUE(channel->buffer()->Transfer(scope.GetIsolate(), transferred,
++                                          transfer_exception));
++  ASSERT_FALSE(transfer_exception.HadException());
++  ASSERT_TRUE(channel->buffer()->IsDetached());
++  ASSERT_EQ(transferred.DataLength(), 128u * sizeof(float));
++  ASSERT_TRUE(channel->AsSpan().empty());
++  ASSERT_EQ(invalid_target->length(), 128u);
++  context->pending_render_targets_.front() = invalid_target;
++  context->OnChunkRendered();
++
++  first.WaitUntilSettled();
++  second.WaitUntilSettled();
++  future_suspend.WaitUntilSettled();
++  auto expect_rejection = [&](ScriptPromiseTester& tester,
++                              const char* expected_name) {
++    ASSERT_TRUE(tester.IsRejected());
++    auto value = tester.Value().V8Value();
++    ASSERT_TRUE(value->IsObject());
++    auto* error = ToScriptWrappable<DOMException>(scope.GetIsolate(),
++                                                  value.As<v8::Object>());
++    ASSERT_TRUE(error);
++    EXPECT_EQ(error->name(), expected_name);
++  };
++  ASSERT_NO_FATAL_FAILURE(expect_rejection(first, "NotReadableError"));
++  ASSERT_NO_FATAL_FAILURE(expect_rejection(second, "AbortError"));
++  ASSERT_NO_FATAL_FAILURE(
++      expect_rejection(future_suspend, "InvalidStateError"));
++  EXPECT_EQ(completion->count(), 0);
++  EXPECT_TRUE(context->pending_render_targets_.empty());
++  EXPECT_TRUE(context->start_rendering_resolvers_.empty());
++  EXPECT_EQ(context->ContextState(), V8AudioContextState::Enum::kClosed);
++  context->OnChunkRendered();
++  test::RunPendingTasks();
++  EXPECT_EQ(completion->count(), 0);
++
++  DummyExceptionStateForTesting retry_exception;
++  auto retry = context->startOfflineRendering(nullptr, 128, retry_exception);
++  EXPECT_TRUE(retry.IsEmpty());
++  ASSERT_TRUE(retry_exception.HadException());
++  EXPECT_EQ(retry_exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kInvalidStateError);
++}
++
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer_unittest.cc b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer_unittest.cc
+--- a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer_unittest.cc
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer_unittest.cc
+@@ -5,7 +5,11 @@
+ #include <bit>
+ 
+ #include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
++#include "third_party/blink/renderer/core/typed_arrays/array_buffer/array_buffer_contents.h"
++#include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
+ #include "third_party/blink/renderer/modules/webaudio/audio_buffer.h"
++#include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ #include "third_party/blink/renderer/platform/testing/task_environment.h"
+ 
+ namespace glint::candidate {
+@@ -81,5 +85,24 @@
+   EXPECT_EQ(std::bit_cast<uint32_t>(first->getChannelData(0)->AsSpan()[0]),
+             std::bit_cast<uint32_t>(second->getChannelData(0)->AsSpan()[0]));
+ }
++TEST_F(GlintOfflineAudioBufferTest, DetachedSourceRejectsWithoutRawFallback) {
++  blink::V8TestingScope scope;
++  auto* source = blink::AudioBuffer::Create(1, 8, 44100);
++  ASSERT_TRUE(source);
++  auto channel = source->getChannelData(0);
++  ASSERT_TRUE(channel);
++  ASSERT_TRUE(channel->buffer()->IsDetachable(scope.GetIsolate()));
++  blink::ArrayBufferContents transferred;
++  blink::DummyExceptionStateForTesting exception;
++  ASSERT_TRUE(
++      channel->buffer()->Transfer(scope.GetIsolate(), transferred, exception));
++  ASSERT_FALSE(exception.HadException());
++  ASSERT_TRUE(channel->buffer()->IsDetached());
++  ASSERT_EQ(transferred.DataLength(), 8u * sizeof(float));
++  ASSERT_TRUE(channel->AsSpan().empty());
++  ASSERT_EQ(source->length(), 8u);
++  EXPECT_EQ(CopyOfflineAudioBuffer(*source, kSeed), nullptr);
++}
++
+ }  // namespace
+ }  // namespace glint::candidate

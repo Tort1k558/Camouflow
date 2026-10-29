@@ -4277,6 +4277,101 @@ def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
     assert conflict["stock148_observed_bits"] == conflict["input_bits"] != conflict["v1_predicted_bits"]
 
 
+def test_pending_audio_copy_failure_fixtures_require_exact_unselected_prerequisite():
+    import hashlib
+    import json
+    import re
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/upstream-157-prefix"
+    descriptor = json.loads((root / "audio-copy-failure-tests.json").read_text(encoding="utf-8"))
+    previous = json.loads((root / "chunked-audio-tests.json").read_text(encoding="utf-8"))
+    manifest_path = root / "full-inputs-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert descriptor["schema"] == 1
+    assert descriptor["target_revision"] == manifest["target_revision"]
+    assert descriptor["target_version"] == manifest["target_version"]
+    assert descriptor["required_base_manifest_sha256"] == hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    assert descriptor["required_patches"] == [previous["patch"]]
+    for field in ("selected_in_manifest", "compiled", "native_tests_executed", "runtime_verified", "production_admitted"):
+        assert descriptor[field] is False
+    row = descriptor["patch"]
+    assert row["file"] == "0067-native-audio-copy-failure-tests.patch"
+    assert not (root / "patches" / row["file"]).exists()
+    assert all(Path(patch["file"]).name != row["file"] for patch in manifest["patches"])
+    raw = (root / row["file"]).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == row["sha256"]
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    patch = raw.decode("utf-8")
+    paths = [line[6:] for line in patch.splitlines() if line.startswith("+++ b/")]
+    assert paths == [source["path"] for source in descriptor["source_files"]]
+    assert {Path(path).name for path in paths} == {
+        "offline_audio_context.h", "offline_audio_context_test.cc", "offline_audio_buffer_unittest.cc"}
+    assert [source["preserved_tests"] for source in descriptor["source_files"]] == [0, 25, 4]
+    for source in descriptor["source_files"]:
+        assert len(source["before_sha256"]) == len(source["after_sha256"]) == 64
+    additions = "\n".join(line[1:] for line in patch.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    names = [fixture + "." + name for fixture, name in
+             re.findall(r"TEST_F\(\s*(\w+),\s*(\w+)\)", additions)]
+    assert names == descriptor["expected_tests"] == [
+        "OfflineAudioContextTest.GlintProtectedCopyFailureRejectsPendingQueueWithoutRawResult",
+        "GlintOfflineAudioBufferTest.DetachedSourceRejectsWithoutRawFallback"]
+    assert "FRIEND_TEST_ALL_PREFIXES(" in additions
+    assert additions.index("suspended.WaitUntilSettled();") < additions.index(
+        "context->pending_render_targets_.front() = invalid_target;")
+    assert additions.index("context->OnChunkRendered();") < additions.index("first.WaitUntilSettled();")
+    assert 'expect_rejection(first, "NotReadableError")' in additions
+    assert 'expect_rejection(second, "AbortError")' in additions
+    assert 'expect_rejection(future_suspend, "InvalidStateError")' in additions
+    assert "EXPECT_EQ(completion->count(), 0);" in additions
+    assert "CopyOfflineAudioBuffer(*source, kSeed), nullptr" in additions
+    assert "SetSharedRenderTarget" not in additions and "->Resolve(" not in additions
+    assert len(descriptor["api_sources"]) == 7 and descriptor["remaining_unverified"]
+    for source in descriptor["api_sources"]:
+        assert len(source["git_blob_sha1"]) == 40 and len(source["sha256"]) == 64
+        assert 0 < source["bytes"] < 1024 * 1024
+
+
+def test_audio_detached_buffer_controls_do_not_claim_protected_copy_execution():
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/upstream-157-prefix"
+    descriptor = json.loads((root / "audio-copy-failure-tests.json").read_text(encoding="utf-8"))
+    calibration = descriptor["transfer_calibration"]
+    assert calibration["file"] == "audio-detached-buffer-observations.json"
+    assert calibration["protected_copy_path_executed"] is False
+    assert calibration["chunked157_runtime_verified"] is False
+    raw = (root / calibration["file"]).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == calibration["sha256"]
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    assert data["measurement_complete"] and data["buffer_transfer_controls_passed"]
+    assert data["postguards_passed"] and data["all_runtime_resources_closed"]
+    assert data["owned_identity_payloads_unchanged"] and data["sandbox_requested"] and data["no_sandbox_flag_absent"]
+    for field in ("native156_verified", "native157_verified", "protected_copy_path_executed",
+                  "privacy_admitted", "production_admitted"):
+        assert data[field] is False
+    probe = data["probe"]
+    assert probe["file"] == "audio-detached-buffer-control.js"
+    raw_probe = (root / probe["file"]).read_bytes()
+    assert hashlib.sha256(raw_probe).hexdigest() == probe["sha256"]
+    assert b"\r" not in raw_probe and not raw_probe.startswith(b"\xef\xbb\xbf")
+    previous = json.loads((root / "audio-constant-observations.json").read_text(encoding="utf-8"))
+    for field in ("receipt_sha256", "native_core_sha256", "stock_core_sha256"):
+        assert data[field] == previous[field]
+    assert data["browser_version"] == "148.0.7778.96"
+    assert len(data["phases"]) == 5 and {row["phase"] for row in data["phases"]} == {
+        "stock-baseline", "a-native-baseline", "a-partitioned", "a-identity", "a-identity-restart"}
+    assert sum(row["repetitions"] for row in data["phases"]) == data["capture_count"] == 15
+    assert all(row["repetitions"] == 3 for row in data["phases"])
+    assert data["identical_observation_for_all_captures"] == {
+        "beforeFrames": 128, "afterFrames": 0, "originalBytes": 0,
+        "transferredBytes": 512, "sourceFrames": 128, "passed": True}
+
+
 def test_audio_teardown_controls_preserve_matched_scope_and_dead_realm_semantics():
     import hashlib
     import json

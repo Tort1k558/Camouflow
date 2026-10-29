@@ -114,15 +114,39 @@ This is a four-parent-timer-turn control, **not GC stress, long-duration leak
 testing or execution of the 157 chunked fixtures**. Evidence:
 `D:\Glint157ObjectCache\glint148-audio-teardown-20261029-v1\report.json`.
 
-The patch preserves all 12 existing test cases. Source application and five API
-header blobs were verified against pinned 157 Git objects. Header validation,
-formatting, HMAC-vector calculations and Python assertions are **not C++ or native
-test results**. Evidence: `D:\Glint157ObjectCache\chunked-audio-fixtures-20261029-v5`.
+The patch preserves all 12 existing test cases. Five base API headers and four
+lifecycle API sources were verified against pinned 157 Git objects. Source
+application, formatting, HMAC-vector calculations and Python assertions are
+**not C++ or native test results**. Evidence:
+`D:\Glint157ObjectCache\chunked-audio-fixtures-20261029-v7`.
 Apply it only to a separate 157 tree after the selected 001–065 replay, never to
 the active 156 checkout. A 157 build/test run is still required before selection.
-Injected copy-failure cleanup and policy lifetime under teardown still lack
-fixtures. Suspend/resume and paused-close now have fixture code but remain
-unverified until a real 157 native test run.
+Observer/detach, suspend/resume and paused-close have fixture code but remain
+unverified until a real 157 native test run. Policy lifetime under garbage
+collection and concurrent navigation remains unverified.
+
+#### Pending copy-failure fixtures
+
+`0067-native-audio-copy-failure-tests.patch` is another **unselected, uncompiled**
+extension, explicitly dependent on 0066. Its [descriptor](audio-copy-failure-tests.json)
+binds three source states and seven pinned API sources. One fixture rejects a
+detached input at the copy helper; the other replaces only a completed target
+while rendering is paused, then requires `NotReadableError` for that chunk,
+`AbortError` for the queued chunk, rejection of a future suspend and no raw result
+or completion event. A targeted `FRIEND_TEST_ALL_PREFIXES` declaration is the
+only production-header seam; there is no runtime flag or failure-function hook.
+
+All **67 source patches** replayed over the 185 pristine inputs; omitting 0066
+correctly rejected 0067 without changing those copies. The engine selection stays
+at **65**, not 67. Evidence on D: `audio-copy-failure-full67-replay-20261029-v1`
+and `audio-copy-failure-order-20261029-v1` under `Glint157ObjectCache`.
+
+The [public buffer-transfer probe](audio-detached-buffer-control.js) passed 15
+matched stock/Glint 148 controls: a detached channel has zero frames while its
+AudioBuffer retains the original length. [Observations](audio-detached-buffer-observations.json)
+establish the invalid-input precondition only, **not execution of protected copy
+cleanup or the 157 queue**. Allocator/HMAC failures, a pending-close race,
+concurrent teardown/navigation, GC stress and ordinary Audio fidelity remain open.
 
 #### Compatibility control, not just distinct hashes
 
