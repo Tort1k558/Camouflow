@@ -2,11 +2,10 @@
 
 **Open compatibility finding, not an implemented patch or Glint runtime result.**
 The [stock156 control](stock156-screen-consistency-observations.json) collected
-all four modes twice, with unchanged runtime and source hashes:
+all three public CLI modes twice, with unchanged runtime and source hashes:
 
 | Exact launch mode | Main document | Cross-origin frame | Initial + restart |
 | --- | --- | --- | --- |
-| Driver default | 1280×720, DPR 1 | 800×600, DPR 1 | Inconsistent |
 | Manager desktop options | 1366×768, DPR 1 | 800×600, DPR 1 | Inconsistent |
 | Manager Mobile Web options | 390×844, DPR 3 | 800×600, DPR 1 | Inconsistent; touch remains enabled |
 | Explicit no viewport emulation | 800×600, DPR 1 | 800×600, DPR 1 | Consistent headless control only |
@@ -14,6 +13,11 @@ all four modes twice, with unchanged runtime and source hashes:
 The last mode is **not a fallback or a proposed fix**: dropping requested viewport,
 screen or DPR would change the product contract. Mobile Web must remain honest
 desktop Chromium emulation, not an invented Android/iOS runtime.
+
+Reproduce with `scripts.capture_native_environment --mode manager-desktop` or
+`--mode manager-mobile-web`, the pinned executable and a fresh D: work directory.
+The public tool preserves both failed phases and their full observations. Initial
+driver-default controls are also retained privately; they are not Glint results.
 
 ## Source evidence, not a one-line repair
 

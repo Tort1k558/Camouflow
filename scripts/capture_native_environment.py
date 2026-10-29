@@ -18,7 +18,8 @@ sys.path.insert(0, str(ROOT))
 
 from playwright.async_api import async_playwright
 
-from app.core.native.diagnostics import audit_observed_identity, audit_observed_request_identity
+from app.core.native.configuration import NativeConfiguration
+from app.core.native.diagnostics import audit_observed_identity, audit_observed_request_identity, compare_observed
 from scripts import verify_native_canvas as canvas
 from scripts import verify_native_gpu as gpu
 from scripts import verify_native_identity as identity
@@ -39,6 +40,7 @@ READ = """async () => {
   return {identity, hardware, gpu: await (__GPU__)(),
     languages: Array.from(navigator.languages),
     intl: {locale: format.locale, timezone: format.timeZone},
+    viewport: typeof window === 'undefined' ? null : {width: innerWidth, height: innerHeight},
     screen: typeof screen === 'undefined' ? null : {
       width: screen.width, height: screen.height,
       availWidth: screen.availWidth, availHeight: screen.availHeight,
@@ -110,7 +112,7 @@ def validate_environment(observed: dict, version: str, *, previous: dict | None 
     document_names = canvas.CONTEXTS - {"dedicated", "shared", "service"}
     for name in ("document", *sorted(canvas.CONTEXTS - {"document"})):
         value = observed[name]
-        if (not isinstance(value, dict) or set(value) != {"identity", "hardware", "gpu", "languages", "intl", "screen"}
+        if (not isinstance(value, dict) or set(value) != {"identity", "hardware", "gpu", "languages", "intl", "screen", "viewport"}
                 or not isinstance(value["identity"], dict) or set(value["identity"]) != identity_keys
                 or not isinstance(value["hardware"], dict) or set(value["hardware"]) != hardware_keys
                 or not isinstance(value["intl"], dict) or set(value["intl"]) != {"locale", "timezone"}):
@@ -152,10 +154,14 @@ def validate_environment(observed: dict, version: str, *, previous: dict | None 
                 raise ValueError(name + " disagrees with document identity " + key)
         screen = value["screen"]
         if name not in document_names:
-            if screen is not None or details["plugins"] is not None or details["chromeType"] != "undefined":
+            if (screen is not None or value["viewport"] is not None or details["plugins"] is not None
+                    or details["chromeType"] != "undefined"):
                 raise ValueError("Worker claimed document-only APIs: " + name)
         else:
-            if (not isinstance(screen, dict) or set(screen) != {"width", "height", "availWidth", "availHeight",
+            viewport = value["viewport"]
+            if (not isinstance(viewport, dict) or set(viewport) != {"width", "height"}
+                    or any(type(size) is not int or size <= 0 for size in viewport.values())
+                    or not isinstance(screen, dict) or set(screen) != {"width", "height", "availWidth", "availHeight",
                     "colorDepth", "pixelDepth", "dpr", "touch"}
                     or any(type(screen[key]) is not int or screen[key] <= 0
                            for key in ("width", "height", "availWidth", "availHeight", "colorDepth", "pixelDepth"))
@@ -165,9 +171,12 @@ def validate_environment(observed: dict, version: str, *, previous: dict | None 
                     or not isinstance(details["plugins"], list)
                     or any(not isinstance(plugin, str) or not plugin for plugin in details["plugins"])
                     or details["chromeType"] != "object"
-                    or screen != baseline["screen"] or details["plugins"] != baseline["identity"]["plugins"]
+                    or details["plugins"] != baseline["identity"]["plugins"]
                     or details["chromeType"] != baseline["identity"]["chromeType"]):
                 raise ValueError("Document screen/plugins observation is invalid: " + name)
+            if screen != baseline["screen"]:
+                changed = sorted(key for key in screen if screen[key] != baseline["screen"][key])
+                raise ValueError(name + " screen differs from document: " + ", ".join(changed))
         if previous is not None and (
                 {**value, "gpu": gpu_identity(value["gpu"])}
                 != {**previous[name], "gpu": gpu_identity(previous[name]["gpu"])}):
@@ -175,15 +184,46 @@ def validate_environment(observed: dict, version: str, *, previous: dict | None 
     return {**coverage, "http_hint_contexts": {"full": 3, "low_entropy": 2, "absent": 3}}
 
 
-async def capture(executable: Path, profile: Path, origin: str, report: dict) -> None:
+def configuration_for_mode(mode: str) -> NativeConfiguration | None:
+    if mode == "native-control":
+        return None
+    if mode == "manager-desktop":
+        return NativeConfiguration()
+    if mode == "manager-mobile-web":
+        return NativeConfiguration(environment="mobile_web", width=390, height=844, device_scale_factor=3)
+    raise ValueError("Unknown reference capture mode")
+
+
+def validate_requested_configuration(observed: dict, configuration: NativeConfiguration) -> None:
+    def navigator(value: dict) -> dict:
+        return {**value["hardware"], "languages": value["languages"], "timezone": value["intl"]["timezone"],
+                "intlLocale": value["intl"]["locale"], "userAgentData": value["identity"]["userAgentData"],
+                "userAgentHighEntropy": value["identity"]["metadata"]}
+
+    document = observed["document"]
+    actual = {"document": {**navigator(document), **document["viewport"], "screen": document["screen"],
+                           "dpr": document["screen"]["dpr"], "touch": document["screen"]["touch"]},
+              "worker": navigator(observed["dedicated"])}
+    issues = compare_observed(configuration, actual)
+    if issues:
+        raise ValueError("Requested manager configuration was not observed: " + "; ".join(issues))
+
+
+async def capture(executable: Path, profile: Path, origin: str, report: dict, *,
+                  configuration: NativeConfiguration | None = None) -> None:
+    options = {"no_viewport": True} if configuration is None else configuration.context_options()
+    requested_arguments = ["--enable-automation"]
+    if configuration is not None:
+        requested_arguments.extend(configuration.launch_arguments())
     async with async_playwright() as driver:
         previous = None
+        failures = []
         for name in ("initial", "persistent-profile-restart"):
             context = await driver.chromium.launch_persistent_context(
                 str(profile), executable_path=str(executable), headless=True,
-                chromium_sandbox=True, timeout=30000, no_viewport=True,
-                args=["--enable-automation"])
+                chromium_sandbox=True, timeout=30000, **options, args=requested_arguments)
             primary = None
+            validation_error = None
             try:
                 arguments = await workers.browser_arguments(context)
                 if any(value.startswith(("--user-agent=", "--camouflow-", "--glint-")) for value in arguments):
@@ -203,9 +243,17 @@ async def capture(executable: Path, profile: Path, origin: str, report: dict) ->
                                                 frame_allow="; ".join(identity.HINT_POLICY_FEATURES))
                 check = {"name": name, "passed": False, "observed": observed}
                 report["checks"].append(check)
-                check["coverage"] = validate_environment(observed, version, previous=previous)
-                check["passed"] = True
-                previous = observed
+                try:
+                    check["coverage"] = validate_environment(observed, version, previous=previous)
+                    if configuration is not None:
+                        validate_requested_configuration(observed, configuration)
+                except ValueError as error:
+                    validation_error = error
+                    failures.append(error)
+                    check["error"] = str(error)
+                else:
+                    check["passed"] = True
+                    previous = observed
             except BaseException as error:
                 primary = error
                 raise
@@ -213,15 +261,25 @@ async def capture(executable: Path, profile: Path, origin: str, report: dict) ->
                 try:
                     await context.close()
                 except Exception as error:
+                    if validation_error is not None:
+                        validation_error.add_note("Reference context cleanup failed: " + str(error))
+                        raise validation_error
                     if primary is None:
                         raise
                     primary.add_note("Reference context cleanup failed: " + str(error))
+        report["restart_comparison_complete"] = all(row["passed"] is True for row in report["checks"])
+        if failures:
+            for error in failures[1:]:
+                failures[0].add_note("Later requested phase failed: " + str(error))
+            raise failures[0]
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
+    parser.add_argument("--mode", choices=("native-control", "manager-desktop", "manager-mobile-web"),
+                        default="native-control", help="Explicit stock baseline or manager configuration; never a fallback")
     args = parser.parse_args()
     owned = args.work_dir
     if (not owned.is_absolute() or owned.drive.upper() != "D:" or owned != owned.resolve()
@@ -234,9 +292,11 @@ def main() -> int:
     if core != stock["stock_core_sha256"]:
         parser.error("This capture requires the explicit pinned official stock156 control")
     inputs = source_inputs()
+    configuration = configuration_for_mode(args.mode)
     owned.mkdir(parents=True, exist_ok=False)
     report = {"schema": 1, "passed": False, "checks": [], "capture_mode": "headless-automation-control",
-              "viewport_emulation": False,
+              "environment_mode": args.mode, "viewport_emulation": configuration is not None,
+              "configuration": None if configuration is None else configuration.environment_settings(),
               "scope": "One measured stock156 host environment, not a general hardware cohort or generated identity",
               "host_platform": platform.platform(), "runtime_core_sha256_measured": core,
               "source_sha256": inputs, "profile_generation_admitted": False,
@@ -248,7 +308,8 @@ def main() -> int:
         server = FixtureServer(("127.0.0.1", 0), EnvironmentHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
-        asyncio.run(capture(executable, profile, f"http://127.0.0.1:{server.server_port}", report))
+        asyncio.run(capture(executable, profile, f"http://127.0.0.1:{server.server_port}", report,
+                            configuration=configuration))
         if [row["name"] for row in report["checks"]] != ["initial", "persistent-profile-restart"]:
             raise ValueError("Reference capture phases are incomplete")
         report["passed"] = all(row["passed"] is True for row in report["checks"])

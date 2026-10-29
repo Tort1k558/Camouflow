@@ -25,12 +25,19 @@ control. No substitute browser, unsafe/software GPU override or identity policy
 is selected. The evidence directory must be new, canonical, on D: and outside
 Git checkouts. The tool uses only owned loopback pages and a fresh profile.
 
-The current mode is explicitly **headless automation control, without viewport
+The default mode is explicitly **headless automation control, without viewport
 emulation**. The default Playwright viewport produced different screen values
 in the cross-origin frame during calibration; that failed run is retained.
 The headless screen is not a measurement of the physical monitor or an ordinary
 desktop-user identity. Successful owned profiles are removed; failed evidence
 and profiles remain outside the repository. Nothing is uploaded automatically.
+
+Use `--mode manager-desktop` or `--mode manager-mobile-web` with a new evidence
+directory to reproduce the manager configuration. These apply its existing
+`NativeConfiguration` context options **and launch arguments**, not an alternative
+viewport or a spoofed GPU. The mobile test preset is explicitly 390×844 / DPR 3.
+Both requested phases run even when identity validation fails; any failed phase
+keeps the overall result failed. Cleanup failures stop further launches.
 
 ## Native differences are data, not fabricated matches
 
@@ -64,3 +71,7 @@ still require their own combined captures. A future versioned cohort selector
 must reject unverified hardware combinations and preserve profile ownership.
 Profile generation, another OS, Glint policy execution, ordinary-user realism
 and production admission remain explicitly false.
+
+The separate [screen consistency finding](SCREEN_EMULATION.md) records failing
+desktop/mobile manager configurations on the stock control and defines the next
+native repair gates. A working no-emulation control is not substituted as a fix.

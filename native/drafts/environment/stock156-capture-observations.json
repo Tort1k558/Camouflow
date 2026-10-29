@@ -17,7 +17,7 @@
     "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
     "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
     "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
-    "scripts/capture_native_environment.py": "2ff5d97a34941326f687a24d889de1b4c676b250bde2869690210b7858cfbf2d",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
     "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
     "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
     "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
@@ -69,12 +69,14 @@
       "passed": true
     }
   ],
-  "raw_capture_sha256": "bfefb49a50567331754acc685a504817dc8198943c6d7dbbb683230456a492ac",
-  "raw_failure_controls_sha256": "4c61ad72183c9cfc12af88055ff3f5652b6aa9296692dd4e5c89a11a0950da8b",
+  "raw_capture_sha256": "4c6596cee794daff9f1cbb635f3e3d31ec4b81c9a9346a597c38f3c393ff8c94",
+  "raw_failure_controls_sha256": "d8471dfa50fe3d8a0659fdee4fe3a55bb5c58229736a53faa744db61c8136d98",
   "postguards_passed": true,
   "profile_generation_admitted": false,
   "ordinary_user_identity_verified": false,
   "glint_runtime_verified": false,
   "privacy_admitted": false,
-  "production_admitted": false
+  "production_admitted": false,
+  "environment_mode": "native-control",
+  "restart_comparison_complete": true
 }

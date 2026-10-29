@@ -28,6 +28,24 @@ def test_environment_reference_summary_binds_sources_without_admitting_generated
         assert record[key] is False
 
 
+def test_published_manager_mode_findings_remain_failed_and_reproducible():
+    record = json.loads((environment.ROOT / "native/drafts/environment/stock156-screen-consistency-observations.json").read_bytes())
+    assert record["passed"] is False and record["measurement_completed"] is True
+    assert record["postguards_passed"] is True and record["source_sha256"] == environment.source_inputs()
+    assert [row["name"] for row in record["modes"]] == ["native-control", "manager-desktop", "manager-mobile-web"]
+    for row in record["modes"]:
+        native = row["name"] == "native-control"
+        assert row["passed"] is native and row["restart_comparison_complete"] is native
+        assert row["viewport_emulation"] is not native
+        assert len(row["phases"]) == 2
+        assert all(phase["passed"] is native for phase in row["phases"])
+        if not native:
+            assert row["configuration"] == environment.configuration_for_mode(row["name"]).environment_settings()
+            assert all(phase["document"] != phase["cross_origin_frame"] for phase in row["phases"])
+    for key in ("glint_runtime_verified", "screen_inheritance_fixed", "profile_generation_admitted", "production_admitted"):
+        assert record[key] is False
+
+
 def observed_environment():
     brands = [{"brand": "Chromium", "version": "156"}]
     high = {"brands": brands, "mobile": False, "platform": "Windows",
@@ -60,6 +78,7 @@ def observed_environment():
                          "chromeType": "object" if document else "undefined"},
             "hardware": hardware, "gpu": gpu[name], "languages": ["en-US"],
             "intl": {"locale": "en-US", "timezone": "UTC"},
+            "viewport": ({"width": 800, "height": 600} if name == "document" else {"width": 300, "height": 150}) if document else None,
             "screen": {"width": 800, "height": 600, "availWidth": 800, "availHeight": 600,
                        "colorDepth": 24, "pixelDepth": 24, "dpr": 1, "touch": 0} if document else None,
         })
@@ -171,4 +190,85 @@ def test_shader_translation_length_is_recorded_but_is_not_an_identity_parameter(
 def test_fixture_delegates_hints_to_inherited_frames_and_never_invents_request_values():
     assert "if (allow) blank.allow = allow" in (environment.ROOT / "scripts/verify_native_canvas.py").read_text(encoding="utf-8-sig")
     assert "if (allow) srcdoc.allow = allow" in (environment.ROOT / "scripts/verify_native_canvas.py").read_text(encoding="utf-8-sig")
-    assert "no_viewport=True" in (environment.ROOT / "scripts/capture_native_environment.py").read_text(encoding="utf-8-sig")
+    assert environment.configuration_for_mode("native-control") is None
+    assert environment.configuration_for_mode("manager-desktop").context_options()["screen"] == {"width": 1366, "height": 768}
+    mobile = environment.configuration_for_mode("manager-mobile-web")
+    assert mobile.environment == "mobile_web" and mobile.width == 390 and mobile.device_scale_factor == 3
+    with pytest.raises(ValueError):
+        environment.configuration_for_mode("automatic-fallback")
+
+
+def test_manager_validation_never_silently_accepts_the_native_unemulated_control():
+    observed = observed_environment()
+    with pytest.raises(ValueError, match="Requested manager configuration"):
+        environment.validate_requested_configuration(observed, environment.configuration_for_mode("manager-desktop"))
+    observed["document"]["viewport"] = {"width": 1366, "height": 768}
+    observed["document"]["screen"].update(width=1366, height=768, availWidth=1366, availHeight=768)
+    environment.validate_requested_configuration(observed, environment.configuration_for_mode("manager-desktop"))
+
+
+@pytest.mark.parametrize("mode", ["native-control", "manager-desktop", "manager-mobile-web"])
+@pytest.mark.parametrize("failed_phases", [(), (0,), (1,), (0, 1)])
+def test_capture_runs_both_explicit_phases_without_fallback_or_reusing_observed_driver_arguments(tmp_path, monkeypatch, mode, failed_phases):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    configuration = environment.configuration_for_mode(mode)
+    launches = []
+    measured = []
+
+    class Driver:
+        async def __aenter__(self):
+            return SimpleNamespace(chromium=self)
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def launch_persistent_context(self, profile, **options):
+            context = SimpleNamespace(browser=SimpleNamespace(version=VERSION), close=AsyncMock(), options=options)
+            launches.append(context)
+            return context
+
+    async def arguments(context):
+        return [*context.options["args"], "--driver-owned-switch"]
+
+    async def observe(*args, **kwargs):
+        values = observed_environment()
+        if configuration is not None:
+            for value in values.values():
+                if value["screen"] is not None:
+                    value["screen"].update(width=configuration.width, height=configuration.height,
+                                           availWidth=configuration.width, availHeight=configuration.height,
+                                           dpr=configuration.device_scale_factor,
+                                           touch=1 if configuration.environment == "mobile_web" else 0)
+            values["document"]["viewport"] = {"width": configuration.width, "height": configuration.height}
+        if len(measured) in failed_phases:
+            values["cross_origin_frame"]["screen"]["width"] += 1
+        measured.append(values)
+        return values
+
+    monkeypatch.setattr(environment, "async_playwright", Driver)
+    monkeypatch.setattr(environment.workers, "browser_arguments", arguments)
+    monkeypatch.setattr(environment.canvas, "observe", observe)
+    report = {"checks": []}
+    task = environment.capture(tmp_path / "chrome.exe", tmp_path / "profile", "http://owned", report,
+                               configuration=configuration)
+    if failed_phases:
+        with pytest.raises(ValueError):
+            asyncio.run(task)
+    else:
+        asyncio.run(task)
+    assert len(launches) == len(report["checks"]) == 2
+    assert report["restart_comparison_complete"] is (not failed_phases)
+    expected = [index not in failed_phases for index in range(2)]
+    assert [row["passed"] for row in report["checks"]] == expected
+    for context in launches:
+        context.close.assert_awaited_once()
+        assert "--driver-owned-switch" not in context.options["args"]
+        if configuration is None:
+            assert context.options["no_viewport"] is True
+        else:
+            assert "no_viewport" not in context.options
+            assert context.options["screen"] == {"width": configuration.width, "height": configuration.height}
+            assert context.options["args"] == ["--enable-automation", *configuration.launch_arguments()]
