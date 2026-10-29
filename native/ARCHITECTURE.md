@@ -15,9 +15,13 @@ ownership/storage lifecycle checks with two simultaneous profiles and both
 persistent restarts. Profile keys stayed distinct and unchanged, cookies and
 localStorage stayed isolated, duplicate owner/double start were rejected, and
 resources were released. [Scoped evidence](drafts/environment/runtime-ownership68-observations.json).
-The overall run remains failed because screen consistency still fails. Lock
-owners were in one Python process; separate-process ownership, crash recovery,
-server/team storage isolation and enabled privacy policies are not admitted.
+The overall run remains failed because screen consistency still fails. That
+run's lock owners were in one Python process. A separate real-process control
+subsequently rejected a challenger while the owner stayed usable, then acquired
+the same profile after orderly close, retaining its private identity and releasing
+resources. [Windows process evidence](drafts/environment/runtime-owner-process68-observations.json).
+Crash recovery, server/team storage isolation and enabled privacy policies are
+not admitted by these controls.
 
 Eight fixed profiles passed baseline/Math/Math-restart Audio API compatibility.
 A separate **1080-capture** long-compressor run on the same keys observed two

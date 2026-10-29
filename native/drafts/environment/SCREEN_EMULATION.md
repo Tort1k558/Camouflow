@@ -224,6 +224,15 @@ contents are stored in the public or raw measurement; only equality decisions
 are recorded. The initial runner namespace error happened before browser startup
 and remains retained separately, not counted as an engine failure.
 
+The later [`first-script/owner_process.py`](first-script/owner_process.py) control
+executes separate Python processes against a real running `NativeRuntime` owner.
+The challenger was rejected, the original browser stayed usable, and a second
+child acquired the same profile after orderly owner close. The private identity
+stayed unchanged and parent/child resources were released.
+[Windows evidence](runtime-owner-process68-observations.json). This is current-user
+cross-process ownership, not crash recovery, stale-lock removal, another OS,
+storage-team authorization or a screen/fingerprint gate.
+
 The frozen 0069 draft's logical DPR accessor still restricts its override to
 subframes, leaving the main root on Page-global inspector state. The queued
 [`main-dpr70.patch`](main-dpr70.patch) removes that restriction and adds three

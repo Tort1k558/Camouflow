@@ -835,3 +835,81 @@ def test_real_runtime_ownership_record_keeps_lifecycle_and_screen_admission_sepa
         "privacy_admitted", "production_admitted"))
     for name, value in record["source_sha256"].items():
         assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+
+
+@pytest.fixture
+def owner_process_collector():
+    import runpy
+
+    return runpy.run_path(str(environment.ROOT / "native/drafts/environment/first-script/owner_process.py"))
+
+
+@pytest.mark.parametrize("blocked", [False, True])
+def test_cross_process_result_requires_exact_boolean_lock_state(owner_process_collector, blocked):
+    assert owner_process_collector["validate_probe"](
+        {"started": not blocked, "rejected_by_lock": blocked, "resource_free": True}, blocked=blocked) is None
+
+
+@pytest.mark.parametrize("value", [None, {},
+    {"started": True, "rejected_by_lock": False, "resource_free": True},
+    {"started": False, "rejected_by_lock": True, "resource_free": False},
+    {"started": False, "rejected_by_lock": True, "resource_free": 1},
+    {"started": False, "rejected_by_lock": True, "resource_free": True, "extra": True},
+])
+def test_cross_process_result_rejects_missing_contradictory_or_leaked_resources(owner_process_collector, value):
+    with pytest.raises(ValueError, match="lock state"):
+        owner_process_collector["validate_probe"](value, blocked=True)
+
+
+@pytest.mark.parametrize("outcome", ["started", "locked", "error"])
+def test_cross_process_worker_always_closes_its_runtime(owner_process_collector, monkeypatch, tmp_path, outcome):
+    import asyncio
+
+    instances = []
+    error_type = owner_process_collector["NativeRuntimeError"]
+
+    class Runtime:
+        def __init__(self, *args):
+            self.has_resources = False
+            self.closed = False
+            instances.append(self)
+
+        async def start(self, **kwargs):
+            if outcome == "locked":
+                raise error_type("Another process owns this Native profile")
+            if outcome == "error":
+                raise ValueError("Unrelated failure")
+            self.has_resources = True
+
+        async def close(self):
+            self.closed = True
+            self.has_resources = False
+
+    function = owner_process_collector["probe"]
+    monkeypatch.setitem(function.__globals__, "NativeRuntime", Runtime)
+    if outcome == "error":
+        with pytest.raises(ValueError, match="Unrelated"):
+            asyncio.run(function(tmp_path / "profile", tmp_path / "chrome.exe"))
+    else:
+        result = asyncio.run(function(tmp_path / "profile", tmp_path / "chrome.exe"))
+        owner_process_collector["validate_probe"](result, blocked=outcome == "locked")
+    assert len(instances) == 1 and instances[0].closed and not instances[0].has_resources
+
+
+def test_published_cross_process_result_proves_orderly_handoff_not_crash_recovery(owner_process_collector):
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/runtime-owner-process68-observations.json").read_bytes())
+    assert all(record[name] is True for name in ("passed", "measurement_complete", "postguards_passed",
+        "parent_resource_free", "cross_process_owner_rejection_verified", "released_lock_reacquired_by_child",
+        "owner_unchanged_after_rejection", "private_identity_unchanged"))
+    assert all(record[name] is False for name in ("crash_recovery_verified", "native_0069_verified",
+        "server_team_storage_isolation_verified", "privacy_admitted", "production_admitted"))
+    assert record["platform"] == "win32"
+    assert len(record["child_processes"]) == 2
+    for row, blocked in zip(record["child_processes"], (True, False), strict=True):
+        assert row["completed"] and row["returncode"] == 0
+        owner_process_collector["validate_probe"](row["result"], blocked=blocked)
+    for name, value in record["source_sha256"].items():
+        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value

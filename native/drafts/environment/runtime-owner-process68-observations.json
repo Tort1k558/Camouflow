@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "scope": "Actual NativeRuntime owner plus separate Python processes: reject while owned, then acquire after orderly close; unprotected headless control only",
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "parent_resource_free": true,
+  "cross_process_owner_rejection_verified": true,
+  "released_lock_reacquired_by_child": true,
+  "owner_unchanged_after_rejection": true,
+  "private_identity_unchanged": true,
+  "crash_recovery_verified": false,
+  "chromium_version": "156.0.8078.36",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "36d1a7c35d059d60c41c9c46d48c623918cd2ed63e746d6473c4993d1d729a7d",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "1250a9c4c72d3e85736b7ff99cccbd2ff0c0ca7ccebf56fb7d7ed025b8480dbc",
+  "child_processes": [
+    {
+      "returncode": 0,
+      "completed": true,
+      "result": {
+        "started": false,
+        "rejected_by_lock": true,
+        "resource_free": true
+      }
+    },
+    {
+      "returncode": 0,
+      "completed": true,
+      "result": {
+        "started": true,
+        "rejected_by_lock": false,
+        "resource_free": true
+      }
+    }
+  ],
+  "platform": "win32",
+  "raw_report_sha256": "ae0af0f0f5c72c4138c007d456e0c1f2fe28da5deb9b1bb3fc55560eac8c1084",
+  "source_sha256": {
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "app/core/native/identity.py": "ade6571746cff6eebb3b049a6725a9260fff1f9cb499080f00af95a6aeb654c9",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "app/core/native/profile_version.py": "b911cea8e1d2eed4e2d8f9d4c78cbe5ba8f9dfbfce16365f5675b5b213150081",
+    "app/core/native/runtime.py": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "native/drafts/environment/first-script/manager.py": "71d0e333e682205beda57e963fa8df1483505bf7bac24f44caaed27a527a3e6d",
+    "native/drafts/environment/first-script/owner_process.py": "d86f90e386925d0d2940e06046eca85b4ca2e94b901abc751cafc494f9b4468b",
+    "native/drafts/environment/first-script/runtime.py": "e387b5107340754af303b56b404ab86cea3195410b0b9ca4ea99c66516df4e1a",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "native/drafts/upstream-156/checkpoints/001-068.json": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2"
+  },
+  "lock_scope": "Separate Python processes under the current Windows user; orderly owner close, not crash/forced unlock",
+  "native_0069_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "server_team_storage_isolation_verified": false
+}
