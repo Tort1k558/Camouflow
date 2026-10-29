@@ -4772,6 +4772,61 @@ def test_public_156_runtime_suite_evidence_keeps_release_gates_separate():
     assert handoff["baseline_browser_code_unchanged"] and data["remaining_unverified"]
 
 
+def test_audio_fidelity_stock_fixture_preserves_exact_signals_and_rejects_faults():
+    import hashlib
+    import json
+    import struct
+    from scripts import native_build as build
+
+    draft = build.ROOT / "native/drafts/audio-dsp-math-v2"
+    raw = (draft / "audio-fidelity-observations.json").read_bytes()
+    data = json.loads(raw)
+    probe = (draft / data["probe"]["file"]).read_bytes()
+    assert b"\r" not in raw and b"\r" not in probe
+    assert not raw.startswith(b"\xef\xbb\xbf") and not probe.startswith(b"\xef\xbb\xbf")
+    assert hashlib.sha256(probe).hexdigest() == data["probe"]["sha256"]
+    stock = json.loads((draft.parent / "upstream-156/stock-control-observations.json").read_bytes())
+    assert data["stock_core_sha256"] == stock["stock_core_sha256"]
+    assert data["browser_get_version"]["revision"] == "@" + stock["target_revision"]
+    assert data["passed"] and data["baseline_runs_bit_exact"] and data["resources_closed"] and data["postguards_passed"]
+    assert data["baseline_runs"] == 2 and data["renders_per_run"] == 54 and data["repetitions_per_case"] == 3
+    kinds = {"silence", "identity", "half-gain", "impulse", "stereo", "constant-positive",
+             "constant-negative", "oscillator", "compressor"}
+    assert {(row["kind"], row["rate"]) for row in data["cases"]} == {(kind, rate) for kind in kinds for rate in (44100, 48000)}
+    assert len(data["cases"]) == 18
+    for row in data["cases"]:
+        assert row["frames"] == 512 and row["channelCount"] == 2 and len(row["channels"]) == 2
+        for channel, observed in enumerate(row["channels"]):
+            assert all(observed[key] for key in ("finite", "repeatedExact", "copiedExact", "segmentedExact"))
+            kind = row["kind"]
+            if kind in ("oscillator", "compressor"):
+                assert observed["expectedExact"] is None and observed["nonzero"]
+                continue
+            values = [((index % 17) - 8) / 32 for index in range(512)]
+            if kind == "silence":
+                values = [0.0] * 512
+            elif kind == "half-gain":
+                values = [value / 2 for value in values]
+            elif kind == "impulse":
+                values = [0.5] + [0.0] * 511
+            elif kind == "stereo":
+                values = [0.25 if channel == 0 else -0.125] * 512
+            elif kind in ("constant-positive", "constant-negative"):
+                values = [0.25 if kind == "constant-positive" else -0.25] * 512
+            assert observed["expectedExact"] is True
+            assert hashlib.sha256(struct.pack("<512f", *values)).hexdigest() == observed["sha256"]
+    controls = {row["name"]: row for row in data["negative_controls"]}
+    assert {name: row["rejected_rows"] for name, row in controls.items()} == {
+        "wrong-constant-reference": 12, "wrong-segment-offset": 48,
+        "wrong-mutation-offset": 54, "unstable-oscillator": 0}
+    assert all(row["passed"] for row in controls.values())
+    assert controls["unstable-oscillator"]["repeat_stable"] is False
+    for field in ("glint_policy_execution_verified", "audio_math_execution_verified", "device_cohort_verified",
+                  "privacy_admitted", "production_admitted"):
+        assert data[field] is False
+    assert data["remaining_unverified"]
+
+
 def test_first_156_audio_calibration_does_not_admit_the_math_variant():
     import hashlib
     import json

@@ -23,6 +23,7 @@
 | Exact-version CfT source control | Official generation-pinned archive passed MD5/PE-version checks; live CfT reported 156.0.8078.36 / exact upstream revision | Per-version JSON 404 did not imply asset absence; not equal GN/toolchain/branding or full policy admission |
 | Matched Audio Glint-off → CfT → Glint-off | 135 captures across 15 cases were bit-exact; all contexts closed and core/source postguards passed | One Windows host, policies off; float32 prototype differed on three discriminating cases; not math-mode/device-cohort admission |
 | Public Audio browser CLI | Independently reran 135 captures matching all prior case hashes; five CLI rejections passed, including strict dummy-revision handling, output preservation and synthetic source-checkout protection | Idle builder required; prior 10s navigation timeout during linking retained without a proven cause; fresh profiles, not persistent restart or protected-policy admission |
+| Broader Audio fidelity fixture calibration | Nine graph kinds at 44.1/48 kHz; two stock156 runs each passed 54 renders; exact known signals, repeated/segmented reads, buffer mutation and four fault-injection controls passed | Official stock calibration only; Glint-policy and AudioMath execution pending; oscillator/compressor checks prove repeatability, not complete DSP correctness |
 | Native revision stamping | Current zero CDP stamp explained by upstream non-official GN default; isolated real-LASTCHANGE generation preserved version/branding and changed only stamp | Override staged, not applied/compiled; current native source binding is receipt/core hashes, not a runtime Git report |
 | Compiled Glint branding | Main/app-list icons match project logo; ProductName in EXE/DLL and internal version-page heading are Glint; resource-pack postguards passed | Not OS taskbar/shortcut cache migration or fingerprint admission |
 | Staged verifier evidence retention | Five actual held-file controls and an 18-check browser regression passed on a patched copy; original exception/profile retained on failure | Canonical verifier unchanged; underlying browser-close timeout is not fixed |
@@ -42,6 +43,12 @@ raw reports: `D:\Glint156Candidate\runtime-after-identity-20261029-v13\suite`.
 Public CLI/runtime-evidence regression: `tests/test_release_tools.py` — 1101 passed,
 one skipped in 90.72s; isolated log in
 `D:\Glint156Candidate\public-audio-cli-python-regression-20261029-v2\pytest.log`.
+Broader Audio calibration: [`audio-fidelity-observations.json`](../native/drafts/audio-dsp-math-v2/audio-fidelity-observations.json);
+raw `D:\Glint156Candidate\audio-fidelity-stock156-20261029-v1` and
+`audio-fidelity-stock156-controls-20261029-v1`.
+After adding the fidelity fixture: `tests/test_release_tools.py` — 1102 passed,
+one skipped in 105.31s; isolated log:
+`D:\Glint156Candidate\audio-fidelity-python-regression-20261029-v1\pytest.log`.
 Transport target: `identity-transport.json` in that directory; lifecycle repetitions:
 `D:\Glint156Candidate\lifecycle156-under-build-20261029-v1\report.json`.
 Sanitized evidence: [`windows-runtime-observations.json`](../native/drafts/upstream-156/windows-runtime-observations.json).

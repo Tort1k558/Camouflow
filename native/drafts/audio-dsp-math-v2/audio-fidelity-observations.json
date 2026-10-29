@@ -1,0 +1,538 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Official stock156 owned OfflineAudioContext fidelity calibration only",
+  "probe": {
+    "file": "audio-fidelity-control.js",
+    "sha256": "b18f16da49bbb55eacae2b52e40d95b7c1c270e18740798233232bf5f9b87861"
+  },
+  "browser_get_version": {
+    "product": "Chrome/156.0.8078.36",
+    "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e"
+  },
+  "stock_core_sha256": {
+    "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+    "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+    "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+  },
+  "baseline_runs": 2,
+  "renders_per_run": 54,
+  "repetitions_per_case": 3,
+  "baseline_runs_bit_exact": true,
+  "resources_closed": true,
+  "postguards_passed": true,
+  "raw_report_sha256": [
+    "249c0023c141914a9bb272cde7afe510e791ff5261e24227dcc63388a54c98b2",
+    "dfdf4bf9461175839203480f1a1bdcd714c9220dba0ea51d407a4c7095358873"
+  ],
+  "cases": [
+    {
+      "kind": "silence",
+      "rate": 44100,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": false
+        },
+        {
+          "sha256": "e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": false
+        }
+      ]
+    },
+    {
+      "kind": "identity",
+      "rate": 44100,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "89ebc46be908d89b07236ebc843363b4daedd805b6d03f4cf54ccf0c42a54985",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "89ebc46be908d89b07236ebc843363b4daedd805b6d03f4cf54ccf0c42a54985",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "half-gain",
+      "rate": 44100,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "58b7fd1522436b2ec22c8549b14cdc3929256e259674801efb9d16d44d34fb2e",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "58b7fd1522436b2ec22c8549b14cdc3929256e259674801efb9d16d44d34fb2e",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "impulse",
+      "rate": 44100,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "cba8f11c36acb867ca74ececae9052631c7d525d1ebfb631c5d889e2ff25132c",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "cba8f11c36acb867ca74ececae9052631c7d525d1ebfb631c5d889e2ff25132c",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "stereo",
+      "rate": 44100,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "838f1f3d72b173257558fc1752093f06cbd75f97b47d91b5464011258647a4c4",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "38e36dc3814a85747becf28135aa428c4b4a79333ab22c66ce952e4468f67f34",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "constant-positive",
+      "rate": 44100,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "838f1f3d72b173257558fc1752093f06cbd75f97b47d91b5464011258647a4c4",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "838f1f3d72b173257558fc1752093f06cbd75f97b47d91b5464011258647a4c4",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "constant-negative",
+      "rate": 44100,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "1ad1bed2b00b50f089c9a5b826414584b77a88a868a7693c8ce241b745f787cf",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "1ad1bed2b00b50f089c9a5b826414584b77a88a868a7693c8ce241b745f787cf",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "oscillator",
+      "rate": 44100,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "f95fafc4821220caca5fc1ccdd6d0d947335a041f36769ac61d9a890689f8e2f",
+          "finite": true,
+          "expectedExact": null,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "f95fafc4821220caca5fc1ccdd6d0d947335a041f36769ac61d9a890689f8e2f",
+          "finite": true,
+          "expectedExact": null,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "compressor",
+      "rate": 44100,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "d350f65306357ba4f90446d114184489cd76fd32001396ae6eb3674243faa38b",
+          "finite": true,
+          "expectedExact": null,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "d350f65306357ba4f90446d114184489cd76fd32001396ae6eb3674243faa38b",
+          "finite": true,
+          "expectedExact": null,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "silence",
+      "rate": 48000,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": false
+        },
+        {
+          "sha256": "e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": false
+        }
+      ]
+    },
+    {
+      "kind": "identity",
+      "rate": 48000,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "89ebc46be908d89b07236ebc843363b4daedd805b6d03f4cf54ccf0c42a54985",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "89ebc46be908d89b07236ebc843363b4daedd805b6d03f4cf54ccf0c42a54985",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "half-gain",
+      "rate": 48000,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "58b7fd1522436b2ec22c8549b14cdc3929256e259674801efb9d16d44d34fb2e",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "58b7fd1522436b2ec22c8549b14cdc3929256e259674801efb9d16d44d34fb2e",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "impulse",
+      "rate": 48000,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "cba8f11c36acb867ca74ececae9052631c7d525d1ebfb631c5d889e2ff25132c",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "cba8f11c36acb867ca74ececae9052631c7d525d1ebfb631c5d889e2ff25132c",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "stereo",
+      "rate": 48000,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "838f1f3d72b173257558fc1752093f06cbd75f97b47d91b5464011258647a4c4",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "38e36dc3814a85747becf28135aa428c4b4a79333ab22c66ce952e4468f67f34",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "constant-positive",
+      "rate": 48000,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "838f1f3d72b173257558fc1752093f06cbd75f97b47d91b5464011258647a4c4",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "838f1f3d72b173257558fc1752093f06cbd75f97b47d91b5464011258647a4c4",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "constant-negative",
+      "rate": 48000,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "1ad1bed2b00b50f089c9a5b826414584b77a88a868a7693c8ce241b745f787cf",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "1ad1bed2b00b50f089c9a5b826414584b77a88a868a7693c8ce241b745f787cf",
+          "finite": true,
+          "expectedExact": true,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "oscillator",
+      "rate": 48000,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "8a04f7eafbbc18b13162b60288dc77a976eea8afdc2b97453db38d1df7cfd722",
+          "finite": true,
+          "expectedExact": null,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "8a04f7eafbbc18b13162b60288dc77a976eea8afdc2b97453db38d1df7cfd722",
+          "finite": true,
+          "expectedExact": null,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    },
+    {
+      "kind": "compressor",
+      "rate": 48000,
+      "frames": 512,
+      "channelCount": 2,
+      "channels": [
+        {
+          "sha256": "8471feb66b3286cbae9f9d353a3093e90fca7ed435dfc55c1a378b6f2ef48e80",
+          "finite": true,
+          "expectedExact": null,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        },
+        {
+          "sha256": "8471feb66b3286cbae9f9d353a3093e90fca7ed435dfc55c1a378b6f2ef48e80",
+          "finite": true,
+          "expectedExact": null,
+          "repeatedExact": true,
+          "copiedExact": true,
+          "segmentedExact": true,
+          "nonzero": true
+        }
+      ]
+    }
+  ],
+  "negative_controls": [
+    {
+      "name": "wrong-constant-reference",
+      "passed": true,
+      "injected_probe_sha256": "8464d4c90e3e38a3c1d8b6981c0e436e8ef0d66d8d6b6220fe9f685b86218752",
+      "rejected_rows": 12,
+      "repeat_stable": true
+    },
+    {
+      "name": "wrong-segment-offset",
+      "passed": true,
+      "injected_probe_sha256": "d9c591633661376e13fdf9d6ac8bd0522d4f9cb61e7b645c5e2aefa8024afc9a",
+      "rejected_rows": 48,
+      "repeat_stable": true
+    },
+    {
+      "name": "wrong-mutation-offset",
+      "passed": true,
+      "injected_probe_sha256": "a3aa42506fe510d38de5a8e300119ac8600e840a9bfde1371f8f17dc5bb2e2bc",
+      "rejected_rows": 54,
+      "repeat_stable": true
+    },
+    {
+      "name": "unstable-oscillator",
+      "passed": true,
+      "injected_probe_sha256": "dbaf4150691f7d000de582bf8659f548b3b9cc5d4ebf18560965f19599b44d08",
+      "rejected_rows": 0,
+      "repeat_stable": false
+    }
+  ],
+  "glint_policy_execution_verified": false,
+  "audio_math_execution_verified": false,
+  "device_cohort_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "remaining_unverified": [
+    "Glint-off and protected-policy execution of these fixtures",
+    "Realtime playback, AudioWorklet, AnalyserNode and audible quality",
+    "Cross-device cohorts and performance"
+  ]
+}

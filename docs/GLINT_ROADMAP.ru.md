@@ -102,6 +102,13 @@ surface и inline-script policy в DocumentLoader; полный runtime-допу
 включая combined. Хеши каждого отчёта привязаны к бинарнику и receipt в
 `native/drafts/upstream-156/runtime-suite-observations.json`. Remaining-native
 очередь началась; установленный пакет и полный Canvas/GPU/Audio ещё не допущены.
+Подготовлен следующий Audio compatibility gate: девять графов на 44.1/48 kHz,
+точные константы/identity/impulse/stereo, повторные и 37-frame segmented reads,
+copyFromChannel/copyToChannel и lifecycle. Два stock156 запуска прошли по
+54 renders с одинаковыми хешами; четыре fault-injection controls отклонены
+ожидаемо. `audio-fidelity-control.js` / `audio-fidelity-observations.json` находятся
+в `native/drafts/audio-dsp-math-v2/`. Следующий шаг — эти же fixtures на Glint-off
+и protected policy; stock-калибровка не доказывает работу AudioMath 0068.
 
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 

@@ -25,6 +25,32 @@ The float32 prototype matched 12 non-discriminating cases, **not** the other
 three stock cases. This is not evidence that its variant represents an ordinary
 device cohort; do not promote that mode from these baseline measurements.
 
+### Broader Audio fidelity fixtures
+
+[`audio-fidelity-control.js`](audio-fidelity-control.js) covers nine graph kinds
+at 44.1/48 kHz: silence, identity, half gain, impulse, isolated stereo, positive
+and negative constants, triangle oscillator and compressor. Three repetitions
+also check whole/repeated/37-frame segmented reads, `copyFromChannel`,
+`copyToChannel`, completion-buffer identity and closed state.
+
+Two independent **official stock156** runs passed 54 renders each, with equal
+channel hashes. Four fault-injection controls rejected wrong constant references,
+segment/mutation offsets and unstable oscillator output. Known signals are
+checked exactly; oscillator/compressor output is only checked for finite,
+nonzero, repeatable samples, not theoretical DSP correctness.
+[Scoped calibration](audio-fidelity-observations.json).
+
+Evaluate the file on an owned secure/localhost page with Playwright:
+
+```python
+probe = Path("native/drafts/audio-dsp-math-v2/audio-fidelity-control.js")
+result = await page.evaluate(probe.read_text(encoding="utf-8-sig"))
+assert result["passed"]
+```
+
+These new fixtures have **not yet run against Glint policies or AudioMath 0068**.
+They do not cover realtime playback, AudioWorklet, AnalyserNode or audible quality.
+
 ### Reproduce the browser gate
 
 [`browser_matrix.py`](browser_matrix.py) is the public, source-bound runner.
