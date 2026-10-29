@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Chromium 156 / 001–068 — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Source build | Completed incremental browser build, j4; core bytes unchanged from 001–067 | [Build evidence](../native/drafts/upstream-156/build68-observations.json); patch 0068 changes fixtures only |
+| Native batch | **18/18 groups passed**, including **12/12 AudioMath**; all postguards passed | [Native evidence](../native/drafts/upstream-156/native-batch68-observations.json); overlapping filters are not independent coverage |
+| Fixed-profile Audio matrix | **8/8 profiles**, baseline / Math / Math restart; all 24 phases passed fidelity 54/54, analyser 12/12, worklet 12/12 and realtime 11/11 | [Runtime evidence](../native/drafts/upstream-156/audio-profile-matrix68-observations.json); exact key retention, closed resources and input/core/receipt postguards |
+| Audio effect / diversity | Both reference selectors occurred, but every fidelity graph remained bit-exact to baseline | **Not established**: reference selector coverage is not internal DSP branch observation; discriminating compressor signals and transport need investigation |
+| Interrupted initial matrix | Producer disappeared before a report or logged measurement; original directory retained | No PASS/FAIL result assigned; completed matrix used a new fixed cohort, not retries of failed samples |
+
+This does not resolve Legacy Audio-v1 failures or screen/DPR inheritance, prove
+physical-device cohorts, admit the installed payload, or verify external anti-bot
+services. The historical 001–067 failures below remain evidence, not current
+0068 native results.
+
 ## Chromium 156 / 001–067 build and integration — 2026-10-29
 
 | Gate | Observed result | Boundary |

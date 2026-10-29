@@ -14,8 +14,12 @@ the same float backend without colliding with Canvas/WebGL/WebGPU seeds 1/2/3;
 native seed `4` is unchanged. The fixture now verifies actual document readiness,
 and a new negative case requires duplicate-seed rejection before node/resolver
 creation. All 11 existing cases are retained: the proposed gate becomes 12.
-Isolated apply-check and HMAC vectors passed. The patch has not been compiled, executed or used to admit a capability.
-The native gate now requires all 12 cases; failed 001–067 evidence is retained.
+Isolated apply-check and HMAC vectors passed. Candidate 001–068 has now been
+compiled and all 12 native cases passed, including duplicate-seed rejection.
+The full native batch passed all 18 groups with unchanged source/core/receipt
+postguards. [Native results](../upstream-156/native-batch68-observations.json).
+No capability is admitted from those fixture results; failed 001–067 evidence
+is retained.
 
 ## Actual Audio-v1 fidelity failure on 156
 
@@ -42,9 +46,16 @@ All fixed profiles and failures remain in the report. Missing either reference
 selector fails the cohort; it does not generate extra profiles automatically.
 
 `reference_selectors_covered` is **not** direct observation of the internal DSP
-branch, a real-device cohort or privacy admission. The multi-profile Glint
-runtime matrix has not yet executed. `--profiles 1` preserves the original
-single-profile diagnostic behavior.
+branch, a real-device cohort or privacy admission. The actual 001–068 matrix
+completed all eight profiles and all three phases with all four probes passing,
+closed resources and unchanged input/core/receipt postguards.
+[Runtime results](../upstream-156/audio-profile-matrix68-observations.json).
+Both reference selectors occurred, but **all 54 fidelity graphs remained
+bit-exact to baseline on every profile**. These results therefore do not prove
+DSP branch selection or Audio fingerprint diversity. A discriminating compressor
+matrix and policy transport audit remain required. The interrupted first attempt
+is retained without assigning it a measurement result.
+`--profiles 1` preserves the original single-profile diagnostic behavior.
 
 The calibrated 54-graph fixture passed **54/54** with Glint policy off. With
 profile-identity Audio-v1 enabled, **42/54** passed; identity and half-gain
