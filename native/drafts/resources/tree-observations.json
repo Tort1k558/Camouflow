@@ -1,0 +1,152 @@
+{
+  "scope": "Read-only process-tree controls and two owned Glint roots; no performance/limit/manager admission",
+  "source_sha256": {
+    "windows_process_resources.py": "5de8dcae8b9ae9f47b0828d5276db62c4ff2b3d85b27e45e2e2928b30b536430",
+    "windows_process_tree.py": "ad8fd3775fc1d06c489735aa1c074937dfc2976683d1a56930fbdf5de503f785"
+  },
+  "runtime_core_sha256": {
+    "chrome.exe": "0596afb2bd1a84731ebbe4d276edd3797d67b262bebb332e76a8aa9d21db5567",
+    "chrome.dll": "bd75c5c6ab3c45946edc0ea4e8f1d684286dd588d7cc46999a0b2bb1236aab44",
+    "chrome_elf.dll": "14597f88689361a016bce4a648e6b18a50ed065d6fc524dc8112f4b7d6e115d0"
+  },
+  "controls": [
+    {
+      "name": "live-toolhelp-snapshot-contains-owned-roots",
+      "passed": true
+    },
+    {
+      "name": "owned-grandchild-included",
+      "passed": true
+    },
+    {
+      "name": "separate-root-and-sibling-excluded",
+      "passed": true
+    },
+    {
+      "name": "stable-tree-cpu-interval",
+      "passed": true
+    },
+    {
+      "name": "wrong-root-creation-anchor",
+      "passed": true
+    },
+    {
+      "name": "removed-child-does-not-become-zero-cpu",
+      "passed": true
+    },
+    {
+      "name": "replacement-child-does-not-reuse-old-interval",
+      "passed": true
+    },
+    {
+      "name": "hundred-tree-captures-release-all-handles",
+      "passed": true
+    },
+    {
+      "name": "snapshot-create-failure-is-explicit",
+      "passed": true
+    },
+    {
+      "name": "snapshot-first-failure-is-explicit",
+      "passed": true
+    },
+    {
+      "name": "snapshot-next-failure-is-explicit",
+      "passed": true
+    },
+    {
+      "name": "snapshot-close-failure-is-explicit",
+      "passed": true
+    },
+    {
+      "name": "explicit-no-more-files-is-empty-snapshot",
+      "passed": true
+    },
+    {
+      "name": "snapshot-cleanup-keeps-primary-error",
+      "passed": true
+    },
+    {
+      "name": "exited-root-cannot-be-read-as-empty-tree",
+      "passed": true
+    },
+    {
+      "name": "two-live-glint-root-trees-are-disjoint",
+      "passed": true
+    },
+    {
+      "name": "browser-cdp-processes-covered-by-owned-os-trees",
+      "passed": true
+    },
+    {
+      "name": "two-glint-tree-intervals-creation-bound",
+      "passed": true
+    }
+  ],
+  "manager_integrated": false,
+  "production_admitted": false,
+  "memory_limit_changed": false,
+  "forced_termination_added": false,
+  "owned_process_tree_observations": {
+    "initial_members": 2,
+    "sibling_members": 1,
+    "after_shrink_members": 1,
+    "after_regrow_members": 2,
+    "cpu_interval": {
+      "elapsed_seconds": 0.219,
+      "cpu_seconds": 0.171875,
+      "mean_cpu_cores": 0.7848173515981736
+    },
+    "query_and_snapshot_handle_count_stable": true
+  },
+  "glint_observations": [
+    {
+      "browser_version": "156.0.8078.36",
+      "process_count": 9,
+      "root_identity_from_owned_cdp": true,
+      "summed_working_set_bytes": 694829056,
+      "summed_private_commit_bytes": 299167744,
+      "cpu_interval": {
+        "elapsed_seconds": 0.531,
+        "cpu_seconds": 0.03125,
+        "mean_cpu_cores": 0.05885122410546139
+      },
+      "snapshot_membership_stable": true,
+      "not_an_atomic_or_lifetime_snapshot": true,
+      "not_a_performance_benchmark": true
+    },
+    {
+      "browser_version": "156.0.8078.36",
+      "process_count": 8,
+      "root_identity_from_owned_cdp": true,
+      "summed_working_set_bytes": 675905536,
+      "summed_private_commit_bytes": 313602048,
+      "cpu_interval": {
+        "elapsed_seconds": 0.531,
+        "cpu_seconds": 0.0,
+        "mean_cpu_cores": 0.0
+      },
+      "snapshot_membership_stable": true,
+      "not_an_atomic_or_lifetime_snapshot": true,
+      "not_a_performance_benchmark": true
+    }
+  ],
+  "owned_children_exited": true,
+  "glint_resources_closed": true,
+  "postguards_passed": true,
+  "schema": 1,
+  "passed": true,
+  "platform": "win32",
+  "control_count": 18,
+  "frozen_inputs_unchanged": 201,
+  "atomic_process_snapshot": false,
+  "complete_lifetime_accounting": false,
+  "summed_working_set_is_unique_physical_ram": false,
+  "remaining_unverified": [
+    "Manager/watchdog integration after frozen queues are terminal",
+    "Active-profile root authentication/binding and ongoing crash/detached-process accounting",
+    "Sampling overhead, long-duration behavior and resource-limit policy",
+    "Native privacy-policy composition, performance comparison and release admission",
+    "Linux/macOS remain deferred"
+  ]
+}

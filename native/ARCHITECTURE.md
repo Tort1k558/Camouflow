@@ -367,6 +367,11 @@ errors and query-handle cleanup. Its 24 controls and one seven-process owned
 Glint observation passed. Process churn/profile ownership, sampling overhead
 and memory-limit semantics still require integration; summed working sets
 must not be represented as unique physical RAM.
+The subsequent tree reader uses bounded Toolhelp snapshots, root/member creation
+anchors, parent-age checks and observed topology agreement. Its 18 Windows
+controls and two disjoint Glint-root observations passed, including child churn
+and handle cleanup. It is not atomic/lifetime accounting or profile-root
+authentication; changed membership invalidates the complete CPU interval.
 
 ## Distribution
 

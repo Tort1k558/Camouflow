@@ -4767,6 +4767,125 @@ def test_windows_resource_cpu_intervals_and_input_validation(monkeypatch):
         module.WindowsProcessReader()
 
 
+def test_windows_resource_tree_selection_and_intervals_are_identity_bound():
+    from dataclasses import replace
+    from native.drafts.resources import windows_process_tree as tree
+
+    node = tree.ProcessNode
+    rows = (node(1, 0, "root"), node(2, 1, "child"), node(3, 2, "grandchild"), node(9, 0, "other"))
+    assert tree.descendants(rows, 1) == rows[:3]
+    assert tree.descendants(tuple(reversed(rows)), 1) == rows[:3]
+    for invalid in (rows + (rows[0],), (node(1, 2, "root"), node(2, 1, "cycle")), (None,)):
+        with pytest.raises(ValueError):
+            tree.descendants(invalid, 1)
+    with pytest.raises(ProcessLookupError):
+        tree.descendants(rows, 8)
+    with pytest.raises(ValueError, match="bound"):
+        tree.descendants((rows[0], *(node(pid, 1, "child") for pid in range(2, tree.MAX_TREE_PROCESSES + 2))), 1)
+    with pytest.raises(ValueError):
+        node(True, 0, "root")
+    with pytest.raises(ValueError):
+        node(1, -1, "root")
+    with pytest.raises(ValueError):
+        node(1, 0, "bad\0image")
+    sample = tree.ProcessSample(1, 100, 1_000_000_000, 0, 0, 1024, 2048, 3072)
+    child = replace(sample, pid=2, created_100ns=200)
+    before = tree.ProcessTreeSample(1, 100, 1, 1_000_000_000, (sample, child))
+    after = tree.ProcessTreeSample(1, 100, 2_000_000_000, 3_000_000_000,
+        tuple(replace(row, measured_ns=3_000_000_000, user_100ns=10_000_000) for row in (sample, child)))
+    assert before.summed_working_set_bytes == 2048 and before.summed_private_commit_bytes == 6144
+    assert tree.tree_cpu_interval(before, after) == {"elapsed_seconds": 2.0, "cpu_seconds": 2.0, "mean_cpu_cores": 1.0}
+    for invalid in (replace(after, processes=(after.processes[0],)),
+                    replace(after, processes=(after.processes[0], replace(after.processes[1], created_100ns=201))),
+                    tree.ProcessTreeSample(2, 200, 2_000_000_000, 3_000_000_000, (after.processes[1],)), before):
+        with pytest.raises(ValueError):
+            tree.tree_cpu_interval(before, invalid)
+    for changes in ({"root_pid": []}, {"root_created_100ns": True}, {"processes": ()},
+                    {"processes": (sample, sample)}, {"capture_started_ns": 0}, {"capture_started_ns": 2_000_000_000},
+                    {"processes": (sample, replace(child, created_100ns=99))}):
+        with pytest.raises(ValueError):
+            replace(before, **changes)
+
+
+def test_windows_resource_tree_capture_refuses_churn_reuse_and_partial_samples():
+    from dataclasses import replace
+    import time
+    from native.drafts.resources import windows_process_tree as tree
+
+    rows = (tree.ProcessNode(1, 0, "root"), tree.ProcessNode(2, 1, "child"))
+    anchor = tree.ProcessSample(1, 100, time.monotonic_ns(), 0, 0, 1024, 2048, 3072)
+
+    class Model(tree.WindowsProcessTreeReader):
+        def __init__(self, after=None, *, before=rows, root_created=100, child_created=200, reused_child=False, denied_child=False):
+            self.snapshots = iter((before, before if after is None else after))
+            self.created = {1: root_created, 2: child_created, 3: 300}
+            self.reads = {}
+            self.reused_child = reused_child
+            self.denied_child = denied_child
+
+        def snapshot(self):
+            return next(self.snapshots)
+
+        def read(self, pid, *, expected_created_100ns=None):
+            self.reads[pid] = self.reads.get(pid, 0) + 1
+            if pid == 2 and self.denied_child:
+                raise PermissionError("Owned child query denied")
+            created = self.created[pid] + int(pid == 2 and self.reused_child and self.reads[pid] > 1)
+            if expected_created_100ns is not None and created != expected_created_100ns:
+                raise ValueError("Process identity changed")
+            return replace(anchor, pid=pid, created_100ns=created, measured_ns=time.monotonic_ns())
+
+    stable = Model()
+    measured = stable.read_tree(anchor)
+    assert len(measured.processes) == 2 and stable.reads == {1: 2, 2: 2}
+    assert measured.summed_working_set_bytes == 2048
+    for model in (Model(root_created=101), Model(child_created=99), Model(reused_child=True),
+                  Model(after=rows[:1]), Model(after=rows + (tree.ProcessNode(3, 1, "new"),)),
+                  Model(after=(rows[0], replace(rows[1], image="changed"))),
+                  Model(before=rows + (tree.ProcessNode(3, 2, "grandchild"),),
+                        after=rows + (tree.ProcessNode(3, 1, "grandchild"),))):
+        with pytest.raises(ValueError):
+            model.read_tree(anchor)
+    with pytest.raises(ProcessLookupError):
+        Model(after=()).read_tree(anchor)
+    with pytest.raises(PermissionError):
+        Model(denied_child=True).read_tree(anchor)
+    with pytest.raises(ValueError):
+        Model().read_tree(None)
+
+
+def test_windows_resource_tree_observations_do_not_admit_watchdog_or_limits():
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/resources"
+    raw = (root / "tree-observations.json").read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    assert data["schema"] == 1 and data["passed"] and data["platform"] == "win32"
+    for name, digest in data["source_sha256"].items():
+        source = (root / name).read_bytes()
+        assert hashlib.sha256(source).hexdigest() == digest
+        assert b"\r" not in source and not source.startswith(b"\xef\xbb\xbf")
+    primitive = json.loads((root / "observations.json").read_text())
+    assert data["source_sha256"][primitive["reader"]["file"]] == primitive["reader"]["sha256"]
+    assert len(data["controls"]) == data["control_count"] == 18
+    assert len({row["name"] for row in data["controls"]}) == 18 and all(row["passed"] for row in data["controls"])
+    assert data["postguards_passed"] and data["owned_children_exited"] and data["glint_resources_closed"]
+    for field in ("manager_integrated", "production_admitted", "memory_limit_changed", "forced_termination_added",
+                  "atomic_process_snapshot", "complete_lifetime_accounting", "summed_working_set_is_unique_physical_ram"):
+        assert data[field] is False
+    assert data["frozen_inputs_unchanged"] == 201 and data["remaining_unverified"]
+    assert len(data["glint_observations"]) == 2
+    assert all(row["process_count"] >= 7 and row["browser_version"] == "156.0.8078.36"
+               and row["root_identity_from_owned_cdp"] and row["snapshot_membership_stable"]
+               and row["not_an_atomic_or_lifetime_snapshot"] and row["not_a_performance_benchmark"]
+               and row["cpu_interval"]["cpu_seconds"] >= 0 for row in data["glint_observations"])
+    baseline = json.loads((build.ROOT / "native/drafts/upstream-156/windows-runtime-observations.json").read_text())
+    assert data["runtime_core_sha256"] == baseline["runtime_core_sha256"]
+
+
 def test_audio_math_context_draft_binds_source_only_integration():
     import hashlib
     import json

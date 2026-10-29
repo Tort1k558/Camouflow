@@ -61,6 +61,16 @@ kernel/user CPU, working set и private commit. Прошли 24 controls, вкл
 с OS parent-chain проверкой. Это ещё не интеграция watchdog, не новый RAM limit
 и не performance benchmark; сумма working sets не равна уникальной физической
 памяти. Исходники/ограничения: `native/drafts/resources/README.md`.
+Добавлен tree reader: два Toolhelp snapshots, проверка parent creation order
+и повторная привязка каждой process identity. Прошли 18 Windows controls,
+включая injected API/cleanup errors и 100 captures без роста handles; два живых
+Glint-дерева (9/8 процессов) не пересекались. Churn/reused PID не превращаются
+в нулевой CPU или частичные complete totals. Profile-root authentication,
+orphan/lifetime учёт и безопасная интеграция лимитов остаются следующими gates.
+Полная desktop Python-регрессия на Windows/offscreen: 3 614 passed, один skipped,
+340.52 с; data/temp/cache изолированы на D, source postguards прошли. Это включает
+1 096 release-tool cases, а не добавляется к ним; native/runtime admission
+по-прежнему определяется отдельными gates, не Python-счётчиком.
 
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 

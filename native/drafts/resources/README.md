@@ -26,7 +26,7 @@ granularity; values are not clamped to make them look plausible.
   of the workload child. Correcting that harness did not change the reader.
 
 Evidence: [`observations.json`](observations.json); private raw records and test
-profiles: `D:\Glint156Candidate\windows-resource-reader-20261029-v3`.
+profiles: `D:\Glint156Candidate\windows-resource-reader-20261029-v4`.
 
 **Summed working sets are not unique physical RAM:** shared pages may be counted
 more than once. Private commit is not resident RAM. The observation is neither a
@@ -38,5 +38,45 @@ and validate sampling overhead and limit semantics. Do not replace the existing
 root-only metric with a working-set sum under the same automatic-kill threshold.
 Apply integration only after the current source-bound queues are terminal.
 
+## Process-tree measurement
+
+[`windows_process_tree.py`](windows_process_tree.py) adds bounded Toolhelp
+snapshots and creation-bound subtree reads. It includes descendants, not just
+the root process. Parent creation order rejects stale parent-PID links; every
+process identity is rechecked and the two observed parent/name topologies must
+match. Missing/inaccessible processes or churn raise errors instead of returning
+partial totals as complete.
+
+`tree_cpu_interval()` requires the same root and member identities. A removed
+or replacement process invalidates that interval; it is not silently counted as
+zero CPU. Stable samples expose summed working set and private commit separately.
+
+```python
+from native.drafts.resources.windows_process_tree import WindowsProcessTreeReader
+
+reader = WindowsProcessTreeReader()
+anchor = reader.read(owned_browser_root_pid)
+sample = reader.read_tree(anchor)
+```
+
+The caller must authenticate `owned_browser_root_pid` against its still-live,
+owned browser connection and profile lock. This API does not discover a profile
+or authorize process termination. Reusing a PID without its creation anchor is
+not sufficient. The snapshots are **not atomic or complete lifetime accounting**;
+detached/orphan processes after root exit still need explicit ownership handling.
+Run capture work off the UI thread; sampling overhead and cadence still need
+measurement before manager integration.
+
+Tree evidence: [`tree-observations.json`](tree-observations.json), **18 Windows
+controls**, including injected API errors and 100 captures without handle growth.
+Two live Glint roots had disjoint observed trees of nine/eight processes; both
+covered their browser-reported process sets. Owned controls exercised child
+removal/replacement and explicit interval rejection. Python model checks cover
+mid-capture churn, reused PIDs/parents, topology changes, cycles and bounds.
+Raw owned evidence: `D:\Glint156Candidate\windows-process-tree-20261029-v2`.
+
+No watchdog/limit integration or performance admission follows from these results.
+
 API contracts: [GetProcessMemoryInfo](https://learn.microsoft.com/en-us/windows/win32/api/psapi/nf-psapi-getprocessmemoryinfo)
-and [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes).
+[GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes)
+and [CreateToolhelp32Snapshot](https://learn.microsoft.com/en-us/windows/win32/api/tlhelp32/nf-tlhelp32-createtoolhelp32snapshot).

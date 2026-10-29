@@ -75,6 +75,13 @@ class WindowsProcessReader:
         if status != 0x102:
             raise OSError("Unexpected process wait status")
 
+    def _close_handle(self, handle, failure):
+        if not self._kernel.CloseHandle(handle):
+            error = ctypes.WinError(ctypes.get_last_error())
+            if failure is None:
+                raise error
+            failure.add_note("Process measurement handle cleanup failed: " + str(error))
+
     def read(self, pid: int, *, expected_created_100ns: int | None = None) -> ProcessSample:
         if type(pid) is not int or not 0 < pid <= 0xffffffff:
             raise ValueError("Expected a positive Windows PID")
@@ -107,8 +114,4 @@ class WindowsProcessReader:
             failure = error
             raise
         finally:
-            if not self._kernel.CloseHandle(handle):
-                error = ctypes.WinError(ctypes.get_last_error())
-                if failure is None:
-                    raise error
-                failure.add_note("Process query handle cleanup failed: " + str(error))
+            self._close_handle(handle, failure)
