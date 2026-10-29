@@ -1,6 +1,6 @@
 # Glint: план проверки и развития
 
-## Пакет screen/DPR 0069 — подготовлен, не включён в браузер
+## Пакет screen/DPR 0069 — выбран для сборки, в бинарник ещё не включён
 
 Подготовлен связанный [черновик из 19 файлов](../native/drafts/environment/screen-inheritance69.patch):
 browser-owned логический экран, nullable IPC, widget-scoped DOM/CSS и DPR,
@@ -11,7 +11,12 @@ browser-owned логический экран, nullable IPC, widget-scoped DOM/C
 Apply-check на неизменённые исходники 001–068 прошёл; официальный Mojom parser
 и генераторы typed native/Blink/shared C++ bindings прошли в отдельном каталоге.
 [Подготовительные проверки](../native/drafts/environment/screen-inheritance69-preparation.json).
-**C++ не скомпилирован, runtime не проверен, manifest остаётся 001–068.**
+Manifest и checkpoint теперь содержат **001–069**; исходный подготовительный
+отчёт сохранён как исторический снимок до выбора патча. В native batch добавлен
+отдельный gate `screen-metrics`, требующий все девять случаев в
+`blink_common_unittests`; общий список теперь содержит **19** групп.
+Runtime 001–068 сохранён отдельно на D: с проверкой всех **269 файлов**.
+**C++ 0069 не скомпилирован, runtime не проверен.**
 Следующий допуск: native-кейсы и реальный браузер — первый script, вложенные
 iframe, смена процесса/BFCache, zoom, отключение политики, скриншоты и ввод.
 

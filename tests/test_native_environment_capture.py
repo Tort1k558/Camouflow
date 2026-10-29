@@ -321,4 +321,6 @@ def test_screen69_source_package_does_not_claim_a_compiled_or_runtime_fix():
     checkpoint = directory / record["base_manifest"]
     assert hashlib.sha256(checkpoint.read_bytes()).hexdigest() == record["base_manifest_sha256"]
     manifest = json.loads((root / "native/drafts/upstream-156/manifest.json").read_bytes())
-    assert len(manifest["patches"]) == 68
+    base = json.loads(checkpoint.read_bytes())
+    assert len(base["patches"]) == 68
+    assert manifest["patches"][:68] == base["patches"]

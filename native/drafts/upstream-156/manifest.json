@@ -1531,6 +1531,10 @@
     {
       "file": "0068-native-audio-math-fixture-readiness.patch",
       "sha256": "64f6e2f756ab6d56e28f1c5be1e2542d6b0ea61359cb777d4dbbe9944629494a"
+    },
+    {
+      "file": "0069-native-logical-screen-inheritance.patch",
+      "sha256": "8d52a3211c832df1d4729e688cfe2185e79c2c64ef5d6bc1c06635f175b16acb"
     }
   ],
   "build": {

@@ -146,13 +146,47 @@ def test_audio_math_requires_selected_patch_and_matches_native_test_inventory(tm
     patches = [{"name": row["file"]} for row in candidate["manifest"]["patches"]]
     assert batch.units.require_target_sources(tmp_path, patches, "audio-math") is None
     with pytest.raises(ValueError, match="patches are required"):
-        batch.units.require_target_sources(tmp_path, patches[:-1], "audio-math")
+        batch.units.require_target_sources(tmp_path,
+            [row for row in patches if row["name"] != "0068-native-audio-math-fixture-readiness.patch"], "audio-math")
     patch = "\n".join((candidate["directory"] / "patches" / row["name"]).read_text(encoding="utf-8-sig")
-                      for row in patches[-2:])
+                      for row in patches if row["name"] in {
+                          "0067-native-audio-math-context-candidate.patch", "0068-native-audio-math-fixture-readiness.patch"})
     resulting_lines = "\n".join(line[1:] for line in patch.splitlines()
                                 if line.startswith(("+", " ")) and not line.startswith("+++"))
     names = set(re.findall(r"TEST_F\(OfflineAudioContextTest,\s*(GlintMath\w+)\)", resulting_lines))
     assert names == batch.units.required_tests("audio-math")["OfflineAudioContextTest"]
+
+
+def test_screen_metrics_requires_explicit_candidate_before_preflight(tmp_path, monkeypatch):
+    monkeypatch.setattr(batch.build, "preflight", lambda *args, **kwargs: pytest.fail("Unexpected preflight"))
+    with pytest.raises(ValueError, match="explicit upstream-156"):
+        batch.units.verify(tmp_path, tmp_path / "report.json", target="screen-metrics")
+
+
+def test_screen_metrics_native_gate_matches_selected_source_inventory(tmp_path):
+    import re
+
+    candidate = batch.build.load_candidate("upstream-156")
+    patches = [{"name": row["file"]} for row in candidate["manifest"]["patches"]]
+    name = "0069-native-logical-screen-inheritance.patch"
+    assert batch.units.require_target_sources(tmp_path, patches, "screen-metrics") is None
+    with pytest.raises(ValueError, match="patches are required"):
+        batch.units.require_target_sources(tmp_path, [row for row in patches if row["name"] != name], "screen-metrics")
+    raw = (candidate["directory"] / "patches" / name).read_text(encoding="utf-8-sig")
+    added = "\n".join(line[1:] for line in raw.splitlines() if line.startswith("+") and not line.startswith("+++"))
+    cases = set(re.findall(r"TEST\(GlintLogicalScreenTest,\s*(\w+)\)", added))
+    assert cases == batch.units.required_tests("screen-metrics")["GlintLogicalScreenTest"]
+    assert len(cases) == 9
+    assert batch.units.unit_binary_target("screen-metrics") == "blink_common_unittests"
+
+
+def test_batch_screen_metrics_builds_common_binary_without_claiming_browser_admission(owned):
+    result = batch.verify(owned.workspace, owned.reports, ("screen-metrics",),
+                          candidate_name="upstream-156", local_toolchain=True)
+    assert result["passed"] and result["postguards_passed"]
+    assert owned.state["builds"][0][5:] == ["blink_common_unittests"]
+    assert owned.state["cases"] == ["screen-metrics"]
+    assert not result["browser_runtime_verified"] and not result["privacy_admitted"]
 
 
 def test_batch_builds_shared_executables_once_and_checks_final_source_sdk_state(owned):

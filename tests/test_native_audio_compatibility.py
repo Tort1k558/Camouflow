@@ -215,7 +215,8 @@ def test_audio_math_readiness_draft_uses_noncolliding_fixed_backend_vectors():
 
     path = native_build.ROOT / "native/drafts/audio-dsp-math-v2/audio_math_fixture_readiness.patch"
     selected = native_build.load_candidate("upstream-156")
-    row = selected["manifest"]["patches"][-1]
+    row = next(row for row in selected["manifest"]["patches"]
+               if row["file"] == "0068-native-audio-math-fixture-readiness.patch")
     assert row["file"] == "0068-native-audio-math-fixture-readiness.patch"
     assert (selected["directory"] / "patches" / row["file"]).read_bytes() == path.read_bytes()
     patch = path.read_text(encoding="utf-8-sig")

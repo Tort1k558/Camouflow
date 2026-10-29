@@ -1,12 +1,12 @@
 # Glint browser test matrix
 
-## Unselected screen/DPR source package 0069 — 2026-10-30
+## Screen/DPR source package 0069, selected for build — 2026-10-30
 
 | Gate | Observed result | Boundary |
 | --- | --- | --- |
-| Linked source draft | 19-file browser/IPC/widget/DOM/CSS package; apply-check passed against exact active 001–068, which remained unchanged | [Preparation record](../native/drafts/environment/screen-inheritance69-preparation.json); not selected in the manifest |
+| Linked source draft | 19-file browser/IPC/widget/DOM/CSS package; apply-check passed against exact 001–068; subsequently selected in manifest/checkpoint 001–069 | [Historical preparation record](../native/drafts/environment/screen-inheritance69-preparation.json); no C++/runtime result yet |
 | IPC generation | Pinned official parser and typed native/Blink/shared C++ generators passed in an isolated D: output | Not C++ compilation, serialization-test execution or browser delivery proof |
-| Native cases | Nine cases prepared in `blink_common_unittests` | **Not executed**; first-script, lifecycle, geometry/input and combined browser gates remain open |
+| Native cases | Nine cases required by the new `screen-metrics` group in `blink_common_unittests`; batch now has 19 groups | **Not executed**; first-script, lifecycle, geometry/input and combined browser gates remain open |
 
 ## Chromium 156 / 001–068 — 2026-10-30
 

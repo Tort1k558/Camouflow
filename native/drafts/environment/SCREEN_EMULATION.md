@@ -28,12 +28,15 @@ driver-default controls are also retained privately; they are not Glint results.
 
 ## Source evidence, not a one-line repair
 
-### Unselected source package 0069
+### Source package 0069: selected for build, not browser-verified
 
 [`screen-inheritance69.patch`](screen-inheritance69.patch) prepares a linked
-19-file change against exact 001–068. It is **not selected, C++-compiled or
-runtime-verified**, and does not change the current browser or its receipt.
-[Preparation evidence](screen-inheritance69-preparation.json).
+19-file change against exact 001–068. The candidate manifest/checkpoint now
+selects 001–069; the [preparation record](screen-inheritance69-preparation.json)
+is the earlier unselected snapshot and remains unchanged. The package is
+**not C++-compiled or runtime-verified**. The `screen-metrics` batch group
+requires all nine native cases. The complete 001–068 runtime is preserved for
+rollback; selection alone does not update the browser or its receipt.
 
 - Browser-owned main-frame metrics feed an optional logical screen snapshot in
   widget visual properties, including their initial creation path. Remote-frame

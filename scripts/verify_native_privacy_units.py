@@ -200,7 +200,15 @@ REQUIRED_GPU_READBACK_TESTS = {
 NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "gpu-metadata", "worker-surfaces", "font-rasterization")
 IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
 SUPPORTED_TARGETS = ("keys", "contexts", "delivery", "worker-handoff", "document-partition",
-                     "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math")
+                     "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "screen-metrics")
+
+SCREEN_METRICS_TESTS = {"GlintLogicalScreenTest": {
+    "DesktopExplicitScreenDoesNotMutatePhysicalState", "DesktopDefaultRetainsOriginalScreenAndDsf",
+    "MobileDefaultUsesTopLevelViewportNotChildSize", "MobilePositionAndExplicitScreenAreDistinct",
+    "PartialViewportAndScaleUseExistingRoundingRules", "OrientationDoesNotRewritePhysicalOrOtherDisplays",
+    "OptionalOverrideRoundTripsWithoutChangingPhysical", "InvalidLogicalScaleIsRejectedByIpc",
+    "IndependentValuesAndDisableCompareDifferently",
+}}
 
 AUDIO_MATH_TESTS = {"OfflineAudioContextTest": {
     "GlintMathDisabledCaptureRemainsLegacy", "GlintMathMissingPolicyRejectsBeforeNodeOrResolver",
@@ -240,6 +248,8 @@ def snapshot_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "screen-metrics":
+        return SCREEN_METRICS_TESTS
     if target == "audio-math":
         return AUDIO_MATH_TESTS
     if target == "font-rasterization":
@@ -437,6 +447,8 @@ def verified_source_chain(workspace: Path, candidate: dict | None, lock: dict, e
 
 def require_target_sources(source: Path, patches: list[dict], target: str) -> dict[str, str] | None:
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
+    if target == "screen-metrics":
+        required_patches.add("0069-native-logical-screen-inheritance.patch")
     if target == "audio-math":
         required_patches.update({"0067-native-audio-math-context-candidate.patch",
                                  "0068-native-audio-math-fixture-readiness.patch"})
@@ -504,7 +516,8 @@ def require_target_sources(source: Path, patches: list[dict], target: str) -> di
 
 
 def unit_binary_target(target: str) -> str:
-    return ("gfx_unittests" if target == "font-rasterization" else
+    return ("blink_common_unittests" if target == "screen-metrics" else
+                    "gfx_unittests" if target == "font-rasterization" else
                     "gpu_unittests" if target == "gpu-metadata" else
                     "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff", "audio-math"} else
                     "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
@@ -516,6 +529,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
     required = required_tests(target)
     if target == "audio-math" and candidate_name != "upstream-156":
         raise ValueError("AudioMath unit verification requires the explicit upstream-156 candidate")
+    if target == "screen-metrics" and candidate_name != "upstream-156":
+        raise ValueError("Screen metrics unit verification requires the explicit upstream-156 candidate")
     if sys.platform != "win32":
         raise ValueError("The owned-profile key loader verification currently supports Windows only")
     candidate = None if candidate_name is None else build.load_candidate(candidate_name)
@@ -562,7 +577,9 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("OfflineAudioContext immutable math policy/error/lifetime units; not device-cohort, full DSP fidelity or Audio admission"
+    scope = ("Logical screen calculations, isolation and nullable IPC units; not first-script delivery, geometry or browser admission"
+             if target == "screen-metrics" else
+             "OfflineAudioContext immutable math policy/error/lifetime units; not device-cohort, full DSP fidelity or Audio admission"
              if target == "audio-math" else
              "Windows font policy parsing/field-preservation units; not renderer startup, visual output or capability admission"
              if target == "font-rasterization" else

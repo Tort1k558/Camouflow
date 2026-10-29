@@ -2,24 +2,34 @@
 
 ## Current implementation boundary
 
-The latest source-built Windows candidate is **Chromium 156 / 001–067**:
-1966 executed build actions in 1h28m46.46s at j4, with passing source/toolchain
-postguards and a complete receipt. Its immutable checkpoint and
-[`windows-build67-observations.json`](drafts/upstream-156/windows-build67-observations.json)
-prove compilation only. Subsequent GPU off/on/restart phases verified the real
-CDP stamp and all eight WebGL1/2/WebGPU contexts. One Math-mode profile passed
-four Audio API probes, while Legacy failed three; both backend branches are not
-verified. Package validation and policy admission remain open.
-The existing raw 001–067 runtime suite subsequently passed all eight gates and
-160 checks with source/core/receipt postguards. The last installed-package
-baseline remains 001–066. The historical evidence
-below must not be read as verification of 0067.
+The latest source-built Windows candidate is **Chromium 156 / 001–068**.
+The fixture-only repair compiled without changing the 001–067 browser core;
+all **18 native groups passed**, including **12/12 AudioMath**, with complete
+source/SDK/core/receipt postguards.
+[Build](drafts/upstream-156/build68-observations.json) and
+[native results](drafts/upstream-156/native-batch68-observations.json) are scoped
+evidence, not package or privacy admission. Failed 001–067 evidence is retained.
 
-The completed 001–067 native batch passed 17/18 groups with source/SDK/core/receipt
-postguards. The AudioMath fixture incorrectly reused WebGPU seed 3 as Audio seed
-3; fail-closed policy rejection led to a test-process abort. Its fixture-only
-repair is unregistered and unexecuted; no native AudioMath or browser admission
-follows. Actual browser diagnostics are collected before the next coherent build.
+Eight fixed profiles passed baseline/Math/Math-restart Audio API compatibility.
+A separate **1080-capture** long-compressor run on the same keys observed two
+stable output classes matching the expected native/float32 distinction; short
+512-frame fidelity graphs were non-discriminating.
+[Effect evidence](drafts/upstream-156/audio-compressor-effect68-observations.json)
+does not establish eight distinct Audio identities or real-device cohorts.
+Legacy Audio-v1 failures remain open.
+
+**001–069 is selected for the next build, not compiled or runtime-verified.**
+Its browser-owned logical screen snapshot is separate from physical compositor
+and input geometry; widget-scoped DOM/CSS/DPR and update/disable behavior need
+the complete linked-browser gate. The new `screen-metrics` group requires nine
+cases in `blink_common_unittests`, bringing the native batch to 19 groups.
+[Screen integration contract](drafts/environment/SCREEN_EMULATION.md).
+The complete 269-file 001–068 runtime is preserved separately on D: for rollback.
+
+The existing raw **001–067** suite passed eight gates and 160 checks. The last
+installed-package baseline remains **001–066**. Neither historical result
+verifies the newly selected screen package, remaining protected-surface
+combinations, external anti-bot services or production admission.
 
 The manager resource monitor and source-bound Audio/GPU diagnostic runners are
 integrated in main. Canonical Python regression passed **4047 cases with one
@@ -29,7 +39,7 @@ ACL verification from foreign PowerShell modules; production ACL checks remain
 unchanged. Python integration does not validate
 the new native AudioMath implementation or expand browser capability admission.
 
-The latest canonical source regression passed **4111 cases with one skipped**
+An earlier canonical source regression passed **4111 cases with one skipped**
 and tracked-source postguards after integrating measured-environment capture
 and the fixture-repair draft. Detailed
 [Audio/GPU evidence](drafts/upstream-156/canonical-audio-gpu67-observations.json)
