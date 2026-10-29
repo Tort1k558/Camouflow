@@ -549,6 +549,8 @@ store intentionally blocks an older Chromium version, including 156 → 148.
 The first actual 001–066 development payload completed official staging
 (39 build actions, 6m29.21s), archive creation and isolated installation without
 activation. All eight raw and installed browser gates passed, **160 checks per
-layout**. This precedes the Python integration batch; canonical post-integration
-checks remain separate. Audio-v1 fidelity still fails and no new policy or
+layout**. After Python integration, the canonical installed lifecycle (18), worker
+startup (60) and both combined surface modes (12 phases / 24 nested Canvas cases
+each) also passed; see [the scoped record](canonical-app66-observations.json).
+Audio-v1 fidelity still fails and no new policy or
 production admission follows. Compatible cross-version rollback is not verified.

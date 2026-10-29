@@ -82,14 +82,15 @@
     "scope": "Patched copy of canonical verifier, not the canonical bound suite"
   },
   "frozen_inputs_unchanged": 201,
-  "application_gate": "Applied after the 001-066 source-bound native/runtime/installed and owned surface queues terminated; canonical regression pending",
+  "application_gate": "Integrated after terminal source-bound queues; canonical Python/lifecycle/workers and both surface modes passed, without policy or production admission",
   "retained_profile_privacy": "Owned local evidence only; never export or commit retained browser profiles/keys",
-  "canonical_runtime_verified": false,
+  "canonical_runtime_verified": true,
   "isolated_python_batch_regression": {
     "passed": true,
     "tests": 1257,
     "full_patch_sha256": "8e19458de08aaaa8abbc901343d46b5f576da20e4299370ce3eb9cefba5d7df9",
     "canonical_source_changed_during_controls": false,
     "scope": "Isolated combined Runtime/retention/candidate-diagnostics controls, before canonical application"
-  }
+  },
+  "canonical_verification_record": "../upstream-156/canonical-app66-observations.json"
 }

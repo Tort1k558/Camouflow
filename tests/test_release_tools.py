@@ -5029,6 +5029,46 @@ def test_native_66_batch_binds_frozen_manifest_and_complete_native_filters():
     assert data["browser_runtime_verified"] is data["privacy_admitted"] is data["production_admitted"] is False
 
 
+def test_canonical_app66_evidence_keeps_audio_failure_outside_admission():
+    import hashlib
+    import json
+    import re
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/upstream-156"
+    data = json.loads((root / "canonical-app66-observations.json").read_bytes())
+    assert data["schema"] == 1 and data["passed"] is True
+    assert hashlib.sha256((root / data["required_manifest"]).read_bytes()).hexdigest() == data["candidate_manifest_sha256"]
+    native = json.loads((root / "native-batch66-observations.json").read_bytes())
+    assert data["build_receipt_sha256"] == native["build_receipt_sha256"]
+    assert data["runtime_core_sha256"] == native["runtime_core_sha256_measured"]
+    assert re.fullmatch(r"[0-9a-f]{40}", data["verified_code_commit"])
+    assert len(data["source_code_sha256"]) == 6
+    assert all(re.fullmatch(r"[0-9a-f]{64}", value) for value in data["source_code_sha256"].values())
+    assert data["full_python"]["passed"] == 3862 and data["full_python"]["skipped"] == 1
+    assert data["full_python"]["postguards_passed"]
+    payload = data["development_payload"]
+    assert payload["raw_browser_checks"] == payload["installed_browser_checks"] == 160
+    assert payload["activation_performed"] is False
+    browser = data["canonical_browser"]
+    assert browser["installed_lifecycle_checks"] == 18 and browser["worker_startup_checks"] == 60
+    assert browser["profile_identity_phases"] == browser["partitioned_privacy_phases"] == 12
+    assert browser["nested_canvas_cases_per_mode"] == 24 and browser["source_postguards_passed"]
+    audio = data["audio_v1_fidelity"]
+    assert audio["passed"] is False and audio["baseline_passed"] == 54
+    assert audio["protected_passed"] == 42 and audio["protected_failed"] == 12
+    assert audio["failed_graphs"] == ["half-gain", "identity"]
+    assert audio["repeat_stable"] and audio["mutation_controls_passed"] and audio["resources_closed"]
+    assert audio["source_postguards_passed"]
+    assert data["privacy_admitted"] is data["production_admitted"] is data["device_cohort_verified"] is False
+    assert data["compatible_rollback_verified"] is False
+    for relative in ("profile-version/windows-profile-version-guard.json", "runtime-verifier/owned-runtime-evidence-retention.json"):
+        descriptor = root.parent / relative
+        value = json.loads(descriptor.read_bytes())
+        assert value["canonical_runtime_verified"] is True
+        assert (descriptor.parent / value["canonical_verification_record"]).resolve() == root / "canonical-app66-observations.json"
+
+
 def test_gpu_optional_query_fixture_evidence_keeps_canonical_admission_separate():
     import hashlib
     import json

@@ -48,7 +48,10 @@ The full canonical Python regression passed 3862 cases with one skipped. Explici
 candidate diagnostics now bind workers/combined surfaces/WebGL to the complete
 156 receipt, every core file and the selected GN recipe. The installed 001–066
 development payload passed all eight baseline gates (160 checks), without
-activation. Canonical post-integration browser gates are repeated separately.
+activation. Canonical post-integration installed lifecycle (18), worker startup
+(60), profile-identity and partitioned-privacy surface modes (12 phases / 24
+nested Canvas cases each) subsequently passed with source postguards; see
+`upstream-156/canonical-app66-observations.json`. This does not expand admission.
 Owned pre-integration diagnostics passed 60 worker startup/denial cases and 12
 combined profile-identity phases with 24 nested Canvas cases. These are not
 device-cohort or external anti-bot admission. The additional Audio fidelity

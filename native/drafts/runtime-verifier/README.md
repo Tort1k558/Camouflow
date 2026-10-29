@@ -1,7 +1,10 @@
 # Owned runtime evidence retention
 
 **Integrated into the canonical verifier.** Full Python regression:
-**3862 passed, one skipped**. Canonical browser gates are repeated separately.
+**3862 passed, one skipped**. The canonical installed lifecycle's 18 checks,
+60 worker cases and both combined surface modes subsequently passed; see the
+[scoped record](../upstream-156/canonical-app66-observations.json). The original
+shutdown timeout remains unexplained.
 
 The first expanded 156 run hit a browser-close timeout. `TemporaryDirectory`
 then tried to remove a still-locked SQLite file and replaced the useful failure

@@ -3,7 +3,10 @@
 **Integrated into `app/core/native/`.** Managed releases already block binary
 downgrade; the per-profile guard also covers explicitly selected executables.
 The full canonical Python regression passed **3862 tests, one skipped**.
-Post-integration owned browser gates are being repeated separately.
+Canonical installed lifecycle (18 checks), worker startup (60) and both combined
+surface modes (12 phases / 24 nested Canvas cases each) subsequently passed.
+The [scoped record](../upstream-156/canonical-app66-observations.json) also retains
+the failed Audio-v1 fidelity gate; this is not general migration admission.
 
 The Windows Runtime checks Chromium's bounded `Last Version` marker against
 the selected EXE's fixed PE FileVersion while holding the profile owner lock,

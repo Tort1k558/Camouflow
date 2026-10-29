@@ -6,6 +6,7 @@ native/drafts/**/full-inputs-manifest.json text eol=lf
 native/drafts/upstream-156/windows-runtime-observations.json text eol=lf
 native/drafts/upstream-156/checkpoints/*.json text eol=lf
 native/drafts/upstream-156/native-batch*-observations.json text eol=lf
+native/drafts/upstream-156/canonical-app66-observations.json text eol=lf
 app/core/native/runtime.py text eol=lf
 app/core/native/profile_version.py text eol=lf
 scripts/verify_native_runtime.py text eol=lf

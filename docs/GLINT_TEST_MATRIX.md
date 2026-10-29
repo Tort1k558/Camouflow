@@ -10,8 +10,10 @@
 | Combined profile-identity surfaces | **12 phases passed**, including 24 nested Canvas cases, simultaneous profiles, restart and settled WebGL readback | Isolated CLI copy; not WebGPU or device-cohort admission |
 | Audio-v1 fidelity | Baseline **54/54**; protected **42/54**, 12 identity/half-gain failures | **Failed gate** despite stable repeats, passing mutation controls and closed resources; no policy admission |
 
-Canonical post-integration lifecycle/workers and both surface derivation modes
-are being repeated. Earlier green results do not erase the Audio fidelity failure.
+Canonical post-integration installed lifecycle **18/18**, workers **60/60** and
+both derivation modes **12 phases / 24 nested Canvas cases each** passed with
+source postguards. [Scoped evidence](../native/drafts/upstream-156/canonical-app66-observations.json)
+retains the Audio fidelity failure; green isolation results do not erase it.
 
 ## GPU fixture 0066 — canonical native gates passed
 

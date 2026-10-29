@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Canonical Python integration, owned browser fixtures and isolated development payload; not general fingerprint or anti-bot admission",
+  "required_manifest": "checkpoints/001-066.json",
+  "candidate": "upstream-156",
+  "candidate_manifest_sha256": "86b215685d0fd38b4b15e8eaba31244eb5fc34b47de21d357ccff0fcf0db49cd",
+  "build_receipt_sha256": "742874337fe2cc10d21ae6d0a4b881c50d44b505bb429b396e8703a683832efd",
+  "runtime_core_sha256": {
+    "chrome.exe": "0596afb2bd1a84731ebbe4d276edd3797d67b262bebb332e76a8aa9d21db5567",
+    "chrome.dll": "bd75c5c6ab3c45946edc0ea4e8f1d684286dd588d7cc46999a0b2bb1236aab44",
+    "chrome_elf.dll": "14597f88689361a016bce4a648e6b18a50ed065d6fc524dc8112f4b7d6e115d0"
+  },
+  "verified_code_commit": "d07d6fac99baefd115f091f2f0ddab2b4ab76eac",
+  "source_code_sha256": {
+    "app/core/native/runtime.py": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "app/core/native/profile_version.py": "b911cea8e1d2eed4e2d8f9d4c78cbe5ba8f9dfbfce16365f5675b5b213150081",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "scripts/verify_native_surfaces.py": "5a2d8ed28577a2fa78809d37ccd7e4a1ced1aebb2011a86621d0a9cca2cf3f8a",
+    "scripts/verify_native_gpu_readback.py": "f08919882123f5f144a74169be5d19c141825cc27f138ee90f5820a63d517e06"
+  },
+  "full_python": {
+    "passed": 3862,
+    "skipped": 1,
+    "postguards_passed": true,
+    "report_sha256": "e56198c4dcae2a24c6cd9a0f6c2e6713a8be68f60efd97c55e5e0944e6ee131c"
+  },
+  "development_payload": {
+    "raw_browser_checks": 160,
+    "installed_browser_checks": 160,
+    "archive_sha256": "c4c6ea41969c496e83bba9d23242e4253305617a29ff55adbe1dee2a594d2520",
+    "activation_performed": false,
+    "raw_report_sha256": "fa943a451e7fac4aacac0c2d1cec70ec7da9a3dcde1c8f4b2b06bb6bef10ce19",
+    "installed_report_sha256": "ff78cf9633f67f78e1c7ef3a455d507902e9fb1ed5fdd11480c33e8a6b18ed6e"
+  },
+  "canonical_browser": {
+    "installed_lifecycle_checks": 18,
+    "worker_startup_checks": 60,
+    "profile_identity_phases": 12,
+    "partitioned_privacy_phases": 12,
+    "nested_canvas_cases_per_mode": 24,
+    "source_postguards_passed": true,
+    "reports_sha256": {
+      "lifecycle": "d4e809057e8d4059fc8b85abb8ce29d0ee1ecbc79a0b667cb43afe1cd7231b55",
+      "workers": "9e11b3189456855fc8c1bfd2a73150b7983e49ac42a979c8964ffdafedac6193",
+      "profile_identity": "7bf79d5f8abbac7c9a188ccc6b85732ef768fe4a104a5e89c2423b2b02db9463",
+      "partitioned_privacy": "1e657f5330e51e95252fa122745a9f2e14232f8a8d13dddcf4be5a539ac173b5"
+    }
+  },
+  "audio_v1_fidelity": {
+    "passed": false,
+    "baseline_passed": 54,
+    "protected_passed": 42,
+    "protected_failed": 12,
+    "failed_graphs": [
+      "half-gain",
+      "identity"
+    ],
+    "repeat_stable": true,
+    "mutation_controls_passed": true,
+    "resources_closed": true,
+    "source_postguards_passed": true,
+    "probe_sha256": "b18f16da49bbb55eacae2b52e40d95b7c1c270e18740798233232bf5f9b87861",
+    "report_sha256": "4663ae4b7109bed1ed7018e394e5f08276d3a9b2d3ea5b333886957d267fe7de",
+    "scope": "One private profile/Windows host; AudioMath not selected or executed"
+  },
+  "compatible_rollback_verified": false,
+  "device_cohort_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
