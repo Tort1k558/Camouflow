@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Chromium 156 Windows source build 001-067 only; native/runtime/policy/package gates remain separate",
+  "chromium_version": "156.0.8078.36",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "manifest": "checkpoints/001-067.json",
+  "candidate_manifest_sha256": "109ad3d33e18ddea1c1a2ea1d03936a938cfbdce1a7057f5608958a5c8e4de14",
+  "build_jobs": 4,
+  "executed_build_steps": 1966,
+  "reported_build_duration": "1h28m46.46s",
+  "build_receipt_sha256": "bf3de312f5506a6e405ae4139c7a5cd13b209be648447c3b532e80f7a94df8f2",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "36d1a7c35d059d60c41c9c46d48c623918cd2ed63e746d6473c4993d1d729a7d",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "args_sha256": "222ad77f8e78da92e478b520876a131275aafd3639ac5ddda8b28318c32a0de1",
+  "local_windows_toolchain_sha256": "68aa63de741ddd1a8a5362863cf49943c725644a209bcc6c59da9efc67a797e7",
+  "source_refresh_controller_sha256": "db71a3026959d672ae1e7b0855eb5dca814a636492890343b4dbf7a03bfd37d5",
+  "source_postguards_passed": true,
+  "native_audio_math_tests_passed": false,
+  "browser_audio_math_verified": false,
+  "real_cdp_revision_stamp_verified": false,
+  "audio_v1_failure_fixed": false,
+  "device_cohort_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

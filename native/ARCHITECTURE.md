@@ -2,6 +2,15 @@
 
 ## Current implementation boundary
 
+The latest source-built Windows candidate is **Chromium 156 / 001–067**:
+1966 executed build actions in 1h28m46.46s at j4, with passing source/toolchain
+postguards and a complete receipt. Its immutable checkpoint and
+[`windows-build67-observations.json`](drafts/upstream-156/windows-build67-observations.json)
+prove compilation only. AudioMath native/runtime checks, the requested real CDP
+revision stamp, package validation and policy admission remain unverified.
+The last complete 156 runtime baseline remains 001–066. The historical evidence
+below must not be read as verification of 0067.
+
 The reviewed Windows runtime is **Chromium 148 / 001-062**. Its exact managed
 package admits only the individually reviewed experimental capabilities;
 source ports, Python tests and diagnostic reports cannot expand that admission.

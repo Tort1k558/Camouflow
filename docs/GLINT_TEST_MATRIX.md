@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Chromium 156 / 001–067 build and integration — 2026-10-29
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Source build 001–067 | **Build Succeeded**, 1966 actions, **1h28m46.46s**, j4; complete receipt and source/toolchain postguards passed | [Build-only evidence](../native/drafts/upstream-156/windows-build67-observations.json); AudioMath native/runtime gates and real CDP stamp are not verified |
+| New manager/diagnostic regression | **4041 passed, 1 failed, 1 skipped**; tracked-source postguards passed | Failed cancellation test hit its one-second setup barrier; not a green suite |
+| Cancellation control | Injected 1.2s identity persistence reproduced the setup failure; corrected setup barrier retains all lock/cancellation/deadline assertions | **623 runtime tests passed**, including slow persistence; no production timeout change; full canonical repeat pending |
+| Strict GPU diagnostic calibration | WebGL1, WebGL2 and WebGPU **8/8 contexts each**, off and restart; effective feature arguments verified | [Stock156-only evidence](../native/drafts/gpu/stock156-runtime-observations.json); not execution of Glint's GPU policy |
+| AudioMath 0067 | Compiled into the new candidate; experimental feature remains disabled by default | Native 11-case gate, fidelity/analyser/worklet/realtime and combined runtime checks remain pending; Audio-v1's 12 errors are not declared fixed |
+
+Ownership-bound resource monitoring and the Audio/GPU runners are now integrated
+in main. No binary activation, release, CAPTCHA result or expanded capability
+admission follows from this source integration.
+
 ## Python integration and additional 156 gates — 2026-10-29
 
 | Gate | Observed result | Boundary |
