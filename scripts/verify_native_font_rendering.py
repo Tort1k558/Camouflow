@@ -241,7 +241,7 @@ async def verify(executable: Path, destination: Path, *, series: str = "rasteriz
             or workload_font != workload_font.resolve() or not workload_font.is_file()
             or not 64 <= workload_font.stat().st_size <= 2 * 1024**2):
         raise ValueError("Workloads require a bounded canonical explicit TrueType/OpenType font")
-    require_idle_builder()
+    require_idle_builder(executable.parent)
     if executable != executable.resolve() or not executable.is_file() or executable.name != "chrome.exe":
         raise ValueError("An explicit canonical Chrome executable is required")
     if (destination != destination.resolve() or destination.exists() or not destination.parent.is_dir()

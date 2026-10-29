@@ -66,7 +66,7 @@ async def verify(executable: Path, destination: Path) -> dict:
     if (not destination.is_absolute() or destination != destination.resolve() or not destination.parent.is_dir()
             or destination.is_relative_to(executable.parent.parent.parent) or destination.is_relative_to(ROOT)):
         raise ValueError("New owned evidence must stay outside the application and binary store")
-    require_idle_builder()
+    require_idle_builder(executable.parent)
     admission = await asyncio.to_thread(verify_runtime_policy, executable, POLICY)
     inputs = [Path(__file__), *(ROOT / "app/core/native").glob("*.py"),
               *[ROOT / "scripts" / name for name in (

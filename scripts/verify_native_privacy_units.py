@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import subprocess
 import sys
 
@@ -337,11 +337,54 @@ def validate_results(report: dict, *, target: str = "keys") -> None:
         raise ValueError("Native privacy test names differ from required coverage")
 
 
-def require_idle_builder() -> None:
+def _compiler_conflicts(scope: Path, process: dict) -> bool:
+    if (not isinstance(process, dict) or type(process.get("ProcessId")) is not int
+            or process["ProcessId"] <= 0 or process.get("Name") not in {
+                "siso.exe", "ninja.exe", "clang-cl.exe", "lld-link.exe"}):
+        raise ValueError("Invalid compiler process observation")
+    executable = process.get("ExecutablePath")
+    command = process.get("CommandLine")
+    if not isinstance(executable, str) or not executable.strip() or not isinstance(command, str) or not command.strip():
+        return True
+    path = PureWindowsPath(executable)
+    if not path.is_absolute():
+        return True
+    if path.is_relative_to(PureWindowsPath(scope)):
+        return True
+    return str(scope).replace("\\", "/").casefold() in command.replace("\\", "/").casefold()
+
+
+def require_idle_builder(scope: Path | None = None) -> None:
+    if scope is not None:
+        if not scope.is_absolute() or scope != scope.resolve():
+            raise ValueError("Compiler observation requires a canonical absolute scope")
+        if tuple(part.casefold() for part in scope.parts[-4:]) == ("chromium", "src", "out", "camouflownative"):
+            scope = scope.parents[3]
+        result = subprocess.run([
+            "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+            "$ErrorActionPreference='Stop'; [Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); "
+            "Get-CimInstance Win32_Process | "
+            "Where-Object { $_.Name -in @('siso.exe','ninja.exe','clang-cl.exe','lld-link.exe') } | "
+            "Select-Object ProcessId,Name,ExecutablePath,CommandLine | ConvertTo-Json -Compress",
+        ], check=True, capture_output=True, text=True, encoding="utf-8", timeout=30)
+        raw = result.stdout.strip()
+        if not raw:
+            return
+        if len(raw) > 1024 * 1024:
+            raise ValueError("Compiler observation exceeds its bounded size")
+        rows = json.loads(raw)
+        rows = [rows] if isinstance(rows, dict) else rows
+        if not isinstance(rows, list) or len(rows) > 10000:
+            raise ValueError("Invalid compiler process observation")
+        conflicts = [row for row in rows if _compiler_conflicts(scope, row)]
+        if conflicts:
+            names = ", ".join(f"{row['Name']} PID {row['ProcessId']}" for row in conflicts[:20])
+            raise ValueError(f"A native compiler/build process is already running in this scope: {names}")
+        return
     result = subprocess.run([
         "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
         "$ErrorActionPreference='Stop'; Get-Process | "
-        "Where-Object { $_.ProcessName -in @('siso','ninja','clang-cl') } | "
+        "Where-Object { $_.ProcessName -in @('siso','ninja','clang-cl','lld-link') -and -not $_.HasExited } | "
         "Select-Object -ExpandProperty Id | ConvertTo-Json -Compress",
     ], check=True, capture_output=True, text=True)
     if result.stdout.strip():
@@ -388,7 +431,7 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
     output = source / "out/CamouFlowNative"
     results = report.with_name(report.stem + "-tests.json")
     log_path = report.with_name(report.stem + "-build.log")
-    require_idle_builder()
+    require_idle_builder(workspace)
     env = build.environment(workspace, git_ssl_backend=git_ssl_backend, local_toolchain=local_toolchain)
     env.update(GOMEMLIMIT="3GiB", PYTHONIOENCODING="utf-8")
     if vs_installation is not None:

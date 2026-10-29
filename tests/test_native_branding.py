@@ -69,7 +69,7 @@ def test_compiled_branding_workflow_fails_closed(tmp_path, monkeypatch, problem)
     }), encoding="utf-8")
     monkeypatch.setattr(branding, "ROOT", public)
     monkeypatch.setattr(branding.sys, "platform", "win32")
-    monkeypatch.setattr(branding, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(branding, "require_idle_builder", lambda *args: None)
     calls = []
 
     def measured_core(_):

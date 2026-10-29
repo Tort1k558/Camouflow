@@ -5,14 +5,22 @@
 The reviewed Windows runtime is **Chromium 148 / 001-062**. Its exact managed
 package admits only the individually reviewed experimental capabilities;
 source ports, Python tests and diagnostic reports cannot expand that admission.
-Chromium **156.0.8078.36** has the complete candidate chain applied and is being
-built in its separate D: workspace. The current candidate chain is 001–065;
+Chromium **156.0.8078.36 / 001–065** linked successfully in its separate D:
+workspace: 19,487 build steps in 3h46m37.79s, followed by passing source/toolchain
+postguards and a three-core-file build receipt. It is **not runtime-verified**.
+The first identity verifier stopped before running tests because its global
+process guard detected an unrelated project's Ninja. Guards now support an
+explicit workspace/binary scope; unreadable process identity remains a conflict,
+and default unscoped checks remain conservative. Real owned sleeping-Ninja
+controls distinguish foreign and conflicting scopes without terminating either.
+Fresh identity/runtime/native/package evidence is still required.
+The current candidate chain is 001–065;
 0063–0064 address the actual unsafe-buffer compilation failures without disabling
 diagnostics. Test-only 0065 updates worker synchronization/API calls and the GPU
 canary layout; all 38 mapped fixture object targets now compile, but their tests
 have not executed. The two system module targets and their
-source/toolchain guards passed; the complete 156 browser is not yet linked or
-runtime-verified. Linux/macOS runtime work remains deferred.
+source/toolchain guards passed; object compilation is not execution of the
+fixture suite. Linux/macOS runtime work remains deferred.
 
 Persistent profiles own their separate browser processes/contexts; tabs inside
 one profile share its identity and storage. The rendering verifier can keep at

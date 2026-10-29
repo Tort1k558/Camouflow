@@ -29,7 +29,7 @@ def staging_fixture(tmp_path, monkeypatch):
     (output / "camouflow-build.json").write_text(json.dumps(receipt), encoding="utf-8")
     monkeypatch.setattr(staging, "ROOT", root)
     monkeypatch.setattr(staging.sys, "platform", "win32")
-    monkeypatch.setattr(staging, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(staging, "require_idle_builder", lambda *args: None)
     monkeypatch.setattr(staging.build, "preflight", lambda _: None)
     monkeypatch.setattr(staging.build, "environment", lambda _: {})
     monkeypatch.setattr(staging.build, "require_stage", lambda *args: None)

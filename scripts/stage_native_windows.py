@@ -54,7 +54,7 @@ def _stage_locked(workspace: Path, report: Path, *, vs_installation: Path | None
     log_path = report.with_name(report.stem + "-build.log")
     if any(path.exists() or path.is_symlink() for path in (report, log_path)):
         raise ValueError("Refusing to overwrite Native staging evidence")
-    require_idle_builder()
+    require_idle_builder(workspace)
     env = (build.environment(workspace, git_ssl_backend=git_ssl_backend, local_toolchain=local_toolchain)
            if candidate is not None or git_ssl_backend != "openssl" else build.environment(workspace))
     env.update(GOMEMLIMIT="3GiB", PYTHONIOENCODING="utf-8")

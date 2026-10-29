@@ -156,7 +156,7 @@ def measure_branding_resources(executable: Path) -> dict[str, str]:
 async def verify(executable: Path, destination: Path) -> dict:
     if sys.platform != "win32":
         raise ValueError("Native branding verification currently supports Windows only")
-    require_idle_builder()
+    require_idle_builder(executable.parent)
     if executable != executable.resolve() or not executable.is_file():
         raise ValueError("Branding requires a canonical installed executable")
     if (destination != destination.resolve() or destination.exists()

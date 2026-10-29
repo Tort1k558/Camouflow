@@ -174,7 +174,7 @@ def test_admitted_verifier_preserves_early_failure_and_owned_cleanup(reviewed_pa
     from scripts import verify_native_admitted_policy as verifier
 
     executable, _ = reviewed_package
-    monkeypatch.setattr(verifier, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(verifier, "require_idle_builder", lambda *args: None)
     close = AsyncMock(side_effect=RuntimeError("owned cleanup") if failure == "cleanup" else None)
     monkeypatch.setattr(verifier, "NativeRuntime", lambda *args: SimpleNamespace(
         start=AsyncMock(side_effect=RuntimeError("owned startup")), close=close, has_resources=False))

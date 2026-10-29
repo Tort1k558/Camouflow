@@ -384,7 +384,7 @@ def test_mode_verifier_preserves_failure_and_guards_inputs(tmp_path, monkeypatch
     monkeypatch.setattr(verifier, "ROOT", public)
     monkeypatch.setattr(verifier, "PATCH", patch)
     monkeypatch.setattr(verifier.sys, "platform", "win32")
-    monkeypatch.setattr(verifier, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(verifier, "require_idle_builder", lambda *args: None)
     monkeypatch.setattr(verifier, "measure_runtime_core", core)
     monkeypatch.setattr(verifier, "measure_branding_resources",
                         lambda path: {"resources.pak": hashlib.sha256(pack.read_bytes()).hexdigest()})
@@ -577,7 +577,7 @@ def test_concurrent_rendering_profiles_preserve_guards_and_close_every_owner(tmp
 @pytest.mark.parametrize("concurrency", [0, 3, True, 1.0, None])
 def test_rendering_concurrency_rejects_before_builder_access(tmp_path, monkeypatch, concurrency):
     monkeypatch.setattr(verifier.sys, "platform", "win32")
-    monkeypatch.setattr(verifier, "require_idle_builder", lambda: pytest.fail("Invalid concurrency reached the builder"))
+    monkeypatch.setattr(verifier, "require_idle_builder", lambda *args: pytest.fail("Invalid concurrency reached the builder"))
     with pytest.raises(ValueError, match="explicitly 1 or 2"):
         asyncio.run(verifier.verify(tmp_path / "chrome.exe", tmp_path / "output", profile_concurrency=concurrency))
     assert not (tmp_path / "output").exists()
@@ -669,7 +669,7 @@ def test_invalid_workload_font_rejects_before_builder_or_browser_access(tmp_path
     elif kind == "boolean":
         font = True
     monkeypatch.setattr(verifier.sys, "platform", "win32")
-    monkeypatch.setattr(verifier, "require_idle_builder", lambda: pytest.fail("Invalid font reached builder access"))
+    monkeypatch.setattr(verifier, "require_idle_builder", lambda *args: pytest.fail("Invalid font reached builder access"))
     destination = tmp_path / "evidence"
     with pytest.raises(ValueError, match="bounded canonical"):
         asyncio.run(verifier.verify(tmp_path / "chrome.exe", destination, workload_font=font))
@@ -730,7 +730,7 @@ def test_rendering_candidate_rejects_wrong_or_incomplete_receipt_before_launch(t
         record["patches"][-1]["revision"] = "f" * 40
     (executable.parent / "camouflow-build.json").write_text(json.dumps(record), encoding="utf-8")
     monkeypatch.setattr(verifier.sys, "platform", "win32")
-    monkeypatch.setattr(verifier, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(verifier, "require_idle_builder", lambda *args: None)
     monkeypatch.setattr(verifier, "measure_runtime_core", lambda path: core)
     monkeypatch.setattr(verifier, "NativeRuntime", lambda *args: pytest.fail("Invalid candidate reached launch"))
     monkeypatch.setattr(verifier, "PATCH", candidate["directory"] / "patches" / verifier.PATCH.name)

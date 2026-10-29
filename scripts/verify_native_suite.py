@@ -87,7 +87,7 @@ def verify(executable: Path, destination: Path, gates: list[str], *, library_dir
     if candidate is not None:
         from scripts.verify_native_privacy_units import require_idle_builder
 
-        require_idle_builder()
+        require_idle_builder(executable.parent)
         if release is None:
             receipt_path = executable.parent / "camouflow-build.json"
             receipt = read_record(receipt_path)

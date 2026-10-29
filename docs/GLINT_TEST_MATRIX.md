@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## Linked 156 candidate, runtime pending — 2026-10-29
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Chromium 156.0.8078.36 / 001–065 | Build Succeeded: 19,487 steps, 3h46m37.79s; browser owner exited zero | Not runtime admission; AudioMath 0068 excluded |
+| Build postguards | Source/SDK/GN checks completed; `camouflow-build.json` records all three core hashes | No native fixture execution |
+| First post-link identity queue | Stopped before tests because an unrelated project's live Ninja triggered the global compiler guard | Failed reports retained; downstream runtime/package queues did not run |
+| Scoped guard correction | Workspace/binary scopes; unknown process details block; legacy unscoped calls stay conservative | Not a compiler lock bypass |
+| Actual guard controls | Two owned sleeping Ninja processes: foreign scope accepted, own scope rejected with PID; both finished naturally | No foreign user processes modified; not native test execution |
+| Python validation | 1,439 passed, one skipped across changed tooling tests; 15 focused guard cases passed | Not browser/native execution or remote CI |
+
+Build evidence: `D:\Glint156Candidate\fixture-build-continuation-20261029-v2.json`;
+core receipt: `chromium\src\out\CamouFlowNative\camouflow-build.json` below that workspace.
+Guard process controls: `D:\GlintBuilderGuardProbe-20261029-v2\report.json`.
+New identity, full runtime, remaining native targets, installed runtime and
+compatible rollback evidence remain required before any candidate release claim.
+
 ## Unselected AudioContext math integration — 2026-10-29
 
 | Check | Result | Boundary |

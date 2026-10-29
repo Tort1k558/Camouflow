@@ -1295,6 +1295,61 @@ def test_native_privacy_verification_refuses_existing_compiler(monkeypatch, runn
         privacy.require_idle_builder()
 
 
+@pytest.mark.parametrize("case,conflict", [
+    ("owned-tool", True), ("owned-command", True), ("foreign", False),
+    ("unreadable-executable", True), ("unreadable-command", True),
+    ("relative-executable", True), ("case-and-slashes", True),
+])
+def test_native_builder_scope_preserves_conflicts_without_blocking_foreign_projects(case, conflict):
+    from pathlib import PureWindowsPath
+    from scripts import verify_native_privacy_units as privacy
+
+    scope = PureWindowsPath("D:/GlintWorkspace")
+    row = {"ProcessId": 123, "Name": "ninja.exe", "ExecutablePath": "E:/other/tools/ninja.exe",
+           "CommandLine": "E:/other/tools/ninja.exe -j 3 test_game_replay"}
+    if case == "owned-tool":
+        row["ExecutablePath"] = "D:/GlintWorkspace/chromium/src/third_party/ninja/ninja.exe"
+    elif case == "owned-command":
+        row["CommandLine"] = 'ninja -C "D:/GlintWorkspace/chromium/src/out/CamouFlowNative"'
+    elif case == "unreadable-executable":
+        row["ExecutablePath"] = None
+    elif case == "unreadable-command":
+        row["CommandLine"] = None
+    elif case == "relative-executable":
+        row["ExecutablePath"] = "tools/ninja.exe"
+    elif case == "case-and-slashes":
+        row["ExecutablePath"] = "d:\\GLINTWORKSPACE\\tools\\ninja.exe"
+    assert privacy._compiler_conflicts(scope, row) is conflict
+
+
+@pytest.mark.parametrize("raw", ["null", "1", '[{"ProcessId":true,"Name":"ninja.exe"}]',
+                                '[{"ProcessId":1,"Name":"unknown.exe"}]'])
+def test_native_builder_scope_rejects_malformed_observations(tmp_path, monkeypatch, raw):
+    import subprocess
+    from scripts import verify_native_privacy_units as privacy
+
+    monkeypatch.setattr(privacy.subprocess, "run", lambda *args, **kwargs:
+                        subprocess.CompletedProcess(args[0], 0, raw))
+    with pytest.raises(ValueError, match="process observation"):
+        privacy.require_idle_builder(tmp_path)
+
+
+def test_native_builder_scope_normalizes_binary_output_to_workspace(tmp_path, monkeypatch):
+    import json
+    import subprocess
+    from scripts import verify_native_privacy_units as privacy
+
+    scope = tmp_path / "chromium/src/out/CamouFlowNative"
+    scope.mkdir(parents=True)
+    row = {"ProcessId": 123, "Name": "ninja.exe",
+           "ExecutablePath": str(tmp_path / "chromium/src/third_party/ninja/ninja.exe"),
+           "CommandLine": "ninja -C out/CamouFlowNative chrome"}
+    monkeypatch.setattr(privacy.subprocess, "run", lambda *args, **kwargs:
+                        subprocess.CompletedProcess(args[0], 0, json.dumps(row)))
+    with pytest.raises(ValueError, match="ninja.exe PID 123"):
+        privacy.require_idle_builder(scope)
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows owned-profile unit verifier")
 @pytest.mark.parametrize("failure", [None, "browser_change", "test_failure", "compiler_failure", "source_change", "compiler_and_browser_change", "compiler_and_browser_removed", "toolchain_change"])
 @pytest.mark.parametrize("target", ["keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", "font-rasterization",
@@ -1323,7 +1378,7 @@ def test_native_privacy_unit_verifier_binds_build_results_and_preserves_failure(
         (workspace / "glint-build-candidate.json").write_text(json.dumps({
             "schema": 1, "candidate": candidate["name"], "chromium_revision": selected_lock["chromium_revision"]}), encoding="utf-8")
     monkeypatch.setattr(privacy.build, "preflight", lambda *args, **kwargs: None)
-    monkeypatch.setattr(privacy, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(privacy, "require_idle_builder", lambda *args: None)
     monkeypatch.setattr(privacy.build, "environment", lambda *args, **kwargs: {"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "a" * 64})
     monkeypatch.setattr(privacy.build, "local_windows_toolchain", lambda *args: {
         "GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": ("b" if failure == "toolchain_change" else "a") * 64})
@@ -1465,7 +1520,7 @@ def test_privacy_units_reject_candidate_binding_before_lock_or_compiler(tmp_path
     if mutation != "missing":
         (workspace / "glint-build-candidate.json").write_text(json.dumps(marker), encoding="utf-8")
     monkeypatch.setattr(privacy.build, "preflight", lambda *args, **kwargs: None)
-    monkeypatch.setattr(privacy, "require_idle_builder", lambda: pytest.fail("Invalid candidate reached compiler setup"))
+    monkeypatch.setattr(privacy, "require_idle_builder", lambda *args: pytest.fail("Invalid candidate reached compiler setup"))
     name = None if mutation == "implicit" else "unknown" if mutation == "unknown" else "upstream-156"
     report = tmp_path / "proof.json"
     with pytest.raises(ValueError, match=expected):
@@ -1480,7 +1535,7 @@ def test_privacy_units_refuse_a_workspace_owned_by_sync_before_compiler_setup(tm
     workspace = tmp_path / "workspace"
     (workspace / "chromium/src").mkdir(parents=True)
     monkeypatch.setattr(privacy.build, "preflight", lambda *args, **kwargs: None)
-    monkeypatch.setattr(privacy, "require_idle_builder", lambda: pytest.fail("Busy workspace reached compiler setup"))
+    monkeypatch.setattr(privacy, "require_idle_builder", lambda *args: pytest.fail("Busy workspace reached compiler setup"))
     with privacy.build.workspace_lock(workspace):
         with pytest.raises(ValueError, match="owns this workspace"):
             privacy.verify(workspace, tmp_path / "proof.json")
@@ -2046,7 +2101,7 @@ def test_native_candidate_suite_binds_all_gates_to_receipt_version_and_inputs(tm
 
     output, staged, runtime_report, archive, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
     monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
-    monkeypatch.setattr(units, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(units, "require_idle_builder", lambda *args: None)
     executable = output / "chrome.exe"
     options = {}
     if layout == "installed":
@@ -2092,7 +2147,7 @@ def test_native_candidate_suite_rejects_changed_version_or_inputs(tmp_path, monk
 
     output, _, _, _, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
     monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
-    monkeypatch.setattr(units, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(units, "require_idle_builder", lambda *args: None)
     executable = output / "chrome.exe"
     core = suite.measure_runtime_core(executable)
     calls = []
@@ -2129,7 +2184,7 @@ def test_native_candidate_suite_rejects_bad_receipt_before_creating_evidence(tmp
 
     output, _, _, _, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
     monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
-    monkeypatch.setattr(units, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(units, "require_idle_builder", lambda *args: None)
     path = output / "camouflow-build.json"
     receipt = json.loads(path.read_text(encoding="utf-8"))
     if mutation == "missing-manifest":
@@ -2180,7 +2235,7 @@ def test_native_candidate_suite_rejects_input_change_during_initial_measurement(
 
     output, _, _, _, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
     monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
-    monkeypatch.setattr(units, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(units, "require_idle_builder", lambda *args: None)
     original = suite.checksum
     changed = False
     def race(path):
@@ -2215,7 +2270,7 @@ def test_native_candidate_suite_rejects_conflicting_installed_metadata(tmp_path,
 
     output, staged, runtime, archive, candidate = _candidate_windows_packaging_fixture(tmp_path, monkeypatch)
     monkeypatch.setattr(suite.native_build, "load_candidate", lambda name: candidate)
-    monkeypatch.setattr(units, "require_idle_builder", lambda: None)
+    monkeypatch.setattr(units, "require_idle_builder", lambda *args: None)
     packaged = packaging.package(output, staged, runtime, archive, candidate_name="upstream-156")
     store = NativeBinaryStore(tmp_path / "store")
     installed = store.install_archive(archive, packaged["sha256"])
