@@ -121,6 +121,15 @@ scoped-compiler отказа v9 проверено idle-состояние и з
 Полная Python-регрессия `90ab928`: 3619 passed / 1 failed / 1 skipped; QML-тест
 не дождался создания диалога. Добавлено bounded ожидание readiness, все восемь
 QML-тестов прошли; исходный неуспешный полный прогон сохранён.
+Повторная полная Python-регрессия `01cdf4e`: **3621 passed / 1 skipped**,
+467.85 с; 201 frozen input и 143 дополнительных входа не изменились.
+Следующий независимый сетевой fixture: bounded parser и owned loopback capture
+первого TLS ClientHello, без ServerHello/сертификата и без изменений BoringSSL.
+Три свежих headless stock156 профиля дали одинаковые selected offers при разных
+GREASE/порядке extensions/размере сообщений. Сырые nonce/session/key bytes не
+возвращаются. 32 parser/lifecycle/binding теста прошли отдельно от полного прогона.
+Далее — matched Glint/stock на том же endpoint, затем успешная negotiation,
+HTTP/2 settings/HTTP/3 и proxy/DNS; текущая калибровка этого не доказывает.
 
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 

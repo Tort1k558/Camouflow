@@ -1,0 +1,227 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Stock156 initial ClientHello selected offers on an owned loopback endpoint only",
+  "parser": {
+    "file": "client_hello.py",
+    "sha256": "704bb2d1c2f40bc0966c0fe711aa04765e253c506dfe38d9c7da3b6c7267586d"
+  },
+  "capture": {
+    "file": "loopback.py",
+    "sha256": "b0065bafd8962d00d32491cac9b8c9e1183824d2af41f4b50fdfa9b4f392052b"
+  },
+  "stock_control_file": "../upstream-156/stock-control-observations.json",
+  "stock_control_sha256": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+  "stock_core_sha256": {
+    "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+    "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+    "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+  },
+  "raw_report_sha256": "fa20d48e3a5740cb1352b32f1f7c9e458fbcbc91e6192e7f96a5360a30b013a5",
+  "browser_get_version": {
+    "product": "Chrome/156.0.8078.36",
+    "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e"
+  },
+  "fresh_profile_count": 3,
+  "selected_shapes_repeat_equal": true,
+  "headless": true,
+  "resources_closed": true,
+  "postguards_passed": true,
+  "selected_shape": {
+    "legacy_version": 771,
+    "session_id_length": 32,
+    "compression_methods": [
+      0
+    ],
+    "ciphers": [
+      4865,
+      4866,
+      4867,
+      49195,
+      49199,
+      49196,
+      49200,
+      52393,
+      52392,
+      49171,
+      49172,
+      156,
+      157,
+      47,
+      53
+    ],
+    "ciphers_grease_count": 1,
+    "supported_groups": [
+      4588,
+      29,
+      23,
+      24
+    ],
+    "supported_groups_grease_count": 1,
+    "signature_algorithms": [
+      2308,
+      2309,
+      2310,
+      1027,
+      2052,
+      1025,
+      1283,
+      2053,
+      1281,
+      2054,
+      1537
+    ],
+    "signature_algorithms_grease_count": 1,
+    "supported_versions": [
+      772,
+      771
+    ],
+    "supported_versions_grease_count": 1,
+    "extensions": [
+      0,
+      5,
+      10,
+      11,
+      13,
+      16,
+      18,
+      23,
+      27,
+      35,
+      43,
+      45,
+      51,
+      17613,
+      51764,
+      65037,
+      65281
+    ],
+    "extensions_grease_count": 2,
+    "point_formats": [
+      0
+    ],
+    "psk_modes": [
+      1
+    ],
+    "alpn_hex": [
+      "6832",
+      "687474702f312e31"
+    ],
+    "alpn_grease_count": 0,
+    "key_shares": [
+      {
+        "group": 4588,
+        "key_length": 1216
+      },
+      {
+        "group": 29,
+        "key_length": 32
+      }
+    ],
+    "key_shares_grease_count": 1
+  },
+  "captures": [
+    {
+      "index": 0,
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 2008,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        64250,
+        65281,
+        43,
+        51764,
+        13,
+        65037,
+        51,
+        17613,
+        16,
+        0,
+        35,
+        23,
+        18,
+        5,
+        11,
+        10,
+        45,
+        27,
+        14906
+      ]
+    },
+    {
+      "index": 1,
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 1944,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        35466,
+        43,
+        13,
+        16,
+        11,
+        23,
+        45,
+        65281,
+        5,
+        65037,
+        0,
+        17613,
+        51764,
+        10,
+        27,
+        35,
+        51,
+        18,
+        51914
+      ]
+    },
+    {
+      "index": 2,
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 1944,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        51914,
+        0,
+        51764,
+        65281,
+        23,
+        51,
+        65037,
+        17613,
+        5,
+        43,
+        18,
+        11,
+        45,
+        35,
+        13,
+        27,
+        16,
+        10,
+        43690
+      ]
+    }
+  ],
+  "tls_negotiated": false,
+  "http2_verified": false,
+  "http3_verified": false,
+  "glint_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "remaining_unverified": [
+    "Matched Glint/stock browser comparison",
+    "Successful TLS negotiation, resumption and encrypted HTTP headers",
+    "HTTP/2 settings and HTTP/3",
+    "Proxy/DNS routes and cross-platform/device cohorts"
+  ]
+}

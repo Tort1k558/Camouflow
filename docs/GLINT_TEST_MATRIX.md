@@ -32,7 +32,8 @@
 | Read-only Windows resource observer | 24 controls passed; one owned Glint sample covered seven OS-parent/creation-bound processes; 100 reads did not grow the handle count | Separate draft, not manager integration or a new memory limit; summed working sets are not unique RAM; not lifetime accounting or a performance benchmark |
 | Read-only process-tree observer | 18 Windows controls passed; 100 subtree captures did not grow handles; two live Glint trees (nine/eight processes) were disjoint and covered their CDP-reported sets; child replacement invalidated CPU intervals | Stable observed topology, not an atomic/lifetime snapshot or profile authentication; no watchdog integration, limit change or performance admission |
 | Current release-tool validators | 1,098 passed, one skipped in 61.40 seconds | Includes source/control and resource/tree checks; report validation is not additional native execution |
-| Full desktop Python regression | 3,614 passed, one skipped in 340.52 seconds; Windows/offscreen with isolated data/temp/cache on D | Full run at 1c8ac38, before stock-control record additions; not native fixture execution or remote CI |
+| Full desktop Python regression | 3,621 passed, one skipped in 467.85 seconds; 201 frozen inputs and 143 extra test/draft inputs unchanged | Full run at 01cdf4e, before the network-fixture additions below; not native fixture execution or remote CI |
+| Initial ClientHello fixture | Public loopback capture parsed three fresh headless stock156 profiles; selected offer shapes repeated equally, original extension orders/message sizes varied; core/source/cleanup guards passed | Stock-only calibration; GREASE/order normalization is not full packet equality or JA3/JA4; TLS negotiation, Glint comparison, HTTP/2 and HTTP/3 remain unverified |
 
 Build evidence: `D:\Glint156Candidate\fixture-build-continuation-20261029-v2.json`;
 core receipt: `chromium\src\out\CamouFlowNative\camouflow-build.json` below that workspace.
@@ -72,7 +73,12 @@ Per-profile version guard: [`profile-version/README.md`](../native/drafts/profil
 Resource observer: [`resources/README.md`](../native/drafts/resources/README.md);
 raw owned evidence: `D:\Glint156Candidate\windows-resource-reader-20261029-v4\report.json`.
 Tree evidence: `D:\Glint156Candidate\windows-process-tree-20261029-v2\report.json`.
-Full Python regression: `D:\Glint156Candidate\python-resource-tree-regression-20261029-v1\report.json`.
+Latest full Python regression: `D:\Glint156Candidate\python-audio-fidelity-regression-20261029-v2\report.json`.
+Earlier full run: `D:\Glint156Candidate\python-resource-tree-regression-20261029-v1\report.json`.
+Network fixture: [`network/README.md`](../native/drafts/network/README.md),
+[`stock-clienthello-observations.json`](../native/drafts/network/stock-clienthello-observations.json);
+32 parser/lifecycle/binding tests passed in 10.36s, independently of the earlier full run.
+Raw capture: `D:\Glint156Candidate\stock-clienthello156-20261029-v2`.
 Stock control: [`stock-control-observations.json`](../native/drafts/upstream-156/stock-control-observations.json);
 matched Audio: [`matched-stock-observations.json`](../native/drafts/audio-dsp-math-v2/matched-stock-observations.json).
 Public runner and scoped evidence: [`browser_matrix.py`](../native/drafts/audio-dsp-math-v2/browser_matrix.py),
