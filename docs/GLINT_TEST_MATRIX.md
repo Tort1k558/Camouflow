@@ -3,6 +3,34 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Chromium 156 fixture compilation — 2026-10-29
+
+The 38-target keep-going probe finished in **48m45.34s**, with 3,349 graph steps
+done, **three failed**, zero remaining. Source/toolchain/GN postguards passed.
+These are compilation results, not executed native tests.
+
+| Failed translation unit | Actual cause | Repair scope |
+| --- | --- | --- |
+| `worker_thread_test.cc` | Six calls to nonexistent `WorkerThreadForTest::WaitForInit` | Use the existing reporting proxy's post-evaluation wait |
+| `privacy_worker_service_unittest.cc` | Storage-key calls omit the new opaque-origin flag; repairing them also exposes missing renderer-origin flags | Pass matching explicit false/true flags to both APIs in legacy/opaque cases |
+| `gles2_cmd_decoder_passthrough_unittest_commands.cc` | Raw-pointer canary indexing rejected by unsafe-buffer checks | Typed result/guard storage with wire-offset and shared-buffer-bound assertions |
+
+The browser continuation and all dependent native/runtime/package observers
+stopped for inspection. **No browser build or runtime test started from this
+queue.** Existing objects and all failed reports are retained.
+
+The three repaired copies **all compiled** with the original Clang flags and
+generated dependencies. Source/toolchain/GN postguards and `git apply --check`
+against 001–064 passed. The initial probe failed to locate the relative compiler
+before launching it; a second probe exposed the renderer-origin argument pair.
+Both failed probes remain retained. The final successful evidence is
+`D:\Glint156Candidate\fixture-portability-20261029-v2\probe-v2\compile-report.json`.
+No test executable was run. The public follow-up
+`native/drafts/upstream-156/0065-native-fixture-portability.patch` has SHA-256
+`ff16a253d7630119e78db2b929d635ea81a7ccecf2340a899bd1eea9d763b6e8`.
+It is outside the selected `patches/` directory and **not applied or included in
+the current manifest**; the original 001–064 source tree remains unchanged.
+
 ## Chromium 157 complete source application — 2026-10-29
 
 The explicit full manifest now applies **all 64 patches over 185 inputs**.

@@ -3,6 +3,23 @@
 **Draft source port, not an enabled engine or a compiled browser.** The active
 build lock and registered 001-062 chain still target Chromium 148.0.7778.96.
 
+## Pending test-only follow-up
+
+`0065-native-fixture-portability.patch` is deliberately **outside `patches/` and
+not selected by the manifest**. It repairs the three failed fixture translation
+units: worker post-evaluation synchronization, the explicit opaque-origin flags
+for storage/origin APIs, and typed GPU canary storage with wire/buffer assertions.
+All three repaired copies compiled using their original Clang flags and generated
+dependencies; source/toolchain/GN postguards and `git apply --check` passed.
+
+This is not an executed native test or a resumed browser build. The 001–064
+manifest remains unchanged. Inclusion requires a reviewed append, dependency
+record rebinding and new continuation bindings; do not force old observers past
+their failure or edit the checkout during a live build. Evidence on D:
+`fixture-portability-20261029-v2/probe-v2/compile-report.json`.
+
+## Selected candidate
+
 The current candidate chain is **001–064**. The 001–062 browser build stopped
 on three production objects with Clang unsafe-buffer errors. Append 0063 uses
 bounded word spans and typed hardware option ranges; it does not suppress the
