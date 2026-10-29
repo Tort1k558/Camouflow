@@ -208,3 +208,19 @@ def test_stock_calibration_binds_actual_sources_without_glint_admission():
     assert len(record["negative_javascript_controls"]["worklet"]["rejected"]) == 5
     assert all(record[field] is False for field in ("glint_candidate_runtime_verified", "audio_v1_failure_fixed",
         "device_cohort_verified", "privacy_admitted", "production_admitted"))
+def test_audio_math_readiness_draft_uses_noncolliding_fixed_backend_vectors():
+    import hmac
+    from scripts import native_build
+    from scripts.verify_native_document_drafts import patch_paths
+
+    path = native_build.ROOT / "native/drafts/audio-dsp-math-v2/audio_math_fixture_readiness.patch"
+    patch = path.read_text(encoding="utf-8-sig")
+    assert patch_paths(patch) == {"third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc"}
+    assert "+constexpr uint8_t kGlintFloat32AudioSeed = 10;" in patch
+    assert "+constexpr uint8_t kGlintNativeAudioSeed = 4;" in patch
+    assert hmac.new(bytes([10]) * 32, b"glint.audio.math.backend.v1", hashlib.sha256).digest()[0] & 1 == 1
+    assert hmac.new(bytes([4]) * 32, b"glint.audio.math.backend.v1", hashlib.sha256).digest()[0] & 1 == 0
+    assert len({1, 2, 3, 10}) == len({1, 2, 3, 4}) == 4
+    assert "GlintMathDuplicateSurfaceSeedRejectsBeforeNodeOrResolver" in patch
+    assert "+  ASSERT_FALSE(holder->GetFrame().GetDocument()->GlintSurfacePolicyReady());" in patch
+    assert "+      holder->GetFrame().GetDocument()->GlintSurfacePolicyReady() != ready) {" in patch
