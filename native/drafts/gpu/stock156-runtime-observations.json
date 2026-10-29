@@ -9,11 +9,11 @@
     "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
   },
   "source_sha256": {
+    "scripts/verify_native_canvas.py": "a91c402d57c279a69428ca3aeb3f11b844d35f22748e8309b782057a5750cef9",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
     "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
-    "scripts/verify_native_canvas.py": "3b46679e820585e893b72fbef9b2d49f7de493679ff080f21a988616897181c6",
     "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
-    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
-    "scripts/verify_native_hardware.py": "b5fdc3ab7ace3df21e14f888a6c22a586c98de478be655087ff112864ba2c7fb"
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044"
   },
   "phases": [
     {
@@ -37,7 +37,7 @@
   ],
   "all_eight_contexts_required": true,
   "effective_feature_arguments_verified": true,
-  "raw_reference_report_sha256": "2bd08f1aadc8df0ea0c69f68e5340c38d1bcc0f975b200da33254e1f1b75b19a",
+  "raw_reference_report_sha256": "fd02a2ade736d3a8953beb6fefbb5b83f6489bb423f69f9674d161f6099f138b",
   "postguards_passed": true,
   "glint_candidate_runtime_verified": false,
   "device_cohort_verified": false,
