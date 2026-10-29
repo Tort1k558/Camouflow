@@ -4488,6 +4488,78 @@ def test_compressor_math_workbench_binds_sources_without_granting_profile_admiss
     assert data["active_build_input_count_unchanged"] == 201 and data["remaining_unverified"]
 
 
+def test_first_156_runtime_observations_preserve_baseline_and_failure_boundaries():
+    import hashlib
+    import json
+    import re
+    from scripts import native_build as build
+    from scripts.package_native_windows import REQUIRED_RUNTIME_CHECKS
+
+    root = build.ROOT / "native/drafts/upstream-156"
+    raw = (root / "windows-runtime-observations.json").read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    manifest_raw = (root / "manifest.json").read_bytes()
+    assert data["schema"] == 1 and data["target_version"] == "156.0.8078.36"
+    assert data["target_revision"] == json.loads(manifest_raw)["target_revision"]
+    assert data["candidate_manifest_sha256"] == hashlib.sha256(manifest_raw).hexdigest()
+    assert data["compiled_patch_count"] == 65
+    for field in ("identity_browser_verified", "full_policy_suite_verified", "audio_math_included",
+                  "release_admitted", "production_admitted"):
+        assert data[field] is False
+    core = data["runtime_core_sha256"]
+    assert set(core) == {"chrome.exe", "chrome.dll", "chrome_elf.dll"}
+    assert all(re.fullmatch(r"[0-9a-f]{64}", digest) for digest in core.values())
+    startup = data["startup"]
+    assert startup["passed"] and startup["browser_version"] == data["target_version"]
+    assert startup["sandbox_requested"] and startup["no_sandbox_flag_absent"]
+    assert startup["resources_closed"] and startup["postguards_passed"]
+    assert "HeadlessChrome/156." in startup["page"]["version"]
+    keys = data["native_identity_keys"]
+    assert keys["passed"] and keys["tests"] == 62 and keys["target"] == "identity-keys"
+    assert keys["postguards_passed"] and keys["baseline_browser_code_unchanged"]
+    attempts = data["expanded_runtime_attempts"]
+    assert len(attempts) == 3 and attempts[0]["passed"] is False
+    assert len(attempts[0]["completed_checks"]) == 5
+    assert attempts[0]["primary_close_timeout_observed"] and attempts[0]["failed_evidence_retained"]
+    assert {row["diagnostic_logging_enabled"] for row in attempts[1:]} == {True, False}
+    assert all(row["passed"] and len(row["checks"]) == 18
+               and REQUIRED_RUNTIME_CHECKS.issubset(row["checks"]) for row in attempts[1:])
+    shutdown = data["shutdown_diagnosis"]
+    assert shutdown["passed"] and shutdown["runs"] == 16
+    assert shutdown["reviewed148_cycles"] == shutdown["candidate156_cycles"] == 8
+    assert 0 < shutdown["minimum_close_seconds"] <= shutdown["maximum_close_seconds"] < 30
+    assert shutdown["all_observed_owned_processes_exited"] and shutdown["postguards_passed"]
+    assert shutdown["timeout_changed"] is shutdown["forced_termination"] is False
+    assert shutdown["initial_timeout_root_cause_resolved"] is False
+    assert shutdown["matched_stock156_control"] is False
+    assert data["frozen_build_inputs_unchanged"] == 201 and data["remaining_unverified"]
+
+
+def test_first_156_audio_calibration_does_not_admit_the_math_variant():
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/upstream-156"
+    data = json.loads((root / "windows-runtime-observations.json").read_text(encoding="utf-8"))
+    audio = data["audio_native_baseline"]
+    assert audio["passed"] and audio["all_native156_prototype_bit_exact"]
+    assert audio["capture_count"] == audio["case_count"] * audio["repetitions_per_case"] == 45
+    assert audio["case_count"] == len(audio["cases"]) == 15
+    assert audio["matched_stock156_verified"] is audio["float32_backend_runtime_verified"] is False
+    assert audio["resources_closed"] and audio["postguards_passed"]
+    assert hashlib.sha256((root / audio["probe_file"]).read_bytes()).hexdigest() == audio["probe_sha256"]
+    cases_raw = (root / audio["cases_file"]).read_bytes()
+    assert hashlib.sha256(cases_raw).hexdigest() == audio["cases_sha256"]
+    cases = {row["id"]: row for row in json.loads(cases_raw)["cases"]}
+    assert {row["id"] for row in audio["cases"]} == set(cases)
+    for row in audio["cases"]:
+        assert row["raw_sha256"] == row["reference_sha256"]
+        assert row["frames"] == cases[row["id"]]["frames"]
+        assert row["sampleRate"] == cases[row["id"]]["rate"] and row["channelCount"] == 2
+
+
 def test_audio_math_context_draft_binds_source_only_integration():
     import hashlib
     import json

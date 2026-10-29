@@ -7,7 +7,7 @@
 
 Windows 156.0.8078.36 / 001–065: `Build Succeeded`, 19 487 шагов за 3:46:37.79.
 Постпроверки исходников/SDK завершились успешно; записан `camouflow-build.json`
-с хешами chrome.exe, chrome.dll и chrome_elf.dll. Runtime ещё не проверен;
+с хешами chrome.exe, chrome.dll и chrome_elf.dll. Полный policy-suite ещё не проверен;
 AudioMath 0068 остаётся отдельным черновиком и в бинарник не входит.
 
 Первая очередь identity остановилась до тестов: общий process guard заблокировал
@@ -15,7 +15,21 @@ Ninja из другого проекта. Исправлена область п
 с недоступными данными по-прежнему блокируют запуск. Реальные owned-Ninja проверки
 подтвердили разрешение чужой области и запрет своей; пользовательские процессы
 не останавливались. Python: 1 439 passed, один skipped; отдельные guard cases — 15 passed.
-Старые failed-отчёты сохранены; продолжение требует новой связанной очереди.
+Старые failed-отчёты сохранены; новая связанная очередь запущена.
+
+Свежие результаты: startup прошёл; target identity-keys выполнил 62 C++-теста
+с постпроверками. Два расширенных baseline-прогона прошли все 18 проверок:
+пять хранилищ, изоляция, permissions, crash/restart, controlled HTTP proxy,
+менеджер/сценарии, Recorder и backup/restore. Первый прогон не прошёл из-за
+таймаута закрытия; очистка временной папки замаскировала исходную ошибку.
+Этот отрицательный результат сохранён и не считается исправленным повторами.
+
+Отдельная матрица: 16 закрытий 148/156 прошли без изменения timeout/forced kill,
+1.140–2.703 с. Новый 156 Audio baseline: 15 cases × 3 = 45 bit-exact совпадений
+с standalone native156 DSP. Это не runtime AudioMath, не stock156 A/B и не
+полная проверка fingerprint-политик. Остальные identity/native targets,
+канонический eight-gate suite, installed runtime и rollback остаются обязательными.
+Очищенная запись: `native/drafts/upstream-156/windows-runtime-observations.json`.
 
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 

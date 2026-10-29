@@ -1,6 +1,6 @@
 # Glint browser test matrix
 
-## Linked 156 candidate, runtime pending — 2026-10-29
+## First 156 baseline results, full policy suite pending — 2026-10-29
 
 | Gate | Observed result | Boundary |
 | --- | --- | --- |
@@ -9,13 +9,22 @@
 | First post-link identity queue | Stopped before tests because an unrelated project's live Ninja triggered the global compiler guard | Failed reports retained; downstream runtime/package queues did not run |
 | Scoped guard correction | Workspace/binary scopes; unknown process details block; legacy unscoped calls stay conservative | Not a compiler lock bypass |
 | Actual guard controls | Two owned sleeping Ninja processes: foreign scope accepted, own scope rejected with PID; both finished naturally | No foreign user processes modified; not native test execution |
+| Resumed native identity-key target | 62 cases passed; native source/toolchain/browser-core postguards passed | Not document/worker identity or the remaining fixture targets |
+| Disposable startup | 156.0.8078.36 opened the controlled page; sandbox requested, effective `--no-sandbox` absent; runtime resources closed | Regular raw/headless baseline, not concealed-automation admission |
+| Extended baseline lifecycle | Two repeats each passed all 18 checks: isolation/five stores, permissions, crash/restarts, owned-process cleanup, controlled authenticated proxy, manager/scenarios, Recorder and backup/restore | One repeat had diagnostic logging, the other ordinary verbosity; not the full eight-gate policy suite |
+| First extended baseline failure | Close timed out after five checks; temporary-directory cleanup then masked the primary failure | Negative retained; passing repeats do not explain or repair the timeout |
+| Independent close diagnosis | 16 cycles across reviewed 148 and candidate 156, desktop/mobile, storage/diagnostics; 1.140–2.703s, owned processes exited | Same-host cross-version control, not matched stock156; no timeout increase or forced kill |
+| Native156 Audio calibration | 15 cases × three repetitions = 45 bit-exact native156 prototype matches; cleanup/postguards passed | Unprotected baseline only; AudioMath/float32 runtime and stock156 comparison unverified |
+| Current release-tool validators | 1,088 passed, one skipped in 49.27 seconds | Validates report/probe bindings and scopes, not execution of additional native gates |
 | Python validation | 1,439 passed, one skipped across changed tooling tests; 15 focused guard cases passed | Not browser/native execution or remote CI |
 
 Build evidence: `D:\Glint156Candidate\fixture-build-continuation-20261029-v2.json`;
 core receipt: `chromium\src\out\CamouFlowNative\camouflow-build.json` below that workspace.
 Guard process controls: `D:\GlintBuilderGuardProbe-20261029-v2\report.json`.
-New identity, full runtime, remaining native targets, installed runtime and
-compatible rollback evidence remain required before any candidate release claim.
+Sanitized evidence: [`windows-runtime-observations.json`](../native/drafts/upstream-156/windows-runtime-observations.json).
+Remaining identity/native targets, canonical eight-gate policy suite, installed
+runtime, compatible rollback and shutdown reliability evidence remain required
+before any candidate release claim. No detector/CAPTCHA outcomes are asserted.
 
 ## Unselected AudioContext math integration — 2026-10-29
 

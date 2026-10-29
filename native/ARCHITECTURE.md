@@ -7,18 +7,24 @@ package admits only the individually reviewed experimental capabilities;
 source ports, Python tests and diagnostic reports cannot expand that admission.
 Chromium **156.0.8078.36 / 001–065** linked successfully in its separate D:
 workspace: 19,487 build steps in 3h46m37.79s, followed by passing source/toolchain
-postguards and a three-core-file build receipt. It is **not runtime-verified**.
+postguards and a three-core-file build receipt. Disposable startup passed; two
+repeats passed all 18 baseline lifecycle/integration checks. An earlier shutdown
+timeout remains unexplained and retained as failed evidence. This is **not full
+policy-suite, browser-identity or release admission**.
 The first identity verifier stopped before running tests because its global
 process guard detected an unrelated project's Ninja. Guards now support an
 explicit workspace/binary scope; unreadable process identity remains a conflict,
 and default unscoped checks remain conservative. Real owned sleeping-Ninja
 controls distinguish foreign and conflicting scopes without terminating either.
-Fresh identity/runtime/native/package evidence is still required.
+The resumed identity-key target passed 62 C++ cases with postguards; remaining
+identity/native targets and the canonical eight-gate/installed suite are pending.
+The unprotected 156 Audio baseline also matched the standalone native156 DSP
+matrix bit-for-bit in 45 captures. This does not execute AudioMath 0068.
 The current candidate chain is 001–065;
 0063–0064 address the actual unsafe-buffer compilation failures without disabling
 diagnostics. Test-only 0065 updates worker synchronization/API calls and the GPU
-canary layout; all 38 mapped fixture object targets now compile, but their tests
-have not executed. The two system module targets and their
+canary layout; all 38 mapped fixture object targets now compile, but the full
+fixture suite has not executed. The two system module targets and their
 source/toolchain guards passed; object compilation is not execution of the
 fixture suite. Linux/macOS runtime work remains deferred.
 

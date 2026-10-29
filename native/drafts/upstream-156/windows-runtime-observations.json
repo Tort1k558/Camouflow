@@ -1,0 +1,289 @@
+{
+  "schema": 1,
+  "scope": "First Windows 156 baseline observations; not combined policy, identity or release admission",
+  "target_version": "156.0.8078.36",
+  "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "candidate_manifest_sha256": "4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0",
+  "compiled_patch_count": 65,
+  "build_receipt_sha256": "5c60aa4cebc433552e6a28a4875ffcf9e74e6e7776a52b4cc25ec4183591863a",
+  "runtime_core_sha256": {
+    "chrome.exe": "0596afb2bd1a84731ebbe4d276edd3797d67b262bebb332e76a8aa9d21db5567",
+    "chrome.dll": "bd75c5c6ab3c45946edc0ea4e8f1d684286dd588d7cc46999a0b2bb1236aab44",
+    "chrome_elf.dll": "14597f88689361a016bce4a648e6b18a50ed065d6fc524dc8112f4b7d6e115d0"
+  },
+  "identity_browser_verified": false,
+  "full_policy_suite_verified": false,
+  "audio_math_included": false,
+  "release_admitted": false,
+  "production_admitted": false,
+  "startup": {
+    "passed": true,
+    "browser_version": "156.0.8078.36",
+    "sandbox_requested": true,
+    "no_sandbox_flag_absent": true,
+    "command_line_observation": "Owned Win32_Process; regular configuration without --enable-automation",
+    "resources_closed": true,
+    "postguards_passed": true,
+    "page": {
+      "title": "Glint startup control",
+      "text": "Owned local control",
+      "version": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "secureContext": true
+    }
+  },
+  "initial_startup_harness_failure": {
+    "retained": true,
+    "browser_version_was_observed": true,
+    "cause": "Command-line CDP observation required --enable-automation; cleanup used a closed event loop",
+    "correction": "Observe the owned OS process and close in the original event loop; regular launch configuration unchanged"
+  },
+  "native_identity_keys": {
+    "passed": true,
+    "target": "identity-keys",
+    "tests": 62,
+    "test_binary_sha256": "29de536cc54a4b593a190e4d24883ae7f1e6cdd06cdb4b95de241363c51cb098",
+    "postguards_passed": true,
+    "baseline_browser_code_unchanged": true
+  },
+  "expanded_runtime_attempts": [
+    {
+      "id": "first",
+      "passed": false,
+      "completed_checks": [
+        "concurrent-profile-isolation",
+        "cross-process-owner-exclusion",
+        "navigation-tabs-fill-click-extract-screenshot",
+        "mobile-web-viewport-dpr-touch",
+        "native-document-worker-configuration-diagnostics"
+      ],
+      "failure": "Context-close timeout; subsequent temporary-directory cleanup masked the primary exception",
+      "primary_close_timeout_observed": true,
+      "failed_evidence_retained": true
+    },
+    {
+      "id": "diagnostic-repeat",
+      "passed": true,
+      "diagnostic_logging_enabled": true,
+      "checks": [
+        "concurrent-profile-isolation",
+        "cross-process-owner-exclusion",
+        "navigation-tabs-fill-click-extract-screenshot",
+        "mobile-web-viewport-dpr-touch",
+        "native-document-worker-configuration-diagnostics",
+        "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+        "configured-permissions-isolation-revocation-and-restart",
+        "dead-owner-profile-lock-recovery",
+        "browser-crash-restart-preserves-committed-storage",
+        "authenticated-http-proxy-no-direct-dns-route",
+        "existing-browser-interface-and-scenario-executor",
+        "existing-recorder-capture-and-replay",
+        "native-profile-backup-restore-storage-and-engine-isolation",
+        "native-binary-headless-health-and-disposable-profile-cleanup",
+        "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+        "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+        "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+        "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+      ],
+      "scope": "All 18 baseline lifecycle/integration checks; not all eight policy-suite gates"
+    },
+    {
+      "id": "ordinary-verbosity-repeat",
+      "passed": true,
+      "diagnostic_logging_enabled": false,
+      "checks": [
+        "concurrent-profile-isolation",
+        "cross-process-owner-exclusion",
+        "navigation-tabs-fill-click-extract-screenshot",
+        "mobile-web-viewport-dpr-touch",
+        "native-document-worker-configuration-diagnostics",
+        "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+        "configured-permissions-isolation-revocation-and-restart",
+        "dead-owner-profile-lock-recovery",
+        "browser-crash-restart-preserves-committed-storage",
+        "authenticated-http-proxy-no-direct-dns-route",
+        "existing-browser-interface-and-scenario-executor",
+        "existing-recorder-capture-and-replay",
+        "native-profile-backup-restore-storage-and-engine-isolation",
+        "native-binary-headless-health-and-disposable-profile-cleanup",
+        "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+        "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+        "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+        "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+      ],
+      "scope": "Baseline lifecycle only"
+    }
+  ],
+  "shutdown_diagnosis": {
+    "passed": true,
+    "same_host_cross_version": true,
+    "matched_stock156_control": false,
+    "runs": 16,
+    "reviewed148_cycles": 8,
+    "candidate156_cycles": 8,
+    "workloads": [
+      "desktop-storage",
+      "desktop-diagnostics",
+      "mobile-storage",
+      "mobile-diagnostics"
+    ],
+    "minimum_close_seconds": 1.14,
+    "maximum_close_seconds": 2.703,
+    "timeout_changed": false,
+    "forced_termination": false,
+    "loop_errors": 0,
+    "all_observed_owned_processes_exited": true,
+    "postguards_passed": true,
+    "initial_timeout_root_cause_resolved": false
+  },
+  "audio_native_baseline": {
+    "passed": true,
+    "probe_file": "../audio-dsp-math-v2/compressor-matrix-control.js",
+    "probe_sha256": "e3e8258fb8d206b794f186fbf2090a24533d11d27b2f774ee2e6d290abfb2774",
+    "cases_file": "../audio-dsp-math-v2/cases.json",
+    "cases_sha256": "b678f9d28e60a16306092860d1d34d0dc893073a7dcd429b10f19932f8a756e8",
+    "case_count": 15,
+    "capture_count": 45,
+    "repetitions_per_case": 3,
+    "all_native156_prototype_bit_exact": true,
+    "matched_stock156_verified": false,
+    "float32_backend_runtime_verified": false,
+    "resources_closed": true,
+    "postguards_passed": true,
+    "cases": [
+      {
+        "id": "burst-release",
+        "frames": 16384,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "08b4fa7fa0127ecc8062f137c762c49d30bfade6b6effbdc5f93e39c757087f7",
+        "reference_sha256": "08b4fa7fa0127ecc8062f137c762c49d30bfade6b6effbdc5f93e39c757087f7"
+      },
+      {
+        "id": "constant-compressed",
+        "frames": 8192,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "a463a6bd8cbb4bba6a3c1dd07877dc9fb1d45a054af6f72780b6453ae2bd9d17",
+        "reference_sha256": "a463a6bd8cbb4bba6a3c1dd07877dc9fb1d45a054af6f72780b6453ae2bd9d17"
+      },
+      {
+        "id": "direct-constant",
+        "frames": 8192,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "9a21e63b08d82d6d44478d208ac8a633216966cf7d2ed16a2f2ab4c25a499d9b",
+        "reference_sha256": "9a21e63b08d82d6d44478d208ac8a633216966cf7d2ed16a2f2ab4c25a499d9b"
+      },
+      {
+        "id": "direct-negative-quarter",
+        "frames": 8192,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "3f77db63f468fa9dc6bf3d3daed27f7ccab9834e1f516f4da4670de1a76436ed",
+        "reference_sha256": "3f77db63f468fa9dc6bf3d3daed27f7ccab9834e1f516f4da4670de1a76436ed"
+      },
+      {
+        "id": "direct-negative-zero",
+        "frames": 8192,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "c4b1d6a1167bf590bc53a3a8dca7577636d3a2bd6307599b2bc6f92174d584e3",
+        "reference_sha256": "c4b1d6a1167bf590bc53a3a8dca7577636d3a2bd6307599b2bc6f92174d584e3"
+      },
+      {
+        "id": "direct-zero",
+        "frames": 8192,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+        "reference_sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31"
+      },
+      {
+        "id": "impulse-fast",
+        "frames": 8192,
+        "sampleRate": 48000,
+        "channelCount": 2,
+        "raw_sha256": "bb76c69f6d0cf442b2476c591a0dc0cdfad8215534a450f2d3269aa46e0abacc",
+        "reference_sha256": "bb76c69f6d0cf442b2476c591a0dc0cdfad8215534a450f2d3269aa46e0abacc"
+      },
+      {
+        "id": "partial-last",
+        "frames": 8193,
+        "sampleRate": 48000,
+        "channelCount": 2,
+        "raw_sha256": "b768691d6383abe3c0dd3cc3b705b40e22a45aeb867ccad105a44e94b2c6d245",
+        "reference_sha256": "b768691d6383abe3c0dd3cc3b705b40e22a45aeb867ccad105a44e94b2c6d245"
+      },
+      {
+        "id": "random-default",
+        "frames": 8192,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+        "reference_sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732"
+      },
+      {
+        "id": "ratio-one",
+        "frames": 8192,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "445ae3336d90d09d091cdae97ff761f8dd97d0c76e7165ee14bc04f88ed18187",
+        "reference_sha256": "445ae3336d90d09d091cdae97ff761f8dd97d0c76e7165ee14bc04f88ed18187"
+      },
+      {
+        "id": "silence-default",
+        "frames": 8192,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+        "reference_sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31"
+      },
+      {
+        "id": "stereo-overdrive",
+        "frames": 8192,
+        "sampleRate": 96000,
+        "channelCount": 2,
+        "raw_sha256": "14e5fe6fd3f9610b49daf655b3d176dd211b2ad48e0abf8749cf2c8f6b1cdbff",
+        "reference_sha256": "14e5fe6fd3f9610b49daf655b3d176dd211b2ad48e0abf8749cf2c8f6b1cdbff"
+      },
+      {
+        "id": "stereo-random",
+        "frames": 8192,
+        "sampleRate": 48000,
+        "channelCount": 2,
+        "raw_sha256": "f3f64275c0ed905163eb60a78579566bd46a8b39e969a66cda7034dd830e99cc",
+        "reference_sha256": "f3f64275c0ed905163eb60a78579566bd46a8b39e969a66cda7034dd830e99cc"
+      },
+      {
+        "id": "triangle-fingerprint",
+        "frames": 8192,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "28dabd508866ed47b3aeed2c83883417083046a0cc9e8d6109bd55322b5f3ecb",
+        "reference_sha256": "28dabd508866ed47b3aeed2c83883417083046a0cc9e8d6109bd55322b5f3ecb"
+      },
+      {
+        "id": "zero-release",
+        "frames": 8192,
+        "sampleRate": 44100,
+        "channelCount": 2,
+        "raw_sha256": "04a5db431c72bb43aead2882777e293e9fbb84fda34cb223f0554411500a0422",
+        "reference_sha256": "04a5db431c72bb43aead2882777e293e9fbb84fda34cb223f0554411500a0422"
+      }
+    ]
+  },
+  "frozen_build_inputs_unchanged": 201,
+  "source_snapshot_sha256": {
+    "app/core/native/runtime.py": "3272444b6849509472d22d0251c40766f4486509c2fd7fb99ad1964e5c4f5850",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "scripts/verify_native_runtime.py": "9869fe04065d3914ac07e81614253b266c7ab141b8bd9f3e1582c81d3a1db56e"
+  },
+  "remaining_unverified": [
+    "Remaining identity/context/transport/handoff and native fixture targets",
+    "Canonical source-bound eight-gate candidate suite and installed-package suite",
+    "Close-timeout root cause and a source-bound repeat within the full eight-gate suite",
+    "Native policy composition, fingerprint/anti-bot sites and CAPTCHA server-side outcomes",
+    "AudioMath integration execution, float32 cohort plausibility and quality/performance",
+    "Cross-version data recovery; raw Chromium downgrade remains blocked"
+  ]
+}
