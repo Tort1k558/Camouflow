@@ -101,6 +101,13 @@ The first build's LLVM OOM and initial typed-result preflight failures remain
 recorded. These native byte-copy/planning cases do not prove GPU-driver,
 WebGPU, future identity mode or third-party acceptance.
 
+## Audio API compatibility diagnostics
+
+[Repeatable Audio checks](fixtures/audio/README.md) cover controlled fidelity,
+analyser, worklet and muted realtime paths. The pinned stock156 calibration is
+not a Glint result; selected 0067 still requires its own completed native/runtime
+gates. Requested legacy failures remain failures even if experimental math passes.
+
 ## Pin a profile's requested environment
 
 In **Profiles → Settings → Browser JSON**, click **Pin environment**, review the

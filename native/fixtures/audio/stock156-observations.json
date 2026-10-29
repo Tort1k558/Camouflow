@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Audio diagnostic calibration against official stock156 only; no Glint policy execution or admission",
+  "reference_version": "156.0.8078.36",
+  "reference_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "reference_core_sha256": {
+    "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+    "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+    "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+  },
+  "source_sha256": {
+    "scripts/verify_native_audio_compatibility.py": "2e82ce5b86cba53f5ee797d6618d1c1daf8b0b685cdc4d21fd2a6c8d40d578b0",
+    "native/fixtures/audio/analyser.js": "575553fb81d5d01a16328e6b91a548fdb6e9e6e1636bf7bca915aa820295fa18",
+    "native/fixtures/audio/fidelity.js": "b18f16da49bbb55eacae2b52e40d95b7c1c270e18740798233232bf5f9b87861",
+    "native/fixtures/audio/realtime.js": "34a85e2c65b2d1dc7aef741108720a23e9813464bcdcb9eaa9045201e340a5c5",
+    "native/fixtures/audio/worklet-processor.js": "1bc5016658728225f2c9b85c6d055f18991a5c6ed32ce2c8baecc55d65278606",
+    "native/fixtures/audio/worklet.js": "35877e851d90557c6d269e12ed52093c4be36ab271e49f997f259a4f2de38d76"
+  },
+  "probe_coverage": {
+    "fidelity": {
+      "cases": 54,
+      "checks_per_case": null
+    },
+    "analyser": {
+      "cases": 12,
+      "checks_per_case": 14
+    },
+    "worklet": {
+      "cases": 12,
+      "checks_per_case": 11
+    },
+    "realtime": {
+      "cases": 1,
+      "checks_per_case": 11
+    }
+  },
+  "negative_javascript_controls": {
+    "analyser": {
+      "rejected": [
+        "rendered-tail",
+        "time-data",
+        "frequency-data",
+        "native-error"
+      ],
+      "report_sha256": "5d2c77aa403af636ab74aeac6887f914306df3a33b843c3b3d123e1f350ca3e5"
+    },
+    "worklet": {
+      "rejected": [
+        "copy",
+        "rate",
+        "timeline",
+        "silence",
+        "source-mutation"
+      ],
+      "report_sha256": "840eb4ca655ee53e312638e8369813d657d4a0a7313a0bc33a549fd1e0686afe"
+    }
+  },
+  "raw_reference_report_sha256": "2631b859bad06a2d70612203a584ab260901f8d17ee30865b4cc3e41b25d8704",
+  "resources_closed": true,
+  "postguards_passed": true,
+  "glint_candidate_runtime_verified": false,
+  "audio_v1_failure_fixed": false,
+  "device_cohort_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
