@@ -909,8 +909,8 @@
       "repository": "https://chromium.googlesource.com/v8/v8.git"
     }
   },
-  "base_manifest_sha256": "f752426cf5435cf02f9d19cd648101ad8b0369ce8f611c9adcf6065f3bdbbdcb",
-  "complete_patch_count": 64,
+  "base_manifest_sha256": "4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0",
+  "complete_patch_count": 65,
   "complete_forward_port": false,
   "next_port_required_patch": "0033-native-surface-readback.patch",
   "selected_prefix_patches": 32,

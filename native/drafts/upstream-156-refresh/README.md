@@ -4,7 +4,7 @@
 
 This snapshot pins Chromium `861389936bf33ea77529ee5dcc0605e68f6bb620`
 and its DEPS-selected V8 `235050a0df6db2c9d92a419af2b72fbf3b2dd73b`.
-All 185 pristine input files and all 64 patch hashes are recorded in
+All 185 pristine input files and all 65 patch hashes are recorded in
 `manifest.json`. Patch bytes are reused from `../upstream-156/patches`, not
 duplicated here. `base_manifest_sha256` binds the selected .36 candidate snapshot.
 
@@ -46,7 +46,7 @@ generated-output comparison; it is not compiler/toolchain admission.
 
 ## Evidence and limits
 
-The current 64-patch chain passed source replay on .36 and .75 with unchanged
+The current 65-patch chain passed source replay on .36 and .75 with unchanged
 inputs and preserved GPU/GRIT invariants:
 `audio-safe-copy-20261029-v1/{default-64-replay,refresh-64-replay}/report.json` on D.
 This is not compilation of the .75 target or a repeated codegen gate.

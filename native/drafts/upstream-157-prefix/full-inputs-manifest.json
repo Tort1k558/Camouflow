@@ -1828,6 +1828,10 @@
     {
       "file": "upstream-156/patches/0064-native-audio-safe-domain-copy.patch",
       "sha256": "49133a73725f092aff7753ce03ff9b6c87c4ca84fc8cc99bbe7fbc8c00cf1bf4"
+    },
+    {
+      "file": "upstream-157-prefix/patches/0065-native-fixture-portability.patch",
+      "sha256": "ce49ee1db40320247fa089e3e95e0a2f1bb2dfb344b79198cf773d9f4c8d867f"
     }
   ],
   "scope": "Pinned source-only inputs and patch contexts; not a build candidate",
@@ -1843,13 +1847,13 @@
       "repository": "https://chromium.googlesource.com/v8/v8.git"
     }
   },
-  "base_manifest_sha256": "f752426cf5435cf02f9d19cd648101ad8b0369ce8f611c9adcf6065f3bdbbdcb",
-  "complete_patch_count": 64,
+  "base_manifest_sha256": "4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0",
+  "complete_patch_count": 65,
   "complete_forward_port": false,
   "next_port_required_patch": null,
   "source_corpus_complete": true,
-  "preparation_scope": "All 185 inputs and 64 patch applications verified; chunked Audio API port is an uncompiled prototype; native and runtime validation remain required",
-  "verified_prefix_patches": 64,
-  "selected_patch_count": 64,
+  "preparation_scope": "All 185 inputs and 65 patch applications verified; native and runtime validation remain required",
+  "verified_prefix_patches": 65,
+  "selected_patch_count": 65,
   "source_application_complete": true
 }

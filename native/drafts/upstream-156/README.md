@@ -3,24 +3,27 @@
 **Draft source port, not an enabled engine or a compiled browser.** The active
 build lock and registered 001-062 chain still target Chromium 148.0.7778.96.
 
-## Pending test-only follow-up
+## Fixture portability batch 0065
 
-`0065-native-fixture-portability.patch` is deliberately **outside `patches/` and
-not selected by the manifest**. It repairs the three failed fixture translation
+`patches/0065-native-fixture-portability.patch` is **selected by the manifest**.
+It repairs the three failed fixture translation
 units: worker post-evaluation synchronization, the explicit opaque-origin flags
 for storage/origin APIs, and typed GPU canary storage with wire/buffer assertions.
 All three repaired copies compiled using their original Clang flags and generated
 dependencies; source/toolchain/GN postguards and `git apply --check` passed.
 
-This is not an executed native test or a resumed browser build. The 001–064
-manifest remains unchanged. Inclusion requires a reviewed append, dependency
-record rebinding and new continuation bindings; do not force old observers past
-their failure or edit the checkout during a live build. Evidence on D:
-`fixture-portability-20261029-v2/probe-v2/compile-report.json`.
+The selected 001–065 tree then passed both keep-going compile batches: **85
+production object targets and all 38 mapped fixture object targets**, with final
+source/toolchain/GN postguards. Dependency inputs were verified unchanged and
+sync/hooks records rebound; those stages were not rerun. The browser build has
+resumed at **j4**, with fresh identity/runtime/native/package observers.
+No native tests have executed yet. Failed earlier reports remain retained.
+Evidence on D: `fixture-activation65-20261029-v2/report.json`; the isolated-copy
+proof remains `fixture-portability-20261029-v2/probe-v2/compile-report.json`.
 
 ## Selected candidate
 
-The current candidate chain is **001–064**. The 001–062 browser build stopped
+The current candidate chain is **001–065**. The 001–062 browser build stopped
 on three production objects with Clang unsafe-buffer errors. Append 0063 uses
 bounded word spans and typed hardware option ranges; it does not suppress the
 diagnostics or change identity-policy admission. See the
@@ -105,6 +108,7 @@ below, rather than changing registry or installed SDK contents.
 | 0059-0062 | Unchanged-snapshot write avoidance, Glint branding/resources and Windows font rasterization |
 | 0063 | Clang-safe hardware parsing and fixed-size Canvas word spans; no warning suppression or policy expansion |
 | 0064 | Bounded Audio domain copy with unchanged message bytes; no HMAC, sample-policy or GN flag change |
+| 0065 | Test-only worker synchronization/API and typed GPU canary repairs; all 38 mapped fixture objects compile |
 
 The font service gained an independent local-font matcher upstream. Merely
 repairing rejected patch context would leave that new path unrestricted. The

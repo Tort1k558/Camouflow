@@ -1,16 +1,16 @@
 # Chromium 157 source-port prefix
 
-**Source-only workbench: all 64 patch applications verified. No compiled 157 browser.**
+**Source-only workbench: all 65 patch applications verified. No compiled 157 browser.**
 
 Pins Chromium `157.0.8103.27` / `f9d7b13a569b352a0267234ea5740fdecc83ffa2`
 and its DEPS-selected V8 `a4889e05285021952e2ca9648c805a4c989345ae`.
-Ten ported patches are stored here; unchanged payloads reference
+Eleven ported patches are stored here; unchanged payloads reference
 `upstream-156/patches`. No upstream source files are committed.
 
 | Manifest | Pristine inputs | Patch selection | Measured result |
 | --- | --- | --- | --- |
 | `manifest.json` | 88 | 001–032 | Source application passed |
-| `full-inputs-manifest.json` | 185 | 001–064 | Source application, GPU numbering and GRIT structure passed; compilation/runtime pending |
+| `full-inputs-manifest.json` | 185 | 001–065 | Source application, GPU numbering and GRIT structure passed; compilation/runtime pending |
 
 | Patch | Adaptation |
 | --- | --- |
@@ -24,6 +24,7 @@ Ten ported patches are stored here; unchanged payloads reference
 | 0055 | Reanchor the feature declaration around upstream's new GPU initialization feature |
 | 0056 | Retain upstream idle-trim tests and existing includes while adding the metadata protocol fixtures |
 | 0061 | Apply branding to the same message IDs without removing new upstream messages; retain binary logo payloads |
+| 0065 | Reanchor the test-only fixture repair's include context; same added/removed code as the compiler-checked 156 repair |
 
 ## Reproduce the bounded source replay
 
@@ -43,7 +44,7 @@ Its rate, no-retry/redirect rules and manual-cooldown requirements are described
 in the [refresh instructions](../upstream-156-refresh/README.md).
 
 For the complete input corpus, explicitly select `full-inputs-manifest.json`
-and new output paths. It records all 185 known hashes and the complete 64-patch
+and new output paths. It records all 185 known hashes and the complete 65-patch
 source application. Do not label source application or an input download as
 runtime readiness.
 
@@ -56,9 +57,10 @@ its earlier 0033 failure with unchanged inputs/patches. Evidence on D under
 `Glint157ObjectCache`: `public-prefix32-{inputs,replay}`,
 `public-full185-inputs` and `public-full64-attempt`.
 
-The subsequent isolated full replay applied **001–064** over all 185 inputs.
+The subsequent full replay applied **001–065** over all 185 inputs.
 GPU command numbering retained 321 entries and appended command 577; GRIT
 structure was preserved. The public full manifest reproduces this source check.
+Evidence: `D:\Glint157ObjectCache\public-full65-replay-v2\report.json`.
 Earlier failures remain historical evidence, not passing compilation results.
 
 Earlier HTTP timeouts, the interrupted Git operation and partial replays remain

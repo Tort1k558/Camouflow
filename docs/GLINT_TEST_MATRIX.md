@@ -3,6 +3,43 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Current 001–065 compilation gate — 2026-10-29
+
+The test-only 0065 repair is now selected and applied. Candidate manifest SHA-256:
+`4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0`.
+
+| Check | Measured result | Limit |
+| --- | --- | --- |
+| Production batch, 85 selected targets | Passed; zero executed steps, existing production objects reused | No new production sources in 0065; not 85 fresh compilations |
+| Fixture batch, all 38 mapped targets | Passed; three repaired objects rebuilt in 27.34s | No test executable linked or run |
+| Source/toolchain/GN postguards | Passed | Runtime remains unverified |
+| Dependency stage rebinding | DEPS, gclient, dependency snapshots and pins unchanged; sync/hooks rebound | Neither stage was re-executed |
+| Source replay, default .36 and refresh .75 | All 65 applications passed, GPU/GRIT invariants preserved | Refresh has no compiler/runtime proof |
+| Full 157 source workbench | All 65 applications passed over 185 inputs, GPU/GRIT invariants preserved | No 157 compilation/runtime proof |
+| Focused local Python selection | 72 passed, 969 deselected in 12.02s | Not native test execution |
+| Full local Python suite after activation | 3,558 passed, one skipped in 295.18s | Not remote CI or native/runtime proof |
+
+The browser build resumed at **j4**, log `build-20261029-074910.log` on D.
+Source, GN, selected patches and `native_build.py` are frozen during it.
+Fresh bound observers: browser continuation v2 → identity v4 → runtime v11 →
+remaining native v6 → packaging v4. The packaging observer seals **201 inputs**;
+staging/install tests remain isolated, with no activation or production release.
+
+Evidence: `fixture-activation65-20261029-v2/{report.json,production.log,fixtures.log}`,
+`default65-replay/report.json` and `refresh65-replay/report.json` under that root;
+157: `D:\Glint157ObjectCache\public-full65-replay-v2\report.json`, manifest hash
+`993a96741731d2e9dcfd214ec694be4ebdca47e60641be0692ceb1641806d7ed`.
+The first activation observer incorrectly compared the list tail, although the
+proof groups V8 last. Its failed report is retained; recovery verified the
+unchanged 64 rows by patch identity before rebinding. This was an observer
+assertion, not a new compiler error or an object-cache reset.
+
+A fresh upstream audit bound to this 65-patch manifest still reports
+`behind-stable`: selected 156.0.8078.36 versus observed 157.0.8103.27. Exit 1 is
+the intended policy result, not an HTTP/build failure. Evidence:
+`upstream-audit-candidate-20261029-v4.json` on D. `production_admitted` remains
+false; the diagnostic build is not a security-reviewed production release.
+
 ## Chromium 156 fixture compilation — 2026-10-29
 
 The 38-target keep-going probe finished in **48m45.34s**, with 3,349 graph steps
