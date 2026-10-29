@@ -4221,14 +4221,34 @@ def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
     additions = "\n".join(line[1:] for line in patch.splitlines()
                           if line.startswith("+") and not line.startswith("+++"))
     names = re.findall(r"TEST_F\(OfflineAudioContextTest,\s*(\w+)\)", additions)
-    assert names == descriptor["expected_tests"] and len(names) == len(set(names)) == 11
+    assert names == descriptor["expected_tests"] and len(names) == len(set(names)) == 13
     assert {"GlintProtectedQueuedChunksResumeAfterSuspension",
             "GlintProtectedQueueCloseRejectsAllPendingWork",
-            "GlintClosedContextRetainsNativePrecedenceOverMissingPolicy"} <= set(names)
+            "GlintClosedContextRetainsNativePrecedenceOverMissingPolicy",
+            "GlintProtectedQueueContextDestroyedRejectsPendingWork",
+            "GlintProtectedQueueFrameDetachSuppressesLateCompletion"} <= set(names)
     assert len(descriptor["api_headers"]) == 5 and descriptor["remaining_uncovered_cases"]
     for header in descriptor["api_headers"]:
         assert len(header["git_blob_sha1"]) == 40 and len(header["sha256"]) == 64
         assert 0 < header["bytes"] < 1024 * 1024
+    lifecycle = descriptor["lifecycle_fixture_scope"]
+    for field in ("compiled", "executed", "gc_stress_verified", "wait_for_promises_in_destroyed_realm"):
+        assert lifecycle[field] is False
+    assert {Path(row["path"]).name for row in descriptor["lifecycle_api_sources"]} == {
+        "base_audio_context.h", "base_audio_context.cc", "frame.h", "local_frame.h"}
+    for source in descriptor["lifecycle_api_sources"]:
+        assert len(source["git_blob_sha1"]) == 40 and len(source["sha256"]) == 64
+        assert 0 < source["bytes"] < 1024 * 1024
+    callback = additions.split("GlintProtectedQueueContextDestroyedRejectsPendingWork", 1)[1].split("TEST_F(", 1)[0]
+    assert callback.index("context->ContextDestroyed();") < callback.index("first.WaitUntilSettled();")
+    assert "EXPECT_TRUE(future_suspend.IsRejected());" in callback
+    assert "context->OnChunkRendered();" in callback and "EXPECT_EQ(completion->count(), 0);" in callback
+    detached = additions.split("GlintProtectedQueueFrameDetachSuppressesLateCompletion", 1)[1]
+    after_detach = detached.split("Detach(FrameDetachType::kRemove)", 1)[1]
+    assert "WaitUntilSettled();" not in after_detach
+    assert "EXPECT_EQ(context->GetExecutionContext(), nullptr);" in after_detach
+    assert "context->OnChunkRendered();" in after_detach
+    assert "DOMExceptionCode::kInvalidStateError" in after_detach
     assert {vector["seed_byte"] for vector in descriptor["hmac_vectors"]} == {4, 5}
     for vector in descriptor["hmac_vectors"]:
         bits = int(vector["input_bits"], 16)
@@ -4255,6 +4275,51 @@ def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
     assert conflict["input_bits"] == vector["input_bits"]
     assert conflict["v1_predicted_bits"] == vector["output_bits"]
     assert conflict["stock148_observed_bits"] == conflict["input_bits"] != conflict["v1_predicted_bits"]
+
+
+def test_audio_teardown_controls_preserve_matched_scope_and_dead_realm_semantics():
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/upstream-157-prefix"
+    descriptor = json.loads((root / "chunked-audio-tests.json").read_text(encoding="utf-8"))
+    calibration = descriptor["lifecycle_runtime_calibration"]
+    assert calibration["matched_stock_native_version"] == "148.0.7778.96"
+    assert calibration["captures"] == 15
+    for field in ("chunked157_runtime_verified", "native157_fixtures_executed", "production_gate_passed"):
+        assert calibration[field] is False
+    observation = calibration["observations"]
+    assert observation["file"] == "audio-teardown-observations.json"
+    raw = (root / observation["file"]).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == observation["sha256"]
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    assert data["measurement_complete"] and data["teardown_controls_passed"]
+    assert data["postguards_passed"] and data["all_runtime_resources_closed"]
+    assert data["owned_identity_payloads_unchanged"]
+    for field in ("native156_verified", "native157_verified", "privacy_admitted", "production_admitted"):
+        assert data[field] is False
+    probe = data["probe"]
+    assert probe["file"] == "audio-teardown-control.js"
+    raw_probe = (root / probe["file"]).read_bytes()
+    assert hashlib.sha256(raw_probe).hexdigest() == probe["sha256"]
+    assert b"\r" not in raw_probe and not raw_probe.startswith(b"\xef\xbb\xbf")
+    constant = json.loads((root / "audio-constant-observations.json").read_text(encoding="utf-8"))
+    for field in ("receipt_sha256", "native_core_sha256", "stock_core_sha256"):
+        assert data[field] == constant[field]
+    rows = data["captures"]
+    assert len(rows) == 5 and {row["phase"] for row in rows} == {
+        "stock-baseline", "a-native-baseline", "a-partitioned", "a-identity", "a-identity-restart"}
+    assert sum(row["repetitions"] for row in rows) == data["capture_count"] == 15
+    for row in rows:
+        assert row["repetitions"] == 3 and row["browser_version"] == "148.0.7778.96"
+        assert row["resources_closed"] and row["sandbox_requested"] and row["no_sandbox_flag_absent"]
+        measured = row["observation"]
+        assert measured["passed"] and measured["suspendedBeforeDetach"] and measured["pendingBeforeDetach"]
+        assert measured["frameRemoved"] and measured["completionCount"] == 0
+        assert measured["renderState"] == measured["futureSuspendState"] == "pending"
+        assert measured["stateAfterDetach"] == "suspended" and measured["retryError"] == "InvalidStateError"
 
 
 def test_audio_kernel_observations_do_not_admit_an_unproven_identity_generator():

@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "scope": "Matched stock/Glint 148 iframe teardown; finite single render only, not 157 chunked Audio",
+  "measurement_complete": true,
+  "teardown_controls_passed": true,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "native156_verified": false,
+  "native157_verified": false,
+  "postguards_passed": true,
+  "all_runtime_resources_closed": true,
+  "owned_identity_payloads_unchanged": true,
+  "probe": {
+    "file": "audio-teardown-control.js",
+    "sha256": "c7c5b8919ffbfbc3cd2d4276f71db7bbf150357c53a1d5cff08110c2e9a6b6b4"
+  },
+  "receipt_sha256": "e39654a2a45f981e3ef87b7fd187af60329bd38ec482e8e8e18728c5e9f4bb12",
+  "native_core_sha256": {
+    "chrome.exe": "275ad4eaa4b51b3e53a9a57496ecb17f6bc90b8c687e252567ce7d2050c0088c",
+    "chrome.dll": "9b65965659f4ba78f2da12d18c858519a68066df232f0cd67a92bdb004e7a24a",
+    "chrome_elf.dll": "f26f09cadfc9fbfe1384c2df2a7549151e4afa988568e6468d296d4fd61303fb"
+  },
+  "stock_core_sha256": {
+    "chrome.exe": "290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635",
+    "chrome.dll": "2dec55e969120a4f365942ddf143df869dad9bc7595400da87af247c74c867fd",
+    "chrome_elf.dll": "994bc5cc8de982bdc8aecb92c7fc639a7801ae62745e6a38e7ffc0a9664c164e"
+  },
+  "capture_count": 15,
+  "captures": [
+    {
+      "phase": "stock-baseline",
+      "repetitions": 3,
+      "browser_version": "148.0.7778.96",
+      "resources_closed": true,
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "observation": {
+        "suspendedBeforeDetach": true,
+        "pendingBeforeDetach": true,
+        "frameRemoved": true,
+        "renderState": "pending",
+        "futureSuspendState": "pending",
+        "completionCount": 0,
+        "stateAfterDetach": "suspended",
+        "retryError": "InvalidStateError",
+        "passed": true
+      }
+    },
+    {
+      "phase": "a-native-baseline",
+      "repetitions": 3,
+      "browser_version": "148.0.7778.96",
+      "resources_closed": true,
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "observation": {
+        "suspendedBeforeDetach": true,
+        "pendingBeforeDetach": true,
+        "frameRemoved": true,
+        "renderState": "pending",
+        "futureSuspendState": "pending",
+        "completionCount": 0,
+        "stateAfterDetach": "suspended",
+        "retryError": "InvalidStateError",
+        "passed": true
+      }
+    },
+    {
+      "phase": "a-partitioned",
+      "repetitions": 3,
+      "browser_version": "148.0.7778.96",
+      "resources_closed": true,
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "observation": {
+        "suspendedBeforeDetach": true,
+        "pendingBeforeDetach": true,
+        "frameRemoved": true,
+        "renderState": "pending",
+        "futureSuspendState": "pending",
+        "completionCount": 0,
+        "stateAfterDetach": "suspended",
+        "retryError": "InvalidStateError",
+        "passed": true
+      }
+    },
+    {
+      "phase": "a-identity",
+      "repetitions": 3,
+      "browser_version": "148.0.7778.96",
+      "resources_closed": true,
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "observation": {
+        "suspendedBeforeDetach": true,
+        "pendingBeforeDetach": true,
+        "frameRemoved": true,
+        "renderState": "pending",
+        "futureSuspendState": "pending",
+        "completionCount": 0,
+        "stateAfterDetach": "suspended",
+        "retryError": "InvalidStateError",
+        "passed": true
+      }
+    },
+    {
+      "phase": "a-identity-restart",
+      "repetitions": 3,
+      "browser_version": "148.0.7778.96",
+      "resources_closed": true,
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "observation": {
+        "suspendedBeforeDetach": true,
+        "pendingBeforeDetach": true,
+        "frameRemoved": true,
+        "renderState": "pending",
+        "futureSuspendState": "pending",
+        "completionCount": 0,
+        "stateAfterDetach": "suspended",
+        "retryError": "InvalidStateError",
+        "passed": true
+      }
+    }
+  ],
+  "observation_window": "Four parent-realm timer turns after detach; not long-duration or GC stress",
+  "interpretation": "Destroyed-realm pending promises and suspended state are observed stock behavior, not completion or a cleanup failure"
+}

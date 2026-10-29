@@ -6,3 +6,5 @@ native/drafts/**/full-inputs-manifest.json text eol=lf
 native/drafts/**/audio-constant-control.js text eol=lf
 native/drafts/**/audio-constant-observations.json text eol=lf
 native/drafts/**/audio-kernel-observations.json text eol=lf
+native/drafts/**/audio-teardown-control.js text eol=lf
+native/drafts/**/audio-teardown-observations.json text eol=lf

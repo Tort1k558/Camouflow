@@ -74,7 +74,7 @@ extension outside `patches/`. `chunked-audio-tests.json` binds its exact bytes t
 the full 001–065 manifest and test-source input. It does not change either
 selected manifest or the live 156 build.
 
-Eleven test bodies are prepared; **none has been compiled or executed on 157**:
+Thirteen test bodies are prepared; **none has been compiled or executed on 157**:
 
 | Fixture scope | Intended assertion |
 | --- | --- |
@@ -88,6 +88,31 @@ Eleven test bodies are prepared; **none has been compiled or executed on 157**:
 | Protected queue suspend/resume | Both chunks remain pending at the pause; resume returns protected samples and one final event |
 | Close while the protected queue is paused | Both render Promises and a future suspend reject; closing produces no completion event or late success |
 | Closed context with missing policy | The upstream InvalidState error precedes policy lookup and resolver creation |
+| Execution-context observer callback | In a live test realm, both render Promises and a future suspend reject; a late chunk callback emits no completion |
+| Actual frame detachment | Context is cleared, no late completion/success is emitted, and a subsequent render retains native InvalidState precedence |
+
+The two lifecycle fixtures deliberately distinguish a live realm receiving the
+observer callback from an actual detached realm. The latter must not wait for
+Promise reactions in a destroyed execution context. Four additional pinned
+lifecycle API sources are hash-verified in the descriptor. These are prepared
+assertions, not executed lifecycle coverage; GC stress, concurrent navigation
+and injected copy-failure cleanup remain unverified. Source application:
+`D:\Glint157ObjectCache\chunked-audio-fixtures-20261029-v7\report.json`.
+
+The public [iframe teardown probe](audio-teardown-control.js) also ran on actual
+stock and Glint **148.0.7778.96**: five phases (stock, Glint off, partitioned,
+identity, identity restart), each repeated three times. All **15 controls passed**:
+paused before detach, no completion or late fulfillment, retry returns native
+`InvalidStateError`. Both render and future-suspend Promises remained pending;
+the state stayed `suspended` in stock as well. Do not require reactions to run in
+a destroyed realm or confuse the JS state with the internal cleared flag.
+
+[Sanitized observations](audio-teardown-observations.json) bind the probe and
+reviewed runtime hashes. All six runtime owners released their handles; cores,
+receipt, owned identity payloads and 201 frozen build inputs stayed unchanged.
+This is a four-parent-timer-turn control, **not GC stress, long-duration leak
+testing or execution of the 157 chunked fixtures**. Evidence:
+`D:\Glint157ObjectCache\glint148-audio-teardown-20261029-v1\report.json`.
 
 The patch preserves all 12 existing test cases. Source application and five API
 header blobs were verified against pinned 157 Git objects. Header validation,

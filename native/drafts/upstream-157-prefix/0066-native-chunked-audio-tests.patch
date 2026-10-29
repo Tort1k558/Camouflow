@@ -11,12 +11,13 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
  #include <memory>
  #include <utility>
  
-@@ -21,10 +24,14 @@
+@@ -21,10 +24,15 @@
  #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
  #include "third_party/blink/renderer/bindings/modules/v8/v8_offline_audio_context_options.h"
  #include "third_party/blink/renderer/bindings/modules/v8/v8_union_audiocontextrendersizecategory_unsignedlong.h"
 +#include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
  #include "third_party/blink/renderer/core/frame/local_dom_window.h"
++#include "third_party/blink/renderer/core/frame/frame.h"
  #include "third_party/blink/renderer/core/frame/local_frame.h"
  #include "third_party/blink/renderer/core/testing/page_test_base.h"
  #include "third_party/blink/renderer/modules/webaudio/audio_buffer.h"
@@ -26,7 +27,7 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
  #include "third_party/blink/renderer/platform/bindings/exception_state.h"
  #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
  #include "third_party/blink/renderer/platform/heap/thread_state.h"
-@@ -388,7 +395,8 @@
+@@ -388,7 +396,8 @@
  }
  
  namespace {
@@ -36,7 +37,7 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
    auto holder = std::make_unique<DummyPageHolder>();
    const KURL url(NullUrl(), "https://audio-surface.test/");
    auto params = WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
-@@ -403,7 +411,7 @@
+@@ -403,7 +412,7 @@
      policy.canvas.fill(1);
      policy.webgl.fill(2);
      policy.webgpu.fill(3);
@@ -45,7 +46,7 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
      params->glint_document_surface_policy = glint::candidate::DocumentSurfacePolicy{
          params->storage_key, std::move(policy)};
    }
-@@ -443,4 +451,474 @@
+@@ -443,4 +452,588 @@
  }
  
  
@@ -517,6 +518,120 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
 +            "cannot call startRendering on an OfflineAudioContext in a stopped "
 +            "state.");
 +  EXPECT_EQ(context->ContextState(), V8AudioContextState::Enum::kClosed);
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintProtectedQueueContextDestroyedRejectsPendingWork) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(true, 5);
++  ASSERT_TRUE(holder);
++  V8TestingScope scope(std::move(holder));
++  auto* context = OfflineAudioContext::Create(scope.GetFrame().DomWindow(), 1,
++                                              256, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  ASSERT_NO_FATAL_FAILURE(GlintConnectConstantSource(*context));
++  auto* completion = MakeGarbageCollected<GlintOfflineCompletionProbe>(context);
++  context->addEventListener(AtomicString("complete"), completion);
++  ScriptPromiseTester suspended(
++      scope.GetScriptState(),
++      context->suspendContext(scope.GetScriptState(), 0.0,
++                              ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester future_suspend(
++      scope.GetScriptState(),
++      context->suspendContext(scope.GetScriptState(), 128.0 / 44100.0,
++                              ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester first(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester second(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  suspended.WaitUntilSettled();
++  ASSERT_TRUE(suspended.IsFulfilled());
++  ASSERT_EQ(context->ContextState(), V8AudioContextState::Enum::kSuspended);
++  ASSERT_FALSE(first.IsFulfilled());
++  ASSERT_FALSE(first.IsRejected());
++  ASSERT_FALSE(second.IsFulfilled());
++  ASSERT_FALSE(second.IsRejected());
++  ASSERT_FALSE(future_suspend.IsFulfilled());
++  ASSERT_FALSE(future_suspend.IsRejected());
++
++  // Exercise the observer callback while the test realm is still alive.
++  context->ContextDestroyed();
++  first.WaitUntilSettled();
++  second.WaitUntilSettled();
++  future_suspend.WaitUntilSettled();
++  EXPECT_TRUE(first.IsRejected());
++  EXPECT_TRUE(second.IsRejected());
++  EXPECT_TRUE(future_suspend.IsRejected());
++  EXPECT_TRUE(context->IsContextCleared());
++  EXPECT_FALSE(context->HasPendingActivity());
++  context->OnChunkRendered();
++  test::RunPendingTasks();
++  EXPECT_EQ(completion->count(), 0);
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintProtectedQueueFrameDetachSuppressesLateCompletion) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(true, 5);
++  ASSERT_TRUE(holder);
++  V8TestingScope scope(std::move(holder));
++  auto* context = OfflineAudioContext::Create(scope.GetFrame().DomWindow(), 1,
++                                              256, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  ASSERT_NO_FATAL_FAILURE(GlintConnectConstantSource(*context));
++  auto* completion = MakeGarbageCollected<GlintOfflineCompletionProbe>(context);
++  context->addEventListener(AtomicString("complete"), completion);
++  ScriptPromiseTester suspended(
++      scope.GetScriptState(),
++      context->suspendContext(scope.GetScriptState(), 0.0,
++                              ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester future_suspend(
++      scope.GetScriptState(),
++      context->suspendContext(scope.GetScriptState(), 128.0 / 44100.0,
++                              ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester first(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester second(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  suspended.WaitUntilSettled();
++  ASSERT_TRUE(suspended.IsFulfilled());
++  ASSERT_EQ(context->ContextState(), V8AudioContextState::Enum::kSuspended);
++  ASSERT_FALSE(first.IsFulfilled());
++  ASSERT_FALSE(first.IsRejected());
++  ASSERT_FALSE(second.IsFulfilled());
++  ASSERT_FALSE(second.IsRejected());
++  ASSERT_FALSE(future_suspend.IsFulfilled());
++  ASSERT_FALSE(future_suspend.IsRejected());
++
++  ASSERT_TRUE(scope.GetFrame().Detach(FrameDetachType::kRemove));
++  EXPECT_TRUE(context->IsContextCleared());
++  EXPECT_FALSE(context->HasPendingActivity());
++  EXPECT_EQ(context->GetExecutionContext(), nullptr);
++  context->OnChunkRendered();
++  test::RunPendingTasks();
++  EXPECT_EQ(completion->count(), 0);
++  EXPECT_FALSE(first.IsFulfilled());
++  EXPECT_FALSE(second.IsFulfilled());
++  EXPECT_FALSE(future_suspend.IsFulfilled());
++
++  // A detached realm must not be pumped with WaitUntilSettled().
++  DummyExceptionStateForTesting exception;
++  auto promise = context->startOfflineRendering(nullptr, 128, exception);
++  EXPECT_TRUE(promise.IsEmpty());
++  ASSERT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kInvalidStateError);
++  EXPECT_EQ(exception.Message(),
++            "cannot call startRendering on an OfflineAudioContext in a stopped "
++            "state.");
 +}
 +
  }  // namespace blink

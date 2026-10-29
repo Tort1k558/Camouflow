@@ -6,7 +6,7 @@
   "required_base_manifest_sha256": "993a96741731d2e9dcfd214ec694be4ebdca47e60641be0692ceb1641806d7ed",
   "patch": {
     "file": "0066-native-chunked-audio-tests.patch",
-    "sha256": "7af3d17d78f85dc138252f0fde80e111f26abe5d20c236ddc59930cbd8a927ca"
+    "sha256": "486078280053322f6a4081280b4ad5bc88dd37c8bfd41ac5001fdf54e2a40ead"
   },
   "source": {
     "path": "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc",
@@ -29,7 +29,9 @@
     "GlintFlagOffIndefiniteChunksKeepRawSamplesAndClose",
     "GlintProtectedQueuedChunksResumeAfterSuspension",
     "GlintProtectedQueueCloseRejectsAllPendingWork",
-    "GlintClosedContextRetainsNativePrecedenceOverMissingPolicy"
+    "GlintClosedContextRetainsNativePrecedenceOverMissingPolicy",
+    "GlintProtectedQueueContextDestroyedRejectsPendingWork",
+    "GlintProtectedQueueFrameDetachSuppressesLateCompletion"
   ],
   "api_headers": [
     {
@@ -84,7 +86,8 @@
   ],
   "remaining_uncovered_cases": [
     "injected copy-failure queue/suspend cleanup",
-    "policy capture lifetime under teardown"
+    "execute callback/frame-detach fixtures on pinned native runtime",
+    "policy capture lifetime under garbage collection and concurrent navigation"
   ],
   "compatibility_calibration": {
     "scope": "Matched stock/Glint 148 runtime control and source analysis; no 156/157 observation",
@@ -107,5 +110,54 @@
       "file": "audio-constant-observations.json",
       "sha256": "37d3cfa9a9478b2972ac0f9b4634b80834900e4ccf4cefaf2f30e1dd93f3ef96"
     }
+  },
+  "lifecycle_api_sources": [
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/base_audio_context.h",
+      "git_blob_sha1": "6e7fba41239aba0a858c029029063265834709b9",
+      "sha256": "eb94edb5816d954284523c82a081360c84f865d3f1e610ecf6ce58ae04178ec8",
+      "bytes": 19390,
+      "same_pinned_156_blob": false
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/base_audio_context.cc",
+      "git_blob_sha1": "c6b7e3f599845a5cf13c7878a2bd9afc223d7b73",
+      "sha256": "11824c08fe978a6a050509187962ca67e2eea72f72340ff5daf5aa54b567f38c",
+      "bytes": 39852,
+      "same_pinned_156_blob": false
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/frame.h",
+      "git_blob_sha1": "1dce5c549a42633b0d4f90b62cbf4b26d4413b24",
+      "sha256": "648ee0484d340749c818337d8d188bf77b2cfecb4046e145a0e3c76fe2276e30",
+      "bytes": 27354,
+      "same_pinned_156_blob": true
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/local_frame.h",
+      "git_blob_sha1": "68130b23d9828660174e4d06dc4286db0c5c4e86",
+      "sha256": "20230fd0aa44c2c88111886760429ffbb9bb94c028402ab1d64a30b5c9c93512",
+      "bytes": 57861,
+      "same_pinned_156_blob": false
+    }
+  ],
+  "lifecycle_fixture_scope": {
+    "observer_callback": "Live test realm; pending render/suspend promises reject; late chunk callback is ignored",
+    "frame_detach": "Detach actual frame; no completion or late success; native InvalidState precedence remains",
+    "wait_for_promises_in_destroyed_realm": false,
+    "compiled": false,
+    "executed": false,
+    "gc_stress_verified": false
+  },
+  "lifecycle_runtime_calibration": {
+    "observations": {
+      "file": "audio-teardown-observations.json",
+      "sha256": "c6fd9f2b52a021670fe1ecb3d738ec3f64b68a67cd483a9f678d368f1f851e2e"
+    },
+    "matched_stock_native_version": "148.0.7778.96",
+    "captures": 15,
+    "chunked157_runtime_verified": false,
+    "native157_fixtures_executed": false,
+    "production_gate_passed": false
   }
 }
