@@ -3,6 +3,59 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Windows private identity-file ACL — 2026-10-29
+
+An actual disposable profile on D inherited Users/Authenticated Users data
+access despite `QSaveFile.setPermissions(ReadOwner | WriteOwner)`. Qt documents
+that this method does not manipulate Windows ACLs. Its
+[`QFile.open(mode, permissions)` creation overload](https://doc.qt.io/qt-6/qfile.html#open-1)
+does create a Windows ACL; an empty-file control already had protected ACL and
+no foreign data grants before any secret bytes were written.
+
+The Windows manager key writer now creates a new sibling file using explicit
+owner read/write permissions and NewOnly, writes/flushes/fsyncs it, then publishes
+with same-directory OS rename/replace. Qt's rename/copy fallback is not used.
+The filesystem must report
+[`FILE_PERSISTENT_ACLS`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationw).
+Unknown/unsupported filesystem permissions or any publication failure abort
+startup; no insecure write fallback or driver launch follows. Only an owned
+temporary file is cleaned up, never an existing collision file.
+
+Valid existing Windows key files are atomically republished with private creation
+permissions whenever the manager loads them under its runtime owner lock.
+**Their exact payload bytes and seed are preserved**, including legacy JSON
+spacing. No automatic key rotation or invalid-key regeneration is performed.
+Reads are bounded to 257 bytes, rejecting data beyond the 256-byte format limit.
+POSIX writing is unchanged and not newly runtime-verified.
+
+Actual ACL migration of one disposable legacy D profile changed two foreign
+data grants to zero and enabled DACL protection, while preserving exact bytes,
+both derivation modes for all four surfaces, and the parent directory ACL.
+Private evidence: `identity-acl-finding-20261029-v1.json` and
+`identity-acl-migration-20261029-v1/report.json` in the candidate workspace on D.
+Windows new/existing-key tests inspect actual ACLs; failure tests cover volume
+lookup/support, creation, short writes, flush/fsync, publication collisions and
+runtime owner release before the driver starts.
+
+The final focused runtime/backup run passed **638 tests**; the full application
+run passed **3,497 tests, one skipped** in 319.93 seconds. CI Ruff selection
+passed. Actual reviewed 148 manager backup/restore/original-restart passed all
+six checks and three clean closes with the new writer; both final key files had
+protected ACL and zero foreign data grants. The combined native
+Canvas/Audio/WebGL run also passed **12 phases and 24 nested Canvas cases per
+derivation mode**, proving the tested browser key-service/readiness path can
+consume the protected files. Runtime core/receipt and reviewed source postguards
+passed; this is not new 156 evidence. Private proofs:
+`native-backup-owner-20261029-v3/{report,key-acl}.json` and
+`expanded-combined-surfaces-20261029-v2/` on D.
+
+This is **key-file content access protection**, not workspace ACL hardening,
+protection against administrators/same-user processes or replacement through a
+writable parent directory. It cannot undo earlier exposure. User profile keys
+were not bulk-modified or rotated; only disposable fixtures were migrated here.
+Standalone browser/test tools that bypass the manager key writer are not an
+automatic ACL-migration path. These changes do not admit privacy surfaces or 156.
+
 ## Backup session owner exclusion — 2026-10-29
 
 The backup service previously omitted `native-runtime.lock` from archives but

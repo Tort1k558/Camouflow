@@ -134,7 +134,12 @@ scopes, with unchanged core/receipt. The actual routed health probe also passed
 its baseline document/worker checks and removed its disposable profile.
 
 Persistent identity uses an owned profile-root file containing a versioned
-private key. Export excludes the key; restored/cloned profiles obtain a distinct
+private key. On Windows the manager uses owner-permission QFile creation and
+same-directory atomic OS publication on an ACL-capable filesystem. Loading a
+valid legacy key republishes its exact bytes with the creation ACL, without seed
+rotation. This protects key-file contents, not writable parent directories or
+against privileged/same-user processes; it does not bulk-harden workspace ACLs.
+Export excludes the key; restored/cloned profiles obtain a distinct
 identity. Cryptographic domain strings and filenames are compatibility contracts,
 not branding text, and must not be renamed without migration analysis.
 

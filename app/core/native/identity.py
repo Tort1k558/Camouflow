@@ -3,13 +3,58 @@
 import hashlib
 import hmac
 import json
+import os
 import secrets
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from PyQt6.QtCore import QFileDevice, QIODevice, QSaveFile
+from PyQt6.QtCore import QFile, QFileDevice, QIODevice, QSaveFile
 
 IDENTITY_FILE = "camouflow-native-privacy.json"
+
+
+def _require_windows_acls(directory: Path) -> None:
+    import ctypes
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.GetVolumePathNameW.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+    kernel.GetVolumePathNameW.restype = wintypes.BOOL
+    kernel.GetVolumeInformationW.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(wintypes.DWORD),
+        wintypes.LPWSTR, wintypes.DWORD]
+    kernel.GetVolumeInformationW.restype = wintypes.BOOL
+    volume = ctypes.create_unicode_buffer(32768)
+    flags = wintypes.DWORD()
+    if not kernel.GetVolumePathNameW(str(directory), volume, len(volume)):
+        raise OSError("Cannot inspect Native identity filesystem ACL support")
+    if not kernel.GetVolumeInformationW(volume.value, None, 0, None, None, ctypes.byref(flags), None, 0):
+        raise OSError("Cannot inspect Native identity filesystem ACL support")
+    if not flags.value & 0x00000008:  # FILE_PERSISTENT_ACLS
+        raise OSError("Native privacy identity requires a filesystem with persistent ACLs")
+
+
+def _save_windows_identity(path: Path, payload: bytes, *, replace: bool) -> None:
+    _require_windows_acls(path.parent)
+    temporary = path.with_name("." + IDENTITY_FILE + "." + secrets.token_hex(16) + ".tmp")
+    destination = QFile(str(temporary))
+    permissions = QFileDevice.Permission.ReadOwner | QFileDevice.Permission.WriteOwner
+    # QSaveFile.setPermissions does not restrict Windows ACLs; creation permissions do.
+    if not destination.open(QIODevice.OpenModeFlag.WriteOnly | QIODevice.OpenModeFlag.NewOnly, permissions):
+        raise OSError("Cannot privately create Native privacy identity")
+    try:
+        if destination.write(payload) != len(payload) or not destination.flush():
+            raise OSError("Cannot persist Native privacy identity")
+        os.fsync(destination.handle())
+        destination.close()
+        if replace:
+            os.replace(temporary, path)
+        else:
+            os.rename(temporary, path)
+    finally:
+        destination.close()
+        temporary.unlink(missing_ok=True)
 
 
 @dataclass(frozen=True)
@@ -57,17 +102,27 @@ def load_or_create_identity(profile: Path) -> NativePrivacyIdentity:
         if metadata.st_nlink != 1:
             raise ValueError("Native privacy identity must not be hard linked")
         try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
+            with path.open("rb") as source:
+                original = source.read(257)
+            if len(original) > 256:
+                raise ValueError
+            payload = json.loads(original.decode("utf-8"))
             if (not isinstance(payload, dict) or set(payload) != {"schema", "seed"}
                     or type(payload["schema"]) is not int or payload["schema"] != 1
                     or not isinstance(payload["seed"], str) or len(payload["seed"]) != 64
                     or any(c not in "0123456789abcdef" for c in payload["seed"])):
                 raise ValueError
-            return NativePrivacyIdentity(bytes.fromhex(payload["seed"]))
+            identity = NativePrivacyIdentity(bytes.fromhex(payload["seed"]))
         except (UnicodeError, ValueError):
             raise ValueError("Native privacy identity is invalid; it was not regenerated") from None
+        if sys.platform == "win32":
+            _save_windows_identity(path, original, replace=True)
+        return identity
     identity = NativePrivacyIdentity(secrets.token_bytes(32))
     payload = json.dumps({"schema": 1, "seed": identity.seed.hex()}).encode("utf-8")
+    if sys.platform == "win32":
+        _save_windows_identity(path, payload, replace=False)
+        return identity
     destination = QSaveFile(str(path))
     destination.setDirectWriteFallback(False)
     if not destination.open(QIODevice.OpenModeFlag.WriteOnly):

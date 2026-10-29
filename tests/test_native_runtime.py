@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from pathlib import Path
 
 import pytest
@@ -74,6 +75,156 @@ def test_native_privacy_keys_persist_and_are_not_shared_between_profiles(tmp_pat
     assert len(identity.seed) == 32
     assert identity.seed.hex() not in repr(identity)
     assert not (first / IDENTITY_FILE).read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Actual Windows ACL creation")
+@pytest.mark.parametrize("existing", [False, True])
+def test_native_windows_identity_has_private_acl_and_preserves_legacy_bytes(tmp_path, existing):
+    import json
+    import os
+    import subprocess
+    from PyQt6.QtCore import QFile, QFileDevice, QIODevice
+    from app.core.native.identity import IDENTITY_FILE, load_or_create_identity
+
+    path = tmp_path / IDENTITY_FILE
+    original = b'{ "seed": "' + b"ab" * 32 + b'", "schema": 1 }\n'
+    if existing:
+        source = QFile(str(path))
+        assert source.open(QIODevice.OpenModeFlag.WriteOnly | QIODevice.OpenModeFlag.NewOnly,
+            QFileDevice.Permission.ReadOwner | QFileDevice.Permission.WriteOwner | QFileDevice.Permission.ReadOther)
+        assert source.write(original) == len(original)
+        source.close()
+    identity = load_or_create_identity(tmp_path)
+    contents = path.read_bytes()
+    if existing:
+        assert contents == original and identity.seed == bytes.fromhex("ab" * 32)
+    assert load_or_create_identity(tmp_path).seed == identity.seed
+    assert path.read_bytes() == contents
+    query = (
+        "$ErrorActionPreference='Stop'; $acl=Get-Acl -LiteralPath $env:GLINT_OWNED_KEY; "
+        "$sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; "
+        "$foreign=@($acl.Access | Where-Object { $_.AccessControlType -eq 'Allow' -and "
+        "($_.FileSystemRights.value__ -band 7) -ne 0 -and "
+        "$_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value -ne $sid }); "
+        "[pscustomobject]@{protected=$acl.AreAccessRulesProtected; foreign=$foreign.Count} | ConvertTo-Json -Compress"
+    )
+    observed = json.loads(subprocess.check_output(["powershell.exe", "-NoProfile", "-Command", query],
+        env={**os.environ, "GLINT_OWNED_KEY": str(path)}, text=True, timeout=20))
+    assert observed == {"protected": True, "foreign": 0}
+    assert not list(tmp_path.glob(".*.tmp"))
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows identity publication")
+@pytest.mark.parametrize("failure", ["volume", "open", "write", "flush", "fsync", "rename"])
+@pytest.mark.parametrize("existing", [False, True])
+def test_native_windows_identity_write_failure_never_rotates_or_leaves_temporary_keys(tmp_path, monkeypatch, failure, existing):
+    from unittest.mock import Mock
+    from app.core.native import identity as module
+
+    path = tmp_path / module.IDENTITY_FILE
+    original = b'{"schema":1,"seed":"' + b"ab" * 32 + b'"}'
+    if existing:
+        path.write_bytes(original)
+    if failure == "volume":
+        monkeypatch.setattr(module, "_require_windows_acls", Mock(side_effect=OSError("owned ACL query failure")))
+    elif failure in {"open", "write", "flush"}:
+        original_file = module.QFile
+
+        class FailingFile(original_file):
+            def open(self, *args):
+                return False if failure == "open" else super().open(*args)
+
+            def write(self, payload):
+                return -1 if failure == "write" else super().write(payload)
+
+            def flush(self):
+                return False if failure == "flush" else super().flush()
+
+        monkeypatch.setattr(module, "QFile", FailingFile)
+    elif failure == "fsync":
+        monkeypatch.setattr(module.os, "fsync", Mock(side_effect=OSError("owned sync failure")))
+    else:
+        monkeypatch.setattr(module.os, "replace" if existing else "rename", Mock(side_effect=OSError("owned publication failure")))
+    with pytest.raises(OSError):
+        module.load_or_create_identity(tmp_path)
+    assert path.read_bytes() == original if existing else not path.exists()
+    assert not list(tmp_path.glob(".*.tmp"))
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows filesystem ACL flags")
+@pytest.mark.parametrize("failure", ["mount", "query", "unsupported", None])
+def test_native_windows_identity_requires_confirmed_persistent_acls(tmp_path, monkeypatch, failure):
+    import ctypes
+    from unittest.mock import Mock
+    from types import SimpleNamespace
+    from app.core.native.identity import _require_windows_acls
+
+    def mount(_directory, volume, _length):
+        volume.value = "C:\\"
+        return failure != "mount"
+
+    def query(_volume, _name, _size, _serial, _component, flags, _filesystem, _length):
+        flags._obj.value = 0 if failure == "unsupported" else 8
+        return failure != "query"
+
+    kernel = SimpleNamespace(GetVolumePathNameW=Mock(side_effect=mount), GetVolumeInformationW=Mock(side_effect=query))
+    monkeypatch.setattr(ctypes, "WinDLL", Mock(return_value=kernel))
+    if failure is None:
+        _require_windows_acls(tmp_path)
+    else:
+        with pytest.raises(OSError, match="filesystem|ACL"):
+            _require_windows_acls(tmp_path)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows atomic identity publication")
+@pytest.mark.parametrize("collision", ["temporary", "identity"])
+def test_native_windows_identity_never_overwrites_unowned_collision_files(tmp_path, monkeypatch, collision):
+    from app.core.native import identity as module
+
+    path = tmp_path / module.IDENTITY_FILE
+    temporary = tmp_path / ("." + module.IDENTITY_FILE + ".owned-collision.tmp")
+    monkeypatch.setattr(module.secrets, "token_hex", lambda _size: "owned-collision")
+    if collision == "temporary":
+        temporary.write_bytes(b"unowned temporary file")
+    else:
+        def publish(_source, _target):
+            path.write_bytes(b"another owner's identity")
+            raise FileExistsError("Identity appeared during publication")
+
+        monkeypatch.setattr(module.os, "rename", publish)
+    with pytest.raises(OSError):
+        module.load_or_create_identity(tmp_path)
+    if collision == "temporary":
+        assert temporary.read_bytes() == b"unowned temporary file" and not path.exists()
+    else:
+        assert path.read_bytes() == b"another owner's identity" and not temporary.exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows identity ACL failure")
+@pytest.mark.parametrize("existing", [False, True])
+def test_native_identity_acl_failure_aborts_before_driver_and_releases_owner(tmp_path, monkeypatch, existing):
+    import json
+    from unittest.mock import Mock
+    from PyQt6.QtCore import QLockFile
+    from app.core.native import identity, runtime as module
+
+    (tmp_path / "camouflow-native.json").write_text(json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
+    path = tmp_path / identity.IDENTITY_FILE
+    original = b'{"schema":1,"seed":"' + b"ab" * 32 + b'"}'
+    if existing:
+        path.write_bytes(original)
+    monkeypatch.setattr(identity, "_save_windows_identity", Mock(side_effect=PermissionError("Owned ACL failure")))
+    driver = Mock()
+    monkeypatch.setattr(module, "async_playwright", driver)
+    runtime = NativeRuntime(tmp_path, Path(__file__).resolve(), NativeConfiguration())
+    with pytest.raises(PermissionError, match="ACL"):
+        asyncio.run(runtime.start())
+    driver.assert_not_called()
+    assert not runtime.has_resources and runtime._privacy_identity is None
+    assert path.read_bytes() == original if existing else not path.exists()
+    lock = QLockFile(str(tmp_path / "native-runtime.lock"))
+    assert lock.tryLock(0)
+    lock.unlock()
 
 
 def test_native_privacy_loader_rejects_shared_hard_links_without_replacing_keys(tmp_path):
