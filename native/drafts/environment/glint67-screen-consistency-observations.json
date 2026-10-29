@@ -1,0 +1,417 @@
+{
+  "schema": 1,
+  "passed": false,
+  "scope": "Preserved raw Glint 001-067 with exact manager context options, not stock or installed-package admission",
+  "candidate_manifest_sha256": "109ad3d33e18ddea1c1a2ea1d03936a938cfbdce1a7057f5608958a5c8e4de14",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "36d1a7c35d059d60c41c9c46d48c623918cd2ed63e746d6473c4993d1d729a7d",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "build_receipt_sha256": "bf3de312f5506a6e405ae4139c7a5cd13b209be648447c3b532e80f7a94df8f2",
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "screen_inheritance_fixed": false,
+  "required_manifest": "checkpoints/001-067.json",
+  "source_sha256": {
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2"
+  },
+  "raw_report_sha256": "7e98e8791192efd343d91785b04c8e7e6eb3236eb2413d676402b3fb7bf150da",
+  "modes": [
+    {
+      "mode": "manager-desktop",
+      "passed": false,
+      "phases": [
+        {
+          "name": "initial",
+          "passed": false,
+          "error": "cross_origin_frame screen differs from document: availHeight, availWidth, height, width",
+          "screen": {
+            "document": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "same_origin_frame": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "cross_origin_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "about_blank_frame": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "srcdoc_frame": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "dedicated": null,
+            "shared": null,
+            "service": null
+          }
+        },
+        {
+          "name": "persistent-profile-restart",
+          "passed": false,
+          "error": "cross_origin_frame screen differs from document: availHeight, availWidth, height, width",
+          "screen": {
+            "document": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "same_origin_frame": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "cross_origin_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "about_blank_frame": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "srcdoc_frame": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "dedicated": null,
+            "shared": null,
+            "service": null
+          }
+        }
+      ]
+    },
+    {
+      "mode": "manager-mobile-web",
+      "passed": false,
+      "phases": [
+        {
+          "name": "initial",
+          "passed": false,
+          "error": "cross_origin_frame screen differs from document: availHeight, availWidth, dpr, height, width",
+          "screen": {
+            "document": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "touch": 1
+            },
+            "same_origin_frame": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "touch": 1
+            },
+            "cross_origin_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 1
+            },
+            "about_blank_frame": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "touch": 1
+            },
+            "srcdoc_frame": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "touch": 1
+            },
+            "dedicated": null,
+            "shared": null,
+            "service": null
+          }
+        },
+        {
+          "name": "persistent-profile-restart",
+          "passed": false,
+          "error": "cross_origin_frame screen differs from document: availHeight, availWidth, dpr, height, width",
+          "screen": {
+            "document": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "touch": 1
+            },
+            "same_origin_frame": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "touch": 1
+            },
+            "cross_origin_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 1
+            },
+            "about_blank_frame": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "touch": 1
+            },
+            "srcdoc_frame": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "touch": 1
+            },
+            "dedicated": null,
+            "shared": null,
+            "service": null
+          }
+        }
+      ]
+    },
+    {
+      "mode": "native-control",
+      "passed": true,
+      "phases": [
+        {
+          "name": "initial",
+          "passed": true,
+          "error": null,
+          "screen": {
+            "document": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "same_origin_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "cross_origin_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "about_blank_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "srcdoc_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "dedicated": null,
+            "shared": null,
+            "service": null
+          }
+        },
+        {
+          "name": "persistent-profile-restart",
+          "passed": true,
+          "error": null,
+          "screen": {
+            "document": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "same_origin_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "cross_origin_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "about_blank_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "srcdoc_frame": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "touch": 0
+            },
+            "dedicated": null,
+            "shared": null,
+            "service": null
+          }
+        }
+      ]
+    }
+  ],
+  "active_build_output_used": false,
+  "installed_package_verified": false,
+  "capture_scope": "Owned headless pages using public environment.capture and unchanged manager options; private driver validates preserved runtime receipt and assets against checkpoint 001-067",
+  "no_viewport_control_is_a_fix": false
+}

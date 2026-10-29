@@ -272,3 +272,27 @@ def test_capture_runs_both_explicit_phases_without_fallback_or_reusing_observed_
             assert "no_viewport" not in context.options
             assert context.options["screen"] == {"width": configuration.width, "height": configuration.height}
             assert context.options["args"] == ["--enable-automation", *configuration.launch_arguments()]
+def test_glint67_screen_record_preserves_failed_manager_modes_without_false_admission():
+    import hashlib
+    import json
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/glint67-screen-consistency-observations.json").read_bytes())
+    assert record["measurement_complete"] and record["postguards_passed"] and not record["passed"]
+    checkpoint = root / "native/drafts/upstream-156" / record["required_manifest"]
+    assert hashlib.sha256(checkpoint.read_bytes()).hexdigest() == record["candidate_manifest_sha256"]
+    assert all(record[name] is False for name in ("screen_inheritance_fixed", "privacy_admitted", "production_admitted",
+                                                "active_build_output_used", "installed_package_verified", "no_viewport_control_is_a_fix"))
+    modes = record["modes"]
+    assert [row["mode"] for row in modes] == ["manager-desktop", "manager-mobile-web", "native-control"]
+    for row, expected in zip(modes, ((1366, 768, 1, False), (390, 844, 3, False), (800, 600, 1, True)), strict=True):
+        width, height, dpr, passed = expected
+        assert row["passed"] is passed
+        assert [phase["name"] for phase in row["phases"]] == ["initial", "persistent-profile-restart"]
+        for phase in row["phases"]:
+            assert phase["passed"] is passed
+            main, cross = phase["screen"]["document"], phase["screen"]["cross_origin_frame"]
+            assert (main["width"], main["height"], main["dpr"]) == (width, height, dpr)
+            assert (cross["width"], cross["height"], cross["dpr"]) == (800, 600, 1)
+            assert (main == cross) is passed
+            assert all(phase["screen"][name] is None for name in ("dedicated", "shared", "service"))

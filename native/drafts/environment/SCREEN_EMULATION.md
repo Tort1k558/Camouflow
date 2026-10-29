@@ -1,6 +1,13 @@
 # Cross-process screen consistency: next native integration contract
 
-**Open compatibility finding, not an implemented patch or Glint runtime result.**
+**Open compatibility finding, reproduced on both stock156 and raw Glint 001–067.**
+The [Glint runtime capture](glint67-screen-consistency-observations.json) used
+the separately preserved browser, its complete 67-patch checkpoint/receipt and
+unchanged manager context options. Both initial and restarted desktop/mobile
+captures reproduced the table below; the no-viewport control passed twice.
+All source/core/receipt/asset postguards passed. This is one headless Windows
+host, not a physical-device cohort, installed-payload check or a fix.
+
 The [stock156 control](stock156-screen-consistency-observations.json) collected
 all three public CLI modes twice, with unchanged runtime and source hashes:
 
@@ -30,6 +37,9 @@ widget's emulated values:
   `GetOriginalScreenInfos()` to the remote child, not the emulated screen set.
 - `WebFrameWidgetImpl::DidUpdateVisualProperties()` also propagates original
   screen info to remote frames. Original scale is used in compositor/layout paths.
+- `ChromeClientImpl::GetScreenInfos()` reads the local-root widget, while
+  `LocalFrame::DevicePixelRatio()` uses inspector scale times layout zoom.
+  Changing screen metadata alone therefore does not repair the DPR contract.
 
 These are relevant code paths, **not proof of the complete defect's cause**.
 Replacing every original screen with the emulated screen risks double DPR,
@@ -38,8 +48,8 @@ Attaching a full main-frame emulator to every iframe is not acceptable either.
 
 ## Coherent implementation package
 
-1. Reproduce on the fully gated Glint 001–067 runtime with identical options;
-   preserve the stock controls and unmodified no-emulation behavior.
+1. Raw Glint 001–067 reproduction is complete with identical manager options;
+   preserve both stock/Glint failed captures and unmodified no-emulation controls.
 2. Trace initial creation and updates through frame visual properties,
    `CrossProcessFrameConnector`, widget visual properties and DOM/CSS consumers.
    Keep original physical/compositor data distinct from inherited logical
@@ -69,4 +79,5 @@ Attaching a full main-frame emulator to every iframe is not acceptable either.
 
 Until those gates run, keep `screen_inheritance_fixed` and profile/cohort
 admission false. Source preparation and a passing serialization test alone do
-not satisfy this contract. Active 001–067 sources and test builds stay unchanged.
+not satisfy this contract. Prepare screen changes in isolated overlays; do not
+modify source files used by a live build or verifier.
