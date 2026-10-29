@@ -659,8 +659,8 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
             local_toolchain: bool = False) -> None:
     _validate_git_ssl_backend(git_ssl_backend)
     if type(local_toolchain) is not bool or (local_toolchain and (
-            action != "build" or candidate_name is None or os.name != "nt")):
-        raise ValueError("Local Windows toolchain selection is explicit and supported only for candidate build")
+            action not in {"sync", "hooks", "patch", "build"} or candidate_name is None or os.name != "nt")):
+        raise ValueError("Local Windows toolchain selection is explicit and supported only for candidate build stages (sync/hooks/patch/build)")
     candidate = None if candidate_name is None else load_candidate(candidate_name)
     if action == "patch" and candidate is None:
         raise ValueError("Patch application requires an explicit --candidate selection")
@@ -711,6 +711,8 @@ def _execute_locked(action: str, workspace: Path, jobs: int, candidate: dict | N
         run(depot_command("gclient", workspace) + ["sync", "--no-history", "--nohooks",
             "--revision", "src@" + lock["chromium_revision"], "-j", str(jobs)], chromium, env)
         snapshot_dependencies(chromium, workspace, env)
+        if local_toolchain and local_windows_toolchain(workspace)["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"] != env["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]:
+            raise ValueError("Local Windows toolchain changed during sync; refusing a stage record")
         record_stage(chromium, "sync", candidate)
         return
     if not (chromium / ".gclient").is_file() or not (source / "DEPS").is_file():
@@ -721,6 +723,8 @@ def _execute_locked(action: str, workspace: Path, jobs: int, candidate: dict | N
     if action == "hooks":
         stage_path(chromium, "hooks").unlink(missing_ok=True)
         run(depot_command("gclient", workspace) + ["runhooks"], chromium, env)
+        if local_toolchain and local_windows_toolchain(workspace)["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"] != env["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]:
+            raise ValueError("Local Windows toolchain changed during hooks; refusing a stage record")
         record_stage(chromium, "hooks", candidate)
         return
     require_stage(chromium, "hooks", candidate)
@@ -781,7 +785,7 @@ def main() -> int:
     parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl",
                         help="Explicit Windows Git TLS backend; no automatic switching or certificate-check bypass")
     parser.add_argument("--local-windows-toolchain", action="store_true",
-                        help="Explicit prepared owned local hermetic SDK/MSVC layout; candidate build only")
+                        help="Explicit prepared owned local hermetic SDK/MSVC layout; candidate sync/hooks/patch/build only")
     args = parser.parse_args()
     try:
         execute(args.action, args.workspace, backing_volume=args.backing_volume, jobs=args.jobs,

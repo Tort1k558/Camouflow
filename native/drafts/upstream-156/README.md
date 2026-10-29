@@ -22,6 +22,17 @@ to 001–065 until the 0066 source refresh/build is executed. Do not package tha
 old receipt as the new selected manifest. The isolated 34-case proof does not
 replace a canonical 0066 build, runtime suite or installed-payload verification.
 
+Prepared local Windows SDK/MSVC selection is supported explicitly for candidate
+`sync`, `hooks`, `patch` and `build`, not only the compiler step. Sync/hooks
+recheck the SDK provenance before recording success; changed inputs reject the
+stage. No default/internal toolchain download or automatic selection is added.
+For a manifest refresh, preserve the old runtime/receipts and exact source delta,
+return only the verified patch-owned source changes to the pinned clean state,
+then execute real sync/hooks and reapply the complete selected chain. Never edit
+the old stage JSON to make a new manifest appear synchronized. Preserve original
+source timestamps only for files whose exact bytes are unchanged after replay;
+changed sources and generated/object files must not receive old timestamps.
+
 ### Reproducible 001–065 checkpoint
 
 [`checkpoints/001-065.json`](checkpoints/001-065.json) preserves the exact manifest

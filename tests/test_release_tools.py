@@ -4071,6 +4071,70 @@ def test_native_workspace_lock_blocks_execute_before_tool_or_source_changes(tmp_
         build.execute("preflight", tmp_path)
 
 
+@pytest.mark.parametrize("action", ["sync", "hooks", "patch"])
+def test_native_candidate_stages_accept_explicit_local_sdk(tmp_path, monkeypatch, action):
+    from scripts import native_build as build
+
+    if sys.platform != "win32":
+        with pytest.raises(ValueError, match="candidate build stages"):
+            build.execute(action, tmp_path, candidate_name="upstream-156", local_toolchain=True)
+        return
+    calls = []
+    monkeypatch.setattr(build, "preflight", lambda *args, **kwargs: {})
+    monkeypatch.setattr(build, "_execute_locked", lambda *args, **kwargs: calls.append((args, kwargs)))
+    build.execute(action, tmp_path, candidate_name="upstream-156", jobs=4, local_toolchain=True)
+    assert len(calls) == 1
+    args, kwargs = calls[0]
+    assert args[0] == action and args[2] == 4 and args[3]["name"] == "upstream-156"
+    assert kwargs["local_toolchain"] is True
+
+
+@pytest.mark.parametrize("action", ["sync", "hooks"])
+@pytest.mark.parametrize("changed", [False, True])
+def test_native_dependency_stages_recheck_local_sdk_before_receipt(tmp_path, monkeypatch, action, changed):
+    from scripts import native_build as build
+
+    (tmp_path / "chromium").mkdir()
+    chromium = _native_build_stage_fixture(tmp_path / "chromium")
+    (chromium / ".gclient").unlink()
+    if action == "hooks":
+        (chromium / ".gclient").write_text("owned fixture", encoding="utf-8")
+    candidate = build.load_candidate("upstream-156")
+    selected = {"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "a" * 64}
+    monkeypatch.setattr(build, "environment", lambda *args, **kwargs: dict(selected))
+    monkeypatch.setattr(build, "checkout", lambda *args: None)
+    monkeypatch.setattr(build, "bootstrap_windows_git", lambda *args: None)
+    monkeypatch.setattr(build, "depot_command", lambda name, *args: [name])
+    commands = []
+    def run(command, *args, **kwargs):
+        commands.append(command)
+        return candidate["lock"]["chromium_revision"] if command[:2] == ["git", "rev-parse"] else ""
+    monkeypatch.setattr(build, "run", run)
+    monkeypatch.setattr(build, "require_stage", lambda *args: None)
+    monkeypatch.setattr(build, "snapshot_dependencies", lambda *args: None)
+    monkeypatch.setattr(build, "local_windows_toolchain", lambda *args: {
+        "GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": ("b" if changed else "a") * 64})
+    records = []
+    monkeypatch.setattr(build, "record_stage", lambda *args: records.append(args))
+    if changed:
+        with pytest.raises(ValueError, match="changed during " + action):
+            build._execute_locked(action, tmp_path, 4, candidate, candidate["lock"], local_toolchain=True)
+        assert not records
+    else:
+        build._execute_locked(action, tmp_path, 4, candidate, candidate["lock"], local_toolchain=True)
+        assert records == [(chromium, action, candidate)]
+    assert any(command[:2] == ["gclient", "sync" if action == "sync" else "runhooks"] for command in commands)
+
+
+@pytest.mark.parametrize("action", ["preflight", "bootstrap", "other", "sync", "hooks", "patch"])
+def test_native_local_sdk_rejects_implicit_candidate_or_unsupported_stage(tmp_path, action):
+    from scripts import native_build as build
+
+    with pytest.raises(ValueError, match="explicit.*candidate build"):
+        build.execute(action, tmp_path / "not-created", local_toolchain=True)
+    assert not (tmp_path / "not-created").exists()
+
+
 def test_native_patch_action_requires_explicit_candidate_before_any_workspace_changes(tmp_path):
     from scripts import native_build as build
 
