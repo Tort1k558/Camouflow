@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+from pathlib import Path
 import sys
 
 import pytest
@@ -283,10 +284,11 @@ def test_gpu_cli_postguards_run_after_success_and_expected_failure(tmp_path, mon
     monkeypatch.setattr(sys, "argv", ["probe", "--executable", str(executable),
                                      "--work-dir", str(tmp_path / "owned"), "--report", str(report)])
     monkeypatch.setattr(gpu, "measure_runtime_core", lambda path, directory: {"chrome.exe": hashlib.sha256(path.read_bytes()).hexdigest()})
-    monkeypatch.setattr(gpu, "probe_inputs", lambda: {"probe": hashlib.sha256(source.read_bytes()).hexdigest()})
+    monkeypatch.setattr(gpu, "probe_inputs", lambda *, candidate_name=None: {"probe": hashlib.sha256(source.read_bytes()).hexdigest()})
     monkeypatch.setattr(gpu, "FixtureServer", lambda *args: SimpleNamespace(
         server_port=1, serve_forever=lambda: None, server_close=lambda: None, shutdown=lambda: None))
-    async def verify(*args):
+    async def verify(*args, **kwargs):
+        assert kwargs == {"candidate_name": None, "require_webgpu": False}
         if mutation == "runtime":
             executable.write_bytes(b"changed runtime")
         elif mutation == "input":
@@ -297,6 +299,7 @@ def test_gpu_cli_postguards_run_after_success_and_expected_failure(tmp_path, mon
             source.unlink()
         if failed:
             raise ValueError("Translated shader metadata still exposed: owned fixture")
+        args[3]["checks"] = [{"name": name, "passed": True} for name in ("feature-off", "feature-off-restart")]
     monkeypatch.setattr(gpu, "verify", verify)
     assert gpu.main() == (1 if failed or mutation else 0)
     evidence = json.loads(report.read_bytes())
@@ -307,6 +310,8 @@ def test_gpu_cli_postguards_run_after_success_and_expected_failure(tmp_path, mon
     if failed:
         assert evidence["error"].startswith("Translated shader metadata still exposed: ")
     assert ("guard_error" in evidence) is bool(mutation)
+    if failed or mutation:
+        assert Path(evidence["retained_profile_directory"]).is_dir()
 
 
 def readback_observation(*, protected=False):

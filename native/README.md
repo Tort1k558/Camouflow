@@ -108,6 +108,14 @@ analyser, worklet and muted realtime paths. The pinned stock156 calibration is
 not a Glint result; selected 0067 still requires its own completed native/runtime
 gates. Requested legacy failures remain failures even if experimental math passes.
 
+## GPU compatibility diagnostics
+
+[Source-bound GPU checks](drafts/gpu/README.md#current-source-bound-diagnostics)
+cover WebGL1/2 and WebGPU across eight document/worker contexts and restarts.
+Candidate mode checks the complete receipt and real revision, holds the workspace
+lock and preserves unrelated A/B feature flags. Strict WebGPU availability is
+explicit; stock calibration does not admit Glint privacy or automation concealment.
+
 ## Pin a profile's requested environment
 
 In **Profiles → Settings → Browser JSON**, click **Pin environment**, review the

@@ -7,10 +7,12 @@ import asyncio
 import hashlib
 import json
 import platform
+import shutil
 import sys
 import tempfile
 import threading
 import traceback
+from contextlib import ExitStack
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,14 +27,92 @@ WEBGL_LIMITS = {"MAX_TEXTURE_SIZE", "MAX_CUBE_MAP_TEXTURE_SIZE", "MAX_RENDERBUFF
                 "MAX_VERTEX_ATTRIBS", "MAX_TEXTURE_IMAGE_UNITS", "MAX_VERTEX_TEXTURE_IMAGE_UNITS"}
 WEBGPU_LIMITS = {"maxTextureDimension2D", "maxBufferSize", "maxComputeWorkgroupSizeX",
                  "maxComputeInvocationsPerWorkgroup"}
+WEBGPU_CONTEXTS = CONTEXTS
 SHADER_PIXELS = [value for y in range(1, 5) for x in range(1, 5) for value in (x, y, 85, 255)]
 SHADER_CROP = [value for y in range(2, 4) for x in range(2, 4) for value in (x, y, 85, 255)]
 
 
-def probe_inputs() -> dict[str, str]:
-    return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in (
+def probe_inputs(*, candidate_name: str | None = None) -> dict[str, str]:
+    paths = {ROOT / name for name in (
         "scripts/verify_native_gpu.py", "scripts/verify_native_canvas.py",
-        "scripts/verify_native_hardware.py", "scripts/verify_native_runtime.py")}
+        "scripts/verify_native_hardware.py", "scripts/verify_native_runtime.py",
+        "scripts/verify_native_worker_startup.py")}
+    if candidate_name is not None:
+        from scripts import native_build as build
+        from scripts.verify_native_privacy_batch import source_inputs
+        paths |= source_inputs(build.load_candidate(candidate_name))
+        paths.add(ROOT / "scripts/verify_native_worker_startup.py")
+    return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
+
+
+def validate_candidate_receipt(executable: Path, core: dict, *, candidate_name: str) -> bytes:
+    from scripts import native_build as build
+    from scripts.verify_native_worker_startup import validate_receipt
+
+    candidate = build.load_candidate(candidate_name)
+    raw = validate_receipt(executable, core, bootstrap_policy="surfaces", candidate_name=candidate_name)
+    receipt = json.loads(raw.decode("utf-8-sig"))
+    name = "0034-native-gpu-metadata-minimization.patch"
+    path = candidate["directory"] / "patches" / name
+    if path != path.resolve() or not path.is_file():
+        raise ValueError("GPU diagnostics require the selected canonical metadata patch")
+    if {"name": name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()} not in receipt["patches"]:
+        raise ValueError("Candidate receipt lacks the exact GPU metadata patch")
+    return raw
+
+
+def require_webgpu_coverage(observed: dict) -> None:
+    if not isinstance(observed, dict) or set(observed) != CONTEXTS:
+        raise ValueError("WebGPU context observations are incomplete")
+    available = {name for name, value in observed.items()
+                 if isinstance(value, dict) and isinstance(value.get("webgpu"), dict)
+                 and value["webgpu"].get("available") is True}
+    if available != WEBGPU_CONTEXTS:
+        raise ValueError("Required WebGPU document/worker coverage is incomplete")
+
+
+def feature_arguments(arguments: list[str], *, enabled: bool) -> tuple[list[str], list[str]]:
+    if not isinstance(arguments, list) or any(type(value) is not str for value in arguments) or type(enabled) is not bool:
+        raise ValueError("GPU diagnostics require measured feature arguments and an explicit mode")
+    target = "GlintGpuMetadataMinimization"
+    requested, ignored = [], []
+    for prefix, selected in (("--enable-features=", enabled), ("--disable-features=", not enabled)):
+        originals = [value for value in arguments if value.startswith(prefix)]
+        if len(originals) > 1:
+            raise ValueError("Ambiguous default browser feature switches")
+        features = []
+        if originals:
+            ignored.extend(originals)
+            raw = originals[0].removeprefix(prefix)
+            features = raw.split(",") if raw else []
+            if any(not value for value in features):
+                raise ValueError("Malformed default browser feature list")
+        for value in features:
+            if value.partition("<")[0].partition(":")[0].lstrip("*") == target and value != target:
+                raise ValueError("Parameterized default GPU feature overrides are unsupported")
+        features = [value for value in features if value != target]
+        if selected:
+            features.append(target)
+        if features:
+            requested.append(prefix + ",".join(features))
+    return requested, [value for value in ignored if value not in requested]
+
+
+def require_complete_phases(report: dict, *, minimized: bool, candidate_name: str | None = None) -> None:
+    expected = {"feature-off", "feature-off-restart"}
+    if minimized:
+        expected.update({"feature-on", "feature-on-restart"})
+    checks = report.get("checks")
+    if (not isinstance(checks, list) or len(checks) != len(expected)
+            or any(not isinstance(row, dict) or row.get("passed") is not True for row in checks)
+            or {row.get("name") for row in checks if type(row.get("name")) is str} != expected):
+        raise ValueError("GPU diagnostic phases are incomplete, duplicated or failed")
+    if candidate_name is not None:
+        versions = report.get("browser_versions")
+        if (not isinstance(versions, dict) or set(versions) != expected
+                or any(not isinstance(row, dict) or type(row.get("product")) is not str
+                       or type(row.get("revision")) is not str for row in versions.values())):
+            raise ValueError("Candidate GPU phase versions are incomplete")
 
 GPU_READ = """async () => {
   const result = {webgl: {}, webgpu: {available: false, reason: 'API unavailable'}};
@@ -422,29 +502,92 @@ def validate_observations(observed: dict, *, minimized: bool = False,
     return coverage
 
 
-async def verify(executable: Path, profile: Path, origin: str, report: dict, minimized: bool) -> None:
+async def verify(executable: Path, profile: Path, origin: str, report: dict, minimized: bool, *,
+                 candidate_name: str | None = None, require_webgpu: bool = False) -> None:
+    from scripts.verify_native_worker_startup import browser_arguments
+
+    candidate = None
+    if candidate_name is not None:
+        from scripts.native_build import load_candidate
+        candidate = load_candidate(candidate_name)
     baseline = None
     phases = [("feature-off", False), ("feature-off-restart", False)]
     if minimized:
         phases.extend([("feature-on", True), ("feature-on-restart", True)])
     async with async_playwright() as driver:
+        discovery = await driver.chromium.launch_persistent_context(
+            str(profile / "discovery"), executable_path=str(executable), headless=True,
+            chromium_sandbox=True, timeout=30000, args=["--enable-automation"])
+        primary = None
+        try:
+            defaults = await browser_arguments(discovery)
+            feature_arguments(defaults, enabled=False)
+            report["default_feature_arguments"] = [value for value in defaults
+                if value.startswith(("--enable-features=", "--disable-features="))]
+        except BaseException as error:
+            primary = error
+            raise
+        finally:
+            try:
+                await discovery.close()
+            except Exception as error:
+                if primary is None:
+                    raise
+                primary.add_note("GPU discovery cleanup failed: " + str(error))
         for name, enabled in phases:
-            flag = "--enable-features=" if enabled else "--disable-features="
+            requested, ignored = feature_arguments(defaults, enabled=enabled)
             context = await driver.chromium.launch_persistent_context(
-                str(profile), executable_path=str(executable), headless=True,
+                str(profile / "measured"), executable_path=str(executable), headless=True,
                 chromium_sandbox=True, timeout=30000,
-                args=[flag + "GlintGpuMetadataMinimization"])
+                args=["--enable-automation", *(value for value in requested if value not in defaults)],
+                ignore_default_args=ignored)
+            primary = None
             try:
                 report["browser_version"] = context.browser.version
+                effective = await browser_arguments(context)
+                actual = [value for value in effective if value.startswith(("--enable-features=", "--disable-features="))]
+                report.setdefault("phase_feature_arguments", {})[name] = actual
+                report.setdefault("requested_feature_arguments", {})[name] = requested
+                if sorted(actual) != sorted(requested):
+                    raise ValueError("GPU A/B feature switches differ from the measured configuration")
+                if candidate is not None:
+                    session = await context.browser.new_browser_cdp_session()
+                    failure = None
+                    try:
+                        version = await session.send("Browser.getVersion")
+                        if (version["product"] != "Chrome/" + candidate["lock"]["chromium_version"]
+                                or version["revision"] != "@" + candidate["lock"]["chromium_revision"]):
+                            raise ValueError("GPU runtime does not expose the selected real revision/version stamp")
+                        report.setdefault("browser_versions", {})[name] = version
+                    except BaseException as error:
+                        failure = error
+                        raise
+                    finally:
+                        try:
+                            await session.detach()
+                        except Exception as error:
+                            if failure is None:
+                                raise
+                            failure.add_note("GPU version session cleanup failed: " + str(error))
                 observed = await observe(context, origin, read=GPU_READ)
                 check = {"name": name, "observed": observed, "passed": False}
                 report["checks"].append(check)
                 check["coverage"] = validate_observations(observed, minimized=enabled, baseline=baseline)
+                if require_webgpu:
+                    require_webgpu_coverage(observed)
                 check["passed"] = True
                 if baseline is None:
                     baseline = observed
+            except BaseException as error:
+                primary = error
+                raise
             finally:
-                await context.close()
+                try:
+                    await context.close()
+                except Exception as error:
+                    if primary is None:
+                        raise
+                    primary.add_note("GPU context cleanup failed: " + str(error))
 
 
 def main() -> int:
@@ -454,7 +597,13 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--minimized", action="store_true", help="Also check candidate feature-on semantics")
     parser.add_argument("--windows-library-directory", type=Path)
+    parser.add_argument("--candidate", choices=("upstream-156",))
+    parser.add_argument("--workspace", type=Path, help="Required native workspace when checking a candidate")
+    parser.add_argument("--require-webgpu", action="store_true",
+                        help="Require WebGPU in all eight observed document/worker contexts; no software/unsafe fallback")
     args = parser.parse_args()
+    if (args.candidate is None) != (args.workspace is None):
+        parser.error("--candidate and --workspace must be provided together")
     if args.report.exists():
         parser.error("Refusing to overwrite existing GPU evidence")
     report = {"schema": 1, "platform": platform.platform(), "passed": False, "checks": [],
@@ -464,47 +613,100 @@ def main() -> int:
     thread = None
     core = None
     inputs = None
+    receipt = None
+    owned = None
+    guard = ExitStack()
+    report.update(production_admitted=False, require_webgpu=args.require_webgpu)
+    if args.candidate is not None:
+        from scripts.native_build import load_candidate
+        report.update(candidate=args.candidate,
+                      candidate_manifest_sha256=load_candidate(args.candidate)["manifest_sha256"])
     try:
+        if args.candidate is not None:
+            from scripts import native_build as build
+            from scripts.verify_native_privacy_units import require_idle_builder
+
+            workspace = args.workspace.resolve(strict=True)
+            build.candidate_workspace(workspace, build.load_candidate(args.candidate))
+            guard.enter_context(build.workspace_lock(workspace))
+            require_idle_builder(workspace)
+            if args.work_dir.resolve().is_relative_to(workspace / "chromium/src"):
+                raise ValueError("GPU profiles must remain outside the Chromium source tree")
         executable = args.executable.resolve(strict=True)
         if not executable.is_file():
             raise ValueError("An explicit Chromium executable is required")
         core = measure_runtime_core(executable, args.windows_library_directory)
         report["runtime_core_sha256_measured"] = core
-        inputs = probe_inputs()
+        if args.candidate is not None:
+            receipt = validate_candidate_receipt(executable, core, candidate_name=args.candidate)
+            report["receipt_sha256"] = hashlib.sha256(receipt).hexdigest()
+        inputs = probe_inputs(candidate_name=args.candidate)
         report["probe_inputs_sha256"] = inputs
         report["javascript_sha256"] = hashlib.sha256(GPU_READ.encode("utf-8")).hexdigest()
+        if args.work_dir.resolve().is_relative_to(ROOT):
+            raise ValueError("GPU profiles must remain outside the public checkout")
         args.work_dir.mkdir(parents=True, exist_ok=True)
         server = FixtureServer(("127.0.0.1", 0), GpuFixtureHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
-        with tempfile.TemporaryDirectory(prefix="glint-gpu-owned-", dir=args.work_dir.resolve()) as owned:
-            asyncio.run(verify(executable, Path(owned), f"http://127.0.0.1:{server.server_port}", report, args.minimized))
+        owned = Path(tempfile.mkdtemp(prefix="glint-gpu-owned-", dir=args.work_dir.resolve()))
+        asyncio.run(verify(executable, owned, f"http://127.0.0.1:{server.server_port}", report, args.minimized,
+                           candidate_name=args.candidate, require_webgpu=args.require_webgpu))
+        require_complete_phases(report, minimized=args.minimized, candidate_name=args.candidate)
         report["passed"] = True
     except Exception as error:  # noqa: BLE001 - persist failed diagnostic evidence before exiting
         report.update(error=str(error), traceback=traceback.format_exc())
     finally:
-        if server is not None:
-            if thread is not None and thread.is_alive():
-                server.shutdown()
-            server.server_close()
-        if thread is not None:
-            thread.join(timeout=5)
+        try:
+            if server is not None:
+                try:
+                    if thread is not None and thread.is_alive():
+                        server.shutdown()
+                finally:
+                    server.server_close()
+            if thread is not None:
+                thread.join(timeout=5)
+                if thread.is_alive():
+                    raise RuntimeError("Owned GPU fixture thread remains")
+        except Exception as error:
+            report.update(passed=False, fixture_cleanup_error=str(error))
         if core is not None:
             try:
                 report["runtime_core_unchanged"] = measure_runtime_core(executable, args.windows_library_directory) == core
-            except (OSError, ValueError) as error:
+            except Exception as error:
                 report["runtime_core_unchanged"] = False
                 report["runtime_guard_error"] = str(error)
         if inputs is not None:
             try:
-                report["probe_inputs_unchanged"] = probe_inputs() == inputs
-            except (OSError, ValueError) as error:
+                report["probe_inputs_unchanged"] = probe_inputs(candidate_name=args.candidate) == inputs
+            except Exception as error:
                 report["probe_inputs_unchanged"] = False
                 report["input_guard_error"] = str(error)
-        if any(report.get(key) is False for key in ("runtime_core_unchanged", "probe_inputs_unchanged")):
+        if receipt is not None:
+            try:
+                report["receipt_unchanged"] = validate_candidate_receipt(executable, core, candidate_name=args.candidate) == receipt
+            except Exception as error:
+                report["receipt_unchanged"] = False
+                report["receipt_guard_error"] = str(error)
+        if any(report.get(key) is False for key in ("runtime_core_unchanged", "probe_inputs_unchanged", "receipt_unchanged")):
             report["passed"] = False
             report["guard_error"] = "GPU evidence postguards failed"
             report.setdefault("error", report["guard_error"])
+        if owned is not None:
+            if not report["passed"]:
+                report["retained_profile_directory"] = str(owned)
+            else:
+                try:
+                    if (owned != owned.resolve() or not owned.is_relative_to(args.work_dir.resolve())
+                            or owned == args.work_dir.resolve()):
+                        raise ValueError("GPU cleanup target escaped its owned evidence directory")
+                    shutil.rmtree(owned)
+                except Exception as error:
+                    report.update(passed=False, cleanup_error=str(error), retained_profile_directory=str(owned))
+        try:
+            guard.close()
+        except Exception as error:
+            report.update(passed=False, workspace_cleanup_error=str(error))
         args.report.parent.mkdir(parents=True, exist_ok=True)
         with args.report.open("x", encoding="utf-8") as output:
             output.write(json.dumps(report, indent=2))

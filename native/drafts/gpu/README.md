@@ -1,5 +1,44 @@
 # GPU metadata minimization candidate
 
+## Current source-bound diagnostics
+
+The selected Chromium 156 candidate requires its own completed build and runtime
+checks. The historical 001-027/034 notes below are not its current build status.
+
+```powershell
+.venv\Scripts\python.exe -m scripts.verify_native_gpu `
+  --candidate upstream-156 --workspace D:\Glint156Candidate `
+  --executable D:\Glint156Candidate\chromium\src\out\CamouFlowNative\chrome.exe `
+  --work-dir D:\GlintQA\gpu67-profiles --report D:\GlintQA\gpu67.json `
+  --minimized --require-webgpu
+```
+
+Use a new report path. Candidate mode holds the native workspace lock and rejects
+a live builder before opening profiles. It requires the complete selected build
+receipt, exact metadata patch and real CDP version/revision in every phase.
+Runtime, receipt and source hashes are checked again after execution, including
+failed runs. Failed profiles are retained for diagnosis.
+
+The off/off-restart/on/on-restart phases share one measured persistent profile.
+An isolated discovery launch measures driver feature defaults; A/B changes only
+`GlintGpuMetadataMinimization`, preserving unrelated feature settings and verifying
+the effective command line. `--enable-automation` is explicit in every launch so
+CDP can report those arguments. **This is not an automation-concealment test.**
+
+`--require-webgpu` requires working WebGPU in all eight document/worker contexts;
+unavailable adapters fail rather than count as successful coverage. There is no
+software/unsafe fallback. Coverage includes WGSL compute, buffer copies,
+texture mip/layer copies and shader-rendered reads, with untouched pack padding.
+
+The [source-bound stock156 calibration](stock156-runtime-observations.json)
+passed both off/restart phases with 8/8 coverage for each API. This proves the
+diagnostic, not Glint's policy. Metadata
+minimization is not complete GPU protection, a hardware identity cohort or release
+admission. See the [per-build matrix](../../../docs/GLINT_TEST_MATRIX.md) for
+actual Glint results.
+
+## Historical implementation notes
+
 The canonical candidates below are now included in registered patch **0034**,
 as part of the 001-034 source batch. Chrome is compiling on Windows; the last
 verified browser remains 001-027. No new GPU protection is runtime-admitted.
