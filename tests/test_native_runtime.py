@@ -79,7 +79,8 @@ def test_native_privacy_keys_persist_and_are_not_shared_between_profiles(tmp_pat
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Actual Windows ACL creation")
 @pytest.mark.parametrize("existing", [False, True])
-def test_native_windows_identity_has_private_acl_and_preserves_legacy_bytes(tmp_path, existing):
+@pytest.mark.parametrize("foreign_module_path", [False, True])
+def test_native_windows_identity_has_private_acl_and_preserves_legacy_bytes(tmp_path, existing, foreign_module_path):
     import json
     import os
     import subprocess
@@ -101,15 +102,30 @@ def test_native_windows_identity_has_private_acl_and_preserves_legacy_bytes(tmp_
     assert load_or_create_identity(tmp_path).seed == identity.seed
     assert path.read_bytes() == contents
     query = (
-        "$ErrorActionPreference='Stop'; $acl=Get-Acl -LiteralPath $env:GLINT_OWNED_KEY; "
+        "$ErrorActionPreference='Stop'; "
+        "Import-Module ($PSHOME + '\\Modules\\Microsoft.PowerShell.Security\\Microsoft.PowerShell.Security.psd1'); "
+        "Import-Module ($PSHOME + '\\Modules\\Microsoft.PowerShell.Utility\\Microsoft.PowerShell.Utility.psd1'); "
+        "$acl=Get-Acl -LiteralPath $env:GLINT_OWNED_KEY; "
         "$sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; "
         "$foreign=@($acl.Access | Where-Object { $_.AccessControlType -eq 'Allow' -and "
         "($_.FileSystemRights.value__ -band 7) -ne 0 -and "
         "$_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value -ne $sid }); "
         "[pscustomobject]@{protected=$acl.AreAccessRulesProtected; foreign=$foreign.Count} | ConvertTo-Json -Compress"
     )
+    environment = {**os.environ, "GLINT_OWNED_KEY": str(path)}
+    if foreign_module_path:
+        modules = tmp_path / "foreign-modules"
+        module = modules / "Microsoft.PowerShell.Security"
+        module.mkdir(parents=True)
+        (module / "Microsoft.PowerShell.Security.psd1").write_text(
+            "@{ModuleVersion='7.0.0'; PowerShellVersion='7.0'; CompatiblePSEditions=@('Core'); "
+            "RootModule='Microsoft.PowerShell.Security.psm1'; FunctionsToExport=@('Get-Acl')}", encoding="utf-8")
+        (module / "Microsoft.PowerShell.Security.psm1").write_text(
+            "function Get-Acl { throw 'Foreign Security module must not run' }", encoding="utf-8")
+        environment["GLINT_FOREIGN_MODULES"] = str(modules)
+        query = "$env:PSModulePath=$env:GLINT_FOREIGN_MODULES; " + query
     observed = json.loads(subprocess.check_output(["powershell.exe", "-NoProfile", "-Command", query],
-        env={**os.environ, "GLINT_OWNED_KEY": str(path)}, text=True, timeout=20))
+        env=environment, text=True, timeout=20))
     assert observed == {"protected": True, "foreign": 0}
     assert not list(tmp_path.glob(".*.tmp"))
 
