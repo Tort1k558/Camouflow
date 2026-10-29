@@ -125,6 +125,20 @@ passed; this is not 29 compiled tests. GPU/GRIT invariants were unavailable in
 this prefix. Eight missing inputs block 0030; **0030–0062 are unverified**.
 There is no C++/runtime/security/package admission or target switch.
 
+A later explicitly bounded continuation reused all 72 validated inputs and the
+five reviewed overrides after another 15-minute cooldown. It reached **76 of 185
+inputs**, then stopped on a read timeout while requesting the pinned
+`third_party/blink/renderer/core/loader/document_loader.cc`. No retry or mirror
+was attempted. `upstream-forward-preflight-20261029-v4/report.json` retains the
+pending URL, failure and successful postguards for all 301 active inputs,
+the helper, prior cache, port manifest and five overrides. This incomplete
+discovery does not extend the public 29-patch replay result.
+
+With the public 157 prefix present, the full local application suite passed
+**3,553 tests, one skipped**, in 295.42 seconds. Log:
+`pytest-157-prefix-full-20261029-v1.log` on D. This does not compile the new
+C++ drafts or establish a completed remote CI run.
+
 ### Public 156 refresh replay evidence
 
 The .75 input manifest is now public under
