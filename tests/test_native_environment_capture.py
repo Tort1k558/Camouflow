@@ -791,3 +791,47 @@ def test_queued_native_lifecycle_cases_bind_to_dpr70_without_claiming_execution(
     assert "GlintLogicalRootDevicePixelRatio" in added and "glint_logical_screen_infos.reset()" in added
     assert "GetScreenInfo().device_scale_factor, 1" in added
     assert "SetInspectorDeviceScaleFactorOverride" in added and "SetCssZoomFactor" in added
+
+
+@pytest.mark.parametrize("name", ["A", "B"])
+def test_runtime_storage_control_accepts_only_its_owned_values(name):
+    import runpy
+
+    collector = runpy.run_path(str(environment.ROOT / "native/drafts/environment/first-script/runtime.py"))
+    value = {"local": "owned-" + name, "cookie": "glint-owned=owned-" + name}
+    assert collector["validate_storage"](value, name) is None
+
+
+@pytest.mark.parametrize("value", [
+    {"local": "owned-B", "cookie": "glint-owned=owned-B"},
+    {"local": "owned-A", "cookie": ""},
+    {"local": None, "cookie": "glint-owned=owned-A"},
+    {"local": "owned-A", "cookie": "glint-owned=owned-A; glint-owned=owned-B"},
+    {"local": "owned-A", "cookie": "glint-owned=owned-A", "extra": True},
+])
+def test_runtime_storage_control_rejects_cross_profile_missing_or_duplicate_values(value):
+    import runpy
+
+    collector = runpy.run_path(str(environment.ROOT / "native/drafts/environment/first-script/runtime.py"))
+    with pytest.raises(ValueError, match="storage"):
+        collector["validate_storage"](value, "A")
+
+
+def test_real_runtime_ownership_record_keeps_lifecycle_and_screen_admission_separate():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/runtime-ownership68-observations.json").read_bytes())
+    assert record["measurement_complete"] and record["postguards_passed"] and record["lifecycle_passed"]
+    assert record["owned_runtimes_resource_free"] and record["cleanup_errors"] == []
+    assert record["passed"] is False and record["screen_consistency_passed"] is False
+    assert len(record["lifecycle_checks"]) == 8 and all(value is True for value in record["lifecycle_checks"].values())
+    assert [row["name"] for row in record["stages"]] == ["simultaneous-profiles", "restart-A", "restart-B"]
+    assert record["compared_document_snapshots"] == 36
+    assert sum(value["document_contexts"] for row in record["stages"] for value in row["profiles"].values()) == 36
+    assert all(value["storage_matches_owned_profile"] for row in record["stages"] for value in row["profiles"].values())
+    assert all(record[name] is False for name in ("bfcache_verified", "process_swap_verified", "crash_recovery_verified",
+        "cross_process_owner_rejection_verified", "server_team_storage_isolation_verified", "native_0069_verified",
+        "privacy_admitted", "production_admitted"))
+    for name, value in record["source_sha256"].items():
+        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value

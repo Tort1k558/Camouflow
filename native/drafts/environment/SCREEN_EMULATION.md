@@ -206,6 +206,24 @@ This verifies the manager configuration-options path, not the complete
 swap or the still-building 0069/queued 0070. Repeat against the linked new
 binary before claiming inheritance or stable profile identity is fixed.
 
+### Actual NativeRuntime ownership and persistent storage
+
+[`first-script/runtime.py`](first-script/runtime.py) uses real
+`NativeRuntime.start()/close()`, not an alternative browser launcher. A preserved
+001–068 run completed eight ownership/storage checks: two simultaneous profiles,
+distinct retained private identities, fresh empty storage, duplicate owner and
+double-start rejection, peer-independent closes, and both persistent restarts
+with exact owned cookies/localStorage retained. Final resources and immutable
+source/core/receipt guards passed. [Evidence](runtime-ownership68-observations.json).
+
+The screen validator still failed across 36 document snapshots, so the overall
+run remains failed. This control has no enabled privacy policy and no extra page
+CDP controller. It does not prove cross-process lock rejection, crash recovery,
+BFCache, server/team isolation or installed-package admission. No private key
+contents are stored in the public or raw measurement; only equality decisions
+are recorded. The initial runner namespace error happened before browser startup
+and remains retained separately, not counted as an engine failure.
+
 The frozen 0069 draft's logical DPR accessor still restricts its override to
 subframes, leaving the main root on Page-global inspector state. The queued
 [`main-dpr70.patch`](main-dpr70.patch) removes that restriction and adds three

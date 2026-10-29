@@ -10,6 +10,15 @@ source/SDK/core/receipt postguards.
 [native results](drafts/upstream-156/native-batch68-observations.json) are scoped
 evidence, not package or privacy admission. Failed 001–067 evidence is retained.
 
+An actual `NativeRuntime.start()/close()` run on preserved 001–068 passed eight
+ownership/storage lifecycle checks with two simultaneous profiles and both
+persistent restarts. Profile keys stayed distinct and unchanged, cookies and
+localStorage stayed isolated, duplicate owner/double start were rejected, and
+resources were released. [Scoped evidence](drafts/environment/runtime-ownership68-observations.json).
+The overall run remains failed because screen consistency still fails. Lock
+owners were in one Python process; separate-process ownership, crash recovery,
+server/team storage isolation and enabled privacy policies are not admitted.
+
 Eight fixed profiles passed baseline/Math/Math-restart Audio API compatibility.
 A separate **1080-capture** long-compressor run on the same keys observed two
 stable output classes matching the expected native/float32 distinction; short
