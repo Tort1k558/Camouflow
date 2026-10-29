@@ -55,6 +55,13 @@ Recorder, backup/restore и отмену запуска; guard действуе�
 Канонический Runtime пока не изменён. Это не общая гарантия миграций/rollback
 и не реализация Linux/macOS: `native/drafts/profile-version/README.md`.
 
+Подготовлен read-only Windows resource observer: PID + creation identity,
+kernel/user CPU, working set и private commit. Прошли 24 controls, включая
+100 чтений без роста handles, ошибки cleanup и один Glint sample семи процессов
+с OS parent-chain проверкой. Это ещё не интеграция watchdog, не новый RAM limit
+и не performance benchmark; сумма working sets не равна уникальной физической
+памяти. Исходники/ограничения: `native/drafts/resources/README.md`.
+
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 
 Подготовлен отдельный draft 0068 для Chromium 156 после 001–065:

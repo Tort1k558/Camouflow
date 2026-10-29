@@ -21,7 +21,8 @@
 | Compiled Glint branding | Main/app-list icons match project logo; ProductName in EXE/DLL and internal version-page heading are Glint; resource-pack postguards passed | Not OS taskbar/shortcut cache migration or fingerprint admission |
 | Staged verifier evidence retention | Five actual held-file controls and an 18-check browser regression passed on a patched copy; original exception/profile retained on failure | Canonical verifier unchanged; underlying browser-close timeout is not fixed |
 | Staged Windows profile-version guard | 22 owned marker/real-PE/mocked-launch controls; one real 148-to156 upgrade preserved five stores and identity; older selection rejected without changing files; isolated extended lifecycle passed all 18 checks, including backup/restore and cancelled startup | Unapplied Runtime patch; no older browser opened upgraded data; not general migration/rollback or Linux/macOS protection |
-| Current release-tool validators | 1,091 passed, one skipped; latest completed run 45.47 seconds | Validates report/probe bindings and scopes, not execution of additional native gates |
+| Read-only Windows resource observer | 24 controls passed; one owned Glint sample covered seven OS-parent/creation-bound processes; 100 reads did not grow the handle count | Separate draft, not manager integration or a new memory limit; summed working sets are not unique RAM; not lifetime accounting or a performance benchmark |
+| Current release-tool validators | 1,093 passed, one skipped; latest completed run 45.68 seconds | Includes resource arithmetic/input checks and a live Windows self-process read; report validation is not additional native execution |
 | Python validation | 1,439 passed, one skipped across changed tooling tests; 15 focused guard cases passed | Not browser/native execution or remote CI |
 
 Build evidence: `D:\Glint156Candidate\fixture-build-continuation-20261029-v2.json`;
@@ -33,6 +34,8 @@ Transport target: `identity-transport.json` in that directory; lifecycle repetit
 Sanitized evidence: [`windows-runtime-observations.json`](../native/drafts/upstream-156/windows-runtime-observations.json).
 Staged fix and application boundary: [`runtime-verifier/README.md`](../native/drafts/runtime-verifier/README.md).
 Per-profile version guard: [`profile-version/README.md`](../native/drafts/profile-version/README.md).
+Resource observer: [`resources/README.md`](../native/drafts/resources/README.md);
+raw owned evidence: `D:\Glint156Candidate\windows-resource-reader-20261029-v3\report.json`.
 Remaining identity/native targets, canonical eight-gate policy suite, installed
 runtime, compatible rollback and shutdown reliability evidence remain required
 before any candidate release claim. No detector/CAPTCHA outcomes are asserted.

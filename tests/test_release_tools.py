@@ -4689,6 +4689,84 @@ def test_unapplied_windows_profile_version_guard_binds_runtime_and_readonly_cont
     assert data["frozen_inputs_unchanged"] == 201 and data["application_gate"] and data["remaining_unverified"]
 
 
+def test_windows_resource_reader_draft_preserves_readonly_scope():
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/resources"
+    raw = (root / "observations.json").read_bytes()
+    data = json.loads(raw)
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    reader = (root / data["reader"]["file"]).read_bytes()
+    assert hashlib.sha256(reader).hexdigest() == data["reader"]["sha256"]
+    assert b"\r" not in reader and not reader.startswith(b"\xef\xbb\xbf")
+    assert data["schema"] == 1 and data["platform"] == "win32" and data["passed"]
+    assert len(data["controls"]) == data["control_count"] == 24
+    assert len({row["name"] for row in data["controls"]}) == 24
+    assert all(row["passed"] for row in data["controls"])
+    for field in ("manager_integrated", "production_admitted", "memory_limit_changed", "forced_termination_added"):
+        assert data[field] is False
+    assert data["postguards_passed"] and data["owned_children_exited"] and data["glint_resources_closed"]
+    assert data["frozen_inputs_unchanged"] == 201 and data["remaining_unverified"]
+    observed = data["glint_observation"]
+    assert observed["passed"] and observed["browser_version"] == "156.0.8078.36"
+    assert observed["process_count"] == 7 and observed["os_parent_chain_checked"] and observed["creation_identity_checked"]
+    assert observed["summed_working_set_bytes"] > observed["root_working_set_bytes"] > 0
+    assert observed["summed_private_commit_bytes"] > 0
+    assert observed["summed_working_set_is_unique_physical_ram"] is False
+    assert observed["all_browser_processes_over_lifetime_accounted"] is False and observed["not_a_performance_benchmark"]
+    baseline = json.loads((build.ROOT / "native/drafts/upstream-156/windows-runtime-observations.json").read_text())
+    assert data["runtime_core_sha256"] == baseline["runtime_core_sha256"]
+    controls = data["owned_child_observations"]
+    assert controls["private_commit_increase_bytes"] >= 16 * 1024 * 1024
+    assert controls["handle_count_stable"] and controls["cpu_interval"]["cpu_seconds"] > 0
+    assert data["initial_control_failure"]["retained"] and data["initial_control_failure"]["reader_defect"] is False
+
+
+def test_windows_resource_cpu_intervals_and_input_validation(monkeypatch):
+    from dataclasses import replace
+    import importlib.util
+    from types import SimpleNamespace
+    from scripts import native_build as build
+
+    path = build.ROOT / "native/drafts/resources/windows_process_resources.py"
+    spec = importlib.util.spec_from_file_location("glint_resource_test", path)
+    module = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, spec.name, module)
+    spec.loader.exec_module(module)
+    first = module.ProcessSample(10, 100, 1_000_000_000, 0, 0, 1024, 2048, 3072)
+    second = replace(first, measured_ns=3_000_000_000, kernel_100ns=10_000_000, user_100ns=20_000_000)
+    assert module.cpu_interval(first, second) == {"elapsed_seconds": 2.0, "cpu_seconds": 3.0, "mean_cpu_cores": 1.5}
+    assert module.cpu_interval(first, replace(second, kernel_100ns=0, user_100ns=0))["mean_cpu_cores"] == 0
+    for candidate in (replace(second, pid=11), replace(second, created_100ns=101), first,
+                      replace(second, measured_ns=first.measured_ns - 1)):
+        with pytest.raises(ValueError):
+            module.cpu_interval(first, candidate)
+    for bad in (True, -1, 2**64):
+        with pytest.raises(ValueError):
+            replace(first, private_commit_bytes=bad)
+    for field in ("kernel_100ns", "user_100ns"):
+        with pytest.raises(ValueError):
+            module.cpu_interval(replace(first, **{field: 1}), replace(second, **{field: 0}))
+    uninitialized = object.__new__(module.WindowsProcessReader)
+    for bad in (True, 0, -1, 2**32):
+        with pytest.raises(ValueError):
+            uninitialized.read(bad)
+    with pytest.raises(ValueError):
+        uninitialized.read(10, expected_created_100ns=True)
+    if sys.platform == "win32":
+        import os
+        reader = module.WindowsProcessReader()
+        sample = reader.read(os.getpid())
+        repeated = reader.read(os.getpid(), expected_created_100ns=sample.created_100ns)
+        assert repeated.pid == sample.pid == os.getpid()
+        assert sample.working_set_bytes > 0 and sample.private_commit_bytes > 0
+    monkeypatch.setattr(module, "sys", SimpleNamespace(platform="linux"))
+    with pytest.raises(OSError, match="not implemented"):
+        module.WindowsProcessReader()
+
+
 def test_audio_math_context_draft_binds_source_only_integration():
     import hashlib
     import json

@@ -1,0 +1,159 @@
+{
+  "schema": 1,
+  "scope": "Read-only Windows resource reader controls; no manager integration, memory limit or performance admission",
+  "reader": {
+    "file": "windows_process_resources.py",
+    "sha256": "f44d66799ebc07de32b4395a4dc4cc51e9e3278623f3083750d90fb010bcc007"
+  },
+  "passed": true,
+  "platform": "win32",
+  "manager_integrated": false,
+  "production_admitted": false,
+  "memory_limit_changed": false,
+  "forced_termination_added": false,
+  "controls": [
+    {
+      "name": "real-owned-child-memory-and-creation",
+      "passed": true
+    },
+    {
+      "name": "owned-allocation-increases-private-commit",
+      "passed": true
+    },
+    {
+      "name": "real-owned-child-cpu-delta",
+      "passed": true
+    },
+    {
+      "name": "expected-creation-mismatch",
+      "passed": true
+    },
+    {
+      "name": "different-process-interval",
+      "passed": true
+    },
+    {
+      "name": "reused-pid-interval",
+      "passed": true
+    },
+    {
+      "name": "equal-sample-clock",
+      "passed": true
+    },
+    {
+      "name": "backward-sample-clock",
+      "passed": true
+    },
+    {
+      "name": "backward-kernel-counter",
+      "passed": true
+    },
+    {
+      "name": "backward-user-counter",
+      "passed": true
+    },
+    {
+      "name": "zero-pid",
+      "passed": true
+    },
+    {
+      "name": "boolean-pid",
+      "passed": true
+    },
+    {
+      "name": "negative-pid",
+      "passed": true
+    },
+    {
+      "name": "overflow-pid",
+      "passed": true
+    },
+    {
+      "name": "boolean-expected-identity",
+      "passed": true
+    },
+    {
+      "name": "invalid-negative-metric",
+      "passed": true
+    },
+    {
+      "name": "invalid-boolean-metric",
+      "passed": true
+    },
+    {
+      "name": "missing-process-is-error-not-zero",
+      "passed": true
+    },
+    {
+      "name": "overflow-metric",
+      "passed": true
+    },
+    {
+      "name": "close-handle-failure-is-explicit",
+      "passed": true
+    },
+    {
+      "name": "cleanup-failure-preserves-primary-identity-error",
+      "passed": true
+    },
+    {
+      "name": "hundred-live-reads-release-query-handles",
+      "passed": true
+    },
+    {
+      "name": "exited-owned-process-is-error-not-zero",
+      "passed": true
+    },
+    {
+      "name": "owned-glint-root-and-children-measured-readonly",
+      "passed": true
+    }
+  ],
+  "control_count": 24,
+  "owned_child_observations": {
+    "private_commit_increase_bytes": 33624064,
+    "cpu_interval": {
+      "elapsed_seconds": 0.203,
+      "cpu_seconds": 0.203125,
+      "mean_cpu_cores": 1.000615763546798
+    },
+    "handle_count_stable": true
+  },
+  "glint_observation": {
+    "passed": true,
+    "browser_version": "156.0.8078.36",
+    "process_count": 7,
+    "os_parent_chain_checked": true,
+    "creation_identity_checked": true,
+    "root_working_set_bytes": 171384832,
+    "summed_working_set_bytes": 675463168,
+    "summed_private_commit_bytes": 313597952,
+    "observed_process_cpu_seconds": 0.015625,
+    "summed_working_set_is_unique_physical_ram": false,
+    "all_browser_processes_over_lifetime_accounted": false,
+    "not_a_performance_benchmark": true
+  },
+  "runtime_core_sha256": {
+    "chrome.exe": "0596afb2bd1a84731ebbe4d276edd3797d67b262bebb332e76a8aa9d21db5567",
+    "chrome.dll": "bd75c5c6ab3c45946edc0ea4e8f1d684286dd588d7cc46999a0b2bb1236aab44",
+    "chrome_elf.dll": "14597f88689361a016bce4a648e6b18a50ed065d6fc524dc8112f4b7d6e115d0"
+  },
+  "owned_children_exited": true,
+  "glint_resources_closed": true,
+  "postguards_passed": true,
+  "frozen_inputs_unchanged": 201,
+  "initial_control_failure": {
+    "retained": true,
+    "reader_defect": false,
+    "harness_correction_reader_unchanged": true,
+    "cause": "The Windows virtualenv launcher PID was sampled instead of the Python workload child",
+    "correction": "Use the real base interpreter for the two owned control processes; no reader fallback or limit relaxation"
+  },
+  "remaining_unverified": [
+    "Manager/watchdog integration after source-bound queues become terminal",
+    "Complete browser process churn, detached/crashed child accounting and profile-owner binding",
+    "Long-duration CPU/memory sampling, sampling overhead and resource budgets",
+    "Matched stock/candidate performance comparisons; no baseline regression threshold is admitted",
+    "Linux/macOS implementation remains deferred"
+  ]
+}

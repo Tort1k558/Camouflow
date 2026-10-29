@@ -359,6 +359,15 @@ baseline passed the expanded fixture on actual initial/restarted browsers
 not v2 protection. Root-initial about:blank, popup and sandboxed child first-script
 delivery still require separate lifecycle tests.
 
+## Resource observation
+
+`drafts/resources` contains a read-only Windows process reader, not a watchdog
+replacement: creation-bound CPU/working-set/private-commit samples, explicit
+errors and query-handle cleanup. Its 24 controls and one seven-process owned
+Glint observation passed. Process churn/profile ownership, sampling overhead
+and memory-limit semantics still require integration; summed working sets
+must not be represented as unique physical RAM.
+
 ## Distribution
 
 `distribution.py` manages checksum-verified local bundles and release selection.
