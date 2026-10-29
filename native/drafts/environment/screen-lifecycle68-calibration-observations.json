@@ -1,0 +1,644 @@
+{
+  "schema": 1,
+  "scope": "Explicit page-level CDP device-metrics stress alongside Playwright; paired raw Glint 001-068 and same-revision official stock156, not the supported manager context-options path",
+  "passed": false,
+  "paired_calibration_passed": true,
+  "measurement_complete": true,
+  "compared_document_snapshots": 78,
+  "same_screen_viewport_css": true,
+  "glint_screen_consistency_passed": false,
+  "stock_screen_consistency_passed": false,
+  "bfcache_restored_glint": true,
+  "bfcache_restored_stock": true,
+  "bfcache_restored_documents_glint": 6,
+  "bfcache_restored_documents_stock": 6,
+  "source_core_receipt_postguards_passed": true,
+  "final_owned_chrome_processes_remaining": 0,
+  "supported_manager_path_verified": false,
+  "process_swap_verified": false,
+  "native_0069_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "glint_runtime_core_sha256": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "36d1a7c35d059d60c41c9c46d48c623918cd2ed63e746d6473c4993d1d729a7d",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "stock_runtime_core_sha256": {
+    "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+    "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+    "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+  },
+  "glint_receipt_sha256": "1250a9c4c72d3e85736b7ff99cccbd2ff0c0ca7ccebf56fb7d7ed025b8480dbc",
+  "stock_reference_record_sha256": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+  "glint_raw_report_sha256": "5f71306b2545719530d9f1b032823ca4a090b4b41966944e0cff9e20d42a7749",
+  "stock_raw_report_sha256": "04729d10b8d030f989fffcdd18943ac557676614dc8f5e337104ab4a2367c377",
+  "source_sha256": {
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "native/drafts/upstream-156/checkpoints/001-068.json": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b"
+  },
+  "stages": [
+    {
+      "name": "baseline",
+      "glint_passed": true,
+      "stock_passed": true,
+      "errors": [],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "2d703a40dccb742d33905d863003f14b20bb0525b4f8a38c567ec26e61912183",
+            "same": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "about-blank": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [],
+          "main_screen": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "screenshot_size": [
+            764,
+            485
+          ]
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "2d703a40dccb742d33905d863003f14b20bb0525b4f8a38c567ec26e61912183",
+            "same": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "about-blank": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [],
+          "main_screen": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "screenshot_size": [
+            764,
+            485
+          ]
+        }
+      }
+    },
+    {
+      "name": "set-a",
+      "glint_passed": false,
+      "stock_passed": false,
+      "errors": [
+        "A/cross: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "ebcba80f4b9019c4fde478c5cde525381e77eea3edfb884cda872e58190f8f43",
+            "same": "60f23b80f15ef2a43b99cb423b3049dd43a79fb28cf34185f227f7c8fa198bf4",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "60f23b80f15ef2a43b99cb423b3049dd43a79fb28cf34185f227f7c8fa198bf4",
+            "about-blank": "60f23b80f15ef2a43b99cb423b3049dd43a79fb28cf34185f227f7c8fa198bf4",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [
+            "cross: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "main_screen": {
+            "width": 1366,
+            "height": 768,
+            "availWidth": 1366,
+            "availHeight": 768,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "screenshot_size": [
+            1366,
+            768
+          ]
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "2d703a40dccb742d33905d863003f14b20bb0525b4f8a38c567ec26e61912183",
+            "same": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "about-blank": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [],
+          "main_screen": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "unchanged_by_other_page": true,
+          "screenshot_size": [
+            764,
+            485
+          ]
+        }
+      }
+    },
+    {
+      "name": "set-b",
+      "glint_passed": false,
+      "stock_passed": false,
+      "errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/cross: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "A: other page update changed this screen",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B: screenshot dimensions disagree with requested DPR"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "ad6c7e39ac3e96446e3de3ce53d23f3838ee24dd9ccb17a4a1d9b95374aa44c3",
+            "same": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "about-blank": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [
+            "main: logical screen differs from requested state",
+            "same: logical screen differs from requested state",
+            "cross: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "main_screen": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "unchanged_by_other_page": false,
+          "screenshot_size": [
+            1366,
+            768
+          ]
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "bcb60a7b995671beaf7d55db0721973e7d43afda3a341b6879fdb8a39cf51830",
+            "same": "36cdfdc7d9e718a9fdd7ee690df87d6fe085e2a20d26b67bf0b2e866aa5ca280",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "36cdfdc7d9e718a9fdd7ee690df87d6fe085e2a20d26b67bf0b2e866aa5ca280",
+            "about-blank": "36cdfdc7d9e718a9fdd7ee690df87d6fe085e2a20d26b67bf0b2e866aa5ca280",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [
+            "main: logical screen differs from requested state",
+            "same: logical screen differs from requested state",
+            "cross: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "main_screen": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "orientation": {
+              "type": "portrait-primary",
+              "angle": 0
+            }
+          },
+          "screenshot_size": [
+            390,
+            844
+          ]
+        }
+      }
+    },
+    {
+      "name": "update-a",
+      "glint_passed": false,
+      "stock_passed": false,
+      "errors": [
+        "A/cross: logical screen differs from requested state",
+        "A/nested-return: logical screen differs from requested state",
+        "A: screenshot dimensions disagree with requested DPR",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B: screenshot dimensions disagree with requested DPR",
+        "B: other page update changed this screen"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "d06ee8e53ffa4ba9a5a2effcc41eaff96636445229d309c22d9d24a2c3448ec9",
+            "same": "f820be5b5320bf605fe7cbdc0249919319f585bba6f55d3cb4ed9af9c73a3051",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "f820be5b5320bf605fe7cbdc0249919319f585bba6f55d3cb4ed9af9c73a3051",
+            "about-blank": "f820be5b5320bf605fe7cbdc0249919319f585bba6f55d3cb4ed9af9c73a3051",
+            "nested-return": "765c9f68fb981fcd86621020001a4ca29873d0de3e3ee075107e9f9c4f3c18a8"
+          },
+          "errors": [
+            "cross: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "main_screen": {
+            "width": 1280,
+            "height": 720,
+            "availWidth": 1280,
+            "availHeight": 720,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 2,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "screenshot_size": [
+            1280,
+            720
+          ]
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "3f959de316d3bba0bd16b634dcfb84510debb33ba51cd38f3227932443026b3a",
+            "same": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "about-blank": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [
+            "main: logical screen differs from requested state",
+            "same: logical screen differs from requested state",
+            "cross: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "main_screen": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "unchanged_by_other_page": false,
+          "screenshot_size": [
+            390,
+            844
+          ]
+        }
+      }
+    },
+    {
+      "name": "clear-a",
+      "glint_passed": false,
+      "stock_passed": false,
+      "errors": [
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/cross: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B: screenshot dimensions disagree with requested DPR"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "2d703a40dccb742d33905d863003f14b20bb0525b4f8a38c567ec26e61912183",
+            "same": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "about-blank": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [],
+          "main_screen": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "screenshot_size": [
+            764,
+            485
+          ]
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "3f959de316d3bba0bd16b634dcfb84510debb33ba51cd38f3227932443026b3a",
+            "same": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "about-blank": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [
+            "main: logical screen differs from requested state",
+            "same: logical screen differs from requested state",
+            "cross: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "main_screen": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "unchanged_by_other_page": true,
+          "screenshot_size": [
+            390,
+            844
+          ]
+        }
+      }
+    },
+    {
+      "name": "cross-site-navigation",
+      "glint_passed": false,
+      "stock_passed": false,
+      "errors": [
+        "B/same: logical screen differs from requested state",
+        "B/nested-return: logical screen differs from requested state",
+        "B: screenshot dimensions disagree with requested DPR"
+      ],
+      "pages": {
+        "A": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "2d703a40dccb742d33905d863003f14b20bb0525b4f8a38c567ec26e61912183",
+            "same": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "cross": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "srcdoc": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "about-blank": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [],
+          "main_screen": {
+            "width": 800,
+            "height": 600,
+            "availWidth": 800,
+            "availHeight": 600,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 1,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "unchanged_by_other_page": true,
+          "screenshot_size": [
+            764,
+            485
+          ]
+        },
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "de465d2aeca6531828107fbbeebb9b8ff7540c1db1c7372d93bc9dba8ed544b5",
+            "same": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "cross": "2068f362709a55c4f295fefe534bb517958ad03d6d3328002ca74631abd38f76",
+            "srcdoc": "2068f362709a55c4f295fefe534bb517958ad03d6d3328002ca74631abd38f76",
+            "about-blank": "2068f362709a55c4f295fefe534bb517958ad03d6d3328002ca74631abd38f76",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [
+            "same: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "main_screen": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 3,
+            "orientation": {
+              "type": "portrait-primary",
+              "angle": 0
+            }
+          },
+          "screenshot_size": [
+            390,
+            844
+          ]
+        }
+      }
+    },
+    {
+      "name": "history-return",
+      "glint_passed": false,
+      "stock_passed": false,
+      "errors": [
+        "main: logical screen differs from requested state",
+        "cross: logical screen differs from requested state",
+        "srcdoc: logical screen differs from requested state",
+        "about-blank: logical screen differs from requested state",
+        "same: logical screen differs from requested state",
+        "nested-return: logical screen differs from requested state"
+      ],
+      "pages": {
+        "B": {
+          "document_contexts": 6,
+          "same_screen_viewport_css": true,
+          "snapshot_sha256": {
+            "main": "adbb67e82937fcd75a4993e91fcb8fd603b1274e63a55a2d3546fb2939391ec6",
+            "cross": "abe442ad518903ace8c17ba83c5e82263c0685a72e3b0e782eb30adf529e6221",
+            "srcdoc": "abe442ad518903ace8c17ba83c5e82263c0685a72e3b0e782eb30adf529e6221",
+            "about-blank": "abe442ad518903ace8c17ba83c5e82263c0685a72e3b0e782eb30adf529e6221",
+            "same": "828ff2e7611b7ac877b5244add46fefb11898b98625d229a03e77ef91e5c790e",
+            "nested-return": "7aa60190fa996f381cfe45aeb722188f694fafb6486ae94f091e4ac4e3feee03"
+          },
+          "errors": [
+            "main: logical screen differs from requested state",
+            "cross: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state",
+            "same: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "main_screen": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 3,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          }
+        }
+      }
+    }
+  ],
+  "history_root_navigation_type": "BackForwardCacheRestore",
+  "history_uses_playwright_navigation": false,
+  "fixture_cache_control": "public, max-age=60",
+  "driver_argument_explicitly_removed": "--disable-back-forward-cache",
+  "prior_incomplete_attempt": {
+    "raw_report_sha256": "306d96e6537a900d37b39ac15711ac413ddf4b9b111b2a571f509b5507ecda74",
+    "measurement_complete": false,
+    "error": "Page.go_back: Timeout 10000ms exceeded.\nCall log:\n  - waiting for navigation until \"load\"\n",
+    "note": "Unsupported Playwright go_back waited for navigation after cache restoration; retained, not engine failure evidence"
+  },
+  "interpretation": "The mixed-controller failures also occur in official stock. Their cause is not attributed to Glint. Verify manager-owned context options and supported viewport changes before changing native policy ownership. Real cache restoration is proven, but post-restore identity consistency is not.",
+  "open_gates": [
+    "Manager context-options path with one controller per target",
+    "Linked 0069 plus main-root correction",
+    "Post-restore screenshot/input validation",
+    "Actual process-swap identity, worker/protected-surface combinations and installed payload"
+  ],
+  "references": [
+    "https://playwright.dev/python/docs/api/class-page#page-go-back",
+    "https://web.dev/articles/bfcache"
+  ]
+}

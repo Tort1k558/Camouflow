@@ -151,6 +151,35 @@ incomplete prototypes are recorded separately, including the observer callback
 defect and the overstrict early-viewport validation. No deadline or requested
 browser setting was changed to obtain the completed baseline.
 
+## Additional lifecycle collector and stock control
+
+[`first-script/lifecycle.py`](first-script/lifecycle.py) collects two pages with
+explicit CDP metrics, update/clear, cross-site navigation and cache restoration.
+This deliberately mixes a separate CDP controller with Playwright-owned pages;
+it is **not the manager's context-options configuration path**.
+
+The [paired calibration](screen-lifecycle68-calibration-observations.json) ran
+preserved Glint 001–068 and official stock156 at the same Git revision. All
+**78 screen/viewport/CSS snapshots matched**. Both runs completed all seven
+stages and restored all **six documents** from BFCache, but both also failed the
+same requested-state/independence checks. These failures are not attributed to
+Glint: the next control must use manager-owned context options and supported
+viewport changes, before changing native policy ownership based on this stress.
+
+BFCache is measured with native `Page.frameNavigated` type
+`BackForwardCacheRestore` plus retained `pageshow.persisted` evidence from every
+document. The collector uses CDP history navigation and origin-checked owned
+`postMessage` responders after restoration, not Playwright Page/Frame methods.
+The [Playwright API explicitly does not support BFCache navigation](https://playwright.dev/python/docs/api/class-page#page-go-back);
+the initial unsupported `go_back()` timeout is retained, not declared an engine
+failure. [Chrome's event guidance](https://web.dev/articles/bfcache) explains why
+`pageshow.persisted`, not an ordinary back navigation, is the cache signal.
+
+The cacheable loopback response and removal of the driver's BFCache-disable
+argument are explicit diagnostic settings, not product defaults. PID-level
+process-swap proof, post-restore screenshot/input, actual 0069/0070 binaries,
+protected workers/surfaces and installed-package admission remain open.
+
 The frozen 0069 draft's logical DPR accessor still restricts its override to
 subframes, leaving the main root on Page-global inspector state. The queued
 [`main-dpr70.patch`](main-dpr70.patch) removes that restriction and adds three

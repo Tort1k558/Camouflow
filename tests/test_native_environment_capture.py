@@ -518,3 +518,178 @@ def test_public_first_script_execution_binds_current_sources_and_retains_incompl
                for row in record["phases"])
     assert len(record["prior_incomplete_attempts"]) == 3
     assert all(not row["passed"] and not row["measurement_complete"] for row in record["prior_incomplete_attempts"])
+
+
+@pytest.fixture
+def screen_lifecycle_collector():
+    import runpy
+
+    return runpy.run_path(str(environment.ROOT / "native/drafts/environment/first-script/lifecycle.py"))
+
+
+@pytest.mark.parametrize("state,expected", [
+    (None, False), ({}, False), ({"registered": False, "events": [True]}, False),
+    ({"registered": True, "events": None}, False), ({"registered": True, "events": []}, False),
+    ({"registered": True, "events": [False]}, False), ({"registered": True, "events": ["true"]}, False),
+    ({"registered": 1, "events": [True]}, False), ({"registered": True, "events": [True]}, True),
+    ({"registered": True, "events": [False, True]}, True),
+])
+def test_screen_lifecycle_requires_retained_pageshow_persisted_evidence(screen_lifecycle_collector, state, expected):
+    assert screen_lifecycle_collector["history_restored"](state) is expected
+
+
+def test_screen_lifecycle_metrics_and_clear_do_not_mutate_original_baseline(screen_lifecycle_collector):
+    record = json.loads((environment.ROOT / "native/drafts/environment/screen68-first-script-complete-observations.json").read_bytes())
+    original = record["phases"][-1]["observations"]["main"]["settled"]["screen"]
+    before = copy.deepcopy(original)
+    settings = {"width": 390, "height": 844, "deviceScaleFactor": 3, "mobile": True}
+    params = screen_lifecycle_collector["metrics_parameters"](settings)
+    assert params == {**settings, "screenWidth": 390, "screenHeight": 844,
+                      "screenOrientation": {"type": "portraitPrimary", "angle": 0}}
+    requested = screen_lifecycle_collector["expected_screen"](original, settings)
+    assert (requested["width"], requested["height"], requested["dpr"]) == (390, 844, 3)
+    assert requested["orientation"] == {"type": "portrait-primary", "angle": 0}
+    assert screen_lifecycle_collector["expected_screen"](original, None) == before
+    assert original == before
+
+
+def test_screen_lifecycle_validation_keeps_child_geometry_separate(screen_lifecycle_collector):
+    record = json.loads((environment.ROOT / "native/drafts/environment/screen68-first-script-complete-observations.json").read_bytes())
+    values = {role: {"snapshot": copy.deepcopy(row["settled"]),
+                     "embedding_size": copy.deepcopy(row["settled"]["viewport"])}
+              for role, row in record["phases"][-1]["observations"].items()}
+    expected = values["main"]["snapshot"]["screen"]
+    assert not screen_lifecycle_collector["validate_page"](values, expected)
+    values["cross"]["embedding_size"]["width"] += 1
+    assert screen_lifecycle_collector["validate_page"](values, expected) == [
+        "cross: child viewport differs from its own embedding box"]
+    values.pop("nested-return")
+    with pytest.raises(ValueError, match="six"):
+        screen_lifecycle_collector["validate_page"](values, expected)
+
+
+def test_screen_lifecycle_bfcache_fixture_uses_explicit_cacheable_response(screen_lifecycle_collector):
+    import http.client
+    import threading
+
+    server = screen_lifecycle_collector["create_server"]()
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+    try:
+        connection.request("GET", "/screen?role=main")
+        response = connection.getresponse()
+        assert response.status == 200
+        assert response.getheader("Cache-Control") == "public, max-age=60"
+        assert b"glintFirstScreen" in response.read()
+    finally:
+        connection.close()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert not thread.is_alive()
+
+
+def restored_screen_state():
+    record = json.loads((environment.ROOT / "native/drafts/environment/screen68-first-script-complete-observations.json").read_bytes())
+    rows = record["phases"][-1]["observations"]
+    parents = {role: "main" for role in rows}
+    parents.update({"main": None, "nested-return": "cross"})
+    snapshots = {role: {"snapshot": copy.deepcopy(row["settled"]), "persisted": True,
+                         "parent": parents[role], "children_sizes": {}}
+                 for role, row in rows.items()}
+    for role, parent in parents.items():
+        if parent is not None:
+            snapshots[parent]["children_sizes"][role] = dict(rows[role]["settled"]["viewport"])
+    return {"registered": True, "events": [True], "snapshots": snapshots,
+            "timedOut": False, "protocolErrors": []}
+
+
+def test_screen_lifecycle_restore_covers_six_persisted_documents_without_rewriting_raw_state(screen_lifecycle_collector):
+    state = restored_screen_state()
+    original = copy.deepcopy(state)
+    observed = screen_lifecycle_collector["restored_observations"](state)
+    assert state == original
+    assert len(observed) == 6 and all(row["persisted"] for row in observed.values())
+    assert not screen_lifecycle_collector["validate_page"](observed, observed["main"]["snapshot"]["screen"])
+
+
+@pytest.mark.parametrize("mutation", ["timeout", "protocol", "missing", "not-persisted", "parent", "embedding", "mixed-events"])
+def test_screen_lifecycle_rejects_incomplete_or_untrusted_restore_evidence(screen_lifecycle_collector, mutation):
+    state = restored_screen_state()
+    if mutation == "timeout":
+        state["timedOut"] = True
+    elif mutation == "protocol":
+        state["protocolErrors"] = ["Duplicate document response"]
+    elif mutation == "missing":
+        state["snapshots"].pop("nested-return")
+    elif mutation == "not-persisted":
+        state["snapshots"]["cross"]["persisted"] = False
+    elif mutation == "parent":
+        state["snapshots"]["cross"]["parent"] = "missing"
+    elif mutation == "embedding":
+        state["snapshots"]["main"]["children_sizes"].pop("cross")
+    else:
+        state["events"] = [True, "true"]
+    with pytest.raises(ValueError):
+        screen_lifecycle_collector["restored_observations"](state)
+
+
+@pytest.mark.parametrize("cache_restored", [False, True])
+def test_screen_lifecycle_history_uses_cdp_not_unsupported_playwright_back(screen_lifecycle_collector, cache_restored):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    root = SimpleNamespace(name="", parent_frame=None, evaluate=AsyncMock())
+    cross = SimpleNamespace(name="cross", parent_frame=root, evaluate=AsyncMock())
+    frames = [root, cross, *[SimpleNamespace(name=name, parent_frame=cross if name == "nested-return" else root,
+                                            evaluate=AsyncMock())
+                            for name in ("same", "srcdoc", "about-blank", "nested-return")]]
+    page = SimpleNamespace(frames=frames, goto=AsyncMock(), go_back=AsyncMock(side_effect=AssertionError("Unsupported API")))
+    state = restored_screen_state() if cache_restored else {"registered": False, "events": None, "snapshots": {}}
+    callbacks = {}
+    calls = []
+
+    async def send(name, arguments=None):
+        calls.append((name, arguments))
+        if name == "Page.getNavigationHistory":
+            return {"currentIndex": 0, "entries": [{"id": 7, "url": "http://localhost:1234/screen?role=main"}]}
+        if name == "Page.navigateToHistoryEntry":
+            callbacks["Page.frameNavigated"]({"frame": {"id": "root", "url": "http://localhost:1234/screen?role=main"},
+                                               "type": "BackForwardCacheRestore" if cache_restored else "Navigation"})
+            return {}
+        assert name == "Runtime.evaluate" and arguments["awaitPromise"] and arguments["returnByValue"]
+        assert "owned-glint-history-request" in arguments["expression"]
+        return {"result": {"value": state}}
+
+    session = SimpleNamespace(send=send, on=lambda name, callback: callbacks.__setitem__(name, callback),
+                              remove_listener=lambda name, callback: callbacks.pop(name))
+    expected = {frame.name or "main": {"origin": "http://localhost:1234"} for frame in frames}
+    report = {"fixture_port": 1234}
+    result = asyncio.run(screen_lifecycle_collector["restore_history"](page, session, expected, report))
+    assert result == state and not callbacks
+    page.go_back.assert_not_awaited()
+    assert [name for name, _ in calls] == ["Page.getNavigationHistory", "Page.navigateToHistoryEntry", "Runtime.evaluate"]
+    assert all(frame.evaluate.await_count == 1 for frame in frames)
+    assert report["history_navigation"]["type"] == ("BackForwardCacheRestore" if cache_restored else "Navigation")
+
+
+def test_screen_lifecycle_calibration_matches_stock_without_false_manager_or_native_admission():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/screen-lifecycle68-calibration-observations.json").read_bytes())
+    assert not record["passed"] and record["paired_calibration_passed"] and record["measurement_complete"]
+    assert record["same_screen_viewport_css"] and record["compared_document_snapshots"] == 78
+    assert record["bfcache_restored_glint"] and record["bfcache_restored_stock"]
+    assert record["bfcache_restored_documents_glint"] == record["bfcache_restored_documents_stock"] == 6
+    assert all(record[key] is False for key in ("supported_manager_path_verified", "process_swap_verified",
+                                               "native_0069_verified", "privacy_admitted", "production_admitted",
+                                               "history_uses_playwright_navigation"))
+    assert record["source_core_receipt_postguards_passed"] and record["final_owned_chrome_processes_remaining"] == 0
+    assert len(record["stages"]) == 7
+    assert sum(page["document_contexts"] for row in record["stages"] for page in row["pages"].values()) == 78
+    for name, expected in record["source_sha256"].items():
+        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == expected
+    assert record["prior_incomplete_attempt"]["measurement_complete"] is False
