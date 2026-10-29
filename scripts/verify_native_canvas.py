@@ -276,20 +276,22 @@ async def read_owned_context(frame, read: str, name: str, *, timeout: float = 30
         raise TimeoutError("Owned readback timed out in " + name) from error
 
 
-async def observe(context, origin: str, read: str = READ) -> dict:
+async def observe(context, origin: str, read: str = READ, *, frame_allow: str = "") -> dict:
     page = context.pages[0]
     await page.goto(origin, wait_until="load", timeout=30000)
-    await page.evaluate("url => { const frame = document.createElement('iframe'); frame.id = 'cross-origin'; frame.src = url; document.body.append(frame); }",
-                        origin.replace("127.0.0.1", "localhost") + "/cross-frame")
+    await page.evaluate("({url, allow}) => { const frame = document.createElement('iframe'); frame.id = 'cross-origin'; if (allow) frame.allow = allow; frame.src = url; document.body.append(frame); }",
+                        {"url": origin.replace("127.0.0.1", "localhost") + "/cross-frame", "allow": frame_allow})
     await page.locator("#cross-origin").content_frame.locator("h1").wait_for(timeout=15000)
-    await page.evaluate("""() => {
+    await page.evaluate("""allow => {
       const blank = document.createElement('iframe');
+      if (allow) blank.allow = allow;
       blank.id = 'owned-about-blank'; blank.src = 'about:blank';
       document.body.append(blank);
       const srcdoc = document.createElement('iframe');
+      if (allow) srcdoc.allow = allow;
       srcdoc.id = 'owned-srcdoc'; srcdoc.srcdoc = '<h1>Owned srcdoc context</h1>';
       document.body.append(srcdoc);
-    }""")
+    }""", frame_allow)
     await page.locator("#owned-srcdoc").content_frame.locator("h1").wait_for(timeout=15000)
     observed = {"document": await read_owned_context(page, read, "document")}
     for name, frame_id in (("same_origin_frame", "owned-frame"), ("cross_origin_frame", "cross-origin"),

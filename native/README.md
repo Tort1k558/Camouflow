@@ -116,6 +116,13 @@ Candidate mode checks the complete receipt and real revision, holds the workspac
 lock and preserves unrelated A/B feature flags. Strict WebGPU availability is
 explicit; stock calibration does not admit Glint privacy or automation concealment.
 
+## Measured reference environments
+
+For source-bound measurements rather than configuration, see
+[measured reference environments](drafts/environment/README.md). The first
+stock156 capture is a headless control on one Windows host, not a generated
+hardware cohort or an ordinary-user identity.
+
 ## Pin a profile's requested environment
 
 In **Profiles → Settings → Browser JSON**, click **Pin environment**, review the
