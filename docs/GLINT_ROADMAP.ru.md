@@ -1,5 +1,19 @@
 # Glint: план проверки и развития
 
+## Следующий связанный пакет — native lifecycle-контракты
+
+После 0070 подготовлены ещё четыре Blink-кейса: смена main DPR, обновление
+логического экрана remote-root без изменения физических метрик compositor,
+отключение политики с возвратом к native snapshot, независимость remote DPR
+от чужого Page inspector state с сохранением zoom/CSS. Вместе с тремя кейсами
+0070 — семь подготовленных проверок.
+[Патч](../native/drafts/environment/screen-lifecycle-native-tests.patch) и
+[подготовка](../native/drafts/environment/screen-lifecycle-native-tests-preparation.json).
+Apply-check прошёл в отдельном overlay после 0070; активные исходники 0069
+не менялись. В queued-фикстуре 0070 также согласован available rect с экраном.
+**C++ ещё не компилировался, кейсы не выполнялись.** События
+screen/media/orientation и реальные BFCache/input по-прежнему отдельные gates.
+
 ## Штатный путь настроек менеджера — проверен отдельно
 
 Одинаковый прогон Glint 001–068 и stock156 использует настоящие

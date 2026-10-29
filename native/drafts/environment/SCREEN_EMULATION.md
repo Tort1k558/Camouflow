@@ -215,6 +215,15 @@ modified. The correction is **unselected, uncompiled and runtime-unverified**.
 Neither child-only consistency nor a passing pure screen-calculation test can
 admit the complete package without stable main-root DPR.
 
+The separate [`screen-lifecycle-native-tests.patch`](screen-lifecycle-native-tests.patch)
+layers four additional cases on the queued 0070 test source. Main DPR update,
+remote-root logical/physical metrics separation, policy clear/native refresh,
+and remote DPR isolation from Page inspector with zoom/CSS are covered in source.
+[Preparation](screen-lifecycle-native-tests-preparation.json) records successful
+apply-check in an isolated overlay and unchanged live 0069 sources. Together
+with 0070 this prepares seven `blink_unittests` cases, **not compiled or executed**.
+It does not replace real DOM/CSS events, browser input, screenshots or BFCache.
+
 | Contract | Checks |
 | --- | --- |
 | First-script consistency | Same-origin, cross-origin, inherited and nested frames; no late `framenavigated` repair |

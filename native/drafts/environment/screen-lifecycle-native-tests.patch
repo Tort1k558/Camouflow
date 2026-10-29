@@ -1,0 +1,93 @@
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_test.cc b/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
+index 8d6cd50..ea0eb6b 100644
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
+@@ -619,6 +619,88 @@ TEST_F(WebFrameWidgetImplRemoteFrameSimTest,
+   EXPECT_FALSE(layer_tree_host->is_external_pinch_gesture_active_for_testing());
+ }
+ 
++TEST_F(WebFrameWidgetSimTest, GlintMainLogicalDprFollowsLatestSnapshot) {
++  LoadURL("about:blank");
++  auto* widget = WebView().MainFrameViewWidget();
++  auto properties = GlintLogicalMainScreenPropertiesForTesting();
++  for (float factor : {3.f, 2.f, 1.f, 1.25f}) {
++    properties.glint_logical_screen_infos->mutable_current().device_scale_factor =
++        factor;
++    widget->ApplyVisualProperties(properties);
++    WebView().GetPage()->SetInspectorDeviceScaleFactorOverride(0.5f);
++    EXPECT_DOUBLE_EQ(GetDocument().GetFrame()->DevicePixelRatio(), factor);
++    EXPECT_FLOAT_EQ(widget->GetScreenInfo().device_scale_factor, 1);
++    EXPECT_EQ(widget->GetScreenInfo().rect, gfx::Rect(800, 600));
++  }
++}
++
++TEST_F(WebFrameWidgetImplRemoteFrameSimTest,
++       GlintLogicalScreenUpdatePreservesPhysicalCompositorMetrics) {
++  auto* widget = LocalFrameRootWidget();
++  auto properties = GlintLogicalMainScreenPropertiesForTesting();
++  properties.glint_logical_screen_infos->mutable_current().available_rect =
++      gfx::Rect(390, 844);
++  widget->ApplyVisualProperties(properties);
++  EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().rect,
++            gfx::Rect(390, 844));
++  EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().available_rect,
++            gfx::Rect(390, 844));
++  EXPECT_FLOAT_EQ(widget->GlintWebExposedScreenInfos()
++                      .current()
++                      .device_scale_factor,
++                  3);
++  properties.glint_logical_screen_infos->mutable_current().rect =
++      gfx::Rect(1280, 720);
++  properties.glint_logical_screen_infos->mutable_current().available_rect =
++      gfx::Rect(10, 20, 1200, 680);
++  properties.glint_logical_screen_infos->mutable_current().device_scale_factor =
++      2;
++  widget->ApplyVisualProperties(properties);
++  EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().rect,
++            gfx::Rect(1280, 720));
++  EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().available_rect,
++            gfx::Rect(10, 20, 1200, 680));
++  ASSERT_TRUE(widget->GlintLogicalRootDevicePixelRatio());
++  EXPECT_DOUBLE_EQ(*widget->GlintLogicalRootDevicePixelRatio(), 2);
++  EXPECT_EQ(widget->GetScreenInfo().rect, gfx::Rect(800, 600));
++  EXPECT_EQ(widget->GetScreenInfo().available_rect, gfx::Rect(800, 600));
++  EXPECT_FLOAT_EQ(widget->GetScreenInfo().device_scale_factor, 1);
++}
++
++TEST_F(WebFrameWidgetImplRemoteFrameSimTest,
++       GlintLogicalScreenClearRestoresNativeSnapshot) {
++  auto* widget = LocalFrameRootWidget();
++  auto properties = GlintLogicalMainScreenPropertiesForTesting();
++  widget->ApplyVisualProperties(properties);
++  ASSERT_TRUE(widget->GlintLogicalRootDevicePixelRatio());
++  properties.glint_logical_screen_infos.reset();
++  widget->ApplyVisualProperties(properties);
++  EXPECT_FALSE(widget->GlintLogicalRootDevicePixelRatio());
++  EXPECT_EQ(widget->GlintWebExposedScreenInfos(), properties.screen_infos);
++  properties.screen_infos.mutable_current().rect = gfx::Rect(1024, 768);
++  properties.screen_infos.mutable_current().available_rect = gfx::Rect(1024, 740);
++  properties.screen_infos.mutable_current().device_scale_factor = 1.25;
++  widget->ApplyVisualProperties(properties);
++  EXPECT_EQ(widget->GlintWebExposedScreenInfos(), properties.screen_infos);
++  EXPECT_FALSE(widget->GlintLogicalRootDevicePixelRatio());
++}
++
++TEST_F(WebFrameWidgetImplRemoteFrameSimTest,
++       GlintLogicalRemoteDprIgnoresForeignInspectorAndKeepsZoom) {
++  auto* widget = LocalFrameRootWidget();
++  widget->ApplyVisualProperties(GlintLogicalMainScreenPropertiesForTesting());
++  auto* frame = LocalFrameRoot().GetFrame();
++  for (float factor : {0.5f, 1.f, 2.f, 4.f}) {
++    frame->GetPage()->SetInspectorDeviceScaleFactorOverride(factor);
++    EXPECT_DOUBLE_EQ(frame->DevicePixelRatio(), 3);
++  }
++  widget->SetZoomLevel(1);
++  frame->SetCssZoomFactor(1.25f);
++  EXPECT_DOUBLE_EQ(frame->DevicePixelRatio(),
++                   3 * WebView().ZoomLevelToZoomFactor(1) * 1.25);
++  EXPECT_FLOAT_EQ(widget->GetScreenInfo().device_scale_factor, 1);
++}
++
+ // Since std::unique_ptr<InputHandlerProxy::DidOverscrollParams> isn't copyable
+ // we can't use the MockCallback template.
+ class MockHandledEventCallback {

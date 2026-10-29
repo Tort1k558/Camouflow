@@ -12,7 +12,7 @@ index 6b0f1f2..c43a5a8 100644
    return glint_logical_screen_infos_->current().device_scale_factor *
           View()->ZoomLevelToZoomFactor(zoom_level_);
 diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_test.cc b/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
-index f2ccc28..ecebe02 100644
+index f2ccc28..8d6cd50 100644
 --- a/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
 +++ b/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
 @@ -32,6 +32,7 @@
@@ -31,7 +31,7 @@ index f2ccc28..ecebe02 100644
  #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
  #include "third_party/blink/renderer/core/scroll/scrollbar.h"
  #include "third_party/blink/renderer/core/testing/fake_web_plugin.h"
-@@ -102,6 +104,67 @@ class WebFrameWidgetSimTest : public SimTest {
+@@ -102,6 +104,69 @@ class WebFrameWidgetSimTest : public SimTest {
    }
  };
  
@@ -47,6 +47,8 @@ index f2ccc28..ecebe02 100644
 +  result.glint_logical_screen_infos = result.screen_infos;
 +  result.glint_logical_screen_infos->mutable_current().device_scale_factor = 3;
 +  result.glint_logical_screen_infos->mutable_current().rect =
++      gfx::Rect(390, 844);
++  result.glint_logical_screen_infos->mutable_current().available_rect =
 +      gfx::Rect(390, 844);
 +  result.new_size_device_px = gfx::Size(800, 600);
 +  result.visible_viewport_size_device_px = result.new_size_device_px;

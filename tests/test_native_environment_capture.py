@@ -768,3 +768,26 @@ def test_manager_screen_calibration_binds_sources_and_retains_failed_identity_co
                            for click in page[kind + "_trusted_last_clicks"].values())
     for name, value in record["source_sha256"].items():
         assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+
+
+def test_queued_native_lifecycle_cases_bind_to_dpr70_without_claiming_execution():
+    import hashlib
+    import re
+
+    directory = environment.ROOT / "native/drafts/environment"
+    record = json.loads((directory / "screen-lifecycle-native-tests-preparation.json").read_bytes())
+    assert all(record[name] is False for name in ("selected", "cpp_compiled", "native_tests_executed",
+        "runtime_verified", "screen_inheritance_fixed", "privacy_admitted", "production_admitted"))
+    assert record["apply_check_passed"] and record["active_source_postguards_passed"]
+    assert record["prepared_target"] == "blink_unittests"
+    assert record["fixture_available_rectangle_valid"]
+    assert hashlib.sha256((directory / record["base_patch"]).read_bytes()).hexdigest() == record["base_patch_sha256"]
+    patch = (directory / record["patch"]).read_bytes()
+    assert hashlib.sha256(patch).hexdigest() == record["patch_sha256"]
+    added = "\n".join(line[1:] for line in patch.decode("utf-8").splitlines()
+                       if line.startswith("+") and not line.startswith("+++"))
+    assert re.findall(r"TEST_F\([^,]+,\s*(Glint\w+)\)", added) == record["prepared_cases"]
+    assert len(record["prepared_cases"]) == 4
+    assert "GlintLogicalRootDevicePixelRatio" in added and "glint_logical_screen_infos.reset()" in added
+    assert "GetScreenInfo().device_scale_factor, 1" in added
+    assert "SetInspectorDeviceScaleFactorOverride" in added and "SetCssZoomFactor" in added

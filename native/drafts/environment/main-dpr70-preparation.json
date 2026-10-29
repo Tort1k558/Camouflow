@@ -9,7 +9,7 @@
   "privacy_admitted": false,
   "production_admitted": false,
   "patch": "main-dpr70.patch",
-  "patch_sha256": "07f7e928f6b34c8df670f67d9ef161f4ad76855087aa4f58a7aa8e3ac9bf2c79",
+  "patch_sha256": "5d1b6d63c64af5ae2939e409cdb38e44c718bba0fd03ecb7d1f41523e1fd84e3",
   "base_manifest": "../upstream-156/checkpoints/001-069.json",
   "base_manifest_sha256": "5b7cce89049abe7d5ea5717b3c60817975858f8c3affdcb738e58a9c5262e89e",
   "base_source_sha256": {
@@ -33,5 +33,7 @@
     "Complete corrected first-script fixture control, including input and screenshots",
     "Actual linked 0069 plus correction runtime, nested roots and independent pages",
     "Zoom, text-scale, clearing, navigation, BFCache and renderer lifecycle"
-  ]
+  ],
+  "prior_preparation_patch_sha256": "07f7e928f6b34c8df670f67d9ef161f4ad76855087aa4f58a7aa8e3ac9bf2c79",
+  "fixture_available_rectangle_valid": true
 }

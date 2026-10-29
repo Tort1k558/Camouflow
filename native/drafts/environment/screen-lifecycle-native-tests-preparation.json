@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "scope": "Four native main/remote-root update/clear/physical-metrics cases layered after queued 0070; source preparation only",
+  "selected": false,
+  "cpp_compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "screen_inheritance_fixed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "patch": "screen-lifecycle-native-tests.patch",
+  "patch_sha256": "2671923204326f926c7e501f1bafc6b4bcd0868f47f179aa6cb6a94911512d29",
+  "base_patch": "main-dpr70.patch",
+  "base_patch_sha256": "5d1b6d63c64af5ae2939e409cdb38e44c718bba0fd03ecb7d1f41523e1fd84e3",
+  "base_test_source_sha256": "12c4d4e636ff9ec1c781c155e18960667dc50a2dd27ec274f6ed384b37a51f45",
+  "prepared_target": "blink_unittests",
+  "prepared_cases": [
+    "GlintMainLogicalDprFollowsLatestSnapshot",
+    "GlintLogicalScreenUpdatePreservesPhysicalCompositorMetrics",
+    "GlintLogicalScreenClearRestoresNativeSnapshot",
+    "GlintLogicalRemoteDprIgnoresForeignInspectorAndKeepsZoom"
+  ],
+  "apply_check_passed": true,
+  "active_source_postguards_passed": true,
+  "active_source_sha256": {
+    "third_party/blink/renderer/core/frame/web_frame_widget_test.cc": "14e66271258af8d23a73f199e51ae12eccf1c948211a3b61edc86f7ff8347a1a",
+    "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "5c976fa7f90b84eccece5093abd6c743611296308b2f8bb4802c188b43f09b39"
+  },
+  "open_gates": [
+    "Compile and execute all seven linked Blink cases",
+    "Verify real first-script, multi-tab and persistent-restart collectors on the linked binary",
+    "Observe screen/media/orientation events, input, screenshot and BFCache behavior"
+  ],
+  "prior_preparation_patch_sha256": "b10e0f295c7eb9101ba66056b878f38ef5b13a2b257c4112deae0fab85ce4c33",
+  "fixture_available_rectangle_valid": true
+}
