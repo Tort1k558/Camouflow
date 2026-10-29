@@ -45,7 +45,7 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
      params->glint_document_surface_policy = glint::candidate::DocumentSurfacePolicy{
          params->storage_key, std::move(policy)};
    }
-@@ -443,4 +451,333 @@
+@@ -443,4 +451,474 @@
  }
  
  
@@ -375,6 +375,147 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
 +  closed.WaitUntilSettled();
 +  EXPECT_TRUE(closed.IsFulfilled());
 +  EXPECT_EQ(completion->count(), 0);
++  EXPECT_EQ(context->ContextState(), V8AudioContextState::Enum::kClosed);
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintProtectedQueuedChunksResumeAfterSuspension) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(true, 5);
++  ASSERT_TRUE(holder);
++  V8TestingScope scope(std::move(holder));
++  auto* context = OfflineAudioContext::Create(scope.GetFrame().DomWindow(), 1,
++                                              256, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  ASSERT_NO_FATAL_FAILURE(GlintConnectConstantSource(*context));
++  auto* completion = MakeGarbageCollected<GlintOfflineCompletionProbe>(context);
++  context->addEventListener(AtomicString("complete"), completion);
++  ScriptPromiseTester suspended(
++      scope.GetScriptState(),
++      context->suspendContext(scope.GetScriptState(), 0.0,
++                              ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester first(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester second(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  suspended.WaitUntilSettled();
++  ASSERT_TRUE(suspended.IsFulfilled());
++  ASSERT_EQ(context->ContextState(), V8AudioContextState::Enum::kSuspended);
++  EXPECT_FALSE(first.IsFulfilled());
++  EXPECT_FALSE(first.IsRejected());
++  EXPECT_FALSE(second.IsFulfilled());
++  EXPECT_FALSE(second.IsRejected());
++  EXPECT_EQ(completion->count(), 0);
++  ScriptPromiseTester resumed(
++      scope.GetScriptState(),
++      context->resumeContext(scope.GetScriptState(), ASSERT_NO_EXCEPTION));
++  resumed.WaitUntilSettled();
++  ASSERT_TRUE(resumed.IsFulfilled());
++  first.WaitUntilSettled();
++  second.WaitUntilSettled();
++  ASSERT_TRUE(first.IsFulfilled());
++  ASSERT_TRUE(second.IsFulfilled());
++  auto* first_buffer = ToScriptWrappable<AudioBuffer>(
++      scope.GetIsolate(), first.Value().V8Value().As<v8::Object>());
++  auto* second_buffer = ToScriptWrappable<AudioBuffer>(
++      scope.GetIsolate(), second.Value().V8Value().As<v8::Object>());
++  ASSERT_TRUE(first_buffer);
++  ASSERT_TRUE(second_buffer);
++  EXPECT_NE(first_buffer, second_buffer);
++  for (auto* buffer : {first_buffer, second_buffer}) {
++    ASSERT_EQ(buffer->length(), 128u);
++    auto channel = buffer->getChannelData(0);
++    ASSERT_TRUE(channel);
++    ASSERT_EQ(channel->AsSpan().size(), 128u);
++    for (float sample : channel->AsSpan()) {
++      EXPECT_EQ(std::bit_cast<uint32_t>(sample), 0x3e800001u);
++    }
++  }
++  EXPECT_EQ(completion->count(), 1);
++  EXPECT_EQ(completion->buffer(), second_buffer);
++  EXPECT_EQ(context->ContextState(), V8AudioContextState::Enum::kClosed);
++}
++
++TEST_F(OfflineAudioContextTest, GlintProtectedQueueCloseRejectsAllPendingWork) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(true, 5);
++  ASSERT_TRUE(holder);
++  V8TestingScope scope(std::move(holder));
++  auto* context = OfflineAudioContext::Create(scope.GetFrame().DomWindow(), 1,
++                                              256, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  ASSERT_NO_FATAL_FAILURE(GlintConnectConstantSource(*context));
++  auto* completion = MakeGarbageCollected<GlintOfflineCompletionProbe>(context);
++  context->addEventListener(AtomicString("complete"), completion);
++  ScriptPromiseTester suspended(
++      scope.GetScriptState(),
++      context->suspendContext(scope.GetScriptState(), 0.0,
++                              ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester future_suspend(
++      scope.GetScriptState(),
++      context->suspendContext(scope.GetScriptState(), 128.0 / 44100.0,
++                              ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester first(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  ScriptPromiseTester second(
++      scope.GetScriptState(),
++      context->startOfflineRendering(scope.GetScriptState(), 128,
++                                     ASSERT_NO_EXCEPTION));
++  suspended.WaitUntilSettled();
++  ASSERT_TRUE(suspended.IsFulfilled());
++  ASSERT_EQ(context->ContextState(), V8AudioContextState::Enum::kSuspended);
++  EXPECT_FALSE(first.IsFulfilled());
++  EXPECT_FALSE(first.IsRejected());
++  EXPECT_FALSE(second.IsFulfilled());
++  EXPECT_FALSE(second.IsRejected());
++  EXPECT_FALSE(future_suspend.IsFulfilled());
++  EXPECT_FALSE(future_suspend.IsRejected());
++  ScriptPromiseTester closed(
++      scope.GetScriptState(),
++      context->closeContext(scope.GetScriptState(), ASSERT_NO_EXCEPTION));
++  closed.WaitUntilSettled();
++  first.WaitUntilSettled();
++  second.WaitUntilSettled();
++  future_suspend.WaitUntilSettled();
++  EXPECT_TRUE(closed.IsFulfilled());
++  EXPECT_TRUE(first.IsRejected());
++  EXPECT_TRUE(second.IsRejected());
++  EXPECT_TRUE(future_suspend.IsRejected());
++  EXPECT_EQ(completion->count(), 0);
++  EXPECT_EQ(context->ContextState(), V8AudioContextState::Enum::kClosed);
++  test::RunPendingTasks();
++  EXPECT_EQ(completion->count(), 0);
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintClosedContextRetainsNativePrecedenceOverMissingPolicy) {
++  ScopedOfflineAudioContextIncrementalRenderingForTest incremental(true);
++  auto holder = GlintOfflineAudioPolicyHolder(false);
++  ASSERT_TRUE(holder);
++  V8TestingScope scope(std::move(holder));
++  auto* context = OfflineAudioContext::Create(scope.GetFrame().DomWindow(), 1,
++                                              256, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  ScriptPromiseTester closed(
++      scope.GetScriptState(),
++      context->closeContext(scope.GetScriptState(), ASSERT_NO_EXCEPTION));
++  closed.WaitUntilSettled();
++  ASSERT_TRUE(closed.IsFulfilled());
++  DummyExceptionStateForTesting exception;
++  auto promise = context->startOfflineRendering(nullptr, 128, exception);
++  EXPECT_TRUE(promise.IsEmpty());
++  ASSERT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kInvalidStateError);
++  EXPECT_EQ(exception.Message(),
++            "cannot call startRendering on an OfflineAudioContext in a stopped "
++            "state.");
 +  EXPECT_EQ(context->ContextState(), V8AudioContextState::Enum::kClosed);
 +}
 +

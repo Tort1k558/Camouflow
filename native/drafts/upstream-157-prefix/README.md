@@ -74,7 +74,7 @@ extension outside `patches/`. `chunked-audio-tests.json` binds its exact bytes t
 the full 001–065 manifest and test-source input. It does not change either
 selected manifest or the live 156 build.
 
-Eight test bodies are prepared; **none has been compiled or executed on 157**:
+Eleven test bodies are prepared; **none has been compiled or executed on 157**:
 
 | Fixture scope | Intended assertion |
 | --- | --- |
@@ -85,15 +85,41 @@ Eight test bodies are prepared; **none has been compiled or executed on 157**:
 | Three queued chunks | 128/128/44 frames; one final event; the event and final Promise share a mutable buffer |
 | Separate policy vectors | Real constant-source samples match independent seed-4/seed-5 HMAC vectors, not merely silence |
 | Flag-off indefinite rendering | Raw samples remain unchanged; closing settles without a completion event |
+| Protected queue suspend/resume | Both chunks remain pending at the pause; resume returns protected samples and one final event |
+| Close while the protected queue is paused | Both render Promises and a future suspend reject; closing produces no completion event or late success |
+| Closed context with missing policy | The upstream InvalidState error precedes policy lookup and resolver creation |
 
 The patch preserves all 12 existing test cases. Source application and five API
 header blobs were verified against pinned 157 Git objects. Header validation,
 formatting, HMAC-vector calculations and Python assertions are **not C++ or native
-test results**. Evidence: `D:\Glint157ObjectCache\chunked-audio-fixtures-20261029-v3`.
+test results**. Evidence: `D:\Glint157ObjectCache\chunked-audio-fixtures-20261029-v5`.
 Apply it only to a separate 157 tree after the selected 001–065 replay, never to
 the active 156 checkout. A 157 build/test run is still required before selection.
-Injected copy-failure cleanup, policy lifetime under teardown and combined
-suspend/resume with a protected queue remain uncovered.
+Injected copy-failure cleanup and policy lifetime under teardown still lack
+fixtures. Suspend/resume and paused-close now have fixture code but remain
+unverified until a real 157 native test run.
+
+#### Compatibility control, not just distinct hashes
+
+The v1 HMAC vectors verify the experimental transform's mechanics, **not ordinary
+browser fidelity**. For a constant input `0.25`, seed 5 predicts `3e800001` rather
+than `3e800000`. The [Web Audio constant-source model](https://www.w3.org/TR/2026/WD-webaudio-1.1-20260922/#ConstantSourceNode)
+describes the output through its offset parameter. Chromium's constant-source
+handler fills the output with that value. This exposes a plausible calibration
+conflict, not evidence that a changed hash is a successful fingerprint policy.
+
+The public `audio-constant-control.js` probe was actually run in **stock
+148.0.7778.96** using a new isolated profile: `0`, `0.25`, `-0.25`, `0.5` each
+returned 256 exact samples, shared event/Promise buffers and closed contexts.
+Executable/core hashes were unchanged. This is **not a matched-version A/B run
+of 156 or 157**, nor a measured native-candidate failure. Evidence:
+`D:\Glint157ObjectCache\stock-audio-dc-control-20261029-v4\report.json`.
+The descriptor explicitly keeps the compatibility/production gate false.
+
+Before admission, run matched stock/candidate controls for constants, identity
+gain/buffer graphs and segmentation. Do not "fix" this by skipping flat buffers:
+that can change the same signal depending on chunk boundaries. Resolve the
+algorithm/identity model and preserve whole-render/chunk consistency first.
 
 157 makes total render length optional and supports finite/indefinite chunks;
 the old 0033 hunks no longer apply. The prototype preserves upstream chunking,

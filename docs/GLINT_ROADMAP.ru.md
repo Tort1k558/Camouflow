@@ -5,17 +5,27 @@
 
 ## Параллельный пакет: chunked Audio fixtures для 157 — 29 октября 2026
 
-Подготовлены восемь C++-тестов: missing policy до resolver/thread, приоритет
+Выявлен отдельный риск fidelity: v1-маскирование для seed 5 меняет даже константу
+0.25 на один бит. Контроль stock Chromium 148 реально сохранил точные 0, ±0.25 и
+0.5, по 256 samples; это не matched A/B для новых 156/157. HMAC-векторы проверяют
+механику v1, но не правдоподобность. Добавлен публичный JS-контроль и явный false
+для compatibility/production gate. Перед допуском нужны matched controls и решение
+модели Audio без нарушения whole-render/chunk consistency; flat-buffer shortcut
+не принимается. Активная сборка и проверенный 148 не менялись.
+
+Подготовлены одиннадцать C++-тестов: missing policy до resolver/thread, приоритет
 нативных zero/overflow ошибок, бюджет после округления и retry, маленький chunk
 при большой finite length, очередь 128/128/44 с одним финальным событием и общей
 mutable event/Promise ссылкой, независимые ненулевые signal vectors двух политик,
-flag-off indefinite rendering и закрытие без completion event.
+flag-off indefinite rendering и закрытие без completion event. Добавлены
+protected queue suspend/resume, закрытие очереди на паузе с отклонением обеих
+render Promises и будущего suspend, а также приоритет closed-state ошибки.
 
 0066 лежит отдельно от выбранных patches и manifest; текущая цепочка остаётся
 001–065. Проверены применение в отдельной копии, пять pinned API headers и
-независимые Python HMAC-векторы. **Компиляции и исполнения этих восьми тестов нет.**
-Для готовности остаются injected copy-failure cleanup, lifetime при teardown,
-protected suspend/resume и реальный прогон 157. Все 201 frozen input сборки 156
+независимые Python HMAC-векторы. **Компиляции и исполнения этих тестов нет.**
+Отдельных fixtures пока нет для injected copy-failure cleanup и lifetime при
+teardown; все 11 случаев требуют реального прогона 157. Все 201 frozen input сборки 156
 неизменны; расширение не выдаётся за runtime/anti-bot PASS.
 
 ## Текущий этап: сборка 001–065 — 29 октября 2026

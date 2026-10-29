@@ -6,7 +6,7 @@
   "required_base_manifest_sha256": "993a96741731d2e9dcfd214ec694be4ebdca47e60641be0692ceb1641806d7ed",
   "patch": {
     "file": "0066-native-chunked-audio-tests.patch",
-    "sha256": "5fefd52cc2d25c5857be5011ad7a748cf2ef77f52b6350ab72642b2c6b493c8f"
+    "sha256": "7af3d17d78f85dc138252f0fde80e111f26abe5d20c236ddc59930cbd8a927ca"
   },
   "source": {
     "path": "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc",
@@ -26,7 +26,10 @@
     "GlintBudgetUsesChunkNotEntireFiniteLength",
     "GlintQueuedChunksShareOnlyFinalMutableEventResult",
     "GlintSeparatePoliciesUseIndependentAudioVectors",
-    "GlintFlagOffIndefiniteChunksKeepRawSamplesAndClose"
+    "GlintFlagOffIndefiniteChunksKeepRawSamplesAndClose",
+    "GlintProtectedQueuedChunksResumeAfterSuspension",
+    "GlintProtectedQueueCloseRejectsAllPendingWork",
+    "GlintClosedContextRetainsNativePrecedenceOverMissingPolicy"
   ],
   "api_headers": [
     {
@@ -81,7 +84,23 @@
   ],
   "remaining_uncovered_cases": [
     "injected copy-failure queue/suspend cleanup",
-    "policy capture lifetime under teardown",
-    "combined suspend/resume with protected chunk queue"
-  ]
+    "policy capture lifetime under teardown"
+  ],
+  "compatibility_calibration": {
+    "scope": "Stock 148 control and source analysis; not matched-version native browser validation",
+    "script": {
+      "file": "audio-constant-control.js",
+      "sha256": "6256225d885534402d4d6898c0fa6ea24cf2aace548df960cd2e1e01803f7b89"
+    },
+    "v1_vectors_are_compatibility_acceptance": false,
+    "requires_matched_stock_and_candidate_controls": true,
+    "native_candidate_observed": false,
+    "production_gate_passed": false,
+    "analytical_control_conflict": {
+      "input_bits": "3e800000",
+      "seed_byte": 5,
+      "v1_predicted_bits": "3e800001",
+      "stock148_observed_bits": "3e800000"
+    }
+  }
 }

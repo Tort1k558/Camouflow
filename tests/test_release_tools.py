@@ -4221,7 +4221,10 @@ def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
     additions = "\n".join(line[1:] for line in patch.splitlines()
                           if line.startswith("+") and not line.startswith("+++"))
     names = re.findall(r"TEST_F\(OfflineAudioContextTest,\s*(\w+)\)", additions)
-    assert names == descriptor["expected_tests"] and len(names) == len(set(names)) == 8
+    assert names == descriptor["expected_tests"] and len(names) == len(set(names)) == 11
+    assert {"GlintProtectedQueuedChunksResumeAfterSuspension",
+            "GlintProtectedQueueCloseRejectsAllPendingWork",
+            "GlintClosedContextRetainsNativePrecedenceOverMissingPolicy"} <= set(names)
     assert len(descriptor["api_headers"]) == 5 and descriptor["remaining_uncovered_cases"]
     for header in descriptor["api_headers"]:
         assert len(header["git_blob_sha1"]) == 40 and len(header["sha256"]) == 64
@@ -4233,6 +4236,21 @@ def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
         digest = hmac.new(bytes([vector["seed_byte"]]) * 32, message, hashlib.sha256).digest()
         assert digest.hex() == vector["hmac_sha256"]
         assert f"{(bits & ~1) | (digest[0] & 1):08x}" == vector["output_bits"]
+    calibration = descriptor["compatibility_calibration"]
+    assert calibration["v1_vectors_are_compatibility_acceptance"] is False
+    assert calibration["requires_matched_stock_and_candidate_controls"] is True
+    assert calibration["native_candidate_observed"] is False
+    assert calibration["production_gate_passed"] is False
+    control = root / calibration["script"]["file"]
+    assert control.name == "audio-constant-control.js"
+    raw_control = control.read_bytes()
+    assert hashlib.sha256(raw_control).hexdigest() == calibration["script"]["sha256"]
+    assert b"\r" not in raw_control and not raw_control.startswith(b"\xef\xbb\xbf")
+    conflict = calibration["analytical_control_conflict"]
+    vector = next(row for row in descriptor["hmac_vectors"] if row["seed_byte"] == conflict["seed_byte"])
+    assert conflict["input_bits"] == vector["input_bits"]
+    assert conflict["v1_predicted_bits"] == vector["output_bits"]
+    assert conflict["stock148_observed_bits"] == conflict["input_bits"] != conflict["v1_predicted_bits"]
 
 
 @pytest.mark.parametrize("failure", [None, "manifest-only", "patch-directory-only", "bad-source", "bad-patch",

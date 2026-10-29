@@ -6,7 +6,7 @@ results rather than replacing them. A planned check is not a passing result.
 ## Pending 157 chunked-Audio fixtures — 2026-10-29
 
 `native/drafts/upstream-157-prefix/0066-native-chunked-audio-tests.patch` prepares
-eight native test bodies but is **outside the selected manifests and `patches/`**.
+eleven native test bodies but is **outside the selected manifests and `patches/`**.
 It modifies only `offline_audio_context_test.cc`; all 12 existing test cases remain.
 The companion descriptor binds the patch and source input to the complete 001–065
 157 manifest. Current selection stays at 65; compiled/executed/admitted stay false.
@@ -15,11 +15,13 @@ The companion descriptor binds the patch and source input to the complete 001–
 | --- | --- | --- |
 | Patch application | Applied to an isolated copy after full 65-patch replay | Not C++ compilation |
 | API header provenance | Five exact pinned Git blob hashes verified; four match 156, one changed header fetched once from pinned Gitiles and validated | Not include-closure or ABI/codegen validation |
-| Fixture coverage in code | Missing policy, native zero/overflow precedence, rounded budget/retry, small chunk of large finite context, queued final event identity, nonzero signal vectors, flag-off indefinite close | Eight cases prepared, none run |
+| Fixture coverage in code | Missing policy, native zero/overflow/closed-state precedence, rounded budget/retry, small chunk of large finite context, queued final event identity, nonzero signal vectors, flag-off indefinite close, protected suspend/resume and paused-close | Eleven cases prepared, none run |
 | Independent signal vectors | Seed 4 maps `3e800000` to `3e800000`; seed 5 maps it to `3e800001` | Python HMAC calculation, not native rendering |
 | Active-build isolation | All 201 sealed 156 inputs remain unchanged | The current browser build is still required |
-| Focused local Python source/metadata checks | 73 passed, 969 deselected in 13.09s | Not execution of the eight C++ fixtures |
-| Full local Python suite after final fixture preparation | 3,559 passed, one skipped in 296.08s | Not a 157 compilation or native/runtime result |
+| Earlier eight-case focused Python source/metadata checks | 73 passed, 969 deselected in 13.09s | Not execution of the C++ fixtures |
+| Earlier eight-case full local Python suite | 3,559 passed, one skipped in 296.08s | Not a 157 compilation or native/runtime result |
+| Current eleven-case Python source/metadata checks | 73 passed, 969 deselected in 13.52s | Fixture bindings and calibration separation only |
+| Current full local Python suite | 3,559 passed, one skipped in 295.17s | Not execution of the eleven C++ fixtures |
 
 The three-channel budget case deliberately uses 5,592,405 requested frames:
 67,108,860 bytes fits, but 128-frame rounding requires 67,109,376 bytes and must
@@ -31,11 +33,43 @@ shapes and seed order 4/5/4 so empty buffers or stale latest-policy state cannot
 make the vector loops pass vacuously. Fatal source-setup assertions propagate
 to the outer test instead of continuing with silence.
 
-Copy-failure injection/queue cleanup, teardown lifetime and combined protected
-suspend/resume still need additional fixtures and actual execution. No new pass
+The protected pause/resume case checks both pending results before resuming,
+then exact protected samples and the single final event. The paused-close case
+checks both pending render Promises plus a future suspend: all reject after
+closing, with no completion event even after draining pending tasks. Another
+case preserves the native closed-state error before missing-policy lookup.
+
+Copy-failure injection/queue cleanup and teardown lifetime still need fixtures;
+all eleven cases still require real compilation/execution. No new pass
 is claimed for any browser fingerprinting site or CAPTCHA service.
-Evidence: `D:\Glint157ObjectCache\chunked-audio-fixtures-20261029-v3\report.json`;
-patch SHA-256 `5fefd52cc2d25c5857be5011ad7a748cf2ef77f52b6350ab72642b2c6b493c8f`.
+Evidence: `D:\Glint157ObjectCache\chunked-audio-fixtures-20261029-v5\report.json`;
+patch SHA-256 `7af3d17d78f85dc138252f0fde80e111f26abe5d20c236ddc59930cbd8a927ca`.
+
+### Constant-source fidelity control
+
+The current v1 vector for seed 5 maps input `3e800000` (`0.25`) to `3e800001`.
+That is a transform-mechanics check, **not a compatibility acceptance criterion**.
+The [Web Audio model](https://www.w3.org/TR/2026/WD-webaudio-1.1-20260922/#ConstantSourceNode)
+and inspected Chromium constant-source handler make literal-value calibration
+an important separate control. The source-derived conflict needs matched-version
+stock/native measurements; it is not yet an observed 156/157 browser failure.
+
+| Actual runtime control | Result | Scope |
+| --- | --- | --- |
+| Stock Chromium 148.0.7778.96, fresh isolated D profile | 0 / 0.25 / -0.25 / 0.5 each returned exactly 256 expected samples, 44,100 Hz, one channel; event/Promise identity and closed state passed | Stock only; no Glint flags or user profile |
+| Public JS probe and binary/core identity | Probe SHA-256 `6256225d885534402d4d6898c0fa6ea24cf2aace548df960cd2e1e01803f7b89`; stock core unchanged before/after | Not native candidate admission |
+| Matched 156/157 calibration and revised Audio algorithm | Pending; production/compatibility gate explicitly false | Different hashes alone cannot satisfy it |
+
+Evidence: `D:\Glint157ObjectCache\stock-audio-dc-control-20261029-v4\report.json`.
+`audio-constant-control.js` is public and bound in the pending-fixture descriptor.
+The final control requested Chromium sandboxing and verified the absence of
+`--no-sandbox` via CDP. `--enable-automation` was explicitly supplied for that
+inspection; an earlier inspection without it failed and is retained as failed
+evidence, not a passing control. No global driver/security configuration changed.
+The official CfT exact-version metadata URL for 156.0.8078.36 returned HTTP 404;
+`stock-control156-20261029-v1/metadata-report.json` retains that result. No alternate
+binary was silently substituted, downloaded or installed for a matched control.
+Do not add a flat-buffer shortcut: it can make output depend on chunk segmentation.
 
 ## Current 001–065 compilation gate — 2026-10-29
 
