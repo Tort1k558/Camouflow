@@ -86,7 +86,29 @@ the failed first build log remains recorded.
 | Independent Python full-frame/crop reference | 58,860 comparisons passed |
 | Native helper fixtures | 14 pack-copy + 11 region-planner + 6 clipped-publication cases passed on 001-048 |
 | Real CPU/PBO reads, exports, errors, contexts and restart | Six owned phases passed on 001-047; not future-package admission |
-| Large attachments, memory use and GPU latency | Pending runtime measurements |
+| Large attachment data consistency | Four phases passed on preserved 001–068, one document/WebGL2 RGBA8 4096×4096 attachment: CPU/repeat/PBO hashes match, repeated crop matches full output, outside bytes and GL state preserved; protected restart stable, two protected profiles differ |
+| Actual private/peak memory and isolated GPU latency | Pending; caller buffers were 64 MiB, not a measurement of private allocation or RSS; timings collected under an active j4 build are not an isolated benchmark |
+
+### Large-attachment control on 001–068
+
+[`large_attachment.py`](large_attachment.py) reuses the existing owned
+`ReadbackConfiguration`, NativeRuntime, measured partitioning arguments and
+profile-identity derivation. The [source-bound result](large-attachment68-observations.json)
+covers baseline, protected A, A restart and protected B. Each phase reads an
+explicit 4096×4096 RGBA8 renderbuffer while the GL viewport stays **2×2**:
+full CPU reads twice, three 4×4 boundary crops, outside-only sentinel preservation
+and full PBO publication. All full CPU/PBO/repeat hashes matched; every crop
+matched the corresponding full-frame pixels. There is no API masking, smaller
+attachment or software fallback. Private identities stayed exact across restart;
+resources and immutable source/core/receipt guards passed.
+
+This is one document/OffscreenCanvas/WebGL2 context and one host, not WebGL1,
+workers, WebGPU, general driver compatibility or privacy admission. The measured
+64 MiB is the requested caller buffer, **not actual private/peak memory usage**.
+CPU/PBO/crop timings are retained as loaded-host observations only, because the
+j4 Chromium build was active; no speedup or isolated overhead ratio is claimed.
+The prior successful run is retained; the final repeat tightened JSON type
+validation without changing native APIs, features, geometry or deadlines.
 
 Fixtures cover clipped edges, transparency, unchanged out-of-bounds bytes,
 full-frame handling, overflow, budget rejection, forged plans and aliases.

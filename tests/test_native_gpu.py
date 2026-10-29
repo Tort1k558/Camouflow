@@ -1156,3 +1156,93 @@ def test_halo_readback_checks_actual_expected_result_api():
     text = Path(PATCH).read_text(encoding="utf-8-sig")
     assert "+              pixels, rectangle, request, *region).has_value()) {" in text
     assert "+              pixels, rectangle, request, *region)) {" not in text
+
+
+@pytest.fixture
+def large_attachment_probe():
+    import runpy
+
+    return runpy.run_path(str(Path(__file__).resolve().parents[1] / "native/drafts/next-readback/large_attachment.py"))
+
+
+def large_attachment_observation():
+    state = {"viewport": [0, 0, 2, 2], "framebuffer": True, "renderbuffer": True,
+             "packBound": False, "alignment": 4, "rowLength": 0, "skipRows": 0, "skipPixels": 0}
+    return {"size": 4096, "byteLength": 67108864,
+            "cpuHash": "1" * 64, "cpuRepeatHash": "1" * 64, "pboHash": "1" * 64,
+            "cropFromFull": [0] * 64, "crops": [{"pixels": [0] * 64, "milliseconds": 1.25} for _ in range(3)],
+            "clipped": [165] * 64, "cpuMilliseconds": 10.25, "pboMilliseconds": 12.5,
+            "before": state, "after": copy.deepcopy(state)}
+
+
+def test_large_attachment_validator_accepts_complete_typed_control_without_mutation(large_attachment_probe):
+    value = large_attachment_observation()
+    original = copy.deepcopy(value)
+    assert large_attachment_probe["validate"](value) is None
+    assert value == original
+
+
+@pytest.mark.parametrize("mutation", ["missing", "size-float", "hash", "repeat", "pbo", "crop-count",
+    "crop-pixels", "crop-boolean", "crop-malformed", "clip", "state", "state-boolean", "viewport-boolean",
+    "nan", "infinity", "huge-int", "timing-boolean"])
+def test_large_attachment_validator_rejects_incomplete_or_inconsistent_reads(large_attachment_probe, mutation):
+    value = large_attachment_observation()
+    if mutation == "missing":
+        value = None
+    elif mutation == "size-float":
+        value["size"] = 4096.0
+    elif mutation == "hash":
+        value["cpuHash"] = "missing"
+    elif mutation == "repeat":
+        value["cpuRepeatHash"] = "2" * 64
+    elif mutation == "pbo":
+        value["pboHash"] = "2" * 64
+    elif mutation == "crop-count":
+        value["crops"].pop()
+    elif mutation == "crop-pixels":
+        value["crops"][0]["pixels"][0] = 1
+    elif mutation == "crop-boolean":
+        value["crops"][0]["pixels"][0] = False
+    elif mutation == "crop-malformed":
+        value["crops"][0] = None
+    elif mutation == "clip":
+        value["clipped"][0] = 0
+    elif mutation == "state":
+        value["after"]["viewport"] = [0, 0, 4096, 4096]
+    elif mutation == "state-boolean":
+        value["after"]["framebuffer"] = 1
+    elif mutation == "viewport-boolean":
+        value["after"]["viewport"][0] = False
+    elif mutation == "nan":
+        value["cpuMilliseconds"] = float("nan")
+    elif mutation == "infinity":
+        value["cpuMilliseconds"] = float("inf")
+    elif mutation == "huge-int":
+        value["cpuMilliseconds"] = 10 ** 400
+    else:
+        value["cpuMilliseconds"] = True
+    with pytest.raises(ValueError):
+        large_attachment_probe["validate"](value)
+
+
+def test_large_attachment_runtime_evidence_keeps_loaded_timings_and_memory_scope_explicit():
+    import hashlib
+
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / "native/drafts/next-readback/large-attachment68-observations.json").read_bytes())
+    assert all(record[name] for name in ("passed", "measurement_complete", "postguards_passed",
+        "protected_changed_from_baseline", "protected_restart_stable", "two_profiles_distinct", "owned_runtimes_resource_free"))
+    assert record["covered_contexts"] == ["document/OffscreenCanvas/WebGL2"]
+    assert [(row["name"], row["phase"]) for row in record["phases"]] == [
+        ("baseline", "initial"), ("profile-a", "initial"), ("profile-a", "restart"), ("profile-b", "initial")]
+    assert all(record[name] is False for name in ("isolated_latency_benchmark", "actual_private_allocation_or_peak_memory_measured",
+        "worker_large_readback_verified", "webgl1_large_readback_verified", "webgpu_large_readback_verified",
+        "native_0069_verified", "privacy_admitted", "production_admitted"))
+    for row in record["phases"]:
+        assert row["passed"] and row["attachment"] == [4096, 4096] and row["caller_bytes"] == 67108864
+        assert row["cpu_sha256"] == row["cpu_repeat_sha256"] == row["pbo_sha256"]
+        assert row["crop_repetitions"] == 3 and row["crop_matches_full"]
+        assert row["outside_sentinel_unchanged"] and row["gl_state_unchanged"]
+        assert row["gl_state"]["viewport"] == [0, 0, 2, 2]
+    for name, value in record["source_sha256"].items():
+        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
