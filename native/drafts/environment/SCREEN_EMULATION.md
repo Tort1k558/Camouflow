@@ -1,5 +1,17 @@
 # Cross-process screen consistency: next native integration contract
 
+## Latest actual 001–069 result
+
+The [j4 source build](../upstream-156/build69-observations.json) completed and its
+269 required runtime assets were preserved with exact hashes. The public
+first-script CLI then completed all six phases on that copy: desktop and
+native-control initial/restart passed; both mobile phases failed.
+[Actual observations](screen69-first-script-observations.json).
+Mobile cross-origin/nested local roots now retain DPR 3, but main/same/srcdoc/
+about-blank settle at DPR 1. Thus queued 0070 is still necessary; neither 0069
+alone nor a passing desktop gate establishes the whole screen policy. The nine
+new native cases and combined/lifecycle/package gates remain unexecuted.
+
 **Open compatibility finding, reproduced on both stock156 and raw Glint 001–067.**
 The [Glint runtime capture](glint67-screen-consistency-observations.json) used
 the separately preserved browser, its complete 67-patch checkpoint/receipt and

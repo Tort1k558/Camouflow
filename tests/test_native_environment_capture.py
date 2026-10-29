@@ -1046,3 +1046,39 @@ def test_failed_full_regression_retains_failure_and_distinguishes_qml_followup()
     assert all(record[name] is False for name in ("full_regression_after_repair_verified", "native_runtime_verified",
         "privacy_admitted", "production_admitted"))
     assert hashlib.sha256((root / record["corrected_test_source"]).read_bytes()).hexdigest() == record["corrected_test_source_sha256"]
+
+
+def test_0069_source_build_proof_has_receipt_and_preservation_without_native_test_admission():
+    record = json.loads((environment.ROOT / "native/drafts/upstream-156/build69-observations.json").read_bytes())
+    assert record["passed"] and record["completed_stages"] == ["sync", "hooks", "patch", "build"]
+    assert record["build_jobs"] == 4 and record["build_steps"] == 2079 and record["build_elapsed_seconds"] == 6429.05
+    assert record["registered_patches"] == 69 and record["preserved_runtime_assets"] == 269
+    assert record["frozen_inputs_count"] == 212 and record["frozen_input_postguards_passed"]
+    assert record["preserved_asset_hashes_postguards_passed"]
+    assert all(record[name] is False for name in ("cpp_native_cases_executed_on_0069", "browser_runtime_verified",
+        "privacy_admitted", "production_admitted"))
+
+
+def test_actual_0069_first_script_proves_desktop_repair_but_retains_mobile_main_failure():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/screen69-first-script-observations.json").read_bytes())
+    build = json.loads((root / "native/drafts/upstream-156/build69-observations.json").read_bytes())
+    assert record["measurement_complete"] and record["postguards_passed"] and record["passed"] is False
+    assert record["runtime_core_sha256_measured"] == build["runtime_core_sha256_measured"]
+    assert record["receipt_sha256"] == build["build_receipt_sha256"]
+    assert record["desktop_owned_screen_gate_passed"] and record["native_control_gate_passed"]
+    assert all(record[name] is False for name in ("mobile_main_dpr_fixed", "browser_runtime_fully_verified",
+        "cpp_native_cases_executed", "privacy_admitted", "production_admitted"))
+    assert [row["passed"] for row in record["phases"]] == [True, True, False, False, True, True]
+    for row in record["phases"]:
+        assert len(row["observations"]) == 6 and row["browser_connection_closed"]
+        if row["mode"] == "manager-mobile-web":
+            assert row["observations"]["main"]["first"]["screen"]["dpr"] == 3
+            assert row["observations"]["main"]["settled"]["screen"]["dpr"] == 1
+            assert row["observations"]["cross"]["settled"]["screen"]["dpr"] == 3
+            assert row["observations"]["nested-return"]["settled"]["screen"]["dpr"] == 3
+            assert len(row["errors"]) == 4 and all("screen differs" in error for error in row["errors"])
+    for name, value in record["source_sha256"].items():
+        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value

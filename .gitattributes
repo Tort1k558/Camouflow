@@ -6,6 +6,7 @@ native/drafts/**/full-inputs-manifest.json text eol=lf
 native/drafts/upstream-156/windows-runtime-observations.json text eol=lf
 native/drafts/upstream-156/windows-build67-observations.json text eol=lf
 native/drafts/upstream-156/build68-observations.json text eol=lf
+native/drafts/upstream-156/build69-observations.json text eol=lf
 native/drafts/upstream-156/audio-profile-matrix-preparation-observations.json text eol=lf
 native/drafts/upstream-156/checkpoints/*.json text eol=lf
 native/drafts/upstream-156/native-batch*-observations.json text eol=lf

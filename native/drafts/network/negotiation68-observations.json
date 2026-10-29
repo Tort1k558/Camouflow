@@ -18,7 +18,7 @@
   "system_trust_store_changed": false,
   "privacy_admitted": false,
   "production_admitted": false,
-  "raw_report_sha256": "f68ce72cf7a0429542b20360e535a5db13afe7879fa73362dc363ae3096e7c9e",
+  "raw_report_sha256": "b2916c673c551358036d8a0f434ffab3ad2e1baa2fdc653642da6f6707fa0f26",
   "source_sha256": {
     "app/__init__.py": "fe9767b4f6f97042148a4cdfc69a7f86b6b75d1eb427d18a1ccada7f21745ece",
     "app/cli.py": "c368621146d999e2bdddf456567a304cbafbc699a240114ab7617fb77cff6840",
@@ -110,7 +110,7 @@
     "app/version.py": "61a186c9465fd34d917833f8fdb00a459e7f70f6769063858ee92b1ea4c60c13",
     "native/args.gn": "6e8852cef01631ece51948ab7f99176e86947cb02d07819e4af524e0116e6ab8",
     "native/build-lock.json": "7b3e3ae3cb9877073aaeb14eacc48afdd24bd34a0e5b9189e92276211dfe8ad0",
-    "native/drafts/network/negotiation.py": "464fc1a096ab1dff174927d9f2f98a0349a16f558e525dba21ba850e31a5f8d2",
+    "native/drafts/network/negotiation.py": "27bff3aa8a5e84e023977b4e5d3d7e0eb78594601138ac6fd8a482effe3f9842",
     "native/drafts/upstream-156/checkpoints/001-068.json": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
     "native/drafts/upstream-156/manifest.json": "5b7cce89049abe7d5ea5717b3c60817975858f8c3affdcb738e58a9c5262e89e",
     "native/drafts/upstream-156/patches/0001-native-hardware-privacy-limits.patch": "3925b0cec579b2a73fad70463227f1b44d3c464a06f5f2ad86d39a190d2910e8",

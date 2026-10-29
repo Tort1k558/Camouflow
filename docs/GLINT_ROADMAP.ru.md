@@ -1,5 +1,17 @@
 # Glint: план проверки и развития
 
+## 001–069 собран: desktop first-script прошёл, Mobile main DPR ещё FAIL
+
+**2079 шагов, j4, 1ч47м09.05с**; producer завершился exit 0, source/SDK/core
+проверки и receipt прошли. Сохранены 269 runtime-ассетов с проверкой хешей.
+[Сборка](../native/drafts/upstream-156/build69-observations.json).
+На отдельной копии браузера desktop и native-control прошли initial/restart.
+В Mobile cross-origin и nested roots сохраняют DPR 3, но main/same/srcdoc/
+about-blank после вложенных roots показывают DPR 1. Это подтверждает необходимость
+готового связанного 0070, а не завершение screen-политики.
+[Все шесть фаз](../native/drafts/environment/screen69-first-script-observations.json).
+Новые C++-кейсы и полный комбинированный допуск ещё не выполнены.
+
 ## Полная Python-регрессия: сохранён FAIL, устранена гонка QML-теста
 
 На main b6aa9c5: **4254 passed, 1 failed, 1 skipped**, tracked-source guards
@@ -143,7 +155,7 @@ Apply-check на уже применённый 001–069 прошёл без и�
 сборки 0069 заморожены; последующая проверка должна включать исправление основного
 root, а не объявлять завершённым только наследование параметров дочерними окнами.
 
-## Пакет screen/DPR 0069 — выбран для сборки, в бинарник ещё не включён
+## Пакет screen/DPR 0069 — историческая подготовка перед сборкой
 
 Подготовлен связанный [черновик из 19 файлов](../native/drafts/environment/screen-inheritance69.patch):
 browser-owned логический экран, nullable IPC, widget-scoped DOM/CSS и DPR,
@@ -159,7 +171,8 @@ Manifest и checkpoint теперь содержат **001–069**; исходн
 отдельный gate `screen-metrics`, требующий все девять случаев в
 `blink_common_unittests`; общий список теперь содержит **19** групп.
 Runtime 001–068 сохранён отдельно на D: с проверкой всех **269 файлов**.
-**C++ 0069 не скомпилирован, runtime не проверен.**
+В этом подготовительном срезе C++/runtime ещё не проверялись; актуальные
+результаты сборки и частичного browser gate приведены выше.
 Следующий допуск: native-кейсы и реальный браузер — первый script, вложенные
 iframe, смена процесса/BFCache, zoom, отключение политики, скриншоты и ввод.
 

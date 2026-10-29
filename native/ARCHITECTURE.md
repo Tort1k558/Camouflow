@@ -2,8 +2,18 @@
 
 ## Current implementation boundary
 
-The latest source-built Windows candidate is **Chromium 156 / 001–068**.
-The fixture-only repair compiled without changing the 001–067 browser core;
+The latest source-built Windows candidate is **Chromium 156 / 001–069**.
+The j4 build completed 2079 steps in **1h47m09.05s**, with final source/SDK/core
+postguards and an exact 269-asset preserved runtime.
+[Build evidence](drafts/upstream-156/build69-observations.json).
+Actual first-script checks passed both desktop and native-control initial/restart
+phases. Mobile cross-origin roots retain DPR 3, but the main/local documents
+settle at DPR 1: the overall gate remains failed and queued 0070 is still needed.
+[Runtime findings](drafts/environment/screen69-first-script-observations.json).
+The new native unit cases and full combined/package gates have not executed.
+
+The native-unit-verified baseline remains **001–068**. Its fixture-only repair
+compiled without changing the 001–067 browser core;
 all **18 native groups passed**, including **12/12 AudioMath**, with complete
 source/SDK/core/receipt postguards.
 [Build](drafts/upstream-156/build68-observations.json) and
@@ -26,7 +36,7 @@ with zero remaining observed owned processes.
 [Checkpointed recovery evidence](drafts/environment/runtime-crash68-observations.json).
 This covers committed checkpoint state with policies off, not unsaved
 transactions, enabled-policy recovery, server/team storage isolation or the
-still-building 0069/queued 0070.
+new 0069/queued 0070.
 
 Eight fixed profiles passed baseline/Math/Math-restart Audio API compatibility.
 A separate **1080-capture** long-compressor run on the same keys observed two
@@ -36,13 +46,13 @@ stable output classes matching the expected native/float32 distinction; short
 does not establish eight distinct Audio identities or real-device cohorts.
 Legacy Audio-v1 failures remain open.
 
-**001–069 is selected for the next build, not compiled or runtime-verified.**
+**001–069 is compiled and partially runtime-checked, not fully admitted.**
 Its browser-owned logical screen snapshot is separate from physical compositor
 and input geometry; widget-scoped DOM/CSS/DPR and update/disable behavior need
 the complete linked-browser gate. The new `screen-metrics` group requires nine
 cases in `blink_common_unittests`, bringing the native batch to 19 groups.
 [Screen integration contract](drafts/environment/SCREEN_EMULATION.md).
-The complete 269-file 001–068 runtime is preserved separately on D: for rollback.
+Both the 001–068 and 001–069 runtimes are preserved separately on D: for rollback.
 
 The existing raw **001–067** suite passed eight gates and 160 checks. The last
 installed-package baseline remains **001–066**. Neither historical result

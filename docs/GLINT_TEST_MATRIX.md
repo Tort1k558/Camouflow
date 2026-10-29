@@ -7,11 +7,13 @@
 | Full main b6aa9c5 | **4254 passed, 1 failed, 1 skipped**; 655.156s; tracked-source guards passed | [Retained failure](../native/drafts/environment/canonical-python69-preparation-observations.json); not a full-suite PASS |
 | QML race diagnosis/repair | Controlled 1500-ms model-delivery delay reproduces original failure; waiting for public `getProfile()` within the unchanged 3-second deadline passes; corrected full QML module **9 passed** | Test-only synchronization; production UI unchanged; full regression after repair still pending |
 
-## Screen/DPR source package 0069, selected for build — 2026-10-30
+## Screen/DPR source package 0069, compiled / partial runtime checks — 2026-10-30
 
 | Gate | Observed result | Boundary |
 | --- | --- | --- |
-| Linked source draft | 19-file browser/IPC/widget/DOM/CSS package; apply-check passed against exact 001–068; subsequently selected in manifest/checkpoint 001–069 | [Historical preparation record](../native/drafts/environment/screen-inheritance69-preparation.json); no C++/runtime result yet |
+| Source build | **2079 steps, j4, 1h47m09.05s**, final source/SDK/core guards and receipt passed; 269 runtime assets preserved with exact hashes | [Build evidence](../native/drafts/upstream-156/build69-observations.json); not native-unit or complete browser/package admission |
+| Actual first-script gate | Desktop and native-control initial/restart passed; mobile cross-origin roots retain DPR 3, but main/local documents settle at DPR 1 | [Six-phase evidence](../native/drafts/environment/screen69-first-script-observations.json); overall FAIL, 0070 still required; no screenshot/input errors in these phases |
+| Linked source draft | 19-file browser/IPC/widget/DOM/CSS package; apply-check passed against exact 001–068; subsequently selected and compiled as 001–069 | [Historical preparation record](../native/drafts/environment/screen-inheritance69-preparation.json); source preparation alone is not browser admission |
 | IPC generation | Pinned official parser and typed native/Blink/shared C++ generators passed in an isolated D: output | Not C++ compilation, serialization-test execution or browser delivery proof |
 | Native cases | Nine cases required by the new `screen-metrics` group in `blink_common_unittests`; batch now has 19 groups | **Not executed**; first-script, lifecycle, geometry/input and combined browser gates remain open |
 | Preserved 0068 first-script baseline | Six phases × six documents; both no-emulation controls passed, all four manager desktop/mobile phases reproduced defects; clicks and screenshot sizes passed | [Complete red baseline](../native/drafts/environment/screen68-first-script-complete-observations.json); not execution of 0069. Main Mobile DPR changes 3 → 1 after nested local roots |

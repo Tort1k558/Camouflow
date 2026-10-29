@@ -140,4 +140,3 @@ async def capture(executable: Path, owned: Path, pin: str, servers, report: dict
     finally:
         await runtime.close()
         report['runtime_resource_free'] = not runtime.has_resources
-
