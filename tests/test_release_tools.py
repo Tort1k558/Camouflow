@@ -2264,7 +2264,7 @@ def test_native_windows_candidate_package_preserves_manifest_without_admitting_p
     assert metadata["candidate_manifest_sha256"] == candidate["manifest_sha256"]
     assert metadata["chromium_version"] == candidate["lock"]["chromium_version"]
     assert metadata["native_version"] == "0.2.0-dev"
-    assert len(metadata["build_receipt"]["patches"]) == 62
+    assert len(metadata["build_receipt"]["patches"]) == len(candidate["manifest"]["patches"]) == 63
     assert metadata["native_patch_runtime_verified"] is False
     store = NativeBinaryStore(tmp_path / "store")
     installed = store.install_archive(archive, result["sha256"])
@@ -4056,7 +4056,31 @@ def test_native_candidate_requires_exact_checkout_and_complete_patch_chain(tmp_p
             build.candidate_source_patches(source, {}, candidate)
     else:
         rows = build.candidate_source_patches(source, {}, candidate)
-        assert len(rows) == 62 and sum(row.get("repository") == "v8" for row in rows) == 1
+        assert len(rows) == 63 and sum(row.get("repository") == "v8" for row in rows) == 1
+
+
+def test_native_candidate_safe_buffer_port_keeps_bounded_cpp_paths():
+    from scripts import native_build as build
+
+    candidate = build.load_candidate("upstream-156")
+    row = candidate["manifest"]["patches"][-1]
+    assert row["file"] == "0063-native-safe-buffer-portability.patch"
+    patch = (candidate["directory"] / "patches" / row["file"]).read_text(encoding="utf-8")
+    paths = [line[6:] for line in patch.splitlines() if line.startswith("+++ b/")]
+    assert paths == [
+        "third_party/blink/renderer/core/frame/camouflow_hardware_limits.h",
+        "content/browser/renderer_host/camouflow_hardware_limits.h",
+        "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc",
+    ]
+    additions = "\n".join(line[1:] for line in patch.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert additions.count("std::to_address(concurrency.end())") == 2
+    assert additions.count("for (const auto& [name, value] : options)") == 2
+    assert "std::span<uint8_t, 4> output" in additions
+    assert "std::span(message).subspan(domain_size).first<4>()" in additions
+    assert "std::span(message).subspan(domain_size + 4).first<4>()" in additions
+    assert not any(token in patch for token in (
+        "UNSAFE_BUFFERS", "UNSAFE_TODO", "-Wno-unsafe", "#pragma clang diagnostic"))
 
 
 @pytest.mark.parametrize("failure", [None, "manifest-only", "patch-directory-only", "bad-source", "bad-patch",
@@ -4139,11 +4163,14 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
 
     manifest = json.loads((draft.DRAFT / "manifest.json").read_text(encoding="utf-8-sig"))
     originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:62]
-    assert [row["file"] for row in manifest["patches"]] == [path.name for path in originals]
-    for row, original in zip(manifest["patches"], originals, strict=True):
+    assert len(originals) == 62 and len(manifest["patches"]) == 63
+    assert [row["file"] for row in manifest["patches"][:62]] == [path.name for path in originals]
+    assert manifest["patches"][-1]["file"] == "0063-native-safe-buffer-portability.patch"
+    for row in manifest["patches"]:
         content = (draft.DRAFT / "patches" / row["file"]).read_bytes()
         assert b"\r" not in content and not content.startswith(b"\xef\xbb\xbf")
         assert hashlib.sha256(content).hexdigest() == row["sha256"]
+    for row, original in zip(manifest["patches"][:62], originals, strict=True):
         assert hashlib.sha256(original.read_bytes()).hexdigest() == row["original_sha256"]
     assert manifest["patches"][6]["directory"] == "v8"
     assert manifest["dependencies"]["v8"]["revision"] == "8ce248ef8f7f71c04f7faaac249a37d340279f52"
@@ -4166,7 +4193,7 @@ def test_forward_refresh_manifest_reuses_exact_patch_bytes_without_registering_a
     assert value["target_version"] == "156.0.8078.75"
     assert value["target_revision"] == "861389936bf33ea77529ee5dcc0605e68f6bb620"
     assert value["dependencies"]["v8"]["revision"] == "235050a0df6db2c9d92a419af2b72fbf3b2dd73b"
-    assert value["patches"] == before["patches"] and len(value["patches"]) == 62
+    assert value["patches"] == before["patches"] and len(value["patches"]) == 63
     assert not (refresh / "patches").exists()
     assert len(value["source_files"]) == 185
     assert [row["path"] for row in value["source_files"]] == [row["path"] for row in before["source_files"]]

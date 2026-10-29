@@ -631,10 +631,10 @@
       "repository": "https://chromium.googlesource.com/v8/v8.git"
     }
   },
-  "base_manifest_sha256": "b62ae2c7a20b52461dfa5a7e1e68c8105813792c3e377e346f651f6e133f1875",
-  "preparation_scope": "Offline source-context prefix only; patches 0030-0062 unverified",
+  "base_manifest_sha256": "e41540549bfec2cae38beb5cb78be70a7da36068241fcc12e24210b55ee9864a",
+  "preparation_scope": "Offline source-context prefix only; patches 0030-0063 unverified",
   "selected_prefix_patches": 29,
-  "complete_patch_count": 62,
+  "complete_patch_count": 63,
   "complete_forward_port": false,
   "next_unavailable_input_patch": {
     "patch": "0030-native-document-commit-prototype.patch",

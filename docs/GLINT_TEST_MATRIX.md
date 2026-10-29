@@ -5,6 +5,69 @@ results rather than replacing them. A planned check is not a passing result.
 
 ## Explicit candidate upstream audit — 2026-10-29
 
+### Actual 156 build failure and safe-buffer append — 2026-10-29
+
+The frozen 001–062 browser build terminated after **4h04m28.94s**: Siso reported
+21,909 done, three failed and 35,571 remaining. These are that run's graph
+counters, not an ETA or a runtime test count. The failed objects were
+`navigator_concurrent_hardware`, `navigator_device_memory` and
+`canvas_readback_candidate`. All diagnostics were actual
+`-Werror,-Wunsafe-buffer-usage` errors in our hardware parsing/Canvas encoding,
+not an out-of-memory or disk failure. Original log:
+`build-20261029-015415.log` on D. Downstream controllers stopped without starting
+units, runtime gates or packaging; their failed reports remain preserved.
+
+Append **0063** replaces raw hardware-array indexing with typed option ranges,
+gets the parse endpoint through the string-view iterator, and encodes Canvas
+words through fixed-size spans. Both renderer/browser copies of the hardware
+header are covered. The original 62 patch files, GN arguments, toolchain and
+upstream pins remain unchanged. No unsafe-warning suppression was added.
+
+| Check | Measured result | Limit |
+| --- | --- | --- |
+| Actual failed production objects | All three compiled; source/toolchain postguards passed | Formatted variant, not a linked browser |
+| Final minimal-style refinement | C++ tokens match; all three final-form objects subsequently compiled in the resumed build | Full browser still building |
+| Existing standalone MSVC fixtures | Passed against the fixed hardware header, including glyph controls | Not Chromium native fixtures |
+| Old/new parser comparison | 24,025 input pairs matched, including overflow, embedded NUL and malformed values | Bounded corpus, not all strings |
+| Canvas word/message layout comparison | 196,608 guarded pairs matched | Encoding only, not full HMAC/readback/fidelity |
+
+Evidence on D: `safe-buffer-port-20261029-v1/{applied-probe,semantics-report-v2}.json`
+and `safe-buffer-minimal-style-20261029-v1/applied.json`. The first MSVC comparison
+fixture failed because its legacy header was included after Windows `min` macros;
+that harness failure remains retained. The corrected fixture includes it before
+Windows headers; it does not change product code or disable production diagnostics.
+
+Dependency stage records were rebound to the appended C++ manifest only after
+checking the prior stage identities and unchanged DEPS, gclient/dependency
+snapshots and pins. Original records were saved; **sync/hooks were not rerun**
+and no dependency re-execution is claimed. A second whitespace/comment-only
+refinement preserved C++ tokens and the same dependency identities.
+
+The final candidate manifest is
+`e41540549bfec2cae38beb5cb78be70a7da36068241fcc12e24210b55ee9864a`.
+The browser build resumes at j4 through
+`safe-buffer-build-continuation-20261029-v1.json`, preserving compiled objects.
+The new bound sequence is identity controller v2 → runtime v9 → remaining-native
+v4 → package controller v2. Those are pending observations, not passing native,
+runtime, relocated-payload or production evidence. Package v2 guards 199 inputs;
+failed earlier controllers are not relabeled or reused.
+
+`safe-buffer-minimal-style-20261029-v1/final-object-observation.json` records
+the three actual final-form compile events and matching source hashes; 297
+prior source/build hashes remain unchanged. Only the manifest and three named
+C++ files differ from that prior cohort. Final public source replays also
+passed: **63 patches on .36**, **63 on .75**, and the unchanged **29-prefix on
+157**. Reports live under the same directory in `default-63-final-replay`,
+`refresh-63-final-replay` and `157-prefix-final-replay`. Full 156 replays preserve
+321 GPU IDs plus command 577 and GRIT structure. These are source invariants,
+not 63 executed native tests or security admission.
+
+Final Python regression: **3,554 passed, one skipped**, 294.14 seconds; selected
+Ruff checks passed. The preceding full run retained one expected-count failure:
+the manifest fixture assumed exactly 62 ported rows. Its update still checks
+every original row/hash and LF payload, plus the explicit 0063 append. Both logs
+remain on D as `pytest-safe-buffer-full-20261029-v1.log` and `v2.log`.
+
 ### Public pinned sparse-source fetch — 2026-10-29
 
 | Check | Observed result | Limit |
@@ -171,7 +234,7 @@ The build pin, manifest, patch bytes, Chromium sources and GN inputs did not cha
 
 ### Queued native target coverage
 
-The current process-bound sequence is: frozen 156 browser build → four identity
+The current process-bound sequence is: resumed 156 / 001–063 build → four identity
 targets → full eight-gate runtime suite → **13 remaining/default native target
 selections**, serially at j4. The final queue covers keys/contexts/delivery,
 worker handoff, document partition/navigation, surface navigation, window
@@ -179,7 +242,7 @@ transport, GPU pack/readback/metadata, worker surfaces and font rasterization.
 Some selections overlap earlier fixtures; do not add their counts as unique
 tests. None of these queued 156 results is passing evidence yet.
 
-`remaining-native-after-runtime-20261029-v3/controller.json` on D binds the
+`remaining-native-after-runtime-20261029-v4/controller.json` on D binds the
 actual current runtime-controller process handle and requires its successful
 exit/source postguards before building anything. A failed, retired or expired
 observation starts no targets. Each selected native verifier retains its own
@@ -188,20 +251,22 @@ This queues work; it does not expand runtime capability or production admission.
 The waiting runtime/native controllers were refreshed to the reviewed public
 verifier cohort; old pending reports remain marked retired. The active browser
 build and initial native identity controller were not stopped or restarted.
-The bound runtime report is `runtime-after-identity-20261029-v8/controller.json`;
+The bound runtime report is `runtime-after-identity-20261029-v9/controller.json`;
 it captures the reviewed shared replay helper used by the source fetcher.
 
 ### Queued installed-payload verification — 2026-10-29
 
-`package-after-native-20261029-v1/controller.json` on D is bound to the actual
+The initial `package-after-native-20261029-v1/controller.json` on D was bound to the actual
 remaining-native queue process handle. Only successful process exit, the exact
 13 completed selections, each final native postguard and the original passing
 runtime controller permit staging. Observation expiry or a failed/retired queue
 starts nothing. A changed reviewed input stops the chain; **198 input hashes**
 include the candidate patches, public verification/application code and the
-private controller itself.
+private controller itself. It stopped after the 001–062 compile failure without
+starting staging or any children. The current rebound v2 has 199 input hashes;
+its predecessor links and pending status are recorded in the safe-buffer section.
 
-The pending chain reuses public commands: official mini-installer staging at
+The planned chain reuses public commands: official mini-installer staging at
 j4 → archive from the exact runtime report → checksum-verified installation in
 a fresh isolated D: store → all eight runtime gates against that installed
 candidate and versioned DLL directory. It does **not** activate the package,

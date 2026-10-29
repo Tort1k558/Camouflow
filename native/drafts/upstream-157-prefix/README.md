@@ -48,7 +48,9 @@ no automatic retry was made. Active 156 build/source hashes and cached inputs
 remained unchanged. Failed pre-port replays are retained, not relabeled as passes.
 
 Patch **0030** needs eight unavailable inputs listed in the manifest.
-Patches **0030–0062 remain unverified** on 157. GPU/GRIT invariant inputs are not
+Patches **0030–0063 remain unverified** on 157. The current 156 base includes the
+later safe-buffer portability append; this 29-patch prefix does not apply it.
+GPU/GRIT invariant inputs are not
 in this bounded replay; empty `source_invariants` is not a pass for those gates.
 No C++ compilation, native tests, runtime behavior, security review or package
 verification has been established for this draft. The active 156 build and

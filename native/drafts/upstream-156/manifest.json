@@ -1453,6 +1453,10 @@
       "file": "0062-native-windows-font-rasterization.patch",
       "sha256": "7c74fe72d26bb6723f355d9847fe73346671d4b79327c53c49cbf616dae2e865",
       "original_sha256": "85d1479390e046de59a98b2f0a73cf7f4657dc341c5bf8f48260be6c7106d13e"
+    },
+    {
+      "file": "0063-native-safe-buffer-portability.patch",
+      "sha256": "55c3d398abb183c3ab0a01b7dba4c291924438d691e2ffc38281e444fd1bdd8d"
     }
   ],
   "build": {

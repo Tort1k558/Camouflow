@@ -6,7 +6,9 @@ The reviewed Windows runtime is **Chromium 148 / 001-062**. Its exact managed
 package admits only the individually reviewed experimental capabilities;
 source ports, Python tests and diagnostic reports cannot expand that admission.
 Chromium **156.0.8078.36** has the complete candidate chain applied and is being
-built in its separate D: workspace. The two system module targets and their
+built in its separate D: workspace. The current candidate chain is 001–063;
+0063 addresses the actual unsafe-buffer compilation failures without disabling
+diagnostics. The two system module targets and their
 source/toolchain guards passed; the complete 156 browser is not yet linked or
 runtime-verified. Linux/macOS runtime work remains deferred.
 

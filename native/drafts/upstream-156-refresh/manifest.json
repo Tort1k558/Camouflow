@@ -1453,6 +1453,10 @@
       "file": "0062-native-windows-font-rasterization.patch",
       "sha256": "7c74fe72d26bb6723f355d9847fe73346671d4b79327c53c49cbf616dae2e865",
       "original_sha256": "85d1479390e046de59a98b2f0a73cf7f4657dc341c5bf8f48260be6c7106d13e"
+    },
+    {
+      "file": "0063-native-safe-buffer-portability.patch",
+      "sha256": "55c3d398abb183c3ab0a01b7dba4c291924438d691e2ffc38281e444fd1bdd8d"
     }
   ],
   "build": {
@@ -1474,6 +1478,6 @@
       "repository": "https://chromium.googlesource.com/v8/v8.git"
     }
   },
-  "base_manifest_sha256": "b62ae2c7a20b52461dfa5a7e1e68c8105813792c3e377e346f651f6e133f1875",
+  "base_manifest_sha256": "e41540549bfec2cae38beb5cb78be70a7da36068241fcc12e24210b55ee9864a",
   "preparation_scope": "Source-context replay only; not selected for compilation or runtime admission"
 }

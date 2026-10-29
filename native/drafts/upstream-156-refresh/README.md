@@ -4,9 +4,9 @@
 
 This snapshot pins Chromium `861389936bf33ea77529ee5dcc0605e68f6bb620`
 and its DEPS-selected V8 `235050a0df6db2c9d92a419af2b72fbf3b2dd73b`.
-All 185 pristine input files and all 62 patch hashes are recorded in
+All 185 pristine input files and all 63 patch hashes are recorded in
 `manifest.json`. Patch bytes are reused from `../upstream-156/patches`, not
-duplicated here. `base_manifest_sha256` binds that original snapshot.
+duplicated here. `base_manifest_sha256` binds the selected .36 candidate snapshot.
 
 ## Reproduce
 
@@ -46,13 +46,20 @@ generated-output comparison; it is not compiler/toolchain admission.
 
 ## Evidence and limits
 
+After the append-only safe-buffer port, the final 63-patch manifest passed
+source replay on both .36 and .75 with GPU ordinals/GRIT postguards preserved.
+Evidence: `safe-buffer-minimal-style-20261029-v1/refresh-63-final-replay/report.json`
+on D. This does not rerun the older codegen gate or compile the .75 target.
+
 The public fetcher was exercised with all **185 cached files / zero HTTP
 requests**, followed by all **62 patch applications**. A separate cold fetch of
 one pinned `chrome/VERSION` file passed against Google HTTPS. This is not an
 end-to-end cold download of all 185 files. Evidence on D:
 `public-source-fetch-proof-20261029-v1/report.json`.
-Manifest files use checkout-independent LF bytes via `.gitattributes`; the
-original .36 candidate manifest and active build inputs remain unchanged.
+Manifest files use checkout-independent LF bytes via `.gitattributes`.
+Retrieval itself does not change a build. The later append-only 0063 C++
+portability fix has a separate manifest/proof in the test matrix; it does not
+retroactively change the earlier 62-patch reports below.
 
 October 29: the public CLI replay passed all 62 patches with unchanged inputs,
 321 preserved GPU command IDs plus command 577, and preserved GRIT structure.
