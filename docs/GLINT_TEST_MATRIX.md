@@ -14,6 +14,7 @@
 | Native identity transport target | 20 cases passed; source/toolchain/browser-core postguards passed | Unit-level transport coverage; not browser identity admission or native handoff completion |
 | Native identity handoff target | 15 cases passed: three window-surface and twelve DocumentLoader inline-script policy units; source/toolchain/browser-core postguards passed | Native unit coverage, not full enabled renderer/worker lifecycle or browser-policy admission |
 | Native document/worker delivery target | 34 cases passed with the corrected canonical verifier and independently with an identical isolated copy; full ordered patch-chain pre/postguards and ten delivery-source hashes retained | Old initial-draft comparison rejected later Surface Policy changes incorrectly; verifier-only correction, no Chromium-source change; not browser first-script/lifecycle admission |
+| GPU metadata fixture diagnosis | Canonical target: 27/33 passed, six texture cases failed because the test base disables optional texture-query extensions. Corrected test-only shadow object linked against unchanged production libraries: all 34 named cases passed, including missing-extension rejection | Public patch is unselected; original canonical failure retained, native/package queues stopped; no runtime/driver/WebGPU or release admission |
 | Chromium 156 full owned runtime suite | All eight gates passed: runtime 18, hardware 9, WebRTC 7, automation 55, fonts 42, identity 18, CDP 6, combined 5; 160 checks total | Source-build binary only; remaining native targets and installed-package gates are separate; no external anti-bot or complete Canvas/GPU/Audio admission |
 | Disposable startup | 156.0.8078.36 opened the controlled page; sandbox requested, effective `--no-sandbox` absent; runtime resources closed | Regular raw/headless baseline, not concealed-automation admission |
 | Extended baseline lifecycle | Two repeats each passed all 18 checks: isolation/five stores, permissions, crash/restarts, owned-process cleanup, controlled authenticated proxy, manager/scenarios, Recorder and backup/restore | One repeat had diagnostic logging, the other ordinary verbosity; not the full eight-gate policy suite |
@@ -79,6 +80,13 @@ Network fixture: [`network/README.md`](../native/drafts/network/README.md),
 [`stock-clienthello-observations.json`](../native/drafts/network/stock-clienthello-observations.json);
 32 parser/lifecycle/binding tests passed in 10.36s, independently of the earlier full run.
 Raw capture: `D:\Glint156Candidate\stock-clienthello156-20261029-v2`.
+GPU fixture diagnosis/correction: [`gpu-transport/README.md`](../native/drafts/gpu-transport/README.md),
+[`optional-query-fixture-observations.json`](../native/drafts/gpu-transport/optional-query-fixture-observations.json).
+Raw corrected tests: `D:\Glint156Candidate\gpu-texture-fixture-fix-20261029-v1\trace-tests.json`.
+Patch/evidence and network regression: **1136 passed, one skipped** (64.67s),
+`D:\Glint156Candidate\gpu-fixture-python-regression-20261029-v1\pytest.log`.
+The unaffected worker-surfaces/font targets are running separately under
+`native-tail-after-gpu-diagnosis-20261029-v1`; they cannot admit the failed full queue.
 Stock control: [`stock-control-observations.json`](../native/drafts/upstream-156/stock-control-observations.json);
 matched Audio: [`matched-stock-observations.json`](../native/drafts/audio-dsp-math-v2/matched-stock-observations.json).
 Public runner and scoped evidence: [`browser_matrix.py`](../native/drafts/audio-dsp-math-v2/browser_matrix.py),

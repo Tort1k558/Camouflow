@@ -238,3 +238,34 @@ uses this same check with the existing partitioned-privacy default.
 These are synthetic validator checks, not protected browser results. The runtime
 CLI/receipt gate still exercises registered partitioned privacy only; identity
 activation and binary admission are not enabled by this parameter.
+
+## Optional texture-query fixture correction — Chromium 156
+
+The canonical GPU target ran 33 cases: 27 passed, six texture-attachment cases
+failed. A private diagnostic object reproduced the failures without changing
+the checkout or browser. Every failing query stopped at the missing
+`GL_ANGLE_get_tex_level_parameter` guard.
+
+Chromium's `GLES2DecoderPassthroughTestBase` deliberately disables optional
+extensions. Production initialization normally requests this extension; the
+fixture had not reproduced that prerequisite. The correction requests it through
+the native GL API, reinitializes bindings and asserts availability without a skip.
+
+[`gpu_readback_metadata_optional_query_fixture.patch`](gpu_readback_metadata_optional_query_fixture.patch)
+changes **one test file only**. It also adds a separate missing-extension fixture:
+metadata must remain unavailable with no added GL error. The producer is unchanged.
+
+An isolated fixture object was linked against the original production libraries.
+All **34 exact named cases passed**, including the new negative control. The
+public patch independently replayed and reverse-checked against the pinned
+001–065 source. Baseline checkout, unit artifacts, browser core and 201 frozen
+inputs stayed unchanged. [Scoped observations](optional-query-fixture-observations.json).
+
+**Unselected:** this does not turn the original failed canonical gate into a pass.
+Promote the fixture through an explicit verified chain, rerun the canonical
+native queue, then verify the installed package. No browser/driver readback,
+WebGPU, fingerprint or production admission follows from these unit results.
+
+Private diagnosis: `D:\Glint156Candidate\gpu-texture-diagnosis-20261029-v2`;
+corrected fixture: `gpu-texture-fixture-fix-20261029-v1`; patch replay:
+`gpu-texture-fixture-replay-20261029-v1` under the same workspace.

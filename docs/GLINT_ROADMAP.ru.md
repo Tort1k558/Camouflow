@@ -130,6 +130,16 @@ GREASE/порядке extensions/размере сообщений. Сырые n
 возвращаются. 32 parser/lifecycle/binding теста прошли отдельно от полного прогона.
 Далее — matched Glint/stock на том же endpoint, затем успешная negotiation,
 HTTP/2 settings/HTTP/3 и proxy/DNS; текущая калибровка этого не доказывает.
+GPU metadata target: 27/33 прошли, шесть texture cases упали. Изолированный
+diagnostic-объект подтвердил остановку на guard отсутствующего native extension.
+Причина — test base намеренно отключает optional extensions; production запрашивает
+texture-query extension штатно. Test-only патч запрашивает prerequisite и обновляет
+bindings; отдельный отрицательный case сохраняет unavailable без GL-ошибки.
+Shadow fixture-object + исходные production libraries прошли **34/34** cases;
+patch replay/reverse-check и неизменность checkout/core/201 входа подтверждены.
+Патч пока не выбран, canonical gate и package v7 не допускаются. Далее — явно
+продвинуть fixture в проверяемую цепочку, завершить worker-surfaces/font targets,
+повторить canonical native queue и установленный пакет.
 
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 

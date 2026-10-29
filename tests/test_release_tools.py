@@ -4858,6 +4858,45 @@ def test_audio_fidelity_stock_fixture_preserves_exact_signals_and_rejects_faults
     assert data["remaining_unverified"]
 
 
+def test_gpu_optional_query_fixture_evidence_keeps_canonical_admission_separate():
+    import hashlib
+    import json
+    from scripts import native_build as build
+    from scripts.verify_native_privacy_units import required_tests
+
+    draft = build.ROOT / "native/drafts/gpu-transport"
+    raw = (draft / "optional-query-fixture-observations.json").read_bytes()
+    data = json.loads(raw)
+    patch = (draft / data["patch"]["file"]).read_bytes()
+    assert b"\r" not in raw and b"\r" not in patch
+    assert not raw.startswith(b"\xef\xbb\xbf") and not patch.startswith(b"\xef\xbb\xbf")
+    assert hashlib.sha256(patch).hexdigest() == data["patch"]["sha256"]
+    assert hashlib.sha256((draft / data["required_base_manifest"]).read_bytes()).hexdigest() == data["required_base_manifest_sha256"]
+    text = patch.decode("utf-8")
+    assert text.count("diff --git ") == 1
+    assert data["source_file"] == "gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc"
+    assert text.startswith("diff --git a/" + data["source_file"] + " b/" + data["source_file"] + "\n")
+    added = "\n".join(line[1:] for line in text.splitlines() if line.startswith("+") and not line.startswith("+++"))
+    assert 'glRequestExtensionANGLEFn(' in added and 'ReinitializeDynamicBindings()' in added
+    assert 'ASSERT_TRUE(context->HasExtension("GL_ANGLE_get_tex_level_parameter"))' in added
+    assert "GlintPassthroughAttachmentTest(false)" in added and "EXPECT_FALSE(QueryAttachment())" in added
+    assert "GTEST_SKIP" not in added and "DISABLED_" not in added
+    expected = {suite + "." + name for suite, names in required_tests("gpu-metadata").items() for name in names}
+    expected.add(data["negative_case"])
+    assert data["negative_case"] == "GlintPassthroughWithoutTextureQueryTest.TextureAttachmentRemainsUnavailableWithoutNativeQueryExtension"
+    assert len(data["executed_tests"]) == len(expected) == data["native_test_count"] == 34
+    assert set(data["executed_tests"]) == expected
+    assert data["previous_native_test_count"] == 33 and data["previous_failure_count"] == 6
+    assert data["passed"] and data["source_replay_passed"] and data["isolated_fixture_compiled"]
+    assert data["isolated_native_tests_passed"] and data["postguards_passed"] and data["frozen_inputs_unchanged"] == 201
+    baseline = json.loads((draft.parent / "upstream-156/windows-runtime-observations.json").read_bytes())
+    assert data["baseline_runtime_core_sha256"] == baseline["runtime_core_sha256"]
+    for field in ("selected_in_manifest", "canonical_verifier_enabled", "production_code_changed", "canonical_checkout_changed",
+                  "browser_runtime_admitted", "packaging_admitted", "production_admitted"):
+        assert data[field] is False
+    assert data["remaining_unverified"]
+
+
 def test_first_156_audio_calibration_does_not_admit_the_math_variant():
     import hashlib
     import json
