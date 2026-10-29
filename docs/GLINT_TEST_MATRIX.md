@@ -18,8 +18,30 @@
 | 001–067 native batch | **17/18 groups passed**, all source/SDK/core/receipt postguards passed; test build 1h20m44.41s / 726 actions | [Failed batch retained](../native/drafts/upstream-156/native-batch67-observations.json); overlapping filters are not independent coverage |
 | AudioMath group | Failed/incomplete after policy rejected fixture Audio seed 3 duplicating WebGPU seed 3; no complete 11-case result | Fixture-only repair is unregistered; valid float seed 10 and duplicate-seed negative case propose 12 cases; no relaxed policy checks |
 | Windows CI / `34583fc` | Python/QML, static checks, C++ policy and packaged-engine job passed | [CI run](https://github.com/Tort1k558/Camouflow/actions/runs/40933140951); upstream bootstrap/legacy-engine packaging is not custom Glint 0067 admission |
-| Measured-environment source package | **4110 passed, 1 skipped** in isolated worktree; source postguards passed | Now integrated in main; canonical repeat pending; no generated cohort or ordinary-user claim |
+| Measured-environment source package | **4110 passed, 1 skipped** in isolated worktree; canonical main with draft control **4111 passed, 1 skipped**, 371.73s | Source postguards passed; no generated cohort or ordinary-user claim |
 | Stock156 manager-mode controls | Desktop/mobile screen differs in cross-origin iframe in both requested phases; plain no-emulation control passed | [Reproducer and native repair contract](../native/drafts/environment/SCREEN_EMULATION.md); not Glint execution, not fixed by dropping requested settings |
+
+### Actual 001–067 Audio/GPU diagnostics
+
+| Mode/gate | Fidelity | Analyser | Worklet | Realtime |
+| --- | --- | --- | --- | --- |
+| Baseline | **54/54** | **12/12** | **12/12** | **11/11** |
+| Legacy Audio-v1 | **24/54 — failed** | **0/12 — failed** | **0/12 — failed** | **11/11** |
+| Experimental Math, one owned profile | **54/54** | **12/12** | **12/12** | **11/11** |
+
+The overall Audio command returned failure; all modes and failed observations
+were retained. This key's Legacy counts differ from the older 42/54 fixture;
+neither result is excused. Math fidelity hashes equalled baseline in this run;
+**both backend branches and Float32 browser DSP execution are not verified**.
+Resources closed and source/core/receipt postguards passed.
+
+The strict GPU gate passed all four off/on/restart phases with **8/8 WebGL1,
+WebGL2 and WebGPU contexts** each. Every phase reported the real selected CDP
+revision, and unrelated driver feature flags were preserved. This covers metadata
+minimization and real GPU operations, not WebGPU readback protection, a hardware
+cohort, complete combined-policy admission or third-party anti-bot results.
+[Source-bound failed overall scope](../native/drafts/upstream-156/canonical-audio-gpu67-observations.json)
+retains the native AudioMath failure and all release/admission flags as false.
 
 Ownership-bound resource monitoring and the Audio/GPU runners are now integrated
 in main. No binary activation, release, CAPTCHA result or expanded capability

@@ -6,8 +6,10 @@ The latest source-built Windows candidate is **Chromium 156 / 001–067**:
 1966 executed build actions in 1h28m46.46s at j4, with passing source/toolchain
 postguards and a complete receipt. Its immutable checkpoint and
 [`windows-build67-observations.json`](drafts/upstream-156/windows-build67-observations.json)
-prove compilation only. AudioMath native/runtime checks, the requested real CDP
-revision stamp, package validation and policy admission remain unverified.
+prove compilation only. Subsequent GPU off/on/restart phases verified the real
+CDP stamp and all eight WebGL1/2/WebGPU contexts. One Math-mode profile passed
+four Audio API probes, while Legacy failed three; both backend branches are not
+verified. Package validation and policy admission remain open.
 The last complete 156 runtime baseline remains 001–066. The historical evidence
 below must not be read as verification of 0067.
 
@@ -24,6 +26,13 @@ profile-persistence cancellation controls. Later Windows CI passed after isolati
 ACL verification from foreign PowerShell modules; production ACL checks remain
 unchanged. Python integration does not validate
 the new native AudioMath implementation or expand browser capability admission.
+
+The latest canonical source regression passed **4111 cases with one skipped**
+and tracked-source postguards after integrating measured-environment capture
+and the fixture-repair draft. Detailed
+[Audio/GPU evidence](drafts/upstream-156/canonical-audio-gpu67-observations.json)
+keeps the overall scope failed: native Math fixture repair, Float32 browser
+coverage, the complete browser suite and release gates are still required.
 
 The reviewed Windows runtime is **Chromium 148 / 001-062**. Its exact managed
 package admits only the individually reviewed experimental capabilities;

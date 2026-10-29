@@ -9,6 +9,7 @@ native/drafts/upstream-156/checkpoints/*.json text eol=lf
 native/drafts/upstream-156/native-batch*-observations.json text eol=lf
 native/drafts/upstream-156/canonical-app66-observations.json text eol=lf
 native/drafts/upstream-156/canonical-app67-integration-observations.json text eol=lf
+native/drafts/upstream-156/canonical-audio-gpu67-observations.json text eol=lf
 app/core/native/runtime.py text eol=lf
 app/core/native/profile_version.py text eol=lf
 app/core/native/process_monitor.py text eol=lf

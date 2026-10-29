@@ -2,18 +2,18 @@
   "schema": 1,
   "passed": true,
   "scope": "Canonical main Python integration regression only; no Glint 0067 native/runtime/package admission",
-  "application_commit": "2591157d0ef69273a72b5cc8734d2862183e218e",
+  "application_commit": "55e17e3f4817057df39bd1a9ebad425c6a4bce89",
   "python_regression": {
-    "passed": 4047,
+    "passed": 4111,
     "skipped": 1,
     "failed": 0,
     "errors": 0,
-    "elapsed_seconds": 401.39000000001397,
+    "elapsed_seconds": 371.73399999999674,
     "tracked_source_postguards_passed": true,
-    "log_sha256": "7094ba6ff3f7f9d4b5605ea94ec91fc1b23b9317059d69bb975c9866632450fa",
-    "raw_report_sha256": "c571094dd43d567e4f7c5716bff98cac8ed920684507c8ca2a31dd3f5dff4ca7"
+    "log_sha256": "330077f7db5e4f5563452e70b39e3a0e86a582c3e241a51b0bd7575c19f5f1b7",
+    "raw_report_sha256": "8e065ea649fd8b6e76560bbc8a9d3cf9e5db28d8829e1aecc7f02bb79d1f6f76"
   },
-  "native_runtime_python_cases": 625,
+  "native_runtime_python_cases": 627,
   "slow_persistence_cleanup_paths": [
     "cancelled-start",
     "failed-start-during-cancellation"
