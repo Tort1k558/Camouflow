@@ -913,3 +913,52 @@ def test_published_cross_process_result_proves_orderly_handoff_not_crash_recover
         owner_process_collector["validate_probe"](row["result"], blocked=blocked)
     for name, value in record["source_sha256"].items():
         assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+
+
+def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/runtime-crash68-observations.json").read_bytes())
+    assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
+    assert record["controller_crash_verified"] and record["controller_owned_processes_observed"] > 0
+    assert record["requested_rounds"] == len(record["rounds"]) == 3 and record["concurrent_profiles"] == 2
+    assert record["existing_gates_reused"] == ["verify_multi_profile_restarts", "verify_controller_crash"]
+    assert record["verified_stores"] == ["cookies", "localStorage", "IndexedDB", "CacheStorage", "serviceWorker registration"]
+    assert record["checkpoint_before_browser_crash"]
+    assert [row["crashed_profile"] for row in record["rounds"]] == [0, 1, 0]
+    for row in record["rounds"]:
+        assert row["concurrent_profiles"] == row["independent_drivers"] == 2
+        assert row["checkpoint_before_crash"] and row["remaining_owned_processes"] == 0
+        assert row["policy_capabilities"] == [] and row["processes_observed"] > 2
+    assert all(record[name] is False for name in ("uncommitted_transactions_recovery_verified", "protected_policies_enabled",
+        "native_0069_verified", "screen_consistency_verified", "server_team_storage_isolation_verified",
+        "protected_policy_recovery_verified", "privacy_admitted", "production_admitted"))
+    for name, value in record["source_sha256"].items():
+        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+
+
+def test_consolidated_screen_batch_is_two_files_and_seven_cases_without_early_admission():
+    import hashlib
+    import re
+
+    directory = environment.ROOT / "native/drafts/environment"
+    record = json.loads((directory / "linked-screen70-preparation.json").read_bytes())
+    assert record["apply_check_passed"] and record["active_source_postguards_passed"]
+    assert record["do_not_stack_component_patches"]
+    assert all(record[name] is False for name in ("selected", "cpp_compiled", "native_tests_executed",
+        "runtime_verified", "screen_inheritance_fixed", "privacy_admitted", "production_admitted",
+        "public_header_changed", "ipc_schema_changed", "build_time_measured"))
+    assert hashlib.sha256((directory / record["base_manifest"]).read_bytes()).hexdigest() == record["base_manifest_sha256"]
+    for name, value in record["component_patch_sha256"].items():
+        assert hashlib.sha256((directory / name).read_bytes()).hexdigest() == value
+    patch = (directory / record["patch"]).read_bytes()
+    assert hashlib.sha256(patch).hexdigest() == record["patch_sha256"]
+    text = patch.decode("utf-8")
+    files = re.findall(r"^diff --git a/(\S+) b/\S+$", text, re.MULTILINE)
+    assert set(files) == set(record["base_source_sha256"]) == set(record["prepared_source_sha256"])
+    assert len(files) == 2 and all(name.endswith(".cc") for name in files)
+    added = "\n".join(line[1:] for line in text.splitlines() if line.startswith("+") and not line.startswith("+++"))
+    cases = re.findall(r"TEST_F\((WebFrameWidget(?:SimTest|ImplRemoteFrameSimTest)),\s*(Glint\w+)\)", added)
+    assert [".".join(row) for row in cases] == record["prepared_cases"] and len(cases) == 7
+    assert "  if (!glint_logical_screen_infos_)" in added

@@ -20,8 +20,13 @@ run's lock owners were in one Python process. A separate real-process control
 subsequently rejected a challenger while the owner stayed usable, then acquired
 the same profile after orderly close, retaining its private identity and releasing
 resources. [Windows process evidence](drafts/environment/runtime-owner-process68-observations.json).
-Crash recovery, server/team storage isolation and enabled privacy policies are
-not admitted by these controls.
+The existing crash gates also passed three two-profile rounds and a separate
+owned-controller kill, recovering cookies/localStorage/IndexedDB/CacheStorage/SW
+with zero remaining observed owned processes.
+[Checkpointed recovery evidence](drafts/environment/runtime-crash68-observations.json).
+This covers committed checkpoint state with policies off, not unsaved
+transactions, enabled-policy recovery, server/team storage isolation or the
+still-building 0069/queued 0070.
 
 Eight fixed profiles passed baseline/Math/Math-restart Audio API compatibility.
 A separate **1080-capture** long-compressor run on the same keys observed two

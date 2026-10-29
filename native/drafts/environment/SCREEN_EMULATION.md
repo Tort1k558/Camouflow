@@ -251,6 +251,15 @@ apply-check in an isolated overlay and unchanged live 0069 sources. Together
 with 0070 this prepares seven `blink_unittests` cases, **not compiled or executed**.
 It does not replace real DOM/CSS events, browser input, screenshots or BFCache.
 
+For the next source update, [`linked-screen70.patch`](linked-screen70.patch)
+consolidates the DPR correction and all seven native cases into **two files**.
+[Preparation](linked-screen70-preparation.json) binds both component hashes and
+the exact 001–069 source hashes, with a successful read-only apply-check against
+the active checkout. Apply it **instead of**, not after, the two component
+patches. It changes no public header/IPC schema; actual incremental build time,
+compilation, case execution and runtime behavior remain unmeasured. Wait for
+the current producer's terminal state and postguards before promotion.
+
 | Contract | Checks |
 | --- | --- |
 | First-script consistency | Same-origin, cross-origin, inherited and nested frames; no late `framenavigated` repair |

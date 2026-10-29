@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "scope": "Single queued two-file batch combining main-root DPR correction, valid logical available rectangle and seven Blink lifecycle cases after exact 001-069",
+  "selected": false,
+  "do_not_stack_component_patches": true,
+  "cpp_compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "screen_inheritance_fixed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "patch": "linked-screen70.patch",
+  "patch_sha256": "fb4a7f9a630d3dff03b0b25993a685f73facb835dd7ffe16783bb7fe270ec1fa",
+  "base_manifest": "../upstream-156/checkpoints/001-069.json",
+  "base_manifest_sha256": "5b7cce89049abe7d5ea5717b3c60817975858f8c3affdcb738e58a9c5262e89e",
+  "component_patch_sha256": {
+    "main-dpr70.patch": "5d1b6d63c64af5ae2939e409cdb38e44c718bba0fd03ecb7d1f41523e1fd84e3",
+    "screen-lifecycle-native-tests.patch": "2671923204326f926c7e501f1bafc6b4bcd0868f47f179aa6cb6a94911512d29"
+  },
+  "base_source_sha256": {
+    "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "5c976fa7f90b84eccece5093abd6c743611296308b2f8bb4802c188b43f09b39",
+    "third_party/blink/renderer/core/frame/web_frame_widget_test.cc": "14e66271258af8d23a73f199e51ae12eccf1c948211a3b61edc86f7ff8347a1a"
+  },
+  "prepared_source_sha256": {
+    "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "c73909d028d0cfca579577c001792d7a4dcd5936d087e14001191f4806e45034",
+    "third_party/blink/renderer/core/frame/web_frame_widget_test.cc": "2ef068b3caf5854ba4bc3e76559929028519b445f5a3ed0f88d2374100688285"
+  },
+  "prepared_target": "blink_unittests",
+  "prepared_cases": [
+    "WebFrameWidgetSimTest.GlintMainLogicalDprIgnoresForeignPageInspectorState",
+    "WebFrameWidgetSimTest.GlintMainLogicalDprTracksWidgetZoomAndCss",
+    "WebFrameWidgetSimTest.GlintClearedMainDprRestoresNativeInspectorRules",
+    "WebFrameWidgetSimTest.GlintMainLogicalDprFollowsLatestSnapshot",
+    "WebFrameWidgetImplRemoteFrameSimTest.GlintLogicalScreenUpdatePreservesPhysicalCompositorMetrics",
+    "WebFrameWidgetImplRemoteFrameSimTest.GlintLogicalScreenClearRestoresNativeSnapshot",
+    "WebFrameWidgetImplRemoteFrameSimTest.GlintLogicalRemoteDprIgnoresForeignInspectorAndKeepsZoom"
+  ],
+  "apply_check_passed": true,
+  "active_source_postguards_passed": true,
+  "public_header_changed": false,
+  "ipc_schema_changed": false,
+  "build_time_measured": false,
+  "open_gates": [
+    "Promote only after the live 0069 producer reaches terminal state with postguards",
+    "Compile and execute all seven native cases",
+    "Run first-script/manager/lifecycle and existing privacy regressions on the actual linked binary"
+  ]
+}
