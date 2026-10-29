@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Canonical main Python integration regression only; no Glint 0067 native/runtime/package admission",
+  "application_commit": "2591157d0ef69273a72b5cc8734d2862183e218e",
+  "python_regression": {
+    "passed": 4047,
+    "skipped": 1,
+    "failed": 0,
+    "errors": 0,
+    "elapsed_seconds": 401.39000000001397,
+    "tracked_source_postguards_passed": true,
+    "log_sha256": "7094ba6ff3f7f9d4b5605ea94ec91fc1b23b9317059d69bb975c9866632450fa",
+    "raw_report_sha256": "c571094dd43d567e4f7c5716bff98cac8ed920684507c8ca2a31dd3f5dff4ca7"
+  },
+  "native_runtime_python_cases": 625,
+  "slow_persistence_cleanup_paths": [
+    "cancelled-start",
+    "failed-start-during-cancellation"
+  ],
+  "production_timeouts_changed": false,
+  "native_audio_math_tests_verified": false,
+  "browser_audio_math_verified": false,
+  "device_cohort_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

@@ -11,6 +11,13 @@ revision stamp, package validation and policy admission remain unverified.
 The last complete 156 runtime baseline remains 001–066. The historical evidence
 below must not be read as verification of 0067.
 
+The manager resource monitor and source-bound Audio/GPU diagnostic runners are
+integrated in main. Canonical Python regression passed **4047 cases with one
+skipped** and tracked-source postguards; 625 runtime tests include real slow
+profile-persistence cancellation controls. The shared 18-target native batch is
+still building its test executables at j4. Python integration does not validate
+the new native AudioMath implementation or expand browser capability admission.
+
 The reviewed Windows runtime is **Chromium 148 / 001-062**. Its exact managed
 package admits only the individually reviewed experimental capabilities;
 source ports, Python tests and diagnostic reports cannot expand that admission.
