@@ -1,0 +1,161 @@
+{
+  "schema": 1,
+  "scope": "Isolated complete compressor core prototype; not a profile feature or verified device cohort",
+  "platform": "Windows x86_64",
+  "selected_in_engine": false,
+  "compiled_experiment": true,
+  "compiled_browser": false,
+  "native156_runtime_verified": false,
+  "profile_policy_transport_implemented": false,
+  "variant_device_cohort_verified": false,
+  "production_admitted": false,
+  "variant_compatibility_admitted": false,
+  "artifacts": [
+    {
+      "file": "compressor_math_policy.h",
+      "sha256": "06cebc64c859114ff3772f4a5fcaf9c2869ebcff780f352fa6b7391aa78e250c"
+    },
+    {
+      "file": "driver.cc",
+      "sha256": "8bafdb57f9a4f5996ee1d9f6271686ade14a62b581ae9e357f0706283e250ccc"
+    },
+    {
+      "file": "probe.py",
+      "sha256": "b649629ba362f625ca7db44c006aa96f1cdbcb1e2e84b34989b6148129d892e3"
+    },
+    {
+      "file": "compressor-control.js",
+      "sha256": "0061086629ca644dd205d7f57f1bbaffa8b6f54c748e81eb2211b33929e61d26"
+    }
+  ],
+  "source_sha256": {
+    "156/third_party/fdlibm/ieee754.cc": "661b229dd99d262594df7a25d1c709d63f0af202c9bae252b3cabbaeb27d7d2f",
+    "156/third_party/fdlibm/ieee754.h": "67ac025f301eb38f63a4523f94f0cc30a4c0aa2f441f40f6e139026a84d49072",
+    "156/third_party/blink/renderer/platform/audio/audio_utilities.cc": "904354af32f9724dc59fe6621759c013fe24006056975fce086e53a23269a498",
+    "156/third_party/blink/renderer/platform/audio/dynamics_compressor.h": "3db6b7dce689adf832d2f5d6cfe2f0feff1e814138cbd3b2c3ebe37b4e865576",
+    "156/third_party/blink/renderer/platform/audio/dynamics_compressor.cc": "14f1ac7ee487ba94d6f244b0efbad5c27c7cbf36ea9aa7abdeab7bf1f1f6e86a",
+    "148/third_party/blink/renderer/platform/audio/dynamics_compressor.h": "39da7be02ca6198c4d36da959625aa9873580d9c064fbdecca75793324489f82",
+    "148/third_party/blink/renderer/platform/audio/dynamics_compressor.cc": "ddcfdaf4c750614ae852c85926d659a1f242c5c154a23a4daaac2f6c3f35e99d"
+  },
+  "fdlibm_object_sha256": "aff7c4c2ab6bbc654bafc03fb75c00e43fa435e70b26d642e520d6540cfafe13",
+  "compiler_sha256": "46ec91bea01ec2a79087ed161a6cc39e5d99f8d90ae6423dbb6ca8e215fcf886",
+  "prototype": {
+    "frames": 8192,
+    "channels": 2,
+    "sample_rate": 44100,
+    "legacy_native_different_samples": 0,
+    "native_float32_different_samples": 2,
+    "segmentation_differences": 0,
+    "interleaved_differences": 0,
+    "max_abs_error": 2.9802322387695312e-08,
+    "rms_error": 3.2927225399135965e-10,
+    "selector_values_checked": 1025,
+    "pow_edge_cases_checked": 72,
+    "pow_edge_category_mismatches": 0,
+    "pow_edge_mismatches": []
+  },
+  "native_samples_sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+  "float32_samples_sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+  "mono_input_stereo_channels_identical": true,
+  "initial_pow_category_failure": {
+    "count": 5,
+    "cases": [
+      {
+        "base": "one",
+        "exponent": "infinity"
+      },
+      {
+        "base": "one",
+        "exponent": "negative_infinity"
+      },
+      {
+        "base": "one",
+        "exponent": "nan"
+      },
+      {
+        "base": "negative_one",
+        "exponent": "infinity"
+      },
+      {
+        "base": "negative_one",
+        "exponent": "negative_infinity"
+      }
+    ],
+    "policy_sha256": "be8c10deb7d21ce7760deb4dd22bcde1a7bbcd990a84268bd0e1d42b2e4d7724"
+  },
+  "corrected_pow_category_parity": true,
+  "browser_baseline_calibration": {
+    "version": "148.0.7778.96",
+    "capture_count": 6,
+    "scope": "Policy-off native calculation only; no float32 backend installed in a browser",
+    "captures": [
+      {
+        "phase": "stock-baseline",
+        "repetitions": 3,
+        "observation": {
+          "frames": 8192,
+          "sampleRate": 44100,
+          "channelCount": 2,
+          "eventSameBuffer": true,
+          "closed": true,
+          "raw_sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "prototype_exact": true
+        }
+      },
+      {
+        "phase": "a-native-baseline",
+        "repetitions": 3,
+        "observation": {
+          "frames": 8192,
+          "sampleRate": 44100,
+          "channelCount": 2,
+          "eventSameBuffer": true,
+          "closed": true,
+          "raw_sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "prototype_exact": true
+        }
+      }
+    ],
+    "postguards_passed": true,
+    "all_runtime_resources_closed": true,
+    "sandbox_requested": true,
+    "no_sandbox_flag_absent": true,
+    "owned_identity_payloads_unchanged": true,
+    "receipt_sha256": "e39654a2a45f981e3ef87b7fd187af60329bd38ec482e8e8e18728c5e9f4bb12",
+    "native_core_sha256": {
+      "chrome.exe": "275ad4eaa4b51b3e53a9a57496ecb17f6bc90b8c687e252567ce7d2050c0088c",
+      "chrome.dll": "9b65965659f4ba78f2da12d18c858519a68066df232f0cd67a92bdb004e7a24a",
+      "chrome_elf.dll": "f26f09cadfc9fbfe1384c2df2a7549151e4afa988568e6468d296d4fd61303fb"
+    },
+    "stock_core_sha256": {
+      "chrome.exe": "290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635",
+      "chrome.dll": "2dec55e969120a4f365942ddf143df869dad9bc7595400da87af247c74c867fd",
+      "chrome_elf.dll": "994bc5cc8de982bdc8aecb92c7fc639a7801ae62745e6a38e7ffc0a9664c164e"
+    }
+  },
+  "tool_negative_controls": [
+    {
+      "case": "existing-output",
+      "rejected": true,
+      "exit_code": 1
+    },
+    {
+      "case": "source-drift",
+      "rejected": true,
+      "exit_code": 1
+    },
+    {
+      "case": "invalid-object",
+      "rejected": true,
+      "exit_code": 1
+    }
+  ],
+  "active_build_input_count_unchanged": 201,
+  "remaining_unverified": [
+    "Fresh 156 browser calibration and integrated DSP execution",
+    "Real reference-device cohort for float32 results",
+    "Profile/context transport, workers and capture timing",
+    "Other graph/parameter families, NaN payloads, errno and floating-point exception behavior",
+    "Real-time audio, audible quality, broader Audio APIs and performance"
+  ]
+}

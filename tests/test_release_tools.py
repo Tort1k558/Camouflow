@@ -4277,6 +4277,74 @@ def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
     assert conflict["stock148_observed_bits"] == conflict["input_bits"] != conflict["v1_predicted_bits"]
 
 
+def test_compressor_math_workbench_binds_sources_without_granting_profile_admission():
+    import hashlib
+    import json
+    import runpy
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/audio-dsp-math-v2"
+    raw = (root / "observations.json").read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    assert data["schema"] == 1 and data["compiled_experiment"] is True
+    for field in ("selected_in_engine", "compiled_browser", "native156_runtime_verified",
+                  "profile_policy_transport_implemented", "variant_device_cohort_verified",
+                  "production_admitted", "variant_compatibility_admitted"):
+        assert data[field] is False
+    artifacts = {row["file"]: row["sha256"] for row in data["artifacts"]}
+    assert len(artifacts) == len(data["artifacts"]) == 4
+    assert set(artifacts) == {"compressor_math_policy.h", "driver.cc", "probe.py", "compressor-control.js"}
+    for name, digest in artifacts.items():
+        content = (root / name).read_bytes()
+        assert hashlib.sha256(content).hexdigest() == digest
+        assert b"\r" not in content and not content.startswith(b"\xef\xbb\xbf")
+    module = runpy.run_path(str(root / "probe.py"), run_name="glint_compressor_probe_test")
+    assert module["EXPECTED_SOURCES"] == data["source_sha256"]
+    assert len(data["source_sha256"]) == 7
+    metrics = data["prototype"]
+    assert metrics["frames"] == 8192 and metrics["channels"] == 2 and metrics["sample_rate"] == 44100
+    assert metrics["legacy_native_different_samples"] == 0
+    assert metrics["segmentation_differences"] == metrics["interleaved_differences"] == 0
+    assert metrics["native_float32_different_samples"] == 2
+    assert 0 < metrics["rms_error"] < metrics["max_abs_error"] < 0.000001
+    assert metrics["selector_values_checked"] == 1025 and data["mono_input_stereo_channels_identical"]
+    assert metrics["pow_edge_cases_checked"] == 72 and metrics["pow_edge_category_mismatches"] == 0
+    assert metrics["pow_edge_mismatches"] == [] and data["corrected_pow_category_parity"]
+    failure = data["initial_pow_category_failure"]
+    assert failure["count"] == len(failure["cases"]) == 5
+    assert failure["policy_sha256"] != artifacts["compressor_math_policy.h"]
+    assert data["native_samples_sha256"] != data["float32_samples_sha256"]
+    assert {row["case"] for row in data["tool_negative_controls"]} == {
+        "existing-output", "source-drift", "invalid-object"}
+    assert all(row["rejected"] and row["exit_code"] == 1 for row in data["tool_negative_controls"])
+    assert data["active_build_input_count_unchanged"] == 201 and data["remaining_unverified"]
+
+
+def test_compressor_browser_calibration_covers_native_baseline_only():
+    import json
+    from scripts import native_build as build
+
+    data = json.loads((build.ROOT / "native/drafts/audio-dsp-math-v2/observations.json").read_text(encoding="utf-8"))
+    baseline = data["browser_baseline_calibration"]
+    assert baseline["version"] == "148.0.7778.96" and baseline["capture_count"] == 6
+    assert baseline["postguards_passed"] and baseline["all_runtime_resources_closed"]
+    assert baseline["sandbox_requested"] and baseline["no_sandbox_flag_absent"]
+    assert baseline["owned_identity_payloads_unchanged"]
+    previous = json.loads((build.ROOT / "native/drafts/upstream-157-prefix/audio-constant-observations.json").read_text(encoding="utf-8"))
+    for field in ("receipt_sha256", "native_core_sha256", "stock_core_sha256"):
+        assert baseline[field] == previous[field]
+    assert len(baseline["captures"]) == 2
+    assert {row["phase"] for row in baseline["captures"]} == {"stock-baseline", "a-native-baseline"}
+    for row in baseline["captures"]:
+        assert row["repetitions"] == 3
+        capture = row["observation"]
+        assert capture == {"frames": 8192, "sampleRate": 44100, "channelCount": 2,
+                           "eventSameBuffer": True, "closed": True, "prototype_exact": True,
+                           "raw_sha256": data["native_samples_sha256"]}
+    assert data["variant_device_cohort_verified"] is False
+
+
 def test_pending_audio_copy_failure_fixtures_require_exact_unselected_prerequisite():
     import hashlib
     import json

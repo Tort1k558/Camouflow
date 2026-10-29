@@ -217,6 +217,11 @@ Before proposing another Audio policy, measure those actual call paths against
 matched stock controls, including identity graphs and segmentation. Do not add
 post-read noise merely to force different hashes. Audio admission remains false.
 
+The separate [nonlinear compressor workbench](../audio-dsp-math-v2/) now measures
+complete copied DSP algorithms and an instance-owned math prototype. Its native
+calculation matches six stock/Glint 148 captures exactly; the float32 variant is
+still **not an observed device cohort, integrated browser feature or admission**.
+
 157 makes total render length optional and supports finite/indefinite chunks;
 the old 0033 hunks no longer apply. The prototype preserves upstream chunking,
 captures a stable policy before rendering, checks the actual chunk's allocation
