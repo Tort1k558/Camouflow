@@ -6,6 +6,22 @@ lock and reviewed 001-062 chain still target Chromium 148.0.7778.96. The separat
 policy and installed-package gates remain pending. The manifest is a source
 contract, not a mutable binary-readiness flag.
 
+### Selected 0066 fixture correction: rebuild pending
+
+The selected manifest now appends `0066-native-gpu-optional-query-fixture.patch`.
+It changes only the GPU unit fixture, explicitly requests the native optional
+texture-query extension, and adds a negative case for its absence. No production
+GPU implementation or feature default changes. The canonical GPU gate requires
+all **34 cases**, including that negative control; no skips or exclusions.
+
+The preceding actual [001–065 batch](native-batch65-observations.json) collected
+all 17 groups in one Ninja invocation: 16 passed, GPU metadata failed 6 of 33.
+Source/core/receipt/SDK postguards passed. These filters overlap; counts are not
+independent coverage. The browser, checkout and build-stage records still belong
+to 001–065 until the 0066 source refresh/build is executed. Do not package that
+old receipt as the new selected manifest. The isolated 34-case proof does not
+replace a canonical 0066 build, runtime suite or installed-payload verification.
+
 ### Reproducible 001–065 checkpoint
 
 [`checkpoints/001-065.json`](checkpoints/001-065.json) preserves the exact manifest

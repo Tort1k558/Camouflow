@@ -1465,6 +1465,10 @@
     {
       "file": "0065-native-fixture-portability.patch",
       "sha256": "ff16a253d7630119e78db2b929d635ea81a7ccecf2340a899bd1eea9d763b6e8"
+    },
+    {
+      "file": "0066-native-gpu-optional-query-fixture.patch",
+      "sha256": "559b2e74979f8a751716e8b6f422e0cf024014608080aa7ceeaf7878c7170e9c"
     }
   ],
   "build": {

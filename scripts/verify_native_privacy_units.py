@@ -239,6 +239,9 @@ def required_tests(target: str) -> dict[str, set[str]]:
     if target == "gpu-metadata":
         return {
             **required_tests("gpu-metadata-codec"),
+            "GlintPassthroughWithoutTextureQueryTest": {
+                "TextureAttachmentRemainsUnavailableWithoutNativeQueryExtension",
+            },
             "GLES2DecoderPassthroughTest": {
                 "GlintMetadataInvalidSharedMemoryDoesNotWrite", "GlintMetadataOverflowingOffsetDoesNotWrite",
                 "GlintMetadataTruncatedResultStorageDoesNotWrite", "GlintMetadataInitializedResultDoesNotWrite",
@@ -466,7 +469,8 @@ def require_target_sources(source: Path, patches: list[dict], target: str) -> di
     if target == "gpu-metadata":
         required_patches.update({"0055-native-gpu-readback-metadata-transport.patch",
                                  "0056-native-gpu-metadata-protocol-tests.patch",
-                                 "0058-native-gpu-passthrough-attachment-tests.patch"})
+                                 "0058-native-gpu-passthrough-attachment-tests.patch",
+                                 "0066-native-gpu-optional-query-fixture.patch"})
     if target == "delivery":
         required_patches.update({"0018-native-document-policy-delivery.patch",
                                  "0019-native-worker-policy-delivery.patch",

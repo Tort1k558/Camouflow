@@ -1,0 +1,193 @@
+{
+  "schema": 1,
+  "passed": false,
+  "postguards_passed": true,
+  "build_invocations": 1,
+  "candidate_manifest_sha256": "4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0",
+  "source_chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "0596afb2bd1a84731ebbe4d276edd3797d67b262bebb332e76a8aa9d21db5567",
+    "chrome.dll": "bd75c5c6ab3c45946edc0ea4e8f1d684286dd588d7cc46999a0b2bb1236aab44",
+    "chrome_elf.dll": "14597f88689361a016bce4a648e6b18a50ed065d6fc524dc8112f4b7d6e115d0"
+  },
+  "build_receipt_sha256": "5c60aa4cebc433552e6a28a4875ffcf9e74e6e7776a52b4cc25ec4183591863a",
+  "jobs": 4,
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "All 17 baseline-65 native target groups; known GPU fixture failure retained, not release admission",
+  "required_base_manifest": "checkpoints/001-065.json",
+  "targets": [
+    {
+      "target": "keys",
+      "build_target": "camouflow_native_privacy_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "29de536cc54a4b593a190e4d24883ae7f1e6cdd06cdb4b95de241363c51cb098",
+      "tests": 43,
+      "failures": 0,
+      "result_sha256": "ef3b341dc93c8cbe63ef0c5ae586c23cddff157e70a6125d40d08e45110d5110"
+    },
+    {
+      "target": "contexts",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+      "tests": 26,
+      "failures": 0,
+      "result_sha256": "a9ebcd498c8f2a481e13bf04d08cdfc94cc733a9643e12a76adf7fae03a9cf1b"
+    },
+    {
+      "target": "delivery",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+      "tests": 34,
+      "failures": 0,
+      "result_sha256": "4260fd101685b9958e3257756581c3425bae36251a6f88aa8f53669a65c2d274"
+    },
+    {
+      "target": "worker-handoff",
+      "build_target": "blink_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "ab13fea05511c7761e7d65e6483fcbf71eccc7f036c37a00a07f83a16df53125",
+      "tests": 4,
+      "failures": 0,
+      "result_sha256": "cfb0f05521e67f99c2eeeb152e5cc91b47d6857fab34102fb12a741d3f878362"
+    },
+    {
+      "target": "document-partition",
+      "build_target": "camouflow_native_privacy_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "29de536cc54a4b593a190e4d24883ae7f1e6cdd06cdb4b95de241363c51cb098",
+      "tests": 9,
+      "failures": 0,
+      "result_sha256": "924ac082cc9297ef55f170622fd7492a0e8ffca29d1b77b5c2cd374d0668e427"
+    },
+    {
+      "target": "document-navigation",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+      "tests": 12,
+      "failures": 0,
+      "result_sha256": "9f47a4e370c4dbd76fa81669d3a27f47427160c0a0ea5517f393052eac47530c"
+    },
+    {
+      "target": "surface-navigation",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+      "tests": 42,
+      "failures": 0,
+      "result_sha256": "aac2c820c84cd77d85fc930433d48dac7d5fc0c17f97140c7c8650ead5f504ed"
+    },
+    {
+      "target": "window-transport",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+      "tests": 13,
+      "failures": 0,
+      "result_sha256": "62c95ae53d9b14d1e09edf9b1f92bb92fe6dad0c5c1a8767408f06f65ae66bbd"
+    },
+    {
+      "target": "gpu-pack-copy",
+      "build_target": "blink_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "ab13fea05511c7761e7d65e6483fcbf71eccc7f036c37a00a07f83a16df53125",
+      "tests": 14,
+      "failures": 0,
+      "result_sha256": "03bb5edcb1eb22ed61db4b418b1e435475f7798a2e67e4435040a17d1cc9e07d"
+    },
+    {
+      "target": "gpu-readback",
+      "build_target": "blink_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "ab13fea05511c7761e7d65e6483fcbf71eccc7f036c37a00a07f83a16df53125",
+      "tests": 31,
+      "failures": 0,
+      "result_sha256": "e2be639462c90cc91e66847853d984a1fcce5d13b5a1c42066d0fb0f14141380"
+    },
+    {
+      "target": "gpu-metadata",
+      "build_target": "gpu_unittests",
+      "native_cases_passed": false,
+      "returncode": 1,
+      "test_binary_sha256": "b6d74e87e7c50bb59e91f6ca9db45454fc93bcdbed8bcedc803c4e8dd235ee01",
+      "tests": 33,
+      "failures": 6,
+      "result_sha256": "353e6ff7d1aa0e63ad36245cfcd9f4963368ad2ed75cc6bf39d43c19d4c0bfc3"
+    },
+    {
+      "target": "worker-surfaces",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+      "tests": 55,
+      "failures": 0,
+      "result_sha256": "c4914fa41de0306df5435668d387766bc91836fb579b67aa5f46711029262eab"
+    },
+    {
+      "target": "font-rasterization",
+      "build_target": "gfx_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "6aa97ad0c19fbb27a1862007fad8e50d5ceefa2087149ec5eac5a9b875fdd194",
+      "tests": 5,
+      "failures": 0,
+      "result_sha256": "5fdd93f74d85f39d8b6744c7fd4e75672bca38de0f25f0a1f2172253813a8402"
+    },
+    {
+      "target": "identity-keys",
+      "build_target": "camouflow_native_privacy_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "29de536cc54a4b593a190e4d24883ae7f1e6cdd06cdb4b95de241363c51cb098",
+      "tests": 62,
+      "failures": 0,
+      "result_sha256": "f1a1d0b6b1ea3d38e6084be579c1b3dc57348da85b26fdf54a2345303fc19505"
+    },
+    {
+      "target": "identity-contexts",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+      "tests": 37,
+      "failures": 0,
+      "result_sha256": "6962a38df806e691764cfc90f04050077411c7cce7a0d7591264ab427b308b8b"
+    },
+    {
+      "target": "identity-transport",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+      "tests": 20,
+      "failures": 0,
+      "result_sha256": "1c3c62911e461b59561de9d74a84d164a0cb966f96e356293407d63c70d7b60e"
+    },
+    {
+      "target": "identity-handoff",
+      "build_target": "blink_unittests",
+      "native_cases_passed": true,
+      "returncode": 0,
+      "test_binary_sha256": "ab13fea05511c7761e7d65e6483fcbf71eccc7f036c37a00a07f83a16df53125",
+      "tests": 15,
+      "failures": 0,
+      "result_sha256": "85901c2e4d1cdcc59bda7dc2cb154ae9c3d5cc326a3f33070c56a228f8cbb343"
+    }
+  ]
+}

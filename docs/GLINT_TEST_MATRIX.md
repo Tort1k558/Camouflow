@@ -1,5 +1,15 @@
 # Glint browser test matrix
 
+## Selected GPU fixture 0066 — canonical rebuild pending
+
+| Checkpoint | Result | Boundary |
+| --- | --- | --- |
+| Full 001–065 native batch | 16/17 groups passed; GPU metadata retained 6 failures out of 33; all later groups collected | One Ninja invocation; source/SDK/core/receipt postguards passed; filters overlap |
+| Selected 0066 | Exact isolated correction appended to manifest; canonical GPU filter now requires 34 cases, including unavailable-extension negative control | Test fixture only; selected source is not yet applied/built; no new runtime or package admission |
+
+[Baseline batch evidence](../native/drafts/upstream-156/native-batch65-observations.json)
+remains bound to the frozen 001–065 manifest. Do not reuse its receipt as 001–066.
+
 ## Chromium 156 baseline and owned runtime results — 2026-10-29
 
 | Gate | Observed result | Boundary |

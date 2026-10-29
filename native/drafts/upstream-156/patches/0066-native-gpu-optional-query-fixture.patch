@@ -1,0 +1,66 @@
+diff --git a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc
+--- a/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc
++++ b/gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc
+@@ -10,6 +10,8 @@
+ #include "gpu/command_buffer/service/gles2_cmd_decoder.h"
+ #include "gpu/command_buffer/service/gles2_cmd_decoder_unittest.h"
+ #include "gpu/config/gpu_finch_features.h"
++#include "ui/gl/gl_bindings.h"
++#include "ui/gl/gl_context.h"
+ 
+ namespace gpu {
+ namespace gles2 {
+@@ -429,9 +431,20 @@
+ 
+ class GlintPassthroughAttachmentTest : public GLES3DecoderPassthroughTest {
+  protected:
++  explicit GlintPassthroughAttachmentTest(bool request_texture_query = true)
++      : request_texture_query_(request_texture_query) {}
++
+   void SetUp() override {
+     features_.InitAndEnableFeature(features::kGlintReadbackMetadataCandidate);
+     GLES3DecoderPassthroughTest::SetUp();
++    if (request_texture_query_) {
++      auto* context = GetDecoder()->GetGLContext();
++      gl::g_current_gl_context->glRequestExtensionANGLEFn(
++          "GL_ANGLE_get_tex_level_parameter");
++      context->ReinitializeDynamicBindings();
++      ASSERT_TRUE(context->HasExtension("GL_ANGLE_get_tex_level_parameter"));
++      ASSERT_EQ(GL_NO_ERROR, GetGLError());
++    }
+   }
+ 
+   void CreateAttachment(GLenum format, GLsizei width, GLsizei height) {
+@@ -486,7 +499,32 @@
+ 
+  private:
+   base::test::ScopedFeatureList features_;
++  const bool request_texture_query_;
+ };
++
++class GlintPassthroughWithoutTextureQueryTest
++    : public GlintPassthroughAttachmentTest {
++ protected:
++  GlintPassthroughWithoutTextureQueryTest()
++      : GlintPassthroughAttachmentTest(false) {}
++};
++
++TEST_F(GlintPassthroughWithoutTextureQueryTest,
++       TextureAttachmentRemainsUnavailableWithoutNativeQueryExtension) {
++  ASSERT_FALSE(GetDecoder()->GetGLContext()->HasExtension(
++      "GL_ANGLE_get_tex_level_parameter"));
++  GenHelper<cmds::GenTexturesImmediate>(kClientTextureId);
++  DoBindTexture(GL_TEXTURE_2D, kClientTextureId);
++  DoTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 9, 3, 0, GL_RGBA, GL_UNSIGNED_BYTE,
++               0, 0);
++  GenHelper<cmds::GenFramebuffersImmediate>(kClientFramebufferId);
++  DoBindFramebuffer(GL_FRAMEBUFFER, kClientFramebufferId);
++  DoFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
++                         kClientTextureId, 0);
++  ASSERT_EQ(GL_NO_ERROR, GetGLError());
++  EXPECT_FALSE(QueryAttachment());
++  EXPECT_EQ(GL_NO_ERROR, GetGLError());
++}
+ 
+ TEST_F(GlintPassthroughAttachmentTest,
+        ActualRgba8ExtentsPreserveRenderbufferBinding) {

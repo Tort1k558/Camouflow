@@ -1252,7 +1252,7 @@ def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, tar
     from scripts.verify_native_privacy_units import required_tests, validate_results
 
     report = {"tests": {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12,
-                        "surface-navigation": 42, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55, "gpu-metadata-codec": 14, "gpu-metadata": 33,
+                        "surface-navigation": 42, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55, "gpu-metadata-codec": 14, "gpu-metadata": 34,
                         "identity-keys": 62, "identity-contexts": 37, "identity-transport": 20, "identity-handoff": 15}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
@@ -2319,7 +2319,7 @@ def test_native_windows_candidate_package_preserves_manifest_without_admitting_p
     assert metadata["candidate_manifest_sha256"] == candidate["manifest_sha256"]
     assert metadata["chromium_version"] == candidate["lock"]["chromium_version"]
     assert metadata["native_version"] == "0.2.0-dev"
-    assert len(metadata["build_receipt"]["patches"]) == len(candidate["manifest"]["patches"]) == 65
+    assert len(metadata["build_receipt"]["patches"]) == len(candidate["manifest"]["patches"]) == 66
     assert metadata["native_patch_runtime_verified"] is False
     store = NativeBinaryStore(tmp_path / "store")
     installed = store.install_archive(archive, result["sha256"])
@@ -4137,7 +4137,7 @@ def test_native_candidate_requires_exact_checkout_and_complete_patch_chain(tmp_p
             build.candidate_source_patches(source, {}, candidate)
     else:
         rows = build.candidate_source_patches(source, {}, candidate)
-        assert len(rows) == 65 and sum(row.get("repository") == "v8" for row in rows) == 1
+        assert len(rows) == len(candidate["manifest"]["patches"]) == 66 and sum(row.get("repository") == "v8" for row in rows) == 1
 
 
 def test_native_candidate_safe_buffer_port_keeps_bounded_cpp_paths():
@@ -4228,7 +4228,8 @@ def test_157_manifests_separate_source_application_from_runtime_admission():
     assert prefix["patches"] == full["patches"][:32]
     assert {row["path"] for row in prefix["source_files"]} < {row["path"] for row in full["source_files"]}
     for value in (prefix, full):
-        assert value["base_manifest_sha256"] == candidate["manifest_sha256"]
+        assert value["base_manifest_sha256"] == hashlib.sha256(
+            (candidate["directory"] / "checkpoints/001-065.json").read_bytes()).hexdigest()
         assert value["target_revision"] == "f9d7b13a569b352a0267234ea5740fdecc83ffa2"
         assert value["target_version"] == "157.0.8103.27"
         assert value["dependencies"]["v8"]["revision"] == "a4889e05285021952e2ca9648c805a4c989345ae"
@@ -4237,7 +4238,8 @@ def test_157_manifests_separate_source_application_from_runtime_admission():
         assert fetch.source_plan(value) == value["source_files"]
     overrides = {row["file"] for row in full["patches"] if row["file"].startswith("upstream-157-prefix/")}
     assert len(overrides) == 11
-    for row, original in zip(full["patches"], candidate["manifest"]["patches"], strict=True):
+    baseline = json.loads((candidate["directory"] / "checkpoints/001-065.json").read_bytes())
+    for row, original in zip(full["patches"], baseline["patches"], strict=True):
         path = build.ROOT / "native/drafts" / row["file"]
         assert path.name == original["file"]
         assert hashlib.sha256(path.read_bytes()).hexdigest() == row["sha256"]
@@ -4525,7 +4527,7 @@ def test_first_156_runtime_observations_preserve_baseline_and_failure_boundaries
     raw = (root / "windows-runtime-observations.json").read_bytes()
     assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
     data = json.loads(raw)
-    manifest_raw = (root / "manifest.json").read_bytes()
+    manifest_raw = (root / "checkpoints/001-065.json").read_bytes()
     assert data["schema"] == 1 and data["target_version"] == "156.0.8078.36"
     assert data["target_revision"] == json.loads(manifest_raw)["target_revision"]
     assert data["candidate_manifest_sha256"] == hashlib.sha256(manifest_raw).hexdigest()
@@ -4881,6 +4883,48 @@ def test_native_156_baseline_manifest_checkpoint_preserves_exact_public_patch_in
         descriptor = json.loads(path.read_bytes())
         assert (path.parent / descriptor["required_base_manifest"]).resolve() == root / "checkpoints/001-065.json"
         assert descriptor["required_base_manifest_sha256"] == hashlib.sha256(raw).hexdigest()
+
+
+def test_selected_gpu_fixture_preserves_baseline_and_requires_negative_case():
+    import hashlib
+    import json
+    from scripts import native_build as build
+    from scripts.verify_native_privacy_units import required_tests
+
+    candidate = build.load_candidate("upstream-156")
+    root = candidate["directory"]
+    checkpoint = json.loads((root / "checkpoints/001-065.json").read_bytes())
+    assert candidate["manifest"]["patches"][:65] == checkpoint["patches"]
+    row = candidate["manifest"]["patches"][65]
+    assert row["file"] == "0066-native-gpu-optional-query-fixture.patch"
+    content = (root / "patches" / row["file"]).read_bytes()
+    original = (root.parent / "gpu-transport/gpu_readback_metadata_optional_query_fixture.patch").read_bytes()
+    assert content == original and hashlib.sha256(content).hexdigest() == row["sha256"]
+    assert required_tests("gpu-metadata")["GlintPassthroughWithoutTextureQueryTest"] == {
+        "TextureAttachmentRemainsUnavailableWithoutNativeQueryExtension"}
+    assert sum(map(len, required_tests("gpu-metadata").values())) == 34
+
+
+def test_baseline_native_batch_keeps_gpu_failure_and_all_later_results():
+    import hashlib
+    import json
+    from scripts import native_build as build
+    from scripts.verify_native_privacy_units import SUPPORTED_TARGETS
+
+    root = build.ROOT / "native/drafts/upstream-156"
+    data = json.loads((root / "native-batch65-observations.json").read_bytes())
+    assert hashlib.sha256((root / data["required_base_manifest"]).read_bytes()).hexdigest() == data["candidate_manifest_sha256"]
+    assert data["passed"] is False and data["postguards_passed"] is True
+    assert data["build_invocations"] == 1 and data["jobs"] == 4
+    assert [row["target"] for row in data["targets"]] == list(SUPPORTED_TARGETS)
+    assert [row["target"] for row in data["targets"] if not row["native_cases_passed"]] == ["gpu-metadata"]
+    gpu = next(row for row in data["targets"] if row["target"] == "gpu-metadata")
+    assert gpu["tests"] == 33 and gpu["failures"] == 6 and gpu["returncode"] == 1
+    assert all(row["failures"] == 0 and row["returncode"] == 0 for row in data["targets"] if row is not gpu)
+    baseline = json.loads((root / "windows-runtime-observations.json").read_bytes())
+    assert data["runtime_core_sha256_measured"] == baseline["runtime_core_sha256"]
+    assert data["build_receipt_sha256"] == baseline["build_receipt_sha256"]
+    assert data["browser_runtime_verified"] is data["privacy_admitted"] is data["production_admitted"] is False
 
 
 def test_gpu_optional_query_fixture_evidence_keeps_canonical_admission_separate():
@@ -5690,11 +5734,11 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
 
     manifest = json.loads((draft.DRAFT / "manifest.json").read_text(encoding="utf-8-sig"))
     originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:62]
-    assert len(originals) == 62 and len(manifest["patches"]) == 65
+    assert len(originals) == 62 and len(manifest["patches"]) == 66
     assert [row["file"] for row in manifest["patches"][:62]] == [path.name for path in originals]
     assert [row["file"] for row in manifest["patches"][62:]] == [
         "0063-native-safe-buffer-portability.patch", "0064-native-audio-safe-domain-copy.patch",
-        "0065-native-fixture-portability.patch"]
+        "0065-native-fixture-portability.patch", "0066-native-gpu-optional-query-fixture.patch"]
     for row in manifest["patches"]:
         content = (draft.DRAFT / "patches" / row["file"]).read_bytes()
         assert b"\r" not in content and not content.startswith(b"\xef\xbb\xbf")
@@ -5714,7 +5758,7 @@ def test_forward_refresh_manifest_reuses_exact_patch_bytes_without_registering_a
     import json
     from scripts import native_build, verify_native_rebase_draft as draft
 
-    original = draft.DRAFT / "manifest.json"
+    original = draft.DRAFT / "checkpoints/001-065.json"
     refresh = draft.ROOT / "native/drafts/upstream-156-refresh"
     before = json.loads(original.read_text(encoding="utf-8"))
     value = json.loads((refresh / "manifest.json").read_text(encoding="utf-8"))
