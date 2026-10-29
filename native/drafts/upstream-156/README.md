@@ -2,11 +2,12 @@
 
 **Development candidate, not a production/default engine.** The default build
 lock and reviewed 001-062 chain still target Chromium 148.0.7778.96. The separate
-156 / 001–065 browser is linked and has baseline runtime evidence; full native,
-policy and installed-package gates remain pending. The manifest is a source
+156 / 001–066 browser is linked and all 17 native target groups passed. Baseline
+001–065 runtime evidence remains historical; new policy and installed-package
+gates remain separate. The manifest is a source
 contract, not a mutable binary-readiness flag.
 
-### Selected 0066 fixture correction: rebuild pending
+### Selected 0066 fixture correction: native gates passed
 
 The selected manifest now appends `0066-native-gpu-optional-query-fixture.patch`.
 It changes only the GPU unit fixture, explicitly requests the native optional
@@ -17,10 +18,14 @@ all **34 cases**, including that negative control; no skips or exclusions.
 The preceding actual [001–065 batch](native-batch65-observations.json) collected
 all 17 groups in one Ninja invocation: 16 passed, GPU metadata failed 6 of 33.
 Source/core/receipt/SDK postguards passed. These filters overlap; counts are not
-independent coverage. The browser, checkout and build-stage records still belong
-to 001–065 until the 0066 source refresh/build is executed. Do not package that
-old receipt as the new selected manifest. The isolated 34-case proof does not
-replace a canonical 0066 build, runtime suite or installed-payload verification.
+independent coverage. Actual sync/hooks, complete source replay and the 001–066
+build now completed. Only the fixture changed; 256 byte-identical source files
+retained their old timestamps. The browser build took **2m32.62s / one action**,
+not a full C++ rebuild. The three browser core hashes stayed unchanged; the new
+receipt binds all 66 patches. The [canonical batch](native-batch66-observations.json)
+passed **17/17 groups**, including GPU **34/34**, with source/SDK/core postguards.
+Its exact manifest is preserved in `checkpoints/001-066.json`. Runtime and
+installed-payload checks remain required; neither source nor units admit policies.
 
 Prepared local Windows SDK/MSVC selection is supported explicitly for candidate
 `sync`, `hooks`, `patch` and `build`, not only the compiler step. Sync/hooks

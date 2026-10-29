@@ -4994,6 +4994,38 @@ def test_baseline_native_batch_keeps_gpu_failure_and_all_later_results():
     assert data["browser_runtime_verified"] is data["privacy_admitted"] is data["production_admitted"] is False
 
 
+def test_native_66_batch_binds_frozen_manifest_and_complete_native_filters():
+    import hashlib
+    import json
+    from scripts import native_build as build
+    from scripts.verify_native_privacy_units import SUPPORTED_TARGETS, required_tests
+
+    candidate = build.load_candidate("upstream-156")
+    root = candidate["directory"]
+    data = json.loads((root / "native-batch66-observations.json").read_bytes())
+    raw = (root / data["required_manifest"]).read_bytes()
+    manifest = json.loads(raw)
+    assert data["candidate_manifest_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert len(manifest["patches"]) == data["compiled_patch_count"] == 66
+    assert candidate["manifest"]["patches"][:66] == manifest["patches"]
+    for row in manifest["patches"]:
+        assert hashlib.sha256((root / "patches" / row["file"]).read_bytes()).hexdigest() == row["sha256"]
+    assert data["passed"] and data["postguards_passed"] and data["actual_sync_hooks_completed"]
+    assert data["build_invocations"] == 1 and data["jobs"] == 4
+    assert [row["target"] for row in data["targets"]] == list(SUPPORTED_TARGETS)
+    for row in data["targets"]:
+        assert row["native_cases_passed"] and row["returncode"] == 0
+        assert row["tests"] == sum(map(len, required_tests(row["target"]).values()))
+    assert next(row for row in data["targets"] if row["target"] == "gpu-metadata")["tests"] == 34
+    baseline = json.loads((root / "windows-runtime-observations.json").read_bytes())
+    assert data["browser_core_unchanged_from_baseline65"]
+    assert data["runtime_core_sha256_measured"] == baseline["runtime_core_sha256"]
+    assert data["build_receipt_sha256"] != baseline["build_receipt_sha256"]
+    assert data["unchanged_source_mtimes_restored"] == 256
+    assert data["changed_source_files"] == ["gpu/command_buffer/service/gles2_cmd_decoder_passthrough_unittest_framebuffers.cc"]
+    assert data["browser_runtime_verified"] is data["privacy_admitted"] is data["production_admitted"] is False
+
+
 def test_gpu_optional_query_fixture_evidence_keeps_canonical_admission_separate():
     import hashlib
     import json

@@ -5,6 +5,7 @@ native/drafts/**/manifest.json text eol=lf
 native/drafts/**/full-inputs-manifest.json text eol=lf
 native/drafts/upstream-156/windows-runtime-observations.json text eol=lf
 native/drafts/upstream-156/checkpoints/*.json text eol=lf
+native/drafts/upstream-156/native-batch*-observations.json text eol=lf
 native/drafts/upstream-156/runtime-suite-observations.json text eol=lf
 native/drafts/upstream-156/stock-control-observations.json text eol=lf
 native/drafts/upstream-156/revision-stamp.args.gn text eol=lf

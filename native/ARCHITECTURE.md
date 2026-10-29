@@ -17,8 +17,10 @@ explicit workspace/binary scope; unreadable process identity remains a conflict,
 and default unscoped checks remain conservative. Real owned sleeping-Ninja
 controls distinguish foreign and conflicting scopes without terminating either.
 The recovered identity targets passed 134 C++ cases with postguards: keys 62,
-contexts 37, transport 20 and handoff 15. Remaining native targets and the
-installed-package suite are pending; the source-build eight-gate result is below.
+contexts 37, transport 20 and handoff 15. The selected 001–066 build subsequently
+passed all 17 native target groups, including the corrected GPU fixture's 34
+cases, with shared source/SDK/core postguards. Filters overlap. The installed
+package suite remains separate; the historical source-build eight-gate result is below.
 The unprotected 156 Audio baseline also matched the standalone native156 DSP
 matrix bit-for-bit in 45 captures. This does not execute AudioMath 0068.
 An official CfT archive now provides the exact 156.0.8078.36/upstream revision
@@ -48,7 +50,13 @@ including backup/restore, manager/Recorder and cancelled startup. Separately,
 three baseline lifecycle repeats passed during observed native-build activity;
 the original close timeout remains unexplained. Native context (37) and
 transport (20) units passed with postguards, not browser identity admission.
-The current candidate chain is 001–065;
+The first browser used 001–065; the current candidate chain is 001–066.
+Test-only 0066 enables the native optional texture query in its GPU fixture and
+adds an absent-extension negative control, without changing production GPU code.
+Actual sync/hooks/replay retained 256 byte-identical source timestamps; the
+browser rebuild took 2m32.62s / one action. Its core hashes remained unchanged,
+while the new receipt and `upstream-156/native-batch66-observations.json` bind
+the full 66-patch source checkpoint. Native units do not admit protected surfaces.
 0063–0064 address the actual unsafe-buffer compilation failures without disabling
 diagnostics. Test-only 0065 updates worker synchronization/API calls and the GPU
 canary layout; all 38 mapped fixture object targets now compile, but the full
