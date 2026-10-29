@@ -5,15 +5,20 @@
 | Check | Result | Boundary |
 | --- | --- | --- |
 | Full source replay | 65 selected patches + draft 0068 applied to 194 pinned 156.0.8078.36 inputs; GPU ordinals and GRIT preserved | Not a complete GN build |
-| Context policy code | Captures mode/error once; domain-separated derivation; instance-owned compressor backend; math/readback paths exclusive | Feature disabled by default; manager admission unchanged |
+| Context policy code | Captures a const mode/error in BaseAudioContext construction; domain-separated derivation; instance-owned compressor backend; math/readback paths exclusive | Feature disabled by default; manager admission unchanged |
 | Isolated objects | Six production objects + test TU compiled with original Chromium flags and a private header/source overlay | No link; does not prove graph completeness or all changed-layout consumers |
-| Native fixtures | Seven: feature-state caching, missing-policy rejection, independent contexts/handler backends, seed preservation, invalid enum, exact direct DC | Translation unit compiled; none executed |
-| Full local Python regression | 3,591 passed, one skipped in 297.61 seconds | Not execution of the C++ fixtures or remote CI evidence |
+| Native fixtures | Eleven: capture/caching, missing policy, context/handler isolation, seed preservation, invalid enum, direct DC, first-node ordering, stopped-context precedence, detach/navigation | Translation unit compiled; none executed |
+| Earlier full local Python regression | Seven-fixture revision: 3,591 passed, one skipped in 297.61 seconds | Predates constructor capture; not C++ execution or remote CI evidence |
+| Current release-tool Python regression | Constructor-capture revision: 1,074 passed, one skipped in 43.54 seconds | Metadata/source/probe validators, not execution of the native fixtures |
+| Actual lifecycle API controls | Six same-host stock/Glint-off 148 captures allow nodes after close/detach; retained detached OfflineAudioContext reports suspended | Baseline only, not the new 156 math integration |
 | Active build isolation | All 201 frozen inputs unchanged | Draft is outside both selected engine manifests |
 
 Sources and hash-bound scope: [`context-integration.json`](../native/drafts/audio-dsp-math-v2/context-integration.json).
 The first test-object compile found an invalid `destination()` C++ call; it was
 corrected to `destinationNode()`. The failed evidence remains retained, not relabeled passing.
+The later constructor-capture revision also compiled all seven isolated objects.
+[`Lifecycle control evidence`](../native/drafts/audio-dsp-math-v2/audio-context-lifecycle-observations.json)
+motivates removing lazy document-seed lookup but does not execute the new policy.
 The earlier 90 stock/Glint-off 148 captures calibrate the standalone native DSP
 baseline only; they do **not** verify this AudioContext integration or a float32
 device cohort. Fresh-156 calibration, native execution, lifecycle, realtime,

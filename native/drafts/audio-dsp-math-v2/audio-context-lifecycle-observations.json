@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "scope": "Same-host 148 stock/Glint policy-off API baseline only",
+  "version": "148.0.7778.96",
+  "capture_count": 6,
+  "repetitions_per_browser": 3,
+  "probe": {
+    "file": "audio-context-lifecycle-control.js",
+    "sha256": "0bb336a50637c2f64afab1ba9f5015102b759e239bceb4128705b6b314cf8934"
+  },
+  "native156_runtime_verified": false,
+  "math_integration_runtime_verified": false,
+  "native_fixtures_executed": false,
+  "production_admitted": false,
+  "postguards_passed": true,
+  "all_runtime_resources_closed": true,
+  "owned_identity_payloads_unchanged": true,
+  "receipt_sha256": "e39654a2a45f981e3ef87b7fd187af60329bd38ec482e8e8e18728c5e9f4bb12",
+  "native_core_sha256": {
+    "chrome.exe": "275ad4eaa4b51b3e53a9a57496ecb17f6bc90b8c687e252567ce7d2050c0088c",
+    "chrome.dll": "9b65965659f4ba78f2da12d18c858519a68066df232f0cd67a92bdb004e7a24a",
+    "chrome_elf.dll": "f26f09cadfc9fbfe1384c2df2a7549151e4afa988568e6468d296d4fd61303fb"
+  },
+  "stock_core_sha256": {
+    "chrome.exe": "290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635",
+    "chrome.dll": "2dec55e969120a4f365942ddf143df869dad9bc7595400da87af247c74c867fd",
+    "chrome_elf.dll": "994bc5cc8de982bdc8aecb92c7fc639a7801ae62745e6a38e7ffc0a9664c164e"
+  },
+  "captures": [
+    {
+      "phase": "stock-baseline",
+      "repetitions": 3,
+      "observation": {
+        "closedRealtime": {
+          "state": "closed",
+          "node": {
+            "created": true,
+            "error": null
+          }
+        },
+        "detachedOffline": {
+          "state": "suspended",
+          "node": {
+            "created": true,
+            "error": null
+          }
+        },
+        "frameRemoved": true
+      },
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true
+    },
+    {
+      "phase": "a-native-baseline",
+      "repetitions": 3,
+      "observation": {
+        "closedRealtime": {
+          "state": "closed",
+          "node": {
+            "created": true,
+            "error": null
+          }
+        },
+        "detachedOffline": {
+          "state": "suspended",
+          "node": {
+            "created": true,
+            "error": null
+          }
+        },
+        "frameRemoved": true
+      },
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true
+    }
+  ],
+  "boundary": "A removed frame does not imply the retained OfflineAudioContext state string becomes closed. These observations do not execute the new 156 math integration."
+}

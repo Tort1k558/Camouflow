@@ -4501,7 +4501,11 @@ def test_audio_math_context_draft_separates_caching_and_readback_pipelines():
     assert policy["math_and_readback_farbling_mutually_exclusive"]
     assert policy["backends"] == ["native", "float32"]
     assert "BASE_FEATURE(kGlintAudioMathCandidate, base::FEATURE_DISABLED_BY_DEFAULT);" in added
-    assert "glint_audio_math_pipeline_.emplace(" in added
+    assert policy["capture_time"] == "BaseAudioContext construction"
+    assert "glint_audio_math_pipeline_(CaptureGlintAudioMathPipeline(window))" in added
+    assert re.search(r"const glint::candidate::AudioMathPipelineResult\s+glint_audio_math_pipeline_;", added)
+    assert "glint_audio_math_pipeline_.emplace(" not in added
+    assert "GetGlintAudioMathPipeline() const" in added
     assert "CompressorMathPolicy math_policy" in added
     assert "glint_math_policy_(math_policy)" in added
     assert "AudioMathPipeline::kLegacyReadback" in added
@@ -4513,12 +4517,44 @@ def test_audio_math_context_draft_separates_caching_and_readback_pipelines():
                           hashlib.sha256).digest()[0] & 1 for seed in (3, 4, 5)]
     assert selectors == [1, 0, 0]
     fixtures = re.findall(r"TEST_F\(OfflineAudioContextTest,\s*(GlintMath\w+)\)", added)
-    assert set(fixtures) == set(data["prepared_tests"]) and len(fixtures) == 7
+    assert set(fixtures) == set(data["prepared_tests"]) and len(fixtures) == 11
     assert "source->offset()->setValue(0.25f)" in added
     assert "source->connect(context->destinationNode(), 0, 0, ASSERT_NO_EXCEPTION)" in added
     assert "GetDynamicsCompressorHandler().glint_math_policy_.backend()" in added
     assert "EXPECT_EQ(sample, 0.25f)" in added
     assert "kNotReadableError" in added and "kUnavailablePolicy" in added
+
+
+def test_audio_math_lifecycle_baseline_is_not_integration_runtime_admission():
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/audio-dsp-math-v2"
+    descriptor = json.loads((root / "context-integration.json").read_text(encoding="utf-8"))
+    row = descriptor["lifecycle_baseline_calibration"]
+    raw = (root / row["file"]).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == row["sha256"]
+    data = json.loads(raw)
+    probe = data["probe"]
+    assert hashlib.sha256((root / probe["file"]).read_bytes()).hexdigest() == probe["sha256"]
+    assert data["schema"] == 1 and data["version"] == "148.0.7778.96"
+    assert data["capture_count"] == 6 and data["repetitions_per_browser"] == 3
+    for field in ("native156_runtime_verified", "math_integration_runtime_verified",
+                  "native_fixtures_executed", "production_admitted"):
+        assert data[field] is False
+    assert data["postguards_passed"] and data["all_runtime_resources_closed"]
+    assert data["owned_identity_payloads_unchanged"]
+    assert {row["phase"] for row in data["captures"]} == {"stock-baseline", "a-native-baseline"}
+    expected = {"closedRealtime": {"state": "closed", "node": {"created": True, "error": None}},
+                "detachedOffline": {"state": "suspended", "node": {"created": True, "error": None}},
+                "frameRemoved": True}
+    for capture in data["captures"]:
+        assert capture["repetitions"] == 3 and capture["observation"] == expected
+        assert capture["sandbox_requested"] and capture["no_sandbox_flag_absent"]
+    previous = json.loads((root / "observations.json").read_text(encoding="utf-8"))["browser_baseline_calibration"]
+    for field in ("receipt_sha256", "native_core_sha256", "stock_core_sha256"):
+        assert data[field] == previous[field]
 
 
 def test_compressor_browser_calibration_covers_native_baseline_only():

@@ -93,11 +93,11 @@ after selected patches 001–065**. It does not depend on the separate 157-only
 
 | Prepared behavior | Boundary |
 | --- | --- |
-| Capture one immutable mode or error per AudioContext at first affected use | Not a process-global backend or a per-read random choice |
+| Capture one const mode or error in the BaseAudioContext constructor | Not a process-global backend, lazy lookup or per-read random choice |
 | Domain-separated HMAC of the existing Audio surface seed selects native/float32 math | Two experimental backends, not a real-device identity database |
 | Compressor nodes pass the captured policy to their own processor | No new key/seed wire format; no public manager capability |
 | Math-only offline rendering bypasses v1 post-read farbling | Missing policy still fails; no raw-result fallback |
-| Seven native fixtures cover caching, errors, independent contexts, actual handler backend and literal DC | Test translation unit compiled; **not linked or executed** |
+| Eleven native fixtures cover capture, errors, context/handler isolation, literal DC, stopped-context precedence, frame detach and navigation | Test translation unit compiled; **not linked or executed** |
 
 `GlintAudioMathCandidate` is **disabled by default**. The legacy branch preserves
 the old readback path. Enabled contexts keep only the selected mode/error; the
@@ -114,8 +114,24 @@ objects initially passed; the test object exposed `destination()` instead of the
 pinned C++ `destinationNode()` API. After correcting it and adding handler-backend
 assertions, all seven compiled. Failed evidence is retained; no suppression or
 compiler-flag workaround was added.
-The full local Python regression also passed: **3,591 passed, one skipped**
-(297.61 seconds); this does not execute the native fixtures.
+The earlier seven-fixture revision passed the full local Python regression:
+**3,591 passed, one skipped** (297.61 seconds). That run predates the constructor
+capture update and does not execute the native fixtures.
+Current release-tool validators passed **1,074 tests, one skipped** (43.54 seconds).
+
+Constructor capture replaces the initial lazy policy lookup. Real same-host
+stock/Glint-off 148 controls (three repetitions each) allowed compressor creation
+both after `AudioContext.close()` and on a retained OfflineAudioContext after its
+iframe was removed. The latter still reported `suspended`, not `closed`.
+Late seed lookup can therefore reject a previously legal node when its document
+has disappeared; selection must happen while the creation document is available.
+The immutable result survives teardown/navigation; new contexts capture the new
+document policy independently. This also requires policy readiness at creation
+and needs constructor-cost measurement before admission.
+
+The [JS control](audio-context-lifecycle-control.js) and
+[six baseline captures](audio-context-lifecycle-observations.json) are hash-bound.
+They **do not execute the new 156 math policy** or prove its lifecycle correctness.
 
 This is **not a complete GN build, link, native execution or runtime admission**.
 The overlay does not verify graph/dependency completeness or every consumer of
@@ -136,7 +152,8 @@ Local evidence: `D:\Glint157ObjectCache\public-compressor-math-prototype-2026102
 Matrix evidence: `public-compressor-full-matrix-20261029-v2`,
 `compressor-matrix148-20261029-v1` and `compressor-matrix-driver-negatives-20261029-v1`
 under the same cache directory.
-Context integration evidence: `D:\Glint156Candidate\audio-math-context-full-replay-20261029-v4`
-and `audio-math-context-objects-20261029-v3`; failed object evidence remains in v2.
+Context integration evidence: `D:\Glint156Candidate\audio-math-context-full-replay-20261029-v6`
+and `audio-math-context-objects-20261029-v5`; failed object evidence remains in v2.
+Lifecycle baseline: `D:\Glint157ObjectCache\audio-context-lifecycle148-20261029-v1`.
 Earlier failed adapter/link experiments and the initial power-category failure
 remain retained separately. The active 156 build's 201 input hashes stayed unchanged.

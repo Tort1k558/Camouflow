@@ -152,16 +152,7 @@ diff --git a/third_party/blink/renderer/modules/webaudio/BUILD.gn b/third_party/
 diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.h b/third_party/blink/renderer/modules/webaudio/base_audio_context.h
 --- a/third_party/blink/renderer/modules/webaudio/base_audio_context.h
 +++ b/third_party/blink/renderer/modules/webaudio/base_audio_context.h
-@@ -26,6 +26,8 @@
- #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_BASE_AUDIO_CONTEXT_H_
- #define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_BASE_AUDIO_CONTEXT_H_
- 
-+#include <optional>
-+
- #include "base/memory/raw_ptr.h"
- #include "base/memory/scoped_refptr.h"
- #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
-@@ -39,6 +41,7 @@
+@@ -39,6 +39,7 @@
  #include "third_party/blink/renderer/modules/modules_export.h"
  #include "third_party/blink/renderer/modules/webaudio/audio_destination_node.h"
  #include "third_party/blink/renderer/modules/webaudio/deferred_task_handler.h"
@@ -169,24 +160,23 @@ diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.h b/
  #include "third_party/blink/renderer/modules/webaudio/inspector_helper_mixin.h"
  #include "third_party/blink/renderer/platform/audio/audio_callback_metric_reporter.h"
  #include "third_party/blink/renderer/platform/audio/audio_io_callback.h"
-@@ -102,6 +105,9 @@
+@@ -102,6 +103,9 @@
    const AtomicString& InterfaceName() const final;
    ExecutionContext* GetExecutionContext() const final;
  
-+  // Freeze enabled, disabled or failed policy at first affected use.
-+  glint::candidate::AudioMathPipelineResult GetGlintAudioMathPipeline();
++  // Frozen at construction, including a disabled or failed selection.
++  glint::candidate::AudioMathPipelineResult GetGlintAudioMathPipeline() const;
 +
    // ActiveScriptWrappable
    bool HasPendingActivity() const override;
  
-@@ -431,6 +437,10 @@
+@@ -431,6 +435,9 @@
    // This cannot be nullptr once it is assigned from AudioWorkletThread until
    // the BaseAudioContext goes away.
    raw_ptr<WorkerThread, DanglingUntriaged> audio_worklet_thread_ = nullptr;
 +
 +  // Only the selected mode/error is retained, never the derived seed.
-+  std::optional<glint::candidate::AudioMathPipelineResult>
-+      glint_audio_math_pipeline_;
++  const glint::candidate::AudioMathPipelineResult glint_audio_math_pipeline_;
  };
  
  }  // namespace blink
@@ -266,20 +256,26 @@ diff --git a/third_party/blink/renderer/modules/webaudio/base_audio_context.cc b
  }
  
  }  // namespace
-@@ -264,6 +306,16 @@
+@@ -147,7 +189,8 @@
+       periodic_wave_sine_(nullptr),
+       periodic_wave_square_(nullptr),
+       periodic_wave_sawtooth_(nullptr),
+-      periodic_wave_triangle_(nullptr) {}
++      periodic_wave_triangle_(nullptr),
++      glint_audio_math_pipeline_(CaptureGlintAudioMathPipeline(window)) {}
+ 
+ BaseAudioContext::~BaseAudioContext() {
+   {
+@@ -264,6 +307,12 @@
  void BaseAudioContext::ContextDestroyed() {
    destinationNode()->GetAudioDestinationHandler().ContextDestroyed();
    Uninitialize();
 +}
 +
 +glint::candidate::AudioMathPipelineResult
-+BaseAudioContext::GetGlintAudioMathPipeline() {
++BaseAudioContext::GetGlintAudioMathPipeline() const {
 +  DCHECK(IsMainThread());
-+  if (!glint_audio_math_pipeline_) {
-+    glint_audio_math_pipeline_.emplace(
-+        CaptureGlintAudioMathPipeline(GetExecutionContext()));
-+  }
-+  return glint_audio_math_pipeline_.value();
++  return glint_audio_math_pipeline_;
  }
  
  bool BaseAudioContext::HasPendingActivity() const {
@@ -594,18 +590,28 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
  
  namespace blink {
  
-@@ -177,7 +185,9 @@
+@@ -177,8 +185,9 @@
  }
  
  namespace {
 -std::unique_ptr<DummyPageHolder> GlintOfflineAudioPolicyHolder(bool ready) {
-+std::unique_ptr<DummyPageHolder> GlintOfflineAudioPolicyHolder(
-+    bool ready,
-+    uint8_t audio_seed = 4) {
-   auto holder = std::make_unique<DummyPageHolder>();
+-  auto holder = std::make_unique<DummyPageHolder>();
++bool GlintCommitOfflineAudioPolicy(DummyPageHolder& holder,
++                                   bool ready,
++                                   uint8_t audio_seed) {
    const KURL url(NullUrl(), "https://audio-surface.test/");
    auto params = WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
-@@ -192,7 +202,7 @@
+   params->origin_to_commit = WebSecurityOrigin::Create(WebURL(url));
+@@ -186,20 +195,33 @@
+   params->glint_document_surface_policy_required = true;
+   if (ready) {
+     const auto encoding = params->storage_key.SerializeForNativePrivacy();
+-    if (!encoding) return nullptr;
++    if (!encoding) {
++      return false;
++    }
+     glint::candidate::SurfacePolicy policy;
+     policy.partition_encoding = *encoding;
      policy.canvas.fill(1);
      policy.webgl.fill(2);
      policy.webgpu.fill(3);
@@ -614,19 +620,39 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
      params->glint_document_surface_policy = glint::candidate::DocumentSurfacePolicy{
          params->storage_key, std::move(policy)};
    }
-@@ -231,5 +241,182 @@
+-  holder->GetFrame().Loader().CommitNavigation(std::move(params), nullptr);
++  holder.GetFrame().Loader().CommitNavigation(std::move(params), nullptr);
+   test::RunPendingTasks();
++  return true;
++}
++
++std::unique_ptr<DummyPageHolder> GlintOfflineAudioPolicyHolder(
++    bool ready,
++    uint8_t audio_seed = 4) {
++  auto holder = std::make_unique<DummyPageHolder>();
++  if (!GlintCommitOfflineAudioPolicy(*holder, ready, audio_seed)) {
++    return nullptr;
++  }
+   return holder;
+ }
++
+ }  // namespace
+ 
+ TEST_F(OfflineAudioContextTest, GlintMissingPolicyRejectsBeforeResolverOrRenderThread) {
+@@ -231,5 +253,265 @@
    EXPECT_EQ(context->state().AsStringView(), "suspended");
  }
  
 +TEST_F(OfflineAudioContextTest, GlintMathDisabledCaptureRemainsLegacy) {
 +  auto holder = GlintOfflineAudioPolicyHolder(false);
 +  ASSERT_TRUE(holder);
-+  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
-+                                              128, 44100, ASSERT_NO_EXCEPTION);
-+  ASSERT_TRUE(context);
++  OfflineAudioContext* context = nullptr;
 +  {
 +    base::test::ScopedFeatureList features;
 +    features.InitAndDisableFeature(blink::features::kGlintAudioMathCandidate);
++    context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                          128, 44100, ASSERT_NO_EXCEPTION);
++    ASSERT_TRUE(context);
 +    EXPECT_EQ(context->GetGlintAudioMathPipeline(),
 +              glint::candidate::AudioMathPipeline::kLegacyReadback);
 +    EXPECT_TRUE(context->createDynamicsCompressor(ASSERT_NO_EXCEPTION));
@@ -664,12 +690,13 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
 +       GlintMathFailedCaptureDoesNotFallBackAfterDisable) {
 +  auto holder = GlintOfflineAudioPolicyHolder(false);
 +  ASSERT_TRUE(holder);
-+  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
-+                                              128, 44100, ASSERT_NO_EXCEPTION);
-+  ASSERT_TRUE(context);
++  OfflineAudioContext* context = nullptr;
 +  {
 +    base::test::ScopedFeatureList features;
 +    features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++    context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                          128, 44100, ASSERT_NO_EXCEPTION);
++    ASSERT_TRUE(context);
 +    const auto pipeline = context->GetGlintAudioMathPipeline();
 +    ASSERT_FALSE(pipeline.has_value());
 +    EXPECT_EQ(pipeline.error(),
@@ -743,12 +770,13 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
 +TEST_F(OfflineAudioContextTest, GlintMathEnabledCaptureRemainsAfterDisable) {
 +  auto holder = GlintOfflineAudioPolicyHolder(true, 3);
 +  ASSERT_TRUE(holder);
-+  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
-+                                              128, 44100, ASSERT_NO_EXCEPTION);
-+  ASSERT_TRUE(context);
++  OfflineAudioContext* context = nullptr;
 +  {
 +    base::test::ScopedFeatureList features;
 +    features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++    context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                          128, 44100, ASSERT_NO_EXCEPTION);
++    ASSERT_TRUE(context);
 +    EXPECT_EQ(context->GetGlintAudioMathPipeline(),
 +              glint::candidate::AudioMathPipeline::kFloat32Math);
 +  }
@@ -757,6 +785,86 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
 +  EXPECT_EQ(context->GetGlintAudioMathPipeline(),
 +            glint::candidate::AudioMathPipeline::kFloat32Math);
 +  EXPECT_TRUE(context->createDynamicsCompressor(ASSERT_NO_EXCEPTION));
++}
++
++TEST_F(OfflineAudioContextTest, GlintMathConstructionPrecedesFirstNode) {
++  auto holder = GlintOfflineAudioPolicyHolder(true, 3);
++  ASSERT_TRUE(holder);
++  OfflineAudioContext* context = nullptr;
++  {
++    base::test::ScopedFeatureList features;
++    features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++    context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                          128, 44100, ASSERT_NO_EXCEPTION);
++    ASSERT_TRUE(context);
++    // Do not read the policy or create any affected node before disabling.
++  }
++  base::test::ScopedFeatureList features;
++  features.InitAndDisableFeature(blink::features::kGlintAudioMathCandidate);
++  EXPECT_TRUE(context->createDynamicsCompressor(ASSERT_NO_EXCEPTION));
++  EXPECT_EQ(context->GetGlintAudioMathPipeline(),
++            glint::candidate::AudioMathPipeline::kFloat32Math);
++}
++
++TEST_F(OfflineAudioContextTest,
++       GlintMathStoppedContextPreservesNativeErrorPrecedence) {
++  base::test::ScopedFeatureList features;
++  features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++  auto holder = GlintOfflineAudioPolicyHolder(false);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                              128, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  context->ContextDestroyed();
++  DummyExceptionStateForTesting exception;
++  EXPECT_TRUE(context->startOfflineRendering(nullptr, exception).IsEmpty());
++  ASSERT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kInvalidStateError);
++  const auto policy = context->GetGlintAudioMathPipeline();
++  ASSERT_FALSE(policy.has_value());
++  EXPECT_EQ(policy.error(),
++            glint::candidate::AudioMathPolicyError::kUnavailablePolicy);
++}
++
++TEST_F(OfflineAudioContextTest, GlintMathFrameDetachDoesNotRecapturePolicy) {
++  base::test::ScopedFeatureList features;
++  features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++  auto holder = GlintOfflineAudioPolicyHolder(true, 3);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1,
++                                              128, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  holder->GetFrame().Detach(FrameDetachType::kRemove);
++  EXPECT_EQ(context->GetExecutionContext(), nullptr);
++  EXPECT_EQ(context->GetGlintAudioMathPipeline(),
++            glint::candidate::AudioMathPipeline::kFloat32Math);
++  // Stock 148 accepts first node creation after frame removal as well.
++  EXPECT_TRUE(context->createDynamicsCompressor(ASSERT_NO_EXCEPTION));
++  DummyExceptionStateForTesting exception;
++  EXPECT_TRUE(context->startOfflineRendering(nullptr, exception).IsEmpty());
++  ASSERT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(),
++            DOMExceptionCode::kInvalidStateError);
++}
++
++TEST_F(OfflineAudioContextTest, GlintMathNavigationDoesNotRebindOldContext) {
++  base::test::ScopedFeatureList features;
++  features.InitAndEnableFeature(blink::features::kGlintAudioMathCandidate);
++  auto holder = GlintOfflineAudioPolicyHolder(true, 3);
++  ASSERT_TRUE(holder);
++  Persistent<OfflineAudioContext> old_context = OfflineAudioContext::Create(
++      holder->GetFrame().DomWindow(), 1, 128, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(old_context);
++  // No getter/node use on the old context before replacing the document policy.
++  ASSERT_TRUE(GlintCommitOfflineAudioPolicy(*holder, true, 4));
++  auto* new_context = OfflineAudioContext::Create(
++      holder->GetFrame().DomWindow(), 1, 128, 44100, ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(new_context);
++  EXPECT_EQ(old_context->GetGlintAudioMathPipeline(),
++            glint::candidate::AudioMathPipeline::kFloat32Math);
++  EXPECT_EQ(new_context->GetGlintAudioMathPipeline(),
++            glint::candidate::AudioMathPipeline::kNativeMath);
 +}
 +
 +TEST_F(OfflineAudioContextTest, GlintMathUnknownPipelineIsRejected) {
