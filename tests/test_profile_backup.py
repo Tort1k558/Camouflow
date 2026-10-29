@@ -43,6 +43,102 @@ def archive_with(source, metadata=None, entries=None, hashes=None):
         archive.writestr("manifest.json", json.dumps(manifest))
 
 
+def test_native_session_export_rejects_a_live_runtime_owner(workspace):
+    from PyQt6.QtCore import QLockFile
+
+    native = db.profile_dir_for_email("original") / "native"
+    native.mkdir()
+    lock = QLockFile(str(native / "native-runtime.lock"))
+    lock.setStaleLockTime(0)
+    assert lock.tryLock(0)
+    target = workspace / "live.zip"
+    try:
+        with pytest.raises(ValueError, match="Glint.*close"):
+            profile_backup.export_profile("original", target, True, False)
+        assert not target.exists()
+        profile_backup.export_profile("original", workspace / "metadata.zip", False, False)
+        assert lock.isLocked()
+    finally:
+        lock.unlock()
+
+
+@pytest.mark.parametrize("fail_write", [False, True])
+def test_native_session_export_holds_owner_lock_and_releases_it(workspace, monkeypatch, fail_write):
+    from PyQt6.QtCore import QLockFile
+
+    native = db.profile_dir_for_email("original") / "native"
+    native.mkdir()
+    (native / "session.dat").write_bytes(b"owned native data")
+    target = workspace / "guarded.zip"
+    original = zipfile.ZipFile.open
+    observed = []
+
+    def open_entry(archive, name, mode="r", *args, **kwargs):
+        if name == "browser/native/session.dat" and mode == "w":
+            contender = QLockFile(str(native / "native-runtime.lock"))
+            contender.setStaleLockTime(0)
+            acquired = contender.tryLock(0)
+            if acquired:
+                contender.unlock()
+            observed.append(acquired)
+            if fail_write:
+                raise OSError("owned write failure")
+        return original(archive, name, mode, *args, **kwargs)
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", open_entry)
+    if fail_write:
+        with pytest.raises(OSError, match="owned write failure"):
+            profile_backup.export_profile("original", target, True, False)
+        assert not target.exists()
+    else:
+        profile_backup.export_profile("original", target, True, False)
+        with zipfile.ZipFile(target) as archive:
+            assert not any(name.endswith("native-runtime.lock") for name in archive.namelist())
+    assert observed == [False]
+    contender = QLockFile(str(native / "native-runtime.lock"))
+    contender.setStaleLockTime(0)
+    assert contender.tryLock(0)
+    contender.unlock()
+
+
+def test_native_export_preserves_an_unrecognized_owner_file(workspace):
+    native = db.profile_dir_for_email("original") / "native"
+    native.mkdir()
+    marker = native / "native-runtime.lock"
+    marker.write_bytes(b"unrecognized synthetic owner")
+    target = workspace / "blocked.zip"
+    with pytest.raises(ValueError, match="Glint.*close"):
+        profile_backup.export_profile("original", target, True, False)
+    assert marker.read_bytes() == b"unrecognized synthetic owner"
+    assert not target.exists()
+
+
+def test_native_export_rejects_non_file_owner_metadata(workspace):
+    native = db.profile_dir_for_email("original") / "native"
+    native.mkdir()
+    (native / "native-runtime.lock").mkdir()
+    with pytest.raises(ValueError, match="owner metadata"):
+        profile_backup.export_profile("original", workspace / "blocked.zip", True, False)
+    assert not (workspace / "blocked.zip").exists()
+
+
+def test_native_export_rejects_a_profile_created_during_enumeration(workspace, monkeypatch):
+    from pathlib import Path
+
+    root = db.profile_dir_for_email("original")
+    original = Path.rglob
+
+    def enumerate_files(path, pattern):
+        yield from original(path, pattern)
+        if path == root:
+            (root / "native").mkdir()
+
+    monkeypatch.setattr(Path, "rglob", enumerate_files)
+    with pytest.raises(ValueError, match="appeared during export"):
+        profile_backup.export_profile("original", workspace / "blocked.zip", True, False)
+    assert not (workspace / "blocked.zip").exists()
+
+
 @pytest.mark.parametrize("sessions", [False, True])
 @pytest.mark.parametrize("secrets", [False, True])
 def test_export_restore_roundtrip_preserves_original_and_privacy(workspace, sessions, secrets):
@@ -252,7 +348,6 @@ def test_native_backup_preserves_environment_and_storage_without_runtime_lock(wo
     native = db.profile_dir_for_email("original") / "native"
     native.mkdir()
     (native / "camouflow-native.json").write_text(json.dumps({"engine": "camouflow-native", "schema": 1}), encoding="utf-8")
-    (native / "native-runtime.lock").write_text("synthetic owner", encoding="utf-8")
     (native / "owned-storage").write_bytes(b"owned Native session")
     target = workspace / "native.zip"
     profile_backup.export_profile("original", target, True, True)
@@ -267,7 +362,7 @@ def test_native_backup_preserves_environment_and_storage_without_runtime_lock(wo
     assert account["native_settings"] == {**defaults, "window_width": 420}
     assert (restored / "native/owned-storage").read_bytes() == b"owned Native session"
     assert not (restored / "native/native-runtime.lock").exists()
-    assert (native / "native-runtime.lock").read_text(encoding="utf-8") == "synthetic owner"
+    assert not (native / "native-runtime.lock").exists()
 
 
 def test_restoring_older_native_backup_never_transfers_its_process_lock(workspace):

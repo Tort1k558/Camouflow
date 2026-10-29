@@ -30,6 +30,12 @@ release. It never substitutes another engine or adopts its profile directory.
 Profiles use persistent Chromium contexts with process-owner exclusion and
 bounded teardown. Recorder, scenarios and AI use the common browser contract.
 
+Local session backup takes the same Native owner lock for the complete ZIP
+snapshot, not just an in-memory UI check. A live runtime blocks session export;
+an export blocks runtime start. Metadata-only export does not read browser files.
+Restore remains a new local identity: private profile keys and owner locks are
+excluded, not transferred as a key-preserving rollback.
+
 Running-profile diagnostics use a disposable, page-routed loopback document and
 same-origin iframe, each with a dedicated-worker observation. Existing document
 and worker checks run independently, then document identity groups are compared

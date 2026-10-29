@@ -3,6 +3,39 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Backup session owner exclusion — 2026-10-29
+
+The backup service previously omitted `native-runtime.lock` from archives but
+did not acquire it. Three new real-QLockFile tests reproduced that session
+export could read an owned Glint profile, and a runtime could acquire ownership
+while its files were being archived. The UI's in-memory running-profile check
+was not sufficient protection for direct service callers or other processes.
+
+Session export now holds the existing Native owner lock through enumeration,
+hashing and ZIP writing. Active/unknown owners and invalid linked/non-file owner
+metadata reject before creating an archive. Failed writes release ownership and
+remove only the new partial archive. Metadata-only service export does not take
+the session lock. A Native directory appearing during enumeration causes refusal,
+not an unlocked copy of its newly created data. Existing engines' APIs and the
+new-identity restore contract remain unchanged.
+
+Actual reviewed **148 / 001-062** manager verification passed: live session
+export rejected without changing five stores; metadata-only export contained no
+browser files; a real NativeRuntime start was rejected while ZIP writing held
+the lock; closed export omitted the private key and lock; restored profile
+started with all five stores and a new private key; original restarted with its
+unchanged key/stores. Three manager closes were complete without forced cleanup,
+reported errors or retained runtime resources. Payload/source postguards passed.
+Evidence: `native-backup-owner-20261029-v2/report.json` on D; child exit zero.
+Backup/path regression tests passed **105 cases**; the full application suite
+passed **3,475 tests, one skipped** in 292.59 seconds. CI Ruff selection passed.
+
+The first private harness used the default keep-open setting, then incorrectly
+expected a normal `close()` to terminate it. Its failed report is retained;
+v2 explicitly disables keep-open. This was a harness error, not a product
+shutdown fix. These checks do not prove cross-device encrypted-cookie portability,
+key-preserving rollback, 156 runtime or Camoufox/CloakBrowser process exclusion.
+
 ## Windows text tuning and close observability — 2026-10-29
 
 Experimental manager admission is limited to the exact reviewed **148 / 001-062**

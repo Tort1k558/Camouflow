@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager, nullcontext
 import hashlib
 import json
 import shutil
@@ -10,6 +11,8 @@ import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
+from PyQt6.QtCore import QLockFile
+
 from app.storage import db
 from app.core.native.identity import IDENTITY_FILE
 
@@ -17,10 +20,45 @@ MAX_BYTES = 2 * 1024 ** 3
 MAX_FILES = 50000
 
 
+@contextmanager
+def _native_session_guard(root: Path):
+    native = root / "native"
+    if native.is_symlink() or native.is_junction():
+        raise ValueError("Glint profile storage must not be a filesystem link")
+    if not native.exists():
+        yield False
+        return
+    marker = native / "native-runtime.lock"
+    if (not native.is_dir() or native != native.resolve() or marker.is_symlink() or marker.is_junction()
+            or (marker.exists() and (not marker.is_file() or marker.stat().st_nlink != 1))):
+        raise ValueError("Glint profile owner metadata is invalid")
+    lock = QLockFile(str(marker))
+    lock.setStaleLockTime(0)
+    if not lock.tryLock(0):
+        raise ValueError("Glint profile is in use; close its browser before exporting sessions")
+    try:
+        yield True
+    finally:
+        lock.unlock()
+
+
 def export_profile(name: str, target: Path, sessions: bool, secrets: bool) -> None:
     account = next((a for a in db.db_get_accounts() if a["name"] == name), None)
     if account is None:
         raise ValueError("Local profile not found")
+    source_root = db.profile_dir_for_email(name)
+    if source_root.is_symlink() or source_root.is_junction():
+        raise ValueError("Profile directory must not be a filesystem link")
+    root = source_root.resolve()
+    if not root.is_relative_to(db.PROFILES_DIR.resolve()) or root == db.PROFILES_DIR.resolve():
+        raise ValueError("Invalid profile storage path")
+    guard = _native_session_guard(root) if sessions and root.exists() else nullcontext(False)
+    with guard as native_guarded:
+        _write_profile_archive(account, root, target, sessions, secrets, native_guarded)
+
+
+def _write_profile_archive(account: dict, root: Path, target: Path, sessions: bool, secrets: bool,
+                           native_guarded: bool) -> None:
     if not secrets:
         account = {k: v for k, v in account.items() if k in {"name", "stage", "_browser_engine", "browser_engine"}}
     metadata = {"profile": account, "sessions": sessions, "secrets": secrets, "scenarios": [], "settings": {}}
@@ -28,12 +66,6 @@ def export_profile(name: str, target: Path, sessions: bool, secrets: bool) -> No
         metadata["scenarios"] = [{"name": s.name, "steps": s.steps, "description": s.description} for s in db.db_get_scenarios()]
         metadata["settings"] = {k: db.db_get_setting(k) for k in (*[engine + "_defaults" for engine in sorted(db.BROWSER_ENGINES)], "browser_engine")}
     files = {}
-    source_root = db.profile_dir_for_email(name)
-    if source_root.is_symlink() or source_root.is_junction():
-        raise ValueError("Profile directory must not be a filesystem link")
-    root = source_root.resolve()
-    if not root.is_relative_to(db.PROFILES_DIR.resolve()) or root == db.PROFILES_DIR.resolve():
-        raise ValueError("Invalid profile storage path")
     if sessions and root.exists():
         if target.resolve().is_relative_to(root):
             raise ValueError("Save the archive outside the browser profile")
@@ -42,6 +74,8 @@ def export_profile(name: str, target: Path, sessions: bool, secrets: bool) -> No
                 raise ValueError("Profile contains a symbolic link; close the browser and remove the link before exporting")
             if path.is_file() and path.name not in {"parent.lock", "SingletonLock", "SingletonCookie", "SingletonSocket", "native-runtime.lock", IDENTITY_FILE}:
                 files["browser/" + path.relative_to(root).as_posix()] = path
+        if not native_guarded and (root / "native").exists():
+            raise ValueError("Glint profile appeared during export; close its browser and retry")
     if len(files) > MAX_FILES or sum(p.stat().st_size for p in files.values()) > MAX_BYTES:
         raise ValueError("Archive safety limit: 2 GiB / 50,000 files")
     hashes = {}
