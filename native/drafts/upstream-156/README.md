@@ -26,6 +26,10 @@ Prepared local Windows SDK/MSVC selection is supported explicitly for candidate
 `sync`, `hooks`, `patch` and `build`, not only the compiler step. Sync/hooks
 recheck the SDK provenance before recording success; changed inputs reject the
 stage. No default/internal toolchain download or automatic selection is added.
+For explicit local hooks, the downloader is disabled and the VS override points
+to the validated owned installation. The separate GN/build stage still uses the
+verified `win_toolchain.json` depot layout. This distinction is required because
+the upstream update hook forces a download when depot mode is enabled.
 For a manifest refresh, preserve the old runtime/receipts and exact source delta,
 return only the verified patch-owned source changes to the pinned clean state,
 then execute real sync/hooks and reapply the complete selected chain. Never edit

@@ -683,6 +683,11 @@ def execute(action: str, workspace: Path, *, backing_volume: Path | None = None,
 def _execute_locked(action: str, workspace: Path, jobs: int, candidate: dict | None, lock: dict,
                     *, git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> None:
     env = environment(workspace, git_ssl_backend=git_ssl_backend, local_toolchain=local_toolchain)
+    if action == "hooks" and local_toolchain:
+        # The update hook forces an internal download in depot mode. GN still
+        # consumes our verified win_toolchain.json in the separate build stage.
+        env["DEPOT_TOOLS_WIN_TOOLCHAIN"] = "0"
+        env["GYP_MSVS_OVERRIDE_PATH"] = env["vs2026_install"]
     checkout(workspace / "depot_tools", lock["depot_tools_repository"], lock["depot_tools_revision"], env)
     if os.name == "nt":
         bootstrap_windows_git(workspace, env)

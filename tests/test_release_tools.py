@@ -4100,7 +4100,8 @@ def test_native_dependency_stages_recheck_local_sdk_before_receipt(tmp_path, mon
     if action == "hooks":
         (chromium / ".gclient").write_text("owned fixture", encoding="utf-8")
     candidate = build.load_candidate("upstream-156")
-    selected = {"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "a" * 64}
+    selected = {"GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256": "a" * 64, "DEPOT_TOOLS_WIN_TOOLCHAIN": "1",
+                "vs2026_install": str(tmp_path / "selected-vs2026"), "GYP_MSVS_OVERRIDE_PATH": "unrelated inherited path"}
     monkeypatch.setattr(build, "environment", lambda *args, **kwargs: dict(selected))
     monkeypatch.setattr(build, "checkout", lambda *args: None)
     monkeypatch.setattr(build, "bootstrap_windows_git", lambda *args: None)
@@ -4108,6 +4109,8 @@ def test_native_dependency_stages_recheck_local_sdk_before_receipt(tmp_path, mon
     commands = []
     def run(command, *args, **kwargs):
         commands.append(command)
+        assert args[1]["DEPOT_TOOLS_WIN_TOOLCHAIN"] == ("0" if action == "hooks" else "1")
+        assert args[1]["GYP_MSVS_OVERRIDE_PATH"] == (selected["vs2026_install"] if action == "hooks" else "unrelated inherited path")
         return candidate["lock"]["chromium_revision"] if command[:2] == ["git", "rev-parse"] else ""
     monkeypatch.setattr(build, "run", run)
     monkeypatch.setattr(build, "require_stage", lambda *args: None)
