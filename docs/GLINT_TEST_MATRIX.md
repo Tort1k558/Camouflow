@@ -9,7 +9,17 @@
 | Cancellation control | Injected 1.2s identity persistence reproduced the setup failure; corrected setup barrier retains all lock/cancellation/deadline assertions | **623 runtime tests passed**, including slow persistence; no production timeout change; full canonical repeat pending |
 | Canonical main regression after both setup fixes | **4047 passed, 1 skipped**, zero failures/errors, 401.39s; tracked-source postguards passed | Includes **625 runtime tests** with both slow-persistence cleanup paths; [source integration evidence](../native/drafts/upstream-156/canonical-app67-integration-observations.json); not browser or package admission |
 | Strict GPU diagnostic calibration | WebGL1, WebGL2 and WebGPU **8/8 contexts each**, off and restart; effective feature arguments verified | [Stock156-only evidence](../native/drafts/gpu/stock156-runtime-observations.json); not execution of Glint's GPU policy |
-| AudioMath 0067 | Compiled into the new candidate; experimental feature remains disabled by default | Native 11-case gate, fidelity/analyser/worklet/realtime and combined runtime checks remain pending; Audio-v1's 12 errors are not declared fixed |
+| AudioMath 0067 | Compiled into the new candidate; experimental feature remains disabled by default | Native gate failed/incomplete, as recorded below; browser fidelity/analyser/worklet/realtime and combined checks remain pending; Audio-v1's 12 errors are not declared fixed |
+
+### Completed native batch and subsequent controls
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| 001–067 native batch | **17/18 groups passed**, all source/SDK/core/receipt postguards passed; test build 1h20m44.41s / 726 actions | [Failed batch retained](../native/drafts/upstream-156/native-batch67-observations.json); overlapping filters are not independent coverage |
+| AudioMath group | Failed/incomplete after policy rejected fixture Audio seed 3 duplicating WebGPU seed 3; no complete 11-case result | Fixture-only repair is unregistered; valid float seed 10 and duplicate-seed negative case propose 12 cases; no relaxed policy checks |
+| Windows CI / `34583fc` | Python/QML, static checks, C++ policy and packaged-engine job passed | [CI run](https://github.com/Tort1k558/Camouflow/actions/runs/40933140951); upstream bootstrap/legacy-engine packaging is not custom Glint 0067 admission |
+| Measured-environment source package | **4110 passed, 1 skipped** in isolated worktree; source postguards passed | Now integrated in main; canonical repeat pending; no generated cohort or ordinary-user claim |
+| Stock156 manager-mode controls | Desktop/mobile screen differs in cross-origin iframe in both requested phases; plain no-emulation control passed | [Reproducer and native repair contract](../native/drafts/environment/SCREEN_EMULATION.md); not Glint execution, not fixed by dropping requested settings |
 
 Ownership-bound resource monitoring and the Audio/GPU runners are now integrated
 in main. No binary activation, release, CAPTCHA result or expanded capability

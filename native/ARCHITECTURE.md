@@ -11,11 +11,18 @@ revision stamp, package validation and policy admission remain unverified.
 The last complete 156 runtime baseline remains 001–066. The historical evidence
 below must not be read as verification of 0067.
 
+The completed 001–067 native batch passed 17/18 groups with source/SDK/core/receipt
+postguards. The AudioMath fixture incorrectly reused WebGPU seed 3 as Audio seed
+3; fail-closed policy rejection led to a test-process abort. Its fixture-only
+repair is unregistered and unexecuted; no native AudioMath or browser admission
+follows. Actual browser diagnostics are collected before the next coherent build.
+
 The manager resource monitor and source-bound Audio/GPU diagnostic runners are
 integrated in main. Canonical Python regression passed **4047 cases with one
 skipped** and tracked-source postguards; 625 runtime tests include real slow
-profile-persistence cancellation controls. The shared 18-target native batch is
-still building its test executables at j4. Python integration does not validate
+profile-persistence cancellation controls. Later Windows CI passed after isolating
+ACL verification from foreign PowerShell modules; production ACL checks remain
+unchanged. Python integration does not validate
 the new native AudioMath implementation or expand browser capability admission.
 
 The reviewed Windows runtime is **Chromium 148 / 001-062**. Its exact managed
