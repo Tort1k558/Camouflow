@@ -1236,17 +1236,12 @@ def test_native_interrupted_stop_waits_for_the_same_sdk_operation_before_releasi
     asyncio.run(check())
 
 
-@pytest.mark.parametrize("interruption", ["cancel", "cancel_timeout", "deadline"])
-@pytest.mark.parametrize("slow_profile_setup", [False, True])
-def test_native_cancelled_driver_start_retains_and_cleans_the_same_start_operation(tmp_path, monkeypatch, interruption, slow_profile_setup):
+@pytest.fixture(params=[False, True], ids=["ordinary-profile", "slow-profile"])
+def slow_profile_setup(request, monkeypatch):
     import time
-    from types import SimpleNamespace
-    from unittest.mock import AsyncMock
-
-    from PyQt6.QtCore import QLockFile
     from app.core.native import runtime as module
 
-    if slow_profile_setup:
+    if request.param:
         persist = module.load_or_create_identity
 
         def delayed_persistence(*args, **kwargs):
@@ -1254,6 +1249,15 @@ def test_native_cancelled_driver_start_retains_and_cleans_the_same_start_operati
             return persist(*args, **kwargs)
 
         monkeypatch.setattr(module, "load_or_create_identity", delayed_persistence)
+
+
+@pytest.mark.parametrize("interruption", ["cancel", "cancel_timeout", "deadline"])
+def test_native_cancelled_driver_start_retains_and_cleans_the_same_start_operation(tmp_path, monkeypatch, interruption, slow_profile_setup):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from PyQt6.QtCore import QLockFile
+    from app.core.native import runtime as module
 
     async def check():
         entered, release = asyncio.Event(), asyncio.Event()
@@ -1331,7 +1335,7 @@ def test_native_failed_driver_start_releases_profile_and_allows_retry(tmp_path, 
 
 
 @pytest.mark.parametrize("failure", [RuntimeError, asyncio.CancelledError])
-def test_native_driver_failure_during_cancelled_start_cleanup_releases_owner(tmp_path, monkeypatch, failure):
+def test_native_driver_failure_during_cancelled_start_cleanup_releases_owner(tmp_path, monkeypatch, failure, slow_profile_setup):
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
     from PyQt6.QtCore import QLockFile
@@ -1349,7 +1353,8 @@ def test_native_driver_failure_during_cancelled_start_cleanup_releases_owner(tmp
             start=AsyncMock(side_effect=start_driver)))
         runtime = NativeRuntime(tmp_path / "owned", Path(__file__), NativeConfiguration())
         starting = asyncio.create_task(runtime.start())
-        await asyncio.wait_for(entered.wait(), timeout=1)
+        # Match the sibling cancellation test's real profile-persistence barrier.
+        await asyncio.wait_for(entered.wait(), timeout=10)
         starting.cancel()
         await asyncio.sleep(0)
         other = QLockFile(str(runtime.profile_dir / "native-runtime.lock"))
