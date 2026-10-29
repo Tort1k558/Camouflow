@@ -9,15 +9,16 @@ Chromium **156.0.8078.36 / 001–065** linked successfully in its separate D:
 workspace: 19,487 build steps in 3h46m37.79s, followed by passing source/toolchain
 postguards and a three-core-file build receipt. Disposable startup passed; two
 repeats passed all 18 baseline lifecycle/integration checks. An earlier shutdown
-timeout remains unexplained and retained as failed evidence. This is **not full
-policy-suite, browser-identity or release admission**.
+timeout remains unexplained and retained as failed evidence. Baseline lifecycle
+alone is **not full policy-suite, browser-identity or release admission**.
 The first identity verifier stopped before running tests because its global
 process guard detected an unrelated project's Ninja. Guards now support an
 explicit workspace/binary scope; unreadable process identity remains a conflict,
 and default unscoped checks remain conservative. Real owned sleeping-Ninja
 controls distinguish foreign and conflicting scopes without terminating either.
-The resumed identity-key target passed 62 C++ cases with postguards; remaining
-identity/native targets and the canonical eight-gate/installed suite are pending.
+The recovered identity targets passed 134 C++ cases with postguards: keys 62,
+contexts 37, transport 20 and handoff 15. Remaining native targets and the
+installed-package suite are pending; the source-build eight-gate result is below.
 The unprotected 156 Audio baseline also matched the standalone native156 DSP
 matrix bit-for-bit in 45 captures. This does not execute AudioMath 0068.
 An official CfT archive now provides the exact 156.0.8078.36/upstream revision
@@ -26,6 +27,13 @@ control: 135 Glint-off/CfT/Glint-off Audio captures matched bit-for-bit across
 upstream dummy-CDP-stamp default and is bound by its source receipt/core hashes.
 The real-stamp GN override is staged only. These measurements do not equate
 build flags or admit math-mode/device-cohort plausibility.
+The public `audio-dsp-math-v2/browser_matrix.py` repeats this exact-bit gate with
+explicit source/recipe/core bindings and strict default revision handling.
+It never substitutes a browser or overwrites output; A/B/A uses separate fresh
+profiles and does not replace the persistent-restart or installed-package gates.
+The eight-gate owned runtime suite passed all 160 checks on the source-build binary
+(`upstream-156/runtime-suite-observations.json`). This is not external anti-bot,
+installed-package or complete Canvas/GPU/Audio admission.
 Compiled 156 main/app-list icons match `logo.ico`; EXE/DLL ProductName and the
 internal version page identify Glint. Taskbar/shortcut caching is not covered.
 The verifier evidence-retention fix is staged separately and tested on an

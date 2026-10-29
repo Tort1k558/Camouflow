@@ -1,6 +1,6 @@
 # Glint browser test matrix
 
-## First 156 baseline results, full policy suite pending — 2026-10-29
+## Chromium 156 baseline and owned runtime results — 2026-10-29
 
 | Gate | Observed result | Boundary |
 | --- | --- | --- |
@@ -12,6 +12,8 @@
 | Resumed native identity-key target | 62 cases passed; native source/toolchain/browser-core postguards passed | Not document/worker identity or the remaining fixture targets |
 | Native BrowserContext identity target | 37 cases passed; source/toolchain/browser-core postguards passed | Unit-level BrowserContext coverage; renderer/worker transport and browser policy admission remain unverified |
 | Native identity transport target | 20 cases passed; source/toolchain/browser-core postguards passed | Unit-level transport coverage; not browser identity admission or native handoff completion |
+| Native identity handoff target | 15 cases passed: three window-surface and twelve DocumentLoader inline-script policy units; source/toolchain/browser-core postguards passed | Native unit coverage, not full enabled renderer/worker lifecycle or browser-policy admission |
+| Chromium 156 full owned runtime suite | All eight gates passed: runtime 18, hardware 9, WebRTC 7, automation 55, fonts 42, identity 18, CDP 6, combined 5; 160 checks total | Source-build binary only; remaining native targets and installed-package gates are separate; no external anti-bot or complete Canvas/GPU/Audio admission |
 | Disposable startup | 156.0.8078.36 opened the controlled page; sandbox requested, effective `--no-sandbox` absent; runtime resources closed | Regular raw/headless baseline, not concealed-automation admission |
 | Extended baseline lifecycle | Two repeats each passed all 18 checks: isolation/five stores, permissions, crash/restarts, owned-process cleanup, controlled authenticated proxy, manager/scenarios, Recorder and backup/restore | One repeat had diagnostic logging, the other ordinary verbosity; not the full eight-gate policy suite |
 | First extended baseline failure | Close timed out after five checks; temporary-directory cleanup then masked the primary failure | Negative retained; passing repeats do not explain or repair the timeout |
@@ -20,6 +22,7 @@
 | Native156 Audio calibration | 15 cases × three repetitions = 45 bit-exact native156 prototype matches; cleanup/postguards passed | Original unprotected baseline; the subsequent stock comparison is recorded separately below |
 | Exact-version CfT source control | Official generation-pinned archive passed MD5/PE-version checks; live CfT reported 156.0.8078.36 / exact upstream revision | Per-version JSON 404 did not imply asset absence; not equal GN/toolchain/branding or full policy admission |
 | Matched Audio Glint-off → CfT → Glint-off | 135 captures across 15 cases were bit-exact; all contexts closed and core/source postguards passed | One Windows host, policies off; float32 prototype differed on three discriminating cases; not math-mode/device-cohort admission |
+| Public Audio browser CLI | Independently reran 135 captures matching all prior case hashes; five CLI rejections passed, including strict dummy-revision handling, output preservation and synthetic source-checkout protection | Idle builder required; prior 10s navigation timeout during linking retained without a proven cause; fresh profiles, not persistent restart or protected-policy admission |
 | Native revision stamping | Current zero CDP stamp explained by upstream non-official GN default; isolated real-LASTCHANGE generation preserved version/branding and changed only stamp | Override staged, not applied/compiled; current native source binding is receipt/core hashes, not a runtime Git report |
 | Compiled Glint branding | Main/app-list icons match project logo; ProductName in EXE/DLL and internal version-page heading are Glint; resource-pack postguards passed | Not OS taskbar/shortcut cache migration or fingerprint admission |
 | Staged verifier evidence retention | Five actual held-file controls and an 18-check browser regression passed on a patched copy; original exception/profile retained on failure | Canonical verifier unchanged; underlying browser-close timeout is not fixed |
@@ -33,6 +36,12 @@ Build evidence: `D:\Glint156Candidate\fixture-build-continuation-20261029-v2.jso
 core receipt: `chromium\src\out\CamouFlowNative\camouflow-build.json` below that workspace.
 Guard process controls: `D:\GlintBuilderGuardProbe-20261029-v2\report.json`.
 Context target evidence: `D:\Glint156Candidate\identity-after-link-20261029-v5\identity-contexts.json`.
+Recovered handoff target: `D:\Glint156Candidate\identity-after-link-20261029-v6\identity-handoff.json`.
+Full runtime evidence: [`runtime-suite-observations.json`](../native/drafts/upstream-156/runtime-suite-observations.json);
+raw reports: `D:\Glint156Candidate\runtime-after-identity-20261029-v13\suite`.
+Public CLI/runtime-evidence regression: `tests/test_release_tools.py` — 1101 passed,
+one skipped in 90.72s; isolated log in
+`D:\Glint156Candidate\public-audio-cli-python-regression-20261029-v2\pytest.log`.
 Transport target: `identity-transport.json` in that directory; lifecycle repetitions:
 `D:\Glint156Candidate\lifecycle156-under-build-20261029-v1\report.json`.
 Sanitized evidence: [`windows-runtime-observations.json`](../native/drafts/upstream-156/windows-runtime-observations.json).
@@ -44,6 +53,11 @@ Tree evidence: `D:\Glint156Candidate\windows-process-tree-20261029-v2\report.jso
 Full Python regression: `D:\Glint156Candidate\python-resource-tree-regression-20261029-v1\report.json`.
 Stock control: [`stock-control-observations.json`](../native/drafts/upstream-156/stock-control-observations.json);
 matched Audio: [`matched-stock-observations.json`](../native/drafts/audio-dsp-math-v2/matched-stock-observations.json).
+Public runner and scoped evidence: [`browser_matrix.py`](../native/drafts/audio-dsp-math-v2/browser_matrix.py),
+[`browser-cli-observations.json`](../native/drafts/audio-dsp-math-v2/browser-cli-observations.json).
+Raw CLI records: `D:\Glint156Candidate\public-audio-aba156-20261029-v4` and
+`public-audio-cli-negatives-20261029-v3` below that workspace; failed navigation
+attempt retained in `public-audio-aba156-20261029-v3`.
 
 The old identity/runtime/native/package processes were confirmed missing after
 handoff step 1062/1498; cause/exit codes are unknown, not labelled a compiler failure.

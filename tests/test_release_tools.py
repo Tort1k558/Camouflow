@@ -4642,6 +4642,136 @@ def test_same_upstream_156_audio_aba_records_only_unprotected_calibration():
     assert data["frozen_inputs_unchanged"] == 201 and data["remaining_unverified"]
 
 
+def test_audio_browser_matrix_revision_decoder_and_exact_comparison(tmp_path):
+    import argparse
+    import base64
+    import runpy
+    import struct
+    from scripts import native_build as build
+
+    module = runpy.run_path(str(build.ROOT / "native/drafts/audio-dsp-math-v2/browser_matrix.py"), run_name="glint_browser_matrix_test")
+    from pathlib import PureWindowsPath
+    native = PureWindowsPath("D:/checkout/src/out/CamouFlowNative/chrome.exe")
+    assert module["inside_compiled_checkout"](PureWindowsPath("D:/checkout/src/new-report"), native)
+    assert not module["inside_compiled_checkout"](PureWindowsPath("D:/checkout/src-other/new-report"), native)
+    assert not module["inside_compiled_checkout"](PureWindowsPath("D:/reports/new-report"), native)
+    revision = "a" * 40
+    version = "156.0.8078.36"
+    normal = {"product": "Chrome/" + version, "revision": "@" + revision}
+    dummy = {**normal, "revision": "@" + "0" * 40}
+    module["validate_version"](normal, version, revision, dummy=False)
+    module["validate_version"](dummy, version, revision, dummy=True)
+    for observed, allow_dummy in ((dummy, False), (normal, True), (None, False),
+                                  ({**normal, "product": "Chrome/155.0.0.0"}, False),
+                                  ({**normal, "revision": "@" + "b" * 40}, False)):
+        with pytest.raises(ValueError):
+            module["validate_version"](observed, version, revision, dummy=allow_dummy)
+    case = {"id": "owned", "frames": 256, "rate": 44100}
+    channel = struct.pack("<256f", *([0.25] * 256))
+    encoded = base64.b64encode(channel).decode("ascii")
+    observed = {"id": "owned", "frames": 256, "sampleRate": 44100, "channelCount": 2,
+                "eventSameBuffer": True, "closed": True, "samplesBase64": [encoded, encoded]}
+    assert module["decode_capture"](observed, case) == channel * 2
+    nonfinite = base64.b64encode(struct.pack("<256f", *([float("nan")] * 256))).decode("ascii")
+    for changes in ({"eventSameBuffer": 1}, {"closed": False}, {"frames": 255}, {"sampleRate": 48000},
+                    {"channelCount": 1}, {"samplesBase64": [encoded]}, {"samplesBase64": ["x", "x"]},
+                    {"samplesBase64": ["!" + encoded[1:], encoded]}, {"samplesBase64": [nonfinite, encoded]}):
+        with pytest.raises(ValueError):
+            module["decode_capture"]({**observed, **changes}, case)
+    zero, negative_zero = struct.pack("<f", 0), struct.pack("<f", -0.0)
+    equal = module["compare"](zero, zero, zero)
+    assert equal["native_and_stock_exact"] and equal["native_repeat_exact"]
+    differing = module["compare"](zero, negative_zero, zero)
+    assert differing["native_and_stock_exact"] is False and differing["mismatched_channel_samples"] == 1
+    repeated = module["compare"](zero, zero, negative_zero)
+    assert repeated["native_repeat_exact"] is repeated["native_and_stock_exact"] is False
+    assert repeated["native_repeat_mismatched_channel_samples"] == 1
+    for buffers in ((b"", b"", b""), (b"x", b"x", b"x"), (zero, zero * 2, zero)):
+        with pytest.raises(ValueError):
+            module["compare"](*buffers)
+    forbidden = Path("C:/glint-forbidden-audio-matrix-output")
+    existed = forbidden.exists()
+    with pytest.raises(ValueError, match="D:"):
+        module["verify"](argparse.Namespace(output=forbidden, native_executable=tmp_path / "native.exe",
+                                           stock_executable=tmp_path / "stock.exe", allow_native_dummy_revision=False))
+    assert forbidden.exists() is existed
+
+
+def test_public_audio_browser_matrix_cli_evidence_is_bound_and_scoped():
+    import hashlib
+    import json
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/audio-dsp-math-v2"
+    raw = (root / "browser-cli-observations.json").read_bytes()
+    data = json.loads(raw)
+    script = (root / data["script"]["file"]).read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    assert b"\r" not in script and not script.startswith(b"\xef\xbb\xbf")
+    assert hashlib.sha256(script).hexdigest() == data["script"]["sha256"]
+    baseline_raw = (root / data["matched_baseline_file"]).read_bytes()
+    baseline = json.loads(baseline_raw)
+    assert hashlib.sha256(baseline_raw).hexdigest() == data["matched_baseline_sha256"]
+    assert data["schema"] == 1 and data["platform"] == "win32" and data["passed"]
+    assert data["measurement_complete"] and data["postguards_passed"]
+    assert data["capture_count"] == 135 and data["case_count"] == 15
+    assert data["native_matches_stock_all_cases"] and data["native_repeat_stable_all_cases"]
+    assert data["all_case_hashes_match_prior_measurement"] and data["measured_input_count"] >= 200
+    for field in ("native_core_sha256", "stock_core_sha256", "cases_sha256", "probe_sha256"):
+        assert data[field] == baseline[field]
+    assert data["native_receipt_sha256"] == baseline["candidate_build_receipt_sha256"]
+    assert data["native_dummy_revision_acknowledged"] and data["fixture_profiles_are_fresh_per_phase"]
+    for field in ("persistent_profile_restart_verified", "native_policy_enabled", "audio_math_included",
+                  "same_build_flags_verified", "variant_device_cohort_verified", "privacy_admitted", "production_admitted"):
+        assert data[field] is False
+    assert [row["label"] for row in data["phases"]] == ["native-before", "stock", "native-after"]
+    assert all(row["capture_count"] == 45 and row["resources_closed"] for row in data["phases"])
+    controls = {row["name"]: row for row in data["negative_controls"]}
+    assert len(controls) == data["negative_control_count"] == 5
+    assert all(row["passed"] and row["exit_code"] == 1 for row in controls.values())
+    assert controls["wrong-stock-role"]["browser_phase_started"] is False
+    assert controls["dummy-without-acknowledgement"]["native_resources_closed"]
+    assert controls["dummy-without-acknowledgement"]["audio_captures"] == 0
+    assert controls["dummy-without-acknowledgement"]["stock_phase_started"] is False
+    assert controls["existing-output-not-overwritten"]["existing_report_unchanged"]
+    assert controls["non-D-output-refused"]["no_directory_created"] and data["remaining_unverified"]
+    assert controls["source-checkout-output-refused"]["no_directory_created"]
+    assert controls["source-checkout-output-refused"]["synthetic_source_layout"]
+    assert controls["source-checkout-output-refused"]["browser_phase_started"] is False
+    assert data["compiler_idle_required"] is True
+    timeout = data["prior_timeout_attempt"]
+    assert timeout["retained"] is True and timeout["passed"] is False
+    assert timeout["timeout_increased"] is False and timeout["root_cause_proven"] is False
+
+
+def test_public_156_runtime_suite_evidence_keeps_release_gates_separate():
+    import json
+    from scripts import native_build as build
+
+    draft = build.ROOT / "native/drafts/upstream-156"
+    raw = (draft / "runtime-suite-observations.json").read_bytes()
+    data = json.loads(raw)
+    baseline = json.loads((draft / "windows-runtime-observations.json").read_bytes())
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    assert data["passed"] and data["schema"] == 1 and data["candidate"] == "upstream-156"
+    for field in ("candidate_manifest_sha256", "build_receipt_sha256", "runtime_core_sha256"):
+        assert data[field] == baseline[field]
+    assert [(g["name"], g["checks"]) for g in data["gates"]] == [
+        ("runtime", 18), ("hardware", 9), ("webrtc", 7), ("automation", 55),
+        ("fonts", 42), ("identity", 18), ("cdp", 6), ("combined", 5)]
+    assert sum(g["checks"] for g in data["gates"]) == data["check_count"] == 160
+    for row in [data, *data["gates"]]:
+        digest = row.get("report_sha256", row.get("suite_report_sha256"))
+        assert len(digest) == 64 and all(c in "0123456789abcdef" for c in digest)
+        assert row["passed"] is True
+    for field in ("privacy_admitted", "release_admitted", "production_admitted",
+                  "third_party_antibot_verified", "audio_math_included"):
+        assert data[field] is False
+    handoff = baseline["native_identity_handoff"]
+    assert handoff["tests"] == 15 and handoff["passed"] and handoff["postguards_passed"]
+    assert handoff["baseline_browser_code_unchanged"] and data["remaining_unverified"]
+
+
 def test_first_156_audio_calibration_does_not_admit_the_math_variant():
     import hashlib
     import json

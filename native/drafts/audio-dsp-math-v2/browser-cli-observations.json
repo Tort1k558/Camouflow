@@ -1,0 +1,123 @@
+{
+  "scope": "Windows native-off/CfT/native-off exact-bit gate; no privacy admission.",
+  "measurement_complete": true,
+  "native_policy_enabled": false,
+  "audio_math_included": false,
+  "same_build_flags_verified": false,
+  "variant_device_cohort_verified": false,
+  "native_dummy_revision_acknowledged": true,
+  "native_core_sha256": {
+    "chrome.exe": "0596afb2bd1a84731ebbe4d276edd3797d67b262bebb332e76a8aa9d21db5567",
+    "chrome.dll": "bd75c5c6ab3c45946edc0ea4e8f1d684286dd588d7cc46999a0b2bb1236aab44",
+    "chrome_elf.dll": "14597f88689361a016bce4a648e6b18a50ed065d6fc524dc8112f4b7d6e115d0"
+  },
+  "stock_core_sha256": {
+    "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+    "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+    "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+  },
+  "native_receipt_sha256": "5c60aa4cebc433552e6a28a4875ffcf9e74e6e7776a52b4cc25ec4183591863a",
+  "candidate_manifest_sha256": "4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0",
+  "stock_control_sha256": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+  "cases_sha256": "b678f9d28e60a16306092860d1d34d0dc893073a7dcd429b10f19932f8a756e8",
+  "probe_sha256": "e3e8258fb8d206b794f186fbf2090a24533d11d27b2f774ee2e6d290abfb2774",
+  "measured_input_count": 212,
+  "capture_count": 135,
+  "native_matches_stock_all_cases": true,
+  "native_repeat_stable_all_cases": true,
+  "postguards_passed": true,
+  "schema": 1,
+  "passed": true,
+  "platform": "win32",
+  "script": {
+    "file": "browser_matrix.py",
+    "sha256": "430b0f8ae05a5d33112a3bfc2ae040a2aaf068f3f6fb2baa76375a4b6514bc36"
+  },
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "fixture_profiles_are_fresh_per_phase": true,
+  "persistent_profile_restart_verified": false,
+  "matched_baseline_file": "matched-stock-observations.json",
+  "matched_baseline_sha256": "73bfae5d7b6845e48c7f88c4a55534b2339842ba592c4b3af8c2585976aef227",
+  "case_count": 15,
+  "all_case_hashes_match_prior_measurement": true,
+  "compiler_idle_required": true,
+  "prior_timeout_attempt": {
+    "retained": true,
+    "passed": false,
+    "scope": "A previous CLI revision timed out on the 10s navigation deadline while native linking was active",
+    "timeout_increased": false,
+    "root_cause_proven": false
+  },
+  "phases": [
+    {
+      "label": "native-before",
+      "capture_count": 45,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@0000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "label": "stock",
+      "capture_count": 45,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e"
+      }
+    },
+    {
+      "label": "native-after",
+      "capture_count": 45,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@0000000000000000000000000000000000000000"
+      }
+    }
+  ],
+  "negative_controls": [
+    {
+      "name": "wrong-stock-role",
+      "passed": true,
+      "exit_code": 1,
+      "browser_phase_started": false
+    },
+    {
+      "name": "dummy-without-acknowledgement",
+      "passed": true,
+      "exit_code": 1,
+      "native_resources_closed": true,
+      "audio_captures": 0,
+      "stock_phase_started": false
+    },
+    {
+      "name": "existing-output-not-overwritten",
+      "passed": true,
+      "exit_code": 1,
+      "existing_report_unchanged": true
+    },
+    {
+      "name": "non-D-output-refused",
+      "passed": true,
+      "exit_code": 1,
+      "no_directory_created": true
+    },
+    {
+      "name": "source-checkout-output-refused",
+      "passed": true,
+      "exit_code": 1,
+      "no_directory_created": true,
+      "synthetic_source_layout": true,
+      "browser_phase_started": false
+    }
+  ],
+  "negative_control_count": 5,
+  "remaining_unverified": [
+    "Protected policies and math-mode execution",
+    "Broader Audio graph/API/device-cohort/quality/performance checks",
+    "Whole installed-payload integrity and production/release admission remain separate gates"
+  ]
+}

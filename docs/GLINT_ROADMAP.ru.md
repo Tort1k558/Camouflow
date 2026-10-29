@@ -33,8 +33,8 @@ native-сборки: 160.532 / 146.031 / 146.297 с. Использована is
 Отдельная матрица: 16 закрытий 148/156 прошли без изменения timeout/forced kill,
 1.140–2.703 с. Новый 156 Audio baseline: 15 cases × 3 = 45 bit-exact совпадений
 с standalone native156 DSP. Это не runtime AudioMath, не stock156 A/B и не
-полная проверка fingerprint-политик. Остальные identity/native targets,
-канонический eight-gate suite, installed runtime и rollback остаются обязательными.
+полная проверка fingerprint-политик. Последующие identity/eight-gate результаты
+указаны ниже; remaining-native, installed runtime и rollback остаются обязательными.
 Очищенная запись: `native/drafts/upstream-156/windows-runtime-observations.json`.
 
 Брендинг 156 проверен в самом бинарнике: обе группы иконок совпадают с logo.ico,
@@ -87,6 +87,21 @@ stamp подготовлен отдельным GN fragment и проверен 
 объекты не удалялись. Восстановлена связанная очередь identity v6 → runtime v13
 → remaining-native v8 → package v6, j4, без activation. Старые отчёты и неполные
 Audio-попытки сохранены; новый A/B/A выполнен полностью с нуля.
+Публичный `native/drafts/audio-dsp-math-v2/browser_matrix.py` воспроизвёл ещё
+135 captures с прежними хешами; пять CLI rejection controls прошли. Dummy
+revision требует явного acknowledgement только известного checkpoint; неверный
+stock и существующий/неподходящий output не принимаются. A/B/A использует свежие
+профили, не доказывает persistent restart. Profile keys/сырые файлы остаются на D.
+Output внутри source checkout запрещён; перед запуском требуется idle builder.
+Предыдущий navigation timeout при активном linker сохранён как неуспешная
+попытка: deadline не увеличен, причина не доказана.
+Восстановленная очередь завершила четыре identity-target: 62 keys + 37 contexts
++ 20 transport + 15 handoff = 134 native unit-теста. Handoff проверяет window
+surface и inline-script policy в DocumentLoader; полный runtime-допуск отдельно.
+Полный owned runtime-suite Chromium 156 прошёл все восемь gates / 160 checks,
+включая combined. Хеши каждого отчёта привязаны к бинарнику и receipt в
+`native/drafts/upstream-156/runtime-suite-observations.json`. Remaining-native
+очередь началась; установленный пакет и полный Canvas/GPU/Audio ещё не допущены.
 
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 

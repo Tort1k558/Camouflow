@@ -363,6 +363,15 @@
     "baseline_browser_code_unchanged": true,
     "scope": "Selected identity and legacy policy units; not an enabled browser identity or capability admission"
   },
+  "native_identity_handoff": {
+    "passed": true,
+    "target": "identity-handoff",
+    "tests": 15,
+    "test_binary_sha256": "ab13fea05511c7761e7d65e6483fcbf71eccc7f036c37a00a07f83a16df53125",
+    "postguards_passed": true,
+    "baseline_browser_code_unchanged": true,
+    "scope": "Three window-surface and twelve DocumentLoader inline-script policy units; not enabled browser policy admission"
+  },
   "baseline_lifecycle_under_build": {
     "passed": true,
     "scope": "Three extended baseline lifecycle runs during observed owned build activity; not fingerprint-policy admission or a browser-close timeout fix",

@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "scope": "Owned runtime fixtures only; not release provenance or third-party anti-bot acceptance",
+  "passed": true,
+  "candidate": "upstream-156",
+  "version": "156.0.8078.36",
+  "candidate_manifest_sha256": "4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0",
+  "build_receipt_sha256": "5c60aa4cebc433552e6a28a4875ffcf9e74e6e7776a52b4cc25ec4183591863a",
+  "runtime_core_sha256": {
+    "chrome.exe": "0596afb2bd1a84731ebbe4d276edd3797d67b262bebb332e76a8aa9d21db5567",
+    "chrome.dll": "bd75c5c6ab3c45946edc0ea4e8f1d684286dd588d7cc46999a0b2bb1236aab44",
+    "chrome_elf.dll": "14597f88689361a016bce4a648e6b18a50ed065d6fc524dc8112f4b7d6e115d0"
+  },
+  "suite_report_sha256": "ecb4c6db80330d3085134b050c7e8d5359e31c6d064b96671de6775c32bec9b4",
+  "check_count": 160,
+  "gates": [
+    {
+      "name": "runtime",
+      "passed": true,
+      "checks": 18,
+      "report_sha256": "561246398404676821317744108ce1b4f3da3e2c6934c5c3fc0bcb025823390a"
+    },
+    {
+      "name": "hardware",
+      "passed": true,
+      "checks": 9,
+      "report_sha256": "5ceb9290b610d6bf8341fca54987ae372285e21a821654d4a1847f7583a36a34"
+    },
+    {
+      "name": "webrtc",
+      "passed": true,
+      "checks": 7,
+      "report_sha256": "23e54400be8f1b41992214e72cde774ac86c030cc1a14688e255189cbda7d284"
+    },
+    {
+      "name": "automation",
+      "passed": true,
+      "checks": 55,
+      "report_sha256": "c1363b7c5a7082c2075e5dab389148353beb0e222208074c2ff3cbccde8849ec"
+    },
+    {
+      "name": "fonts",
+      "passed": true,
+      "checks": 42,
+      "report_sha256": "d7f2e9061350d89ed437dc4a69b4dc282aede71dbd0278e91cd78e4e2c48ba3f"
+    },
+    {
+      "name": "identity",
+      "passed": true,
+      "checks": 18,
+      "report_sha256": "7f6e3905ca8fbb35ed4311c67173f44d774b361f3083017a27968f7488d4e98c"
+    },
+    {
+      "name": "cdp",
+      "passed": true,
+      "checks": 6,
+      "report_sha256": "dfff2205043165221fbcb76c5c2a717544f01cd7440148ab4f4a911017e723a1"
+    },
+    {
+      "name": "combined",
+      "passed": true,
+      "checks": 5,
+      "report_sha256": "87831d2e68104661e155ce49127dc5d65c112d6d8c2ec7454531b43078a8c96d"
+    }
+  ],
+  "privacy_admitted": false,
+  "release_admitted": false,
+  "production_admitted": false,
+  "third_party_antibot_verified": false,
+  "audio_math_included": false,
+  "remaining_unverified": [
+    "Remaining native target queue",
+    "Installed-package runtime verification",
+    "Full Canvas/GPU/Audio compatibility and policy admission",
+    "External detector results for this binary"
+  ]
+}

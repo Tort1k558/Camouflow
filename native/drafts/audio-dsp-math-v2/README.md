@@ -25,6 +25,44 @@ The float32 prototype matched 12 non-discriminating cases, **not** the other
 three stock cases. This is not evidence that its variant represents an ordinary
 device cohort; do not promote that mode from these baseline measurements.
 
+### Reproduce the browser gate
+
+[`browser_matrix.py`](browser_matrix.py) is the public, source-bound runner.
+Use the official CfT executable described by
+[`stock-control-observations.json`](../upstream-156/stock-control-observations.json),
+an exact source-build Native receipt and a fresh output directory:
+
+```powershell
+.venv\Scripts\python.exe native/drafts/audio-dsp-math-v2/browser_matrix.py `
+  --native-executable D:\Glint156Candidate\chromium\src\out\CamouFlowNative\chrome.exe `
+  --stock-executable D:\Glint156Candidate\stock-control156-20261029-v4\payload\chrome-win64\chrome.exe `
+  --output D:\Glint156Candidate\audio-new-run `
+  --allow-native-dummy-revision
+```
+
+The last flag is **explicit acknowledgement of the published native checkpoint**,
+not a generic revision bypass. Other builds require a real runtime Git stamp;
+do not use the flag to admit unknown binaries. Receipt, core DLLs, GN arguments,
+manifest/patches, probe and relevant project-source inputs are checked. A wrong
+stock binary rejects before browser launch. Numerical mismatch/nondeterminism
+fails the exact-bit gate; there is no retry, silent substitution or zero-sample fallback.
+
+Each phase owns a **fresh** profile, so A/B/A repeat stability is not persistent
+profile-restart evidence. Raw channel-major little-endian `.f32` data and failed
+observations remain under the owned D: output; existing output is never replaced.
+These directories contain private fixture keys: do not commit/share their profiles.
+
+The public CLI repeated all **135 captures**, matching prior case hashes, and
+passed five rejection controls: wrong stock role, unacknowledged dummy revision,
+existing output, a non-D output and output inside a source checkout (synthetic
+layout control). [CLI proof](browser-cli-observations.json).
+The runner requires an idle scoped native builder. An earlier attempt hit the
+10-second navigation deadline while linking was active; its failed report is
+retained, the deadline was not increased, and the cause is not proven.
+This binds core code, not complete installed-payload integrity, protected policies,
+device-cohort plausibility or production admission. Use the old control only on
+owned fixtures, not for regular/account browsing.
+
 One mono pseudorandom input, stereo output, 8192 frames at 44100 Hz.
 [Exact source and evidence bindings](observations.json).
 
