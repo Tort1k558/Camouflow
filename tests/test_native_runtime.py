@@ -1237,12 +1237,23 @@ def test_native_interrupted_stop_waits_for_the_same_sdk_operation_before_releasi
 
 
 @pytest.mark.parametrize("interruption", ["cancel", "cancel_timeout", "deadline"])
-def test_native_cancelled_driver_start_retains_and_cleans_the_same_start_operation(tmp_path, monkeypatch, interruption):
+@pytest.mark.parametrize("slow_profile_setup", [False, True])
+def test_native_cancelled_driver_start_retains_and_cleans_the_same_start_operation(tmp_path, monkeypatch, interruption, slow_profile_setup):
+    import time
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
 
     from PyQt6.QtCore import QLockFile
     from app.core.native import runtime as module
+
+    if slow_profile_setup:
+        persist = module.load_or_create_identity
+
+        def delayed_persistence(*args, **kwargs):
+            time.sleep(1.2)
+            return persist(*args, **kwargs)
+
+        monkeypatch.setattr(module, "load_or_create_identity", delayed_persistence)
 
     async def check():
         entered, release = asyncio.Event(), asyncio.Event()
@@ -1257,7 +1268,8 @@ def test_native_cancelled_driver_start_retains_and_cleans_the_same_start_operati
         if interruption != "cancel":
             runtime.DRIVER_START_TIMEOUT_SECONDS = .05
         starting = asyncio.create_task(runtime.start())
-        await asyncio.wait_for(entered.wait(), timeout=1)
+        # Real profile persistence precedes the fake driver's cancellation barrier.
+        await asyncio.wait_for(entered.wait(), timeout=10)
         startup = runtime._driver_start_task
         if interruption != "deadline":
             starting.cancel()
