@@ -228,3 +228,162 @@ def test_audio_math_readiness_draft_uses_noncolliding_fixed_backend_vectors():
     assert "GlintMathDuplicateSurfaceSeedRejectsBeforeNodeOrResolver" in patch
     assert "+  ASSERT_FALSE(holder->GetFrame().GetDocument()->GlintSurfacePolicyReady());" in patch
     assert "+      holder->GetFrame().GetDocument()->GlintSurfacePolicyReady() != ready) {" in patch
+
+
+@pytest.mark.parametrize("count", [True, False, 0, -1, 17, "8", None])
+def test_audio_profile_count_is_bounded_before_workspace_claim(tmp_path, monkeypatch, count):
+    monkeypatch.setattr(audio.build, "workspace_lock", lambda *args: pytest.fail("Unexpected workspace claim"))
+    with pytest.raises(ValueError, match="profile count"):
+        audio.verify(tmp_path, tmp_path / "chrome.exe", tmp_path / "evidence",
+                     candidate_name="upstream-156", modes=("baseline", "math"), profile_count=count)
+
+
+@pytest.mark.parametrize("modes", [("baseline",), ("math",), ("legacy", "math")])
+def test_audio_profile_matrix_requires_baseline_and_math(tmp_path, modes):
+    with pytest.raises(ValueError, match="requires explicit baseline and math"):
+        audio.verify(tmp_path, tmp_path / "chrome.exe", tmp_path / "evidence",
+                     candidate_name="upstream-156", modes=modes, profile_count=8)
+
+
+def profile_matrix_rows():
+    return [{"index": index, "reference_selector": index, "cleanup_errors": [],
+             "modes": {name: {"passed": True, "resources_closed": True,
+                              "probes": {"fidelity": {"observed": valid_observation("fidelity")}}}
+                       for name in ("baseline", "math", "math-restart")}} for index in (0, 1)]
+
+
+def test_profile_summary_requires_complete_fixed_cohort_and_honest_selector_scope():
+    result = audio.summarize_profiles(profile_matrix_rows(), 2, ("baseline", "math"))
+    assert result["passed"] and result["reference_selectors_covered"]
+    assert not result["internal_backend_observed"] and not result["device_cohort_verified"]
+    assert all(row["restart_exact"] and row["unmodified_graphs_exact"] for row in result["comparisons"])
+
+
+@pytest.mark.parametrize("mutation", ["one-selector", "restart", "native-dsp", "float-linear", "failed", "retained", "cleanup"])
+def test_profile_matrix_never_hides_compatibility_or_lifecycle_failures(mutation):
+    rows = profile_matrix_rows()
+    if mutation == "one-selector":
+        rows[1]["reference_selector"] = 0
+    elif mutation in ("restart", "native-dsp", "float-linear"):
+        row = rows[1 if mutation == "float-linear" else 0]
+        modes = ("math",) if mutation == "restart" else ("math", "math-restart")
+        for mode in modes:
+            for value in row["modes"][mode]["probes"]["fidelity"]["observed"]["rows"]:
+                if value["kind"] == "oscillator":
+                    for channel in value["channels"]:
+                        channel["sha256"] = "f" * 64
+    elif mutation == "failed":
+        rows[0]["modes"]["math"]["passed"] = False
+    elif mutation == "retained":
+        rows[0]["modes"]["math"]["resources_closed"] = False
+    else:
+        rows[0]["cleanup_errors"].append({"error": "Owned failure"})
+    assert not audio.summarize_profiles(rows, 2, ("baseline", "math"))["passed"]
+
+
+@pytest.mark.parametrize("mutation", ["missing-profile", "reorder", "selector-bool", "missing-restart"])
+def test_profile_summary_rejects_missing_or_malformed_coverage(mutation):
+    rows = profile_matrix_rows()
+    if mutation == "missing-profile":
+        rows.pop()
+    elif mutation == "reorder":
+        rows.reverse()
+    elif mutation == "selector-bool":
+        rows[0]["reference_selector"] = False
+    else:
+        rows[0]["modes"].pop("math-restart")
+    with pytest.raises(ValueError):
+        audio.summarize_profiles(rows, 2, ("baseline", "math"))
+
+
+def test_audio_profile_selector_matches_two_stage_reference_without_returning_keys():
+    import hmac
+    from app.core.native.identity import NativePrivacyIdentity
+
+    selectors = set()
+    for value in range(16):
+        identity = NativePrivacyIdentity(bytes([value]) * 32)
+        message = b"Glint/profile-identity/v1\0" + (5).to_bytes(4, "big") + b"audio"
+        derived = hmac.digest(identity.seed, message, hashlib.sha256)
+        expected = hmac.digest(derived, b"glint.audio.math.backend.v1", hashlib.sha256)[0] & 1
+        assert audio.profile_math_selector(identity) == expected
+        selectors.add(expected)
+    assert selectors == {0, 1}
+
+
+@pytest.mark.parametrize("change_key", [False, True])
+def test_audio_profile_audit_precedes_capture_and_preserves_exact_key_on_restart(tmp_path, monkeypatch, change_key):
+    from app.core.native import runtime as runtime_module, identity as identity_module
+
+    first = identity_module.NativePrivacyIdentity(bytes(32))
+    second = next(identity_module.NativePrivacyIdentity(bytes([value]) * 32) for value in range(1, 256)
+                  if audio.profile_math_selector(identity_module.NativePrivacyIdentity(bytes([value]) * 32))
+                  == audio.profile_math_selector(first))
+    load = Mock(side_effect=[first, first, second if change_key else first])
+    monkeypatch.setattr(identity_module, "load_or_create_identity", load)
+    instances = []
+    measured = []
+
+    class Runtime:
+        def __init__(self, profile, executable, configuration):
+            self.configuration = configuration
+            self.has_resources = False
+            self.close = AsyncMock(side_effect=self.closed)
+            instances.append(self)
+
+        def closed(self):
+            self.has_resources = False
+
+        async def start(self, **kwargs):
+            self.has_resources = True
+            session = SimpleNamespace(send=AsyncMock(return_value={"revision": "@revision", "product": "Chrome/version"}),
+                                      detach=AsyncMock())
+            arguments = self.configuration.launch_arguments()
+            if not any(value.startswith("--disable-features=") for value in arguments):
+                arguments.append("--disable-features=Other,ThirdPartyStoragePartitioning")
+            return SimpleNamespace(arguments=arguments, configuration=self.configuration,
+                browser=SimpleNamespace(new_browser_cdp_session=AsyncMock(return_value=session)))
+
+    async def capture(context, server):
+        measured.append(context.configuration.audio_mode)
+        if context.configuration.audio_mode == "math":
+            assert load.call_count == measured.count("math") + 1
+        return {"passed": True, "probes": {}}
+
+    monkeypatch.setattr(runtime_module, "NativeRuntime", Runtime)
+    monkeypatch.setattr(audio, "browser_arguments", AsyncMock(side_effect=lambda context: context.arguments))
+    monkeypatch.setattr(audio, "measure", capture)
+    report = {"modes": {}, "cleanup_errors": []}
+    invocation = audio.measure_modes(tmp_path / "chrome.exe", tmp_path, None, ("baseline", "math"), report,
+                                     "revision", "version", audit_backend=True)
+    if change_key:
+        with pytest.raises(ValueError, match="profile key changed"):
+            asyncio.run(invocation)
+        assert measured == ["baseline", "math"]
+    else:
+        asyncio.run(invocation)
+        assert measured == ["baseline", "math", "math"]
+        assert report["phase"] == "completed"
+    assert report["reference_selector"] == audio.profile_math_selector(first)
+    assert report["modes"]["math-restart"]["resources_closed"]
+    assert all(not instance.has_resources and instance.close.await_count == 1 for instance in instances)
+
+
+@pytest.mark.parametrize("both_selectors", [False, True])
+def test_audio_matrix_executes_exact_fixed_profile_count_without_retry(tmp_path, monkeypatch, both_selectors):
+    calls = []
+
+    async def capture(executable, directory, server, modes, row, revision, version, *, audit_backend):
+        assert audit_backend
+        calls.append(directory.name)
+        measured = profile_matrix_rows()[len(calls) % 2 if both_selectors else 0]
+        row.update(reference_selector=measured["reference_selector"], modes=measured["modes"])
+
+    monkeypatch.setattr(audio, "measure_modes", capture)
+    report = {"profiles": []}
+    asyncio.run(audio.measure_profiles(tmp_path / "chrome.exe", tmp_path, None, ("baseline", "math"),
+                                      report, "revision", "version", 4))
+    assert calls == ["profile-00", "profile-01", "profile-02", "profile-03"]
+    assert len(report["profiles"]) == 4
+    assert report["passed"] is both_selectors
+    assert report["profile_summary"]["reference_selectors_covered"] is both_selectors

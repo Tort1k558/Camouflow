@@ -10,7 +10,7 @@
     "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
   },
   "source_sha256": {
-    "scripts/verify_native_audio_compatibility.py": "2e82ce5b86cba53f5ee797d6618d1c1daf8b0b685cdc4d21fd2a6c8d40d578b0",
+    "scripts/verify_native_audio_compatibility.py": "7e6b68cb98b13aa13758d14d474be2ab593edd328dbaf99445691933a5b500c8",
     "native/fixtures/audio/analyser.js": "575553fb81d5d01a16328e6b91a548fdb6e9e6e1636bf7bca915aa820295fa18",
     "native/fixtures/audio/fidelity.js": "b18f16da49bbb55eacae2b52e40d95b7c1c270e18740798233232bf5f9b87861",
     "native/fixtures/audio/realtime.js": "34a85e2c65b2d1dc7aef741108720a23e9813464bcdcb9eaa9045201e340a5c5",
@@ -56,12 +56,14 @@
       "report_sha256": "840eb4ca655ee53e312638e8369813d657d4a0a7313a0bc33a549fd1e0686afe"
     }
   },
-  "raw_reference_report_sha256": "2631b859bad06a2d70612203a584ab260901f8d17ee30865b4cc3e41b25d8704",
+  "raw_reference_report_sha256": "db0233f1f53f2a191a79d645156570573c5274cd794d5251583e80a6b93f118c",
   "resources_closed": true,
   "postguards_passed": true,
   "glint_candidate_runtime_verified": false,
   "audio_v1_failure_fixed": false,
   "device_cohort_verified": false,
   "privacy_admitted": false,
-  "production_admitted": false
+  "production_admitted": false,
+  "previous_calibration_record_sha256": "242e83f205d881c5b8ad1a8d9b80c81b420c3509be88408bc014638590a57c7c",
+  "negative_controls_reused_same_javascript_bytes": true
 }

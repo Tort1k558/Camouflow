@@ -19,6 +19,33 @@ The native gate now requires all 12 cases; failed 001–067 evidence is retained
 
 ## Actual Audio-v1 fidelity failure on 156
 
+### Fixed profile matrix
+
+The current diagnostic supports a fixed cohort without regenerating keys or
+retrying until a selector passes:
+
+```powershell
+.venv\Scripts\python.exe -m scripts.verify_native_audio_compatibility `
+  --workspace D:\Glint156Candidate `
+  --executable D:\Glint156Candidate\chromium\src\out\CamouFlowNative\chrome.exe `
+  --work-dir D:\GlintManagerQA\audio-matrix-new `
+  --candidate upstream-156 --mode baseline --mode math --profiles 8
+```
+
+Each owned profile gets its private identity during policy-off discovery,
+before any diagnostic capture. The reference selector is derived without
+exporting keys. Baseline and Math collect all four probes; Math repeats after
+closing/reopening the same protected profile. Exact keys must remain unchanged,
+not merely the selector bit. Native-math output must match baseline; float-math
+may change compressor output only. Repeated Math captures must match exactly.
+All fixed profiles and failures remain in the report. Missing either reference
+selector fails the cohort; it does not generate extra profiles automatically.
+
+`reference_selectors_covered` is **not** direct observation of the internal DSP
+branch, a real-device cohort or privacy admission. The multi-profile Glint
+runtime matrix has not yet executed. `--profiles 1` preserves the original
+single-profile diagnostic behavior.
+
 The calibrated 54-graph fixture passed **54/54** with Glint policy off. With
 profile-identity Audio-v1 enabled, **42/54** passed; identity and half-gain
 graphs failed (12 rows across two sample rates and three repetitions).

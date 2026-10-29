@@ -6,6 +6,7 @@ import argparse
 import asyncio
 from dataclasses import dataclass
 import hashlib
+import hmac
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import math
@@ -229,7 +230,7 @@ async def measure(context, server: AudioFixtureServer) -> dict:
 
 
 async def measure_modes(executable: Path, owned: Path, server: AudioFixtureServer, modes: tuple[str, ...], report: dict,
-                        revision: str, version: str) -> None:
+                        revision: str, version: str, *, audit_backend: bool = False) -> None:
     from app.core.native.runtime import NativeRuntime
 
     async def start(configuration, profile):
@@ -264,17 +265,27 @@ async def measure_modes(executable: Path, owned: Path, server: AudioFixtureServe
             raise
 
     report["phase"] = "discovery"
-    runtime, _, arguments = await start(AudioConfiguration(), "discovery")
+    protected_seed = None
+    runtime, _, arguments = await start(AudioConfiguration(), "protected" if audit_backend else "discovery")
     try:
         original = next(value for value in arguments if value.startswith("--disable-features="))
         replacement = partitioning_argument(arguments)
+        if audit_backend:
+            from app.core.native.identity import load_or_create_identity
+
+            identity = load_or_create_identity(owned / "protected")
+            protected_seed = identity.seed
+            report["reference_selector"] = profile_math_selector(identity)
     finally:
         await runtime.close()
         if runtime.has_resources:
             raise RuntimeError("Owned Audio discovery runtime retained resources")
-    for mode in modes:
-        report["phase"] = mode
-        report["modes"][mode] = {"passed": False}
+    phases = [(mode, mode) for mode in modes]
+    if audit_backend:
+        phases.append(("math-restart", "math"))
+    for phase, mode in phases:
+        report["phase"] = phase
+        report["modes"][phase] = {"passed": False}
         configuration = AudioConfiguration(audio_mode=mode, probe_mode="baseline" if mode == "baseline" else "ready",
             derivation_mode="profile-identity", disabled_features_argument=replacement, ignored_driver_argument=original)
         runtime, context, effective = await start(configuration, "baseline" if mode == "baseline" else "protected")
@@ -282,7 +293,20 @@ async def measure_modes(executable: Path, owned: Path, server: AudioFixtureServe
         try:
             if partitioning_argument(effective) != replacement:
                 raise ValueError("Browser partitioning configuration changed")
-            report["modes"][mode] = await measure(context, server)
+            if audit_backend and mode != "baseline":
+                from app.core.native.identity import load_or_create_identity
+
+                # The runtime owns the exclusive profile lock. This reference
+                # predicts a selector, not partition authorization or DSP output.
+                identity = load_or_create_identity(owned / "protected")
+                if protected_seed is not None and not hmac.compare_digest(protected_seed, identity.seed):
+                    raise ValueError("AudioMath profile key changed between modes or restart")
+                protected_seed = identity.seed
+                selector = profile_math_selector(identity)
+                if "reference_selector" in report and report["reference_selector"] != selector:
+                    raise ValueError("AudioMath profile selector changed after restart")
+                report["reference_selector"] = selector
+            report["modes"][phase] = await measure(context, server)
         except BaseException as error:
             primary = error
             raise
@@ -291,13 +315,65 @@ async def measure_modes(executable: Path, owned: Path, server: AudioFixtureServe
                 await runtime.close()
                 if runtime.has_resources:
                     raise RuntimeError("Owned Audio runtime retained resources")
-                report["modes"][mode]["resources_closed"] = True
+                report["modes"][phase]["resources_closed"] = True
             except Exception as error:
-                report["cleanup_errors"].append({"mode": mode, "error_type": type(error).__name__, "error": str(error)})
+                report["cleanup_errors"].append({"mode": phase, "error_type": type(error).__name__, "error": str(error)})
                 if primary is None:
                     raise
                 primary.add_note("Owned runtime cleanup failed: " + str(error))
     report["phase"] = "completed"
+
+
+def profile_math_selector(identity) -> int:
+    seed = identity.derive_profile_identity(b"owned-audio-fixture-reference", "audio")
+    return hmac.digest(seed, b"glint.audio.math.backend.v1", hashlib.sha256)[0] & 1
+
+
+def fidelity_hashes(mode: dict) -> dict[tuple[int, str, int], tuple[str, ...]]:
+    observed = mode["probes"]["fidelity"]["observed"]
+    validate_observation(observed, "fidelity")
+    return {(row["rate"], row["kind"], row["repetition"]):
+            tuple(channel["sha256"] for channel in row["channels"]) for row in observed["rows"]}
+
+
+def summarize_profiles(profiles: list[dict], count: int, modes: tuple[str, ...]) -> dict:
+    if len(profiles) != count or [row.get("index") for row in profiles] != list(range(count)):
+        raise ValueError("Audio profile matrix is incomplete or reordered")
+    expected = {*modes, "math-restart"}
+    selectors = set()
+    comparisons = []
+    for row in profiles:
+        selector = row.get("reference_selector")
+        if type(selector) is not int or selector not in (0, 1):
+            raise ValueError("Audio profile matrix has no valid pre-measurement selector")
+        selectors.add(selector)
+        if set(row.get("modes", {})) != expected:
+            raise ValueError("Audio profile matrix phase coverage is incomplete")
+        hashes = {name: fidelity_hashes(row["modes"][name]) for name in ("baseline", "math", "math-restart")}
+        comparisons.append({"index": row["index"], "reference_selector": selector,
+            "restart_exact": hashes["math"] == hashes["math-restart"],
+            "unmodified_graphs_exact": all(hashes["math"][key] == value
+                for key, value in hashes["baseline"].items() if selector == 0 or key[1] != "compressor"),
+            "math_baseline_different_rows": sum(hashes["math"][key] != value for key, value in hashes["baseline"].items())})
+    complete = selectors == {0, 1}
+    return {"reference_selectors_covered": complete, "comparisons": comparisons,
+            "internal_backend_observed": False, "device_cohort_verified": False,
+            "passed": complete and all(row["restart_exact"] and row["unmodified_graphs_exact"] for row in comparisons)
+                      and all(not row.get("cleanup_errors") and all(
+                          mode.get("passed") is True and mode.get("resources_closed") is True
+                          for mode in row["modes"].values()) for row in profiles)}
+
+
+async def measure_profiles(executable: Path, owned: Path, server: AudioFixtureServer, modes: tuple[str, ...],
+                           report: dict, revision: str, version: str, count: int) -> None:
+    for index in range(count):
+        directory = owned / f"profile-{index:02d}"
+        directory.mkdir()
+        row = {"index": index, "modes": {}, "cleanup_errors": []}
+        report["profiles"].append(row)
+        await measure_modes(executable, directory, server, modes, row, revision, version, audit_backend=True)
+    report["profile_summary"] = summarize_profiles(report["profiles"], count, modes)
+    report["passed"] = report["profile_summary"]["passed"]
 
 
 def probe_paths(candidate: dict) -> set[Path]:
@@ -307,12 +383,17 @@ def probe_paths(candidate: dict) -> set[Path]:
             | {ROOT / "app/core/native" / name for name in ("runtime.py", "configuration.py", "identity.py", "profile_version.py")})
 
 
-def verify(workspace: Path, executable: Path, owned: Path, *, candidate_name: str, modes: tuple[str, ...]) -> dict:
+def verify(workspace: Path, executable: Path, owned: Path, *, candidate_name: str, modes: tuple[str, ...],
+           profile_count: int = 1) -> dict:
     from scripts import verify_native_privacy_units as units
 
     if (not isinstance(modes, tuple) or not modes or any(type(mode) is not str or mode not in MODES for mode in modes)
             or len(set(modes)) != len(modes)):
         raise ValueError("Select distinct explicit Audio compatibility modes")
+    if type(profile_count) is not int or not 1 <= profile_count <= 16:
+        raise ValueError("Audio profile count must be between 1 and 16")
+    if profile_count > 1 and not {"baseline", "math"}.issubset(modes):
+        raise ValueError("Audio profile matrix requires explicit baseline and math modes")
     if sys.platform != "win32" or candidate_name != "upstream-156":
         raise ValueError("Audio compatibility requires the explicit Windows upstream-156 candidate")
     if (not owned.is_absolute() or owned.drive.upper() != "D:" or owned != owned.resolve()
@@ -329,6 +410,7 @@ def verify(workspace: Path, executable: Path, owned: Path, *, candidate_name: st
         units.require_idle_builder(workspace)
         owned.mkdir()
         report = {"schema": 1, "passed": False, "candidate": candidate_name, "requested_modes": list(modes), "modes": {},
+                  "profile_count": profile_count, "profiles": [],
                   "candidate_manifest_sha256": candidate["manifest_sha256"], "cleanup_errors": [],
                   "scope": "Explicit Audio API compatibility modes; not device-cohort, broad audio quality, privacy or release admission",
                   "privacy_admitted": False, "production_admitted": False, "postguards_passed": False}
@@ -346,9 +428,12 @@ def verify(workspace: Path, executable: Path, owned: Path, *, candidate_name: st
             server = AudioFixtureServer(fixture_sources())
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
-            asyncio.run(measure_modes(executable, owned, server, modes, report,
-                                     candidate["lock"]["chromium_revision"], candidate["lock"]["chromium_version"]))
-            report["passed"] = set(report["modes"]) == set(modes) and all(row["passed"] for row in report["modes"].values())
+            revision, version = candidate["lock"]["chromium_revision"], candidate["lock"]["chromium_version"]
+            if profile_count == 1:
+                asyncio.run(measure_modes(executable, owned, server, modes, report, revision, version))
+                report["passed"] = set(report["modes"]) == set(modes) and all(row["passed"] for row in report["modes"].values())
+            else:
+                asyncio.run(measure_profiles(executable, owned, server, modes, report, revision, version, profile_count))
         except Exception as error:
             report.update(passed=False, error_type=type(error).__name__, error=str(error))
         finally:
@@ -386,9 +471,12 @@ def main() -> int:
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--candidate", choices=("upstream-156",), required=True)
     parser.add_argument("--mode", choices=MODES, action="append", required=True)
+    parser.add_argument("--profiles", type=int, default=1,
+                        help="Fixed cohort size (1..16); >1 requires baseline/math and includes a math restart")
     args = parser.parse_args()
     try:
-        report = verify(args.workspace, args.executable, args.work_dir, candidate_name=args.candidate, modes=tuple(args.mode))
+        report = verify(args.workspace, args.executable, args.work_dir, candidate_name=args.candidate,
+                        modes=tuple(args.mode), profile_count=args.profiles)
     except (OSError, ValueError) as error:
         parser.error(str(error))
     print(json.dumps({key: report.get(key) for key in ("passed", "requested_modes", "postguards_passed", "error")}))
