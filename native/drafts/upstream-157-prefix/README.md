@@ -138,6 +138,36 @@ This document-only control does not establish 156/157 behavior, other Audio APIs
 human/bot classification or full application compatibility. Audio-v1 must remain
 experimental farbling, not an admitted plausible-profile identity mechanism.
 
+### Audio redesign: measured DSP hypothesis, not a replacement policy
+
+An isolated experiment extracted Blink's existing `Vadd`, `Vsma` and `Vsmul`
+functions from the pinned 156 source. Scalar and SSE implementations were compared
+using a `std::span` adapter, aligned buffers, finite normal float32 inputs and
+eight scales. MSVC `/Od` disabled loop optimization, including automatic
+vectorization; explicit SSE intrinsics remained enabled. Both `/fp:strict` and
+`/fp:precise` were measured separately. These are not stock Chromium build flags.
+
+| Per compiler mode | Measured result |
+| --- | --- |
+| Scalar/SSE sample comparisons | 6,291,456; zero bit differences |
+| Whole-buffer versus 64-frame SSE segments | Zero bit differences |
+| Gain-one identity controls | 262,144 exact samples |
+
+The [sanitized observations](audio-kernel-observations.json) retain source hashes
+and scope. Private source, binaries and logs remain in
+`D:\Glint157ObjectCache\audio-kernel-equivalence-20261029-v3`.
+All 201 frozen build inputs were unchanged afterward.
+The earlier `/Qvec-` attempt is retained but rejected: MSVC ignored that option
+with warning D9002. The final `/Od` experiment compiled without warnings.
+
+**Reject this narrow backend switch as a demonstrated identity generator.**
+This is not a measurement of AVX, convolution, nonlinear DSP, other platforms or
+an entire browser graph. Blink dispatch is in `platform/audio/vector_math.cc`,
+not `media/base/vector_math.cc`; the compressor also uses fdlibm functions.
+Before proposing another Audio policy, measure those actual call paths against
+matched stock controls, including identity graphs and segmentation. Do not add
+post-read noise merely to force different hashes. Audio admission remains false.
+
 157 makes total render length optional and supports finite/indefinite chunks;
 the old 0033 hunks no longer apply. The prototype preserves upstream chunking,
 captures a stable policy before rendering, checks the actual chunk's allocation

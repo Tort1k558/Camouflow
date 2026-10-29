@@ -1,0 +1,59 @@
+{
+  "scope": "Extracted Blink scalar/SSE Vadd Vsma Vsmul only; std::span adapter, MSVC /Od, no browser runtime",
+  "chromium_version": "156.0.8078.36",
+  "source_sha256": {
+    "third_party/blink/renderer/platform/audio/vector_math_scalar.h": "2c560eff7b32ed099f128d0c27d464cb966245e0d153a679e4cf0cb823034be4",
+    "third_party/blink/renderer/platform/audio/cpu/x86/vector_math_impl.h": "eb92df71adf0cacdc9be8f4a934338400c7175c51fa22803eb043d0c6ae49511",
+    "third_party/blink/renderer/platform/audio/vector_math.cc": "ba2f2249396e902901631b67e3282793d8a943c27dfe4a304da94428e15e57fd",
+    "third_party/blink/renderer/platform/audio/dynamics_compressor.cc": "14f1ac7ee487ba94d6f244b0efbad5c27c7cbf36ea9aa7abdeab7bf1f1f6e86a",
+    "third_party/blink/renderer/platform/audio/audio_channel.cc": "ccfbe7b7b5432934c59c6846536ddd7e14e4535bcf2cd5b3499bb50dc428d10a",
+    "third_party/blink/renderer/platform/audio/audio_bus.cc": "347fad25c577b3a7515a109a090666ece271768e56eeff0c90f48d369e6a0b80"
+  },
+  "compiled_browser": false,
+  "runtime_verified": false,
+  "production_admitted": false,
+  "runs": [
+    {
+      "fp_mode": "strict",
+      "compared_samples": 6291456,
+      "different_samples": 0,
+      "segmentation_differences": 0,
+      "gain_one_exact_samples": 262144
+    },
+    {
+      "fp_mode": "precise",
+      "compared_samples": 6291456,
+      "different_samples": 0,
+      "segmentation_differences": 0,
+      "gain_one_exact_samples": 262144
+    }
+  ],
+  "measurement_complete": true,
+  "frozen_inputs_unchanged": true,
+  "source_inputs_unchanged": true,
+  "schema": 1,
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "compiler": "MSVC",
+  "compiler_flags": [
+    "/std:c++20",
+    "/EHsc",
+    "/Od",
+    "/W4",
+    "/WX"
+  ],
+  "compiler_configuration_verified": true,
+  "functions": [
+    "Vadd",
+    "Vsma",
+    "Vsmul"
+  ],
+  "automatic_vectorization": false,
+  "identity_variation_observed": false,
+  "scope_limitations": [
+    "No AVX or convolution measurements",
+    "No nonlinear DSP measurements",
+    "No complete browser graph or platform emulation proof",
+    "Finite normal inputs only; no exceptional-value coverage"
+  ],
+  "adapter": "base::span replaced with std::span; CHECK/DCHECK retained as aborting guards"
+}

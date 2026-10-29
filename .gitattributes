@@ -5,3 +5,4 @@ native/drafts/**/manifest.json text eol=lf
 native/drafts/**/full-inputs-manifest.json text eol=lf
 native/drafts/**/audio-constant-control.js text eol=lf
 native/drafts/**/audio-constant-observations.json text eol=lf
+native/drafts/**/audio-kernel-observations.json text eol=lf

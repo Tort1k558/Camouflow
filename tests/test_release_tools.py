@@ -4257,6 +4257,30 @@ def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
     assert conflict["stock148_observed_bits"] == conflict["input_bits"] != conflict["v1_predicted_bits"]
 
 
+def test_audio_kernel_observations_do_not_admit_an_unproven_identity_generator():
+    import json
+    from scripts import native_build as build
+
+    path = build.ROOT / "native/drafts/upstream-157-prefix/audio-kernel-observations.json"
+    raw = path.read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    assert data["measurement_complete"] and data["frozen_inputs_unchanged"] and data["source_inputs_unchanged"]
+    for field in ("compiled_browser", "runtime_verified", "production_admitted",
+                  "identity_variation_observed", "automatic_vectorization"):
+        assert data[field] is False
+    assert data["functions"] == ["Vadd", "Vsma", "Vsmul"]
+    assert "/Od" in data["compiler_flags"] and "/Qvec-" not in data["compiler_flags"]
+    assert data["compiler_configuration_verified"] is True
+    assert len(data["source_sha256"]) == 6 and len(data["scope_limitations"]) == 4
+    assert {row["fp_mode"] for row in data["runs"]} == {"strict", "precise"}
+    assert len(data["runs"]) == 2
+    for row in data["runs"]:
+        assert row["compared_samples"] == 32 * 8192 * 8 * 3
+        assert row["gain_one_exact_samples"] == 32 * 8192
+        assert row["different_samples"] == row["segmentation_differences"] == 0
+
+
 def test_audio_matched148_observations_preserve_failed_fidelity_not_admission():
     import json
     from scripts import native_build as build
