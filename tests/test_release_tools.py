@@ -4184,6 +4184,204 @@ def test_forward_refresh_manifest_reuses_exact_patch_bytes_without_registering_a
         native_build.load_candidate("upstream-156-refresh")
 
 
+def _sparse_fetch_fixture(tmp_path, count=1):
+    import hashlib
+    import json
+    revision = "a" * 40
+    rows, contents = [], {}
+    for index in range(count):
+        name = f"source/file{index}.cc"
+        content = f"int value{index} = 1;\n".encode()
+        contents[name] = content
+        rows.append({"path": name, "url": f"https://chromium.googlesource.com/chromium/src/+/{revision}/{name}?format=TEXT",
+                     "bytes": len(content), "sha256": hashlib.sha256(content).hexdigest()})
+    manifest = {"schema": 1, "target_revision": revision, "source_files": rows,
+                "patches": [{"file": "not-fetched.patch", "sha256": "b" * 64}]}
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    return path, manifest, contents
+
+
+@pytest.mark.parametrize("failure", [None, "redirect", "oversized", "bad-base64", "checksum", "429", "503", "manifest-drift"])
+def test_sparse_source_fetch_checks_https_payload_and_stops_without_retry(tmp_path, monkeypatch, failure):
+    import base64
+    import io
+    import json
+    from types import SimpleNamespace
+    import urllib.error
+    from unittest.mock import Mock
+    from scripts import fetch_native_rebase_sources as fetch
+
+    path, manifest, contents = _sparse_fetch_fixture(tmp_path)
+    row = manifest["source_files"][0]
+
+    class Response(io.BytesIO):
+        def geturl(self):
+            return "https://untrusted.invalid" if failure == "redirect" else row["url"]
+
+    def request(value, timeout):
+        assert value.full_url == row["url"] and timeout == 30
+        if failure in {"429", "503"}:
+            raise urllib.error.HTTPError(row["url"], int(failure), "owned failure", {"Retry-After": "120"}, None)
+        if failure == "manifest-drift":
+            path.write_text(json.dumps(manifest) + " ", encoding="utf-8")
+        encoded = base64.b64encode(contents[row["path"]])
+        if failure == "oversized":
+            encoded += b"AAAA"
+        elif failure == "bad-base64":
+            encoded = b"!" * len(encoded)
+        elif failure == "checksum":
+            encoded = base64.b64encode(b"x" * row["bytes"])
+        return Response(encoded)
+
+    network = Mock(side_effect=request)
+    monkeypatch.setattr(fetch.urllib.request, "build_opener", lambda *_handlers: SimpleNamespace(open=network))
+    output = tmp_path / "output"
+    report = fetch.fetch_sources(path, output)
+    assert report["passed"] is (failure is None)
+    assert report["network_requests"] == network.call_count == 1
+    assert not report["compiled"] and not report["runtime_verified"] and not report["production_admitted"]
+    assert json.loads((output / fetch.REPORT_NAME).read_text()) == report
+    if failure in {"429", "503"}:
+        assert report["http_status"] == int(failure) and report["retry_after"] == "120"
+    if failure is None:
+        assert (output / row["path"]).read_bytes() == contents[row["path"]]
+    elif failure != "manifest-drift":
+        assert not (output / row["path"]).exists()
+
+
+@pytest.mark.parametrize("failure", [None, "corrupt", "drift", "linked", "output-in-cache", "existing-output"])
+def test_sparse_source_fetch_uses_read_only_cache_and_preserves_evidence(tmp_path, monkeypatch, failure):
+    from unittest.mock import Mock
+    from scripts import fetch_native_rebase_sources as fetch
+
+    path, manifest, contents = _sparse_fetch_fixture(tmp_path)
+    row = manifest["source_files"][0]
+    cache = tmp_path / "cache"
+    cached = cache / row["path"]
+    cached.parent.mkdir(parents=True)
+    cached.write_bytes(contents[row["path"]])
+    output = cache / "output" if failure == "output-in-cache" else tmp_path / "output"
+    if failure == "existing-output":
+        output.mkdir()
+        (output / "retained").write_bytes(b"retained")
+    elif failure == "corrupt":
+        cached.write_bytes(b"corrupt cache")
+    elif failure == "linked":
+        from pathlib import Path
+        resolve = Path.resolve
+        monkeypatch.setattr(Path, "resolve", lambda self, *a, **kw: tmp_path / "foreign" if self == cached else resolve(self, *a, **kw))
+    network = Mock(side_effect=AssertionError("Cache must not issue HTTP or silently replace corrupt bytes"))
+    monkeypatch.setattr(fetch.urllib.request, "build_opener", network)
+    if failure == "drift":
+        read = fetch.read_source
+
+        def drift(root, selected):
+            value = read(root, selected)
+            if root == cache:
+                cached.write_bytes(b"changed after read")
+            return value
+
+        monkeypatch.setattr(fetch, "read_source", drift)
+    if failure in {"corrupt", "linked", "output-in-cache", "existing-output"}:
+        with pytest.raises(ValueError):
+            fetch.fetch_sources(path, output, cache=cache)
+        if failure == "existing-output":
+            assert (output / "retained").read_bytes() == b"retained"
+        else:
+            assert not output.exists()
+    else:
+        report = fetch.fetch_sources(path, output, cache=cache)
+        assert report["passed"] is (failure is None)
+        assert report["network_requests"] == 0 and report["cache_hits"] == 1
+    network.assert_not_called()
+
+
+@pytest.mark.parametrize("limit", ["MAX_FILES", "MAX_TOTAL_BYTES"])
+def test_sparse_source_fetch_budget_refusal_does_not_create_evidence_or_issue_http(tmp_path, monkeypatch, limit):
+    from unittest.mock import Mock
+    from scripts import fetch_native_rebase_sources as fetch
+
+    path, _manifest, _contents = _sparse_fetch_fixture(tmp_path)
+    monkeypatch.setattr(fetch, limit, 0)
+    network = Mock()
+    monkeypatch.setattr(fetch.urllib.request, "build_opener", network)
+    with pytest.raises(ValueError):
+        fetch.fetch_sources(path, tmp_path / "output")
+    network.assert_not_called()
+    assert not (tmp_path / "output").exists()
+
+
+@pytest.mark.parametrize("mutation", ["url", "revision-url", "boolean-size", "too-large", "checksum", "traversal",
+                                      "duplicate", "case-alias", "report-collision", "noncanonical", "git-path", "missing-v8-pin"])
+def test_sparse_source_fetch_rejects_invalid_plans_before_network_or_output(tmp_path, monkeypatch, mutation):
+    import json
+    from unittest.mock import Mock
+    from scripts import fetch_native_rebase_sources as fetch
+
+    path, manifest, _contents = _sparse_fetch_fixture(tmp_path)
+    row = manifest["source_files"][0]
+    if mutation == "url":
+        row["url"] = "http://127.0.0.1/private"
+    elif mutation == "revision-url":
+        row["url"] = row["url"].replace("a" * 40, "main")
+    elif mutation == "boolean-size":
+        row["bytes"] = True
+    elif mutation == "too-large":
+        row["bytes"] = fetch.MAX_FILE_BYTES + 1
+    elif mutation == "checksum":
+        row["sha256"] = "invalid"
+    elif mutation in {"duplicate", "case-alias"}:
+        manifest["source_files"].append({**row, "path": row["path"].upper() if mutation == "case-alias" else row["path"]})
+    else:
+        row["path"] = {"traversal": "../outside", "report-collision": fetch.REPORT_NAME,
+                       "noncanonical": "source//file0.cc", "git-path": ".git/config",
+                       "missing-v8-pin": "v8/src/file.cc"}[mutation]
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    network = Mock()
+    monkeypatch.setattr(fetch.urllib.request, "build_opener", network)
+    with pytest.raises(ValueError):
+        fetch.fetch_sources(path, tmp_path / "output")
+    assert not (tmp_path / "output").exists()
+    network.assert_not_called()
+
+
+def test_sparse_source_fetch_applies_minimum_interval_and_disables_redirects(tmp_path, monkeypatch):
+    import base64
+    import io
+    from types import SimpleNamespace
+    from scripts import fetch_native_rebase_sources as fetch
+
+    path, _manifest, contents = _sparse_fetch_fixture(tmp_path, count=3)
+    clock, sleeps = [100.0], []
+    monkeypatch.setattr(fetch.time, "monotonic", lambda: clock[0])
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        clock[0] += seconds
+
+    monkeypatch.setattr(fetch.time, "sleep", sleep)
+
+    class Response(io.BytesIO):
+        def __init__(self, url, content):
+            super().__init__(base64.b64encode(content))
+            self.url = url
+
+        def geturl(self):
+            return self.url
+
+    def request(value, timeout):
+        name = value.full_url.split("/" + "a" * 40 + "/")[1].split("?")[0]
+        clock[0] += .25
+        return Response(value.full_url, contents[name])
+
+    monkeypatch.setattr(fetch.urllib.request, "build_opener", lambda *_handlers: SimpleNamespace(open=request))
+    report = fetch.fetch_sources(path, tmp_path / "output")
+    assert report["passed"] and report["network_requests"] == 3
+    assert sleeps == [1.75, 1.75]
+    assert fetch.NoRedirect().redirect_request(None, None, 302, "", {}, "https://untrusted.invalid") is None
+
+
 def test_upstream_privacy_batch_keeps_owned_key_implementations_and_test_bindings():
     import re
     from scripts import verify_native_rebase_draft as draft

@@ -5,6 +5,27 @@ results rather than replacing them. A planned check is not a passing result.
 
 ## Explicit candidate upstream audit — 2026-10-29
 
+### Public pinned sparse-source fetch — 2026-10-29
+
+| Check | Observed result | Limit |
+| --- | --- | --- |
+| Read-only cache fetch | 185 validated files, zero HTTP requests | Not a cold network download |
+| Replay from fetched output | All 62 patches passed; postguards unchanged | No C++ compilation/runtime proof |
+| Cold official HTTPS control | One pinned `chrome/VERSION` fetched and hash-checked | Not all 185 files |
+| Failure controls | Cache/path/size/hash drift, redirects, HTTP 429/503 covered | Synthetic HTTP failures, not service availability |
+| Active build inputs | 301 hashes unchanged, reviewed helper hashes checked separately | No build restart or new capability admission |
+
+Evidence: `public-source-fetch-proof-20261029-v1/report.json` on D.
+The public CLI uses fresh external output, prevalidates present cache files,
+spaces requests by at least two seconds and never retries or switches mirrors.
+Failed output/report is preserved. Manual resume requires a new output and
+operator-managed server cooldown; no automatic resume is implemented.
+Manifest LF checkout rules preserve raw hash bindings across platforms without
+changing the original .36 candidate. Earlier reports retain their measured hashes.
+Full local application regression: **3,553 passed, one skipped**, 328.04 seconds;
+CI Ruff selection passed. These are local results, not a completed remote CI run
+or Chromium 156 runtime proof.
+
 The public upstream auditor now supports `--candidate upstream-156`, reusing
 the existing canonical candidate loader rather than changing `build-lock.json`.
 The base lock, candidate manifest and complete patch chain are guarded across
@@ -118,7 +139,7 @@ transport, GPU pack/readback/metadata, worker surfaces and font rasterization.
 Some selections overlap earlier fixtures; do not add their counts as unique
 tests. None of these queued 156 results is passing evidence yet.
 
-`remaining-native-after-runtime-20261029-v2/controller.json` on D binds the
+`remaining-native-after-runtime-20261029-v3/controller.json` on D binds the
 actual current runtime-controller process handle and requires its successful
 exit/source postguards before building anything. A failed, retired or expired
 observation starts no targets. Each selected native verifier retains its own
@@ -127,6 +148,8 @@ This queues work; it does not expand runtime capability or production admission.
 The waiting runtime/native controllers were refreshed to the reviewed public
 verifier cohort; old pending reports remain marked retired. The active browser
 build and initial native identity controller were not stopped or restarted.
+The bound runtime report is `runtime-after-identity-20261029-v8/controller.json`;
+it captures the reviewed shared replay helper used by the source fetcher.
 
 ## Windows private identity-file ACL — 2026-10-29
 

@@ -26,6 +26,16 @@ proof that a driver identity is plausible.
 
 ## Public gates
 
+For source-only forward replay, the public
+[`upstream-156-refresh` instructions](../native/drafts/upstream-156-refresh/README.md)
+pair `fetch_native_rebase_sources.py` with `verify_native_rebase_draft.py`.
+The fetcher validates immutable official URLs, bounded sizes and SHA-256 values;
+an optional read-only cache is checked before requests. Use fresh external output.
+Requests start at least two seconds apart, with no redirects, retries or mirrors.
+On failure, preserve the report and respect Retry-After/cooldown before a manual
+resume into a different output. Neither command checks out, compiles or activates
+a browser. A complete source replay is not runtime/security admission.
+
 Before selecting an upstream target or considering production publication, run:
 
 ```powershell

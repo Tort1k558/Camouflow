@@ -43,16 +43,42 @@ def verify_source_invariants(inputs: dict[str, bytes], work: Path) -> dict:
     return result
 
 
-def checked_child(root: Path, name: str) -> Path:
+def checked_relative_path(name: str) -> PurePosixPath:
     if not isinstance(name, str):
         raise ValueError("Unsafe rebase input path")
     relative = PurePosixPath(name)
     if not relative.parts or relative.is_absolute() or ".." in relative.parts or "\\" in name or ":" in name:
         raise ValueError("Unsafe rebase input path")
+    return relative
+
+
+def checked_child(root: Path, name: str) -> Path:
+    relative = checked_relative_path(name)
     path = root.joinpath(*relative.parts)
     if path != path.resolve() or not path.is_file():
         raise ValueError("Missing or linked rebase input: " + name)
     return path
+
+
+def load_manifest(path: Path) -> tuple[bytes, dict]:
+    if (not path.is_absolute() or path != path.resolve() or not path.is_file()
+            or path.stat().st_size > 4 * 1024**2):
+        raise ValueError("Use a bounded canonical replay manifest")
+    with path.open("rb") as stream:
+        raw = stream.read(4 * 1024**2 + 1)
+    if len(raw) > 4 * 1024**2:
+        raise ValueError("Draft manifest exceeds the replay safety limit")
+    manifest = json.loads(raw)
+    if (not isinstance(manifest, dict) or type(manifest.get("schema")) is not int or manifest.get("schema") != 1
+            or not isinstance(manifest.get("target_revision"), str)
+            or not re.fullmatch(r"[0-9a-f]{40}", manifest["target_revision"])
+            or not isinstance(manifest.get("source_files"), list) or not manifest["source_files"]
+            or not isinstance(manifest.get("patches"), list) or not manifest["patches"]):
+        raise ValueError("Draft manifest requires nonempty versioned source and patch lists")
+    if "target_version" in manifest and (not isinstance(manifest["target_version"], str)
+            or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", manifest["target_version"])):
+        raise ValueError("Invalid draft target version")
+    return raw, manifest
 
 
 def verify(source: Path, output: Path, *, formatter: Path | None = None,
@@ -72,20 +98,7 @@ def verify(source: Path, output: Path, *, formatter: Path | None = None,
         raise ValueError("Use a bounded canonical manifest and canonical patch directory")
     if output.is_relative_to(patch_directory) or output == manifest_path:
         raise ValueError("Replay evidence must not overwrite its manifest or patch directory")
-    with manifest_path.open("rb") as stream:
-        manifest_bytes = stream.read(4 * 1024**2 + 1)
-    if len(manifest_bytes) > 4 * 1024**2:
-        raise ValueError("Draft manifest exceeds the replay safety limit")
-    manifest = json.loads(manifest_bytes)
-    if (not isinstance(manifest, dict) or type(manifest.get("schema")) is not int or manifest.get("schema") != 1
-            or not isinstance(manifest.get("target_revision"), str)
-            or not re.fullmatch(r"[0-9a-f]{40}", manifest["target_revision"])
-            or not isinstance(manifest.get("source_files"), list) or not manifest["source_files"]
-            or not isinstance(manifest.get("patches"), list) or not manifest["patches"]):
-        raise ValueError("Draft manifest requires nonempty versioned source and patch lists")
-    if "target_version" in manifest and (not isinstance(manifest["target_version"], str)
-            or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", manifest["target_version"])):
-        raise ValueError("Invalid draft target version")
+    manifest_bytes, manifest = load_manifest(manifest_path)
     inputs = {}
     patches = []
     for row in manifest["source_files"]:

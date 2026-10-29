@@ -10,7 +10,23 @@ duplicated here. `base_manifest_sha256` binds that original snapshot.
 
 ## Reproduce
 
-Provide the 185 pristine files at their manifest-relative paths. Their immutable
+Fetch the 185 pristine files into a fresh directory outside the repository:
+
+```powershell
+$manifest = (Resolve-Path native/drafts/upstream-156-refresh/manifest.json).Path
+.venv\Scripts\python.exe scripts/fetch_native_rebase_sources.py --manifest $manifest --output D:\GlintSources\156.0.8078.75
+```
+
+The output's parent must already exist. Optional `--cache <existing-directory>`
+reuses only size/hash-validated files without modifying the cache. Present but
+invalid cache entries abort before any HTTP request; they are not redownloaded.
+Requests use exact official immutable URLs, reject redirects and start at least
+two seconds apart. There are no retries or mirrors. A failed fetch leaves its
+owned output and `source-fetch-report.json`, including HTTP status/Retry-After.
+Honor the server's cooldown before manually resuming into a **new** output with
+the previous output as `--cache`; the tool does not schedule or enforce cooldown.
+
+Alternatively, provide the files at their manifest-relative paths. Their immutable
 Gitiles URLs, decoded byte lengths and SHA-256 values are in the manifest;
 source files are not bundled. The replay verifier does not download anything.
 Use fresh evidence outside the repository, source tree and shared patch folder:
@@ -29,6 +45,14 @@ postguards remain required. Optional `--formatter` retains the existing GPU
 generated-output comparison; it is not compiler/toolchain admission.
 
 ## Evidence and limits
+
+The public fetcher was exercised with all **185 cached files / zero HTTP
+requests**, followed by all **62 patch applications**. A separate cold fetch of
+one pinned `chrome/VERSION` file passed against Google HTTPS. This is not an
+end-to-end cold download of all 185 files. Evidence on D:
+`public-source-fetch-proof-20261029-v1/report.json`.
+Manifest files use checkout-independent LF bytes via `.gitattributes`; the
+original .36 candidate manifest and active build inputs remain unchanged.
 
 October 29: the public CLI replay passed all 62 patches with unchanged inputs,
 321 preserved GPU command IDs plus command 577, and preserved GRIT structure.
