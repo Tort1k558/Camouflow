@@ -7,7 +7,23 @@ lock and reviewed 001-062 chain still target Chromium 148.0.7778.96. The separat
 gates remain separate. The manifest is a source
 contract, not a mutable binary-readiness flag.
 
-### Selected 0066 fixture correction: native gates passed
+### Selected 0067 AudioMath: build and runtime verification pending
+
+The current source manifest appends `0067-native-audio-math-context-candidate.patch`.
+It captures an immutable OfflineAudioContext math policy at construction and
+keeps the experimental feature disabled by default. The `audio-math` native gate
+requires all 11 context/error/lifetime cases in `blink_unittests`, with no skips.
+The GN recipe also requests the actual source revision instead of a dummy stamp.
+Neither change has been compiled or verified in the selected browser yet.
+
+The last verified binary remains **001–066**, bound to
+`checkpoints/001-066.json`; its evidence must not be attributed to 0067.
+Audio-v1 fidelity remains **42/54 protected versus 54/54 baseline**, with 12
+identity/half-gain failures. AudioMath is not yet a verified fix, hardware cohort,
+privacy admission or release. Next: native cases, matched browser Audio fidelity,
+combined regression and installed payload verification.
+
+### 0066 fixture correction: native gates passed
 
 The selected manifest now appends `0066-native-gpu-optional-query-fixture.patch`.
 It changes only the GPU unit fixture, explicitly requests the native optional

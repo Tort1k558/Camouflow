@@ -1110,6 +1110,60 @@
       "url": "https://chromium.googlesource.com/chromium/src/+/5a93aa59e3043e747eff68659dcf7d20193d160e/gpu/command_buffer/service/gles2_cmd_validation_implementation_autogen.h?format=TEXT",
       "bytes": 38629,
       "sha256": "d9b741593b3e8db2fd071beaca91011b2d60ded23ec2b886d01eac565092659a"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/BUILD.gn",
+      "sha256": "8a53b1e5684c309c0960942556ca59d5d5cbba416c5c891b6e4a612a3de19d6d",
+      "bytes": 113477,
+      "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/platform/BUILD.gn?format=TEXT"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/audio/dynamics_compressor.h",
+      "sha256": "3db6b7dce689adf832d2f5d6cfe2f0feff1e814138cbd3b2c3ebe37b4e865576",
+      "bytes": 5400,
+      "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/platform/audio/dynamics_compressor.h?format=TEXT"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/audio/dynamics_compressor.cc",
+      "sha256": "14f1ac7ee487ba94d6f244b0efbad5c27c7cbf36ea9aa7abdeab7bf1f1f6e86a",
+      "bytes": 20717,
+      "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/platform/audio/dynamics_compressor.cc?format=TEXT"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/base_audio_context.h",
+      "sha256": "d8565a3b0a3b11a4a7b69918b07692f7d90401738356a546d863627a6383ecda",
+      "bytes": 19231,
+      "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/base_audio_context.h?format=TEXT"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/base_audio_context.cc",
+      "sha256": "208ac18731142b8c3cf4e117a266ab3abb1a249bd02498c2aaaa76566f6906fa",
+      "bytes": 39488,
+      "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/base_audio_context.cc?format=TEXT"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc",
+      "sha256": "eedd53f7271b2b3eae9e049394e9f64a373ca60246a2220d2aa97633b34dbbec",
+      "bytes": 7665,
+      "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc?format=TEXT"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.h",
+      "sha256": "4f34efc257498643ab31d1fa8b501d8f97d268e83709e74b32b9d1ce35b372d5",
+      "bytes": 2565,
+      "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.h?format=TEXT"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc",
+      "sha256": "bdc2cad4d61ee6e6707cca3442c0a2fe6aca72b0754387602b68a00e299f31fe",
+      "bytes": 6972,
+      "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc?format=TEXT"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h",
+      "sha256": "9efdd4bca17f204d3d24275de602d43897080aeca2f95c1ed9f6c782e0d79c0a",
+      "bytes": 3082,
+      "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h?format=TEXT"
     }
   ],
   "patches": [
@@ -1469,6 +1523,10 @@
     {
       "file": "0066-native-gpu-optional-query-fixture.patch",
       "sha256": "559b2e74979f8a751716e8b6f422e0cf024014608080aa7ceeaf7878c7170e9c"
+    },
+    {
+      "file": "0067-native-audio-math-context-candidate.patch",
+      "sha256": "2a3de912845933c401cb20e97aff6c5551f079bee1147716c7ec17178af0e740"
     }
   ],
   "build": {

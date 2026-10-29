@@ -7,3 +7,6 @@ symbol_level = 0
 blink_symbol_level = 0
 v8_symbol_level = 0
 use_remoteexec = false
+
+# Bind development builds to the actual source revision, not the dummy stamp.
+use_dummy_lastchange = false

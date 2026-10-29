@@ -123,6 +123,35 @@ def owned(tmp_path, monkeypatch):
     return SimpleNamespace(workspace=workspace, reports=tmp_path / "reports", state=state)
 
 
+def test_batch_audio_math_reuses_blink_binary_and_requires_all_context_cases(owned):
+    result = batch.verify(owned.workspace, owned.reports, ("worker-handoff", "audio-math"),
+                          candidate_name="upstream-156", local_toolchain=True)
+    assert result["passed"] and result["postguards_passed"]
+    assert owned.state["builds"][0][5:] == ["blink_unittests"]
+    assert owned.state["cases"] == ["worker-handoff", "audio-math"]
+    assert len(batch.units.required_tests("audio-math")["OfflineAudioContextTest"]) == 11
+    assert not result["privacy_admitted"] and not result["production_admitted"]
+
+
+def test_audio_math_single_verifier_requires_explicit_candidate_before_preflight(tmp_path, monkeypatch):
+    monkeypatch.setattr(batch.build, "preflight", lambda *args, **kwargs: pytest.fail("Unexpected preflight"))
+    with pytest.raises(ValueError, match="explicit upstream-156"):
+        batch.units.verify(tmp_path, tmp_path / "report.json", target="audio-math")
+
+
+def test_audio_math_requires_selected_patch_and_matches_native_test_inventory(tmp_path):
+    import re
+
+    candidate = batch.build.load_candidate("upstream-156")
+    patches = [{"name": row["file"]} for row in candidate["manifest"]["patches"]]
+    assert batch.units.require_target_sources(tmp_path, patches, "audio-math") is None
+    with pytest.raises(ValueError, match="patches are required"):
+        batch.units.require_target_sources(tmp_path, patches[:-1], "audio-math")
+    patch = (candidate["directory"] / "patches" / patches[-1]["name"]).read_text(encoding="utf-8-sig")
+    names = set(re.findall(r"\+TEST_F\(OfflineAudioContextTest,\s*\n?\+?\s*(GlintMath\w+)\)", patch))
+    assert names == batch.units.required_tests("audio-math")["OfflineAudioContextTest"]
+
+
 def test_batch_builds_shared_executables_once_and_checks_final_source_sdk_state(owned):
     result = batch.verify(owned.workspace, owned.reports, ("keys", "document-partition", "contexts"),
                           candidate_name="upstream-156", local_toolchain=True)
