@@ -121,6 +121,23 @@ gain/buffer graphs and segmentation. Do not "fix" this by skipping flat buffers:
 that can change the same signal depending on chunk boundaries. Resolve the
 algorithm/identity model and preserve whole-render/chunk consistency first.
 
+The risk is now **observed on the reviewed 148 runtime**, not only predicted:
+`audio-constant-observations.json` records same-version stock and Glint
+148.0.7778.96, two newly owned profiles, both derivation modes and identity-mode
+restarts. All 12 stock/Glint-policy-off captures were exact; **14 of 24 protected
+captures differed by one float32 bit**, including repeated restart captures.
+Restart stability therefore did not imply ordinary-browser fidelity.
+
+The collector completed without errors; its compatibility result is **false**,
+not a harness failure. All ten runtime owners released their handles, identity
+payloads stayed unchanged, and flat/managed reviewed cores plus the compiled
+62-patch receipt matched before/after. The active 156 cohort's 201 input hashes
+also stayed unchanged. Evidence:
+`D:\Glint157ObjectCache\glint148-audio-dc-ab-20261029-v1\report.json`.
+This document-only control does not establish 156/157 behavior, other Audio APIs,
+human/bot classification or full application compatibility. Audio-v1 must remain
+experimental farbling, not an admitted plausible-profile identity mechanism.
+
 157 makes total render length optional and supports finite/indefinite chunks;
 the old 0033 hunks no longer apply. The prototype preserves upstream chunking,
 captures a stable policy before rendering, checks the actual chunk's allocation

@@ -1,0 +1,232 @@
+{
+  "schema": 1,
+  "scope": "Measured matched-version 148 DC control; calibration failure is not harness failure or 156/157 runtime evidence",
+  "measurement_complete": true,
+  "constant_control_compatibility_passed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "native156_verified": false,
+  "native157_verified": false,
+  "probe_sha256": "6256225d885534402d4d6898c0fa6ea24cf2aace548df960cd2e1e01803f7b89",
+  "receipt_sha256": "e39654a2a45f981e3ef87b7fd187af60329bd38ec482e8e8e18728c5e9f4bb12",
+  "native_core_sha256": {
+    "chrome.exe": "275ad4eaa4b51b3e53a9a57496ecb17f6bc90b8c687e252567ce7d2050c0088c",
+    "chrome.dll": "9b65965659f4ba78f2da12d18c858519a68066df232f0cd67a92bdb004e7a24a",
+    "chrome_elf.dll": "f26f09cadfc9fbfe1384c2df2a7549151e4afa988568e6468d296d4fd61303fb"
+  },
+  "stock_core_sha256": {
+    "chrome.exe": "290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635",
+    "chrome.dll": "2dec55e969120a4f365942ddf143df869dad9bc7595400da87af247c74c867fd",
+    "chrome_elf.dll": "994bc5cc8de982bdc8aecb92c7fc639a7801ae62745e6a38e7ffc0a9664c164e"
+  },
+  "measurement_shape": {
+    "frames": 256,
+    "sample_rate": 44100,
+    "channels": 1,
+    "event_promise_same_buffer": true,
+    "closed": true
+  },
+  "shape_verified_for_all_captures": true,
+  "expected_bits": {
+    "zero": "00000000",
+    "positive_quarter": "3e800000",
+    "negative_quarter": "be800000",
+    "positive_half": "3f000000"
+  },
+  "captures": [
+    {
+      "phase": "stock-baseline",
+      "browser_version": "148.0.7778.96",
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "resources_closed": true,
+      "observed_bits": {
+        "zero": [
+          "00000000"
+        ],
+        "positive_quarter": [
+          "3e800000"
+        ],
+        "negative_quarter": [
+          "be800000"
+        ],
+        "positive_half": [
+          "3f000000"
+        ]
+      }
+    },
+    {
+      "phase": "a-native-baseline",
+      "browser_version": "148.0.7778.96",
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "resources_closed": true,
+      "observed_bits": {
+        "zero": [
+          "00000000"
+        ],
+        "positive_quarter": [
+          "3e800000"
+        ],
+        "negative_quarter": [
+          "be800000"
+        ],
+        "positive_half": [
+          "3f000000"
+        ]
+      }
+    },
+    {
+      "phase": "a-partitioned",
+      "browser_version": "148.0.7778.96",
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "resources_closed": true,
+      "observed_bits": {
+        "zero": [
+          "00000000"
+        ],
+        "positive_quarter": [
+          "3e800000"
+        ],
+        "negative_quarter": [
+          "be800001"
+        ],
+        "positive_half": [
+          "3f000001"
+        ]
+      }
+    },
+    {
+      "phase": "a-identity",
+      "browser_version": "148.0.7778.96",
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "resources_closed": true,
+      "observed_bits": {
+        "zero": [
+          "00000000"
+        ],
+        "positive_quarter": [
+          "3e800000"
+        ],
+        "negative_quarter": [
+          "be800001"
+        ],
+        "positive_half": [
+          "3f000001"
+        ]
+      }
+    },
+    {
+      "phase": "a-identity-restart",
+      "browser_version": "148.0.7778.96",
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "resources_closed": true,
+      "observed_bits": {
+        "zero": [
+          "00000000"
+        ],
+        "positive_quarter": [
+          "3e800000"
+        ],
+        "negative_quarter": [
+          "be800001"
+        ],
+        "positive_half": [
+          "3f000001"
+        ]
+      }
+    },
+    {
+      "phase": "b-native-baseline",
+      "browser_version": "148.0.7778.96",
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "resources_closed": true,
+      "observed_bits": {
+        "zero": [
+          "00000000"
+        ],
+        "positive_quarter": [
+          "3e800000"
+        ],
+        "negative_quarter": [
+          "be800000"
+        ],
+        "positive_half": [
+          "3f000000"
+        ]
+      }
+    },
+    {
+      "phase": "b-partitioned",
+      "browser_version": "148.0.7778.96",
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "resources_closed": true,
+      "observed_bits": {
+        "zero": [
+          "00000000"
+        ],
+        "positive_quarter": [
+          "3e800001"
+        ],
+        "negative_quarter": [
+          "be800001"
+        ],
+        "positive_half": [
+          "3f000000"
+        ]
+      }
+    },
+    {
+      "phase": "b-identity",
+      "browser_version": "148.0.7778.96",
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "resources_closed": true,
+      "observed_bits": {
+        "zero": [
+          "00000000"
+        ],
+        "positive_quarter": [
+          "3e800001"
+        ],
+        "negative_quarter": [
+          "be800001"
+        ],
+        "positive_half": [
+          "3f000001"
+        ]
+      }
+    },
+    {
+      "phase": "b-identity-restart",
+      "browser_version": "148.0.7778.96",
+      "sandbox_requested": true,
+      "no_sandbox_flag_absent": true,
+      "resources_closed": true,
+      "observed_bits": {
+        "zero": [
+          "00000000"
+        ],
+        "positive_quarter": [
+          "3e800001"
+        ],
+        "negative_quarter": [
+          "be800001"
+        ],
+        "positive_half": [
+          "3f000001"
+        ]
+      }
+    }
+  ],
+  "nonexact_protected_capture_count": 14,
+  "identity_restart_stable": true,
+  "owned_identity_payloads_unchanged": true,
+  "postguards_passed": true,
+  "all_runtime_resources_closed": true
+}

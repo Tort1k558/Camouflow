@@ -3,6 +3,34 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Matched 148 Audio DC calibration — 2026-10-29
+
+The formerly source-derived conflict is now observed in **Glint 148.0.7778.96**.
+The stock control used that same version and the same owned HTTP origin, launch
+configuration and sandbox setting. Glint's flat runtime matched the immutable
+managed package's three core hashes and exact compiled 62-patch receipt.
+
+| Scope | Observed result | Meaning |
+| --- | --- | --- |
+| Stock baseline + Glint policy-off baselines for profiles A/B | All 12 value captures exact | 0 / 0.25 / -0.25 / 0.5 retain literal float32 bits |
+| Glint protected A/B, partitioned and profile-identity modes, identity restarts | 14 / 24 captures have a one-bit difference | Count includes restart repeats, not 24 independent profiles |
+| Identity-mode restart | Same output before/after restart | Stable output is not proof of fidelity |
+| Every measured result | 256 frames, 44,100 Hz, mono; shared event/Promise buffer; context closed | Narrow document-only API/lifecycle observations |
+| Owner cleanup + data/core guards | Ten owners released runtime handles; owned identity payloads, stock/flat/managed cores, receipt and all 201 active-build inputs unchanged | Not a broad OS-process/resource stress test |
+| Collector versus compatibility | Measurement complete, no harness errors; compatibility **false**, no admission | Exit 1 preserves a measured negative result |
+| Python evidence validators | Focused: 74 passed, 969 deselected in 13.14s; full local suite: 3,560 passed, one skipped in 288.14s | A passing validator preserves the negative browser result; not Audio compatibility admission |
+
+Public sanitized evidence: `native/drafts/upstream-157-prefix/audio-constant-observations.json`.
+Private full report: `D:\Glint157ObjectCache\glint148-audio-dc-ab-20261029-v1\report.json`.
+No private profile keys, user data or machine paths are included in the public
+record. The record and JS probe are hash-bound by the pending-fixture descriptor.
+These results do not assert native 156/157 failure or any detector/CAPTCHA score.
+
+Next: keep Audio-v1 as experimental farbling only; resolve the plausible-profile
+Audio model against literal-signal, identity-graph and segmentation controls.
+Do not promote distinct/stable hashes into a compatibility pass or use a
+per-buffer flatness shortcut that changes results at chunk boundaries.
+
 ## Pending 157 chunked-Audio fixtures — 2026-10-29
 
 `native/drafts/upstream-157-prefix/0066-native-chunked-audio-tests.patch` prepares

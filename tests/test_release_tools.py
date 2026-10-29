@@ -4241,6 +4241,10 @@ def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
     assert calibration["requires_matched_stock_and_candidate_controls"] is True
     assert calibration["native_candidate_observed"] is False
     assert calibration["production_gate_passed"] is False
+    assert calibration["native148_observed"] is True
+    observed = root / calibration["matched148_observations"]["file"]
+    assert observed.name == "audio-constant-observations.json"
+    assert hashlib.sha256(observed.read_bytes()).hexdigest() == calibration["matched148_observations"]["sha256"]
     control = root / calibration["script"]["file"]
     assert control.name == "audio-constant-control.js"
     raw_control = control.read_bytes()
@@ -4251,6 +4255,47 @@ def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
     assert conflict["input_bits"] == vector["input_bits"]
     assert conflict["v1_predicted_bits"] == vector["output_bits"]
     assert conflict["stock148_observed_bits"] == conflict["input_bits"] != conflict["v1_predicted_bits"]
+
+
+def test_audio_matched148_observations_preserve_failed_fidelity_not_admission():
+    import json
+    from scripts import native_build as build
+
+    path = build.ROOT / "native/drafts/upstream-157-prefix/audio-constant-observations.json"
+    raw = path.read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    assert data["measurement_complete"] and data["postguards_passed"]
+    assert data["all_runtime_resources_closed"] and data["identity_restart_stable"]
+    assert data["owned_identity_payloads_unchanged"] and data["shape_verified_for_all_captures"]
+    for field in ("constant_control_compatibility_passed", "privacy_admitted", "production_admitted",
+                  "native156_verified", "native157_verified"):
+        assert data[field] is False
+    expected = {"zero": "00000000", "positive_quarter": "3e800000",
+                "negative_quarter": "be800000", "positive_half": "3f000000"}
+    assert data["expected_bits"] == expected
+    assert data["measurement_shape"] == {"frames": 256, "sample_rate": 44100, "channels": 1,
+                                         "event_promise_same_buffer": True, "closed": True}
+    rows = {row["phase"]: row for row in data["captures"]}
+    assert len(rows) == len(data["captures"]) == 9
+    assert set(rows) == {"stock-baseline", "a-native-baseline", "b-native-baseline",
+                         "a-partitioned", "b-partitioned", "a-identity", "b-identity",
+                         "a-identity-restart", "b-identity-restart"}
+    mismatches = 0
+    for name, row in rows.items():
+        assert row["browser_version"] == "148.0.7778.96"
+        assert row["sandbox_requested"] and row["no_sandbox_flag_absent"] and row["resources_closed"]
+        assert set(row["observed_bits"]) == set(expected)
+        for label, bits in row["observed_bits"].items():
+            assert len(bits) == 1 and len(bits[0]) == 8
+            assert int(bits[0], 16) in {int(expected[label], 16), int(expected[label], 16) ^ 1}
+            if "baseline" in name:
+                assert bits == [expected[label]]
+            else:
+                mismatches += bits != [expected[label]]
+    assert mismatches == data["nonexact_protected_capture_count"] == 14
+    for profile in ("a", "b"):
+        assert rows[profile + "-identity"]["observed_bits"] == rows[profile + "-identity-restart"]["observed_bits"]
 
 
 @pytest.mark.parametrize("failure", [None, "manifest-only", "patch-directory-only", "bad-source", "bad-patch",

@@ -87,7 +87,7 @@
     "policy capture lifetime under teardown"
   ],
   "compatibility_calibration": {
-    "scope": "Stock 148 control and source analysis; not matched-version native browser validation",
+    "scope": "Matched stock/Glint 148 runtime control and source analysis; no 156/157 observation",
     "script": {
       "file": "audio-constant-control.js",
       "sha256": "6256225d885534402d4d6898c0fa6ea24cf2aace548df960cd2e1e01803f7b89"
@@ -101,6 +101,11 @@
       "seed_byte": 5,
       "v1_predicted_bits": "3e800001",
       "stock148_observed_bits": "3e800000"
+    },
+    "native148_observed": true,
+    "matched148_observations": {
+      "file": "audio-constant-observations.json",
+      "sha256": "37d3cfa9a9478b2972ac0f9b4634b80834900e4ccf4cefaf2f30e1dd93f3ef96"
     }
   }
 }
