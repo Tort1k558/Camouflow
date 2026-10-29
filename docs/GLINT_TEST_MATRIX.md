@@ -52,6 +52,32 @@ This is **29 source-context applications, not 29 compiled/native tests**, a
 complete security update or a usable newer browser. Continue retrieval later
 with cache validation and a lower request rate, respecting server cooldown.
 
+### Rate-limited cache resume
+
+A separate resume waited at least 15 minutes after the stopped attempt and
+limited request starts to one every two seconds. It reused all 75 validated
+cache entries without replacement requests. For **156.0.8078.75**, all **185
+inputs** were retrieved and **all 62 unchanged draft patches** applied/check-
+applied successfully. Seven upstream inputs differ from the .36 manifest.
+The verifier preserved 321 GPU command IDs and appended the metadata command at
+577; GRIT element structure/attributes were preserved. Chromium DEPS/V8 binding
+and source/patch postguards passed.
+
+The same job fetched **28 inputs for 157.0.8103.27**, whose DEPS pins V8
+`a4889e05285021952e2ca9648c805a4c989345ae`, then stopped on HTTP 503 without a
+Retry-After header. It made no mirror/fallback request or retry loop. The overall
+job remains failed/incomplete; its successful .75 target is recorded separately,
+not used to relabel the 157 target. All 302 active build/source inputs stayed
+unchanged. Evidence: `upstream-forward-preflight-20261029-v2/report.json` and
+`156.0.8078.75/replay/report.json` beneath that directory on D.
+
+The .75 result is a **complete source-context replay of the existing patch
+batch**, not a complete checkout, generated-target equivalence, compilation,
+native test execution, runtime admission or security sign-off. Neither target
+was registered/selected for building. The active .36 build remains frozen.
+The next tooling step is a reproducible guarded sparse-cache/replay entry point;
+the next engine step remains actual compilation and native/runtime validation.
+
 ### Queued native target coverage
 
 The current process-bound sequence is: frozen 156 browser build → four identity

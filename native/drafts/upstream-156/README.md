@@ -11,6 +11,12 @@ checkpoint; do not change pins/patches in a live checkout. An upstream refresh,
 security review and fresh runtime gates are required before production delivery.
 Run `scripts/audit_native_upstream.py --candidate upstream-156 --output <fresh-D-report.json>`
 to compare this manifest-selected target without changing the default 148 pin.
+An isolated October 29 forward check retrieved the 185 required inputs at
+156.0.8078.75 and replayed all 62 unchanged patches, preserving the checked GPU
+command IDs and GRIT structure. This is source-context evidence only: the .75
+target is not selected/registered for building, and no .75 binary exists from
+that check. A 157 source fetch stopped after 28 inputs on HTTP 503. See the
+[retained reports and limits](../../../docs/GLINT_TEST_MATRIX.md#rate-limited-cache-resume).
 `manifest.json` binds each source input to an immutable Gitiles URL/hash and
 each draft patch to its hash and original registered patch hash.
 
