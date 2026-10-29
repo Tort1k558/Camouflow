@@ -1,0 +1,101 @@
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+index 6b0f1f2..c43a5a8 100644
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+@@ -3772,7 +3772,7 @@ const display::ScreenInfos& WebFrameWidgetImpl::GlintWebExposedScreenInfos() {
+ 
+ std::optional<double> WebFrameWidgetImpl::GlintLogicalRootDevicePixelRatio()
+     const {
+-  if (!ForSubframe() || !glint_logical_screen_infos_)
++  if (!glint_logical_screen_infos_)
+     return std::nullopt;
+   return glint_logical_screen_infos_->current().device_scale_factor *
+          View()->ZoomLevelToZoomFactor(zoom_level_);
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_test.cc b/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
+index f2ccc28..ecebe02 100644
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_test.cc
+@@ -32,6 +32,7 @@
+ #include "third_party/blink/renderer/core/editing/editing_utilities.h"
+ #include "third_party/blink/renderer/core/execution_context/agent.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
++#include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/frame/visual_viewport.h"
+ #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
+ #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
+@@ -43,6 +44,7 @@
+ #include "third_party/blink/renderer/core/html/html_image_element.h"
+ #include "third_party/blink/renderer/core/input/event_handler.h"
+ #include "third_party/blink/renderer/core/layout/layout_image.h"
++#include "third_party/blink/renderer/core/page/page.h"
+ #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
+ #include "third_party/blink/renderer/core/scroll/scrollbar.h"
+ #include "third_party/blink/renderer/core/testing/fake_web_plugin.h"
+@@ -102,6 +104,67 @@ class WebFrameWidgetSimTest : public SimTest {
+   }
+ };
+ 
++namespace {
++
++VisualProperties GlintLogicalMainScreenPropertiesForTesting() {
++  VisualProperties result;
++  display::ScreenInfo physical;
++  physical.device_scale_factor = 1;
++  physical.rect = gfx::Rect(800, 600);
++  physical.available_rect = physical.rect;
++  result.screen_infos = display::ScreenInfos(physical);
++  result.glint_logical_screen_infos = result.screen_infos;
++  result.glint_logical_screen_infos->mutable_current().device_scale_factor = 3;
++  result.glint_logical_screen_infos->mutable_current().rect =
++      gfx::Rect(390, 844);
++  result.new_size_device_px = gfx::Size(800, 600);
++  result.visible_viewport_size_device_px = result.new_size_device_px;
++  result.compositor_viewport_pixel_rect = gfx::Rect(result.new_size_device_px);
++  viz::ParentLocalSurfaceIdAllocator allocator;
++  allocator.GenerateId();
++  result.local_surface_id = allocator.GetCurrentLocalSurfaceId();
++  return result;
++}
++
++}  // namespace
++
++TEST_F(WebFrameWidgetSimTest,
++       GlintMainLogicalDprIgnoresForeignPageInspectorState) {
++  LoadURL("about:blank");
++  auto* widget = WebView().MainFrameViewWidget();
++  widget->ApplyVisualProperties(GlintLogicalMainScreenPropertiesForTesting());
++  for (float foreign : {0.5f, 1.f, 2.f, 4.f}) {
++    WebView().GetPage()->SetInspectorDeviceScaleFactorOverride(foreign);
++    EXPECT_DOUBLE_EQ(GetDocument().GetFrame()->DevicePixelRatio(), 3);
++    EXPECT_FLOAT_EQ(widget->GetScreenInfo().device_scale_factor, 1);
++  }
++}
++
++TEST_F(WebFrameWidgetSimTest, GlintMainLogicalDprTracksWidgetZoomAndCss) {
++  LoadURL("about:blank");
++  auto* widget = WebView().MainFrameViewWidget();
++  widget->ApplyVisualProperties(GlintLogicalMainScreenPropertiesForTesting());
++  widget->SetZoomLevel(1);
++  GetDocument().GetFrame()->SetCssZoomFactor(1.25f);
++  WebView().GetPage()->SetInspectorDeviceScaleFactorOverride(0.5f);
++  EXPECT_DOUBLE_EQ(GetDocument().GetFrame()->DevicePixelRatio(),
++                   3 * WebView().ZoomLevelToZoomFactor(1) * 1.25);
++}
++
++TEST_F(WebFrameWidgetSimTest, GlintClearedMainDprRestoresNativeInspectorRules) {
++  LoadURL("about:blank");
++  auto properties = GlintLogicalMainScreenPropertiesForTesting();
++  auto* widget = WebView().MainFrameViewWidget();
++  widget->ApplyVisualProperties(properties);
++  ASSERT_TRUE(widget->GlintLogicalRootDevicePixelRatio());
++  properties.glint_logical_screen_infos.reset();
++  widget->ApplyVisualProperties(properties);
++  EXPECT_FALSE(widget->GlintLogicalRootDevicePixelRatio());
++  WebView().GetPage()->SetInspectorDeviceScaleFactorOverride(2);
++  EXPECT_DOUBLE_EQ(GetDocument().GetFrame()->DevicePixelRatio(),
++                   2 * GetDocument().GetFrame()->LayoutZoomFactor());
++}
++
+ // Tests that if a WebView is auto-resized, the associated
+ // WebFrameWidgetImpl requests a new viz::LocalSurfaceId to be allocated on the
+ // impl thread.

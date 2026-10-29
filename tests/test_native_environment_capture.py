@@ -324,3 +324,52 @@ def test_screen69_source_package_does_not_claim_a_compiled_or_runtime_fix():
     base = json.loads(checkpoint.read_bytes())
     assert len(base["patches"]) == 68
     assert manifest["patches"][:68] == base["patches"]
+
+
+def test_queued_main_dpr_correction_preserves_incomplete_baseline_and_has_no_admission():
+    import hashlib
+    import re
+
+    directory = environment.ROOT / "native/drafts/environment"
+    baseline = json.loads((directory / "screen68-first-script-observations.json").read_bytes())
+    assert not baseline["passed"] and not baseline["measurement_complete"] and baseline["postguards_passed"]
+    assert len(baseline["phases"]) == 5 and baseline["error_type"] == "TimeoutError"
+    for row in baseline["phases"][:4]:
+        assert len(row["observations"]) == 6 and row["browser_connection_closed"]
+        if row["mode"] == "manager-mobile-web":
+            main = row["observations"]["main"]
+            assert main["first"]["screen"]["dpr"] == 3 and main["settled"]["screen"]["dpr"] == 1
+    record = json.loads((directory / "main-dpr70-preparation.json").read_bytes())
+    assert all(record[key] is False for key in (
+        "selected", "cpp_compiled", "native_tests_executed", "runtime_verified",
+        "screen_inheritance_fixed", "privacy_admitted", "production_admitted"))
+    assert record["apply_check_passed"] and record["active_source_postguards_passed"]
+    patch = (directory / record["patch"]).read_bytes()
+    assert hashlib.sha256(patch).hexdigest() == record["patch_sha256"]
+    added = "\n".join(line[1:] for line in patch.decode("utf-8").splitlines()
+                      if line.startswith("+") and not line.startswith("+++"))
+    cases = re.findall(r"TEST_F\(WebFrameWidgetSimTest,\s*(Glint\w+)\)", added)
+    assert cases == record["prepared_native_cases"] and len(cases) == 3
+
+
+def test_complete_first_script_baseline_keeps_failed_manager_modes_and_passing_controls():
+    import hashlib
+
+    directory = environment.ROOT / "native/drafts/environment"
+    record = json.loads((directory / "screen68-first-script-complete-observations.json").read_bytes())
+    assert record["measurement_complete"] and record["postguards_passed"] and record["fixture_control_passed"]
+    assert not record["passed"] and not record["screen_inheritance_fixed"] and not record["production_admitted"]
+    assert [row["passed"] for row in record["phases"]] == [False, False, False, False, True, True]
+    for name, expected in record["fixture_source_sha256"].items():
+        assert hashlib.sha256((directory / "first-script" / name).read_bytes()).hexdigest() == expected
+    for row in record["phases"]:
+        assert len(row["observations"]) == 6 and row["browser_connection_closed"]
+        for value in row["observations"].values():
+            assert value["clicks"] == [{"trusted": True, "x": 52, "y": 38, "inside": True}]
+        if row["mode"] == "native-control":
+            main = row["observations"]["main"]["settled"]
+            expected_size = [round(main["viewport"][axis] * main["screen"]["dpr"])
+                             for axis in ("width", "height")]
+        else:
+            expected_size = {"manager-desktop": [1366, 768], "manager-mobile-web": [1170, 2532]}[row["mode"]]
+        assert row["screenshot"]["size"] == expected_size

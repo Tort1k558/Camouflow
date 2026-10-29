@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "scope": "Queued main-root logical DPR correction after actual preserved-0068 first-script finding; not applied to the live 0069 build",
+  "selected": false,
+  "cpp_compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "screen_inheritance_fixed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "patch": "main-dpr70.patch",
+  "patch_sha256": "07f7e928f6b34c8df670f67d9ef161f4ad76855087aa4f58a7aa8e3ac9bf2c79",
+  "base_manifest": "../upstream-156/checkpoints/001-069.json",
+  "base_manifest_sha256": "5b7cce89049abe7d5ea5717b3c60817975858f8c3affdcb738e58a9c5262e89e",
+  "base_source_sha256": {
+    "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "5c976fa7f90b84eccece5093abd6c743611296308b2f8bb4802c188b43f09b39",
+    "third_party/blink/renderer/core/frame/web_frame_widget_test.cc": "14e66271258af8d23a73f199e51ae12eccf1c948211a3b61edc86f7ff8347a1a"
+  },
+  "apply_check_passed": true,
+  "active_source_postguards_passed": true,
+  "prepared_native_target": "blink_unittests",
+  "prepared_native_cases": [
+    "GlintMainLogicalDprIgnoresForeignPageInspectorState",
+    "GlintMainLogicalDprTracksWidgetZoomAndCss",
+    "GlintClearedMainDprRestoresNativeInspectorRules"
+  ],
+  "observed_main_dpr": {
+    "first_script": 3,
+    "after_nested_local_roots": 1
+  },
+  "open_gates": [
+    "Compile and execute the three Blink simulation cases",
+    "Complete corrected first-script fixture control, including input and screenshots",
+    "Actual linked 0069 plus correction runtime, nested roots and independent pages",
+    "Zoom, text-scale, clearing, navigation, BFCache and renderer lifecycle"
+  ]
+}

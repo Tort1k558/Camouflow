@@ -95,6 +95,33 @@ Attaching a full main-frame emulator to every iframe is not acceptable either.
 
 ## Required linked-browser checks
 
+### Main-root DPR is part of the same contract
+
+The [preserved 001–068 first-script baseline](screen68-first-script-observations.json)
+also observed main Mobile Web DPR **3 initially, 1 after nested local roots**,
+on both persistent phases. Its four desktop/mobile phases captured all six
+document contexts, but the whole control matrix remained incomplete after a
+fixture click fell outside the native-control viewport. All results and errors
+are retained; this is not 0069 browser execution or a complete fixture admission.
+
+The [subsequent complete baseline](screen68-first-script-complete-observations.json)
+finished all six phases and six document contexts. Both native-control phases
+passed; the four manager desktop/mobile phases reproduced the screen/DPR
+failures. Trusted clicks and screenshot dimensions passed. Only fixture HTML
+escaping/layout was corrected; browser options and deadlines were unchanged.
+The exact [fixture sources](first-script/server.py) and [first-script sampler](first-script/sample.js)
+are included. This validates the controlled baseline fixture, not the pending
+0069/0070 engine changes; the earlier incomplete record remains unchanged.
+
+The frozen 0069 draft's logical DPR accessor still restricts its override to
+subframes, leaving the main root on Page-global inspector state. The queued
+[`main-dpr70.patch`](main-dpr70.patch) removes that restriction and adds three
+Blink simulation cases. [Preparation record](main-dpr70-preparation.json).
+Read-only apply-check against active 001–069 passed; the live build was not
+modified. The correction is **unselected, uncompiled and runtime-unverified**.
+Neither child-only consistency nor a passing pure screen-calculation test can
+admit the complete package without stable main-root DPR.
+
 | Contract | Checks |
 | --- | --- |
 | First-script consistency | Same-origin, cross-origin, inherited and nested frames; no late `framenavigated` repair |

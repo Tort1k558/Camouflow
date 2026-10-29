@@ -7,6 +7,8 @@
 | Linked source draft | 19-file browser/IPC/widget/DOM/CSS package; apply-check passed against exact 001–068; subsequently selected in manifest/checkpoint 001–069 | [Historical preparation record](../native/drafts/environment/screen-inheritance69-preparation.json); no C++/runtime result yet |
 | IPC generation | Pinned official parser and typed native/Blink/shared C++ generators passed in an isolated D: output | Not C++ compilation, serialization-test execution or browser delivery proof |
 | Native cases | Nine cases required by the new `screen-metrics` group in `blink_common_unittests`; batch now has 19 groups | **Not executed**; first-script, lifecycle, geometry/input and combined browser gates remain open |
+| Preserved 0068 first-script baseline | Six phases × six documents; both no-emulation controls passed, all four manager desktop/mobile phases reproduced defects; clicks and screenshot sizes passed | [Complete red baseline](../native/drafts/environment/screen68-first-script-complete-observations.json); not execution of 0069. Main Mobile DPR changes 3 → 1 after nested local roots |
+| Queued main-root correction | Two-file 0070 draft, three Blink simulation cases, read-only apply-check passed against 0069 | [Preparation](../native/drafts/environment/main-dpr70-preparation.json); unselected/uncompiled; the live 0069 build is unchanged |
 
 ## Chromium 156 / 001–068 — 2026-10-30
 

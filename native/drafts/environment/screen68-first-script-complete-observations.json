@@ -1,0 +1,2461 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "scope": "Preserved raw Glint 001-068 first-script baseline; six document contexts, actual trusted clicks and screenshots, three explicit modes and persistent restart; not 0069 execution",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "36d1a7c35d059d60c41c9c46d48c623918cd2ed63e746d6473c4993d1d729a7d",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "1250a9c4c72d3e85736b7ff99cccbd2ff0c0ca7ccebf56fb7d7ed025b8480dbc",
+  "postguards_passed": true,
+  "screen_inheritance_fixed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "phases": [
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "passed": false,
+      "observations": {
+        "about-blank": {
+          "first": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "cross": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "main": {
+          "first": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 1366,
+              "height": 768
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 1366,
+              "height": 768
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "nested-return": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "same": {
+          "first": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "srcdoc": {
+          "first": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        }
+      },
+      "errors": [
+        "cross/first: screen differs from main first script",
+        "cross/settled: screen differs from main first script",
+        "nested-return/first: screen differs from main first script",
+        "nested-return/settled: screen differs from main first script"
+      ],
+      "browser_version": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "jsVersion": "15.6.75.16"
+      },
+      "screenshot": {
+        "size": [
+          1366,
+          768
+        ],
+        "sha256": "7f3db7ed87a932ae217838e74a2496bf121a777f5e446422360e3727b0706ed9"
+      },
+      "browser_connection_closed": true
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "persistent-profile-restart",
+      "passed": false,
+      "observations": {
+        "about-blank": {
+          "first": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "cross": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "main": {
+          "first": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 1366,
+              "height": 768
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 1366,
+              "height": 768
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "nested-return": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "same": {
+          "first": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "srcdoc": {
+          "first": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 1366,
+              "height": 768,
+              "availWidth": 1366,
+              "availHeight": 768,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        }
+      },
+      "errors": [
+        "cross/first: screen differs from main first script",
+        "cross/settled: screen differs from main first script",
+        "nested-return/first: screen differs from main first script",
+        "nested-return/settled: screen differs from main first script"
+      ],
+      "browser_version": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "jsVersion": "15.6.75.16"
+      },
+      "screenshot": {
+        "size": [
+          1366,
+          768
+        ],
+        "sha256": "7f3db7ed87a932ae217838e74a2496bf121a777f5e446422360e3727b0706ed9"
+      },
+      "browser_connection_closed": true
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "passed": false,
+      "observations": {
+        "about-blank": {
+          "first": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "cross": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "main": {
+          "first": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "nested-return": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "same": {
+          "first": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "srcdoc": {
+          "first": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        }
+      },
+      "errors": [
+        "about-blank/settled: screen differs from main first script",
+        "cross/first: screen differs from main first script",
+        "cross/settled: screen differs from main first script",
+        "main/settled: screen differs from main first script",
+        "nested-return/first: screen differs from main first script",
+        "nested-return/settled: screen differs from main first script",
+        "same/settled: screen differs from main first script",
+        "srcdoc/settled: screen differs from main first script"
+      ],
+      "browser_version": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "jsVersion": "15.6.75.16"
+      },
+      "screenshot": {
+        "size": [
+          1170,
+          2532
+        ],
+        "sha256": "ec09e1fc3eb60db27da75f3aa2e913e799641502b96b8566e2c0b1453c91cb36"
+      },
+      "browser_connection_closed": true
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "persistent-profile-restart",
+      "passed": false,
+      "observations": {
+        "about-blank": {
+          "first": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "cross": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "main": {
+          "first": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "nested-return": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "same": {
+          "first": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "srcdoc": {
+          "first": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 3,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 390,
+              "height": 844,
+              "availWidth": 390,
+              "availHeight": 844,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "portrait-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        }
+      },
+      "errors": [
+        "about-blank/settled: screen differs from main first script",
+        "cross/first: screen differs from main first script",
+        "cross/settled: screen differs from main first script",
+        "main/settled: screen differs from main first script",
+        "nested-return/first: screen differs from main first script",
+        "nested-return/settled: screen differs from main first script",
+        "same/settled: screen differs from main first script",
+        "srcdoc/settled: screen differs from main first script"
+      ],
+      "browser_version": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "jsVersion": "15.6.75.16"
+      },
+      "screenshot": {
+        "size": [
+          1170,
+          2532
+        ],
+        "sha256": "ec09e1fc3eb60db27da75f3aa2e913e799641502b96b8566e2c0b1453c91cb36"
+      },
+      "browser_connection_closed": true
+    },
+    {
+      "mode": "native-control",
+      "phase": "initial",
+      "passed": true,
+      "observations": {
+        "about-blank": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "cross": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "main": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 764,
+              "height": 485
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 764,
+              "height": 485
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "nested-return": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "same": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "srcdoc": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        }
+      },
+      "errors": [],
+      "browser_version": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "jsVersion": "15.6.75.16"
+      },
+      "screenshot": {
+        "size": [
+          764,
+          485
+        ],
+        "sha256": "f7d61328132b4cc3da55ad95ff910199f00f136062657e66b12c5a7e698852e3"
+      },
+      "browser_connection_closed": true
+    },
+    {
+      "mode": "native-control",
+      "phase": "persistent-profile-restart",
+      "passed": true,
+      "observations": {
+        "about-blank": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "cross": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "main": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 764,
+              "height": 485
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 764,
+              "height": 485
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "nested-return": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 260,
+              "height": 64
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "same": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        },
+        "srcdoc": {
+          "first": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "settled": {
+            "screen": {
+              "width": 800,
+              "height": 600,
+              "availWidth": 800,
+              "availHeight": 600,
+              "availLeft": 0,
+              "availTop": 0,
+              "colorDepth": 24,
+              "pixelDepth": 24,
+              "dpr": 1,
+              "orientation": {
+                "type": "landscape-primary",
+                "angle": 0
+              }
+            },
+            "viewport": {
+              "width": 320,
+              "height": 140
+            },
+            "media": {
+              "width": true,
+              "height": true,
+              "resolution": true
+            }
+          },
+          "events": [],
+          "clicks": [
+            {
+              "trusted": true,
+              "x": 52,
+              "y": 38,
+              "inside": true
+            }
+          ]
+        }
+      },
+      "errors": [],
+      "browser_version": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "jsVersion": "15.6.75.16"
+      },
+      "screenshot": {
+        "size": [
+          764,
+          485
+        ],
+        "sha256": "f7d61328132b4cc3da55ad95ff910199f00f136062657e66b12c5a7e698852e3"
+      },
+      "browser_connection_closed": true
+    }
+  ],
+  "raw_report_sha256": "431a6f6872f8122041248d53402c2064236c3b4e924f63a4a5f616e61247dbc6",
+  "fixture_control_passed": true,
+  "base_manifest": "../upstream-156/checkpoints/001-068.json",
+  "base_manifest_sha256": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
+  "fixture_source_sha256": {
+    "server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c"
+  },
+  "note": "All six phases completed with six first-script/settled document snapshots and trusted clicks; native-control passed twice. Original incomplete attempts are retained, without changing browser options or deadlines. Only controlled fixture HTML escaping/layout changed; this is preserved 0068, not 0069 or a screen fix."
+}
