@@ -33,6 +33,29 @@ The correction explicitly preserves fdlibm's unit-base power rules, rather than
 silently dispatching a float32 request to another backend. NaN payloads, errno
 and floating-point exception flags are **not** covered by category equality.
 
+## Expanded signal/parameter matrix
+
+[15 explicit configurations](cases.json) passed the isolated C++ checks and
+**90 policy-off stock/Glint 148 browser captures** on the same Windows host.
+All browser outputs exactly match the native calculation; all closed contexts
+preserve completion-event/Promise buffer identity. This does **not** execute
+the float32 variant in a browser or represent 90 independent devices.
+
+| Controls | Coverage |
+| --- | --- |
+| Random, silence, constant, impulses, buffered triangle, attack/release bursts | Generated AudioBuffer inputs; not OscillatorNode spectra |
+| Mono and independent stereo | 44100, 48000 and 96000 Hz |
+| Compressed constant, ratio one, fast attack, zero release | Explicit compressor parameters, including legal zero endpoints |
+| Direct constant, negative quarter, positive/negative zero | Literal sample controls with no compressor |
+| Partial last render block | 8193 frames, with zero-padded internal processing |
+
+The float32 calculation differs in **only 3/15 cases**, by at most `2.98e-8`.
+Do not force variation in the other cases or infer fingerprint uniqueness.
+[Compact observations](matrix-observations.json) retain hashes and results;
+full raw samples and process records stay on D. Eight malformed driver commands
+were rejected before writing samples. The matrix runner uses a separate process
+and directory for every case, collecting failures rather than hiding them.
+
 ## Reproduce
 
 Run from the repository root with the pinned source trees and a trusted existing
@@ -52,6 +75,14 @@ Reports, logs, temporary compiler files and generated samples stay in that D:
 directory. The [browser control](compressor-control.js) returns only its own
 generated graph's samples; it must be run on a controlled local page.
 
+For the complete matrix, use `matrix.py` instead of `probe.py` with the same
+arguments and a different fresh output directory. Its case manifest rejects
+missing fields, unknown signals, invalid ranges and duplicate IDs; these are
+workbench bounds, not a claim about the complete Web Audio API limits.
+The [matrix browser control](compressor-matrix-control.js) accepts one explicit
+case at a time. Browser calibration still needs an independently verified
+runtime; running the C++ matrix alone cannot grant admission.
+
 ## Still required
 
 The float32 output has **not** been observed as a real device cohort. A changed
@@ -65,5 +96,8 @@ capability may be enabled from these measurements alone.
 
 Local evidence: `D:\Glint157ObjectCache\public-compressor-math-prototype-20261029-v6`,
 `compressor-baseline148-20261029-v1`, `compressor-workbench-negatives-20261029-v1`.
+Matrix evidence: `public-compressor-full-matrix-20261029-v2`,
+`compressor-matrix148-20261029-v1` and `compressor-matrix-driver-negatives-20261029-v1`
+under the same cache directory.
 Earlier failed adapter/link experiments and the initial power-category failure
 remain retained separately. The active 156 build's 201 input hashes stayed unchanged.

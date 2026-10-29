@@ -1,0 +1,267 @@
+{
+  "schema": 1,
+  "scope": "15 generated-signal configurations; float32 mode executed only in isolated C++",
+  "compiled_experiment": true,
+  "selected_in_engine": false,
+  "compiled_browser": false,
+  "native156_runtime_verified": false,
+  "variant_browser_execution_verified": false,
+  "variant_device_cohort_verified": false,
+  "production_admitted": false,
+  "artifacts": [
+    {
+      "file": "compressor_math_policy.h",
+      "sha256": "06cebc64c859114ff3772f4a5fcaf9c2869ebcff780f352fa6b7391aa78e250c"
+    },
+    {
+      "file": "driver.cc",
+      "sha256": "4997e36ad18cbfbbc676db20f9746c9aac6e3d0d2c95eaf71b0911e810973759"
+    },
+    {
+      "file": "probe.py",
+      "sha256": "b649629ba362f625ca7db44c006aa96f1cdbcb1e2e84b34989b6148129d892e3"
+    },
+    {
+      "file": "matrix.py",
+      "sha256": "2c370844ec0826052e16dbef571203499e94048a887445b4489687ce246bb553"
+    },
+    {
+      "file": "cases.json",
+      "sha256": "b678f9d28e60a16306092860d1d34d0dc893073a7dcd429b10f19932f8a756e8"
+    },
+    {
+      "file": "compressor-matrix-control.js",
+      "sha256": "e3e8258fb8d206b794f186fbf2090a24533d11d27b2f774ee2e6d290abfb2774"
+    }
+  ],
+  "case_manifest_sha256": "b678f9d28e60a16306092860d1d34d0dc893073a7dcd429b10f19932f8a756e8",
+  "case_count": 15,
+  "browser_capture_count": 90,
+  "browser_version": "148.0.7778.96",
+  "browser_scope": "Policy-off stock/Glint 148 on the same Windows host; not 90 devices or float32 browser runs",
+  "browser_postguards_passed": true,
+  "all_runtime_resources_closed": true,
+  "owned_identity_payloads_unchanged": true,
+  "sandbox_requested": true,
+  "no_sandbox_flag_absent": true,
+  "receipt_sha256": "e39654a2a45f981e3ef87b7fd187af60329bd38ec482e8e8e18728c5e9f4bb12",
+  "native_core_sha256": {
+    "chrome.exe": "275ad4eaa4b51b3e53a9a57496ecb17f6bc90b8c687e252567ce7d2050c0088c",
+    "chrome.dll": "9b65965659f4ba78f2da12d18c858519a68066df232f0cd67a92bdb004e7a24a",
+    "chrome_elf.dll": "f26f09cadfc9fbfe1384c2df2a7549151e4afa988568e6468d296d4fd61303fb"
+  },
+  "stock_core_sha256": {
+    "chrome.exe": "290fa7018fda22c52ada5eddb0113baf3ebc41fd0fde6085eddb19793606c635",
+    "chrome.dll": "2dec55e969120a4f365942ddf143df869dad9bc7595400da87af247c74c867fd",
+    "chrome_elf.dll": "994bc5cc8de982bdc8aecb92c7fc639a7801ae62745e6a38e7ffc0a9664c164e"
+  },
+  "default_case_consistent": true,
+  "matrix_inputs_unchanged": true,
+  "cases": [
+    {
+      "id": "random-default",
+      "native_samples_sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+      "float32_samples_sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+      "variant_changed_channel_samples": 2,
+      "max_abs_error": 2.9802322387695312e-08,
+      "rms_error": 3.2927225399135965e-10,
+      "browser_captures": 6
+    },
+    {
+      "id": "silence-default",
+      "native_samples_sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+      "float32_samples_sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "direct-constant",
+      "native_samples_sha256": "9a21e63b08d82d6d44478d208ac8a633216966cf7d2ed16a2f2ab4c25a499d9b",
+      "float32_samples_sha256": "9a21e63b08d82d6d44478d208ac8a633216966cf7d2ed16a2f2ab4c25a499d9b",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "constant-compressed",
+      "native_samples_sha256": "a463a6bd8cbb4bba6a3c1dd07877dc9fb1d45a054af6f72780b6453ae2bd9d17",
+      "float32_samples_sha256": "15e0a03d216bb363f22f8fe94e26784931d5aba39cf9f313580e64f5cdbbcfa1",
+      "variant_changed_channel_samples": 52,
+      "max_abs_error": 2.9802322387695312e-08,
+      "rms_error": 1.4999064997217066e-09,
+      "browser_captures": 6
+    },
+    {
+      "id": "impulse-fast",
+      "native_samples_sha256": "bb76c69f6d0cf442b2476c591a0dc0cdfad8215534a450f2d3269aa46e0abacc",
+      "float32_samples_sha256": "bb76c69f6d0cf442b2476c591a0dc0cdfad8215534a450f2d3269aa46e0abacc",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "triangle-fingerprint",
+      "native_samples_sha256": "28dabd508866ed47b3aeed2c83883417083046a0cc9e8d6109bd55322b5f3ecb",
+      "float32_samples_sha256": "28dabd508866ed47b3aeed2c83883417083046a0cc9e8d6109bd55322b5f3ecb",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "stereo-random",
+      "native_samples_sha256": "f3f64275c0ed905163eb60a78579566bd46a8b39e969a66cda7034dd830e99cc",
+      "float32_samples_sha256": "f3f64275c0ed905163eb60a78579566bd46a8b39e969a66cda7034dd830e99cc",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "stereo-overdrive",
+      "native_samples_sha256": "14e5fe6fd3f9610b49daf655b3d176dd211b2ad48e0abf8749cf2c8f6b1cdbff",
+      "float32_samples_sha256": "14e5fe6fd3f9610b49daf655b3d176dd211b2ad48e0abf8749cf2c8f6b1cdbff",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "burst-release",
+      "native_samples_sha256": "08b4fa7fa0127ecc8062f137c762c49d30bfade6b6effbdc5f93e39c757087f7",
+      "float32_samples_sha256": "08b4fa7fa0127ecc8062f137c762c49d30bfade6b6effbdc5f93e39c757087f7",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "ratio-one",
+      "native_samples_sha256": "445ae3336d90d09d091cdae97ff761f8dd97d0c76e7165ee14bc04f88ed18187",
+      "float32_samples_sha256": "372a2866dc6eebeff72105ba6b81132ca9398a7910a59c1a45bf09288da0547f",
+      "variant_changed_channel_samples": 14,
+      "max_abs_error": 2.9802322387695312e-08,
+      "rms_error": 6.85022811867519e-10,
+      "browser_captures": 6
+    },
+    {
+      "id": "zero-release",
+      "native_samples_sha256": "04a5db431c72bb43aead2882777e293e9fbb84fda34cb223f0554411500a0422",
+      "float32_samples_sha256": "04a5db431c72bb43aead2882777e293e9fbb84fda34cb223f0554411500a0422",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "partial-last",
+      "native_samples_sha256": "b768691d6383abe3c0dd3cc3b705b40e22a45aeb867ccad105a44e94b2c6d245",
+      "float32_samples_sha256": "b768691d6383abe3c0dd3cc3b705b40e22a45aeb867ccad105a44e94b2c6d245",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "direct-negative-zero",
+      "native_samples_sha256": "c4b1d6a1167bf590bc53a3a8dca7577636d3a2bd6307599b2bc6f92174d584e3",
+      "float32_samples_sha256": "c4b1d6a1167bf590bc53a3a8dca7577636d3a2bd6307599b2bc6f92174d584e3",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "direct-negative-quarter",
+      "native_samples_sha256": "3f77db63f468fa9dc6bf3d3daed27f7ccab9834e1f516f4da4670de1a76436ed",
+      "float32_samples_sha256": "3f77db63f468fa9dc6bf3d3daed27f7ccab9834e1f516f4da4670de1a76436ed",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    },
+    {
+      "id": "direct-zero",
+      "native_samples_sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+      "float32_samples_sha256": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+      "variant_changed_channel_samples": 0,
+      "max_abs_error": 0,
+      "rms_error": 0,
+      "browser_captures": 6
+    }
+  ],
+  "driver_negative_controls": [
+    {
+      "case": "missing-arguments",
+      "rejected": true,
+      "exit_code": 2,
+      "samples_written": false
+    },
+    {
+      "case": "unknown-signal",
+      "rejected": true,
+      "exit_code": 2,
+      "samples_written": false
+    },
+    {
+      "case": "unknown-graph",
+      "rejected": true,
+      "exit_code": 2,
+      "samples_written": false
+    },
+    {
+      "case": "nonfinite-amplitude",
+      "rejected": true,
+      "exit_code": 2,
+      "samples_written": false
+    },
+    {
+      "case": "boolean-channels",
+      "rejected": true,
+      "exit_code": 2,
+      "samples_written": false
+    },
+    {
+      "case": "zero-frames",
+      "rejected": true,
+      "exit_code": 2,
+      "samples_written": false
+    },
+    {
+      "case": "infinite-rate",
+      "rejected": true,
+      "exit_code": 2,
+      "samples_written": false
+    },
+    {
+      "case": "threshold-range",
+      "rejected": true,
+      "exit_code": 2,
+      "samples_written": false
+    }
+  ],
+  "variant_changed_cases": [
+    "random-default",
+    "constant-compressed",
+    "ratio-one"
+  ],
+  "remaining_unverified": [
+    "Fresh 156 browser and integrated float32 DSP execution",
+    "Real device-cohort plausibility and profile/context transport",
+    "Oscillator-generated spectra, scheduled parameter automation and worklets",
+    "Realtime output, audible quality, performance and long-duration stress"
+  ],
+  "active_build_inputs_unchanged": 201,
+  "all_cpp_legacy_native_results_equal": true,
+  "all_cpp_block_and_interleaving_checks_equal": true,
+  "all_browser_captures_match_native_samples": true,
+  "all_browser_shapes_and_completion_identity_verified": true,
+  "browser_repetitions_per_case": {
+    "stock-baseline": 3,
+    "a-native-baseline": 3
+  }
+}

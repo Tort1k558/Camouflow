@@ -4277,6 +4277,118 @@ def test_157_pending_chunk_audio_fixtures_are_bound_and_not_admitted():
     assert conflict["stock148_observed_bits"] == conflict["input_bits"] != conflict["v1_predicted_bits"]
 
 
+def test_compressor_matrix_preserves_native_calibration_and_scope():
+    import hashlib
+    import json
+    import runpy
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/audio-dsp-math-v2"
+    raw = (root / "matrix-observations.json").read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    assert data["schema"] == 1 and data["compiled_experiment"]
+    for field in ("selected_in_engine", "compiled_browser", "native156_runtime_verified",
+                  "variant_browser_execution_verified", "variant_device_cohort_verified", "production_admitted"):
+        assert data[field] is False
+    assert len(data["artifacts"]) == 6
+    for artifact in data["artifacts"]:
+        content = (root / artifact["file"]).read_bytes()
+        assert hashlib.sha256(content).hexdigest() == artifact["sha256"]
+        assert b"\r" not in content and not content.startswith(b"\xef\xbb\xbf")
+    module = runpy.run_path(str(root / "matrix.py"), run_name="glint_matrix_test")
+    case_bytes, cases = module["load_cases"](root / "cases.json")
+    assert hashlib.sha256(case_bytes).hexdigest() == data["case_manifest_sha256"]
+    assert len(cases) == len(data["cases"]) == data["case_count"] == 15
+    assert {case["id"] for case in cases} == {row["id"] for row in data["cases"]}
+    assert {case["rate"] for case in cases} == {44100, 48000, 96000}
+    assert any(case["frames"] == 8193 for case in cases)
+    assert any(case["release"] == 0 for case in cases)
+    assert any(case["channels"] == 2 for case in cases)
+    assert data["all_cpp_legacy_native_results_equal"] and data["all_cpp_block_and_interleaving_checks_equal"]
+    assert data["all_browser_captures_match_native_samples"] and data["all_browser_shapes_and_completion_identity_verified"]
+    assert data["browser_repetitions_per_case"] == {"stock-baseline": 3, "a-native-baseline": 3}
+    assert sum(row["browser_captures"] for row in data["cases"]) == data["browser_capture_count"] == 90
+    changed = [row["id"] for row in data["cases"] if row["variant_changed_channel_samples"]]
+    assert changed == data["variant_changed_cases"] == ["random-default", "constant-compressed", "ratio-one"]
+    for row in data["cases"]:
+        assert row["browser_captures"] == 6
+        assert (row["native_samples_sha256"] != row["float32_samples_sha256"]) == bool(row["variant_changed_channel_samples"])
+        assert 0 <= row["rms_error"] <= row["max_abs_error"] < 0.000001
+    assert len(data["driver_negative_controls"]) == 8
+    assert all(row["rejected"] and row["exit_code"] == 2 and row["samples_written"] is False
+               for row in data["driver_negative_controls"])
+    original = json.loads((root / "observations.json").read_text(encoding="utf-8"))["browser_baseline_calibration"]
+    for field in ("receipt_sha256", "native_core_sha256", "stock_core_sha256"):
+        assert data[field] == original[field]
+    assert data["browser_postguards_passed"] and data["all_runtime_resources_closed"]
+    assert data["sandbox_requested"] and data["no_sandbox_flag_absent"]
+
+
+@pytest.mark.parametrize("failure", ["not-object", "schema-bool", "cases-type", "empty", "too-many",
+                                    "duplicate", "unsafe-id", "missing-field", "extra-field",
+                                    "unknown-signal", "signal-type", "graph-type", "channels-bool",
+                                    "frames-float", "frames-range", "seed-range", "nonfinite",
+                                    "nan", "negative-release", "zero-ratio", "huge-number", "missing-default"])
+def test_compressor_matrix_rejects_malformed_case_manifests(tmp_path, failure):
+    import json
+    import runpy
+    from scripts import native_build as build
+
+    root = build.ROOT / "native/drafts/audio-dsp-math-v2"
+    module = runpy.run_path(str(root / "matrix.py"), run_name="glint_matrix_validation_test")
+    data = json.loads((root / "cases.json").read_text(encoding="utf-8"))
+    row = data["cases"][0]
+    if failure == "not-object":
+        data = []
+    elif failure == "schema-bool":
+        data["schema"] = True
+    elif failure == "cases-type":
+        data["cases"] = {}
+    elif failure == "empty":
+        data["cases"] = []
+    elif failure == "too-many":
+        data["cases"] = [row] * 33
+    elif failure == "duplicate":
+        data["cases"].append(dict(row))
+    elif failure == "unsafe-id":
+        row["id"] = "../outside"
+    elif failure == "missing-field":
+        del row["release"]
+    elif failure == "extra-field":
+        row["extra"] = 1
+    elif failure == "unknown-signal":
+        row["signal"] = "unknown"
+    elif failure == "signal-type":
+        row["signal"] = []
+    elif failure == "graph-type":
+        row["graph"] = []
+    elif failure == "channels-bool":
+        row["channels"] = True
+    elif failure == "frames-float":
+        row["frames"] = 8192.0
+    elif failure == "frames-range":
+        row["frames"] = 131073
+    elif failure == "seed-range":
+        row["seed"] = 0x100000000
+    elif failure == "nonfinite":
+        row["amplitude"] = float("inf")
+    elif failure == "nan":
+        row["attack"] = float("nan")
+    elif failure == "negative-release":
+        row["release"] = -0.1
+    elif failure == "zero-ratio":
+        row["ratio"] = 0
+    elif failure == "huge-number":
+        row["knee"] = 10 ** 1000
+    elif failure == "missing-default":
+        row["id"] = "other-case"
+    path = tmp_path / "cases.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ValueError):
+        module["load_cases"](path)
+
+
 def test_compressor_math_workbench_binds_sources_without_granting_profile_admission():
     import hashlib
     import json
