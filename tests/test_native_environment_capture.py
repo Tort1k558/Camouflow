@@ -981,10 +981,11 @@ def test_queued_screen_widget_gate_binds_seven_cases_without_claiming_native_exe
         "runtime_verified", "privacy_admitted", "production_admitted"))
     assert hashlib.sha256((directory / record["patch"]).read_bytes()).hexdigest() == record["patch_sha256"]
     assert hashlib.sha256((directory / record["linked_native_patch"]).read_bytes()).hexdigest() == record["linked_native_patch_sha256"]
-    assert hashlib.sha256((root / record["base_source"]).read_bytes()).hexdigest() == record["base_source_sha256"]
+    assert hashlib.sha256((root / record["base_source"]).read_bytes()).hexdigest() == record["prepared_source_sha256"]
 
 
 def test_queued_widget_verifier_applies_and_rejects_incomplete_results(tmp_path, monkeypatch):
+    import hashlib
     import runpy
     import subprocess
     import sys
@@ -995,10 +996,15 @@ def test_queued_widget_verifier_applies_and_rejects_incomplete_results(tmp_path,
     path = tmp_path / metadata["base_source"]
     path.parent.mkdir(parents=True)
     path.write_bytes((root / metadata["base_source"]).read_bytes())
-    subprocess.run(["git", "apply", "--whitespace=error", str(directory / metadata["patch"])],
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == metadata["prepared_source_sha256"]
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error", str(directory / metadata["patch"])],
                    cwd=tmp_path, check=True, capture_output=True)
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == metadata["base_source_sha256"]
     monkeypatch.setattr(sys, "path", sys.path.copy())
-    current = runpy.run_path(str(root / metadata["base_source"]))
+    current = runpy.run_path(str(path))
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--whitespace=error", str(directory / metadata["patch"])],
+                   cwd=tmp_path, check=True, capture_output=True)
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == metadata["prepared_source_sha256"]
     proposed = runpy.run_path(str(path))
     for target in current["SUPPORTED_TARGETS"]:
         assert current["required_tests"](target) == proposed["required_tests"](target)
@@ -1082,3 +1088,28 @@ def test_actual_0069_first_script_proves_desktop_repair_but_retains_mobile_main_
             assert len(row["errors"]) == 4 and all("screen differs" in error for error in row["errors"])
     for name, value in record["source_sha256"].items():
         assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+
+
+def test_selected_0070_is_exact_linked_batch_with_active_strict_gate_not_runtime_admission():
+    import hashlib
+    from scripts import verify_native_privacy_units as units
+
+    root = environment.ROOT
+    directory = root / "native/drafts/environment"
+    record = json.loads((directory / "screen70-selection-observations.json").read_bytes())
+    current = (root / "native/drafts/upstream-156/manifest.json").read_bytes()
+    checkpoint = (root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()
+    previous = json.loads((root / "native/drafts/upstream-156/checkpoints/001-069.json").read_bytes())
+    manifest = json.loads(current)
+    assert record["selected"] and current == checkpoint
+    assert hashlib.sha256(current).hexdigest() == record["selected_manifest_sha256"]
+    assert manifest["patches"][:-1] == previous["patches"] and len(manifest["patches"]) == 70
+    patch = root / "native/drafts/upstream-156/patches" / record["native_patch"]
+    assert patch.read_bytes() == (directory / "linked-screen70.patch").read_bytes()
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record["native_patch_sha256"]
+    assert len(units.SUPPORTED_TARGETS) == record["selected_native_target_groups"] == 20
+    assert units.unit_binary_target("screen-widget") == "blink_unittests"
+    cases = {suite + "." + name for suite, names in units.required_tests("screen-widget").items() for name in names}
+    assert cases == set(record["prepared_cases"]) and len(cases) == record["native_cases_required"] == 7
+    assert all(record[name] is False for name in ("cpp_compiled", "native_tests_executed", "runtime_verified",
+        "privacy_admitted", "production_admitted"))

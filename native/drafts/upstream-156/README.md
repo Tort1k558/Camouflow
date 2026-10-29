@@ -1,5 +1,25 @@
 # Chromium 156 rebase candidate
 
+## Selected 0070: linked main-DPR/lifecycle batch
+
+The selected chain is **001–070**. The latest compiled baseline remains
+**001–069**: its desktop first-script initial/restart passed, while Mobile main
+and same-process documents still settled from DPR 3 to 1. Its exact 269-asset
+runtime is preserved for comparison/rollback.
+[Build](build69-observations.json),
+[runtime finding](../environment/screen69-first-script-observations.json).
+
+`0070-native-logical-screen-lifecycle.patch` combines the main-root DPR correction
+and seven Blink widget cases in two files. The existing native verifier now has
+**20 groups**, including `screen-widget` in `blink_unittests`. Source selection
+does not imply compilation, case execution or capability admission.
+[Selection](../environment/screen70-selection-observations.json).
+The owned j4 refresh performs real sync/hooks/patch stages, preserves exact
+unchanged-source timestamps only, and never modifies object timestamps.
+
+The older snapshots below remain historical; they do not describe current
+selection or replace the current build/runtime evidence.
+
 **Development candidate, not a production/default engine.** The default build
 lock and reviewed 001-062 chain still target Chromium 148.0.7778.96. The separate
 156 / 001–066 browser is linked and all 17 native target groups passed. Baseline

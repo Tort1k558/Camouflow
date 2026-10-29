@@ -12,6 +12,12 @@ settle at DPR 1: the overall gate remains failed and queued 0070 is still needed
 [Runtime findings](drafts/environment/screen69-first-script-observations.json).
 The new native unit cases and full combined/package gates have not executed.
 
+**001–070 is selected for the next source build**, with the main-DPR correction
+and seven linked widget cases. Its verifier integration is now active:
+`screen-widget` maps to `blink_unittests`, requires exact 0069/0070 source names,
+and brings the batch to 20 groups. [Selection](drafts/environment/screen70-selection-observations.json).
+Neither source selection nor Python gate controls admit the new binary or policy.
+
 The native-unit-verified baseline remains **001–068**. Its fixture-only repair
 compiled without changing the 001–067 browser core;
 all **18 native groups passed**, including **12/12 AudioMath**, with complete
@@ -50,7 +56,8 @@ Legacy Audio-v1 failures remain open.
 Its browser-owned logical screen snapshot is separate from physical compositor
 and input geometry; widget-scoped DOM/CSS/DPR and update/disable behavior need
 the complete linked-browser gate. The new `screen-metrics` group requires nine
-cases in `blink_common_unittests`, bringing the native batch to 19 groups.
+cases in `blink_common_unittests`; its historical batch had 19 groups before
+the separate 0070 widget gate was selected.
 [Screen integration contract](drafts/environment/SCREEN_EMULATION.md).
 Both the 001–068 and 001–069 runtimes are preserved separately on D: for rollback.
 

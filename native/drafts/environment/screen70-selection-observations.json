@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "scope": "Selected linked 0070 source and existing-verifier integration; active Chromium source still exact 001-069 until the owned refresh runs",
+  "selected": true,
+  "cpp_compiled": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "base_manifest_sha256": "5b7cce89049abe7d5ea5717b3c60817975858f8c3affdcb738e58a9c5262e89e",
+  "selected_manifest_sha256": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
+  "native_patch": "0070-native-logical-screen-lifecycle.patch",
+  "native_patch_sha256": "fb4a7f9a630d3dff03b0b25993a685f73facb835dd7ffe16783bb7fe270ec1fa",
+  "gate_target": "screen-widget",
+  "gate_verifier_sha256": "04f1efa3acc9fd109cc0c11139a28c1bee0ff51526e98893313d819e71a613bf",
+  "source_files": [
+    "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc",
+    "third_party/blink/renderer/core/frame/web_frame_widget_test.cc"
+  ],
+  "prepared_cases": [
+    "WebFrameWidgetSimTest.GlintMainLogicalDprIgnoresForeignPageInspectorState",
+    "WebFrameWidgetSimTest.GlintMainLogicalDprTracksWidgetZoomAndCss",
+    "WebFrameWidgetSimTest.GlintClearedMainDprRestoresNativeInspectorRules",
+    "WebFrameWidgetSimTest.GlintMainLogicalDprFollowsLatestSnapshot",
+    "WebFrameWidgetImplRemoteFrameSimTest.GlintLogicalScreenUpdatePreservesPhysicalCompositorMetrics",
+    "WebFrameWidgetImplRemoteFrameSimTest.GlintLogicalScreenClearRestoresNativeSnapshot",
+    "WebFrameWidgetImplRemoteFrameSimTest.GlintLogicalRemoteDprIgnoresForeignInspectorAndKeepsZoom"
+  ],
+  "preserved_baseline": "001-069",
+  "selected_native_target_groups": 20,
+  "native_cases_required": 7
+}

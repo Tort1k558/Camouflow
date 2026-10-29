@@ -1,5 +1,15 @@
 # Cross-process screen consistency: next native integration contract
 
+## Selected next batch 001–070
+
+The consolidated two-file package is now registered as
+`0070-native-logical-screen-lifecycle.patch` and checkpointed as 001–070.
+The `screen-widget` verifier integration is active, with seven exact cases in
+`blink_unittests` and 20 native groups overall.
+[Selection](screen70-selection-observations.json). Source selection and Python
+roundtrip controls are not compilation or native/browser execution. The preserved
+001–069 baseline is unchanged while the next owned j4 source refresh runs.
+
 ## Latest actual 001–069 result
 
 The [j4 source build](../upstream-156/build69-observations.json) completed and its

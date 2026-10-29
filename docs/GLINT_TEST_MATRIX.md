@@ -1,5 +1,13 @@
 # Glint browser test matrix
 
+## Selected 0070 source package — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Linked source selection | Single two-file main-DPR correction and seven Blink widget cases registered after 001–069; immutable 001–070 checkpoint created | [Selection](../native/drafts/environment/screen70-selection-observations.json); build/native-case/runtime admission pending |
+| Verifier integration | `screen-widget` active in existing tools, exact seven cases in `blink_unittests`, explicit upstream-156 and registered 0069/0070 required; batch now 20 groups | Python replay/result-rejection controls passed; not seven executed C++ cases |
+| Baseline controls after selection | Preserved 001–068 crash/TLS/large WebGL controls rerun with current manifest/verifier source bindings | Still baseline-only evidence, not execution of new 0070 |
+
 ## Canonical Python regression — 2026-10-30
 
 | Gate | Observed result | Boundary |

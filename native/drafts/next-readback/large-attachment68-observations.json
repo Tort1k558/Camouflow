@@ -10,7 +10,7 @@
     "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
   },
   "receipt_sha256": "1250a9c4c72d3e85736b7ff99cccbd2ff0c0ca7ccebf56fb7d7ed025b8480dbc",
-  "raw_report_sha256": "453a790d5b4f7984c68852d750e2a1a96afa95985c7fec8de55d48fd4cbedf2c",
+  "raw_report_sha256": "3e3973158a62d8fc85a9ce44092565dcb45eed8dd7d3b909b92ce679efebd6e5",
   "source_sha256": {
     "app/__init__.py": "fe9767b4f6f97042148a4cdfc69a7f86b6b75d1eb427d18a1ccada7f21745ece",
     "app/cli.py": "c368621146d999e2bdddf456567a304cbafbc699a240114ab7617fb77cff6840",
@@ -112,7 +112,7 @@
     "native/drafts/next-readback/large_attachment.js": "36a84ae8985ba5abdd161806bfd2c931073993066b24cdaa4e13746ec3e9190c",
     "native/drafts/next-readback/large_attachment.py": "c53de9895a1ba9ca8c0873c54d867d509c00b42539380528818372808c951d06",
     "native/drafts/upstream-156/checkpoints/001-068.json": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
-    "native/drafts/upstream-156/manifest.json": "5b7cce89049abe7d5ea5717b3c60817975858f8c3affdcb738e58a9c5262e89e",
+    "native/drafts/upstream-156/manifest.json": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
     "native/drafts/upstream-156/patches/0001-native-hardware-privacy-limits.patch": "3925b0cec579b2a73fad70463227f1b44d3c464a06f5f2ad86d39a190d2910e8",
     "native/drafts/upstream-156/patches/0002-midl-locale-name-hashes.patch": "72c5c65fdfd767523370f33c4e772c29c6e17a5428b81dadef41f4b408d8b0a6",
     "native/drafts/upstream-156/patches/0003-native-webrtc-routing-policy.patch": "703af6e903aafb1d202cbcc7ce8de97bd6a3fd3177c1d612efd7b4989bdf5701",
@@ -224,7 +224,7 @@
     "scripts/verify_native_nested_canvas.py": "f50d6a50bc567f1390d7212d715dc473b4967c1e0e53e5ed0a2a775a77bb039d",
     "scripts/verify_native_next_batch.py": "9c87c6995b0f1bfd1d25ee17da28a35efa9069f743953c8db6b7d8dff272a8c4",
     "scripts/verify_native_privacy_batch.py": "2a4fb5ac2e02bc513cc8b7aae7a99e9dd9730b674f16e354942cf6580650e918",
-    "scripts/verify_native_privacy_units.py": "c3c9067c55585e4c45667aa955fb5b2dd2a5e3ec582824058563c104e9703d61",
+    "scripts/verify_native_privacy_units.py": "04f1efa3acc9fd109cc0c11139a28c1bee0ff51526e98893313d819e71a613bf",
     "scripts/verify_native_profile_identity_draft.py": "8150fb31c85719bc263e083e45cf7afbdc29db78070a0c9e2aba6ae1e57204ec",
     "scripts/verify_native_readback_regions.py": "dfcae4f07dc2131014859667f8cd18240874de142aeb9009175ce73b9b036d14",
     "scripts/verify_native_rebase_draft.py": "47b09c56bf62af52b68ae95391ffa98d3d35a3cb0c0719938c540f66be40cac2",
@@ -271,12 +271,12 @@
         "skipRows": 0,
         "skipPixels": 0
       },
-      "cpu_milliseconds_loaded_host": 64.2000000178814,
-      "pbo_milliseconds_loaded_host": 176.7999999821186,
+      "cpu_milliseconds_loaded_host": 59.29999998211861,
+      "pbo_milliseconds_loaded_host": 182.30000001192093,
       "crop_milliseconds_loaded_host": [
-        2,
-        1.5,
-        0.5999999940395355
+        1.5999999940395355,
+        1.300000011920929,
+        0.5
       ]
     },
     {
@@ -289,9 +289,9 @@
         4096
       ],
       "caller_bytes": 67108864,
-      "cpu_sha256": "bc9db64e6060f5e90fa57d089614017019ff27d3f46edfbb80d0b0efa21cf45c",
-      "cpu_repeat_sha256": "bc9db64e6060f5e90fa57d089614017019ff27d3f46edfbb80d0b0efa21cf45c",
-      "pbo_sha256": "bc9db64e6060f5e90fa57d089614017019ff27d3f46edfbb80d0b0efa21cf45c",
+      "cpu_sha256": "9743201b0489dc3fb569795042b677d4d2762548ee03f22bc65f427334115adf",
+      "cpu_repeat_sha256": "9743201b0489dc3fb569795042b677d4d2762548ee03f22bc65f427334115adf",
+      "pbo_sha256": "9743201b0489dc3fb569795042b677d4d2762548ee03f22bc65f427334115adf",
       "crop_repetitions": 3,
       "crop_matches_full": true,
       "outside_sentinel_unchanged": true,
@@ -311,12 +311,12 @@
         "skipRows": 0,
         "skipPixels": 0
       },
-      "cpu_milliseconds_loaded_host": 343.5,
-      "pbo_milliseconds_loaded_host": 435.40000000596046,
+      "cpu_milliseconds_loaded_host": 280.90000000596046,
+      "pbo_milliseconds_loaded_host": 417.09999999403954,
       "crop_milliseconds_loaded_host": [
-        4.5,
-        2.899999976158142,
-        1.7999999821186066
+        3.7000000178813934,
+        2,
+        1.2999999821186066
       ]
     },
     {
@@ -329,9 +329,9 @@
         4096
       ],
       "caller_bytes": 67108864,
-      "cpu_sha256": "bc9db64e6060f5e90fa57d089614017019ff27d3f46edfbb80d0b0efa21cf45c",
-      "cpu_repeat_sha256": "bc9db64e6060f5e90fa57d089614017019ff27d3f46edfbb80d0b0efa21cf45c",
-      "pbo_sha256": "bc9db64e6060f5e90fa57d089614017019ff27d3f46edfbb80d0b0efa21cf45c",
+      "cpu_sha256": "9743201b0489dc3fb569795042b677d4d2762548ee03f22bc65f427334115adf",
+      "cpu_repeat_sha256": "9743201b0489dc3fb569795042b677d4d2762548ee03f22bc65f427334115adf",
+      "pbo_sha256": "9743201b0489dc3fb569795042b677d4d2762548ee03f22bc65f427334115adf",
       "crop_repetitions": 3,
       "crop_matches_full": true,
       "outside_sentinel_unchanged": true,
@@ -351,12 +351,12 @@
         "skipRows": 0,
         "skipPixels": 0
       },
-      "cpu_milliseconds_loaded_host": 360.30000001192093,
-      "pbo_milliseconds_loaded_host": 450.30000001192093,
+      "cpu_milliseconds_loaded_host": 283,
+      "pbo_milliseconds_loaded_host": 400.69999998807907,
       "crop_milliseconds_loaded_host": [
-        4.699999988079071,
-        2.9000000059604645,
-        1.800000011920929
+        4,
+        2,
+        1.2999999821186066
       ]
     },
     {
@@ -369,9 +369,9 @@
         4096
       ],
       "caller_bytes": 67108864,
-      "cpu_sha256": "0c92c01a269556bf27138252c836e38fcc0cb46e3f6f2feb4deb239dbd411c22",
-      "cpu_repeat_sha256": "0c92c01a269556bf27138252c836e38fcc0cb46e3f6f2feb4deb239dbd411c22",
-      "pbo_sha256": "0c92c01a269556bf27138252c836e38fcc0cb46e3f6f2feb4deb239dbd411c22",
+      "cpu_sha256": "98bb578f524fec9b044a1d1167d1656f7697e00fece2f82cbc994c4939d07b24",
+      "cpu_repeat_sha256": "98bb578f524fec9b044a1d1167d1656f7697e00fece2f82cbc994c4939d07b24",
+      "pbo_sha256": "98bb578f524fec9b044a1d1167d1656f7697e00fece2f82cbc994c4939d07b24",
       "crop_repetitions": 3,
       "crop_matches_full": true,
       "outside_sentinel_unchanged": true,
@@ -391,12 +391,12 @@
         "skipRows": 0,
         "skipPixels": 0
       },
-      "cpu_milliseconds_loaded_host": 294.10000002384186,
-      "pbo_milliseconds_loaded_host": 429,
+      "cpu_milliseconds_loaded_host": 282,
+      "pbo_milliseconds_loaded_host": 409.5,
       "crop_milliseconds_loaded_host": [
-        4.5999999940395355,
-        2.800000011920929,
-        1.600000023841858
+        4.0999999940395355,
+        1.899999976158142,
+        1.4000000059604645
       ]
     }
   ],

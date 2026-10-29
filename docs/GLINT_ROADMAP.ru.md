@@ -1,5 +1,19 @@
 # Glint: план проверки и развития
 
+## 0070 выбран: связанный DPR-пакет и gate, следующая сборка запущена
+
+В manifest/checkpoint выбран единый двухфайловый 0070: main-root DPR + семь
+Blink-кейсов. Gate `screen-widget` интегрирован в существующий verifier/batch:
+теперь 20 групп, требуется точное выполнение всех семи случаев в `blink_unittests`.
+[Выбор пакета](../native/drafts/environment/screen70-selection-observations.json).
+Сохранённый 001–069 остаётся для отката. Owned producer выполняет настоящие
+sync/hooks/patch перед j4 build; не подменяются stage markers и timestamps объектов.
+Сборка и C++/runtime-проверки нового пакета ещё не завершены.
+
+После изменения manifest/verifier заново выполнены scoped crash, TLS и большой
+WebGL-контроль на сохранённом 001–068; их source bindings обновлены реальными
+прогонами, старые raw-отчёты сохранены. Это не проверка бинарника 0070.
+
 ## 001–069 собран: desktop first-script прошёл, Mobile main DPR ещё FAIL
 
 **2079 шагов, j4, 1ч47м09.05с**; producer завершился exit 0, source/SDK/core

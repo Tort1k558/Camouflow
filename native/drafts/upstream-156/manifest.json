@@ -1535,6 +1535,10 @@
     {
       "file": "0069-native-logical-screen-inheritance.patch",
       "sha256": "8d52a3211c832df1d4729e688cfe2185e79c2c64ef5d6bc1c06635f175b16acb"
+    },
+    {
+      "file": "0070-native-logical-screen-lifecycle.patch",
+      "sha256": "fb4a7f9a630d3dff03b0b25993a685f73facb835dd7ffe16783bb7fe270ec1fa"
     }
   ],
   "build": {
