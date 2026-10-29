@@ -4,12 +4,16 @@
 
 | Check | Result | Boundary |
 | --- | --- | --- |
-| Full source replay | 65 selected patches + draft 0068 applied to 193 pinned 156.0.8078.36 inputs; GPU ordinals and GRIT preserved | Not GN or compilation |
+| Full source replay | 65 selected patches + draft 0068 applied to 194 pinned 156.0.8078.36 inputs; GPU ordinals and GRIT preserved | Not a complete GN build |
 | Context policy code | Captures mode/error once; domain-separated derivation; instance-owned compressor backend; math/readback paths exclusive | Feature disabled by default; manager admission unchanged |
-| Native fixtures | Seven prepared: feature-state caching, missing-policy rejection, independent contexts, seed preservation, invalid enum, exact direct DC | None compiled or executed |
+| Isolated objects | Six production objects + test TU compiled with original Chromium flags and a private header/source overlay | No link; does not prove graph completeness or all changed-layout consumers |
+| Native fixtures | Seven: feature-state caching, missing-policy rejection, independent contexts/handler backends, seed preservation, invalid enum, exact direct DC | Translation unit compiled; none executed |
+| Full local Python regression | 3,591 passed, one skipped in 297.61 seconds | Not execution of the C++ fixtures or remote CI evidence |
 | Active build isolation | All 201 frozen inputs unchanged | Draft is outside both selected engine manifests |
 
 Sources and hash-bound scope: [`context-integration.json`](../native/drafts/audio-dsp-math-v2/context-integration.json).
+The first test-object compile found an invalid `destination()` C++ call; it was
+corrected to `destinationNode()`. The failed evidence remains retained, not relabeled passing.
 The earlier 90 stock/Glint-off 148 captures calibrate the standalone native DSP
 baseline only; they do **not** verify this AudioContext integration or a float32
 device cohort. Fresh-156 calibration, native execution, lifecycle, realtime,

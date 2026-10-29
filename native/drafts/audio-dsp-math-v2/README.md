@@ -97,7 +97,7 @@ after selected patches 001–065**. It does not depend on the separate 157-only
 | Domain-separated HMAC of the existing Audio surface seed selects native/float32 math | Two experimental backends, not a real-device identity database |
 | Compressor nodes pass the captured policy to their own processor | No new key/seed wire format; no public manager capability |
 | Math-only offline rendering bypasses v1 post-read farbling | Missing policy still fails; no raw-result fallback |
-| Seven native fixtures cover caching, errors, independent contexts and literal DC | Prepared, **not compiled or executed** |
+| Seven native fixtures cover caching, errors, independent contexts, actual handler backend and literal DC | Test translation unit compiled; **not linked or executed** |
 
 `GlintAudioMathCandidate` is **disabled by default**. The legacy branch preserves
 the old readback path. Enabled contexts keep only the selected mode/error; the
@@ -105,11 +105,21 @@ local seed copy and derivation digest are cleansed after selection. This does
 not prove operating-system memory sanitization or all-context lifetime safety.
 
 [The descriptor](context-integration.json) binds the base manifest, patch,
-before/after files and eight additional pristine inputs. A full isolated replay
-of **65 selected patches + this draft** passed on **193 pinned source files**,
+before/after files and nine additional pristine inputs. A full isolated replay
+of **65 selected patches + this draft** passed on **194 pinned source files**,
 including GPU ordinal/GRIT checks. All 201 active-build inputs remained unchanged.
-This is source application, **not GN, compilation, native execution or runtime
-admission**. Existing matrix/browser evidence above still measures the previous
+Seven isolated objects then compiled with the existing Chromium flags and a
+private source/header overlay, serially at below-normal priority. Six production
+objects initially passed; the test object exposed `destination()` instead of the
+pinned C++ `destinationNode()` API. After correcting it and adding handler-backend
+assertions, all seven compiled. Failed evidence is retained; no suppression or
+compiler-flag workaround was added.
+The full local Python regression also passed: **3,591 passed, one skipped**
+(297.61 seconds); this does not execute the native fixtures.
+
+This is **not a complete GN build, link, native execution or runtime admission**.
+The overlay does not verify graph/dependency completeness or every consumer of
+the changed class layouts. Existing matrix/browser evidence above still measures the previous
 standalone prototype/native baseline, not this integration.
 
 The float32 output has **not** been observed as a real device cohort. A changed
@@ -126,5 +136,7 @@ Local evidence: `D:\Glint157ObjectCache\public-compressor-math-prototype-2026102
 Matrix evidence: `public-compressor-full-matrix-20261029-v2`,
 `compressor-matrix148-20261029-v1` and `compressor-matrix-driver-negatives-20261029-v1`
 under the same cache directory.
+Context integration evidence: `D:\Glint156Candidate\audio-math-context-full-replay-20261029-v4`
+and `audio-math-context-objects-20261029-v3`; failed object evidence remains in v2.
 Earlier failed adapter/link experiments and the initial power-category failure
 remain retained separately. The active 156 build's 201 input hashes stayed unchanged.

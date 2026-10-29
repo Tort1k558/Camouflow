@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "scope": "Unselected AudioContext math integration; source application only",
+  "scope": "Unselected AudioContext math integration; source replay and isolated object compilation only",
   "target_version": "156.0.8078.36",
   "target_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
   "required_base_manifest": "../upstream-156/manifest.json",
   "required_base_manifest_sha256": "4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0",
   "patch": {
     "file": "0068-native-audio-math-context-candidate.patch",
-    "sha256": "b4d215e4c7a200a553401647774565fb6441d8cd26daa59adc1f0a07c59ef8a1"
+    "sha256": "50e2a4f392803fe7eb4a89ad311650511752c5a3e8a7b0a6b8777b0363338020"
   },
   "selected_in_manifest": false,
   "compiled": false,
@@ -18,7 +18,7 @@
   "source_application": {
     "passed": true,
     "patch_count": 66,
-    "pristine_inputs": 193,
+    "pristine_inputs": 194,
     "source_invariants": {
       "gpu_commands": {
         "preserved": 321,
@@ -76,6 +76,12 @@
       "sha256": "bdc2cad4d61ee6e6707cca3442c0a2fe6aca72b0754387602b68a00e299f31fe",
       "bytes": 6972,
       "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc?format=TEXT"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h",
+      "sha256": "9efdd4bca17f204d3d24275de602d43897080aeca2f95c1ed9f6c782e0d79c0a",
+      "bytes": 3082,
+      "url": "https://chromium.googlesource.com/chromium/src.git/+/5a93aa59e3043e747eff68659dcf7d20193d160e/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h?format=TEXT"
     }
   ],
   "source_files": [
@@ -127,7 +133,7 @@
     {
       "path": "third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.h",
       "before_sha256": "4f34efc257498643ab31d1fa8b501d8f97d268e83709e74b32b9d1ce35b372d5",
-      "after_sha256": "1d6dae4b3dbc54ae55318016175bec7f766ab05fd408430ffece18a67c4799a5"
+      "after_sha256": "1807a68fe672db5e43c34cbf77152cc72f81d8afce1de6980d7fd744dfe71d73"
     },
     {
       "path": "third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc",
@@ -152,7 +158,12 @@
     {
       "path": "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc",
       "before_sha256": "b5032ac08410cb270f70a7ab5c3ee65d48a6adc05d6952e3103f4694f35504a5",
-      "after_sha256": "0027e374a02e2ddfe0cdefba06d7110a7a0c1676e0e1787a171f6e9cdabec631"
+      "after_sha256": "a99855c9a60f5eb2c10a5e7bcd90bc3e7846c3b6efdda1ceb9a947629aaecd1a"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h",
+      "before_sha256": "9efdd4bca17f204d3d24275de602d43897080aeca2f95c1ed9f6c782e0d79c0a",
+      "after_sha256": "f1072f1b102e81665fd93225bc5ee950c71f8055ffac3fc09df46122ac3ebe48"
     }
   ],
   "policy": {
@@ -178,12 +189,83 @@
     "GlintMathDirectConstantDoesNotUseReadbackFarbling"
   ],
   "remaining_unverified": [
-    "Chromium GN/object compilation and native fixture execution",
+    "Official Chromium GN build, linking and native fixture execution",
     "fresh 156 baseline and math-mode actual browser captures",
-    "node-handler backend observation and interleaved contexts",
+    "Execute node-handler backend fixtures and interleaved-context runtime controls",
     "navigation, lifecycle, realtime audio and AudioWorklet coverage",
     "HMAC failure injection, cleanup and concurrency stress",
     "empirical device cohorts, audible quality and performance",
     "manager admission, worker transport and versioned policy migration"
-  ]
+  ],
+  "compiled_browser": false,
+  "isolated_object_compilation": {
+    "passed": true,
+    "scope": "Seven isolated shadow objects only; not official GN, link or native execution",
+    "compiled_objects": 7,
+    "postguards_passed": true,
+    "serial_compilers": 1,
+    "priority": "below-normal",
+    "compiler_sha256": "46ec91bea01ec2a79087ed161a6cc39e5d99f8d90ae6423dbb6ca8e215fcf886",
+    "original_flags_preserved": true,
+    "command_changes": [
+      "source overlay and first include directory",
+      "private object/PDB outputs"
+    ],
+    "official_gn_build": false,
+    "linked": false,
+    "native_tests_executed": false,
+    "objects": [
+      {
+        "source": "third_party/blink/common/features.cc",
+        "exit_code": 0,
+        "object_created": true,
+        "object_sha256": "08e4198a072cfe408181a4858b844f2b9621edbdca149cf375b698a20d11f45a"
+      },
+      {
+        "source": "third_party/blink/renderer/platform/audio/dynamics_compressor.cc",
+        "exit_code": 0,
+        "object_created": true,
+        "object_sha256": "207cab2c1ff37f48f0642b2fdcbf6db03cb8da541c372f98cdc6eab7bc103995"
+      },
+      {
+        "source": "third_party/blink/renderer/modules/webaudio/base_audio_context.cc",
+        "exit_code": 0,
+        "object_created": true,
+        "object_sha256": "82b47ebf602cea8634cca281faa819e7ca44bda81da4036963274d71462d9a8e"
+      },
+      {
+        "source": "third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc",
+        "exit_code": 0,
+        "object_created": true,
+        "object_sha256": "d6417a6d7621e14ce4bf27d672bf5be582b370a811f3eb240cce54532b61e1f5"
+      },
+      {
+        "source": "third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc",
+        "exit_code": 0,
+        "object_created": true,
+        "object_sha256": "73b9b02a88caee0bd155883f7553a59165cd387831bcd5985cac63e11369f530"
+      },
+      {
+        "source": "third_party/blink/renderer/modules/webaudio/offline_audio_context.cc",
+        "exit_code": 0,
+        "object_created": true,
+        "object_sha256": "1954bbb471906e9e7ad3858830e5d70502d74c78f8b68b673ea01a0f548a4c53"
+      },
+      {
+        "source": "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc",
+        "exit_code": 0,
+        "object_created": true,
+        "object_sha256": "e26ca22a25924d1b28837413b09d65dcb348bb6bce42d3dc2da03eb727ba66aa"
+      }
+    ],
+    "initial_test_object_failure": {
+      "patch_sha256": "b4d215e4c7a200a553401647774565fb6441d8cd26daa59adc1f0a07c59ef8a1",
+      "source": "third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc",
+      "exit_code": 1,
+      "compiled_production_objects": 6,
+      "diagnostic": "no member named 'destination' in 'blink::OfflineAudioContext'",
+      "correction": "Use the pinned C++ API destinationNode(); no warning suppression or compiler flag change",
+      "failed_evidence_retained": true
+    }
+  }
 }

@@ -360,6 +360,15 @@ diff --git a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_han
    std::unique_ptr<DynamicsCompressor> dynamics_compressor_;
    scoped_refptr<AudioParamHandler> threshold_;
    scoped_refptr<AudioParamHandler> knee_;
+@@ -68,6 +72,8 @@
+   AudioFloatArray param_values_;
+ 
+   FRIEND_TEST_ALL_PREFIXES(DynamicsCompressorNodeTest, ProcessorLifetime);
++  FRIEND_TEST_ALL_PREFIXES(OfflineAudioContextTest,
++                           GlintMathContextModesAreIndependentAndSeedUnchanged);
+ };
+ 
+ }  // namespace blink
 diff --git a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc
 --- a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc
 +++ b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.cc
@@ -540,7 +549,7 @@ new file mode 100644
 diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
 --- a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
 +++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
-@@ -4,29 +4,35 @@
+@@ -4,29 +4,37 @@
  
  #include "third_party/blink/renderer/modules/webaudio/offline_audio_context.h"
  
@@ -574,6 +583,8 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
  #include "third_party/blink/renderer/modules/webaudio/audio_buffer.h"
 +#include "third_party/blink/renderer/modules/webaudio/audio_param.h"
 +#include "third_party/blink/renderer/modules/webaudio/constant_source_node.h"
++#include "third_party/blink/renderer/modules/webaudio/dynamics_compressor_handler.h"
++#include "third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h"
  #include "third_party/blink/renderer/platform/bindings/exception_state.h"
  #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
  #include "third_party/blink/renderer/platform/heap/thread_state.h"
@@ -583,7 +594,7 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
  
  namespace blink {
  
-@@ -177,7 +183,9 @@
+@@ -177,7 +185,9 @@
  }
  
  namespace {
@@ -594,7 +605,7 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
    auto holder = std::make_unique<DummyPageHolder>();
    const KURL url(NullUrl(), "https://audio-surface.test/");
    auto params = WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
-@@ -192,7 +200,7 @@
+@@ -192,7 +202,7 @@
      policy.canvas.fill(1);
      policy.webgl.fill(2);
      policy.webgpu.fill(3);
@@ -603,7 +614,7 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
      params->glint_document_surface_policy = glint::candidate::DocumentSurfacePolicy{
          params->storage_key, std::move(policy)};
    }
-@@ -231,5 +239,166 @@
+@@ -231,5 +241,182 @@
    EXPECT_EQ(context->state().AsStringView(), "suspended");
  }
  
@@ -709,8 +720,24 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
 +      std::ranges::all_of(**float_seed, [](uint8_t v) { return v == 3; }));
 +  EXPECT_TRUE(
 +      std::ranges::all_of(**native_seed, [](uint8_t v) { return v == 4; }));
-+  EXPECT_TRUE(float_context->createDynamicsCompressor(ASSERT_NO_EXCEPTION));
-+  EXPECT_TRUE(native_context->createDynamicsCompressor(ASSERT_NO_EXCEPTION));
++  auto* float_node =
++      float_context->createDynamicsCompressor(ASSERT_NO_EXCEPTION);
++  auto* native_node =
++      native_context->createDynamicsCompressor(ASSERT_NO_EXCEPTION);
++  auto* second_float_node =
++      float_context->createDynamicsCompressor(ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(float_node);
++  ASSERT_TRUE(native_node);
++  ASSERT_TRUE(second_float_node);
++  EXPECT_EQ(
++      float_node->GetDynamicsCompressorHandler().glint_math_policy_.backend(),
++      glint::candidate::CompressorMathBackend::kFloat32);
++  EXPECT_EQ(
++      native_node->GetDynamicsCompressorHandler().glint_math_policy_.backend(),
++      glint::candidate::CompressorMathBackend::kNative);
++  EXPECT_EQ(second_float_node->GetDynamicsCompressorHandler()
++                .glint_math_policy_.backend(),
++            glint::candidate::CompressorMathBackend::kFloat32);
 +}
 +
 +TEST_F(OfflineAudioContextTest, GlintMathEnabledCaptureRemainsAfterDisable) {
@@ -751,7 +778,7 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
 +    auto* source = context->createConstantSource(ASSERT_NO_EXCEPTION);
 +    ASSERT_TRUE(source);
 +    source->offset()->setValue(0.25f);
-+    source->connect(context->destination(), 0, 0, ASSERT_NO_EXCEPTION);
++    source->connect(context->destinationNode(), 0, 0, ASSERT_NO_EXCEPTION);
 +    source->start(0, ASSERT_NO_EXCEPTION);
 +    ScriptPromiseTester tester(
 +        scope.GetScriptState(),
@@ -768,5 +795,17 @@ diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_t
 +    }
 +  }
 +}
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h
+--- a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h
++++ b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.h
+@@ -71,6 +71,8 @@
+   Member<AudioParam> release_;
+ 
+   FRIEND_TEST_ALL_PREFIXES(DynamicsCompressorNodeTest, ProcessorLifetime);
++  FRIEND_TEST_ALL_PREFIXES(OfflineAudioContextTest,
++                           GlintMathContextModesAreIndependentAndSeedUnchanged);
+ };
  
  }  // namespace blink

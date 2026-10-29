@@ -4449,7 +4449,7 @@ def test_audio_math_context_draft_binds_source_only_integration():
     assert len(manifest["patches"]) == 65
     assert descriptor["target_revision"] == manifest["target_revision"]
     assert descriptor["target_version"] == manifest["target_version"] == "156.0.8078.36"
-    for field in ("selected_in_manifest", "compiled", "native_tests_executed",
+    for field in ("selected_in_manifest", "compiled", "compiled_browser", "native_tests_executed",
                   "runtime_verified", "variant_device_cohort_verified", "production_admitted"):
         assert descriptor[field] is False
     patch = descriptor["patch"]
@@ -4458,15 +4458,30 @@ def test_audio_math_context_draft_binds_source_only_integration():
     assert b"\r" not in body and not body.startswith(b"\xef\xbb\xbf")
     assert not any(Path(row["file"]).name == patch["file"] for row in manifest["patches"])
     extra = descriptor["extra_pristine_sources"]
-    assert len(extra) == len({row["path"] for row in extra}) == 8
+    assert len(extra) == len({row["path"] for row in extra}) == 9
     assert not {row["path"] for row in extra} & {row["path"] for row in manifest["source_files"]}
     evidence = descriptor["source_application"]
     assert evidence["passed"] and evidence["patch_count"] == 66
-    assert evidence["pristine_inputs"] == len(extra) + len(manifest["source_files"]) == 193
+    assert evidence["pristine_inputs"] == len(extra) + len(manifest["source_files"]) == 194
     assert evidence["frozen_build_inputs_unchanged"] == 201
     assert evidence["source_invariants"] == {
         "gpu_commands": {"preserved": 321, "appended": 577}, "grit_structure_preserved": True}
-    assert len(descriptor["source_files"]) == 15 and descriptor["remaining_unverified"]
+    assert len(descriptor["source_files"]) == 16 and descriptor["remaining_unverified"]
+    objects = descriptor["isolated_object_compilation"]
+    assert objects["passed"] and objects["postguards_passed"]
+    assert objects["compiled_objects"] == len(objects["objects"]) == 7
+    assert objects["serial_compilers"] == 1 and objects["priority"] == "below-normal"
+    assert objects["original_flags_preserved"] is True
+    for field in ("official_gn_build", "linked", "native_tests_executed"):
+        assert objects[field] is False
+    assert len(objects["compiler_sha256"]) == 64
+    assert len({row["source"] for row in objects["objects"]}) == 7
+    assert all(row["exit_code"] == 0 and row["object_created"]
+               and len(row["object_sha256"]) == 64 for row in objects["objects"])
+    failed = objects["initial_test_object_failure"]
+    assert failed["exit_code"] == 1 and failed["compiled_production_objects"] == 6
+    assert failed["failed_evidence_retained"] and failed["patch_sha256"] != patch["sha256"]
+    assert failed["source"].endswith("/offline_audio_context_test.cc")
 
 
 def test_audio_math_context_draft_separates_caching_and_readback_pipelines():
@@ -4500,6 +4515,8 @@ def test_audio_math_context_draft_separates_caching_and_readback_pipelines():
     fixtures = re.findall(r"TEST_F\(OfflineAudioContextTest,\s*(GlintMath\w+)\)", added)
     assert set(fixtures) == set(data["prepared_tests"]) and len(fixtures) == 7
     assert "source->offset()->setValue(0.25f)" in added
+    assert "source->connect(context->destinationNode(), 0, 0, ASSERT_NO_EXCEPTION)" in added
+    assert "GetDynamicsCompressorHandler().glint_math_policy_.backend()" in added
     assert "EXPECT_EQ(sample, 0.25f)" in added
     assert "kNotReadableError" in added and "kUnavailablePolicy" in added
 
