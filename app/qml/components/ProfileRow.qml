@@ -11,6 +11,7 @@ GlassCard {
     property string browser: "Camoufox"
     property string proxy: "None"
     property string health: "Not checked"
+    property string healthTooltip: ""
     property string lastActive: "idle"
     property string status: "Stopped"
     property string tags: "#profile"
@@ -67,9 +68,9 @@ GlassCard {
             Text { textFormat: Text.PlainText; text: root.tags + "  /  " + root.ident.substring(0, 8); color: Theme.primaryLight; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
         }
 
-        InfoColumn { title: "Browser"; value: root.browser; Layout.minimumWidth: 110; Layout.preferredWidth: 110 }
+        InfoColumn { title: "Browser"; value: root.browser; tooltip: root.healthTooltip; Layout.minimumWidth: 110; Layout.preferredWidth: 110 }
         InfoColumn { title: "Proxy"; value: root.proxy; Layout.fillWidth: true; Layout.minimumWidth: 90; Layout.preferredWidth: 180 }
-        InfoColumn { visible: root.width >= 1050; title: "Health"; value: root.health; Layout.minimumWidth: 72; Layout.preferredWidth: 86 }
+        InfoColumn { visible: root.width >= 1050; title: "Health / resources"; value: root.health; tooltip: root.healthTooltip; Layout.minimumWidth: 120; Layout.preferredWidth: 180 }
         InfoColumn { visible: root.width >= 1150; title: "Last Active"; value: root.lastActive; Layout.minimumWidth: 68; Layout.preferredWidth: 90 }
 
         Row {

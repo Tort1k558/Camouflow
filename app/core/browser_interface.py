@@ -115,6 +115,8 @@ class BrowserInterface:
         self._camoufox_ctx: Optional[AsyncCamoufox] = None
         self._cloakbrowser_context = None
         self._native_runtime = None
+        self._native_process_monitor = None
+        self._native_resource_error = None
         self._last_native_close_report = None
         self._storage_state_payload: Optional[Dict[str, object]] = None
         self._storage_state_native = False
@@ -134,6 +136,7 @@ class BrowserInterface:
             context_provider=lambda: self.context,
             page_provider=lambda: self.page,
             logger=self.logger,
+            resource_provider=self._native_resource_snapshot if self.browser_engine == BROWSER_ENGINE_NATIVE and os.name == "nt" else None,
         )
 
         if proxy and not self._proxy_config:
@@ -507,9 +510,36 @@ class BrowserInterface:
         headless = self._browser_settings.get("headless", False)
         if not isinstance(headless, bool):
             raise ValueError("Native headless setting must be a boolean")
+        monitor = self._native_process_monitor
+        if monitor is not None:
+            await monitor.close()
+            if self._native_process_monitor is monitor:
+                self._native_process_monitor = None
+        if self._native_runtime is not None and self._native_runtime.has_resources:
+            raise RuntimeError("Previous Native runtime has not finished closing")
+        self._native_resource_error = None
         self._native_runtime = NativeRuntime(Path(self.user_data_dir), executable, configuration)
         self.context = await self._native_runtime.start(headless=headless, proxy=self._prepare_chromium_proxy())
         self.browser = self.context.browser
+
+        if os.name == "nt":
+            from .native.process_monitor import BrowserProcessMonitor
+            try:
+                self._native_process_monitor = await BrowserProcessMonitor.bind(self.context)
+            except Exception as error:
+                self._native_resource_error = type(error).__name__
+                self.logger.warning("Glint process-tree telemetry unavailable for %s", self.profile_name, exc_info=True)
+
+    def _native_resource_snapshot(self) -> Dict[str, Any]:
+        monitor = self._native_process_monitor
+        if monitor is None:
+            if self._native_resource_error is not None:
+                return {"state": "unavailable", "error_type": self._native_resource_error}
+            return {"state": "warming"}
+        try:
+            return {"state": "ready", **monitor.sample()}
+        except (OSError, ValueError, RuntimeError) as error:
+            return {"state": "unavailable", "error_type": type(error).__name__}
 
     def _start_process_watchdog(self) -> None:
         self._lifecycle.start_process_watchdog()
@@ -531,16 +561,19 @@ class BrowserInterface:
         if report is None:
             return None
         runtime = self._native_runtime
-        return {**report, "resources_retained": runtime is not None and runtime.has_resources}
+        return {**report, "resources_retained": (runtime is not None and runtime.has_resources)
+                or self._native_process_monitor is not None}
 
     async def close(self, force: bool = False):
         close_started = time.monotonic()
         native_report = None
         if self.browser_engine == BROWSER_ENGINE_NATIVE:
             if (getattr(self, "_last_native_close_report", None) is None or self.browser or self.context
-                    or (self._native_runtime is not None and self._native_runtime.has_resources)):
+                    or (self._native_runtime is not None and self._native_runtime.has_resources)
+                    or self._native_process_monitor is not None):
                 self._last_native_close_report = {"complete": False, "kept_open": False, "forced": False,
                                                   "teardown_error": None, "cleanup_error": None,
+                                                  "telemetry_cleanup_error": None,
                                                   "elapsed_seconds": None}
             native_report = self._last_native_close_report
         if self.keep_browser_open and (self.browser or self.context) and not force:
@@ -556,6 +589,7 @@ class BrowserInterface:
         self.logger.info("Closing %s resources for %s", self.browser_engine, self.profile_name)
         teardown_timeout = (self._native_runtime.CLOSE_TIMEOUT_SECONDS if self._native_runtime is not None
                             else self.TEARDOWN_TIMEOUT_SECONDS)
+        telemetry_cancelled = None
         try:
             await asyncio.wait_for(self._teardown_browser(), timeout=teardown_timeout)
         except asyncio.TimeoutError:
@@ -580,6 +614,19 @@ class BrowserInterface:
                 "Browser teardown failed for %s", self.profile_name, exc_info=True
             )
         finally:
+            if self._native_process_monitor is not None:
+                try:
+                    await self._native_process_monitor.close()
+                except asyncio.CancelledError as error:
+                    telemetry_cancelled = error
+                    if native_report is not None:
+                        native_report["telemetry_cleanup_error"] = "cancelled"
+                except Exception as error:
+                    if native_report is not None:
+                        native_report["telemetry_cleanup_error"] = type(error).__name__
+                    self.logger.warning("Glint telemetry cleanup failed for %s", self.profile_name, exc_info=True)
+                else:
+                    self._native_process_monitor = None
             if self._native_runtime is not None:
                 try:
                     await self._native_runtime.close()
@@ -625,6 +672,8 @@ class BrowserInterface:
                 native_report["complete"] = True
                 if native_report["elapsed_seconds"] is None:
                     native_report["elapsed_seconds"] = round(time.monotonic() - close_started, 3)
+        if telemetry_cancelled is not None:
+            raise telemetry_cancelled
 
     def add_process_exit_callback(self, callback: Callable[[], None]) -> None:
         self._lifecycle.add_process_exit_callback(callback)

@@ -18,6 +18,7 @@ class BrowserLifecycleManager:
         context_provider: Callable[[], object],
         page_provider: Callable[[], object],
         logger,
+        resource_provider: Optional[Callable[[], Dict[str, Any]]] = None,
     ) -> None:
         self.profile_name = profile_name
         self._user_data_dir_provider = user_data_dir_provider
@@ -25,6 +26,7 @@ class BrowserLifecycleManager:
         self._context_provider = context_provider
         self._page_provider = page_provider
         self.logger = logger
+        self._resource_provider = resource_provider
 
         self._close_callbacks: List[Callable[[], None]] = []
         self._closed_notified = False
@@ -256,6 +258,14 @@ class BrowserLifecycleManager:
                         "profile_processes": len(processes),
                         "zombie_suspected": len(processes) > 1,
                     }
+                    if self._resource_provider is not None:
+                        try:
+                            tree = self._resource_provider()
+                            if not isinstance(tree, dict) or tree.get("state") not in {"ready", "warming", "unavailable"}:
+                                raise ValueError("Invalid process-tree resource report")
+                            resource["process_tree"] = tree
+                        except Exception as error:
+                            resource["process_tree"] = {"state": "unavailable", "error_type": type(error).__name__}
                     self.notify_resource(resource)
                     if resource["over_limit"]:
                         self.logger.warning(

@@ -5291,7 +5291,7 @@ def test_windows_resource_cpu_intervals_and_input_validation(monkeypatch):
     from types import SimpleNamespace
     from scripts import native_build as build
 
-    path = build.ROOT / "native/drafts/resources/windows_process_resources.py"
+    path = build.ROOT / "app/core/native/windows_process_resources.py"
     spec = importlib.util.spec_from_file_location("glint_resource_test", path)
     module = importlib.util.module_from_spec(spec)
     monkeypatch.setitem(sys.modules, spec.name, module)
@@ -5330,7 +5330,7 @@ def test_windows_resource_cpu_intervals_and_input_validation(monkeypatch):
 
 def test_windows_resource_tree_selection_and_intervals_are_identity_bound():
     from dataclasses import replace
-    from native.drafts.resources import windows_process_tree as tree
+    from app.core.native import windows_process_tree as tree
 
     node = tree.ProcessNode
     rows = (node(1, 0, "root"), node(2, 1, "child"), node(3, 2, "grandchild"), node(9, 0, "other"))
@@ -5371,7 +5371,7 @@ def test_windows_resource_tree_selection_and_intervals_are_identity_bound():
 def test_windows_resource_tree_capture_refuses_churn_reuse_and_partial_samples():
     from dataclasses import replace
     import time
-    from native.drafts.resources import windows_process_tree as tree
+    from app.core.native import windows_process_tree as tree
 
     rows = (tree.ProcessNode(1, 0, "root"), tree.ProcessNode(2, 1, "child"))
     anchor = tree.ProcessSample(1, 100, time.monotonic_ns(), 0, 0, 1024, 2048, 3072)

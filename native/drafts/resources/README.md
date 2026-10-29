@@ -1,5 +1,28 @@
 # Windows process resource observer
 
+## Manager integration package
+
+The application implementation now lives in `app/core/native/process_monitor.py`
+and the canonical Windows reader modules beside it. Glint binds telemetry to its
+owned CDP connection and root creation identity. The existing watchdog publishes
+complete tree measurements or an explicit unavailable state; CPU intervals never
+substitute zero for missing data. Closing the browser invalidates its monitor.
+
+The profile row exposes a compact tree-working-set label and a tooltip for private
+commit, process count and observed CPU cores. Shared working sets are not unique
+physical RAM. The legacy process memory limit and termination path are unchanged;
+the selected legacy PID is not assumed to be the authenticated browser root.
+Queued samples from a previous instance of the same profile are rejected.
+
+This package is being verified in an isolated working copy while 001-067 builds.
+It is not yet integrated into main or admitted as a release. Its owned runtime
+check used preserved **001-066**, not the unfinished 001-067 output.
+
+The following source files and observation records are frozen historical
+fixtures. Production imports use `app.core.native`, not this draft directory.
+
+## Historical reader and tree evidence
+
 **Read-only draft, not integrated into the manager/watchdog.** No browser limit,
 automatic termination, launch policy or production capability changes.
 

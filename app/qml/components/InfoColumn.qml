@@ -1,10 +1,17 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import theme 1.0
 
 Column {
+    id: root
     property string title: "Title"
     property string value: "Value"
+    property string tooltip: ""
+    HoverHandler { id: hover }
+    ToolTip.visible: hover.hovered && root.tooltip.length > 0
+    ToolTip.text: root.tooltip
+    ToolTip.delay: 400
     spacing: 4
     Layout.minimumWidth: 44
     Layout.fillWidth: true

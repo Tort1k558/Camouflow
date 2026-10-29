@@ -41,6 +41,7 @@ from app.storage.db import (
 from app.ui.bridge.background import BackgroundRead
 from app.ui.bridge.cloud_permissions import allows, deny_message
 from app.ui.bridge.models import DictListModel
+from app.ui.profile_resources import resource_presentation
 from app.utils.parsing import DEFAULT_ACCOUNT_TEMPLATE, parse_account_line
 
 LOGGER = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ class ProfilesBridge(QObject):
     def __init__(self, app_state=None, parent=None) -> None:
         super().__init__(parent)
         self._model = DictListModel([
-            "name", "id", "browser", "proxy", "health", "lastActive", "status", "stage", "tags", "running", "lockedBy", "lockExpires", "startAllowed", "stopAllowed", "editAllowed", "deleteAllowed", "unlockAllowed"
+            "name", "id", "browser", "proxy", "health", "healthTooltip", "lastActive", "status", "stage", "tags", "running", "lockedBy", "lockExpires", "startAllowed", "stopAllowed", "editAllowed", "deleteAllowed", "unlockAllowed"
         ], parent=self)
         self._selection_model = DictListModel(["name"], parent=self)
         self._stages_model = DictListModel(["name", "count", "selected"], parent=self)
@@ -447,8 +448,9 @@ class ProfilesBridge(QObject):
             health = acc.get("health_check") if isinstance(acc.get("health_check"), dict) else settings.get("health_check")
             health_status = str(health.get("status") or "not checked").replace("_", " ").title() if isinstance(health, dict) else "Not checked"
             resource = self._browser_resources.get(name) if running else None
-            if isinstance(resource, dict) and resource.get("memory_mb") is not None:
-                health_status += f" · {resource['memory_mb']} MB"
+            resource_label, resource_tooltip = resource_presentation(resource)
+            if resource_label:
+                health_status += " · " + resource_label
             if engine == "cloakbrowser":
                 browser_label = "CloakBrowser"
             elif engine == "native":
@@ -461,6 +463,7 @@ class ProfilesBridge(QObject):
                 "browser": browser_label,
                 "proxy": self._proxy_label(acc),
                 "health": health_status,
+                "healthTooltip": resource_tooltip,
                 "lastActive": str(acc.get("last_active") or "now" if running else acc.get("last_active") or "idle"),
                 **self._action_state(name, self._accounts_index.get(name) if session_matches else None, permissions),
                 "stage": stage or "No tag",
@@ -1365,7 +1368,7 @@ class ProfilesBridge(QObject):
         browser.add_ready_callback(lambda: self.uiCall.emit(self._render_accounts))
         browser.add_close_callback(stopped.set)
         browser.add_process_exit_callback(stopped.set)
-        browser.add_resource_callback(lambda resource: self.browserResourceUpdated.emit(name, resource))
+        browser.add_resource_callback(lambda resource: self.browserResourceUpdated.emit(name, (browser, resource)))
         self._live_browsers[name] = browser
         self._emit_message(f"Starting browser for {name}")
         self._render_accounts()
@@ -1412,7 +1415,10 @@ class ProfilesBridge(QObject):
 
     @pyqtSlot(str, object)
     def _on_browser_resource_updated(self, name: str, resource: object) -> None:
-        if not isinstance(resource, dict) or self._live_browsers.get(name) is None:
+        if not isinstance(resource, tuple) or len(resource) != 2:
+            return
+        browser, resource = resource
+        if browser is None or not isinstance(resource, dict) or self._live_browsers.get(name) is not browser:
             return
         previous = self._browser_resources.get(name, {})
         self._browser_resources[name] = dict(resource)

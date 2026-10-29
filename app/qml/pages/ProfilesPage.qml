@@ -215,6 +215,7 @@ Item {
                 browser: model.browser
                 proxy: model.proxy
                 health: model.health
+                healthTooltip: model.healthTooltip
                 lastActive: model.lastActive
                 status: model.status
                 tags: model.tags
