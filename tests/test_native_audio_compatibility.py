@@ -312,7 +312,9 @@ def test_audio_profile_selector_matches_two_stage_reference_without_returning_ke
 
 
 @pytest.mark.parametrize("change_key", [False, True])
-def test_audio_profile_audit_precedes_capture_and_preserves_exact_key_on_restart(tmp_path, monkeypatch, change_key):
+@pytest.mark.parametrize("custom_collector", [False, True])
+def test_audio_profile_audit_precedes_capture_and_preserves_exact_key_on_restart(tmp_path, monkeypatch, change_key,
+                                                                              custom_collector):
     from app.core.native import runtime as runtime_module, identity as identity_module
 
     first = identity_module.NativePrivacyIdentity(bytes(32))
@@ -352,10 +354,14 @@ def test_audio_profile_audit_precedes_capture_and_preserves_exact_key_on_restart
 
     monkeypatch.setattr(runtime_module, "NativeRuntime", Runtime)
     monkeypatch.setattr(audio, "browser_arguments", AsyncMock(side_effect=lambda context: context.arguments))
-    monkeypatch.setattr(audio, "measure", capture)
+    if custom_collector:
+        monkeypatch.setattr(audio, "measure", AsyncMock(side_effect=AssertionError("Default collector was selected")))
+    else:
+        monkeypatch.setattr(audio, "measure", capture)
     report = {"modes": {}, "cleanup_errors": []}
     invocation = audio.measure_modes(tmp_path / "chrome.exe", tmp_path, None, ("baseline", "math"), report,
-                                     "revision", "version", audit_backend=True)
+                                     "revision", "version", audit_backend=True,
+                                     collector=capture if custom_collector else None)
     if change_key:
         with pytest.raises(ValueError, match="profile key changed"):
             asyncio.run(invocation)

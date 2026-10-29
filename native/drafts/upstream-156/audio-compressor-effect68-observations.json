@@ -1,0 +1,529 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Same eight existing owned Audio profiles; full-length deterministic compressor signals, baseline/math/restart; not device cohort or privacy admission",
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "cohort_report_sha256": "3ab772985f6bef350c98b6ebc7045b4cabc3bb52b4084d0b877295a432a1aadf",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "36d1a7c35d059d60c41c9c46d48c623918cd2ed63e746d6473c4993d1d729a7d",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "1250a9c4c72d3e85736b7ff99cccbd2ff0c0ca7ccebf56fb7d7ed025b8480dbc",
+  "candidate_manifest_sha256": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
+  "comparisons": [
+    {
+      "index": 0,
+      "reference_selector": 1,
+      "changed_cases": [
+        "random-default",
+        "constant-compressed",
+        "ratio-one"
+      ],
+      "restart_exact": true,
+      "matches_prior_float_prototype": true
+    },
+    {
+      "index": 1,
+      "reference_selector": 1,
+      "changed_cases": [
+        "random-default",
+        "constant-compressed",
+        "ratio-one"
+      ],
+      "restart_exact": true,
+      "matches_prior_float_prototype": true
+    },
+    {
+      "index": 2,
+      "reference_selector": 0,
+      "changed_cases": [],
+      "restart_exact": true,
+      "matches_prior_float_prototype": false
+    },
+    {
+      "index": 3,
+      "reference_selector": 0,
+      "changed_cases": [],
+      "restart_exact": true,
+      "matches_prior_float_prototype": false
+    },
+    {
+      "index": 4,
+      "reference_selector": 0,
+      "changed_cases": [],
+      "restart_exact": true,
+      "matches_prior_float_prototype": false
+    },
+    {
+      "index": 5,
+      "reference_selector": 1,
+      "changed_cases": [
+        "random-default",
+        "constant-compressed",
+        "ratio-one"
+      ],
+      "restart_exact": true,
+      "matches_prior_float_prototype": true
+    },
+    {
+      "index": 6,
+      "reference_selector": 1,
+      "changed_cases": [
+        "random-default",
+        "constant-compressed",
+        "ratio-one"
+      ],
+      "restart_exact": true,
+      "matches_prior_float_prototype": true
+    },
+    {
+      "index": 7,
+      "reference_selector": 1,
+      "changed_cases": [
+        "random-default",
+        "constant-compressed",
+        "ratio-one"
+      ],
+      "restart_exact": true,
+      "matches_prior_float_prototype": true
+    }
+  ],
+  "effect_observed_for_all_float_reference_profiles": true,
+  "exact_private_identity_files_retained": true,
+  "raw_report_sha256": "d81c5c210fb2169b9deee7237d93e98d2f50048fb54250816a099b9d83274b16",
+  "required_manifest": "checkpoints/001-068.json",
+  "profile_count": 8,
+  "cases_per_phase": 15,
+  "repetitions_per_case": 3,
+  "capture_count": 1080,
+  "profiles": [
+    {
+      "index": 0,
+      "reference_selector": 1,
+      "modes": {
+        "baseline": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "b5e98ada6a1490f91101eccddbcf1e1f00784c09a39d08a86df7c0847f07bb2e"
+        },
+        "math-restart": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "b5e98ada6a1490f91101eccddbcf1e1f00784c09a39d08a86df7c0847f07bb2e"
+        }
+      }
+    },
+    {
+      "index": 1,
+      "reference_selector": 1,
+      "modes": {
+        "baseline": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "b5e98ada6a1490f91101eccddbcf1e1f00784c09a39d08a86df7c0847f07bb2e"
+        },
+        "math-restart": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "b5e98ada6a1490f91101eccddbcf1e1f00784c09a39d08a86df7c0847f07bb2e"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "reference_selector": 0,
+      "modes": {
+        "baseline": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math-restart": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "reference_selector": 0,
+      "modes": {
+        "baseline": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math-restart": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "reference_selector": 0,
+      "modes": {
+        "baseline": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math-restart": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        }
+      }
+    },
+    {
+      "index": 5,
+      "reference_selector": 1,
+      "modes": {
+        "baseline": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "b5e98ada6a1490f91101eccddbcf1e1f00784c09a39d08a86df7c0847f07bb2e"
+        },
+        "math-restart": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "b5e98ada6a1490f91101eccddbcf1e1f00784c09a39d08a86df7c0847f07bb2e"
+        }
+      }
+    },
+    {
+      "index": 6,
+      "reference_selector": 1,
+      "modes": {
+        "baseline": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "b5e98ada6a1490f91101eccddbcf1e1f00784c09a39d08a86df7c0847f07bb2e"
+        },
+        "math-restart": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "b5e98ada6a1490f91101eccddbcf1e1f00784c09a39d08a86df7c0847f07bb2e"
+        }
+      }
+    },
+    {
+      "index": 7,
+      "reference_selector": 1,
+      "modes": {
+        "baseline": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "ede2c26d52ed59361f06d77b3f231aec3a5fa523522e856f3e96b6cf134ac078"
+        },
+        "math": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "b5e98ada6a1490f91101eccddbcf1e1f00784c09a39d08a86df7c0847f07bb2e"
+        },
+        "math-restart": {
+          "passed": true,
+          "resources_closed": true,
+          "captures": 45,
+          "capture_inventory_sha256": "b5e98ada6a1490f91101eccddbcf1e1f00784c09a39d08a86df7c0847f07bb2e"
+        }
+      }
+    }
+  ],
+  "internal_backend_directly_observed": false,
+  "device_cohort_verified": false,
+  "full_profile_uniqueness_verified": false,
+  "note": "Two observed compressor-output classes on one Windows host, not eight distinct Audio identities or a verified real-device cohort. Short 512-frame fidelity graphs remain non-discriminating; complete 8192+-frame cases reveal the effect.",
+  "observed_output_classes": 2,
+  "source_sha256_at_measurement": {
+    "app\\ui\\scenario_debugger_window.py": "3579634d6e7ad21d729ed2340267edf035b798ca3326f0faa8cdd93e9bb17473",
+    "scripts\\verify_native_nested_canvas.py": "f50d6a50bc567f1390d7212d715dc473b4967c1e0e53e5ed0a2a775a77bb039d",
+    "native\\drafts\\upstream-156\\patches\\0014-native-private-key-service-lifecycle.patch": "afa92b06380187aa34376ace3785e91d31512b704cb4b98a1b635fe133d453b0",
+    "native\\fixtures\\audio\\worklet.js": "35877e851d90557c6d269e12ed52093c4be36ab271e49f997f259a4f2de38d76",
+    "native\\drafts\\upstream-156\\patches\\0004-native-automation-exposure.patch": "c39be12d074a6a39b275d5553d1a8606ea641ca34e91861c227133b87b0a59ad",
+    "native\\drafts\\upstream-156\\patches\\0032-native-document-surface-policy.patch": "9238b924c4cb7d63082a9e03f5ff7db07b166ff475c007a2991830c37d4dfdff",
+    "app\\main.py": "69fdb575a213310d87aff04fa01b1cfc806e49a17d7701b54a1cf0dbde94c501",
+    "scripts\\verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "native\\drafts\\upstream-156\\patches\\0024-native-service-worker-canvas-thread-handoff.patch": "3c5a321e2d5d7eeeb27fe7ae77f015de29552db5733b231f177765b66891a6d5",
+    "scripts\\verify_native_document_drafts.py": "5b710a9bdbe92373dc0a989bdd9663934143eb6027293462425f42c8e1b1b343",
+    "scripts\\verify_native_identity_cpp.py": "346d9854e7fed64a7eb5ea67a5160b5bd57cb08d6138ea4c8130aa5ad2247ae9",
+    "native\\drafts\\audio-dsp-math-v2\\audio-context-lifecycle-control.js": "0bb336a50637c2f64afab1ba9f5015102b759e239bceb4128705b6b314cf8934",
+    "native\\drafts\\audio-dsp-math-v2\\compressor-matrix-control.js": "e3e8258fb8d206b794f186fbf2090a24533d11d27b2f774ee2e6d290abfb2774",
+    "scripts\\native_font_rendering.py": "395496055c68572335577066af61cc16cc918d78f3ca487ba80e3b1ffec1b3cb",
+    "scripts\\verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "native\\drafts\\upstream-156\\patches\\0054-native-profile-identity-launch.patch": "b397535ebb5c2b24170fbe2993b882f29def3d1d4a1843d1be4c0df01f0e266a",
+    "app\\services\\ai_agent\\extraction.py": "3dbaff47a048f5326e3fadca6ebeef39141676da174b7f0c6fb2ac60f85ab3d0",
+    "app\\core\\camoufox_profile_fingerprint.py": "54a15ce62f2b274c6940a592a08671ed7166f5ed198a855b6deefbf16fd6bb1c",
+    "scripts\\verify_native_rebase_draft.py": "47b09c56bf62af52b68ae95391ffa98d3d35a3cb0c0719938c540f66be40cac2",
+    "scripts\\verify_native_automation.py": "5ad7ae47edb275cf44d5bef4989da3a29759971219a44b1a58637a2f29d4007a",
+    "scripts\\native_canvas_hdr.py": "049bdef22ac5c632c05f8a34e03231a65705266ba761274bec8095eb0e92bb95",
+    "native\\drafts\\upstream-156\\patches\\0010-native-windows-profile-namespace.patch": "2658c560005b86977c473028a8926c5d173b0219af426d3a6210b4b772740dd4",
+    "native\\drafts\\upstream-156\\patches\\0047-native-webgl-clipped-publication.patch": "002b7bee104aa08cdaed54f124470f45814e1bd639d50936ba75f34faf0bc091",
+    "native\\drafts\\audio-dsp-math-v2\\compressor-control.js": "0061086629ca644dd205d7f57f1bbaffa8b6f54c748e81eb2211b33929e61d26",
+    "app\\services\\proxy_policy.py": "f874a6ea4982ad6252a9e49287bca354983f71cb55a255b077579813d7f0022a",
+    "native\\drafts\\upstream-156\\patches\\0061-native-glint-ui-resources.patch": "7088a0b6d55e6b72d1a4b2d7291e05438db383ae7ea4f272a2832c49838658d3",
+    "scripts\\verify_native_identity_readback_batch.py": "df1ac6a98cb7107a923989773a04f137dbb121d1aa598a4b31986b0000031a45",
+    "app\\services\\cloud_sync.py": "7b2287e7b7629cd4f1473bb8e1749b5e93f405acd92e8d64d8f16986bededc25",
+    "app\\core\\shared_vars.py": "fbde060cb9e0f10c056de26f7726bf0e4685f92c43d62c659f7e428a4c0ca8e8",
+    "app\\storage\\__init__.py": "f70f1ed6695a524a5b6e7fc02aac5154a909c51141ac059a90955c79607dadfd",
+    "app\\core\\native\\windows_process_tree.py": "ad8fd3775fc1d06c489735aa1c074937dfc2976683d1a56930fbdf5de503f785",
+    "app\\services\\ai_agent\\llm.py": "43e4e32fca57bb7a5f29b195ef405e38eff9280042b6d9a2ca61e9170e4619f0",
+    "native\\drafts\\upstream-156\\patches\\0066-native-gpu-optional-query-fixture.patch": "559b2e74979f8a751716e8b6f422e0cf024014608080aa7ceeaf7878c7170e9c",
+    "scripts\\verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "native\\drafts\\upstream-156\\patches\\0028-native-worker-handoff-fixture-lifetime.patch": "cf335721b818e9ff1b0a4fc8d408334e5c52d4bbb316801ecb128b52bd668ea2",
+    "native\\drafts\\upstream-156\\patches\\0063-native-safe-buffer-portability.patch": "55c3d398abb183c3ab0a01b7dba4c291924438d691e2ffc38281e444fd1bdd8d",
+    "scripts\\verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "scripts\\native_windows_sdk.py": "7cd60d72a11bf6b3cf5734cb28ba35c41d4cbf881f6359e02ba29be2f2ffa318",
+    "native\\drafts\\upstream-156\\patches\\0023-native-shared-worker-startup-gate.patch": "64883039a72ac773c4ab50363cbde75dac99a685a68963710206baadf97ebeea",
+    "native\\drafts\\upstream-156\\patches\\0048-native-readback-fixture-result-api.patch": "d7d1fbb8adf37e1273cbd5b517b4fdb862e07aca06f170605f5fe03c2a1b1314",
+    "native\\drafts\\upstream-156\\patches\\0059-native-identical-v8-snapshot.patch": "41852fa42112514d9d849c879d48d1cf451aa9d9c41963647e4eeccf8a4e1988",
+    "native\\drafts\\audio-dsp-math-v2\\matched-stock-observations.json": "73bfae5d7b6845e48c7f88c4a55534b2339842ba592c4b3af8c2585976aef227",
+    "native\\drafts\\audio-dsp-math-v2\\audio-fidelity-control.js": "b18f16da49bbb55eacae2b52e40d95b7c1c270e18740798233232bf5f9b87861",
+    "scripts\\verify_native_audio_compatibility.py": "5307f7b06885e782e05f00901ece8984fb2aa79bd57d80ebd7066d3af45488eb",
+    "scripts\\verify_native_gpu_readback.py": "f08919882123f5f144a74169be5d19c141825cc27f138ee90f5820a63d517e06",
+    "native\\drafts\\upstream-156\\patches\\0003-native-webrtc-routing-policy.patch": "703af6e903aafb1d202cbcc7ce8de97bd6a3fd3177c1d612efd7b4989bdf5701",
+    "native\\drafts\\upstream-156\\patches\\0053-native-identity-handoff-tests.patch": "83eb2be84b8c0c5128e5f58047de5d8fdb807249144064bc8640edd1a4c89c64",
+    "app\\ui\\bridge\\app_state.py": "7b0540a21b4a85e4407954dfd7bce91f9907d1096606f56f66250175a8d56f4c",
+    "native\\drafts\\upstream-156\\patches\\0031-native-worker-surface-policy.patch": "3551e508ef08ddca28557923b93ed1c72592816438b875b5b4ece1ef6bb49d0c",
+    "native\\drafts\\upstream-156\\patches\\0027-native-shared-worker-bootstrap-failure.patch": "23c4a8052c1f0df512bcd5169c42b1d1c4d1227c5361f0841150bd086bc9379f",
+    "app\\services\\scenario_worker.py": "afa004ee48f84caf23c368c8e436fec23ae777d5b4a89b4a531b7acb52c877a5",
+    "native\\fixtures\\audio\\worklet-processor.js": "1bc5016658728225f2c9b85c6d055f18991a5c6ed32ce2c8baecc55d65278606",
+    "native\\args.gn": "6e8852cef01631ece51948ab7f99176e86947cb02d07819e4af524e0116e6ab8",
+    "app\\python_runtime_check.py": "11e7d83bf54b0ef81fcfa2eb52e0ae1813804bbf545144c3371a90e472fb0eaa",
+    "native\\drafts\\upstream-156\\patches\\0007-native-inspector-error-accessors.patch": "4117bf2b1f42641a5c60098faaeb061cdd84cdc5c2bfec97e8829d17679d70e0",
+    "app\\services\\ai_agent\\templates.py": "a9d4bd6913d2a28782c5c9b56a6493292f8a3975bf4f6335ed4dea3d68be5844",
+    "app\\ui\\bridge\\tasks.py": "740bb6e3c682fb52a47ca9f2001c00ee297ae291eca1cb9f5d139690894f08c6",
+    "scripts\\verify_native_webrtc.py": "e3b9fb2727e2461d36f3a78a92322c39e51a94a4c425b23101ae0801ecaa4772",
+    "scripts\\verify_native_combined.py": "92abafd907a653e9276d9209c98302df65615b310417fcfc12b8ae1a41dfd034",
+    "app\\services\\server_client.py": "b5eb6bf1eec3d24b5c489506489a35276ad8bf58bbfd3b08e1a901ea53ba0aba",
+    "app\\core\\__init__.py": "1afdd47408291c2537749bc78f8807fcedeb6ef874dd3fa58cdf4b317c64f6a8",
+    "app\\core\\browser_proxy_service.py": "3d022ded57e9b6aa362acf544093e050d438f40896d49282dc0552204109bce4",
+    "app\\ui\\bridge\\ai.py": "a7fd4c7f8abf814833ef02618e57f6ca91146273b4fe0bfbe484135672bf4398",
+    "scripts\\verify_native_suite.py": "c8d3d9bfd8b43ee46d0867eb098bbae8c2b56c71aeb76df5cba0c3cf65029e3d",
+    "app\\services\\ai_agent\\__init__.py": "33857a1944e49f9a8e27bf82dd07f501066a771ebd1f5f0bc4f171ef964bb1bf",
+    "native\\drafts\\upstream-156\\patches\\0033-native-surface-readback.patch": "c9553820e2711f9f109fa00cf0643746d4e9896085759ce9d608309b876a1211",
+    "native\\drafts\\upstream-156\\patches\\0002-midl-locale-name-hashes.patch": "72c5c65fdfd767523370f33c4e772c29c6e17a5428b81dadef41f4b408d8b0a6",
+    "native\\drafts\\upstream-156\\patches\\0036-native-worker-complete-surface-type.patch": "858fc1cab03b4ddd7e85c285c30488f5057d9684f1828ad52bc449de258a37a0",
+    "app\\services\\steps\\helpers.py": "d8e8ece7fc405abceee291d474fea4a5dd16e2b81d976b4f183df80669e18fca",
+    "app\\services\\steps\\navigation.py": "c4f17242a63d9deb18329978a71f231f8c98e486239684242dcefafc855389df",
+    "native\\drafts\\upstream-156\\patches\\0067-native-audio-math-context-candidate.patch": "2a3de912845933c401cb20e97aff6c5551f079bee1147716c7ec17178af0e740",
+    "app\\core\\native\\profile_version.py": "b911cea8e1d2eed4e2d8f9d4c78cbe5ba8f9dfbfce16365f5675b5b213150081",
+    "app\\ui\\bridge\\models.py": "33c9d85deb1dca32459cffd78004b56047ccbc30eac9ccb3f6e0ad4345189dd9",
+    "app\\services\\python_script.py": "48209e1874a473903140ee38aeade081b1717a5e7006814706d3480ccf1b968a",
+    "scripts\\native_release.py": "78a62dafcc9b6863bc182d34c6468a741700cc2887f7a19ca7394336e8735b55",
+    "app\\services\\run_queue.py": "3faa1dba9e843f06760fa4d7c8703a63313e6fb1ad62790a111206015c35afe8",
+    "scripts\\verify_native_cdp.py": "cdf7aac723b61ff4b3ea40c805727afd1e7c6ac5ba607018017e6d09378deb27",
+    "native\\drafts\\upstream-156\\patches\\0058-native-gpu-passthrough-attachment-tests.patch": "5fae71ec65ed631ac97faabfc7f7a8f5cbbaa114f37dc5a7aa35f3985937804e",
+    "scripts\\verify_native_gpu_metadata_codec.py": "f0dde5f2b2a6b93e056d10f7ab8896a64658b84fc94d871a448b25d32d0df8fa",
+    "scripts\\verify_native_halo_draft.py": "24d4d0c8bfa6002552a3b4c5f9b92d91866f3515040d7cf963f71abe18d50ee2",
+    "native\\drafts\\upstream-156\\patches\\0065-native-fixture-portability.patch": "ff16a253d7630119e78db2b929d635ea81a7ccecf2340a899bd1eea9d763b6e8",
+    "app\\ui\\bridge\\recorder.py": "62ebefe00d600f4a656d073e5abfa11deca70f41cadb6fcda173e6b36ca77a8b",
+    "native\\drafts\\upstream-156\\patches\\0025-native-service-worker-startup-gate.patch": "8bfcee9a31922b71d611642400efcbb99b2b480a65eca4ef0738afab36728f7b",
+    "app\\services\\ai_agent\\to_steps.py": "842852cdf1c4dfa287c382890850cdc62d68d621356f95697d860cf302133a1d",
+    "native\\drafts\\upstream-156\\patches\\0005-native-windows-font-collection.patch": "10704af84edc65880e8927241e93a9cf28a7dff507f89152fddd0013f986f4bf",
+    "scripts\\verify_native_readback_regions.py": "dfcae4f07dc2131014859667f8cd18240874de142aeb9009175ce73b9b036d14",
+    "native\\drafts\\upstream-156\\patches\\0038-native-renderer-struct-pointer-presence.patch": "040cd0c0ee4070d04214483b173afe16968122b361c8f57c4ec54c255c84296a",
+    "app\\ui\\bridge\\cloud_permissions.py": "0d8e56456e3fdf07fadb5e2f56862e4dbd8ba7afd7e5e8b3d8840912a277986f",
+    "native\\drafts\\upstream-156\\patches\\0017-native-browser-context-tests.patch": "024bd39b72dee2e6048eb127a300db919f8e78b267141ca211110ff8f6579d21",
+    "native\\drafts\\upstream-156\\patches\\0052-native-surface-identity-v3-transport.patch": "9fdd7106117549de5c08f7b610c11a56915ce3010e4f9906f441ce8a4280106c",
+    "scripts\\verify_native_privacy_units.py": "fb2946314fdeff7466124a65d2316bebf9696860aed79a60d06c6334d54f91ad",
+    "app\\core\\browser_launchers.py": "c37b4ebf409dfb7e23f5823cf00221dc9d629b4be43e5d153f5b342792c17a41",
+    "native\\drafts\\upstream-156\\patches\\0060-native-glint-branding.patch": "e75588eb1ee0651c2609798439d36530073f8d5cc80b7868396ec583234714bc",
+    "app\\ui\\bridge\\dashboard.py": "28397df06dad1a7b5cbc8f5c1214c3c6a932f1a7b381018aa06c2efe31218c16",
+    "scripts\\native_font_contexts.py": "3085db5cf0460f1b379516d85f12e8dfe24e2a76504e2a03e8eee025084e3ac9",
+    "app\\__init__.py": "fe9767b4f6f97042148a4cdfc69a7f86b6b75d1eb427d18a1ccada7f21745ece",
+    "native\\drafts\\upstream-156\\patches\\0019-native-worker-policy-delivery.patch": "c92137390542a1414fe310ef75078a5b4f66fc6ca5b6e7c51a8ffbb58f8cfe8b",
+    "native\\drafts\\audio-dsp-math-v2\\cases.json": "b678f9d28e60a16306092860d1d34d0dc893073a7dcd429b10f19932f8a756e8",
+    "app\\services\\proxy_health.py": "242e85ac29e8feeeeafee047c5562e5d464e21cb00776ffb3cbc04088fae39e8",
+    "app\\services\\run_history.py": "505a63993a5140597f90e4b459fb50c384d66143bed0745a5b849cb014cae6f8",
+    "native\\drafts\\upstream-156\\patches\\0029-native-document-partition-validator-tests.patch": "adeee2e5f1b6884ffed27abaa5edec4731313ffe8d7fb1bd9e97e2896b1bf9da",
+    "native\\drafts\\audio-dsp-math-v2\\probe.py": "b649629ba362f625ca7db44c006aa96f1cdbcb1e2e84b34989b6148129d892e3",
+    "scripts\\verify_native_admitted_policy.py": "fa457bc5bfc19bf8ca71faf4e27172979310c3210756477bd9cf6054c3f065d6",
+    "app\\services\\steps\\data.py": "0ed5cdbc643f7ee960d2d24fd3ace3e892f40f8499face067e6ca2e01d58159f",
+    "scripts\\verify_native_cpp.py": "c5355dd5a7c40e4a64f0ddaa6fe0e020ba33c947f9c43b13ee081039446ff657",
+    "app\\services\\__init__.py": "3e2624a469d979ab9064085d78f4bd90310d79490fe1dfb428e3389c4c0b5f4e",
+    "app\\utils\\__init__.py": "6b95f07e4e9605cdcbc30ad64a1d7aeb96b98362e5ad55c3f09f4fa4a59d3976",
+    "app\\core\\native\\admission.py": "62d0e6f78d2a161458a85f4ae79d4a620cf051975d765ddbae86e9e72bb09bbb",
+    "app\\core\\native\\health.py": "418af281a2c7bbc0b269130c64e07d17ba3327c7a51af8b3c4e75fa9b5f8b663",
+    "app\\core\\native\\configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "scripts\\verify_native_audio_quality.py": "f2ee7735ab1c2b1b46adf17e661da749729201624baec39cf9019afe40ead39b",
+    "app\\ui\\bridge\\operations.py": "898927864006d0e8978b7c440f8b17fdc796b33788446e5e562cac02ad8b65b1",
+    "app\\services\\selector_repair.py": "9acac5baf920e35f7178d29ef68fda056e0cd8dc2541cde9fb720cc720420b85",
+    "scripts\\native_canvas_formats.py": "e8de0402c2d796ad50d400adaba58c68bf01e9019733e2ee90779bd07f8e73a7",
+    "app\\ui\\bridge\\background.py": "bf0f495f8344a4a1294331794f27969c38e4f2122506e35038fa69141e0685c1",
+    "native\\drafts\\upstream-156\\patches\\0034-native-gpu-metadata-minimization.patch": "b3e344fb4dd94945cfbdaf8594738d9278d13e6d88f85327b721171ad85579b0",
+    "app\\core\\native\\__init__.py": "994db0932c5cf957c0506077de4fb2ac3b49fd3ef3d0603f0eecb415ee87fa60",
+    "app\\core\\browser_interface.py": "69e90af2fc1d3b53443894ec5f4feaaa047c93cd84a1750ff5ba87b922c09d7d",
+    "app\\core\\native\\privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "app\\services\\steps\\__init__.py": "47d92e8be38d4bb1ed2d46a778aba9230e0027920d8e3a96f80b9c76363ebb5e",
+    "scripts\\verify_native_gpu_textures.py": "7d42ffca4f8c18dbfe1d1b07e5852b2b922a870f5d9a19f4407a9528e08d4149",
+    "native\\drafts\\audio-dsp-math-v2\\browser_matrix.py": "430b0f8ae05a5d33112a3bfc2ae040a2aaf068f3f6fb2baa76375a4b6514bc36",
+    "native\\drafts\\upstream-156\\patches\\0013-native-owned-profile-key-loader.patch": "389929c390b4db2e2d175acd503915d1ee1ee45de38414d2fd386eac77025398",
+    "native\\drafts\\upstream-156\\patches\\0022-native-worker-canvas-thread-handoff.patch": "b79f7e3831531238fa683fd05ac71ee82866f41b67a613f82a471cb372a893e5",
+    "app\\core\\proxy_utils.py": "2d04a92f35c89ce8a944635cdf39a8e47aa3e32fd7f5a1a3364173463eb99265",
+    "app\\ui\\bridge\\profiles.py": "ea13a1ca2f142e1c60e578fb1a4421dc227ec4ec9e264ec7f7db57af168e5aca",
+    "native\\drafts\\upstream-156\\patches\\0012-native-browser-privacy-key-derivation.patch": "18d850c68c653ffd65fb424f5e7c137af61926d1c9a9a3414555e1bbc94c740c",
+    "native\\drafts\\upstream-156\\patches\\0009-native-sql-extended-paths.patch": "a63bbdd4f9aa94ae7165c5c846cd9f5a283bfda7fe1db53ca26518f1abb17143",
+    "native\\drafts\\upstream-156\\patches\\0016-native-private-key-readiness.patch": "ffb217be4d1a14a2fa4712e860946d7931153dafe7531f5099eb779e7091fcd8",
+    "app\\core\\native\\windows_process_resources.py": "5de8dcae8b9ae9f47b0828d5276db62c4ff2b3d85b27e45e2e2928b30b536430",
+    "scripts\\verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "native\\drafts\\upstream-156\\patches\\0051-native-identity-context-tests.patch": "0a75baf1eb888cc4d36dd30cde541089a4bc84c0634c24854bebc9d14e5c5181",
+    "app\\core\\native\\process_monitor.py": "5f89483f61e166babf6457ad5319c9d64be92659bdb28bccb70baa3c51c0812f",
+    "app\\ui\\bridge\\__init__.py": "5a7320c49dc5ac9709b7b55f61a39e0993b9bc4f547551d9187abd4443e05011",
+    "scripts\\native_font_visuals.py": "e4d29de1617e2fe10141c263558b5bd5af3f934fcc53dae2b7b8593263c4198f",
+    "app\\storage\\db.py": "77fc673142fa2619f8e00f1f8d1d05d78052f09011d1b16235c9799c0aafe951",
+    "app\\ui\\bridge\\scenarios.py": "7dc28c61b62a87d23bf259e7e11590b2957bb5ff855a2fbfad18e38588440150",
+    "native\\drafts\\upstream-156\\patches\\0021-native-dedicated-worker-startup-gate.patch": "1eaeae116a334063ac4daca31e7016b6560b2f6cd72bc6c3035502b7bfbde564",
+    "native\\drafts\\upstream-156\\patches\\0035-native-initial-origin-calculation.patch": "b6166b4a5a4f40f613d77f6355796c6ca300a01f68c02a10b7a3a2bff329589b",
+    "native\\drafts\\upstream-156\\patches\\0046-native-webgl-bounded-readback.patch": "7e02be0fb09e1a33ccd8924a59a4bc4b3636d358d7487a1b22a5a3c89329506e",
+    "scripts\\verify_native_font_rendering.py": "82666e681c9737bd157206d95d581c49e0fa800a0b32cf0e888b8a820d7f9123",
+    "native\\drafts\\upstream-156\\patches\\0062-native-windows-font-rasterization.patch": "7c74fe72d26bb6723f355d9847fe73346671d4b79327c53c49cbf616dae2e865",
+    "app\\services\\scenario_engine.py": "e87c81e246c3345ff4c2358a3379298cac90f8bde853e59d6b5badc42db89402",
+    "native\\drafts\\upstream-156\\patches\\0050-native-immutable-fingerprint-mode.patch": "d3d94993ad91ce3d5f314b548453c195ccb091c462cf62ccefe3763a98fbb25e",
+    "app\\services\\scenario_definition.py": "9b069cb7cd96141e13633e830443368b69888ea03bb75d29fa007668fb66ee73",
+    "native\\drafts\\upstream-156\\patches\\0057-native-gpu-metadata-attachment-tests.patch": "fc8087e3d05e592adc2e5c57d7f66737231cd36dfc329509238dd43dffe29278",
+    "native\\drafts\\upstream-156\\manifest.json": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
+    "scripts\\verify_native_branding.py": "879d9c274eb6c546951c66d42d627182f2fd5332c26c899ba2b36e3508c25843",
+    "native\\drafts\\upstream-156\\patches\\0055-native-gpu-readback-metadata-transport.patch": "4f65842f570079704e19406ede0bf2196fd7c01479a0ee5490ebb30f5f7da5e2",
+    "native\\drafts\\upstream-156\\patches\\0039-native-document-ready-commit-cancellation.patch": "4e8932a53c71377eb358ed88ff80e090dbb8a4cd6c52ab8e010dc91ddc640438",
+    "app\\ui\\bridge\\logs.py": "bf117699cd6725bdd5fedc186ed944a11076cd40d19960326867063d28be1064",
+    "app\\core\\native\\identity.py": "ade6571746cff6eebb3b049a6725a9260fff1f9cb499080f00af95a6aeb654c9",
+    "app\\ui\\__init__.py": "f1146afb721a1c4a56fb72344a11d06d26a34f2a24be248ecdab74bf9bfe089e",
+    "app\\cli.py": "c368621146d999e2bdddf456567a304cbafbc699a240114ab7617fb77cff6840",
+    "native\\drafts\\upstream-156\\patches\\0015-native-browser-context-key-ownership.patch": "5e56f2d5c543c5a8796f2e708d5a44ce5c94e2373c563641e6f1665b41805522",
+    "native\\fixtures\\audio\\fidelity.js": "b18f16da49bbb55eacae2b52e40d95b7c1c270e18740798233232bf5f9b87861",
+    "app\\services\\ai_agent\\actions.py": "4480795f766c6df653bc91ed465f2c271c6ac00275ada054ea68063922b3fbbf",
+    "native\\drafts\\upstream-156\\patches\\0041-native-child-transport-fixture-interface.patch": "5c77333f393d9b1232e61602b80f69b8260af97a947acfc7cae99cd3b09f6a51",
+    "app\\services\\workspace_lock.py": "a836029138160cdf942346d1c7876b40b24ef52d261afa7b92b9f5bc8e36e856",
+    "app\\ui\\bridge\\user.py": "33d43554d8c670b94a6a9e3e6d91453488b682db69de2a9d5a34df0ceb5d3da5",
+    "scripts\\package_native_windows.py": "a5841ebf6d299f54a0ec0429d6fbef5401beec3a0776d786843e37f930e038c1",
+    "app\\ui\\bridge\\proxies.py": "3a835b485f2fb84e5b70d50bb8771ada8f6b4ed6915d31f1edeb8dee49d0c52f",
+    "scripts\\verify_native_privacy_batch.py": "2a4fb5ac2e02bc513cc8b7aae7a99e9dd9730b674f16e354942cf6580650e918",
+    "native\\drafts\\upstream-156\\patches\\0044-native-inline-navigation-rejection-fixture.patch": "002f842705468e1b7db17a582e33500e7f6887c11f87136f9a8785ef57a38bec",
+    "native\\drafts\\upstream-156\\patches\\0042-native-initial-policy-fixture-scheme-lifetime.patch": "9821d9fc97f139666c75397f35214306f377f1b2e163607d30531a991209b228",
+    "app\\services\\steps\\flow.py": "3ff83b333eabab6c592fcb974415c6d6cef15e10d4559640beb375ddf8d4ef4b",
+    "native\\drafts\\upstream-156\\patches\\0008-native-leveldb-path-separators.patch": "0b32699a17c81752a511e1a5e531485eee2740d891ce2662830c9ba704add957",
+    "native\\build-lock.json": "7b3e3ae3cb9877073aaeb14eacc48afdd24bd34a0e5b9189e92276211dfe8ad0",
+    "scripts\\verify_native_audio.py": "eff19a51d09e9d18a254a7c98d7be34394c2a74d07494cd5d6d26deda2c1dead",
+    "app\\services\\steps\\interaction.py": "3bbb3fd049004bf9fddedcd7101a5ff369e138ff2fa2d95694e614b6a0d822f2",
+    "app\\ui\\bridge\\browser_settings.py": "02431f85731a60b05c1187ddec8748f21f8ff39992fd6c9ce048ee946fad59e4",
+    "app\\services\\scenario_recorder.py": "cf37b1e51facc4cf807e0588c2da4869756cbcd170754a3071df261a1817574c",
+    "app\\core\\native\\diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "scripts\\native_canvas_fidelity.py": "069b4394d8d2da9f16760cc748b622a2417f0c6285364b08425068568ef93295",
+    "scripts\\native_windows_toolchain.py": "d61db8d323fbc9381f5c2273a27850686e307832646e6ff092d40c5183db68b0",
+    "app\\core\\native\\distribution.py": "3192955bda482b4cae1dfad87a059662a380d80f457a5a1178bdd1347ae34563",
+    "native\\drafts\\upstream-156\\patches\\0006-native-headless-user-agent.patch": "e0442474daab13665820664869b4f4fde85cb5682b0aa8a0ab5cec667c9dd871",
+    "native\\drafts\\upstream-156\\patches\\0064-native-audio-safe-domain-copy.patch": "49133a73725f092aff7753ce03ff9b6c87c4ca84fc8cc99bbe7fbc8c00cf1bf4",
+    "native\\drafts\\upstream-156\\patches\\0037-native-webgl-readback-compilation.patch": "c087790804dba71799858a58b0279194e571a77741e7f574b8bfe9f436d28404",
+    "app\\services\\task_inputs.py": "285dabaaf73dd251f3f69a5ffb3c91f17d0c74b8fc1b1ca36ce084a26d4a92f4",
+    "app\\core\\native\\canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "native\\drafts\\upstream-156\\patches\\0018-native-document-policy-delivery.patch": "30b2fbd5fc338cd548861ec5b5350d0c889f7f78a9e995f884b5ea8142d3fc9b",
+    "native\\drafts\\upstream-156\\patches\\0045-native-navigation-observer-fixture-lifetime.patch": "52a1e5c558954e315e1a5227b91e04da29a574a168c8b03e9dfb4ef145ddaa83",
+    "native\\fixtures\\audio\\realtime.js": "34a85e2c65b2d1dc7aef741108720a23e9813464bcdcb9eaa9045201e340a5c5",
+    "scripts\\verify_native_storage_paths.py": "c075fe83724159216f791755020e3053c332f087bfee7e4bd3667cdbf629b4e8",
+    "scripts\\verify_native_surfaces.py": "5a2d8ed28577a2fa78809d37ccd7e4a1ced1aebb2011a86621d0a9cca2cf3f8a",
+    "app\\services\\profile_backup.py": "7e7c913cc1bc0adadd613ab35935c65d26355e0cbcc8ce1dcd15596441e843f9",
+    "app\\utils\\gui_logging.py": "7cf2a1c258d54f45ed60ff851c71b32bc64d187f75178ccf2d178d46be07974f",
+    "scripts\\native_build.py": "61c37dc4b0df73912e1054065db8b4f545381ea9c29a320d6b9e588c07b59c38",
+    "app\\services\\scenario_debug.py": "3e0d57f98865f4a6f97308c4f176441938685f7417d83fb356c79d9ac3efc57b",
+    "scripts\\verify_native_next_batch.py": "9c87c6995b0f1bfd1d25ee17da28a35efa9069f743953c8db6b7d8dff272a8c4",
+    "app\\ui\\profile_resources.py": "43a01c4ec3ffb422ef729b0a2f2ce66b0ccc04ff7dd2b99dbde740ee3d781cba",
+    "app\\core\\native\\runtime.py": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "scripts\\verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "app\\services\\ai_agent\\loop.py": "7fc9d8271943e601cec82228d1476ec399157871ab38a3c57c51e10f9d80b185",
+    "scripts\\verify_native_gpu_cpp.py": "02fc65c3ce2f8ecd4c48bd586556eb1b6fe8e5c06d51e982db8c7c3d501e508d",
+    "native\\drafts\\upstream-156\\patches\\0011-native-privacy-partition-serialization.patch": "48928b9f827a7d49125142e08b89e14899682e448e558b14db08ea23ab9525f6",
+    "native\\drafts\\upstream-156\\patches\\0043-native-surface-navigation-throttle-registration.patch": "9dd05aa683ce4f0e95f19439ef93c1052d62c2974670ea230cb8606f72838f76",
+    "app\\utils\\parsing.py": "9f35218a2b0f45c580d931c1b6e17a66695dea5da14ce265c3733c0963824e59",
+    "native\\drafts\\upstream-156\\patches\\0030-native-document-commit-prototype.patch": "8f43b1631b92f333139810c6a8c1fd0906d37847840df8301724e3e60e2d397b",
+    "app\\core\\browser_lifecycle.py": "bf2909e181348e30c7312c17e4a54259880588c50f329992335acda325e621d3",
+    "scripts\\verify_native_audio_scalar.py": "618fb79c627b919efdbe663f631ce16b437bfc3a66db9a0139fcbae4f1073387",
+    "app\\services\\steps\\shared.py": "fb0396251891c7e3ec6187a4ad8053007d907b18875ed1d9e8b2d57f9c63235a",
+    "app\\ui\\bridge\\settings.py": "32a445dec6ac7d6d47dabd5650bf2d5f219e8c007ea48f57c541facede983092",
+    "native\\drafts\\upstream-156\\patches\\0040-native-ready-commit-observer-lifetime.patch": "60c240665ed1e07e7fd8c969a57ef062d10fd2c98665683b7f6f2d78894be33c",
+    "native\\drafts\\upstream-156\\patches\\0056-native-gpu-metadata-protocol-tests.patch": "dd48870f0928b377875ed59d4819715e7166db5385c09c6c2d6c4833305eb0ce",
+    "native\\drafts\\upstream-156\\patches\\0001-native-hardware-privacy-limits.patch": "3925b0cec579b2a73fad70463227f1b44d3c464a06f5f2ad86d39a190d2910e8",
+    "native\\drafts\\upstream-156\\patches\\0068-native-audio-math-fixture-readiness.patch": "64f6e2f756ab6d56e28f1c5be1e2542d6b0ea61359cb777d4dbbe9944629494a",
+    "app\\version.py": "61a186c9465fd34d917833f8fdb00a459e7f70f6769063858ee92b1ea4c60c13",
+    "native\\drafts\\audio-dsp-math-v2\\matrix.py": "2c370844ec0826052e16dbef571203499e94048a887445b4489687ce246bb553",
+    "native\\drafts\\upstream-156\\patches\\0049-native-profile-identity-derivation.patch": "e4ffed107c2354b2b4a7662f98524a8790756ac0800f13146227fa78a0d70dae",
+    "app\\ui\\dashboard_data.py": "2d1c73b4400ff4ae17c4236a6de3628e5ffc17820681ea9793e17df80555286c",
+    "scripts\\verify_native_gpu_codec.py": "9407f2495e4b6d8d940ccb43bb0964ac40b72e3e1698a01862426a363dc7cffa",
+    "native\\drafts\\upstream-156\\patches\\0026-native-worker-canvas-handoff-tests.patch": "3764a47cd80eb50757c2d8e258cbd134d8f2ed7c792ed429c52182a28f5b5302",
+    "app\\ui\\python_highlighter.py": "f275e753b0f4d99b511e8b181c7abc036af22261e76a6b7fa8cec2eddba8588d",
+    "scripts\\verify_native_profile_identity_draft.py": "8150fb31c85719bc263e083e45cf7afbdc29db78070a0c9e2aba6ae1e57204ec",
+    "scripts\\verify_native_fonts.py": "cfa4f688d610218509864ca858b6f4f2ccbc98c52743e200fcad7676c87b44ae",
+    "scripts\\native_font_workloads.py": "aa3c2f5e654c355d471522d2b7f3a7f2b3f8527d9af03e86d3027c9ab2010159",
+    "native\\drafts\\upstream-156\\patches\\0020-native-worker-policy-consumer.patch": "3c7fcb5b81dca3354ef63825ffada1f98a2938169dc252b93efc9802cae69062",
+    "app\\ui\\qml_app.py": "1bbc6a6ee2ac4587dd02134ea1667de6f5197576ee76c688b23386fc7ea9d917",
+    "app\\core\\locale_mapping.py": "294b8bb11cb659ba91eb67f36a6540c30b6f59138198774f766f05aed192bd88",
+    "app\\services\\steps\\base.py": "60dad175201fa0167ca84322212450fdd458721159956cee11cf8f53df1aa207",
+    "native\\fixtures\\audio\\analyser.js": "575553fb81d5d01a16328e6b91a548fdb6e9e6e1636bf7bca915aa820295fa18",
+    "scripts\\verify_native_gpu_transport_draft.py": "f8461cf368634b85514ab9a839d6cde20e534cca088827bd265c7ea1867467a8"
+  },
+  "driver_sha256": "6d92ff506e5feb3c108dedac74793b37d0a18862f5e155580a3de3a894b6a59d"
+}

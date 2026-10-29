@@ -53,7 +53,17 @@ closed resources and unchanged input/core/receipt postguards.
 Both reference selectors occurred, but **all 54 fidelity graphs remained
 bit-exact to baseline on every profile**. These results therefore do not prove
 DSP branch selection or Audio fingerprint diversity. A discriminating compressor
-matrix and policy transport audit remain required. The interrupted first attempt
+matrix was therefore run against the **same eight existing profiles/keys**:
+15 long cases, three repetitions, baseline/Math/Math restart, **1080 captures**.
+All five selector-1 profiles changed `random-default`, `constant-compressed`
+and `ratio-one` and matched the prior float32 prototype on all 15 cases. All
+three selector-0 profiles remained bit-exact to baseline. Restarts, private
+identity files and source/core/receipt postguards passed.
+[Long-case effect evidence](../upstream-156/audio-compressor-effect68-observations.json).
+This observes **two output classes**, not eight unique Audio identities, a
+direct trace of internal DSP branch selection, real-device cohorts or complete
+protected-context consistency. The short graphs are non-discriminating, not
+evidence that the policy is inactive. The interrupted first compatibility attempt
 is retained without assigning it a measurement result.
 `--profiles 1` preserves the original single-profile diagnostic behavior.
 

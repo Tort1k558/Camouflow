@@ -230,8 +230,10 @@ async def measure(context, server: AudioFixtureServer) -> dict:
 
 
 async def measure_modes(executable: Path, owned: Path, server: AudioFixtureServer, modes: tuple[str, ...], report: dict,
-                        revision: str, version: str, *, audit_backend: bool = False) -> None:
+                        revision: str, version: str, *, audit_backend: bool = False, collector=None) -> None:
     from app.core.native.runtime import NativeRuntime
+
+    collect = measure if collector is None else collector
 
     async def start(configuration, profile):
         runtime = NativeRuntime(owned / profile, executable, configuration)
@@ -306,7 +308,7 @@ async def measure_modes(executable: Path, owned: Path, server: AudioFixtureServe
                 if "reference_selector" in report and report["reference_selector"] != selector:
                     raise ValueError("AudioMath profile selector changed after restart")
                 report["reference_selector"] = selector
-            report["modes"][phase] = await measure(context, server)
+            report["modes"][phase] = await collect(context, server)
         except BaseException as error:
             primary = error
             raise
