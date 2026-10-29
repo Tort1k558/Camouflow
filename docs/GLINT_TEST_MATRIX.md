@@ -3,6 +3,31 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Chromium 157 complete source application — 2026-10-29
+
+The explicit full manifest now applies **all 64 patches over 185 inputs**.
+The separate 32-patch prefix remains available; its earlier results are unchanged.
+
+| Check | Result | Limit |
+| --- | --- | --- |
+| Public verifier, full 157 manifest | 64 applications passed; input/patch postguards passed | No C++ compilation or runtime execution |
+| GPU protocol invariant | 321 commands preserved; appended ID 577 | Not a GPU execution test |
+| GRIT structure | Preserved | Not a resource compilation test |
+| Audio API adaptation | Uses actual rounded chunk size; captures successful policy/flag-off once; protects chunks before Promise resolution; closes/rejects on failed copy | Uncompiled prototype; native chunk/queue/error tests still required |
+| Upstream compatibility | Preserves optional total length, resolver/target queues, final-only completion event, and newly added GPU idle-trim tests | Runtime behavior unverified |
+| Focused local Python selection | 47 passed, 993 deselected in 11.32s | Source/metadata assertions, not native Audio tests |
+| Full local Python suite after this package | 3,557 passed, one skipped in 293.77s | Not remote CI or native/runtime proof |
+
+Public reproduction uses `native/drafts/upstream-157-prefix/full-inputs-manifest.json`.
+Evidence: `D:\Glint157ObjectCache\public-full64-replay-v3\report.json`;
+manifest SHA-256 `09aeedfc25371d8535f1c8efc67f699fe863ff459389044e2257baa6628a163b`.
+The initial relative-path CLI invocation refused noncanonical paths; its log is
+retained, and the successful run used resolved absolute paths. Earlier 0033,
+0055, 0056 and 0061 application failures remain retained, not rewritten.
+The active 156 manifest/source/GN files were not changed, and all 200 queued
+packaging input hashes still match. No 157 build target, release, activation,
+runtime admission or CAPTCHA score is implied.
+
 ## Explicit candidate upstream audit — 2026-10-29
 
 ### Audio portability and keep-going object batches — 2026-10-29

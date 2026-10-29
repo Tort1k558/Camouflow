@@ -1672,8 +1672,8 @@
       "original_sha256": "e7da00de8db1ec8270a52a9d13c72047537f225d810df728d4100ae8375776ae"
     },
     {
-      "file": "upstream-156/patches/0033-native-surface-readback.patch",
-      "sha256": "c9553820e2711f9f109fa00cf0643746d4e9896085759ce9d608309b876a1211",
+      "file": "upstream-157-prefix/patches/0033-native-surface-readback.patch",
+      "sha256": "c90c1170b0a38063ce8a00d76b37a5187d125b80a1ab1b585b272c2c05eb9899",
       "original_sha256": "fc50b5481b10770713d9bb318675ea332f86ba0434e37fa032debc46428377f6"
     },
     {
@@ -1782,13 +1782,13 @@
       "original_sha256": "4615e62ee51e9d03193c2e4f20be2ef9e09f0cddbb2c885ffadbe3d2ead86332"
     },
     {
-      "file": "upstream-156/patches/0055-native-gpu-readback-metadata-transport.patch",
-      "sha256": "4f65842f570079704e19406ede0bf2196fd7c01479a0ee5490ebb30f5f7da5e2",
+      "file": "upstream-157-prefix/patches/0055-native-gpu-readback-metadata-transport.patch",
+      "sha256": "7b2bfdc35728b0d00fa138e1eceb1e0712400d67f14ddee38ff8af798b81d88f",
       "original_sha256": "9af9753c9e5b68f133b39566aac232a4045a255062a0607161f8c839abe60720"
     },
     {
-      "file": "upstream-156/patches/0056-native-gpu-metadata-protocol-tests.patch",
-      "sha256": "dd48870f0928b377875ed59d4819715e7166db5385c09c6c2d6c4833305eb0ce",
+      "file": "upstream-157-prefix/patches/0056-native-gpu-metadata-protocol-tests.patch",
+      "sha256": "2617016bda6dbd876164b36eb2c403b5996ab37c853dc2f10e00011cb3277b0a",
       "original_sha256": "72037bf67d7d98d9c3a7be5361664e242f3b22fe79723f95b21a99064a1839f1"
     },
     {
@@ -1812,8 +1812,8 @@
       "original_sha256": "92aa9255f5e60d0d5b7515477464a0084ea0ad02a389ba5d5b05cf5d31c30d26"
     },
     {
-      "file": "upstream-156/patches/0061-native-glint-ui-resources.patch",
-      "sha256": "7088a0b6d55e6b72d1a4b2d7291e05438db383ae7ea4f272a2832c49838658d3",
+      "file": "upstream-157-prefix/patches/0061-native-glint-ui-resources.patch",
+      "sha256": "82966058c0a33661b4642975b7cf1a798dc81cbbbe868ecd450cac0d14a439e9",
       "original_sha256": "1d49f9f6b2cadfa632638df67916e194ea2a5f83bc1b97276589eb67b1eff572"
     },
     {
@@ -1846,9 +1846,10 @@
   "base_manifest_sha256": "f752426cf5435cf02f9d19cd648101ad8b0369ce8f611c9adcf6065f3bdbbdcb",
   "complete_patch_count": 64,
   "complete_forward_port": false,
-  "next_port_required_patch": "0033-native-surface-readback.patch",
+  "next_port_required_patch": null,
   "source_corpus_complete": true,
-  "preparation_scope": "All 185 inputs known; full 64-patch attempt currently fails at 0033 Audio integration",
-  "verified_prefix_patches": 32,
-  "selected_patch_count": 64
+  "preparation_scope": "All 185 inputs and 64 patch applications verified; chunked Audio API port is an uncompiled prototype; native and runtime validation remain required",
+  "verified_prefix_patches": 64,
+  "selected_patch_count": 64,
+  "source_application_complete": true
 }

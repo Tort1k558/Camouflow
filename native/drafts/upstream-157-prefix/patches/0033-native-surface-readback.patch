@@ -1,0 +1,1613 @@
+diff --git a/third_party/blink/renderer/core/BUILD.gn b/third_party/blink/renderer/core/BUILD.gn
+index 056bd22..ce91c73 100644
+--- a/third_party/blink/renderer/core/BUILD.gn
++++ b/third_party/blink/renderer/core/BUILD.gn
+@@ -436,6 +436,7 @@ component("core") {
+     "//third_party/blink/public/strings:generate_permission_element_strings_mono_grd",
+     "//third_party/blink/public/strings:permission_element_generated_strings",
+     "//third_party/blink/public/strings:permission_element_strings_grit",
++    "//third_party/boringssl",
+     "//third_party/rust/xml/v1:lib",
+     "//tools/v8_context_snapshot:buildflags",
+     "//ui/base/cursor/mojom:cursor_type_blink",
+diff --git a/third_party/blink/renderer/core/html/build.gni b/third_party/blink/renderer/core/html/build.gni
+index 1d7cd61..d16db77 100644
+--- a/third_party/blink/renderer/core/html/build.gni
++++ b/third_party/blink/renderer/core/html/build.gni
+@@ -37,6 +37,14 @@ blink_core_sources_html = [
+   "canvas/element_image.h",
+   "canvas/html_canvas_accessibility_manager.cc",
+   "canvas/html_canvas_accessibility_manager.h",
++  "canvas/glint/canvas_partition_seed.cc",
++  "canvas/glint/canvas_partition_seed.h",
++  "canvas/glint/canvas_readback_candidate.cc",
++  "canvas/glint/canvas_readback_candidate.h",
++  "canvas/glint/canvas_readback_copy.cc",
++  "canvas/glint/canvas_readback_copy.h",
++  "canvas/glint/canvas_readback_image.cc",
++  "canvas/glint/canvas_readback_image.h",
+   "canvas/html_canvas_element.cc",
+   "canvas/html_canvas_element.h",
+   "canvas/image_data.cc",
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc
+new file mode 100644
+index 0000000..32ca23a
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.cc
+@@ -0,0 +1,51 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "canvas_partition_seed.h"
++
++#include "third_party/blink/renderer/core/dom/document.h"
++#include "third_party/blink/renderer/core/frame/local_dom_window.h"
++#include "third_party/blink/renderer/core/workers/worker_global_scope.h"
++
++namespace glint::candidate {
++namespace {
++template <typename Scope>
++SurfaceSeedResult SeedForScope(const Scope& scope, SurfaceSeedKind kind) {
++  if (!scope.GlintSurfacePolicyReady()) {
++    return base::unexpected(SurfaceSeedError::kInvalidPolicy);
++  }
++  switch (kind) {
++    case SurfaceSeedKind::kCanvas:
++      return scope.GlintCanvasPartitionSeed();
++    case SurfaceSeedKind::kWebGL:
++      return scope.GlintWebGLPartitionSeed();
++    case SurfaceSeedKind::kWebGPU:
++      return scope.GlintWebGPUPartitionSeed();
++    case SurfaceSeedKind::kAudio:
++      return scope.GlintAudioPartitionSeed();
++  }
++  return base::unexpected(SurfaceSeedError::kUnsupportedKind);
++}
++}  // namespace
++
++SurfaceSeedResult SurfacePartitionSeed(blink::ExecutionContext* context,
++                                      SurfaceSeedKind kind) {
++  if (!context) {
++    return base::unexpected(SurfaceSeedError::kUnavailableContext);
++  }
++  if (auto* window = blink::DynamicTo<blink::LocalDOMWindow>(context)) {
++    auto* document = window->document();
++    if (!document) {
++      return base::unexpected(SurfaceSeedError::kUnavailableContext);
++    }
++    return SeedForScope(*document, kind);
++  }
++  if (auto* worker = blink::DynamicTo<blink::WorkerGlobalScope>(context)) {
++    return SeedForScope(*worker, kind);
++  }
++  return base::unexpected(SurfaceSeedError::kUnavailableContext);
++}
++
++SurfaceSeedResult CanvasPartitionSeed(blink::ExecutionContext* context) {
++  return SurfacePartitionSeed(context, SurfaceSeedKind::kCanvas);
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h
+new file mode 100644
+index 0000000..3605e4c
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h
+@@ -0,0 +1,33 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_CANVAS_PARTITION_SEED_H_
++#define GLINT_CANVAS_PARTITION_SEED_H_
++
++#include <array>
++#include <cstdint>
++#include <optional>
++
++#include "base/types/expected.h"
++#include "third_party/blink/renderer/core/core_export.h"
++
++namespace blink {
++class ExecutionContext;
++}
++
++namespace glint::candidate {
++enum class SurfaceSeedKind { kCanvas, kWebGL, kWebGPU, kAudio };
++enum class SurfaceSeedError { kUnavailableContext, kInvalidPolicy, kUnsupportedKind };
++using SurfaceSeedResult =
++    base::expected<std::optional<std::array<uint8_t, 32>>, SurfaceSeedError>;
++
++// Only consumes the owned native bootstrap; never a page-provided seed.
++// A successful empty result means flag-off. Required missing/invalid data is
++// an error, and must never be interpreted as permission for raw readback.
++CORE_EXPORT SurfaceSeedResult SurfacePartitionSeed(
++    blink::ExecutionContext* context,
++    SurfaceSeedKind kind);
++CORE_EXPORT SurfaceSeedResult CanvasPartitionSeed(
++    blink::ExecutionContext* context);
++}
++
++#endif
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc
+new file mode 100644
+index 0000000..18f3f08
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc
+@@ -0,0 +1,190 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "canvas_readback_candidate.h"
++
++#include <algorithm>
++#include <limits>
++
++#include "third_party/boringssl/src/include/openssl/hmac.h"
++
++namespace glint::candidate {
++namespace {
++constexpr char kDomain[] = "glint.canvas.rgba8.candidate.v1";
++constexpr char kColourDomain[] = "glint.canvas.palette.candidate.v1";
++constexpr char kEdgeDomain[] = "glint.canvas.edge.candidate.v1";
++constexpr uint32_t kPixelsPerBlock = 85;
++enum class Strategy { kCoordinate, kColour, kEdgeColour };
++struct PaletteEntry {
++  uint32_t key = std::numeric_limits<uint32_t>::max();
++  uint8_t bits = 0;
++};
++
++void EncodeUint32(uint32_t value, uint8_t* output) {
++  for (unsigned i = 0; i < 4; ++i) {
++    output[i] = static_cast<uint8_t>(value >> (24 - i * 8));
++  }
++}
++
++bool DifferentOpaqueColour(std::span<const uint8_t> rgba,
++                           size_t pixel,
++                           size_t neighbour) {
++  if (rgba[neighbour + 3] != 255) {
++    return false;
++  }
++  for (size_t channel = 0; channel < 3; ++channel) {
++    if ((rgba[pixel + channel] >> 1) != (rgba[neighbour + channel] >> 1)) {
++      return true;
++    }
++  }
++  return false;
++}
++bool TransformReadback(
++    std::span<uint8_t> rgba,
++    uint32_t read_width,
++    uint32_t read_height,
++    int64_t origin_x,
++    int64_t origin_y,
++    uint32_t canvas_width,
++    uint32_t canvas_height,
++    const std::array<uint8_t, 32>& partition_seed,
++    Strategy strategy) {
++  if (read_width == 0 || read_height == 0 ||
++      read_width > std::numeric_limits<size_t>::max() / 4 / read_height ||
++      rgba.size() != static_cast<size_t>(read_width) * read_height * 4 ||
++      origin_x > std::numeric_limits<int64_t>::max() - read_width ||
++      origin_y > std::numeric_limits<int64_t>::max() - read_height) {
++    return false;
++  }
++  constexpr size_t kMessageCapacity =
++      std::max({sizeof(kDomain), sizeof(kColourDomain), sizeof(kEdgeDomain)}) - 1 + 8;
++  std::array<uint8_t, kMessageCapacity> message{};
++  const auto* domain = strategy == Strategy::kCoordinate ? kDomain
++                       : strategy == Strategy::kColour ? kColourDomain
++                                                      : kEdgeDomain;
++  const size_t domain_size = strategy == Strategy::kCoordinate
++                                 ? sizeof(kDomain) - 1
++                                 : strategy == Strategy::kColour
++                                       ? sizeof(kColourDomain) - 1
++                                       : sizeof(kEdgeDomain) - 1;
++  const size_t message_size =
++      domain_size + (strategy == Strategy::kCoordinate ? 8 : 3);
++  std::copy_n(reinterpret_cast<const uint8_t*>(domain), domain_size,
++              message.begin());
++  std::array<uint8_t, 32> digest{};
++  // Fixed-size direct-mapped cache: collisions recompute, never alias colours.
++  std::array<PaletteEntry, 256> palette{};
++  uint32_t cached_block = 0;
++  uint32_t cached_y = 0;
++  bool cached = false;
++  for (uint32_t y = 0; y < read_height; ++y) {
++    const int64_t absolute_y = origin_y + y;
++    if (absolute_y < 0 || absolute_y >= canvas_height) {
++      continue;
++    }
++    for (uint32_t x = 0; x < read_width; ++x) {
++      const int64_t absolute_x = origin_x + x;
++      const size_t offset = (static_cast<size_t>(y) * read_width + x) * 4;
++      if (absolute_x < 0 || absolute_x >= canvas_width || rgba[offset + 3] != 255) {
++        continue;
++      }
++      if (strategy == Strategy::kEdgeColour) {
++        const size_t row_bytes = static_cast<size_t>(read_width) * 4;
++        const bool edge =
++            (x > 0 && DifferentOpaqueColour(rgba, offset, offset - 4)) ||
++            (x + 1 < read_width &&
++             DifferentOpaqueColour(rgba, offset, offset + 4)) ||
++            (y > 0 && DifferentOpaqueColour(rgba, offset, offset - row_bytes)) ||
++            (y + 1 < read_height &&
++             DifferentOpaqueColour(rgba, offset, offset + row_bytes));
++        if (!edge) {
++          continue;
++        }
++      }
++      uint8_t selected_bits = 0;
++      if (strategy != Strategy::kCoordinate) {
++        const uint32_t colour = (static_cast<uint32_t>(rgba[offset] >> 1) << 14) |
++                                (static_cast<uint32_t>(rgba[offset + 1] >> 1) << 7) |
++                                static_cast<uint32_t>(rgba[offset + 2] >> 1);
++        auto& entry = palette[(colour * 0x9e3779b9u) >> 24];
++        if (entry.key != colour) {
++          for (size_t channel = 0; channel < 3; ++channel) {
++            message[domain_size + channel] = rgba[offset + channel] >> 1;
++          }
++          unsigned length = 0;
++          if (!HMAC(EVP_sha256(), partition_seed.data(), partition_seed.size(),
++                    message.data(), message_size, digest.data(), &length) ||
++              length != digest.size()) {
++            return false;
++          }
++          entry.key = colour;
++          entry.bits = digest[0] & 7;
++        }
++        selected_bits = entry.bits;
++      } else {
++        const uint32_t block = static_cast<uint32_t>(absolute_x) / kPixelsPerBlock;
++        if (!cached || block != cached_block || absolute_y != cached_y) {
++          EncodeUint32(block, message.data() + domain_size);
++          EncodeUint32(static_cast<uint32_t>(absolute_y),
++                        message.data() + domain_size + 4);
++          unsigned length = 0;
++          if (!HMAC(EVP_sha256(), partition_seed.data(), partition_seed.size(),
++                    message.data(), message_size, digest.data(), &length) ||
++              length != digest.size()) {
++            return false;
++          }
++          cached_block = block;
++          cached_y = static_cast<uint32_t>(absolute_y);
++          cached = true;
++        }
++        const uint32_t pixel = static_cast<uint32_t>(absolute_x) % kPixelsPerBlock;
++        for (uint32_t channel = 0; channel < 3; ++channel) {
++          const uint32_t bit = pixel * 3 + channel;
++          selected_bits |= ((digest[bit / 8] >> (bit % 8)) & 1) << channel;
++        }
++      }
++      for (uint32_t channel = 0; channel < 3; ++channel) {
++        const uint8_t chosen = (selected_bits >> channel) & 1;
++        rgba[offset + channel] = (rgba[offset + channel] & 0xfe) | chosen;
++      }
++    }
++  }
++  return true;
++}
++}  // namespace
++
++bool TransformCanvasReadback(std::span<uint8_t> rgba,
++                             uint32_t read_width,
++                             uint32_t read_height,
++                             int64_t origin_x,
++                             int64_t origin_y,
++                             uint32_t canvas_width,
++                             uint32_t canvas_height,
++                             const std::array<uint8_t, 32>& partition_seed) {
++  return TransformReadback(rgba, read_width, read_height, origin_x, origin_y,
++                           canvas_width, canvas_height, partition_seed,
++                           Strategy::kCoordinate);
++}
++
++bool TransformContentCoherentReadback(
++    std::span<uint8_t> rgba,
++    uint32_t read_width,
++    uint32_t read_height,
++    int64_t origin_x,
++    int64_t origin_y,
++    uint32_t canvas_width,
++    uint32_t canvas_height,
++    const std::array<uint8_t, 32>& partition_seed) {
++  return TransformReadback(rgba, read_width, read_height, origin_x, origin_y,
++                           canvas_width, canvas_height, partition_seed,
++                           Strategy::kColour);
++}
++
++bool TransformEdgeCoherentCanvas(
++    std::span<uint8_t> rgba,
++    uint32_t width,
++    uint32_t height,
++    const std::array<uint8_t, 32>& partition_seed) {
++  return TransformReadback(rgba, width, height, 0, 0, width, height,
++                           partition_seed, Strategy::kEdgeColour);
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h
+new file mode 100644
+index 0000000..45fb843
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h
+@@ -0,0 +1,44 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_CANVAS_READBACK_CANDIDATE_H_
++#define GLINT_CANVAS_READBACK_CANDIDATE_H_
++
++#include <array>
++#include <cstdint>
++#include <span>
++
++namespace glint::candidate {
++
++// Detached unpremultiplied RGBA8/sRGB copies only. No live render target writes.
++// On failure the caller must discard the copy, never export a partial result.
++bool TransformCanvasReadback(std::span<uint8_t> rgba,
++                             uint32_t read_width,
++                             uint32_t read_height,
++                             int64_t origin_x,
++                             int64_t origin_y,
++                             uint32_t canvas_width,
++                             uint32_t canvas_height,
++                             const std::array<uint8_t, 32>& partition_seed);
++
++// Alternative research candidate: identical quantized colours stay identical.
++// This is not an automatic fallback or an approved browser policy.
++bool TransformContentCoherentReadback(
++    std::span<uint8_t> rgba,
++    uint32_t read_width,
++    uint32_t read_height,
++    int64_t origin_x,
++    int64_t origin_y,
++    uint32_t canvas_width,
++    uint32_t canvas_height,
++    const std::array<uint8_t, 32>& partition_seed);
++
++// Requires the entire detached canvas, never an independently classified crop.
++// Uniform fills retain their exact values; this does not imply undetectability.
++bool TransformEdgeCoherentCanvas(
++    std::span<uint8_t> rgba,
++    uint32_t width,
++    uint32_t height,
++    const std::array<uint8_t, 32>& partition_seed);
++
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
+new file mode 100644
+index 0000000..e43fad9
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
+@@ -0,0 +1,64 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "canvas_readback_copy.h"
++
++#include <limits>
++#include <span>
++
++#include "canvas_readback_candidate.h"
++#include "third_party/skia/include/core/SkColorSpace.h"
++
++namespace glint::candidate {
++
++base::expected<SkBitmap, CanvasCopyError> CreateProtectedCanvasCopy(
++    const SkPixmap& source,
++    const std::array<uint8_t, 32>& partition_seed,
++    size_t memory_limit_bytes) {
++  if ((source.colorType() != kRGBA_8888_SkColorType &&
++       source.colorType() != kBGRA_8888_SkColorType) ||
++      (source.alphaType() != kOpaque_SkAlphaType &&
++       source.alphaType() != kUnpremul_SkAlphaType &&
++       source.alphaType() != kPremul_SkAlphaType) ||
++      !source.colorSpace() || !source.colorSpace()->isSRGB()) {
++    return base::unexpected(CanvasCopyError::kUnsupportedFormat);
++  }
++  if (source.width() <= 0 || source.height() <= 0 || !source.addr()) {
++    return base::unexpected(CanvasCopyError::kInvalidLayout);
++  }
++  const size_t width = source.width();
++  const size_t height = source.height();
++  if (width > std::numeric_limits<size_t>::max() / 4 / height ||
++      source.rowBytes() < width * 4 ||
++      source.computeByteSize() == std::numeric_limits<size_t>::max()) {
++    return base::unexpected(CanvasCopyError::kInvalidLayout);
++  }
++  const size_t bytes = width * height * 4;
++  if (bytes > memory_limit_bytes) {
++    return base::unexpected(CanvasCopyError::kMemoryLimit);
++  }
++  const auto info = SkImageInfo::Make(source.width(), source.height(),
++                                     kRGBA_8888_SkColorType,
++                                     kUnpremul_SkAlphaType,
++                                     source.refColorSpace());
++  SkBitmap copy;
++  if (!copy.tryAllocPixels(info, width * 4)) {
++    return base::unexpected(CanvasCopyError::kAllocationFailed);
++  }
++  if (!source.readPixels(copy.pixmap(), 0, 0)) {
++    return base::unexpected(CanvasCopyError::kReadFailed);
++  }
++  auto pixels = std::span(static_cast<uint8_t*>(copy.getPixels()), bytes);
++  if (source.alphaType() == kOpaque_SkAlphaType) {
++    // Opaque metadata makes the stored alpha byte semantically irrelevant.
++    for (size_t offset = 3; offset < pixels.size(); offset += 4) {
++      pixels[offset] = 255;
++    }
++  }
++  if (!TransformEdgeCoherentCanvas(pixels, source.width(), source.height(),
++                                   partition_seed)) {
++    return base::unexpected(CanvasCopyError::kTransformFailed);
++  }
++  copy.setImmutable();
++  return copy;
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h
+new file mode 100644
+index 0000000..603d667
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h
+@@ -0,0 +1,32 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_CANVAS_READBACK_COPY_H_
++#define GLINT_CANVAS_READBACK_COPY_H_
++
++#include <array>
++#include <cstddef>
++#include <cstdint>
++
++#include "base/types/expected.h"
++#include "third_party/skia/include/core/SkBitmap.h"
++#include "third_party/skia/include/core/SkPixmap.h"
++
++namespace glint::candidate {
++enum class CanvasCopyError {
++  kUnsupportedFormat,
++  kInvalidLayout,
++  kMemoryLimit,
++  kAllocationFailed,
++  kReadFailed,
++  kTransformFailed,
++};
++
++// Full raster snapshot only, after the caller's native access checks.
++// Returns an owned immutable RGBA8/unpremultiplied/sRGB copy. Never writes source.
++// Crop/encoding must retain this result; errors are not unprotected fallback.
++base::expected<SkBitmap, CanvasCopyError> CreateProtectedCanvasCopy(
++    const SkPixmap& source,
++    const std::array<uint8_t, 32>& partition_seed,
++    size_t memory_limit_bytes);
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc
+new file mode 100644
+index 0000000..485ce86
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc
+@@ -0,0 +1,78 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "canvas_readback_image.h"
++
++#include <limits>
++#include <utility>
++
++#include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
++#include "third_party/skia/include/core/SkColorSpace.h"
++#include "third_party/skia/include/core/SkImage.h"
++
++namespace glint::candidate {
++
++base::expected<scoped_refptr<blink::StaticBitmapImage>, CanvasCopyError>
++CreateProtectedCanvasImage(
++    scoped_refptr<blink::StaticBitmapImage> source,
++    const std::array<uint8_t, 32>& partition_seed,
++    size_t memory_limit_bytes) {
++  if (!source) {
++    return base::unexpected(CanvasCopyError::kInvalidLayout);
++  }
++  const auto paint_image = source->PaintImageForCurrentFrame();
++  if (!paint_image || paint_image.IsPaintWorklet()) {
++    return base::unexpected(CanvasCopyError::kUnsupportedFormat);
++  }
++  const auto source_info = paint_image.GetSkImageInfo();
++  if (source_info.isEmpty()) {
++    return base::unexpected(CanvasCopyError::kInvalidLayout);
++  }
++  if ((source_info.colorType() != kRGBA_8888_SkColorType &&
++       source_info.colorType() != kBGRA_8888_SkColorType) ||
++      (source_info.alphaType() != kOpaque_SkAlphaType &&
++       source_info.alphaType() != kUnpremul_SkAlphaType &&
++       source_info.alphaType() != kPremul_SkAlphaType) ||
++      !source_info.colorSpace() || !source_info.colorSpace()->isSRGB()) {
++    return base::unexpected(CanvasCopyError::kUnsupportedFormat);
++  }
++  const auto info = source_info.makeColorType(kRGBA_8888_SkColorType)
++                        .makeAlphaType(source_info.alphaType() == kOpaque_SkAlphaType
++                                           ? kOpaque_SkAlphaType
++                                           : kUnpremul_SkAlphaType);
++  const size_t row_bytes = info.minRowBytes();
++  const size_t bytes = info.computeByteSize(row_bytes);
++  if (bytes == std::numeric_limits<size_t>::max()) {
++    return base::unexpected(CanvasCopyError::kInvalidLayout);
++  }
++  // Two detached buffers coexist before the input raster is released.
++  if (bytes > memory_limit_bytes / 2) {
++    return base::unexpected(CanvasCopyError::kMemoryLimit);
++  }
++  SkBitmap raster;
++  if (!raster.tryAllocPixels(info, row_bytes)) {
++    return base::unexpected(CanvasCopyError::kAllocationFailed);
++  }
++  // Same pinned PaintImage readPixels path used by ImageDataBuffer; do not
++  // substitute a guessed GPU buffer or alter the live render target.
++  if (!paint_image.readPixels(info, raster.getPixels(), row_bytes, 0, 0)) {
++    return base::unexpected(CanvasCopyError::kReadFailed);
++  }
++  auto copy = CreateProtectedCanvasCopy(raster.pixmap(), partition_seed,
++                                         memory_limit_bytes - bytes);
++  if (!copy.has_value()) {
++    return base::unexpected(copy.error());
++  }
++  raster.reset();
++  auto image = SkImages::RasterFromBitmap(copy.value());
++  if (!image) {
++    return base::unexpected(CanvasCopyError::kAllocationFailed);
++  }
++  scoped_refptr<blink::StaticBitmapImage> result =
++      blink::UnacceleratedStaticBitmapImage::Create(std::move(image),
++                                                    source->Orientation());
++  if (!result) {
++    return base::unexpected(CanvasCopyError::kAllocationFailed);
++  }
++  return result;
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h
+new file mode 100644
+index 0000000..13863c4
+--- /dev/null
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h
+@@ -0,0 +1,22 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_CANVAS_READBACK_IMAGE_H_
++#define GLINT_CANVAS_READBACK_IMAGE_H_
++
++#include "canvas_readback_copy.h"
++#include "base/memory/scoped_refptr.h"
++#include "third_party/blink/renderer/core/core_export.h"
++#include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
++
++namespace glint::candidate {
++inline constexpr size_t kCandidateAdditionalPixelBudget = 64U * 1024U * 1024U;
++// Full Blink snapshot, after taint/layer/context checks. Readback only, not a
++// replacement for GetImage/Snapshot used by drawing or presentation.
++// Additional pixel memory is bounded across both raster copies.
++CORE_EXPORT base::expected<scoped_refptr<blink::StaticBitmapImage>, CanvasCopyError>
++CreateProtectedCanvasImage(
++    scoped_refptr<blink::StaticBitmapImage> source,
++    const std::array<uint8_t, 32>& partition_seed,
++    size_t memory_limit_bytes);
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+index 2a5404e..dc10f52 100644
+--- a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
++++ b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+@@ -86,6 +86,8 @@
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_factory.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_resource_tracker.h"
+ #include "third_party/blink/renderer/core/html/canvas/element_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
+ #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+ #include "third_party/blink/renderer/core/html/canvas/predefined_color_space.h"
+ #include "third_party/blink/renderer/core/html/canvas/unique_font_selector.h"
+@@ -1449,7 +1451,8 @@ scoped_refptr<StaticBitmapImage> HTMLCanvasElement::Snapshot(
+ String HTMLCanvasElement::ToDataURLInternal(
+     const String& mime_type,
+     const double& quality,
+-    SourceDrawingBuffer source_buffer) const {
++    SourceDrawingBuffer source_buffer,
++    ExceptionState* export_exception) const {
+   base::TimeTicks start_time = base::TimeTicks::Now();
+   if (!IsPaintable())
+     return String("data:,");
+@@ -1458,6 +1461,26 @@ String HTMLCanvasElement::ToDataURLInternal(
+       ImageEncoderUtils::ToEncodingMimeType(mime_type);
+ 
+   scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(source_buffer);
++  if (image_bitmap && export_exception) {
++    const auto seed = glint::candidate::CanvasPartitionSeed(GetExecutionContext());
++    if (!seed.has_value()) {
++      export_exception->ThrowDOMException(
++          DOMExceptionCode::kNotReadableError,
++          "Glint Canvas policy is unavailable.");
++      return String();
++    }
++    if (const auto& partition_seed = seed.value()) {
++      auto protected_image = glint::candidate::CreateProtectedCanvasImage(
++          image_bitmap, *partition_seed, glint::candidate::kCandidateAdditionalPixelBudget);
++      if (!protected_image.has_value()) {
++        export_exception->ThrowDOMException(
++            DOMExceptionCode::kNotReadableError,
++            "Glint Canvas candidate readback could not be completed.");
++        return String();
++      }
++      image_bitmap = std::move(protected_image).value();
++    }
++  }
+   if (image_bitmap) {
+     std::unique_ptr<ImageDataBuffer> data_buffer =
+         ImageDataBuffer::Create(image_bitmap);
+@@ -1517,7 +1540,7 @@ String HTMLCanvasElement::toDataURL(const String& mime_type,
+     if (v8_value->IsNumber())
+       quality = v8_value.As<v8::Number>()->Value();
+   }
+-  return ToDataURLInternal(mime_type, quality, kBackBuffer);
++  return ToDataURLInternal(mime_type, quality, kBackBuffer, &exception_state);
+ }
+ 
+ void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
+@@ -1563,6 +1586,24 @@ void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
+   CanvasAsyncBlobCreator* async_creator = nullptr;
+   scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(kBackBuffer);
+   if (image_bitmap) {
++    const auto seed = glint::candidate::CanvasPartitionSeed(GetExecutionContext());
++    if (!seed.has_value()) {
++      exception_state.ThrowDOMException(
++          DOMExceptionCode::kNotReadableError,
++          "Glint Canvas policy is unavailable.");
++      return;
++    }
++    if (const auto& partition_seed = seed.value()) {
++      auto protected_image = glint::candidate::CreateProtectedCanvasImage(
++          image_bitmap, *partition_seed, glint::candidate::kCandidateAdditionalPixelBudget);
++      if (!protected_image.has_value()) {
++        exception_state.ThrowDOMException(
++            DOMExceptionCode::kNotReadableError,
++            "Glint Canvas candidate readback could not be completed.");
++        return;
++      }
++      image_bitmap = std::move(protected_image).value();
++    }
+     auto* options = ImageEncodeOptions::Create();
+     options->setType(ImageEncoderUtils::MimeTypeName(encoding_mime_type));
+     async_creator = MakeGarbageCollected<CanvasAsyncBlobCreator>(
+diff --git a/third_party/blink/renderer/core/html/canvas/html_canvas_element.h b/third_party/blink/renderer/core/html/canvas/html_canvas_element.h
+index 19b3b15..6db48dc 100644
+--- a/third_party/blink/renderer/core/html/canvas/html_canvas_element.h
++++ b/third_party/blink/renderer/core/html/canvas/html_canvas_element.h
+@@ -445,7 +445,8 @@ class CORE_EXPORT HTMLCanvasElement final
+ 
+   String ToDataURLInternal(const String& mime_type,
+                            const double& quality,
+-                           SourceDrawingBuffer) const;
++                           SourceDrawingBuffer,
++                           ExceptionState* export_exception = nullptr) const;
+ 
+   // Returns the transparent image resource for this canvas.
+   scoped_refptr<StaticBitmapImage> GetTransparentImage();
+diff --git a/third_party/blink/renderer/core/loader/document_loader_test.cc b/third_party/blink/renderer/core/loader/document_loader_test.cc
+index 5c05946..ba8991d 100644
+--- a/third_party/blink/renderer/core/loader/document_loader_test.cc
++++ b/third_party/blink/renderer/core/loader/document_loader_test.cc
+@@ -34,6 +34,7 @@
+ #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ #include "third_party/blink/renderer/core/html/html_iframe_element.h"
+ #include "third_party/blink/renderer/core/inspector/console_message.h"
+ #include "third_party/blink/renderer/core/page/page.h"
+@@ -990,6 +991,103 @@ TEST_P(DocumentLoaderTest, GlintSurfacesSandboxedSrcdocCannotBorrowParentIdentit
+   EXPECT_TRUE(child->GetDocument()->title().empty());
+ }
+ 
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderPreservesFlagOffForEveryKind) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_surface_policy_required = false;
++  params->glint_document_surface_policy.reset();
++  CommitGlintSurfaceFixture(frame, std::move(params));
++  for (auto kind : {glint::candidate::SurfaceSeedKind::kCanvas,
++                    glint::candidate::SurfaceSeedKind::kWebGL,
++                    glint::candidate::SurfaceSeedKind::kWebGPU,
++                    glint::candidate::SurfaceSeedKind::kAudio}) {
++    auto result = glint::candidate::SurfacePartitionSeed(frame->GetFrame()->DomWindow(), kind);
++    ASSERT_TRUE(result.has_value());
++    EXPECT_FALSE(result.value());
++  }
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderOwnsAllFourIndependentDomains) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  CommitGlintSurfaceFixture(frame, GlintSurfaceFixtureParams());
++  const std::array kinds{glint::candidate::SurfaceSeedKind::kCanvas,
++                         glint::candidate::SurfaceSeedKind::kWebGL,
++                         glint::candidate::SurfaceSeedKind::kWebGPU,
++                         glint::candidate::SurfaceSeedKind::kAudio};
++  for (unsigned index = 0; index < kinds.size(); ++index) {
++    auto result = glint::candidate::SurfacePartitionSeed(frame->GetFrame()->DomWindow(), kinds[index]);
++    ASSERT_TRUE(result.has_value());
++    ASSERT_TRUE(result.value());
++    std::array<uint8_t, 32> expected;
++    expected.fill(index + 1);
++    EXPECT_EQ(*result.value(), expected);
++    result.value()->fill(255);
++    auto repeated = glint::candidate::SurfacePartitionSeed(frame->GetFrame()->DomWindow(), kinds[index]);
++    ASSERT_TRUE(repeated.has_value());
++    EXPECT_EQ(repeated.value(), std::optional(expected));
++  }
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderNeverTreatsRequiredMissingAsFlagOff) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_surface_policy.reset();
++  CommitGlintSurfaceFixture(frame, std::move(params));
++  for (auto kind : {glint::candidate::SurfaceSeedKind::kCanvas,
++                    glint::candidate::SurfaceSeedKind::kWebGL,
++                    glint::candidate::SurfaceSeedKind::kWebGPU,
++                    glint::candidate::SurfaceSeedKind::kAudio}) {
++    auto result = glint::candidate::SurfacePartitionSeed(frame->GetFrame()->DomWindow(), kind);
++    ASSERT_FALSE(result.has_value());
++    EXPECT_EQ(result.error(), glint::candidate::SurfaceSeedError::kInvalidPolicy);
++  }
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderRejectsNullContext) {
++  auto result = glint::candidate::CanvasPartitionSeed(nullptr);
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), glint::candidate::SurfaceSeedError::kUnavailableContext);
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderRejectsUnknownDomain) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto result = glint::candidate::SurfacePartitionSeed(helper.LocalMainFrame()->GetFrame()->DomWindow(),
++      static_cast<glint::candidate::SurfaceSeedKind>(255));
++  ASSERT_FALSE(result.has_value());
++  EXPECT_EQ(result.error(), glint::candidate::SurfaceSeedError::kUnsupportedKind);
++}
++
++TEST_P(DocumentLoaderTest, GlintSurfaceSeedReaderKeepsLegacyCanvasOnlyExplicit) {
++  frame_test_helpers::WebViewHelper helper;
++  helper.Initialize();
++  auto* frame = helper.LocalMainFrame();
++  auto params = GlintSurfaceFixtureParams();
++  params->glint_document_surface_policy_required = false;
++  params->glint_document_surface_policy.reset();
++  std::array<uint8_t, 32> expected;
++  expected.fill(61);
++  const auto encoding = params->storage_key.SerializeForNativePrivacy();
++  ASSERT_TRUE(encoding);
++  params->glint_document_canvas_commit = std::make_unique<GlintDocumentCanvasCommit>(
++      GlintDocumentCanvasCommit{1, *encoding, expected});
++  CommitGlintSurfaceFixture(frame, std::move(params));
++  auto canvas = glint::candidate::CanvasPartitionSeed(frame->GetFrame()->DomWindow());
++  ASSERT_TRUE(canvas.has_value());
++  EXPECT_EQ(canvas.value(), std::optional(expected));
++  auto audio = glint::candidate::SurfacePartitionSeed(frame->GetFrame()->DomWindow(),
++      glint::candidate::SurfaceSeedKind::kAudio);
++  ASSERT_TRUE(audio.has_value());
++  EXPECT_FALSE(audio.value());
++}
++
+ TEST_P(DocumentLoaderTest, GlintCanvasCommitInstallsOwnedDocumentSeed) {
+   WebViewImpl* view =
+       web_view_helper_.InitializeAndLoad("https://example.com/foo.html");
+diff --git a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+index 2a49497..35f16e7 100644
+--- a/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
++++ b/third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.cc
+@@ -37,6 +37,7 @@
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_factory.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_resource_tracker.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
+ #include "third_party/blink/renderer/core/html/canvas/element_geometry_update_event.h"
+ #include "third_party/blink/renderer/core/html/canvas/element_image.h"
+ #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+@@ -46,6 +47,8 @@
+ #include "third_party/blink/renderer/core/inspector/console_message.h"
+ #include "third_party/blink/renderer/core/probe/core_probes.h"
+ #include "third_party/blink/renderer/core/workers/dedicated_worker_global_scope.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
++
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ #include "third_party/blink/renderer/platform/fonts/plain_text_painter.h"
+ #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
+@@ -586,11 +589,30 @@ ScriptPromise<Blob> OffscreenCanvas::convertToBlob(
+   base::TimeTicks start_time = base::TimeTicks::Now();
+   scoped_refptr<StaticBitmapImage> image_bitmap = context_->GetImage();
+   if (image_bitmap) {
++    auto* execution_context = ExecutionContext::From(script_state);
++    const auto seed = glint::candidate::CanvasPartitionSeed(execution_context);
++    if (!seed.has_value()) {
++      exception_state.ThrowDOMException(
++          DOMExceptionCode::kNotReadableError,
++          "Glint Canvas policy is unavailable.");
++      return EmptyPromise();
++    }
++    if (const auto& partition_seed = seed.value()) {
++      // Developer bootstrap only; this candidate is not admitted protection.
++      auto protected_image = glint::candidate::CreateProtectedCanvasImage(
++          image_bitmap, *partition_seed, glint::candidate::kCandidateAdditionalPixelBudget);
++      if (!protected_image.has_value()) {
++        exception_state.ThrowDOMException(
++            DOMExceptionCode::kNotReadableError,
++            "Glint Canvas candidate readback could not be completed.");
++        return EmptyPromise();
++      }
++      image_bitmap = std::move(protected_image).value();
++    }
+     auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<Blob>>(
+         script_state, exception_state.GetContext());
+     CanvasAsyncBlobCreator::ToBlobFunctionType function_type =
+         CanvasAsyncBlobCreator::kOffscreenCanvasConvertToBlobPromise;
+-    auto* execution_context = ExecutionContext::From(script_state);
+     auto* async_creator = MakeGarbageCollected<CanvasAsyncBlobCreator>(
+         image_bitmap, options, function_type, start_time, execution_context,
+         resolver);
+diff --git a/third_party/blink/renderer/core/workers/worker_thread_test.cc b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+index 74459eb..b099fb8 100644
+--- a/third_party/blink/renderer/core/workers/worker_thread_test.cc
++++ b/third_party/blink/renderer/core/workers/worker_thread_test.cc
+@@ -3,10 +3,13 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/core/workers/worker_thread.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ 
+ #include <memory>
+ #include <utility>
+ 
++#include "base/functional/bind.h"
++#include "base/functional/callback.h"
+ #include "base/run_loop.h"
+ #include "base/synchronization/lock.h"
+ #include "base/synchronization/waitable_event.h"
+@@ -224,15 +227,17 @@ class GlintWorkerSurfaceThreadTest : public WorkerThreadTest {
+     return {partition, std::move(policy)};
+   }
+   void ExpectRejectedSurface(std::optional<glint::candidate::WorkerSurfacePolicy> policy,
+-                             std::optional<std::array<uint8_t, 32>> legacy = std::nullopt) {
++                             std::optional<std::array<uint8_t, 32>> legacy = std::nullopt,
++                             base::OnceCallback<void(WorkerOrWorkletGlobalScope*)> check = {}) {
+     base::WaitableEvent evaluated;
+     EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
+-        .WillOnce([](WorkerOrWorkletGlobalScope* scope) {
++        .WillOnce([check = std::move(check)](WorkerOrWorkletGlobalScope* scope) mutable {
+           auto* worker = To<WorkerGlobalScope>(scope);
+           EXPECT_FALSE(worker->GlintCanvasPartitionSeed());
+           EXPECT_FALSE(worker->GlintWebGLPartitionSeed());
+           EXPECT_FALSE(worker->GlintWebGPUPartitionSeed());
+           EXPECT_FALSE(worker->GlintAudioPartitionSeed());
++          if (check) std::move(check).Run(scope);
+         });
+     EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
+     EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScriptMock(_, _))
+@@ -291,6 +296,40 @@ TEST_F(GlintWorkerSurfaceThreadTest, LegacySeedCannotSubstituteForSurfaceBundle)
+   ExpectRejectedSurface(SurfacePolicy(), SurfacePolicy().policy.canvas);
+ }
+ 
++
++TEST_F(GlintWorkerSurfaceThreadTest, SurfaceReaderUsesOwnedDomainsBeforeEvaluation) {
++  const auto policy = SurfacePolicy();
++  EXPECT_CALL(*reporting_proxy_, DidCreateWorkerGlobalScope(_))
++      .WillOnce([policy](WorkerOrWorkletGlobalScope* scope) {
++        auto* worker = To<WorkerGlobalScope>(scope);
++        auto canvas = glint::candidate::CanvasPartitionSeed(worker);
++        auto audio = glint::candidate::SurfacePartitionSeed(worker, glint::candidate::SurfaceSeedKind::kAudio);
++        EXPECT_TRUE(canvas.has_value());
++        EXPECT_TRUE(audio.has_value());
++        if (canvas.has_value()) EXPECT_EQ(canvas.value(), std::optional(policy.policy.canvas));
++        if (audio.has_value()) EXPECT_EQ(audio.value(), std::optional(policy.policy.audio));
++      });
++  EXPECT_CALL(*reporting_proxy_, WillEvaluateScriptMock()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidEvaluateTopLevelScript(true)).Times(1);
++  EXPECT_CALL(*reporting_proxy_, WillDestroyWorkerGlobalScope()).Times(1);
++  EXPECT_CALL(*reporting_proxy_, DidTerminateWorkerThread()).Times(1);
++  worker_thread_->StartWithSourceCode(security_origin_.get(), "//fixture",
++      KURL("http://fake.url/"), nullptr, std::nullopt, policy, true);
++  worker_thread_->WaitForInit();
++  worker_thread_->Terminate();
++  worker_thread_->WaitForShutdownForTesting();
++}
++
++TEST_F(GlintWorkerSurfaceThreadTest, SurfaceReaderRejectsRequiredMissingBeforeEvaluation) {
++  ExpectRejectedSurface(std::nullopt, std::nullopt,
++      base::BindOnce([](WorkerOrWorkletGlobalScope* scope) {
++        auto* worker = To<WorkerGlobalScope>(scope);
++        auto result = glint::candidate::CanvasPartitionSeed(worker);
++        EXPECT_FALSE(result.has_value());
++        if (!result.has_value()) EXPECT_EQ(result.error(), glint::candidate::SurfaceSeedError::kInvalidPolicy);
++      }));
++}
++
+ TEST_F(WorkerThreadTest, GlintCanvasSeedArrivesBeforeEvaluation) {
+   std::array<uint8_t, 32> seed{};
+   for (uint8_t i = 0; i < seed.size(); ++i) {
+diff --git a/third_party/blink/renderer/modules/BUILD.gn b/third_party/blink/renderer/modules/BUILD.gn
+index 57908c7..e8e4caa 100644
+--- a/third_party/blink/renderer/modules/BUILD.gn
++++ b/third_party/blink/renderer/modules/BUILD.gn
+@@ -652,6 +652,8 @@ source_set("unit_tests") {
+     "wake_lock/wake_lock_test_utils.h",
+     "webaudio/analyser_node_test.cc",
+     "webaudio/audio_buffer_source_handler_test.cc",
++    "webaudio/glint/offline_audio_candidate_unittest.cc",
++    "webaudio/glint/offline_audio_buffer_unittest.cc",
+     "webaudio/audio_context_autoplay_test.cc",
+     "webaudio/audio_context_test.cc",
+     "webaudio/audio_node_input_test.cc",
+diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+index a40c95e..1bb9ba0 100644
+--- a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
++++ b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+@@ -55,6 +55,7 @@
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
+ #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_host.h"
+ #include "third_party/blink/renderer/core/html/canvas/element_image.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h"
+ #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
+ #include "third_party/blink/renderer/core/html/canvas/image_data.h"
+ #include "third_party/blink/renderer/core/html/canvas/text_cluster.h"
+@@ -63,6 +64,7 @@
+ #include "third_party/blink/renderer/core/inspector/console_message.h"
+ #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
+ #include "third_party/blink/renderer/core/style/computed_style.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
+ #include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_2d_recorder_context.h"
+ #include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_rendering_context_2d_state.h"
+ #include "third_party/blink/renderer/modules/canvas/htmlcanvas/canvas_context_creation_attributes_helpers.h"
+@@ -552,10 +554,46 @@ ImageData* BaseRenderingContext2D::getImageDataInternal(
+     }
+ 
+     SkPixmap image_data_pixmap = image_data->GetSkPixmap();
++    bool glint_candidate_readback = false;
++    const auto seed = glint::candidate::CanvasPartitionSeed(GetTopExecutionContext());
++    if (!seed.has_value()) {
++      exception_state.ThrowDOMException(
++          DOMExceptionCode::kNotReadableError,
++          "Glint Canvas policy is unavailable.");
++      return nullptr;
++    }
++    if (const auto& partition_seed = seed.value()) {
++      const auto& info = image_data_pixmap.info();
++      if (info.colorType() != kRGBA_8888_SkColorType ||
++          info.alphaType() != kUnpremul_SkAlphaType || !info.colorSpace() ||
++          !info.colorSpace()->isSRGB()) {
++        exception_state.ThrowDOMException(
++            DOMExceptionCode::kNotReadableError,
++            "Glint Canvas candidate does not support this ImageData format.");
++        return nullptr;
++      }
++      auto protected_image = glint::candidate::CreateProtectedCanvasImage(
++          snapshot, *partition_seed, glint::candidate::kCandidateAdditionalPixelBudget);
++      if (!protected_image.has_value()) {
++        exception_state.ThrowDOMException(
++            DOMExceptionCode::kNotReadableError,
++            "Glint Canvas candidate readback could not be completed.");
++        return nullptr;
++      }
++      // Classify the full image once; crop only from its canonical pixels.
++      snapshot = std::move(protected_image).value();
++      glint_candidate_readback = true;
++    }
+     const bool read_pixels_successful =
+         snapshot->PaintImageForCurrentFrame().readPixels(
+             image_data_pixmap.info(), image_data_pixmap.writable_addr(),
+             image_data_pixmap.rowBytes(), sx, sy);
++    if (!read_pixels_successful && glint_candidate_readback) {
++      exception_state.ThrowDOMException(
++          DOMExceptionCode::kNotReadableError,
++          "Glint Canvas candidate pixels could not be read.");
++      return nullptr;
++    }
+     if (!read_pixels_successful) {
+       SkIRect bounds =
+           snapshot->PaintImageForCurrentFrame().GetSkImageInfo().bounds();
+diff --git a/third_party/blink/renderer/modules/webaudio/BUILD.gn b/third_party/blink/renderer/modules/webaudio/BUILD.gn
+index e53243e..09adc7c 100644
+--- a/third_party/blink/renderer/modules/webaudio/BUILD.gn
++++ b/third_party/blink/renderer/modules/webaudio/BUILD.gn
+@@ -6,6 +6,11 @@ import("//third_party/blink/renderer/modules/modules.gni")
+ 
+ blink_modules_sources("webaudio") {
+   sources = [
++    "glint/offline_audio_candidate.h",
++    "glint/offline_audio_candidate.cc",
++    "glint/offline_audio_limits.h",
++    "glint/offline_audio_buffer.h",
++    "glint/offline_audio_buffer.cc",
+     "analyser_handler.cc",
+     "analyser_handler.h",
+     "analyser_node.cc",
+@@ -190,6 +195,7 @@ blink_modules_sources("webaudio") {
+     sources += [ "cpu/arm/oscillator_kernel_neon.cc" ]
+   }
+   deps = [
++    "//third_party/boringssl",
+     "//services/metrics/public/cpp:ukm_builders",
+     "//third_party/blink/renderer/modules/mediastream",
+     "//third_party/blink/renderer/modules/peerconnection",
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer.cc b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer.cc
+new file mode 100644
+index 0000000..e78e212
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer.cc
+@@ -0,0 +1,44 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "offline_audio_buffer.h"
++
++#include "offline_audio_candidate.h"
++#include "offline_audio_limits.h"
++#include "third_party/blink/renderer/modules/webaudio/audio_buffer.h"
++
++namespace glint::candidate {
++blink::AudioBuffer* CopyOfflineAudioBuffer(
++    blink::AudioBuffer& source,
++    const std::array<uint8_t, 32>& audio_seed) {
++  const auto channels = source.numberOfChannels();
++  const auto frames = source.length();
++  if (!CanCopyOfflineAudio(channels, frames)) {
++    return nullptr;
++  }
++  // Check every source before allocation; detached/invalid channel views reject.
++  for (unsigned channel = 0; channel < channels; ++channel) {
++    auto input = source.getChannelData(channel);
++    if (!input || input->AsSpan().size() != frames) {
++      return nullptr;
++    }
++  }
++  auto* output = blink::AudioBuffer::CreateUninitialized(
++      channels, frames, source.sampleRate());
++  if (!output) {
++    return nullptr;
++  }
++  OfflineAudioMasker masker(audio_seed);
++  for (unsigned channel = 0; channel < channels; ++channel) {
++    const auto input = source.getChannelData(channel)->AsSpan();
++    auto destination = output->getChannelData(channel)->AsSpan();
++    for (size_t index = 0; index < input.size(); ++index) {
++      auto value = masker.Transform(input[index]);
++      if (!value) {
++        return nullptr;
++      }
++      destination[index] = *value;
++    }
++  }
++  return output;
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer.h b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer.h
+new file mode 100644
+index 0000000..bc79c71
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer.h
+@@ -0,0 +1,21 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_OFFLINE_AUDIO_BUFFER_H_
++#define GLINT_OFFLINE_AUDIO_BUFFER_H_
++
++#include <array>
++#include <cstdint>
++
++namespace blink {
++class AudioBuffer;
++}
++
++namespace glint::candidate {
++// A detached result only. Never exposes a partial transform or mutates source.
++// No caller should fall back to unprotected output when this returns nullptr.
++blink::AudioBuffer* CopyOfflineAudioBuffer(
++    blink::AudioBuffer& source,
++    const std::array<uint8_t, 32>& audio_seed);
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer_unittest.cc b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer_unittest.cc
+new file mode 100644
+index 0000000..d5f8f8a
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer_unittest.cc
+@@ -0,0 +1,85 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "offline_audio_buffer.h"
++
++#include <bit>
++
++#include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/renderer/modules/webaudio/audio_buffer.h"
++#include "third_party/blink/renderer/platform/testing/task_environment.h"
++
++namespace glint::candidate {
++namespace {
++constexpr std::array<uint8_t, 32> kSeed{};
++class GlintOfflineAudioBufferTest : public testing::Test {
++ private:
++  blink::test::TaskEnvironment task_environment_;
++};
++
++TEST_F(GlintOfflineAudioBufferTest, CopyPreservesFormatAndSourceBits) {
++  auto* source = blink::AudioBuffer::Create(2, 8, 48000);
++  ASSERT_TRUE(source);
++  for (unsigned channel = 0; channel < 2; ++channel) {
++    auto input = source->getChannelData(channel)->AsSpan();
++    for (size_t index = 0; index < input.size(); ++index) {
++      input[index] = 0.1234f;
++    }
++  }
++  auto* output = CopyOfflineAudioBuffer(*source, kSeed);
++  ASSERT_TRUE(output);
++  EXPECT_NE(source, output);
++  EXPECT_EQ(output->numberOfChannels(), 2u);
++  EXPECT_EQ(output->length(), 8u);
++  EXPECT_EQ(output->sampleRate(), 48000);
++  for (unsigned channel = 0; channel < 2; ++channel) {
++    const auto input = source->getChannelData(channel)->AsSpan();
++    const auto result = output->getChannelData(channel)->AsSpan();
++    EXPECT_NE(input.data(), result.data());
++    for (size_t index = 0; index < input.size(); ++index) {
++      EXPECT_EQ(std::bit_cast<uint32_t>(input[index]), std::bit_cast<uint32_t>(0.1234f));
++      EXPECT_LE(std::bit_cast<uint32_t>(input[index]) ^ std::bit_cast<uint32_t>(result[index]), 1u);
++    }
++  }
++}
++
++TEST_F(GlintOfflineAudioBufferTest, EqualChannelsRemainEqual) {
++  auto* source = blink::AudioBuffer::Create(2, 16, 44100);
++  ASSERT_TRUE(source);
++  for (unsigned channel = 0; channel < 2; ++channel) {
++    auto input = source->getChannelData(channel)->AsSpan();
++    for (size_t index = 0; index < input.size(); ++index) {
++      input[index] = static_cast<float>(index) / 32;
++    }
++  }
++  auto* output = CopyOfflineAudioBuffer(*source, kSeed);
++  ASSERT_TRUE(output);
++  const auto left = output->getChannelData(0)->AsSpan();
++  const auto right = output->getChannelData(1)->AsSpan();
++  for (size_t index = 0; index < left.size(); ++index) {
++    EXPECT_EQ(left[index], right[index]);
++  }
++}
++
++TEST_F(GlintOfflineAudioBufferTest, ResultRemainsNormallyMutable) {
++  auto* source = blink::AudioBuffer::Create(1, 8, 44100);
++  ASSERT_TRUE(source);
++  auto* output = CopyOfflineAudioBuffer(*source, kSeed);
++  ASSERT_TRUE(output);
++  output->getChannelData(0)->AsSpan()[0] = 0.75f;
++  EXPECT_EQ(output->getChannelData(0)->AsSpan()[0], 0.75f);
++  EXPECT_EQ(source->getChannelData(0)->AsSpan()[0], 0);
++}
++
++TEST_F(GlintOfflineAudioBufferTest, RemaskedCopyIsIdempotent) {
++  auto* source = blink::AudioBuffer::Create(1, 8, 44100);
++  ASSERT_TRUE(source);
++  source->getChannelData(0)->AsSpan()[0] = -0.1234f;
++  auto* first = CopyOfflineAudioBuffer(*source, kSeed);
++  ASSERT_TRUE(first);
++  auto* second = CopyOfflineAudioBuffer(*first, kSeed);
++  ASSERT_TRUE(second);
++  EXPECT_EQ(std::bit_cast<uint32_t>(first->getChannelData(0)->AsSpan()[0]),
++            std::bit_cast<uint32_t>(second->getChannelData(0)->AsSpan()[0]));
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc
+new file mode 100644
+index 0000000..13b844b
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc
+@@ -0,0 +1,48 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "offline_audio_candidate.h"
++
++#include <bit>
++#include <cstring>
++
++#include "third_party/boringssl/src/include/openssl/hmac.h"
++
++namespace glint::candidate {
++namespace {
++constexpr char kDomain[] = "glint.audio.offline.f32.candidate.v1";
++static_assert(sizeof(float) == sizeof(uint32_t));
++static_assert(std::numeric_limits<float>::is_iec559);
++}  // namespace
++
++OfflineAudioMasker::OfflineAudioMasker(const std::array<uint8_t, 32>& audio_seed)
++    : seed_(audio_seed) {}
++
++std::optional<float> OfflineAudioMasker::Transform(float sample) {
++  const auto bits = std::bit_cast<uint32_t>(sample);
++  const auto magnitude = bits & 0x7fffffffu;
++  const auto exponent = magnitude & 0x7f800000u;
++  // Preserve signed silence, subnormals, infinities/NaNs and out-of-range peaks.
++  if (exponent == 0 || exponent == 0x7f800000u || magnitude >= 0x3f800000u) {
++    return sample;
++  }
++  const auto normalized = bits & ~uint32_t{1};
++  auto& entry = cache_[(normalized * 0x9e3779b9u) >> 24];
++  if (entry.normalized != normalized) {
++    std::array<uint8_t, sizeof(kDomain) - 1 + 4> message{};
++    std::memcpy(message.data(), kDomain, sizeof(kDomain) - 1);
++    for (size_t index = 0; index < 4; ++index) {
++      message[sizeof(kDomain) - 1 + index] =
++          static_cast<uint8_t>(normalized >> (24 - index * 8));
++    }
++    std::array<uint8_t, 32> digest{};
++    unsigned length = 0;
++    if (!HMAC(EVP_sha256(), seed_.data(), seed_.size(), message.data(),
++              message.size(), digest.data(), &length) || length != digest.size()) {
++      return std::nullopt;
++    }
++    entry.normalized = normalized;
++    entry.bit = digest[0] & 1u;
++  }
++  return std::bit_cast<float>(normalized | entry.bit);
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.h b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.h
+new file mode 100644
+index 0000000..f0b5bbc
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.h
+@@ -0,0 +1,30 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_OFFLINE_AUDIO_CANDIDATE_H_
++#define GLINT_OFFLINE_AUDIO_CANDIDATE_H_
++
++#include <array>
++#include <cstdint>
++#include <limits>
++#include <optional>
++
++namespace glint::candidate {
++// Experimental scalar transform for a detached offline result, before exposure.
++// Callers must use the independently derived audio partition seed, not Canvas.
++// This is not a WebAudio integration or a real-time audio processing hook.
++class OfflineAudioMasker {
++ public:
++  explicit OfflineAudioMasker(const std::array<uint8_t, 32>& audio_seed);
++  std::optional<float> Transform(float sample);
++
++ private:
++  struct Entry {
++    uint32_t normalized = std::numeric_limits<uint32_t>::max();
++    uint32_t bit = 0;
++  };
++  std::array<uint8_t, 32> seed_;
++  std::array<Entry, 256> cache_{};
++};
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate_unittest.cc b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate_unittest.cc
+new file mode 100644
+index 0000000..5c848ec
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate_unittest.cc
+@@ -0,0 +1,111 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "offline_audio_candidate.h"
++#include "offline_audio_limits.h"
++
++#include <bit>
++#include <cmath>
++
++#include "testing/gtest/include/gtest/gtest.h"
++
++namespace glint::candidate {
++namespace {
++constexpr std::array<uint8_t, 32> kAudioSeed{};
++
++TEST(GlintOfflineAudioCandidateTest, PreservesSignedSilence) {
++  OfflineAudioMasker masker(kAudioSeed);
++  for (uint32_t bits : {0u, 0x80000000u}) {
++    ASSERT_TRUE(masker.Transform(std::bit_cast<float>(bits)));
++    EXPECT_EQ(std::bit_cast<uint32_t>(*masker.Transform(std::bit_cast<float>(bits))), bits);
++  }
++}
++
++TEST(GlintOfflineAudioCandidateTest, PreservesNonFinitePayloadBits) {
++  OfflineAudioMasker masker(kAudioSeed);
++  for (uint32_t bits : {0x7f800000u, 0xff800000u, 0x7fc00123u}) {
++    auto value = masker.Transform(std::bit_cast<float>(bits));
++    ASSERT_TRUE(value);
++    EXPECT_EQ(std::bit_cast<uint32_t>(*value), bits);
++  }
++}
++
++TEST(GlintOfflineAudioCandidateTest, PreservesSubnormalBits) {
++  OfflineAudioMasker masker(kAudioSeed);
++  for (uint32_t bits : {1u, 0x007fffffu, 0x80000001u}) {
++    auto value = masker.Transform(std::bit_cast<float>(bits));
++    ASSERT_TRUE(value);
++    EXPECT_EQ(std::bit_cast<uint32_t>(*value), bits);
++  }
++}
++
++TEST(GlintOfflineAudioCandidateTest, PreservesUnitAmplitudeAndPeaks) {
++  OfflineAudioMasker masker(kAudioSeed);
++  for (float sample : {1.0f, -1.0f, 4.0f, -4.0f}) {
++    EXPECT_EQ(masker.Transform(sample), sample);
++  }
++}
++
++TEST(GlintOfflineAudioCandidateTest, ChangesOnlyLeastMantissaBit) {
++  OfflineAudioMasker masker(kAudioSeed);
++  for (float sample : {0.25f, -0.25f, 0.1234f, -0.1234f}) {
++    auto value = masker.Transform(sample);
++    ASSERT_TRUE(value);
++    EXPECT_LE(std::bit_cast<uint32_t>(*value) ^ std::bit_cast<uint32_t>(sample), 1u);
++    EXPECT_EQ(std::signbit(*value), std::signbit(sample));
++  }
++}
++
++TEST(GlintOfflineAudioCandidateTest, RepeatedAndRemaskedValuesAreStable) {
++  OfflineAudioMasker masker(kAudioSeed);
++  auto value = masker.Transform(0.1234f);
++  ASSERT_TRUE(value);
++  EXPECT_EQ(masker.Transform(0.1234f), value);
++  EXPECT_EQ(masker.Transform(*value), value);
++}
++
++TEST(GlintOfflineAudioCandidateTest, EqualStereoSamplesRemainEqual) {
++  OfflineAudioMasker left(kAudioSeed), right(kAudioSeed);
++  for (float sample : {0.1f, 0.2f, -0.3f}) {
++    EXPECT_EQ(left.Transform(sample), right.Transform(sample));
++  }
++}
++
++TEST(GlintOfflineAudioCandidateTest, DifferentSeedsDoNotShareAllOutputBits) {
++  auto other_seed = kAudioSeed;
++  other_seed.fill(233);
++  OfflineAudioMasker first(kAudioSeed), second(other_seed);
++  bool differs = false;
++  for (uint32_t index = 0; index < 256; ++index) {
++    const auto sample = std::bit_cast<float>(0x3e800000u + index * 2);
++    auto left = first.Transform(sample), right = second.Transform(sample);
++    ASSERT_TRUE(left);
++    ASSERT_TRUE(right);
++    differs |= *left != *right;
++  }
++  EXPECT_TRUE(differs);
++}
++
++TEST(GlintOfflineAudioCandidateTest, CacheCollisionsDoNotAliasDifferentSamples) {
++  OfflineAudioMasker cached(kAudioSeed);
++  for (uint32_t index = 0; index < 1024; ++index) {
++    OfflineAudioMasker fresh(kAudioSeed);
++    const auto sample = std::bit_cast<float>(0x3e800000u + index * 2);
++    EXPECT_EQ(cached.Transform(sample), fresh.Transform(sample));
++  }
++}
++
++TEST(GlintOfflineAudioCandidateTest, RejectsEmptyAndOverflowingCopySizes) {
++  EXPECT_FALSE(CanCopyOfflineAudio(0, 1));
++  EXPECT_FALSE(CanCopyOfflineAudio(1, 0));
++  EXPECT_FALSE(CanCopyOfflineAudio(std::numeric_limits<unsigned>::max(),
++                                  std::numeric_limits<uint32_t>::max()));
++}
++
++TEST(GlintOfflineAudioCandidateTest, CopyBudgetBoundaryIsExact) {
++  constexpr uint32_t kFrames = kMaxOfflineAudioCopyBytes / sizeof(float) / 2;
++  EXPECT_TRUE(CanCopyOfflineAudio(2, kFrames));
++  EXPECT_FALSE(CanCopyOfflineAudio(2, kFrames + 1));
++  EXPECT_TRUE(CanCopyOfflineAudio(2, 4096));
++}
++}  // namespace
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webaudio/glint/offline_audio_limits.h b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_limits.h
+new file mode 100644
+index 0000000..391698e
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webaudio/glint/offline_audio_limits.h
+@@ -0,0 +1,17 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_OFFLINE_AUDIO_LIMITS_H_
++#define GLINT_OFFLINE_AUDIO_LIMITS_H_
++
++#include <cstddef>
++#include <cstdint>
++
++namespace glint::candidate {
++constexpr size_t kMaxOfflineAudioCopyBytes = 64 * 1024 * 1024;
++constexpr bool CanCopyOfflineAudio(unsigned channels, uint32_t frames) {
++  return channels && frames &&
++         channels <= kMaxOfflineAudioCopyBytes / sizeof(float) / frames;
++}
++}  // namespace glint::candidate
++
++#endif
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+@@ -41,6 +41,9 @@
+ #include "third_party/blink/renderer/modules/webaudio/audio_listener.h"
+ #include "third_party/blink/renderer/modules/webaudio/deferred_task_handler.h"
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_completion_event.h"
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_partition_seed.h"
++#include "third_party/blink/renderer/modules/webaudio/glint/offline_audio_buffer.h"
++#include "third_party/blink/renderer/modules/webaudio/glint/offline_audio_limits.h"
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_destination_handler.h"
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_destination_node.h"
+ #include "third_party/blink/renderer/platform/audio/audio_utilities.h"
+@@ -348,6 +351,24 @@
+   float sample_rate = DestinationHandler().SampleRate();
+   unsigned number_of_channels = DestinationHandler().NumberOfChannels();
+ 
++  glint::candidate::SurfaceSeedResult seed(glint_audio_partition_seed_);
++  if (!glint_audio_policy_captured_) {
++    seed = glint::candidate::SurfacePartitionSeed(
++        GetExecutionContext(), glint::candidate::SurfaceSeedKind::kAudio);
++  }
++  if (!seed.has_value()) {
++    exception_state.ThrowDOMException(DOMExceptionCode::kNotReadableError,
++                                     "Glint offline Audio policy is unavailable.");
++    return EmptyPromise();
++  }
++  if (*seed &&
++      !glint::candidate::CanCopyOfflineAudio(number_of_channels, buffer_size)) {
++    exception_state.ThrowDOMException(
++        DOMExceptionCode::kNotReadableError,
++        "Glint offline Audio copy exceeds its allocation budget.");
++    return EmptyPromise();
++  }
++
+   AudioBuffer* render_target = AudioBuffer::CreateUninitialized(
+       number_of_channels, buffer_size, sample_rate);
+ 
+@@ -360,6 +381,10 @@
+                 ")"}));
+     return EmptyPromise();
+   }
++
++  // Capture flag-off as well as a seed; queued chunks never reseed.
++  glint_audio_partition_seed_ = *seed;
++  glint_audio_policy_captured_ = true;
+ 
+   auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<AudioBuffer>>(
+       script_state, exception_state.GetContext());
+@@ -583,6 +608,19 @@
+   Member<AudioBuffer> rendered_buffer = pending_render_targets_.TakeFirst();
+ 
+   CHECK(rendered_buffer);
++  if (glint_audio_partition_seed_) {
++    rendered_buffer = glint::candidate::CopyOfflineAudioBuffer(
++        *rendered_buffer, *glint_audio_partition_seed_);
++    if (!rendered_buffer) {
++      CloseInternal();
++      resolver->Reject(MakeGarbageCollected<DOMException>(
++          DOMExceptionCode::kNotReadableError,
++          "Glint offline Audio readback could not be completed."));
++      RejectPendingRenderingResolvers();
++      return;
++    }
++  }
++  // Preserve upstream Promise/event ordering and share the final chunk object.
+   resolver->Resolve(rendered_buffer.Get());
+ 
+   if (IsRenderComplete()) {
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.h b/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.h
+@@ -26,6 +26,8 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_OFFLINE_AUDIO_CONTEXT_H_
+ #define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_OFFLINE_AUDIO_CONTEXT_H_
+ 
++#include <array>
++#include <cstdint>
+ #include <optional>
+ 
+ #include "base/synchronization/lock.h"
+@@ -182,6 +184,9 @@
+   HeapDeque<Member<ScriptPromiseResolver<AudioBuffer>>>
+       start_rendering_resolvers_;
+ 
++  bool glint_audio_policy_captured_ = false;
++  std::optional<std::array<uint8_t, 32>> glint_audio_partition_seed_;
++
+   Member<ScriptPromiseResolver<IDLUndefined>> close_resolver_;
+ 
+   // Queue of render targets corresponding to each queued startRendering call.
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc
+@@ -3,6 +3,16 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_context.h"
++#include <memory>
++#include <utility>
++
++#include "third_party/blink/public/common/native_privacy/glint/document_surface_policy.h"
++#include "third_party/blink/public/web/web_navigation_params.h"
++#include "third_party/blink/renderer/core/loader/frame_loader.h"
++#include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
++#include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
++#include "url/gurl.h"
++#include "url/origin.h"
+ 
+ #include <limits>
+ 
+@@ -377,4 +387,60 @@
+   EXPECT_TRUE(render_tester.IsFulfilled());
+ }
+ 
++namespace {
++std::unique_ptr<DummyPageHolder> GlintOfflineAudioPolicyHolder(bool ready) {
++  auto holder = std::make_unique<DummyPageHolder>();
++  const KURL url(NullUrl(), "https://audio-surface.test/");
++  auto params = WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
++  params->origin_to_commit = WebSecurityOrigin::Create(WebURL(url));
++  params->storage_key = StorageKey::CreateFirstParty(url::Origin::Create(GURL("https://audio-surface.test/")));
++  params->glint_document_surface_policy_required = true;
++  if (ready) {
++    const auto encoding = params->storage_key.SerializeForNativePrivacy();
++    if (!encoding) return nullptr;
++    glint::candidate::SurfacePolicy policy;
++    policy.partition_encoding = *encoding;
++    policy.canvas.fill(1);
++    policy.webgl.fill(2);
++    policy.webgpu.fill(3);
++    policy.audio.fill(4);
++    params->glint_document_surface_policy = glint::candidate::DocumentSurfacePolicy{
++        params->storage_key, std::move(policy)};
++  }
++  holder->GetFrame().Loader().CommitNavigation(std::move(params), nullptr);
++  test::RunPendingTasks();
++  return holder;
++}
++}  // namespace
++
++TEST_F(OfflineAudioContextTest, GlintMissingPolicyRejectsBeforeResolverOrRenderThread) {
++  auto holder = GlintOfflineAudioPolicyHolder(false);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 1, 128, 44100,
++                                            ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  DummyExceptionStateForTesting exception;
++  // nullptr is intentional: rejection must precede a ScriptPromiseResolver.
++  auto promise = context->startOfflineRendering(nullptr, exception);
++  EXPECT_TRUE(promise.IsEmpty());
++  EXPECT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(), DOMExceptionCode::kNotReadableError);
++  EXPECT_EQ(context->state().AsStringView(), "suspended");
++}
++
++TEST_F(OfflineAudioContextTest, GlintCopyBudgetRejectsBeforeAllocationOrRenderThread) {
++  auto holder = GlintOfflineAudioPolicyHolder(true);
++  ASSERT_TRUE(holder);
++  auto* context = OfflineAudioContext::Create(holder->GetFrame().DomWindow(), 2, 8388609, 44100,
++                                            ASSERT_NO_EXCEPTION);
++  ASSERT_TRUE(context);
++  DummyExceptionStateForTesting exception;
++  auto promise = context->startOfflineRendering(nullptr, exception);
++  EXPECT_TRUE(promise.IsEmpty());
++  EXPECT_TRUE(exception.HadException());
++  EXPECT_EQ(exception.CodeAs<DOMExceptionCode>(), DOMExceptionCode::kNotReadableError);
++  EXPECT_EQ(context->state().AsStringView(), "suspended");
++}
++
++
+ }  // namespace blink

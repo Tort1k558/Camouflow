@@ -4100,7 +4100,7 @@ def test_native_candidate_audio_copy_uses_bounded_domain_without_changing_policy
         "memcpy", "HMAC", "normalized", "seed_", "digest", "UNSAFE_BUFFERS", "-Wno-unsafe"))
 
 
-def test_157_manifests_separate_verified_prefix_from_unported_complete_corpus():
+def test_157_manifests_separate_source_application_from_runtime_admission():
     import hashlib
     import json
     from scripts import fetch_native_rebase_sources as fetch
@@ -4113,8 +4113,11 @@ def test_157_manifests_separate_verified_prefix_from_unported_complete_corpus():
     assert len(prefix["patches"]) == prefix["selected_prefix_patches"] == 32
     assert len(prefix["source_files"]) == 88
     assert len(full["patches"]) == full["selected_patch_count"] == 64
-    assert len(full["source_files"]) == 185 and full["verified_prefix_patches"] == 32
+    assert len(full["source_files"]) == 185 and full["verified_prefix_patches"] == 64
     assert full["source_corpus_complete"] is True
+    assert full["source_application_complete"] is True
+    assert full["next_port_required_patch"] is None
+    assert prefix["next_port_required_patch"] == "0033-native-surface-readback.patch"
     assert prefix["patches"] == full["patches"][:32]
     assert {row["path"] for row in prefix["source_files"]} < {row["path"] for row in full["source_files"]}
     for value in (prefix, full):
@@ -4122,12 +4125,11 @@ def test_157_manifests_separate_verified_prefix_from_unported_complete_corpus():
         assert value["target_revision"] == "f9d7b13a569b352a0267234ea5740fdecc83ffa2"
         assert value["target_version"] == "157.0.8103.27"
         assert value["dependencies"]["v8"]["revision"] == "a4889e05285021952e2ca9648c805a4c989345ae"
-        assert value["next_port_required_patch"] == "0033-native-surface-readback.patch"
         assert value["complete_forward_port"] is False
         assert not value["compiled"] and not value["runtime_verified"] and not value["production_admitted"]
         assert fetch.source_plan(value) == value["source_files"]
     overrides = {row["file"] for row in full["patches"] if row["file"].startswith("upstream-157-prefix/")}
-    assert len(overrides) == 6
+    assert len(overrides) == 10
     for row, original in zip(full["patches"], candidate["manifest"]["patches"], strict=True):
         path = build.ROOT / "native/drafts" / row["file"]
         assert path.name == original["file"]
@@ -4137,6 +4139,29 @@ def test_157_manifests_separate_verified_prefix_from_unported_complete_corpus():
     for name in ("manifest.json", "full-inputs-manifest.json"):
         raw = (root / name).read_bytes()
         assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+
+
+def test_157_audio_port_preserves_chunk_queue_and_checks_actual_buffer_budget():
+    from scripts import native_build as build
+
+    path = build.ROOT / "native/drafts/upstream-157-prefix/patches/0033-native-surface-readback.patch"
+    patch = path.read_text(encoding="utf-8")
+    section = patch.split(
+        "diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc", 1)[1]
+    section = section.split("diff --git ", 1)[0]
+    additions = "\n".join(line[1:] for line in section.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert "SurfaceSeedResult seed(glint_audio_partition_seed_)" in additions
+    assert "if (!glint_audio_policy_captured_)" in additions
+    assert "CanCopyOfflineAudio(number_of_channels, buffer_size)" in additions
+    assert "glint_audio_policy_captured_ = true" in additions
+    assert "total_render_frames_" not in additions and "complete_resolver_" not in additions
+    assert additions.index("CopyOfflineAudioBuffer") < additions.index("CloseInternal()")
+    assert additions.index("CloseInternal()") < additions.index("resolver->Reject")
+    assert "RejectPendingRenderingResolvers();" in additions
+    assert "FireCompletionEvent" not in additions and "DispatchEvent" not in additions
+    assert not any(line.startswith("-") and not line.startswith("---")
+                   for line in section.splitlines())
 
 
 @pytest.mark.parametrize("failure", [None, "manifest-only", "patch-directory-only", "bad-source", "bad-patch",
