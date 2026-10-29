@@ -214,6 +214,10 @@ def test_audio_math_readiness_draft_uses_noncolliding_fixed_backend_vectors():
     from scripts.verify_native_document_drafts import patch_paths
 
     path = native_build.ROOT / "native/drafts/audio-dsp-math-v2/audio_math_fixture_readiness.patch"
+    selected = native_build.load_candidate("upstream-156")
+    row = selected["manifest"]["patches"][-1]
+    assert row["file"] == "0068-native-audio-math-fixture-readiness.patch"
+    assert (selected["directory"] / "patches" / row["file"]).read_bytes() == path.read_bytes()
     patch = path.read_text(encoding="utf-8-sig")
     assert patch_paths(patch) == {"third_party/blink/renderer/modules/webaudio/offline_audio_context_test.cc"}
     assert "+constexpr uint8_t kGlintFloat32AudioSeed = 10;" in patch

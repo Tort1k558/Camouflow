@@ -9,13 +9,13 @@ with `ASSERT_NO_EXCEPTION` aborted the test process. That does not establish an
 AudioMath DSP failure or a successful runtime gate.
 
 [`audio_math_fixture_readiness.patch`](audio_math_fixture_readiness.patch) is an
-**unregistered fixture-only repair**, prepared against 001–067. Seed `10` selects
+**fixture-only repair**, selected as candidate patch 0068 against 001–067. Seed `10` selects
 the same float backend without colliding with Canvas/WebGL/WebGPU seeds 1/2/3;
 native seed `4` is unchanged. The fixture now verifies actual document readiness,
 and a new negative case requires duplicate-seed rejection before node/resolver
 creation. All 11 existing cases are retained: the proposed gate becomes 12.
-Isolated apply-check and HMAC vectors passed. The draft has not been compiled,
-executed, selected in the source manifest or used to admit a capability.
+Isolated apply-check and HMAC vectors passed. The patch has not been compiled, executed or used to admit a capability.
+The native gate now requires all 12 cases; failed 001–067 evidence is retained.
 
 ## Actual Audio-v1 fidelity failure on 156
 

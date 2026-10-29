@@ -7,21 +7,29 @@ lock and reviewed 001-062 chain still target Chromium 148.0.7778.96. The separat
 gates remain separate. The manifest is a source
 contract, not a mutable binary-readiness flag.
 
-### Selected 0067 AudioMath: build and runtime verification pending
+### Selected 0068: fixture-only repair, not yet compiled
 
-The current source manifest appends `0067-native-audio-math-context-candidate.patch`.
-It captures an immutable OfflineAudioContext math policy at construction and
-keeps the experimental feature disabled by default. The `audio-math` native gate
-requires all 11 context/error/lifetime cases in `blink_unittests`, with no skips.
-The GN recipe also requests the actual source revision instead of a dummy stamp.
-Neither change has been compiled or verified in the selected browser yet.
+The 001–067 browser is built and passed all eight existing raw runtime gates
+(**160/160**). GPU metadata diagnostics passed four phases. The native batch
+passed 17 of 18 groups: AudioMath failed because its float Audio seed duplicated
+the WebGPU seed. The document readiness check correctly rejected that policy.
+See [runtime evidence](runtime-suite67-observations.json),
+[native failure](native-batch67-observations.json) and
+[Audio/GPU diagnostics](canonical-audio-gpu67-observations.json).
 
-The last verified binary remains **001–066**, bound to
-`checkpoints/001-066.json`; its evidence must not be attributed to 0067.
-Audio-v1 fidelity remains **42/54 protected versus 54/54 baseline**, with 12
-identity/half-gain failures. AudioMath is not yet a verified fix, hardware cohort,
-privacy admission or release. Next: native cases, matched browser Audio fidelity,
-combined regression and installed payload verification.
+The selected manifest now appends `0068-native-audio-math-fixture-readiness.patch`.
+It changes only the OfflineAudioContext fixture: independent float seed 10,
+actual document readiness assertions and a duplicate-seed negative case.
+The native gate requires all **12** context/error/lifetime cases, with no skips.
+Production DSP, readiness checks and feature defaults are unchanged.
+The patch has not yet been compiled or executed. Source 001–067 and its runtime
+remain preserved separately; evidence is bound to `checkpoints/001-067.json`.
+
+Browser AudioMath passed the diagnostic probes on one owned profile, but both
+backend branches and device cohorts remain unverified. Legacy Audio failed
+compatibility (24/54 fidelity rows on the latest key, plus analyser/worklet
+failures). No Audio capability, full protected-surface, installed-package or
+release admission follows from the passing basic runtime suite.
 
 ### 0066 fixture correction: native gates passed
 

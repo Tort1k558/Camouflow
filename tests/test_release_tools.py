@@ -1256,7 +1256,7 @@ def test_native_privacy_unit_report_requires_exact_completed_cases(mutation, tar
 
     report = {"tests": {"keys": 43, "contexts": 26, "delivery": 34, "worker-handoff": 4, "document-partition": 9, "document-navigation": 12,
                         "surface-navigation": 42, "window-transport": 13, "gpu-pack-copy": 14, "worker-surfaces": 55, "gpu-metadata-codec": 14, "gpu-metadata": 34,
-                        "identity-keys": 62, "identity-contexts": 37, "identity-transport": 20, "identity-handoff": 15, "audio-math": 11}[target], "failures": 0, "disabled": 0, "testsuites": [
+                        "identity-keys": 62, "identity-contexts": 37, "identity-transport": 20, "identity-handoff": 15, "audio-math": 12}[target], "failures": 0, "disabled": 0, "testsuites": [
         {"name": suite, "testsuite": [{"name": name, "status": "RUN", "result": "COMPLETED"}
                                       for name in sorted(cases)]}
         for suite, cases in required_tests(target).items()]}
@@ -2322,7 +2322,7 @@ def test_native_windows_candidate_package_preserves_manifest_without_admitting_p
     assert metadata["candidate_manifest_sha256"] == candidate["manifest_sha256"]
     assert metadata["chromium_version"] == candidate["lock"]["chromium_version"]
     assert metadata["native_version"] == "0.2.0-dev"
-    assert len(metadata["build_receipt"]["patches"]) == len(candidate["manifest"]["patches"]) == 67
+    assert len(metadata["build_receipt"]["patches"]) == len(candidate["manifest"]["patches"]) == 68
     assert metadata["native_patch_runtime_verified"] is False
     store = NativeBinaryStore(tmp_path / "store")
     installed = store.install_archive(archive, result["sha256"])
@@ -4207,7 +4207,7 @@ def test_native_candidate_requires_exact_checkout_and_complete_patch_chain(tmp_p
             build.candidate_source_patches(source, {}, candidate)
     else:
         rows = build.candidate_source_patches(source, {}, candidate)
-        assert len(rows) == len(candidate["manifest"]["patches"]) == 67 and sum(row.get("repository") == "v8" for row in rows) == 1
+        assert len(rows) == len(candidate["manifest"]["patches"]) == 68 and sum(row.get("repository") == "v8" for row in rows) == 1
 
 
 def test_native_candidate_safe_buffer_port_keeps_bounded_cpp_paths():
@@ -5880,12 +5880,12 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
 
     manifest = json.loads((draft.DRAFT / "manifest.json").read_text(encoding="utf-8-sig"))
     originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:62]
-    assert len(originals) == 62 and len(manifest["patches"]) == 67
+    assert len(originals) == 62 and len(manifest["patches"]) == 68
     assert [row["file"] for row in manifest["patches"][:62]] == [path.name for path in originals]
     assert [row["file"] for row in manifest["patches"][62:]] == [
         "0063-native-safe-buffer-portability.patch", "0064-native-audio-safe-domain-copy.patch",
         "0065-native-fixture-portability.patch", "0066-native-gpu-optional-query-fixture.patch",
-        "0067-native-audio-math-context-candidate.patch"]
+        "0067-native-audio-math-context-candidate.patch", "0068-native-audio-math-fixture-readiness.patch"]
     for row in manifest["patches"]:
         content = (draft.DRAFT / "patches" / row["file"]).read_bytes()
         assert b"\r" not in content and not content.startswith(b"\xef\xbb\xbf")

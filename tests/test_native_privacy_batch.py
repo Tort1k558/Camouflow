@@ -129,7 +129,7 @@ def test_batch_audio_math_reuses_blink_binary_and_requires_all_context_cases(own
     assert result["passed"] and result["postguards_passed"]
     assert owned.state["builds"][0][5:] == ["blink_unittests"]
     assert owned.state["cases"] == ["worker-handoff", "audio-math"]
-    assert len(batch.units.required_tests("audio-math")["OfflineAudioContextTest"]) == 11
+    assert len(batch.units.required_tests("audio-math")["OfflineAudioContextTest"]) == 12
     assert not result["privacy_admitted"] and not result["production_admitted"]
 
 
@@ -147,8 +147,11 @@ def test_audio_math_requires_selected_patch_and_matches_native_test_inventory(tm
     assert batch.units.require_target_sources(tmp_path, patches, "audio-math") is None
     with pytest.raises(ValueError, match="patches are required"):
         batch.units.require_target_sources(tmp_path, patches[:-1], "audio-math")
-    patch = (candidate["directory"] / "patches" / patches[-1]["name"]).read_text(encoding="utf-8-sig")
-    names = set(re.findall(r"\+TEST_F\(OfflineAudioContextTest,\s*\n?\+?\s*(GlintMath\w+)\)", patch))
+    patch = "\n".join((candidate["directory"] / "patches" / row["name"]).read_text(encoding="utf-8-sig")
+                      for row in patches[-2:])
+    resulting_lines = "\n".join(line[1:] for line in patch.splitlines()
+                                if line.startswith(("+", " ")) and not line.startswith("+++"))
+    names = set(re.findall(r"TEST_F\(OfflineAudioContextTest,\s*(GlintMath\w+)\)", resulting_lines))
     assert names == batch.units.required_tests("audio-math")["OfflineAudioContextTest"]
 
 

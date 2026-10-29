@@ -209,6 +209,7 @@ AUDIO_MATH_TESTS = {"OfflineAudioContextTest": {
     "GlintMathStoppedContextPreservesNativeErrorPrecedence", "GlintMathFrameDetachDoesNotRecapturePolicy",
     "GlintMathNavigationDoesNotRebindOldContext", "GlintMathUnknownPipelineIsRejected",
     "GlintMathDirectConstantDoesNotUseReadbackFarbling",
+    "GlintMathDuplicateSurfaceSeedRejectsBeforeNodeOrResolver",
 }}
 
 DELIVERY_SOURCE_FILES = {
@@ -437,7 +438,8 @@ def verified_source_chain(workspace: Path, candidate: dict | None, lock: dict, e
 def require_target_sources(source: Path, patches: list[dict], target: str) -> dict[str, str] | None:
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
     if target == "audio-math":
-        required_patches.add("0067-native-audio-math-context-candidate.patch")
+        required_patches.update({"0067-native-audio-math-context-candidate.patch",
+                                 "0068-native-audio-math-fixture-readiness.patch"})
     if target == "font-rasterization":
         required_patches.add("0062-native-windows-font-rasterization.patch")
     if target in IDENTITY_TARGETS:

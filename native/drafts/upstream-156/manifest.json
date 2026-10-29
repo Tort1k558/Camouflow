@@ -1527,6 +1527,10 @@
     {
       "file": "0067-native-audio-math-context-candidate.patch",
       "sha256": "2a3de912845933c401cb20e97aff6c5551f079bee1147716c7ec17178af0e740"
+    },
+    {
+      "file": "0068-native-audio-math-fixture-readiness.patch",
+      "sha256": "64f6e2f756ab6d56e28f1c5be1e2542d6b0ea61359cb777d4dbbe9944629494a"
     }
   ],
   "build": {
