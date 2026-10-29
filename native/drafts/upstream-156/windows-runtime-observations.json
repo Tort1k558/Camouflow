@@ -285,5 +285,64 @@
     "Native policy composition, fingerprint/anti-bot sites and CAPTCHA server-side outcomes",
     "AudioMath integration execution, float32 cohort plausibility and quality/performance",
     "Cross-version data recovery; raw Chromium downgrade remains blocked"
-  ]
+  ],
+  "compiled_branding": {
+    "passed": true,
+    "scope": "Compiled Windows branding and internal version page; not visual taskbar, shortcuts or fingerprint admission",
+    "branding_patches": {
+      "0060-native-glint-branding.patch": "e75588eb1ee0651c2609798439d36530073f8d5cc80b7868396ec583234714bc",
+      "0061-native-glint-ui-resources.patch": "7088a0b6d55e6b72d1a4b2d7291e05438db383ae7ea4f272a2832c49838658d3"
+    },
+    "logo_sha256": "b3462b2b9d258c189377e64e70a1e45ca4cec8c94d2b4093cbf254a39ac20d72",
+    "icons": {
+      "IDR_MAINFRAME": [
+        {
+          "width": 0,
+          "height": 0,
+          "colours": 0,
+          "planes": 1,
+          "bits": 32,
+          "bytes": 270376,
+          "sha256": "411636b18db5fcd8d0809c6b787f35cf173fe11fa949b8b866efabed4c06983b"
+        }
+      ],
+      "IDR_X001_APP_LIST": [
+        {
+          "width": 0,
+          "height": 0,
+          "colours": 0,
+          "planes": 1,
+          "bits": 32,
+          "bytes": 270376,
+          "sha256": "411636b18db5fcd8d0809c6b787f35cf173fe11fa949b8b866efabed4c06983b"
+        }
+      ]
+    },
+    "product_names": {
+      "chrome.exe": [
+        "Glint"
+      ],
+      "chrome.dll": [
+        "Glint"
+      ]
+    },
+    "checks": [
+      "compiled-main-and-app-list-icons-match-project-logo",
+      "compiled-executable-and-library-product-names-are-glint",
+      "version-page-product-is-glint"
+    ],
+    "browser_version": "156.0.8078.36",
+    "version_page_product": "Glint",
+    "resources_closed": true,
+    "postguards_passed": true,
+    "logo_file": "../../../logo.ico",
+    "resource_pack_postguards_passed": true,
+    "resource_pack_count": 236,
+    "required_resource_pack_sha256": {
+      "resources.pak": "30abdf74fb8579d7c112e6314ed9189598bc5c344fc73db32c109c4b1dfb1801",
+      "chrome_100_percent.pak": "a1b576c746056fddd1fe0177e4d3118dba0aa471d6a98d2f0118b8b991d17dbf",
+      "chrome_200_percent.pak": "0c2fff1a2c02f47c64ed8013175ee885aba3c30b6943dc6619dc1cfd195def2a",
+      "locales/en-US.pak": "7b09da0a9b2134cf8231523b42d583198bf53135d042d81dd60293c1e3944e4c"
+    }
+  }
 }

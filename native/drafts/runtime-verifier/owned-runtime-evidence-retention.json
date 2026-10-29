@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "scope": "Unapplied verifier-only evidence retention; not a browser shutdown/root-cause fix",
+  "source_file": "scripts/verify_native_runtime.py",
+  "source_text_normalization": "UTF-8 without BOM, LF before source comparison/application",
+  "captured_source_raw_sha256": "9869fe04065d3914ac07e81614253b266c7ab141b8bd9f3e1582c81d3a1db56e",
+  "source_before_sha256": "1d359094a60f14244c5a2ef051c792eda4527410831362dc1939dabb66bd662c",
+  "source_after_sha256": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+  "patch": {
+    "file": "owned-runtime-evidence-retention.patch",
+    "sha256": "62ced802ef2f925630d3a4e4dba45184ca4f29dbe821b16eb464d5f0e76f084b"
+  },
+  "applied_to_canonical_verifier": false,
+  "source_application_passed": true,
+  "browser_close_timeout_resolved": false,
+  "timeout_changed": false,
+  "forced_termination": false,
+  "release_admitted": false,
+  "production_admitted": false,
+  "windows_held_file_controls": [
+    {
+      "case": "baseline-locked-file",
+      "passed": true,
+      "exit_code": 1,
+      "error_type": "NotADirectoryError"
+    },
+    {
+      "case": "candidate-locked-file",
+      "passed": true,
+      "exit_code": 1,
+      "error_type": "TimeoutError"
+    },
+    {
+      "case": "candidate-success",
+      "passed": true,
+      "exit_code": 0,
+      "error_type": null
+    },
+    {
+      "case": "candidate-cleanup-error",
+      "passed": true,
+      "exit_code": 1,
+      "error_type": null
+    },
+    {
+      "case": "candidate-log-error-during-failure",
+      "passed": true,
+      "exit_code": 1,
+      "error_type": "TimeoutError"
+    }
+  ],
+  "isolated_browser_regression": {
+    "passed": true,
+    "version": "156.0.8078.36",
+    "checks": [
+      "concurrent-profile-isolation",
+      "cross-process-owner-exclusion",
+      "navigation-tabs-fill-click-extract-screenshot",
+      "mobile-web-viewport-dpr-touch",
+      "native-document-worker-configuration-diagnostics",
+      "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+      "configured-permissions-isolation-revocation-and-restart",
+      "dead-owner-profile-lock-recovery",
+      "browser-crash-restart-preserves-committed-storage",
+      "authenticated-http-proxy-no-direct-dns-route",
+      "existing-browser-interface-and-scenario-executor",
+      "existing-recorder-capture-and-replay",
+      "native-profile-backup-restore-storage-and-engine-isolation",
+      "native-binary-headless-health-and-disposable-profile-cleanup",
+      "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+      "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+      "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+      "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+    ],
+    "runtime_core_sha256": {
+      "chrome.exe": "0596afb2bd1a84731ebbe4d276edd3797d67b262bebb332e76a8aa9d21db5567",
+      "chrome.dll": "bd75c5c6ab3c45946edc0ea4e8f1d684286dd588d7cc46999a0b2bb1236aab44",
+      "chrome_elf.dll": "14597f88689361a016bce4a648e6b18a50ed065d6fc524dc8112f4b7d6e115d0"
+    },
+    "execution_root_rebound_to_same_repository": true,
+    "execution_copy_sha256": "bf7e6086b6e7b0997fd7b4b43d4595d2439b81f9131ff39d233497b4de9e401d",
+    "scope": "Patched copy of canonical verifier, not the canonical bound suite"
+  },
+  "frozen_inputs_unchanged": 201,
+  "application_gate": "Only after all existing source-bound queues are terminal; rebind later verification inputs",
+  "retained_profile_privacy": "Owned local evidence only; never export or commit retained browser profiles/keys"
+}

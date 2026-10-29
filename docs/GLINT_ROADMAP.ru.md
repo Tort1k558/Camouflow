@@ -31,6 +31,14 @@ Ninja из другого проекта. Исправлена область п
 канонический eight-gate suite, installed runtime и rollback остаются обязательными.
 Очищенная запись: `native/drafts/upstream-156/windows-runtime-observations.json`.
 
+Брендинг 156 проверен в самом бинарнике: обе группы иконок совпадают с logo.ico,
+ProductName EXE/DLL и заголовок chrome://version — Glint. Кеш taskbar/shortcut
+этим не проверен. Подготовлен verifier-only фикс сохранения failed-профиля и
+исходной ошибки: пять Windows held-file controls и 18 baseline-проверок прошли
+на изолированной копии. Канонический verifier не изменён, таймаут браузера не
+объявлен исправленным. Применять только после завершения source-bound очередей
+с новой фиксацией входов: `native/drafts/runtime-verifier/README.md`.
+
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 
 Подготовлен отдельный draft 0068 для Chromium 156 после 001–065:

@@ -4560,6 +4560,69 @@ def test_first_156_audio_calibration_does_not_admit_the_math_variant():
         assert row["sampleRate"] == cases[row["id"]]["rate"] and row["channelCount"] == 2
 
 
+def test_156_compiled_branding_record_matches_the_project_logo():
+    import hashlib
+    import json
+    from scripts import native_build as build
+    from scripts.verify_native_branding import icon_images
+
+    root = build.ROOT / "native/drafts/upstream-156"
+    data = json.loads((root / "windows-runtime-observations.json").read_text(encoding="utf-8"))
+    branding = data["compiled_branding"]
+    logo = (root / branding["logo_file"]).resolve()
+    assert logo == build.ROOT / "logo.ico"
+    assert hashlib.sha256(logo.read_bytes()).hexdigest() == branding["logo_sha256"]
+    assert branding["passed"] and branding["resources_closed"] and branding["postguards_passed"]
+    assert branding["resource_pack_postguards_passed"] and branding["resource_pack_count"] >= 4
+    assert branding["browser_version"] == data["target_version"]
+    assert branding["version_page_product"].strip() == "Glint"
+    assert set(branding["icons"]) == {"IDR_MAINFRAME", "IDR_X001_APP_LIST"}
+    assert all(images == icon_images(logo.read_bytes()) for images in branding["icons"].values())
+    assert set(branding["product_names"]) == {"chrome.exe", "chrome.dll"}
+    assert all(names and set(names) == {"Glint"} for names in branding["product_names"].values())
+    manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    assert branding["branding_patches"] == {row["file"]: row["sha256"] for row in manifest["patches"]
+                                            if row["file"].startswith(("0060-", "0061-"))}
+    assert set(branding["required_resource_pack_sha256"]) == {
+        "resources.pak", "chrome_100_percent.pak", "chrome_200_percent.pak", "locales/en-US.pak"}
+    assert data["release_admitted"] is data["production_admitted"] is False
+
+
+def test_unapplied_runtime_retention_draft_preserves_original_failure_scope():
+    import hashlib
+    import json
+    from scripts import native_build as build
+    from scripts.package_native_windows import REQUIRED_RUNTIME_CHECKS
+
+    root = build.ROOT / "native/drafts/runtime-verifier"
+    raw = (root / "owned-runtime-evidence-retention.json").read_bytes()
+    assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
+    data = json.loads(raw)
+    assert data["schema"] == 1 and data["source_application_passed"]
+    for field in ("applied_to_canonical_verifier", "browser_close_timeout_resolved", "timeout_changed",
+                  "forced_termination", "release_admitted", "production_admitted"):
+        assert data[field] is False
+    source = build.ROOT / data["source_file"]
+    normalized = source.read_text(encoding="utf-8-sig").encode("utf-8")
+    assert hashlib.sha256(normalized).hexdigest() == data["source_before_sha256"]
+    patch = (root / data["patch"]["file"]).read_bytes()
+    assert hashlib.sha256(patch).hexdigest() == data["patch"]["sha256"]
+    observations = json.loads((build.ROOT / "native/drafts/upstream-156/windows-runtime-observations.json").read_text(encoding="utf-8"))
+    assert data["captured_source_raw_sha256"] == observations["source_snapshot_sha256"][data["source_file"]]
+    controls = {row["case"]: row for row in data["windows_held_file_controls"]}
+    assert len(controls) == 5 and all(row["passed"] for row in controls.values())
+    assert controls["baseline-locked-file"]["error_type"] == "NotADirectoryError"
+    assert controls["candidate-locked-file"]["error_type"] == "TimeoutError"
+    assert controls["candidate-log-error-during-failure"]["error_type"] == "TimeoutError"
+    assert controls["candidate-success"]["exit_code"] == 0
+    assert controls["candidate-cleanup-error"]["exit_code"] == 1
+    regression = data["isolated_browser_regression"]
+    assert regression["passed"] and regression["version"] == "156.0.8078.36"
+    assert len(regression["checks"]) == 18 and REQUIRED_RUNTIME_CHECKS.issubset(regression["checks"])
+    assert regression["runtime_core_sha256"] == observations["runtime_core_sha256"]
+    assert data["frozen_inputs_unchanged"] == 201 and data["application_gate"]
+
+
 def test_audio_math_context_draft_binds_source_only_integration():
     import hashlib
     import json

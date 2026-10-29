@@ -15,13 +15,16 @@
 | First extended baseline failure | Close timed out after five checks; temporary-directory cleanup then masked the primary failure | Negative retained; passing repeats do not explain or repair the timeout |
 | Independent close diagnosis | 16 cycles across reviewed 148 and candidate 156, desktop/mobile, storage/diagnostics; 1.140–2.703s, owned processes exited | Same-host cross-version control, not matched stock156; no timeout increase or forced kill |
 | Native156 Audio calibration | 15 cases × three repetitions = 45 bit-exact native156 prototype matches; cleanup/postguards passed | Unprotected baseline only; AudioMath/float32 runtime and stock156 comparison unverified |
-| Current release-tool validators | 1,088 passed, one skipped in 49.27 seconds | Validates report/probe bindings and scopes, not execution of additional native gates |
+| Compiled Glint branding | Main/app-list icons match project logo; ProductName in EXE/DLL and internal version-page heading are Glint; resource-pack postguards passed | Not OS taskbar/shortcut cache migration or fingerprint admission |
+| Staged verifier evidence retention | Five actual held-file controls and an 18-check browser regression passed on a patched copy; original exception/profile retained on failure | Canonical verifier unchanged; underlying browser-close timeout is not fixed |
+| Current release-tool validators | 1,090 passed, one skipped in 44.47 seconds | Validates report/probe bindings and scopes, not execution of additional native gates |
 | Python validation | 1,439 passed, one skipped across changed tooling tests; 15 focused guard cases passed | Not browser/native execution or remote CI |
 
 Build evidence: `D:\Glint156Candidate\fixture-build-continuation-20261029-v2.json`;
 core receipt: `chromium\src\out\CamouFlowNative\camouflow-build.json` below that workspace.
 Guard process controls: `D:\GlintBuilderGuardProbe-20261029-v2\report.json`.
 Sanitized evidence: [`windows-runtime-observations.json`](../native/drafts/upstream-156/windows-runtime-observations.json).
+Staged fix and application boundary: [`runtime-verifier/README.md`](../native/drafts/runtime-verifier/README.md).
 Remaining identity/native targets, canonical eight-gate policy suite, installed
 runtime, compatible rollback and shutdown reliability evidence remain required
 before any candidate release claim. No detector/CAPTCHA outcomes are asserted.

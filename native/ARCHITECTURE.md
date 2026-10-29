@@ -20,6 +20,10 @@ The resumed identity-key target passed 62 C++ cases with postguards; remaining
 identity/native targets and the canonical eight-gate/installed suite are pending.
 The unprotected 156 Audio baseline also matched the standalone native156 DSP
 matrix bit-for-bit in 45 captures. This does not execute AudioMath 0068.
+Compiled 156 main/app-list icons match `logo.ico`; EXE/DLL ProductName and the
+internal version page identify Glint. Taskbar/shortcut caching is not covered.
+The verifier evidence-retention fix is staged separately and tested on an
+isolated copy; it is not applied to the frozen queue or a browser-timeout fix.
 The current candidate chain is 001–065;
 0063–0064 address the actual unsafe-buffer compilation failures without disabling
 diagnostics. Test-only 0065 updates worker synchronization/API calls and the GPU

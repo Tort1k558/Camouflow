@@ -4,6 +4,7 @@ native/**/*.patch text eol=lf whitespace=-blank-at-eol,-blank-at-eof
 native/drafts/**/manifest.json text eol=lf
 native/drafts/**/full-inputs-manifest.json text eol=lf
 native/drafts/upstream-156/windows-runtime-observations.json text eol=lf
+native/drafts/runtime-verifier/*.json text eol=lf
 native/drafts/**/audio-constant-control.js text eol=lf
 native/drafts/**/audio-constant-observations.json text eol=lf
 native/drafts/**/audio-kernel-observations.json text eol=lf

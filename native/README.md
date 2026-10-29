@@ -25,7 +25,7 @@ refresh this comparison; it never changes the source pin or admits a release.
 **Refresh, October 29:** the official Windows Stable response now includes
 **157.0.8103.27** and, within milestone 156, **156.0.8078.75**. Both the default
 148 pin and the active 156.0.8078.36 candidate audit as `behind-stable`.
-The running 156 build remains frozen as a development/rebase checkpoint, not
+The linked 156 candidate remains frozen as a development/rebase checkpoint, not
 a production-ready upstream target. Audit it explicitly with
 `scripts/audit_native_upstream.py --candidate upstream-156 --output <fresh-D-report.json>`.
 Do not infer a completed security review or restart a live build from audit status.
@@ -33,6 +33,7 @@ Do not infer a completed security review or restart a live build from audit stat
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
 | Registered Windows source | 001-062 | Runtime/branding verified; selected controls enabled experimentally for one reviewed local package. General fork admission remains closed |
+| Candidate Windows baseline | 156.0.8078.36 / 001-065 | Built; 62 native key cases, two 18-check baseline lifecycle repeats and 45 native Audio calibration captures passed. Full policy/installed suites pending; an initial shutdown timeout remains unresolved. [Evidence](drafts/upstream-156/windows-runtime-observations.json) |
 | Native identity keys/service | 001-059 | **62/62** passed, repeating the 001-058 result: 19 new derivation/mode cases and 43 legacy checks; unchanged browser core/GN/receipt |
 | Native identity contexts/transport | 001-059 | **37/37 + 20/20** passed in the linked Chromium content target; not a linked identity-mode browser or renderer delivery proof |
 | Native identity handoff | 001-059 | **15/15** Blink cases passed: 12 document cases across four modes and three worker-thread cases; not a linked identity-mode browser |
@@ -49,7 +50,7 @@ Do not infer a completed security review or restart a live build from audit stat
 | Current linked Windows candidate | 001-062 | Incremental j4 build succeeded in **29m02s**, 52 executed steps; separate runnable 001-061 rollback copy retained |
 | Windows development package | 001-062 | 261 checksummed files, 220.95 MiB archive; installed-copy **160/160** and same-Chromium rollback passed. Selected controls have experimental local admission; artifact remains unsigned |
 | Complete eight-gate runtime suite | 001-062 | **160 checks passed** in continuation v2; first-run font NetworkError remains unexplained and recorded |
-| Compiled branding | 001-062 | Main/app-list icons, ProductName and version-page Glint logo/name verified; not cached taskbar/shortcut migration or every UI screen |
+| Compiled branding | Reviewed 148 / 001-062 and candidate 156 / 001-065 | Main/app-list icons match the project logo; EXE/DLL ProductName and version-page name are Glint. Not cached taskbar/shortcut migration or every UI screen |
 | Combined identity and privacy surfaces | 001-059 | Profile-identity and partitioned-privacy each passed **12/12 phases + 24 nested Canvas cases** with concurrent profiles, restart and WebGL readback; not WebGPU protection or third-party anti-bot acceptance |
 | Worker startup/restart | 001-047 | Default **40/40**; extended **60/60**, including 20 nested classic/module cases |
 | Combined Canvas/OfflineAudio | 001-047 | **Three consecutive 7/7 runs passed** on unchanged core; historical 001-045 profile-B timeout remains unexplained |
