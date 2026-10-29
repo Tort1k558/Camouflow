@@ -113,6 +113,44 @@ The exact [fixture sources](first-script/server.py) and [first-script sampler](f
 are included. This validates the controlled baseline fixture, not the pending
 0069/0070 engine changes; the earlier incomplete record remains unchanged.
 
+### Reproduce with the public command
+
+```powershell
+.venv\Scripts\python.exe native/drafts/environment/first-script/verify.py `
+  --executable D:\Glint156Candidate\preserved-runtime68-20261030-v1\runtime\chrome.exe `
+  --work-dir D:\GlintManagerQA\screen-first-script-new `
+  --checkpoint 001-068
+```
+
+The work directory must be fresh. Select a preserved runtime outside the active
+Chromium source tree; the command never copies a binary or changes requested
+settings automatically. It verifies the exact checkpoint prefix, source-build
+receipt, core hashes and reported Git revision, then captures all three modes
+and both persistent phases. It retains every failure, screenshots and source/
+core/receipt postguards. Pages may contact only the owned loopback fixture.
+A complete reproduction of the known 001–068 baseline returns exit code **1**
+with `measurement_complete` true: completing the diagnostic is not the same as
+passing screen consistency. The first public-command attempt hit the unchanged
+10-second navigation deadline during native-control startup while compilation
+was active; its earlier four manager phases and postguards were retained.
+That attempt is **incomplete**, not a passing control or a diagnosed engine fix.
+Failure reports include lifecycle events, pending request URLs and frame URLs;
+the command does not increase deadlines or retry a failed phase.
+Early child viewport sizes may be zero before layout/remote visual-property
+delivery. The pinned `LocalDOMWindow::GetViewportSize()` forces layout for the
+main frame and local parents, not for a remote parent. Such measured zeros are
+retained and listed in `first_viewport_pending`; they are never replaced by
+parent geometry. Main-frame and settled viewport sizes must remain positive.
+This command covers six document contexts, not workers, BFCache or complete
+package/privacy admission.
+
+The [completed public-command run](public-first-script-cli-observations.json)
+reproduced the same four failed manager phases and two passing controls with
+source/core/receipt postguards and no owned Chrome processes left. Earlier
+incomplete prototypes are recorded separately, including the observer callback
+defect and the overstrict early-viewport validation. No deadline or requested
+browser setting was changed to obtain the completed baseline.
+
 The frozen 0069 draft's logical DPR accessor still restricts its override to
 subframes, leaving the main root on Page-global inspector state. The queued
 [`main-dpr70.patch`](main-dpr70.patch) removes that restriction and adds three

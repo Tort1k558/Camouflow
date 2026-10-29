@@ -9,6 +9,7 @@
 | Native cases | Nine cases required by the new `screen-metrics` group in `blink_common_unittests`; batch now has 19 groups | **Not executed**; first-script, lifecycle, geometry/input and combined browser gates remain open |
 | Preserved 0068 first-script baseline | Six phases × six documents; both no-emulation controls passed, all four manager desktop/mobile phases reproduced defects; clicks and screenshot sizes passed | [Complete red baseline](../native/drafts/environment/screen68-first-script-complete-observations.json); not execution of 0069. Main Mobile DPR changes 3 → 1 after nested local roots |
 | Queued main-root correction | Two-file 0070 draft, three Blink simulation cases, read-only apply-check passed against 0069 | [Preparation](../native/drafts/environment/main-dpr70-preparation.json); unselected/uncompiled; the live 0069 build is unchanged |
+| Public first-script CLI | All six phases completed; four manager failures reproduced, both controls passed; core/receipt/source guards and final owned-process cleanup passed | [CLI execution](../native/drafts/environment/public-first-script-cli-observations.json); previous incomplete attempts retained; no retry loop or timeout increase; not 0069 execution |
 
 ## Chromium 156 / 001–068 — 2026-10-30
 

@@ -1,0 +1,246 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "scope": "Owned document first-script screen/DPR checks; not privacy or release admission.",
+  "checkpoint": "001-068",
+  "checkpoint_sha256": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "36d1a7c35d059d60c41c9c46d48c623918cd2ed63e746d6473c4993d1d729a7d",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "1250a9c4c72d3e85736b7ff99cccbd2ff0c0ca7ccebf56fb7d7ed025b8480dbc",
+  "source_sha256": {
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "scripts/package_native_windows.py": "a5841ebf6d299f54a0ec0429d6fbef5401beec3a0776d786843e37f930e038c1",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "scripts/native_build.py": "61c37dc4b0df73912e1054065db8b4f545381ea9c29a320d6b9e588c07b59c38",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "native/drafts/upstream-156/checkpoints/001-068.json": "83c5ae03e042537562244f14df0948520ce9b79e5b08fa4e92ab7cfb309e71a0",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa"
+  },
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "postguards_passed": true,
+  "public_cli_executed": true,
+  "baseline_findings_reproduced": true,
+  "raw_report_sha256": "b2df2551f70402728e3a8c63ca9ad1f110a90b9e7ebdb1e619b25354e23cc42a",
+  "final_owned_chrome_processes_remaining": 0,
+  "screen_inheritance_fixed": false,
+  "phases": [
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "passed": false,
+      "browser_connection_closed": true,
+      "page_errors": [],
+      "lifecycle_events": [
+        "domcontentloaded",
+        "load"
+      ],
+      "first_viewport_pending": [],
+      "errors": [
+        "cross/first: screen differs from main first script",
+        "cross/settled: screen differs from main first script",
+        "nested-return/first: screen differs from main first script",
+        "nested-return/settled: screen differs from main first script"
+      ],
+      "screenshot": {
+        "size": [
+          1366,
+          768
+        ],
+        "sha256": "7f3db7ed87a932ae217838e74a2496bf121a777f5e446422360e3727b0706ed9"
+      },
+      "document_contexts": 6,
+      "main_first_dpr": 1,
+      "main_settled_dpr": 1
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "persistent-profile-restart",
+      "passed": false,
+      "browser_connection_closed": true,
+      "page_errors": [],
+      "lifecycle_events": [
+        "domcontentloaded",
+        "load"
+      ],
+      "first_viewport_pending": [
+        "nested-return"
+      ],
+      "errors": [
+        "cross/first: screen differs from main first script",
+        "cross/settled: screen differs from main first script",
+        "nested-return/first: screen differs from main first script",
+        "nested-return/settled: screen differs from main first script"
+      ],
+      "screenshot": {
+        "size": [
+          1366,
+          768
+        ],
+        "sha256": "7f3db7ed87a932ae217838e74a2496bf121a777f5e446422360e3727b0706ed9"
+      },
+      "document_contexts": 6,
+      "main_first_dpr": 1,
+      "main_settled_dpr": 1
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "passed": false,
+      "browser_connection_closed": true,
+      "page_errors": [],
+      "lifecycle_events": [
+        "domcontentloaded",
+        "load"
+      ],
+      "first_viewport_pending": [],
+      "errors": [
+        "about-blank/settled: screen differs from main first script",
+        "cross/first: screen differs from main first script",
+        "cross/settled: screen differs from main first script",
+        "main/settled: screen differs from main first script",
+        "nested-return/first: screen differs from main first script",
+        "nested-return/settled: screen differs from main first script",
+        "same/settled: screen differs from main first script",
+        "srcdoc/settled: screen differs from main first script"
+      ],
+      "screenshot": {
+        "size": [
+          1170,
+          2532
+        ],
+        "sha256": "ec09e1fc3eb60db27da75f3aa2e913e799641502b96b8566e2c0b1453c91cb36"
+      },
+      "document_contexts": 6,
+      "main_first_dpr": 3,
+      "main_settled_dpr": 1
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "persistent-profile-restart",
+      "passed": false,
+      "browser_connection_closed": true,
+      "page_errors": [],
+      "lifecycle_events": [
+        "domcontentloaded",
+        "load"
+      ],
+      "first_viewport_pending": [],
+      "errors": [
+        "about-blank/settled: screen differs from main first script",
+        "cross/first: screen differs from main first script",
+        "cross/settled: screen differs from main first script",
+        "main/settled: screen differs from main first script",
+        "nested-return/first: screen differs from main first script",
+        "nested-return/settled: screen differs from main first script",
+        "same/settled: screen differs from main first script",
+        "srcdoc/settled: screen differs from main first script"
+      ],
+      "screenshot": {
+        "size": [
+          1170,
+          2532
+        ],
+        "sha256": "ec09e1fc3eb60db27da75f3aa2e913e799641502b96b8566e2c0b1453c91cb36"
+      },
+      "document_contexts": 6,
+      "main_first_dpr": 3,
+      "main_settled_dpr": 1
+    },
+    {
+      "mode": "native-control",
+      "phase": "initial",
+      "passed": true,
+      "browser_connection_closed": true,
+      "page_errors": [],
+      "lifecycle_events": [
+        "domcontentloaded",
+        "load"
+      ],
+      "first_viewport_pending": [],
+      "errors": [],
+      "screenshot": {
+        "size": [
+          764,
+          485
+        ],
+        "sha256": "f7d61328132b4cc3da55ad95ff910199f00f136062657e66b12c5a7e698852e3"
+      },
+      "document_contexts": 6,
+      "main_first_dpr": 1,
+      "main_settled_dpr": 1
+    },
+    {
+      "mode": "native-control",
+      "phase": "persistent-profile-restart",
+      "passed": true,
+      "browser_connection_closed": true,
+      "page_errors": [],
+      "lifecycle_events": [
+        "domcontentloaded",
+        "load"
+      ],
+      "first_viewport_pending": [],
+      "errors": [],
+      "screenshot": {
+        "size": [
+          764,
+          485
+        ],
+        "sha256": "f7d61328132b4cc3da55ad95ff910199f00f136062657e66b12c5a7e698852e3"
+      },
+      "document_contexts": 6,
+      "main_first_dpr": 1,
+      "main_settled_dpr": 1
+    }
+  ],
+  "prior_incomplete_attempts": [
+    {
+      "version": 1,
+      "passed": false,
+      "measurement_complete": false,
+      "postguards_passed": true,
+      "error_type": "TimeoutError",
+      "error": "Page.goto: Timeout 10000ms exceeded.\nCall log:\n  - navigating to \"http://127.0.0.1:56586/screen?role=main\", waiting until \"load\"\n",
+      "note": "Navigation load deadline hit during native-control; original four manager phases retained",
+      "raw_report_sha256": "454215d7fcd1dd962c1739d5ca4cedc5062c6f8625ebd91744ffd4b6d6ec0841"
+    },
+    {
+      "version": 2,
+      "passed": false,
+      "measurement_complete": false,
+      "postguards_passed": true,
+      "error_type": "TimeoutError",
+      "error": "Page.goto: Timeout 10000ms exceeded.\nCall log:\n  - navigating to \"http://127.0.0.1:60034/screen?role=main\", waiting until \"load\"\n",
+      "note": "Prototype lifecycle observer used the wrong Page callback argument; incomplete and not engine evidence",
+      "raw_report_sha256": "f5bc08b5fe010074bdce0cffc452df32b8daea439a5c41cf20a11bc73733e391"
+    },
+    {
+      "version": 3,
+      "passed": false,
+      "measurement_complete": false,
+      "postguards_passed": true,
+      "error_type": "ValueError",
+      "error": "Invalid measured viewport",
+      "note": "Prototype validator rejected an observed child first-script viewport of zero; raw zero retained and validation corrected only for pre-layout child snapshots",
+      "raw_report_sha256": "12a898c1a213e62bf0587cb3ae9c2290bcdddc49474e1e3f16fae8b61e7c4252"
+    }
+  ]
+}

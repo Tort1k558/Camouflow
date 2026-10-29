@@ -373,3 +373,148 @@ def test_complete_first_script_baseline_keeps_failed_manager_modes_and_passing_c
         else:
             expected_size = {"manager-desktop": [1366, 768], "manager-mobile-web": [1170, 2532]}[row["mode"]]
         assert row["screenshot"]["size"] == expected_size
+
+
+@pytest.fixture
+def first_script_verifier():
+    import runpy
+
+    return runpy.run_path(str(environment.ROOT / "native/drafts/environment/first-script/verify.py"))
+
+
+@pytest.mark.parametrize("index", range(6))
+def test_public_first_script_validator_matches_all_actual_baseline_phases(first_script_verifier, index):
+    record = json.loads((environment.ROOT / "native/drafts/environment/screen68-first-script-complete-observations.json").read_bytes())
+    row = record["phases"][index]
+    configuration = environment.configuration_for_mode(row["mode"])
+    errors = first_script_verifier["validate_phase"](row["observations"], row["screenshot"]["size"], configuration, None)
+    assert errors == row["errors"]
+    assert (not errors) is row["passed"]
+
+
+@pytest.mark.parametrize("bad_dpr", [0, -1, True, float("nan"), float("inf"), 10 ** 400])
+def test_first_script_snapshot_rejects_invalid_dpr(first_script_verifier, bad_dpr):
+    record = json.loads((environment.ROOT / "native/drafts/environment/screen68-first-script-complete-observations.json").read_bytes())
+    value = copy.deepcopy(record["phases"][-1]["observations"]["main"]["first"])
+    value["screen"]["dpr"] = bad_dpr
+    with pytest.raises(ValueError, match="DPR"):
+        first_script_verifier["validate_snapshot"](value)
+
+
+@pytest.mark.parametrize("mutation", ["media-empty", "media-not-bool", "viewport-empty", "orientation-not-string"])
+def test_first_script_snapshot_rejects_incomplete_observations(first_script_verifier, mutation):
+    record = json.loads((environment.ROOT / "native/drafts/environment/screen68-first-script-complete-observations.json").read_bytes())
+    value = copy.deepcopy(record["phases"][-1]["observations"]["main"]["first"])
+    if mutation == "media-empty":
+        value["media"] = {}
+    elif mutation == "media-not-bool":
+        value["media"]["width"] = 1
+    elif mutation == "viewport-empty":
+        value["viewport"] = {}
+    else:
+        value["screen"]["orientation"]["type"] = []
+    with pytest.raises(ValueError):
+        first_script_verifier["validate_snapshot"](value)
+
+
+@pytest.mark.parametrize("mutation", ["missing-role", "untrusted", "numeric-trusted", "media-false", "screenshot", "restart"])
+def test_first_script_phase_keeps_failed_contracts(first_script_verifier, mutation):
+    record = json.loads((environment.ROOT / "native/drafts/environment/screen68-first-script-complete-observations.json").read_bytes())
+    row = copy.deepcopy(record["phases"][-1])
+    previous = None
+    if mutation == "missing-role":
+        del row["observations"]["nested-return"]
+        with pytest.raises(ValueError, match="six"):
+            first_script_verifier["validate_phase"](row["observations"], row["screenshot"]["size"], None, None)
+        return
+    if mutation == "untrusted":
+        row["observations"]["cross"]["clicks"][0]["trusted"] = False
+    elif mutation == "numeric-trusted":
+        row["observations"]["cross"]["clicks"][0]["trusted"] = 1
+    elif mutation == "media-false":
+        row["observations"]["cross"]["first"]["media"]["resolution"] = False
+    elif mutation == "screenshot":
+        row["screenshot"]["size"][0] += 1
+    else:
+        previous = copy.deepcopy(row["observations"]["main"]["first"]["screen"])
+        previous["width"] += 1
+    assert first_script_verifier["validate_phase"](row["observations"], row["screenshot"]["size"], None, previous)
+
+
+def test_first_script_consistency_does_not_admit_unapplied_manager_settings(first_script_verifier):
+    record = json.loads((environment.ROOT / "native/drafts/environment/screen68-first-script-complete-observations.json").read_bytes())
+    row = record["phases"][-1]
+    configuration = environment.configuration_for_mode("manager-desktop")
+    errors = first_script_verifier["validate_phase"](row["observations"], [1366, 768], configuration, None)
+    assert errors == ["Main first script differs from requested manager screen/DPR"]
+
+
+@pytest.mark.parametrize("phase,role,allowed", [("first", "cross", True), ("settled", "cross", False),
+                                              ("first", "main", False)])
+def test_first_script_child_pre_layout_zero_is_retained_not_replaced(first_script_verifier, phase, role, allowed):
+    record = json.loads((environment.ROOT / "native/drafts/environment/screen68-first-script-complete-observations.json").read_bytes())
+    row = copy.deepcopy(record["phases"][-1])
+    row["observations"][role][phase]["viewport"] = {"width": 0, "height": 0}
+    if allowed:
+        assert not first_script_verifier["validate_phase"](row["observations"], row["screenshot"]["size"], None, None)
+        assert row["observations"][role][phase]["viewport"] == {"width": 0, "height": 0}
+    else:
+        with pytest.raises(ValueError, match="viewport"):
+            first_script_verifier["validate_phase"](row["observations"], row["screenshot"]["size"], None, None)
+
+
+@pytest.mark.parametrize("checkpoint", ["../001-069", "001-069.json", "", "001-69"])
+def test_first_script_verifier_rejects_noncanonical_checkpoint_before_creating_evidence(first_script_verifier, tmp_path, checkpoint):
+    with pytest.raises(ValueError, match="checkpoint"):
+        first_script_verifier["verify"](tmp_path / "chrome.exe", tmp_path / "report", checkpoint)
+    assert not (tmp_path / "report").exists()
+
+
+def test_first_script_observers_accept_playwright_page_events_and_keep_phase_ownership(first_script_verifier):
+    from collections import Counter
+    from types import SimpleNamespace
+
+    registered = []
+    rows = []
+    counters = []
+    for _ in range(2):
+        callbacks = {}
+        page = SimpleNamespace(on=lambda name, callback: callbacks.__setitem__(name, callback))
+        row = {"page_errors": [], "lifecycle_events": []}
+        pending = Counter()
+        first_script_verifier["install_observers"](page, row, pending)
+        registered.append((page, callbacks))
+        rows.append(row)
+        counters.append(pending)
+    for index, (page, callbacks) in enumerate(registered):
+        callbacks["domcontentloaded"](page)
+        callbacks["load"](page)
+        callbacks["pageerror"](RuntimeError("Owned error " + str(index)))
+        request = SimpleNamespace(url="http://owned/" + str(index))
+        callbacks["request"](request)
+        callbacks["request"](request)
+        callbacks["requestfinished"](request)
+        assert counters[index][request.url] == 1
+        callbacks["requestfailed"](request)
+        assert counters[index][request.url] == 0
+    assert rows == [{"page_errors": ["Owned error " + str(index)],
+                     "lifecycle_events": ["domcontentloaded", "load"]} for index in range(2)]
+
+
+def test_public_first_script_execution_binds_current_sources_and_retains_incomplete_attempts():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/public-first-script-cli-observations.json").read_bytes())
+    assert record["public_cli_executed"] and record["baseline_findings_reproduced"]
+    assert record["measurement_complete"] and record["postguards_passed"]
+    assert not record["passed"] and not record["screen_inheritance_fixed"]
+    assert record["final_owned_chrome_processes_remaining"] == 0
+    assert all("\\" not in name for name in record["source_sha256"])
+    for name, expected in record["source_sha256"].items():
+        assert hashlib.sha256((root / name).read_bytes()).hexdigest() == expected
+    assert [row["passed"] for row in record["phases"]] == [False, False, False, False, True, True]
+    assert all(row["document_contexts"] == 6 and row["browser_connection_closed"] and not row["page_errors"]
+               for row in record["phases"])
+    assert len(record["prior_incomplete_attempts"]) == 3
+    assert all(not row["passed"] and not row["measurement_complete"] for row in record["prior_incomplete_attempts"])
