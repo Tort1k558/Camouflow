@@ -1457,6 +1457,10 @@
     {
       "file": "0063-native-safe-buffer-portability.patch",
       "sha256": "55c3d398abb183c3ab0a01b7dba4c291924438d691e2ffc38281e444fd1bdd8d"
+    },
+    {
+      "file": "0064-native-audio-safe-domain-copy.patch",
+      "sha256": "49133a73725f092aff7753ce03ff9b6c87c4ca84fc8cc99bbe7fbc8c00cf1bf4"
     }
   ],
   "build": {

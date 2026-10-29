@@ -2264,7 +2264,7 @@ def test_native_windows_candidate_package_preserves_manifest_without_admitting_p
     assert metadata["candidate_manifest_sha256"] == candidate["manifest_sha256"]
     assert metadata["chromium_version"] == candidate["lock"]["chromium_version"]
     assert metadata["native_version"] == "0.2.0-dev"
-    assert len(metadata["build_receipt"]["patches"]) == len(candidate["manifest"]["patches"]) == 63
+    assert len(metadata["build_receipt"]["patches"]) == len(candidate["manifest"]["patches"]) == 64
     assert metadata["native_patch_runtime_verified"] is False
     store = NativeBinaryStore(tmp_path / "store")
     installed = store.install_archive(archive, result["sha256"])
@@ -4056,14 +4056,14 @@ def test_native_candidate_requires_exact_checkout_and_complete_patch_chain(tmp_p
             build.candidate_source_patches(source, {}, candidate)
     else:
         rows = build.candidate_source_patches(source, {}, candidate)
-        assert len(rows) == 63 and sum(row.get("repository") == "v8" for row in rows) == 1
+        assert len(rows) == 64 and sum(row.get("repository") == "v8" for row in rows) == 1
 
 
 def test_native_candidate_safe_buffer_port_keeps_bounded_cpp_paths():
     from scripts import native_build as build
 
     candidate = build.load_candidate("upstream-156")
-    row = candidate["manifest"]["patches"][-1]
+    row = candidate["manifest"]["patches"][62]
     assert row["file"] == "0063-native-safe-buffer-portability.patch"
     patch = (candidate["directory"] / "patches" / row["file"]).read_text(encoding="utf-8")
     paths = [line[6:] for line in patch.splitlines() if line.startswith("+++ b/")]
@@ -4081,6 +4081,62 @@ def test_native_candidate_safe_buffer_port_keeps_bounded_cpp_paths():
     assert "std::span(message).subspan(domain_size + 4).first<4>()" in additions
     assert not any(token in patch for token in (
         "UNSAFE_BUFFERS", "UNSAFE_TODO", "-Wno-unsafe", "#pragma clang diagnostic"))
+
+
+def test_native_candidate_audio_copy_uses_bounded_domain_without_changing_policy():
+    from scripts import native_build as build
+
+    candidate = build.load_candidate("upstream-156")
+    row = candidate["manifest"]["patches"][63]
+    assert row["file"] == "0064-native-audio-safe-domain-copy.patch"
+    patch = (candidate["directory"] / "patches" / row["file"]).read_text(encoding="utf-8")
+    assert [line[6:] for line in patch.splitlines() if line.startswith("+++ b/")] == [
+        "third_party/blink/renderer/modules/webaudio/glint/offline_audio_candidate.cc"]
+    additions = "\n".join(line[1:] for line in patch.splitlines()
+                          if line.startswith("+") and not line.startswith("+++"))
+    assert "std::ranges::copy(std::span(kDomain).first<sizeof(kDomain) - 1>()" in additions
+    assert "message.begin()" in additions
+    assert not any(token in additions for token in (
+        "memcpy", "HMAC", "normalized", "seed_", "digest", "UNSAFE_BUFFERS", "-Wno-unsafe"))
+
+
+def test_157_manifests_separate_verified_prefix_from_unported_complete_corpus():
+    import hashlib
+    import json
+    from scripts import fetch_native_rebase_sources as fetch
+    from scripts import native_build as build
+
+    candidate = build.load_candidate("upstream-156")
+    root = build.ROOT / "native/drafts/upstream-157-prefix"
+    prefix = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    full = json.loads((root / "full-inputs-manifest.json").read_text(encoding="utf-8"))
+    assert len(prefix["patches"]) == prefix["selected_prefix_patches"] == 32
+    assert len(prefix["source_files"]) == 88
+    assert len(full["patches"]) == full["selected_patch_count"] == 64
+    assert len(full["source_files"]) == 185 and full["verified_prefix_patches"] == 32
+    assert full["source_corpus_complete"] is True
+    assert prefix["patches"] == full["patches"][:32]
+    assert {row["path"] for row in prefix["source_files"]} < {row["path"] for row in full["source_files"]}
+    for value in (prefix, full):
+        assert value["base_manifest_sha256"] == candidate["manifest_sha256"]
+        assert value["target_revision"] == "f9d7b13a569b352a0267234ea5740fdecc83ffa2"
+        assert value["target_version"] == "157.0.8103.27"
+        assert value["dependencies"]["v8"]["revision"] == "a4889e05285021952e2ca9648c805a4c989345ae"
+        assert value["next_port_required_patch"] == "0033-native-surface-readback.patch"
+        assert value["complete_forward_port"] is False
+        assert not value["compiled"] and not value["runtime_verified"] and not value["production_admitted"]
+        assert fetch.source_plan(value) == value["source_files"]
+    overrides = {row["file"] for row in full["patches"] if row["file"].startswith("upstream-157-prefix/")}
+    assert len(overrides) == 6
+    for row, original in zip(full["patches"], candidate["manifest"]["patches"], strict=True):
+        path = build.ROOT / "native/drafts" / row["file"]
+        assert path.name == original["file"]
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == row["sha256"]
+        if row["file"] not in overrides:
+            assert row["file"].startswith("upstream-156/patches/") and row["sha256"] == original["sha256"]
+    for name in ("manifest.json", "full-inputs-manifest.json"):
+        raw = (root / name).read_bytes()
+        assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
 
 
 @pytest.mark.parametrize("failure", [None, "manifest-only", "patch-directory-only", "bad-source", "bad-patch",
@@ -4163,9 +4219,10 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
 
     manifest = json.loads((draft.DRAFT / "manifest.json").read_text(encoding="utf-8-sig"))
     originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:62]
-    assert len(originals) == 62 and len(manifest["patches"]) == 63
+    assert len(originals) == 62 and len(manifest["patches"]) == 64
     assert [row["file"] for row in manifest["patches"][:62]] == [path.name for path in originals]
-    assert manifest["patches"][-1]["file"] == "0063-native-safe-buffer-portability.patch"
+    assert [row["file"] for row in manifest["patches"][62:]] == [
+        "0063-native-safe-buffer-portability.patch", "0064-native-audio-safe-domain-copy.patch"]
     for row in manifest["patches"]:
         content = (draft.DRAFT / "patches" / row["file"]).read_bytes()
         assert b"\r" not in content and not content.startswith(b"\xef\xbb\xbf")
@@ -4193,7 +4250,7 @@ def test_forward_refresh_manifest_reuses_exact_patch_bytes_without_registering_a
     assert value["target_version"] == "156.0.8078.75"
     assert value["target_revision"] == "861389936bf33ea77529ee5dcc0605e68f6bb620"
     assert value["dependencies"]["v8"]["revision"] == "235050a0df6db2c9d92a419af2b72fbf3b2dd73b"
-    assert value["patches"] == before["patches"] and len(value["patches"]) == 63
+    assert value["patches"] == before["patches"] and len(value["patches"]) == 64
     assert not (refresh / "patches").exists()
     assert len(value["source_files"]) == 185
     assert [row["path"] for row in value["source_files"]] == [row["path"] for row in before["source_files"]]

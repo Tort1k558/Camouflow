@@ -5,6 +5,98 @@ results rather than replacing them. A planned check is not a passing result.
 
 ## Explicit candidate upstream audit — 2026-10-29
 
+### Audio portability and keep-going object batches — 2026-10-29
+
+The 001–063 browser run terminated after **16m35.57s**, with 1,706 graph steps
+done, one failed and 31,133 remaining. The actual error was the direct `memcpy`
+in `offline_audio_candidate.cc`, rejected as
+`-Werror,-Wunsafe-buffer-usage-in-libc-call`; log `build-20261029-061558.log` on D.
+All downstream observers stopped without native/runtime/package work.
+
+Append **0064** copies the same non-NUL domain bytes through a bounded character
+span and `std::ranges::copy`. HMAC calls, seeds, normalized samples, caches and
+GN flags are unchanged. The current 156 manifest is
+`f752426cf5435cf02f9d19cd648101ad8b0369ce8f611c9adcf6065f3bdbbdcb`.
+Dependency identities were checked/rebound for this C++-only append; prior
+records are retained and **sync/hooks were not re-executed**.
+
+| Check | Actual result | Limit |
+| --- | --- | --- |
+| Patched production compile batch | 85 selected object targets covering all 83 mapped patched production sources succeeded, with postguards | Includes reused objects/dependencies; not 85 tests or a linked browser |
+| Keep-going policy | j4, `-k 0`; 538 executed graph steps completed in 3m57.85s | Only selected object/dependency scope |
+| Audio message-layout comparison | 65,536 guarded old/new byte-layout pairs matched | Standalone MSVC fixture, not HMAC/Audio runtime |
+| Native fixture compilation | 38 mapped test translation units queued at j4, keep-going | No fixture executed; result pending |
+| Validating-decoder fixtures | Two source files absent from effective Windows graph; GN query returned `enable_validating_command_decoder = false` | Zero coverage for those two files, not PASS |
+
+Evidence on D: `audio-safe-copy-20261029-v1/{report,layout-report-v2}.json`,
+`patched-production-objects-20261029-v1.json`,
+`patched-fixture-compile-20261029-v1/report.json` and
+`patched-fixture-effective-decoder-20261029-v1.json`. The first layout harness
+invocation used an invalid VsDevCmd argument and remains failed; its corrected
+version changes only that invocation and retains the same product bytes.
+
+Final local Python regression after the 64-patch and 157-manifest updates:
+**3,556 passed, one skipped**, 292.92 seconds. Log:
+`pytest-audio-and-157-manifests-full-20261029-v1.log` on D; selected Ruff checks
+passed. These are local checks, not a completed remote CI run or native fixtures.
+
+Source replay of all **64 patches** passed for both .36 and .75; GPU ordinals
+(321 preserved plus command 577), GRIT structure and input/patch postguards
+passed. Reports: `audio-safe-copy-20261029-v1/{default-64-replay,refresh-64-replay}`.
+This is not C++/runtime verification of .75.
+
+The current process-bound sequence waits for the fixture compiler through
+`fixture-build-continuation-20261029-v1.json`, then resumes the browser j4 build
+only on passing compiler/postguard evidence. It is followed by identity v3 →
+runtime v10 → remaining-native v5 → package v3. Package v3 guards 200 inputs.
+All of these stages keep production/privacy admission false; compatible rollback
+still needs independent evidence. A stale PID assertion refused the first v3
+package observer before creating its report or starting children; the corrected
+observer binds the actual current process and preserves that refusal log.
+
+### Complete 157 input corpus, incomplete Audio port — 2026-10-29
+
+The 90-second Gitiles continuation reached **84/185 inputs** before another
+response-body timeout; `upstream-forward-preflight-20261029-v5/report.json`
+retains that failure and all postguards. An isolated Git capability query
+advertised filtering but was stopped while listing excessive refs. The later
+filtered tree fetch hit its configured cache-size bound and remains failed.
+Neither operation is reported as a successful clone/checkout.
+
+A completed pack from that interrupted fetch contained the pinned commit/tree.
+An offline, remote-free view verified the commit's actual Git object ID and
+checked cached file bytes against tree blob IDs. That resolved **157 inputs**
+without network access. A separate bounded request explicitly fetched the
+remaining **28 verified blob IDs**; 709,293 cache bytes / 2,939,607 decoded bytes.
+The final offline plan materialized all **185 checksummed pristine inputs**.
+There was no checkout, active-source edit, retry loop or alternate origin.
+The three V8 inputs retain their previously verified immutable Gitiles/DEPS pin.
+
+Evidence under `D:/Glint157ObjectCache`: `capabilities.json`,
+`pinned-tree-report.json` (failed), `offline-tree-proof.json`,
+`sparse-plan-20261029-v1/report.json`, `blob-fetch-report.json`, and
+`sparse-plan-20261029-v2/report.json`. Git cache jobs checked the active HEAD,
+config and candidate manifest unchanged; a separate full replay attempt guarded
+303 active inputs. Individual verified objects are reusable; the interrupted
+operation itself is not relabeled as passing.
+
+The public [157 workbench](../native/drafts/upstream-157-prefix/README.md) now
+separates a verified **88-input / 32-patch prefix** from the complete
+**185-input / 64-patch attempt**. Both public cache-fetch CLIs passed with zero
+HTTP requests. The prefix replay passed; the full replay **failed at 0033 after
+32 applications**, retaining input/patch postguards. Reports:
+`public-prefix32-{inputs,replay}`, `public-full185-inputs` and
+`public-full64-attempt` under that D: cache. GPU/GRIT invariants remain outside
+the prefix's selected scope, not silently admitted.
+
+The next real port is 157's chunked OfflineAudioContext: optional total length,
+actual-chunk allocation budgets, stable captured policy and cancellation. Each
+chunk Promise needs the transformed result; only the final chunk has the native
+completion event, sharing that same object without changing event timing.
+The old hooks cannot be made correct merely by forcing
+an optional length or dropping upstream chunking/tests. No 157 C++ compilation,
+native/runtime/security/package admission is established.
+
 ### Actual 156 build failure and safe-buffer append — 2026-10-29
 
 The frozen 001–062 browser build terminated after **4h04m28.94s**: Siso reported
@@ -234,7 +326,7 @@ The build pin, manifest, patch bytes, Chromium sources and GN inputs did not cha
 
 ### Queued native target coverage
 
-The current process-bound sequence is: resumed 156 / 001–063 build → four identity
+The earlier process-bound sequence was: resumed 156 / 001–063 build → four identity
 targets → full eight-gate runtime suite → **13 remaining/default native target
 selections**, serially at j4. The final queue covers keys/contexts/delivery,
 worker handoff, document partition/navigation, surface navigation, window
@@ -242,7 +334,7 @@ transport, GPU pack/readback/metadata, worker surfaces and font rasterization.
 Some selections overlap earlier fixtures; do not add their counts as unique
 tests. None of these queued 156 results is passing evidence yet.
 
-`remaining-native-after-runtime-20261029-v4/controller.json` on D binds the
+`remaining-native-after-runtime-20261029-v4/controller.json` on D bound the
 actual current runtime-controller process handle and requires its successful
 exit/source postguards before building anything. A failed, retired or expired
 observation starts no targets. Each selected native verifier retains its own
@@ -251,7 +343,8 @@ This queues work; it does not expand runtime capability or production admission.
 The waiting runtime/native controllers were refreshed to the reviewed public
 verifier cohort; old pending reports remain marked retired. The active browser
 build and initial native identity controller were not stopped or restarted.
-The bound runtime report is `runtime-after-identity-20261029-v9/controller.json`;
+That chain stopped on the Audio compiler failure without running its queued work.
+Its bound runtime report was `runtime-after-identity-20261029-v9/controller.json`;
 it captures the reviewed shared replay helper used by the source fetcher.
 
 ### Queued installed-payload verification — 2026-10-29
@@ -263,8 +356,9 @@ runtime controller permit staging. Observation expiry or a failed/retired queue
 starts nothing. A changed reviewed input stops the chain; **198 input hashes**
 include the candidate patches, public verification/application code and the
 private controller itself. It stopped after the 001–062 compile failure without
-starting staging or any children. The current rebound v2 has 199 input hashes;
-its predecessor links and pending status are recorded in the safe-buffer section.
+starting staging or any children. The subsequent v2 had 199 input hashes and
+also stopped on the Audio failure. Current v3 links/200-input guards are recorded
+in the Audio portability section above.
 
 The planned chain reuses public commands: official mini-installer staging at
 j4 → archive from the exact runtime report → checksum-verified installation in

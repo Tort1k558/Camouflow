@@ -1457,6 +1457,10 @@
     {
       "file": "0063-native-safe-buffer-portability.patch",
       "sha256": "55c3d398abb183c3ab0a01b7dba4c291924438d691e2ffc38281e444fd1bdd8d"
+    },
+    {
+      "file": "0064-native-audio-safe-domain-copy.patch",
+      "sha256": "49133a73725f092aff7753ce03ff9b6c87c4ca84fc8cc99bbe7fbc8c00cf1bf4"
     }
   ],
   "build": {
@@ -1478,6 +1482,6 @@
       "repository": "https://chromium.googlesource.com/v8/v8.git"
     }
   },
-  "base_manifest_sha256": "e41540549bfec2cae38beb5cb78be70a7da36068241fcc12e24210b55ee9864a",
+  "base_manifest_sha256": "f752426cf5435cf02f9d19cd648101ad8b0369ce8f611c9adcf6065f3bdbbdcb",
   "preparation_scope": "Source-context replay only; not selected for compilation or runtime admission"
 }

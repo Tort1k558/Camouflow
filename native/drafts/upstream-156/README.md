@@ -3,12 +3,16 @@
 **Draft source port, not an enabled engine or a compiled browser.** The active
 build lock and registered 001-062 chain still target Chromium 148.0.7778.96.
 
-The current candidate chain is **001–063**. The 001–062 browser build stopped
+The current candidate chain is **001–064**. The 001–062 browser build stopped
 on three production objects with Clang unsafe-buffer errors. Append 0063 uses
 bounded word spans and typed hardware option ranges; it does not suppress the
 diagnostics or change identity-policy admission. See the
 [test matrix](../../../docs/GLINT_TEST_MATRIX.md) for measured object/semantic
 checks and the resumed browser build; no linked 156 runtime is established yet.
+The next 001–063 run found the remaining direct Audio `memcpy`; 0064 replaces it
+with a bounded domain copy. A keep-going compile batch passed all 85 selected
+production object targets covering 83 patched source files. Native fixture
+compilation/execution and the full browser are separate gates, not implied PASSes.
 
 Target: **156.0.8078.36**, Chromium revision
 `5a93aa59e3043e747eff68659dcf7d20193d160e`.
@@ -83,6 +87,7 @@ below, rather than changing registry or installed SDK contents.
 | 0055-0058 | Existing GPU metadata protocol and attachment candidates; command appended at target ID 577 without changing upstream IDs |
 | 0059-0062 | Unchanged-snapshot write avoidance, Glint branding/resources and Windows font rasterization |
 | 0063 | Clang-safe hardware parsing and fixed-size Canvas word spans; no warning suppression or policy expansion |
+| 0064 | Bounded Audio domain copy with unchanged message bytes; no HMAC, sample-policy or GN flag change |
 
 The font service gained an independent local-font matcher upstream. Merely
 repairing rejected patch context would leave that new path unrestricted. The

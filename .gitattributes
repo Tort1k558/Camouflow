@@ -2,3 +2,4 @@
 native/**/*.patch text eol=lf whitespace=-blank-at-eol,-blank-at-eof
 # Forward checkpoints bind manifest bytes, independent of checkout platform.
 native/drafts/**/manifest.json text eol=lf
+native/drafts/**/full-inputs-manifest.json text eol=lf

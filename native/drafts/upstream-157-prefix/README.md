@@ -1,12 +1,16 @@
 # Chromium 157 source-port prefix
 
-**Partial source draft: 001–029 only. Not a build candidate or browser release.**
+**Source-only workbench: 001–032 verified, 0033–0064 still pending. Not a browser release.**
 
 Pins Chromium `157.0.8103.27` / `f9d7b13a569b352a0267234ea5740fdecc83ffa2`
 and its DEPS-selected V8 `a4889e05285021952e2ca9648c805a4c989345ae`.
-The manifest records **72 pristine inputs** and 29 selected patches. Only five
-ported patches are stored here; the other 24 reference the unchanged
-`upstream-156/patches` payloads. No upstream source files are committed.
+Only six ported patches are stored here; unchanged payloads reference
+`upstream-156/patches`. No upstream source files are committed.
+
+| Manifest | Pristine inputs | Patch selection | Measured result |
+| --- | --- | --- | --- |
+| `manifest.json` | 88 | 001–032 | Source application passed |
+| `full-inputs-manifest.json` | 185 | 001–064 | Stops at 0033 Audio integration; not a completed port |
 
 | Patch | Adaptation |
 | --- | --- |
@@ -15,6 +19,7 @@ ported patches are stored here; the other 24 reference the unchanged
 | 0022 | Use upstream's three-argument worker creation API; move the seed before moving script-load parameters |
 | 0026 | Preserve `RunWorkerToplevelScriptForTesting` after the existing seed bootstrap |
 | 0029 | Reanchor validator-header registration to the current service-worker header list |
+| 0030 | Retain that upstream header-list context for navigation commit declarations; added/removed code preserved |
 
 ## Reproduce the bounded source replay
 
@@ -33,25 +38,39 @@ The fetcher's optional `--cache` validates existing bytes without changing them.
 Its rate, no-retry/redirect rules and manual-cooldown requirements are described
 in the [refresh instructions](../upstream-156-refresh/README.md).
 
+For the complete input corpus, explicitly select `full-inputs-manifest.json`
+and new output paths. It records all 185 known hashes, not a fully applicable
+patch chain. The same replay command currently **must fail at 0033 after 32
+applications**. Do not label that failure or an input download as runtime readiness.
+
 ## Measured scope and remaining work
 
-October 29: all 29 selected patches applied through the public CLI, with source,
-manifest and patch postguards passing. Input preparation used **72 cache hits,
-zero network requests**. Evidence on D:
-`public-157-prefix-inputs-20261029-v1/source-fetch-report.json` and
-`public-157-prefix-replay-20261029-v1/report.json`.
+October 29: the public CLI passed the 32-patch prefix with input/patch postguards.
+Cache preparation measured **88 hits / zero HTTP requests**. Separately, all
+**185 inputs** were cache-validated and the full public 64-patch attempt retained
+its expected 0033 failure with unchanged inputs/patches. Evidence on D under
+`Glint157ObjectCache`: `public-prefix32-{inputs,replay}`,
+`public-full185-inputs` and `public-full64-attempt`.
 
-The earlier 157 retrieval resumed after more than 15 minutes, verified the
-previous 28 cached files, then reached **72 of 185 inputs** before a read timeout.
-That failed report remains `upstream-forward-preflight-20261029-v3/report.json`;
-no automatic retry was made. Active 156 build/source hashes and cached inputs
-remained unchanged. Failed pre-port replays are retained, not relabeled as passes.
+Earlier HTTP timeouts, the interrupted Git operation and partial replays remain
+failed historical evidence. Verified cached objects supplied the complete corpus;
+this was not a successful full checkout or a claim that Git transport never fails.
 
-Patch **0030** needs eight unavailable inputs listed in the manifest.
-Patches **0030–0063 remain unverified** on 157. The current 156 base includes the
-later safe-buffer portability append; this 29-patch prefix does not apply it.
-GPU/GRIT invariant inputs are not
-in this bounded replay; empty `source_invariants` is not a pass for those gates.
+### Next port: chunked OfflineAudioContext
+
+157 makes total render length optional and supports finite/indefinite chunks;
+the old 0033 hunks no longer apply. The port must preserve upstream chunking,
+capture a stable policy before rendering, check the actual chunk's allocation
+budget before resolver/buffer/thread creation, and transform each chunk before
+its Promise. The final completion event must share that final chunk's mutable
+result; intermediate chunks must not gain invented completion events. Missing policy, retries,
+cancellation, pause/resume and feature-off calibration need native/runtime tests.
+Do not force `.value()` on an indefinite length or disable chunking to make a patch apply.
+
+The prefix preserves all earlier 72 inputs and adds prerequisites for 0030–0032.
+GPU/GRIT invariant inputs are outside that selected scope; empty
+`source_invariants` is not a pass for those gates. Patches **0033–0064 remain
+unported/unverified** on 157.
 No C++ compilation, native tests, runtime behavior, security review or package
 verification has been established for this draft. The active 156 build and
-default 148 pin remain unchanged; `native_build.py` does not accept this target.
+default 148 pin remain separate; `native_build.py` does not accept this target.
