@@ -3580,6 +3580,93 @@ def test_upstream_audit_binds_lock_and_bounded_https_response(tmp_path, monkeypa
         assert lock.read_bytes() == original
 
 
+@pytest.mark.parametrize("failure", [None, "base", "manifest", "patch", "stale-base", "wrong-root"])
+def test_upstream_candidate_audit_binds_selection_and_refuses_drift(tmp_path, monkeypatch, failure):
+    import hashlib
+    import json
+    from unittest.mock import MagicMock, Mock
+    from scripts import audit_native_upstream as upstream, native_build
+
+    root = tmp_path / "repo"
+    (root / "native").mkdir(parents=True)
+    lock_path = root / "native/build-lock.json"
+    base = {"chromium_version": "148.0.7778.96", "chromium_revision": "a" * 40}
+    lock_bytes = json.dumps(base).encode()
+    lock_path.write_bytes(lock_bytes)
+    selected = {**base, "chromium_version": "156.0.8078.36", "chromium_revision": "b" * 40}
+    monkeypatch.setattr(upstream, "ROOT", root)
+    monkeypatch.setattr(native_build, "ROOT", tmp_path if failure == "wrong-root" else root)
+    monkeypatch.setattr(native_build, "LOCK", {} if failure == "stale-base" else base)
+    candidate = {"lock": selected, "manifest_sha256": "c" * 64}
+    after = {**candidate, "manifest_sha256": "d" * 64} if failure == "manifest" else candidate
+    loader = Mock(side_effect=[candidate, ValueError("Changed candidate patch") if failure == "patch" else after])
+    monkeypatch.setattr(native_build, "load_candidate", loader)
+    response = MagicMock()
+    response.__enter__.return_value = response
+    response.geturl.return_value = upstream.SOURCE_URL
+    raw = json.dumps([{"version": selected["chromium_version"], "channel": "Stable", "platform": "Windows",
+                       "time": 1000, "hashes": {"chromium": selected["chromium_revision"]}}]).encode()
+
+    def read(limit):
+        assert limit == upstream.MAX_RESPONSE_BYTES + 1
+        if failure == "base":
+            lock_path.write_bytes(lock_bytes + b" ")
+        return raw
+
+    response.read.side_effect = read
+    network = Mock(return_value=response)
+    monkeypatch.setattr(upstream.urllib.request, "urlopen", network)
+    output = tmp_path / "report.json"
+    if failure:
+        with pytest.raises(ValueError):
+            upstream.audit(output, candidate_name="upstream-156")
+        assert not output.exists()
+        if failure in {"stale-base", "wrong-root"}:
+            network.assert_not_called()
+    else:
+        report = upstream.audit(output, candidate_name="upstream-156")
+        assert report["status"] == "aligned" and report["candidate"] == "upstream-156"
+        assert report["pinned_version"] == selected["chromium_version"]
+        assert report["candidate_manifest_sha256"] == candidate["manifest_sha256"]
+        assert report["lock_sha256"] == hashlib.sha256(lock_bytes).hexdigest()
+        assert report["response_sha256"] == hashlib.sha256(raw).hexdigest()
+        assert report["production_admitted"] is False and report["sources_changed"] is False
+        assert lock_path.read_bytes() == lock_bytes
+
+
+@pytest.mark.parametrize("version,revision,expected,status", [
+    ("148.0.7778.96", "a", None, "behind-stable"),
+    ("156.0.8078.36", "a", "156.0.8078.75", "behind-stable"),
+    ("157.0.8103.27", "c", "157.0.8103.27", "aligned"),
+])
+def test_upstream_audit_distinguishes_observed_milestone_updates_from_current_stable(version, revision, expected, status):
+    import datetime as dt
+    from scripts import audit_native_upstream as upstream
+
+    releases = [{"version": value, "channel": "Stable", "platform": "Windows", "time": 1000,
+                 "hashes": {"chromium": commit * 40}} for value, commit in (
+        ("156.0.8078.36", "a"), ("156.0.8078.75", "b"), ("157.0.8103.27", "c"))]
+    report = upstream.compare({"chromium_version": version, "chromium_revision": revision * 40},
+                              releases, dt.datetime.now(dt.timezone.utc))
+    observed = report["highest_observed_same_milestone"]
+    assert (observed["version"] if observed is not None else None) == expected
+    assert report["status"] == status
+    assert report["highest_observed_stable"]["version"] == "157.0.8103.27"
+    assert report["production_admitted"] is False
+
+
+def test_upstream_audit_unknown_candidate_rejects_before_network(tmp_path, monkeypatch):
+    from unittest.mock import Mock
+    from scripts import audit_native_upstream as upstream
+
+    network = Mock()
+    monkeypatch.setattr(upstream.urllib.request, "urlopen", network)
+    with pytest.raises(ValueError, match="Unknown Native build candidate"):
+        upstream.audit(tmp_path / "report.json", candidate_name="unknown")
+    network.assert_not_called()
+    assert not (tmp_path / "report.json").exists()
+
+
 @pytest.mark.parametrize("change", [None, "modify", "add", "remove"])
 def test_gpu_codegen_compares_complete_generated_file_set(tmp_path, monkeypatch, change):
     from scripts import verify_native_gpu_transport_draft as gpu

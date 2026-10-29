@@ -22,6 +22,14 @@ readiness. Rebase and repeat the full gates before production publication.
 Use `scripts/audit_native_upstream.py --output <new-external-report.json>` to
 refresh this comparison; it never changes the source pin or admits a release.
 
+**Refresh, October 29:** the official Windows Stable response now includes
+**157.0.8103.27** and, within milestone 156, **156.0.8078.75**. Both the default
+148 pin and the active 156.0.8078.36 candidate audit as `behind-stable`.
+The running 156 build remains frozen as a development/rebase checkpoint, not
+a production-ready upstream target. Audit it explicitly with
+`scripts/audit_native_upstream.py --candidate upstream-156 --output <fresh-D-report.json>`.
+Do not infer a completed security review or restart a live build from audit status.
+
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
 | Registered Windows source | 001-062 | Runtime/branding verified; selected controls enabled experimentally for one reviewed local package. General fork admission remains closed |

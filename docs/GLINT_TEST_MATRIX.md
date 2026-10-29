@@ -3,6 +3,35 @@
 Living test register. Update after every linked Glint build; keep previous build
 results rather than replacing them. A planned check is not a passing result.
 
+## Explicit candidate upstream audit — 2026-10-29
+
+The public upstream auditor now supports `--candidate upstream-156`, reusing
+the existing canonical candidate loader rather than changing `build-lock.json`.
+The base lock, candidate manifest and complete patch chain are guarded across
+the official HTTPS request. Unknown candidates, cached-base mismatch, changed
+base/manifest/patches, redirects and oversized responses refuse evidence.
+Default 148 comparison remains unchanged. A nullable highest-observed
+same-milestone row separates patch-line drift from a new major version, without
+weakening the highest-Stable comparison or setting production admission.
+
+Fresh calls to [ChromiumDash Windows Stable metadata](https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Windows&num=20)
+observed **157.0.8103.27** (`f9d7b13a569b352a0267234ea5740fdecc83ffa2`),
+published October 28 at 17:56:24.686 UTC. The bounded response also contains
+**156.0.8078.75** (`861389936bf33ea77529ee5dcc0605e68f6bb620`). Both the default
+148 pin and candidate 156.0.8078.36 return `behind-stable` and
+`production_admitted=false`. This is version/revision evidence, not a CVE audit
+or a claim that any observed release is already a usable fork target.
+
+Evidence on D: `upstream-audit-default-20261029-v2.json` and
+`upstream-audit-candidate-20261029-v2.json`. Candidate evidence binds manifest
+`b62ae2c7a20b52461dfa5a7e1e68c8105813792c3e377e346f651f6e133f1875`;
+the active Chromium build, inputs and default pin were not changed or restarted.
+Finish and validate the frozen 156 baseline first, then select/review the next
+immutable upstream target and repeat source/native/runtime/package gates before
+publication. No automatic rebase, download or production activation was added.
+Focused auditor tests passed **27 cases**. The full application suite passed
+**3,507 tests, one skipped** in 293.48 seconds; CI Ruff selection passed.
+
 ## Windows private identity-file ACL — 2026-10-29
 
 An actual disposable profile on D inherited Users/Authenticated Users data

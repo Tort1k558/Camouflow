@@ -30,12 +30,22 @@ Before selecting an upstream target or considering production publication, run:
 
 ```powershell
 .venv\Scripts\python.exe scripts/audit_native_upstream.py --output D:\Glint\upstream-audit.json
+.venv\Scripts\python.exe scripts/audit_native_upstream.py --candidate upstream-156 --output D:\Glint\upstream-156-audit.json
 ```
 
 This reads the official Windows Stable metadata from
 [ChromiumDash](https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Windows&num=20),
 records exact versions/revisions and response/build-lock hashes, and refuses
 existing evidence, redirected/oversized responses or a changed build lock.
+The optional explicit candidate uses the existing candidate loader, validates
+its manifest and patch chain before/after the request and records its manifest
+hash. `lock_sha256` still identifies the unchanged base lock; the candidate's
+effective version/revision are the selected values in the report. Unknown
+candidates, stale loaded base settings and candidate drift reject without
+publishing evidence. Neither command modifies the source pin or active checkout.
+`highest_observed_same_milestone` distinguishes a patch-line update from the
+highest Stable milestone in the bounded 20-release response; null means no
+matching row was observed, not that the milestone has no release history.
 Exit 1 means the pin is behind or needs review, not a failed runtime build.
 Exit 0 establishes only alignment with the highest observed Stable version
 and its exact Chromium revision. Neither outcome admits production: patch

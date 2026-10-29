@@ -5,6 +5,12 @@ build lock and registered 001-062 chain still target Chromium 148.0.7778.96.
 
 Target: **156.0.8078.36**, Chromium revision
 `5a93aa59e3043e747eff68659dcf7d20193d160e`.
+The October 29 official Windows Stable audit places this target behind observed
+156.0.8078.75 and 157.0.8103.27. The active build remains a frozen development
+checkpoint; do not change pins/patches in a live checkout. An upstream refresh,
+security review and fresh runtime gates are required before production delivery.
+Run `scripts/audit_native_upstream.py --candidate upstream-156 --output <fresh-D-report.json>`
+to compare this manifest-selected target without changing the default 148 pin.
 `manifest.json` binds each source input to an immutable Gitiles URL/hash and
 each draft patch to its hash and original registered patch hash.
 
