@@ -15,6 +15,7 @@
 | Native identity transport target | 20 cases passed; source/toolchain/browser-core postguards passed | Unit-level transport coverage; not browser identity admission or native handoff completion |
 | Native identity handoff target | 15 cases passed: three window-surface and twelve DocumentLoader inline-script policy units; source/toolchain/browser-core postguards passed | Native unit coverage, not full enabled renderer/worker lifecycle or browser-policy admission |
 | Native document/worker delivery target | 34 cases passed with the corrected canonical verifier and independently with an identical isolated copy; full ordered patch-chain pre/postguards and ten delivery-source hashes retained | Old initial-draft comparison rejected later Surface Policy changes incorrectly; verifier-only correction, no Chromium-source change; not browser first-script/lifecycle admission |
+| Native worker-surfaces / font targets | 55 endpoint/bootstrap cases and five font-policy parsing/field-preservation cases passed with postguards | Not actual worker-host first-script delivery, rendered text quality or capability admission |
 | GPU metadata fixture diagnosis | Canonical target: 27/33 passed, six texture cases failed because the test base disables optional texture-query extensions. Corrected test-only shadow object linked against unchanged production libraries: all 34 named cases passed, including missing-extension rejection | Public patch is unselected; original canonical failure retained, native/package queues stopped; no runtime/driver/WebGPU or release admission |
 | Chromium 156 full owned runtime suite | All eight gates passed: runtime 18, hardware 9, WebRTC 7, automation 55, fonts 42, identity 18, CDP 6, combined 5; 160 checks total | Source-build binary only; remaining native targets and installed-package gates are separate; no external anti-bot or complete Canvas/GPU/Audio admission |
 | Disposable startup | 156.0.8078.36 opened the controlled page; sandbox requested, effective `--no-sandbox` absent; runtime resources closed | Regular raw/headless baseline, not concealed-automation admission |
@@ -36,6 +37,7 @@
 | Current release-tool validators | 1,098 passed, one skipped in 61.40 seconds | Includes source/control and resource/tree checks; report validation is not additional native execution |
 | Full desktop Python regression | 3,621 passed, one skipped in 467.85 seconds; 201 frozen inputs and 143 extra test/draft inputs unchanged | Full run at 01cdf4e, before the network-fixture additions below; not native fixture execution or remote CI |
 | Initial ClientHello fixture | Public loopback capture parsed three fresh headless stock156 profiles; selected offer shapes repeated equally, original extension orders/message sizes varied; core/source/cleanup guards passed | Stock-only calibration; GREASE/order normalization is not full packet equality or JA3/JA4; TLS negotiation, Glint comparison, HTTP/2 and HTTP/3 remain unverified |
+| Matched Glint-off / stock / Glint-off ClientHello | Nine fresh headless profiles had equal selected initial offer shapes; core/source postguards and runtime cleanup passed | Exact 001–065 receipt/core checkpoint; native CDP revision remains dummy; not full packet equality, TLS negotiation, HTTP/2/3, proxy/DNS or external detector acceptance |
 
 Build evidence: `D:\Glint156Candidate\fixture-build-continuation-20261029-v2.json`;
 core receipt: `chromium\src\out\CamouFlowNative\camouflow-build.json` below that workspace.
@@ -86,11 +88,18 @@ GPU fixture diagnosis/correction: [`gpu-transport/README.md`](../native/drafts/g
 Raw corrected tests: `D:\Glint156Candidate\gpu-texture-fixture-fix-20261029-v1\trace-tests.json`.
 Patch/evidence and network regression: **1136 passed, one skipped** (64.67s),
 `D:\Glint156Candidate\gpu-fixture-python-regression-20261029-v1\pytest.log`.
-The unaffected worker-surfaces/font targets are running separately under
+The unaffected worker-surfaces/font targets finished with postguards under
 `native-tail-after-gpu-diagnosis-20261029-v1`; they cannot admit the failed full queue.
 Frozen source contract: [`001-065.json`](../native/drafts/upstream-156/checkpoints/001-065.json).
 Checkpoint/release-tools regression: **1105 passed, one skipped** (63.19s),
 `D:\Glint156Candidate\native65-checkpoint-python-regression-20261029-v1\pytest.log`.
+Batch orchestration and network/evidence regression: **1165 passed, one skipped**
+(59.02s); final D:-temporary-directory batch controls: **27 passed** (1.47s).
+Single-target APIs retain the existing regression coverage. The batch builds each
+required executable in one Ninja invocation and collects case failures; its real
+native replay is not yet an admitted gate.
+Matched network evidence: [`matched-clienthello-observations.json`](../native/drafts/network/matched-clienthello-observations.json),
+raw `D:\Glint156Candidate\matched-clienthello156-20261029-v1`.
 Stock control: [`stock-control-observations.json`](../native/drafts/upstream-156/stock-control-observations.json);
 matched Audio: [`matched-stock-observations.json`](../native/drafts/audio-dsp-math-v2/matched-stock-observations.json).
 Public runner and scoped evidence: [`browser_matrix.py`](../native/drafts/audio-dsp-math-v2/browser_matrix.py),

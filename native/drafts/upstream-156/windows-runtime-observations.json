@@ -436,5 +436,23 @@
     "old_draft_comparison_replaced": true,
     "complete_ordered_chain_guard_retained": true,
     "native_source_changed": false
+  },
+  "native_worker_surfaces_units": {
+    "scope": "Canvas and surface worker Mojo endpoints/bootstrap units; not worker-host startup, first-script delivery or admission",
+    "target": "worker-surfaces",
+    "tests": 55,
+    "test_binary_sha256": "6d217b6991b4edc428f2b93086ec00195e196485a7476bdf310a129c7d3d52e3",
+    "postguards_passed": true,
+    "baseline_browser_code_unchanged": true,
+    "passed": true
+  },
+  "native_font_rasterization_units": {
+    "scope": "Windows font policy parsing/field-preservation units; not renderer startup, visual output or capability admission",
+    "target": "font-rasterization",
+    "tests": 5,
+    "test_binary_sha256": "6aa97ad0c19fbb27a1862007fad8e50d5ceefa2087149ec5eac5a9b875fdd194",
+    "postguards_passed": true,
+    "baseline_browser_code_unchanged": true,
+    "passed": true
   }
 }

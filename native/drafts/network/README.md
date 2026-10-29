@@ -25,7 +25,13 @@ shapes. Their original extension orders and total message sizes differed.
 Browser source/core bindings, runtime cleanup and input postguards passed.
 [Scoped evidence](stock-clienthello-observations.json).
 
-**Glint comparison is pending.** This does not verify successful TLS negotiation,
+The subsequent **Glint-off → stock → Glint-off** run used nine fresh headless
+profiles. All selected offer shapes matched, with unchanged core/source inputs
+and closed runtime resources. Glint is bound to its exact 001–065 receipt/core
+checkpoint, not a real CDP Git stamp (the current non-official build reports zeros).
+[Matched observations](matched-clienthello-observations.json).
+
+This does not verify successful TLS negotiation,
 session resumption, certificate validation, DNS/proxy routes, HTTP/2, HTTP/3,
 external detector acceptance or cross-platform identity.
 
@@ -65,3 +71,4 @@ fragmentation, GREASE/order handling, stalls and listener cleanup.
 
 Private calibration: `D:\Glint156Candidate\stock-clienthello156-20261029-v2`.
 The earlier private-adapter calibration remains in `stock-clienthello156-20261029-v1`.
+Matched capture: `D:\Glint156Candidate\matched-clienthello156-20261029-v1`.

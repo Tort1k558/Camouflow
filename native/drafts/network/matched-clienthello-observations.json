@@ -1,0 +1,463 @@
+{
+  "scope": "Owned headless Glint-off/stock/Glint-off initial ClientHello selected offers only",
+  "headless": true,
+  "native_policy_enabled": false,
+  "native_core_sha256": {
+    "chrome.exe": "0596afb2bd1a84731ebbe4d276edd3797d67b262bebb332e76a8aa9d21db5567",
+    "chrome.dll": "bd75c5c6ab3c45946edc0ea4e8f1d684286dd588d7cc46999a0b2bb1236aab44",
+    "chrome_elf.dll": "14597f88689361a016bce4a648e6b18a50ed065d6fc524dc8112f4b7d6e115d0"
+  },
+  "stock_core_sha256": {
+    "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+    "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+    "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+  },
+  "native_receipt_sha256": "5c60aa4cebc433552e6a28a4875ffcf9e74e6e7776a52b4cc25ec4183591863a",
+  "candidate_manifest_sha256": "4df5b5d3ccc702376746ffe9c89020291c1b447136e327f7f3dbf2b5407b2be0",
+  "native_dummy_revision_expected": true,
+  "native_runtime_git_revision_verified": false,
+  "tls_negotiated": false,
+  "full_tls_fingerprint_verified": false,
+  "http2_verified": false,
+  "http3_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "fresh_profile_count": 9,
+  "all_selected_shapes_equal": true,
+  "selected_shape": {
+    "legacy_version": 771,
+    "session_id_length": 32,
+    "compression_methods": [
+      0
+    ],
+    "ciphers": [
+      4865,
+      4866,
+      4867,
+      49195,
+      49199,
+      49196,
+      49200,
+      52393,
+      52392,
+      49171,
+      49172,
+      156,
+      157,
+      47,
+      53
+    ],
+    "ciphers_grease_count": 1,
+    "supported_groups": [
+      4588,
+      29,
+      23,
+      24
+    ],
+    "supported_groups_grease_count": 1,
+    "signature_algorithms": [
+      2308,
+      2309,
+      2310,
+      1027,
+      2052,
+      1025,
+      1283,
+      2053,
+      1281,
+      2054,
+      1537
+    ],
+    "signature_algorithms_grease_count": 1,
+    "supported_versions": [
+      772,
+      771
+    ],
+    "supported_versions_grease_count": 1,
+    "extensions": [
+      0,
+      5,
+      10,
+      11,
+      13,
+      16,
+      18,
+      23,
+      27,
+      35,
+      43,
+      45,
+      51,
+      17613,
+      51764,
+      65037,
+      65281
+    ],
+    "extensions_grease_count": 2,
+    "point_formats": [
+      0
+    ],
+    "psk_modes": [
+      1
+    ],
+    "alpn_hex": [
+      "6832",
+      "687474702f312e31"
+    ],
+    "alpn_grease_count": 0,
+    "key_shares": [
+      {
+        "group": 4588,
+        "key_length": 1216
+      },
+      {
+        "group": 29,
+        "key_length": 32
+      }
+    ],
+    "key_shares_grease_count": 1
+  },
+  "required_native_manifest": "../upstream-156/checkpoints/001-065.json",
+  "stock_control_file": "../upstream-156/stock-control-observations.json",
+  "stock_control_sha256": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+  "raw_report_sha256": "a3cddb2d1d48d947f8a6d5a5dd11579a358c4e8a564d8e912dc50cc3fe7a1cf0",
+  "scripts": {
+    "client_hello.py": "704bb2d1c2f40bc0966c0fe711aa04765e253c506dfe38d9c7da3b6c7267586d",
+    "loopback.py": "b0065bafd8962d00d32491cac9b8c9e1183824d2af41f4b50fdfa9b4f392052b"
+  },
+  "captures": [
+    {
+      "phase": "native-before",
+      "index": 0,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@0000000000000000000000000000000000000000"
+      },
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 1944,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        60138,
+        13,
+        11,
+        5,
+        65281,
+        65037,
+        45,
+        27,
+        10,
+        23,
+        51,
+        35,
+        18,
+        43,
+        0,
+        17613,
+        16,
+        51764,
+        10794
+      ]
+    },
+    {
+      "phase": "native-before",
+      "index": 1,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@0000000000000000000000000000000000000000"
+      },
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 1944,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        47802,
+        43,
+        51764,
+        0,
+        45,
+        10,
+        27,
+        16,
+        65037,
+        18,
+        17613,
+        65281,
+        23,
+        35,
+        11,
+        51,
+        5,
+        13,
+        51914
+      ]
+    },
+    {
+      "phase": "native-before",
+      "index": 2,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@0000000000000000000000000000000000000000"
+      },
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 1944,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        10794,
+        51,
+        17613,
+        13,
+        51764,
+        65037,
+        23,
+        0,
+        16,
+        11,
+        10,
+        45,
+        5,
+        43,
+        18,
+        35,
+        65281,
+        27,
+        23130
+      ]
+    },
+    {
+      "phase": "stock",
+      "index": 0,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e"
+      },
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 1912,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        47802,
+        16,
+        0,
+        17613,
+        51764,
+        35,
+        51,
+        45,
+        23,
+        11,
+        5,
+        18,
+        27,
+        65037,
+        65281,
+        43,
+        13,
+        10,
+        2570
+      ]
+    },
+    {
+      "phase": "stock",
+      "index": 1,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e"
+      },
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 2008,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        64250,
+        45,
+        27,
+        13,
+        23,
+        17613,
+        18,
+        0,
+        65037,
+        35,
+        10,
+        16,
+        51764,
+        43,
+        11,
+        65281,
+        51,
+        5,
+        14906
+      ]
+    },
+    {
+      "phase": "stock",
+      "index": 2,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@5a93aa59e3043e747eff68659dcf7d20193d160e"
+      },
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 1912,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        10794,
+        0,
+        51,
+        13,
+        35,
+        11,
+        17613,
+        43,
+        5,
+        10,
+        51764,
+        45,
+        65281,
+        27,
+        65037,
+        23,
+        18,
+        16,
+        14906
+      ]
+    },
+    {
+      "phase": "native-after",
+      "index": 0,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@0000000000000000000000000000000000000000"
+      },
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 1976,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        31354,
+        18,
+        27,
+        0,
+        5,
+        10,
+        65281,
+        23,
+        51764,
+        17613,
+        43,
+        35,
+        45,
+        16,
+        51,
+        13,
+        11,
+        65037,
+        47802
+      ]
+    },
+    {
+      "phase": "native-after",
+      "index": 1,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@0000000000000000000000000000000000000000"
+      },
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 1976,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        64250,
+        65281,
+        65037,
+        11,
+        0,
+        17613,
+        43,
+        35,
+        5,
+        51764,
+        16,
+        45,
+        51,
+        23,
+        13,
+        10,
+        27,
+        18,
+        23130
+      ]
+    },
+    {
+      "phase": "native-after",
+      "index": 2,
+      "resources_closed": true,
+      "browser_get_version": {
+        "product": "Chrome/156.0.8078.36",
+        "revision": "@0000000000000000000000000000000000000000"
+      },
+      "record_versions": [
+        769
+      ],
+      "record_count": 1,
+      "handshake_bytes": 2008,
+      "navigation_failed_as_designed": true,
+      "extension_order": [
+        27242,
+        65037,
+        43,
+        5,
+        17613,
+        45,
+        65281,
+        11,
+        0,
+        51,
+        10,
+        18,
+        51764,
+        35,
+        16,
+        13,
+        23,
+        27,
+        56026
+      ]
+    }
+  ],
+  "remaining_unverified": [
+    "Successful TLS negotiation/resumption and full packet contents",
+    "HTTP/2 settings, HTTP/3 and proxy/DNS routes",
+    "Cross-platform/device cohorts and external detectors"
+  ]
+}

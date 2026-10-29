@@ -199,6 +199,8 @@ REQUIRED_GPU_READBACK_TESTS = {
 
 NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-readback", "gpu-metadata", "worker-surfaces", "font-rasterization")
 IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
+SUPPORTED_TARGETS = ("keys", "contexts", "delivery", "worker-handoff", "document-partition",
+                     "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS)
 
 DELIVERY_SOURCE_FILES = {
     f"{name}{suffix}": f"{directory}/{name}{suffix}"
@@ -392,47 +394,7 @@ def require_idle_builder(scope: Path | None = None) -> None:
         raise ValueError("A native compiler/build process is already running; wait for its terminal result")
 
 
-def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None, jobs: int = 4,
-           target: str = "keys", candidate_name: str | None = None,
-           git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
-    required = required_tests(target)
-    if sys.platform != "win32":
-        raise ValueError("The owned-profile key loader verification currently supports Windows only")
-    candidate = None if candidate_name is None else build.load_candidate(candidate_name)
-    if type(local_toolchain) is not bool or (local_toolchain and candidate is None):
-        raise ValueError("Local Windows toolchain verification requires an explicit candidate")
-    lock = build.LOCK if candidate is None else candidate["lock"]
-    if type(jobs) is not int or not 1 <= jobs <= min(4, lock["build_jobs"]):
-        raise ValueError("Native privacy verification requires 1..4 jobs")
-    if candidate is None:
-        build.preflight(workspace)
-    else:
-        build.preflight(workspace, lock=lock)
-    build.candidate_workspace(workspace, candidate)
-    source = workspace / "chromium/src"
-    if source != source.resolve() or not source.is_dir():
-        raise ValueError("A canonical pinned Chromium checkout is required")
-    if (not report.is_absolute() or report != report.resolve() or not report.parent.is_dir()
-            or report.is_relative_to(source) or report.is_relative_to(ROOT)):
-        raise ValueError("A canonical new report outside the source/application repositories is required")
-    results = report.with_name(report.stem + "-tests.json")
-    log_path = report.with_name(report.stem + "-build.log")
-    if any(path.exists() or path.is_symlink() for path in (report, results, log_path)):
-        raise ValueError("Refusing to overwrite native verification evidence")
-    with build.workspace_lock(workspace):
-        return _verify_locked(workspace, report, vs_installation=vs_installation, jobs=jobs, target=target,
-                              required=required, candidate=candidate, lock=lock, git_ssl_backend=git_ssl_backend,
-                              local_toolchain=local_toolchain)
-
-
-def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | None, jobs: int,
-                   target: str, required: dict, candidate: dict | None, lock: dict,
-                   git_ssl_backend: str, local_toolchain: bool = False) -> dict:
-    source = workspace / "chromium/src"
-    output = source / "out/CamouFlowNative"
-    results = report.with_name(report.stem + "-tests.json")
-    log_path = report.with_name(report.stem + "-build.log")
-    require_idle_builder(workspace)
+def verification_environment(workspace: Path, vs_installation: Path | None, git_ssl_backend: str, local_toolchain: bool) -> dict[str, str]:
     env = build.environment(workspace, git_ssl_backend=git_ssl_backend, local_toolchain=local_toolchain)
     env.update(GOMEMLIMIT="3GiB", PYTHONIOENCODING="utf-8")
     if vs_installation is not None:
@@ -441,19 +403,24 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
         if local_toolchain and str(vs_installation) != env.get("vs2026_install"):
             raise ValueError("Visual Studio selection differs from the prepared local toolchain")
         env["vs2026_install"] = str(vs_installation)
-    def source_state():
-        build.candidate_workspace(workspace, candidate)
-        if build.run(["git", "rev-parse", "HEAD"], source, env, capture=True) != lock["chromium_revision"]:
-            raise ValueError("Chromium revision differs from the pinned build lock")
-        if candidate is not None:
-            build.require_stage(workspace / "chromium", "sync", candidate)
-            build.require_stage(workspace / "chromium", "hooks", candidate)
-            return build.candidate_source_patches(source, env, candidate)
-        build.require_stage(workspace / "chromium", "sync")
-        build.require_stage(workspace / "chromium", "hooks")
-        return build.source_patches(source, env) + build.v8_source_patches(source, env)
+    return env
 
-    patches = source_state()
+
+def verified_source_chain(workspace: Path, candidate: dict | None, lock: dict, env: dict[str, str]) -> list[dict]:
+    source = workspace / "chromium/src"
+    build.candidate_workspace(workspace, candidate)
+    if build.run(["git", "rev-parse", "HEAD"], source, env, capture=True) != lock["chromium_revision"]:
+        raise ValueError("Chromium revision differs from the pinned build lock")
+    if candidate is not None:
+        build.require_stage(workspace / "chromium", "sync", candidate)
+        build.require_stage(workspace / "chromium", "hooks", candidate)
+        return build.candidate_source_patches(source, env, candidate)
+    build.require_stage(workspace / "chromium", "sync")
+    build.require_stage(workspace / "chromium", "hooks")
+    return build.source_patches(source, env) + build.v8_source_patches(source, env)
+
+
+def require_target_sources(source: Path, patches: list[dict], target: str) -> dict[str, str] | None:
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
     if target == "font-rasterization":
         required_patches.add("0062-native-windows-font-rasterization.patch")
@@ -514,7 +481,63 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
         required_patches.add("0030-native-document-commit-prototype.patch")
     if not required_patches.issubset(item["name"] for item in patches):
         raise ValueError("The exact context ownership and readiness patches are required")
-    delivery_sources = snapshot_delivery_sources(source) if target == "delivery" else None
+    return snapshot_delivery_sources(source) if target == "delivery" else None
+
+
+def unit_binary_target(target: str) -> str:
+    return ("gfx_unittests" if target == "font-rasterization" else
+                    "gpu_unittests" if target == "gpu-metadata" else
+                    "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff"} else
+                    "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
+
+
+def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None, jobs: int = 4,
+           target: str = "keys", candidate_name: str | None = None,
+           git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
+    required = required_tests(target)
+    if sys.platform != "win32":
+        raise ValueError("The owned-profile key loader verification currently supports Windows only")
+    candidate = None if candidate_name is None else build.load_candidate(candidate_name)
+    if type(local_toolchain) is not bool or (local_toolchain and candidate is None):
+        raise ValueError("Local Windows toolchain verification requires an explicit candidate")
+    lock = build.LOCK if candidate is None else candidate["lock"]
+    if type(jobs) is not int or not 1 <= jobs <= min(4, lock["build_jobs"]):
+        raise ValueError("Native privacy verification requires 1..4 jobs")
+    if candidate is None:
+        build.preflight(workspace)
+    else:
+        build.preflight(workspace, lock=lock)
+    build.candidate_workspace(workspace, candidate)
+    source = workspace / "chromium/src"
+    if source != source.resolve() or not source.is_dir():
+        raise ValueError("A canonical pinned Chromium checkout is required")
+    if (not report.is_absolute() or report != report.resolve() or not report.parent.is_dir()
+            or report.is_relative_to(source) or report.is_relative_to(ROOT)):
+        raise ValueError("A canonical new report outside the source/application repositories is required")
+    results = report.with_name(report.stem + "-tests.json")
+    log_path = report.with_name(report.stem + "-build.log")
+    if any(path.exists() or path.is_symlink() for path in (report, results, log_path)):
+        raise ValueError("Refusing to overwrite native verification evidence")
+    with build.workspace_lock(workspace):
+        return _verify_locked(workspace, report, vs_installation=vs_installation, jobs=jobs, target=target,
+                              required=required, candidate=candidate, lock=lock, git_ssl_backend=git_ssl_backend,
+                              local_toolchain=local_toolchain)
+
+
+def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | None, jobs: int,
+                   target: str, required: dict, candidate: dict | None, lock: dict,
+                   git_ssl_backend: str, local_toolchain: bool = False) -> dict:
+    source = workspace / "chromium/src"
+    output = source / "out/CamouFlowNative"
+    results = report.with_name(report.stem + "-tests.json")
+    log_path = report.with_name(report.stem + "-build.log")
+    require_idle_builder(workspace)
+    env = verification_environment(workspace, vs_installation, git_ssl_backend, local_toolchain)
+    def source_state():
+        return verified_source_chain(workspace, candidate, lock, env)
+
+    patches = source_state()
+    delivery_sources = require_target_sources(source, patches, target)
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
@@ -543,10 +566,7 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
              "Actual content-layer BrowserContext bridge/lifecycle/readiness units; not Chrome ProfileImpl startup, IPC, Canvas or admission"
              if target == "contexts" else
              "Private key derivation/loading and owner units; not real Chrome contexts, IPC, Canvas or capability admission")
-    build_target = ("gfx_unittests" if target == "font-rasterization" else
-                    "gpu_unittests" if target == "gpu-metadata" else
-                    "blink_unittests" if target in {"worker-handoff", "gpu-pack-copy", "gpu-readback", "identity-handoff"} else
-                    "content_unittests" if target in {"contexts", "delivery", "document-navigation", "surface-navigation", "window-transport", "worker-surfaces", "identity-contexts", "identity-transport"} else "camouflow_native_privacy_unittests")
+    build_target = unit_binary_target(target)
     proof = {"passed": False, "scope": scope, "target": target,
              **({"local_windows_toolchain_sha256": env["GLINT_LOCAL_WINDOWS_TOOLCHAIN_SHA256"]}
                 if local_toolchain else {}),
@@ -612,7 +632,7 @@ def main() -> int:
     parser.add_argument("--candidate", choices=("upstream-156",), help="Explicit candidate source/manifest; not runtime admission")
     parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl")
     parser.add_argument("--local-windows-toolchain", action="store_true")
-    parser.add_argument("--target", choices=("keys", "contexts", "delivery", "worker-handoff", "document-partition", "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS), default="keys")
+    parser.add_argument("--target", choices=SUPPORTED_TARGETS, default="keys")
     args = parser.parse_args()
     try:
         report = verify(args.workspace, args.report, vs_installation=args.vs_installation, jobs=args.jobs, target=args.target,

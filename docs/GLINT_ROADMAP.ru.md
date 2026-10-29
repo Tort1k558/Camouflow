@@ -145,6 +145,17 @@ patch replay/reverse-check и неизменность checkout/core/201 вхо�
 дескрипторы теперь ссылаются на него с прежним SHA-256, а не на изменяемый
 `manifest.json`. Все 65 patch-хешей проверены; release-tools регрессия прошла
 1105 тестов, один skipped. Текущая selected-цепочка и Chromium checkout не менялись.
+Хвост native-проверок завершён: worker-surfaces 55 / font-rasterization 5,
+оба с postguards. GPU canonical gate всё ещё остановлен на подготовке fixture.
+Добавлен batch CLI: одна Ninja-команда на все нужные EXE, затем каждый точный
+фильтр отдельно; ошибки не скрывают последующие targets. Source/core/receipt/GN
+и SDK проверяются в общем checkpoint до/после; временные файлы остаются на D.
+Single-target API сохранён. Регрессия orchestration/network/evidence: 1165 passed,
+1 skipped; дополнительные temp-directory controls — 27 passed. Реальный batch
+ещё не допущен; исходный GPU-failure не обходится и не вычёркивается.
+Matched ClientHello Glint-off → stock → Glint-off: девять свежих headless профилей,
+selected offers совпали; core/source guards и cleanup прошли. Это baseline 001–065,
+не negotiation/full packet/HTTP2/HTTP3 и не обещание невидимости.
 
 ## Следующий пакет: AudioContext math policy — 29 октября 2026
 

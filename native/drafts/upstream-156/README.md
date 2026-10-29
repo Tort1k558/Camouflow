@@ -15,6 +15,29 @@ Historical Audio integration and GPU-fixture observations reference this frozen
 manifest rather than silently inheriting future changes to `manifest.json`.
 This archive neither selects a new patch nor admits a different binary.
 
+### Batch native units on Windows
+
+`verify_native_privacy_batch.py` validates one source/SDK/core checkpoint, builds
+the required unit executables in **one Ninja invocation**, then runs every
+selected exact test filter. Case failures are collected instead of hiding later
+targets. Shared postguards must pass before `batch.json` can pass. Filters can
+overlap; their counts are not disjoint tests. The single-target CLI remains available.
+
+```powershell
+.venv\Scripts\python.exe scripts/verify_native_privacy_batch.py `
+  --workspace D:\Glint156Candidate --candidate upstream-156 `
+  --report-dir D:\Glint156Candidate\native-units-new-run `
+  --targets keys contexts delivery worker-handoff document-partition document-navigation `
+    surface-navigation window-transport gpu-pack-copy gpu-readback gpu-metadata `
+    worker-surfaces font-rasterization identity-keys identity-contexts identity-transport identity-handoff `
+  --local-windows-toolchain --git-ssl-backend schannel --jobs 4
+```
+
+Use a fresh report directory. This is unit/source verification, not installed
+browser or privacy admission. The 001–065 GPU fixture failure remains a failure
+until its correction is promoted; batching does not skip or waive it.
+Child-process temporary files also stay under that D: report directory.
+
 ## Exact-version stock control and Audio calibration
 
 An official CfT Windows archive for **156.0.8078.36** was downloaded with its

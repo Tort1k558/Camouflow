@@ -195,3 +195,37 @@ def test_stock_clienthello_evidence_is_bound_and_does_not_admit_negotiation():
     for field in ("tls_negotiated", "http2_verified", "http3_verified", "glint_verified", "privacy_admitted", "production_admitted"):
         assert data[field] is False
     assert data["remaining_unverified"]
+
+
+def test_matched_clienthello_evidence_preserves_the_known_native_checkpoint_boundary():
+    import hashlib
+    import json
+    from pathlib import Path
+
+    draft = Path(__file__).resolve().parents[1] / "native/drafts/network"
+    data = json.loads((draft / "matched-clienthello-observations.json").read_bytes())
+    assert data["schema"] == 1 and data["passed"] and data["measurement_complete"] and data["postguards_passed"]
+    assert data["headless"] and data["all_selected_shapes_equal"] and data["fresh_profile_count"] == len(data["captures"]) == 9
+    for name, digest in data["scripts"].items():
+        assert name in ("client_hello.py", "loopback.py") and hashlib.sha256((draft / name).read_bytes()).hexdigest() == digest
+    assert hashlib.sha256((draft / data["required_native_manifest"]).read_bytes()).hexdigest() == data["candidate_manifest_sha256"]
+    stock_raw = (draft / data["stock_control_file"]).read_bytes()
+    stock = json.loads(stock_raw)
+    assert hashlib.sha256(stock_raw).hexdigest() == data["stock_control_sha256"]
+    baseline = json.loads((draft.parent / "upstream-156/windows-runtime-observations.json").read_bytes())
+    assert data["native_core_sha256"] == baseline["runtime_core_sha256"]
+    assert data["native_receipt_sha256"] == baseline["build_receipt_sha256"]
+    assert data["stock_core_sha256"] == stock["stock_core_sha256"]
+    assert [(row["phase"], row["index"]) for row in data["captures"]] == [
+        (phase, index) for phase in ("native-before", "stock", "native-after") for index in range(3)]
+    for row in data["captures"]:
+        assert row["resources_closed"] and row["navigation_failed_as_designed"]
+        assert row["browser_get_version"]["product"] == "Chrome/156.0.8078.36"
+        revision = stock["target_revision"] if row["phase"] == "stock" else "0" * 40
+        assert row["browser_get_version"]["revision"] == "@" + revision
+        assert sorted(value for value in row["extension_order"] if value not in client_hello.GREASE_VALUES) == data["selected_shape"]["extensions"]
+    assert data["native_dummy_revision_expected"] is True
+    for field in ("native_policy_enabled", "native_runtime_git_revision_verified", "tls_negotiated", "full_tls_fingerprint_verified",
+                  "http2_verified", "http3_verified", "privacy_admitted", "production_admitted"):
+        assert data[field] is False
+    assert data["remaining_unverified"]
