@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "766d9b405ecbcb08f8f309e0ec160dd1e2d32ede",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 852,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 404.437,
+  "returncode": 0,
+  "counts": {
+    "tests": 4365,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4364
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "a54859f3f1fbf7de5c3da9b686e58e634e0266a547963c9a397c6d80e3c28f61",
+  "junit_sha256": "fe02193029a1a6f68da33a4db7e73e10fe800658c79eb72b9482336af70d451e",
+  "raw_report_sha256": "4dd2465e4d98f7acb1f94bffc917dcfc1283789bae8ba58361ef0a98ded5ac9b",
+  "note": "Full canonical repeat including the committed staging/spec packet at 766d9b4; before the later Python BindingCall draft and its metadata/tests."
+}

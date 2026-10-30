@@ -2,6 +2,26 @@
 
 ## Current implementation boundary
 
+The current preserved Windows candidate is **Chromium 156 / 001–070**, compiled
+and checked with **484 native cases in 20 groups**. Logical-screen desktop/mobile
+and profile-restart checks passed; combined Canvas/GPU/Audio and release admission
+remain open. [Native results](drafts/upstream-156/native-batch70-observations.json).
+
+The default manager still disables BFCache. An explicit-opt-in driver has a pinned,
+unselected staging/build path and passed four Recorder/replay phases plus paired
+Camoufox/CloakBrowser transport/frozen Python checks.
+[Staging](drafts/environment/driver-stage70-observations.json),
+[actual staged stress](drafts/environment/staged-stress70-observations.json).
+The full Python repeat at `766d9b4` passed **4364 tests, 1 skipped**.
+
+A stricter pending-binding teardown control exposed unhandled Python reject tasks.
+The separate [BindingCall draft](drafts/environment/binding-close70-observations.json)
+passed paired browser controls but is **not included** in the staged desktop package.
+Security rebase, verified device-cohort generation and package/update/rollback
+admission still block a complete release. Linux/macOS remain deferred.
+
+### Historical checkpoints before 001–070
+
 The latest source-built Windows candidate is **Chromium 156 / 001–069**.
 The j4 build completed 2079 steps in **1h47m09.05s**, with final source/SDK/core
 postguards and an exact 269-asset preserved runtime.

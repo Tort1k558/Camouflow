@@ -1,0 +1,696 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "runs": [
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "passed": true,
+      "cycles": [
+        {
+          "cycle": 0,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 1,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 2,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 3,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 4,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 5,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 6,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 7,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        }
+      ],
+      "binding_handler_calls": 56,
+      "native_runtime_resources_released": true,
+      "remaining_owned_processes": 0,
+      "owned_processes_observed": 11
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "persistent-profile-restart",
+      "passed": true,
+      "cycles": [
+        {
+          "cycle": 0,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 1,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 2,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 3,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 4,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 5,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 6,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 7,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        }
+      ],
+      "identity_stable_after_restart": true,
+      "storage_stable_after_restart": true,
+      "binding_handler_calls": 56,
+      "native_runtime_resources_released": true,
+      "remaining_owned_processes": 0,
+      "owned_processes_observed": 12
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "passed": true,
+      "cycles": [
+        {
+          "cycle": 0,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 1,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 2,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 3,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 4,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 5,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 6,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 7,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        }
+      ],
+      "binding_handler_calls": 56,
+      "native_runtime_resources_released": true,
+      "remaining_owned_processes": 0,
+      "owned_processes_observed": 12
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "persistent-profile-restart",
+      "passed": true,
+      "cycles": [
+        {
+          "cycle": 0,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 1,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 2,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 3,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 4,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 5,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 6,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        },
+        {
+          "cycle": 7,
+          "passed": true,
+          "native_bfcache_restored": true,
+          "held_handler_calls": 1,
+          "held_reply_resolved": true,
+          "result_released_on_native_away_navigation": true,
+          "echo_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "screen_snapshots_unchanged": true
+        }
+      ],
+      "identity_stable_after_restart": true,
+      "storage_stable_after_restart": true,
+      "binding_handler_calls": 56,
+      "native_runtime_resources_released": true,
+      "remaining_owned_processes": 0,
+      "owned_processes_observed": 12
+    }
+  ],
+  "scope": "Uninstrumented reply draft, 32 real BFCache cycles across desktop/mobile initial/restart; a Python result is released on native away-navigation, then awaited in its restored context; six role-verified echoes per cycle",
+  "selected": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "driver_test_instrumentation": false,
+  "driver_sha256": "26c93a2ec2d48fb890d3b7d5b5fa3ee2c4a9514d1b12de26c31d6b06c4ea076c",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "source_input_count": 173,
+  "postguards_passed": true,
+  "raw_report_sha256": "49f95caafbab625f7ba2a6742b8064180f00ac3622164bd0081b00e72880a2c7",
+  "source_sha256": {
+    "native/drafts/environment/first-script/bfcache_stress.py": "c34470e059b2fe5de627f87cddd3e3bc13dc44dc68766dff51d8a940a0dfffd7",
+    "native/drafts/environment/first-script/bfcache_races.py": "4ac147c519b2352cb7b065587198882a09aabc594a51c09371c954ab6ca4317d",
+    "native/drafts/environment/first-script/history_interaction.py": "f6c2e8358cc3b5232ac46d5e450c53f4fbea027764ea9dec2a8a34a09b12c971",
+    "native/drafts/environment/first-script/legacy_transport.py": "16458da91b61258389ce1e2c4bed7d2ab309b7a65f8fa566903716d70b2abeae",
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "native/drafts/environment/first-script/managed_history.py": "86f5d15ac0e71a880fe174182c73f2ea27faca96ef095d75e5b57e2ccaf15691",
+    "native/drafts/environment/first-script/manager.py": "71d0e333e682205beda57e963fa8df1483505bf7bac24f44caaed27a527a3e6d",
+    "native/drafts/environment/first-script/owner_process.py": "d86f90e386925d0d2940e06046eca85b4ca2e94b901abc751cafc494f9b4468b",
+    "native/drafts/environment/first-script/recorder_replay.py": "fe85d6528c8e3843fc581418b7bdc761a744b2041d8eb60141ee36389dcc4908",
+    "native/drafts/environment/first-script/runtime.py": "e387b5107340754af303b56b404ab86cea3195410b0b9ca4ea99c66516df4e1a",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "scripts/audit_native_upstream.py": "7b0d2e76a4cdb846e336ff514292f31c7d0e3d7ab7f457d475b3924f2e365fd7",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "scripts/fetch_native_rebase_sources.py": "75cfdf83902973d577adf34158df779c6a14ac37450f2cfa9f8a01f512c53f91",
+    "scripts/native_build.py": "61c37dc4b0df73912e1054065db8b4f545381ea9c29a320d6b9e588c07b59c38",
+    "scripts/native_canvas_fidelity.py": "069b4394d8d2da9f16760cc748b622a2417f0c6285364b08425068568ef93295",
+    "scripts/native_canvas_formats.py": "e8de0402c2d796ad50d400adaba58c68bf01e9019733e2ee90779bd07f8e73a7",
+    "scripts/native_canvas_hdr.py": "049bdef22ac5c632c05f8a34e03231a65705266ba761274bec8095eb0e92bb95",
+    "scripts/native_driver_stage.py": "742fc6cdead2edc58031721bd32a9d7d04fa6064edfbb79e0f52945023b97437",
+    "scripts/native_font_contexts.py": "3085db5cf0460f1b379516d85f12e8dfe24e2a76504e2a03e8eee025084e3ac9",
+    "scripts/native_font_rendering.py": "395496055c68572335577066af61cc16cc918d78f3ca487ba80e3b1ffec1b3cb",
+    "scripts/native_font_visuals.py": "e4d29de1617e2fe10141c263558b5bd5af3f934fcc53dae2b7b8593263c4198f",
+    "scripts/native_font_workloads.py": "aa3c2f5e654c355d471522d2b7f3a7f2b3f8527d9af03e86d3027c9ab2010159",
+    "scripts/native_release.py": "78a62dafcc9b6863bc182d34c6468a741700cc2887f7a19ca7394336e8735b55",
+    "scripts/native_windows_sdk.py": "7cd60d72a11bf6b3cf5734cb28ba35c41d4cbf881f6359e02ba29be2f2ffa318",
+    "scripts/native_windows_toolchain.py": "d61db8d323fbc9381f5c2273a27850686e307832646e6ff092d40c5183db68b0",
+    "scripts/package_native_windows.py": "a5841ebf6d299f54a0ec0429d6fbef5401beec3a0776d786843e37f930e038c1",
+    "scripts/prepare_glint_branding.py": "cb9e7ef221dda42c1ada49fa0add787f6c76bd6c8871b4db112d4ccbf300eda3",
+    "scripts/prepare_glint_ui_branding.py": "072db817362705ed3fca694f3b6537d4ad793c59536baaacb656dce6b7d240ac",
+    "scripts/prepare_native_font_rendering.py": "36f1305b37347f02decf273c43d2722e8a44ef5507d683774340e436715ffe08",
+    "scripts/stage_native_windows.py": "823674dfdb092eb1500803d17d316e55409d2a4b81d81d6f5c578afb9fea9e43",
+    "scripts/verify_ai_agent.py": "1e9e1a0949298e65517179ed9e7e5ebb57d9597cf6967fb08e58c44bd012af90",
+    "scripts/verify_ai_provider.py": "ba16af4383e519cec07410c1fdb565b5b3e4ff32cbcd1074fbcf384c0b659a44",
+    "scripts/verify_ai_provider_ui.py": "91cb070992ecd3561bf634c554a629056044b5a21df953c580baa42e5b961da0",
+    "scripts/verify_ai_ui.py": "207634a3178cf5a4c0da1b19da5fe4731804c4a98bf6a9f291ca61aa9f7d80d6",
+    "scripts/verify_ai_workflows.py": "29ae7d7b56b86ce89a7e96baf13881f2069bb86add0702e3ccfdbfe80b9a1025",
+    "scripts/verify_browser_settings.py": "f54efa884507eb40aedaa4ac305540e14f0266e40cf7732c19bd63ee5048e44a",
+    "scripts/verify_glint_branding.py": "a7af9768b47ed3d51e307855db078705c982aae7542ba984bd15e7a50e28dc11",
+    "scripts/verify_native_admitted_policy.py": "fa457bc5bfc19bf8ca71faf4e27172979310c3210756477bd9cf6054c3f065d6",
+    "scripts/verify_native_audio.py": "eff19a51d09e9d18a254a7c98d7be34394c2a74d07494cd5d6d26deda2c1dead",
+    "scripts/verify_native_audio_compatibility.py": "5307f7b06885e782e05f00901ece8984fb2aa79bd57d80ebd7066d3af45488eb",
+    "scripts/verify_native_audio_quality.py": "f2ee7735ab1c2b1b46adf17e661da749729201624baec39cf9019afe40ead39b",
+    "scripts/verify_native_audio_scalar.py": "618fb79c627b919efdbe663f631ce16b437bfc3a66db9a0139fcbae4f1073387",
+    "scripts/verify_native_automation.py": "5ad7ae47edb275cf44d5bef4989da3a29759971219a44b1a58637a2f29d4007a",
+    "scripts/verify_native_branding.py": "879d9c274eb6c546951c66d42d627182f2fd5332c26c899ba2b36e3508c25843",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "scripts/verify_native_cdp.py": "cdf7aac723b61ff4b3ea40c805727afd1e7c6ac5ba607018017e6d09378deb27",
+    "scripts/verify_native_combined.py": "92abafd907a653e9276d9209c98302df65615b310417fcfc12b8ae1a41dfd034",
+    "scripts/verify_native_cpp.py": "c5355dd5a7c40e4a64f0ddaa6fe0e020ba33c947f9c43b13ee081039446ff657",
+    "scripts/verify_native_document_drafts.py": "5b710a9bdbe92373dc0a989bdd9663934143eb6027293462425f42c8e1b1b343",
+    "scripts/verify_native_fonts.py": "cfa4f688d610218509864ca858b6f4f2ccbc98c52743e200fcad7676c87b44ae",
+    "scripts/verify_native_font_rendering.py": "82666e681c9737bd157206d95d581c49e0fa800a0b32cf0e888b8a820d7f9123",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "scripts/verify_native_gpu_codec.py": "9407f2495e4b6d8d940ccb43bb0964ac40b72e3e1698a01862426a363dc7cffa",
+    "scripts/verify_native_gpu_cpp.py": "02fc65c3ce2f8ecd4c48bd586556eb1b6fe8e5c06d51e982db8c7c3d501e508d",
+    "scripts/verify_native_gpu_metadata_codec.py": "f0dde5f2b2a6b93e056d10f7ab8896a64658b84fc94d871a448b25d32d0df8fa",
+    "scripts/verify_native_gpu_readback.py": "f08919882123f5f144a74169be5d19c141825cc27f138ee90f5820a63d517e06",
+    "scripts/verify_native_gpu_textures.py": "7d42ffca4f8c18dbfe1d1b07e5852b2b922a870f5d9a19f4407a9528e08d4149",
+    "scripts/verify_native_gpu_transport_draft.py": "f8461cf368634b85514ab9a839d6cde20e534cca088827bd265c7ea1867467a8",
+    "scripts/verify_native_halo_draft.py": "24d4d0c8bfa6002552a3b4c5f9b92d91866f3515040d7cf963f71abe18d50ee2",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "scripts/verify_native_identity_cpp.py": "346d9854e7fed64a7eb5ea67a5160b5bd57cb08d6138ea4c8130aa5ad2247ae9",
+    "scripts/verify_native_identity_readback_batch.py": "df1ac6a98cb7107a923989773a04f137dbb121d1aa598a4b31986b0000031a45",
+    "scripts/verify_native_nested_canvas.py": "f50d6a50bc567f1390d7212d715dc473b4967c1e0e53e5ed0a2a775a77bb039d",
+    "scripts/verify_native_next_batch.py": "9c87c6995b0f1bfd1d25ee17da28a35efa9069f743953c8db6b7d8dff272a8c4",
+    "scripts/verify_native_privacy_batch.py": "2a4fb5ac2e02bc513cc8b7aae7a99e9dd9730b674f16e354942cf6580650e918",
+    "scripts/verify_native_privacy_units.py": "04f1efa3acc9fd109cc0c11139a28c1bee0ff51526e98893313d819e71a613bf",
+    "scripts/verify_native_profile_identity_draft.py": "8150fb31c85719bc263e083e45cf7afbdc29db78070a0c9e2aba6ae1e57204ec",
+    "scripts/verify_native_readback_regions.py": "dfcae4f07dc2131014859667f8cd18240874de142aeb9009175ce73b9b036d14",
+    "scripts/verify_native_rebase_draft.py": "47b09c56bf62af52b68ae95391ffa98d3d35a3cb0c0719938c540f66be40cac2",
+    "scripts/verify_native_storage_paths.py": "c075fe83724159216f791755020e3053c332f087bfee7e4bd3667cdbf629b4e8",
+    "scripts/verify_native_suite.py": "c8d3d9bfd8b43ee46d0867eb098bbae8c2b56c71aeb76df5cba0c3cf65029e3d",
+    "scripts/verify_native_surfaces.py": "5a2d8ed28577a2fa78809d37ccd7e4a1ced1aebb2011a86621d0a9cca2cf3f8a",
+    "scripts/verify_native_webrtc.py": "e3b9fb2727e2461d36f3a78a92322c39e51a94a4c425b23101ae0801ecaa4772",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "scripts/verify_release.py": "018aaaef2dc235a1d2de1494d196092192d7bda0cbc425bd237f1a49cd4f6fc4"
+  },
+  "note": "Repeat on the actual staged explicit-opt-in 26c93a driver, not inferred from the older 39b80a result. Does not exercise unresolved-binding cancellation; see the separate strict negative/positive BindingCall gate."
+}

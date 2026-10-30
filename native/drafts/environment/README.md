@@ -1,5 +1,25 @@
 # Measured reference environments
 
+## Pending-binding teardown: retained FAIL and isolated Python draft
+
+The actual staged bundle passed a fresh [32-cycle stress repeat](staged-stress70-observations.json).
+Its full committed staging/spec regression at `766d9b4` passed
+[4364 tests, 1 skipped](canonical-python70-stage-observations.json).
+
+An unresolved binding during cancelled driver-stop exposed a different Python-side
+fault: a failed resolve spawned an unawaited reject against the closed channel.
+[Paired evidence](binding-close70-observations.json) retains the overall baseline FAIL
+(three loop errors) and the isolated draft PASS (eight BFCache cycles, four cancelled
+stops, no recorded loop errors). Handler failures still reject; cancellation propagates;
+non-closing delivery failures are not swallowed. Only delivery to a gone target is dropped.
+
+The [Python patch](playwright-python-binding-close.patch) is **not** in the JS-only stage.
+[Strict-gate patch](playwright-binding-close-strict-gate.patch) adapts the existing stress
+runner in a disposable repository-layout copy; it must not modify an active measurement.
+[Extracted-method model](first-script/binding_outcome_model.py) accepts explicit
+`--source <prepared _page.py> --report <new output.json>` and passed ten controls.
+This is not frozen Native admission, a peak-memory/leak proof or all-phase cancellation coverage.
+
 ## Explicit opt-in staging and actual desktop package — 2026-10-30
 
 [Measured staging packet](driver-stage70-observations.json): the compatibility branch

@@ -2,6 +2,8 @@ import difflib
 import hashlib
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -285,3 +287,48 @@ def test_measured_frozen_checks_preserve_expected_timeout_semantics(measured_sta
     comparison = measured_stage["desktop_build"]["repeat_distribution"]
     assert comparison["identical"] and comparison["first_files"] == comparison["second_files"] == 2521
     assert comparison["differences"] == []
+
+
+def test_python_binding_outcome_draft_reconstructs_exact_source_and_passes_model(tmp_path):
+    import playwright
+
+    environment = driver.ROOT / "native/drafts/environment"
+    evidence = json.loads((environment / "binding-close70-observations.json").read_bytes())
+    original = Path(playwright.__file__).parent / "_impl/_page.py"
+    assert sha(original.read_bytes()) == evidence["base_python_sha256"]
+    patch = environment / evidence["patch"]
+    assert sha(patch.read_bytes()) == evidence["patch_sha256"]
+    prepared = tmp_path / "playwright/_impl/_page.py"
+    prepared.parent.mkdir(parents=True)
+    prepared.write_bytes(original.read_bytes())
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--whitespace=error", str(patch)],
+                   cwd=tmp_path, capture_output=True, check=True, timeout=15)
+    assert sha(prepared.read_bytes()) == evidence["prepared_python_sha256"]
+    runner = environment / "first-script/binding_outcome_model.py"
+    assert sha(runner.read_bytes()) == evidence["model_runner_sha256"]
+    report = tmp_path / "model.json"
+    subprocess.run([sys.executable, str(runner), "--source", str(prepared), "--report", str(report)],
+                   capture_output=True, check=True, timeout=15)
+    model = json.loads(report.read_bytes())
+    assert model["passed"] and model["tests"] == len(model["results"]) == 10
+    assert all(row["passed"] for row in model["results"])
+    assert model == evidence["model"]
+    assert evidence["selected"] is evidence["included_in_desktop_stage"] is False
+    assert evidence["baseline"]["passed"] is False and len(evidence["baseline"]["asyncio_errors"]) == 3
+    assert evidence["candidate"]["passed"] is True and evidence["candidate"]["asyncio_errors"] == []
+
+
+def test_strict_gate_patch_reconstructs_the_portable_runner(tmp_path):
+    environment = driver.ROOT / "native/drafts/environment"
+    evidence = json.loads((environment / "binding-close70-observations.json").read_bytes())
+    source = environment / "first-script/bfcache_stress.py"
+    assert sha(source.read_bytes()) == evidence["strict_gate_base_source_sha256"]
+    target = tmp_path / source.relative_to(driver.ROOT)
+    target.parent.mkdir(parents=True)
+    target.write_bytes(source.read_bytes())
+    patch = environment / evidence["strict_gate_patch"]
+    assert sha(patch.read_bytes()) == evidence["strict_gate_patch_sha256"]
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--whitespace=error", str(patch)],
+                   cwd=tmp_path, capture_output=True, check=True, timeout=15)
+    assert sha(target.read_bytes()) == evidence["strict_gate_portable_source_sha256"]
+    compile(target.read_text(encoding="utf-8"), str(target), "exec")

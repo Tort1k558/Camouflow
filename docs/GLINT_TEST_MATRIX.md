@@ -1,5 +1,16 @@
 # Glint browser test matrix
 
+## Strict pending-binding teardown and staging regression — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Full canonical at `766d9b4` | **4364 passed, 1 skipped**, source/status guards passed | [Report](../native/drafts/environment/canonical-python70-stage-observations.json); includes staging/spec packet, precedes Python binding draft |
+| Actual staged opt-in driver | **32 BFCache cycles / 224 handler calls**, desktop/mobile initial/restart, observed owned processes exit | [Fresh measurement](../native/drafts/environment/staged-stress70-observations.json), not transferred from old reply bundle |
+| Strict pending-binding baseline | Functional rows pass, overall **FAIL**: three unhandled `TargetClosedError` reject tasks | [Retained negative control](../native/drafts/environment/binding-close70-observations.json) |
+| Python BindingCall draft | Eight actual BFCache cycles, four driver-stop cancellations, same-profile key/storage restart and cross-process ownership; **zero recorded loop errors** | Same paired gate and 10 extracted-method controls; not in desktop stage, not every cancellation point or resource admission |
+
+No production policy or CAPTCHA/fingerprint acceptance follows from these gates.
+
 ## Explicit-opt-in driver staging and Windows desktop package — 2026-10-30
 
 | Gate | Observed result | Boundary |

@@ -1,0 +1,140 @@
+diff --git a/native/drafts/environment/first-script/bfcache_stress.py b/native/drafts/environment/first-script/bfcache_stress.py
+--- a/native/drafts/environment/first-script/bfcache_stress.py
++++ b/native/drafts/environment/first-script/bfcache_stress.py
+@@ -3,6 +3,7 @@
+ import argparse
+ import asyncio
+ import hashlib
++import gc
+ import json
+ import os
+ from pathlib import Path
+@@ -35,6 +36,7 @@
+     os.environ['CAMOUFLOW_DATA_DIR'] = str(OUTPUT / 'workspace')
+     from app.core.native.runtime import NativeRuntime
+     from app.core.native.identity import IDENTITY_FILE
++    from app.core.native.windows_process_resources import WindowsProcessReader
+     import app.core.native.runtime as runtime_module
+     import playwright
+     assert Path(runtime_module.__file__).resolve() == application_root / 'app/core/native/runtime.py'
+@@ -46,7 +48,7 @@
+     sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+     bundle = Path(playwright.__file__).parent / 'driver/package/lib/coreBundle.js'
+     assert sha(bundle) == args.driver_sha256
+-    paths = [Path(__file__), Path(runtime_module.__file__), bundle, *FIXTURE.glob('*.py'), FIXTURE / 'sample.js',
++    paths = [Path(__file__), Path(runtime_module.__file__), bundle, driver_root / 'playwright/_impl/_page.py', *FIXTURE.glob('*.py'), FIXTURE / 'sample.js',
+              ROOT / 'scripts/verify_native_runtime.py', *(EXE.parent / name for name in ('chrome.exe', 'chrome.dll', 'chrome_elf.dll'))]
+     inputs = {path: sha(path) for path in paths}
+     inputs.update({path: sha(path) for path in (application_root / 'app').rglob('*.py')})
+@@ -56,8 +58,8 @@
+     reference = json.loads(args.runtime_reference.read_bytes())
+     if core != reference['runtime_core_sha256_measured']:
+         raise ValueError("Browser core differs from measured runtime reference")
+-    report = {'schema': 1, 'passed': False, 'measurement_complete': False, 'runs': [],
+-              'scope': 'Uninstrumented reply draft, 32 real BFCache cycles across desktop/mobile initial/restart; a Python result is released on native away-navigation, then awaited in its restored context; six role-verified echoes per cycle',
++    report = {'schema': 1, 'passed': False, 'measurement_complete': False, 'runs': [], 'asyncio_errors': [],
++              'scope': 'Paired strict asyncio gate: eight actual BFCache cycles and four cancelled-driver-stop teardowns with a real unresolved binding; all loop errors fail the overall gate; not combined fingerprint or resource admission',
+               'selected': False, 'privacy_admitted': False, 'production_admitted': False,
+               'driver_test_instrumentation': False, 'measured_inputs_sha256': {str(path): value for path, value in inputs.items()}}
+     report.update(driver_sha256=sha(bundle_path), runtime_core_sha256_measured=core, source_input_count=len(inputs))
+@@ -76,6 +78,11 @@
+             await request.abort('blockedbyclient')
+ 
+     async def run():
++        loop = asyncio.get_running_loop()
++        def on_async_error(loop, context):
++            report['asyncio_errors'].append({'message': context.get('message'),
++                'error_type': type(context.get('exception')).__name__, 'error': str(context.get('exception'))})
++        loop.set_exception_handler(on_async_error)
+         for mode in ('manager-desktop', 'manager-mobile-web'):
+             configuration = lifecycle['REFERENCE']['environment'].configuration_for_mode(mode)
+             runtime = NativeRuntime(OUTPUT / ('profile-' + mode), EXE, configuration)
+@@ -85,6 +92,8 @@
+                 report['runs'].append(row)
+                 before = await asyncio.to_thread(helpers['process_snapshot'])
+                 owned = {}
++                closing = None
++                release = None
+                 try:
+                     context = await runtime.start(headless=True)
+                     await context.route('**/*', route)
+@@ -105,12 +114,12 @@
+                         assert payload['role'] == (source['frame'].name or 'main')
+                         assert payload['cycle'] == expected_cycle
+                         calls.append(dict(payload))
+-                        if payload['kind'] == 'held':
++                        if payload['kind'] in {'held', 'close-held'}:
+                             entered.set()
+                             await release.wait()
+                         return payload
+                     await context.expose_binding('ownedCycleEcho', echo)
+-                    for cycle in range(8):
++                    for cycle in range(2):
+                         expected_cycle = cycle
+                         await page.goto(origin + f'/screen?role=main&cycle={cycle}', timeout=10000)
+                         if phase == 'persistent-profile-restart' and cycle == 0:
+@@ -153,10 +162,48 @@
+                                               'result_released_on_native_away_navigation': True,
+                                               'echo_roles': sorted(frames), 'screen_snapshots_unchanged': True})
+                         save()
+-                    assert len(calls) == 56
++                    assert len(calls) == 14
+                     row['binding_handler_calls'] = len(calls)
+                     owned.update(helpers['controller_descendants'](before, await asyncio.to_thread(helpers['process_snapshot']), os.getpid()))
++                    release.clear()
++                    entered.clear()
++                    closing_payload = {'kind': 'close-held', 'role': 'main', 'cycle': expected_cycle}
++                    await page.evaluate('payload => {window.glintCloseHeldReply = window.ownedCycleEcho(payload)}', closing_payload)
++                    await asyncio.wait_for(entered.wait(), timeout=5)
++                    assert sum(call == closing_payload for call in calls) == 1
++                    row['binding_pending_before_close'] = True
++                    closing = asyncio.create_task(runtime.close())
++                    async def observe_stop():
++                        while runtime._driver_stop_task is None:
++                            assert not closing.done(), 'Close completed before driver stop was observed'
++                            await asyncio.sleep(0)
++                    await asyncio.wait_for(observe_stop(), timeout=runtime.CLOSE_TIMEOUT_SECONDS)
++                    stop = runtime._driver_stop_task
++                    closing.cancel()
++                    try:
++                        await closing
++                    except asyncio.CancelledError:
++                        row['close_cancellation_observed'] = True
++                    else:
++                        raise AssertionError('Cancelled close unexpectedly completed')
++                    assert runtime._driver_stop_task is stop and not stop.cancelled()
++                    assert runtime._profile_lock is not None
++                    child = await asyncio.to_thread(__import__('subprocess').run,
++                        [sys.executable, str(ROOT / 'scripts/verify_native_runtime.py'), '--check-lock',
++                         str(runtime.profile_dir), '--executable', str(EXE)], cwd=ROOT,
++                         capture_output=True, text=True, timeout=15)
++                    assert child.returncode == 0, child.stdout + child.stderr
++                    row['cross_process_profile_owner_retained'] = True
++                    release.set()
++                    await runtime.close()
++                    assert not runtime.has_resources
++                    row['second_close_completed_original_driver_stop'] = True
+                 finally:
++                    if release is not None:
++                        release.set()
++                    if closing is not None and not closing.done():
++                        closing.cancel()
++                        await asyncio.gather(closing, return_exceptions=True)
+                     await runtime.close()
+                     row['native_runtime_resources_released'] = not runtime.has_resources
+                     async def wait_owned():
+@@ -169,9 +216,12 @@
+                     row['remaining_owned_processes'] = 0
+                     row['owned_processes_observed'] = len(owned)
+                     save()
+-                row['passed'] = len(row['cycles']) == 8 and row['native_runtime_resources_released']
++                row['passed'] = len(row['cycles']) == 2 and row['native_runtime_resources_released']
+                 save()
+-        report.update(passed=all(row['passed'] for row in report['runs']), measurement_complete=True)
++        await asyncio.sleep(0.1)
++        gc.collect()
++        await asyncio.sleep(0.1)
++        report.update(passed=all(row['passed'] for row in report['runs']) and not report['asyncio_errors'], measurement_complete=True)
+ 
+     try:
+         asyncio.run(run())

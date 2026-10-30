@@ -1,0 +1,234 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "date": "2026-10-30",
+  "scope": "Paired D-only Python BindingCall outcome draft after eight real BFCache cycles / four cancelled-stop teardowns; not integrated into the staged desktop package",
+  "selected": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "included_in_desktop_stage": false,
+  "driver_bundle_sha256": "26c93a2ec2d48fb890d3b7d5b5fa3ee2c4a9514d1b12de26c31d6b06c4ea076c",
+  "base_python_sha256": "ea1efb87c9e0aed59afa8e48986b1dcbb28155f02c70678ea01ea14b88d65c0a",
+  "prepared_python_sha256": "69c114049896668607bb4abd255d42e86785153bb5101e2f00193186001a8207",
+  "patch": "playwright-python-binding-close.patch",
+  "patch_sha256": "bf3343d1ca8487b94d3ec2dbd9074af2e98fe65a66e7c60e4092d7e89f1a2876",
+  "diagnosis": "A handler completing after target teardown fails its resolve; the original BindingCall spawns an unawaited reject RPC against the same closed channel. The draft awaits one resolve/reject outcome, treats only delivery TargetClosedError as gone-recipient, preserves handler rejection and exposes non-closing delivery errors.",
+  "upstream_source": "https://github.com/microsoft/playwright-python/blob/v1.60.0/playwright/_impl/_page.py",
+  "baseline": {
+    "passed": false,
+    "raw_report_sha256": "be9f8dff2405a925ba2e7c0cc82ebf0f27cfd4f2f29eea2c7e2224834c8bf14a",
+    "postguards_passed": true,
+    "runs": [
+      {
+        "mode": "manager-desktop",
+        "phase": "initial",
+        "passed": true,
+        "binding_handler_calls": 14,
+        "binding_pending_before_close": true,
+        "close_cancellation_observed": true,
+        "cross_process_profile_owner_retained": true,
+        "second_close_completed_original_driver_stop": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 12
+      },
+      {
+        "mode": "manager-desktop",
+        "phase": "persistent-profile-restart",
+        "passed": true,
+        "binding_handler_calls": 14,
+        "binding_pending_before_close": true,
+        "close_cancellation_observed": true,
+        "cross_process_profile_owner_retained": true,
+        "second_close_completed_original_driver_stop": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 11
+      },
+      {
+        "mode": "manager-mobile-web",
+        "phase": "initial",
+        "passed": true,
+        "binding_handler_calls": 14,
+        "binding_pending_before_close": true,
+        "close_cancellation_observed": true,
+        "cross_process_profile_owner_retained": true,
+        "second_close_completed_original_driver_stop": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 12
+      },
+      {
+        "mode": "manager-mobile-web",
+        "phase": "persistent-profile-restart",
+        "passed": true,
+        "binding_handler_calls": 14,
+        "binding_pending_before_close": true,
+        "close_cancellation_observed": true,
+        "cross_process_profile_owner_retained": true,
+        "second_close_completed_original_driver_stop": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 11
+      }
+    ],
+    "asyncio_errors": [
+      {
+        "message": "Task exception was never retrieved",
+        "error_type": "TargetClosedError",
+        "error": "Channel.send: Target page, context or browser has been closed"
+      },
+      {
+        "message": "Task exception was never retrieved",
+        "error_type": "TargetClosedError",
+        "error": "Channel.send: Target page, context or browser has been closed"
+      },
+      {
+        "message": "Task exception was never retrieved",
+        "error_type": "TargetClosedError",
+        "error": "Channel.send: Target page, context or browser has been closed"
+      }
+    ]
+  },
+  "candidate": {
+    "passed": true,
+    "raw_report_sha256": "1301f4f575450950fbd648390d09c63af8117fd5c359827f0b22f86351bd179e",
+    "postguards_passed": true,
+    "runs": [
+      {
+        "mode": "manager-desktop",
+        "phase": "initial",
+        "passed": true,
+        "binding_handler_calls": 14,
+        "binding_pending_before_close": true,
+        "close_cancellation_observed": true,
+        "cross_process_profile_owner_retained": true,
+        "second_close_completed_original_driver_stop": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 12
+      },
+      {
+        "mode": "manager-desktop",
+        "phase": "persistent-profile-restart",
+        "passed": true,
+        "binding_handler_calls": 14,
+        "binding_pending_before_close": true,
+        "close_cancellation_observed": true,
+        "cross_process_profile_owner_retained": true,
+        "second_close_completed_original_driver_stop": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 11
+      },
+      {
+        "mode": "manager-mobile-web",
+        "phase": "initial",
+        "passed": true,
+        "binding_handler_calls": 14,
+        "binding_pending_before_close": true,
+        "close_cancellation_observed": true,
+        "cross_process_profile_owner_retained": true,
+        "second_close_completed_original_driver_stop": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 11
+      },
+      {
+        "mode": "manager-mobile-web",
+        "phase": "persistent-profile-restart",
+        "passed": true,
+        "binding_handler_calls": 14,
+        "binding_pending_before_close": true,
+        "close_cancellation_observed": true,
+        "cross_process_profile_owner_retained": true,
+        "second_close_completed_original_driver_stop": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 12
+      }
+    ],
+    "asyncio_errors": []
+  },
+  "model": {
+    "passed": true,
+    "tests": 10,
+    "results": [
+      {
+        "name": "sync-result-resolves-once",
+        "passed": true,
+        "handler_calls": 1,
+        "delivery_attempts": 1
+      },
+      {
+        "name": "async-result-resolves-once",
+        "passed": true,
+        "handler_calls": 1,
+        "delivery_attempts": 1
+      },
+      {
+        "name": "handler-error-rejects-once",
+        "passed": true,
+        "handler_calls": 1,
+        "delivery_attempts": 1
+      },
+      {
+        "name": "handler-target-closed-is-still-a-rejection",
+        "passed": true,
+        "handler_calls": 1,
+        "delivery_attempts": 1
+      },
+      {
+        "name": "closed-target-during-resolve-does-not-spawn-reject-task",
+        "passed": true,
+        "handler_calls": 1,
+        "delivery_attempts": 1
+      },
+      {
+        "name": "closed-target-during-reject-does-not-spawn-reject-task",
+        "passed": true,
+        "handler_calls": 1,
+        "delivery_attempts": 1
+      },
+      {
+        "name": "nonclosing-resolve-error-is-visible",
+        "passed": true,
+        "handler_calls": 1,
+        "delivery_attempts": 1
+      },
+      {
+        "name": "nonclosing-reject-error-is-visible",
+        "passed": true,
+        "handler_calls": 1,
+        "delivery_attempts": 1
+      },
+      {
+        "name": "handler-cancellation-is-not-converted-to-an-rpc",
+        "passed": true,
+        "handler_calls": 1,
+        "delivery_attempts": 0
+      },
+      {
+        "name": "serialization-error-rejects-once",
+        "passed": true,
+        "handler_calls": 1,
+        "delivery_attempts": 1
+      }
+    ],
+    "scope": "Exact extracted Python BindingCall draft with modeled channels; not browser or package admission",
+    "source_sha256": "69c114049896668607bb4abd255d42e86785153bb5101e2f00193186001a8207"
+  },
+  "model_runner_sha256": "a0bbb7f4ca45f64f02e1dabb8be35b3b2633eea91110b1965fdb698f00be4ae8",
+  "strict_gate_patch": "playwright-binding-close-strict-gate.patch",
+  "strict_gate_patch_sha256": "086d864ab35e977722a8df4694ec9e749a9fd35a707c7d44baacf7f529f71463",
+  "strict_gate_base_source_sha256": "c34470e059b2fe5de627f87cddd3e3bc13dc44dc68766dff51d8a940a0dfffd7",
+  "strict_gate_portable_source_sha256": "19cfbab0228dd06abc7dca8c23c177be483f0257f44f7c8b928c131e94c6e30c",
+  "strict_gate_note": "Apply to a disposable copy preserving the repository layout; measured D harness pins ROOT to the source checkout explicitly, portable copy derives it from its own layout. Do not patch an active measurement or shipped application.",
+  "limitations": [
+    "Existing staged JS-only package is unchanged and does not contain this Python fix.",
+    "Four cancellation controls are interrupted at driver-stop after context close, not every context-close/restore interruption.",
+    "Earlier broad D load collector reported successful functional rows while printing unhandled task errors; the strict baseline here retains that failure.",
+    "No frozen build, paired legacy-provider regression or resource admission for this Python draft."
+  ]
+}

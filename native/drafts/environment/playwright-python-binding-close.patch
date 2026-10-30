@@ -1,0 +1,30 @@
+diff --git a/playwright/_impl/_page.py b/playwright/_impl/_page.py
+--- a/playwright/_impl/_page.py
++++ b/playwright/_impl/_page.py
+@@ -1587,16 +1587,17 @@
+                 result = func(source, *func_args)
+             if inspect.iscoroutine(result):
+                 result = await result
+-            await self._channel.send(
+-                "resolve", None, dict(result=serialize_argument(result))
+-            )
+-        except Exception as e:
++            params = dict(result=serialize_argument(result))
++            method = "resolve"
++        except Exception as error:
+             tb = sys.exc_info()[2]
+-            asyncio.create_task(
+-                self._channel.send(
+-                    "reject", None, dict(error=dict(error=serialize_error(e, tb)))
+-                )
+-            )
++            params = dict(error=dict(error=serialize_error(error, tb)))
++            method = "reject"
++        try:
++            await self._channel.send(method, None, params)
++        except TargetClosedError:
++            # The result has no live recipient after target teardown.
++            pass
+ 
+ 
+ def trim_url(param: Union[URLMatchRequest, URLMatchResponse]) -> Optional[str]:
