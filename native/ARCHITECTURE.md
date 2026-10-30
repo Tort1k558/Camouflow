@@ -6,7 +6,10 @@
 The preserved 073 runtime passed 488 native cases in 21 groups. The next linked
 screen package adds six mandatory cases in two groups, but is not built; its
 browser/renderer invalidation fix has syntax checks, not runtime admission.
-The configured disk reserve currently prevents the 074 source refresh/build.
+The normal full-build reserve remains 180 GiB. A separate bounded local Siso
+controller is now running for 074 with a 64 GiB cached profile; its baseline
+dry-run required zero steps, but no 074 compilation/runtime success is claimed.
+See [cached rebuild boundaries](BUILDING.md#bounded-cached-chromium-156-rebuild).
 
 | Boundary | Verified scope | Still open |
 | --- | --- | --- |

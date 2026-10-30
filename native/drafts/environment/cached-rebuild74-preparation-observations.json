@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "scope": "Bounded cached rebuild preparation; not compiled 074 or runtime admission",
+  "candidate_manifest_sha256": "71b15700678f928a5997938e5c5c69a3c5380935ee6bfb445983a4107370f2e6",
+  "baseline_manifest_sha256": "b5b34bd0e597594191e42f957ce96710540bc72ab8000c8eba64a510e0295ba6",
+  "baseline_plan": {
+    "passed": true,
+    "report": "D:\\GlintManagerQA\\incremental74-plan-20261030-v2\\report.json",
+    "report_sha256": "bb03ae248dabc98c7437443a73b8e459783a5f4edf59a605c63da09541d2dc1c",
+    "controller_sha256_measured": "9c80a96be7e33e20eb4339924105c2b037360e9776d9ed752701119d6391459b",
+    "steps": 0,
+    "preserved_assets": 269,
+    "free_gib": 106.9,
+    "compilation_started": false,
+    "source_changed": false
+  },
+  "current_controller": {
+    "commit": "e855da0",
+    "sha256": "080480dfe753135afe0cc09740a7b6206d78e315ebefffa6df0a54e71712e31f",
+    "related_python_tests_passed": 168,
+    "full_python_suite_rerun": false,
+    "guards_added_after_plan": [
+      "exact byte rollback of stage records",
+      "all preserved code files and receipt required in inventory"
+    ],
+    "retained_negative_test": "D:/GlintManagerQA/incremental74-public-tests-v6: 51 passed, 1 failed; stage BOM/CRLF byte regression before repair"
+  },
+  "normal_reserve_gib": 180,
+  "bounded_cached_reserve_gib": 64,
+  "rebuild_report": "D:/GlintManagerQA/incremental74-rebuild-20261030-v1/report.json",
+  "build_completed": false,
+  "native_494_cases_verified": false,
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
