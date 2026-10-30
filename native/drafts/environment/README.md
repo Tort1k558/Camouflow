@@ -2,12 +2,28 @@
 
 ## Current compatibility gate
 
+[Real lifecycle gates](bfcache-races70-observations.json) passed **6/6 controlled
+navigation/page-close/runtime-close cases** and **32 uninstrumented BFCache cycles**
+with 224 role-verified Python binding calls. Same-profile key/storage restart and
+observed-process exit checks passed. [Full Python repeat](canonical-python70-replies-observations.json):
+**4330 passed, 1 skipped**. Driver selection, resource/package/privacy admission remain closed.
+
+[bfcache_stress.py](first-script/bfcache_stress.py) accepts the same explicit paths/hash
+as the replay runner and uses the unmodified reply draft (`39b80a…`).
+[bfcache_races.py](first-script/bfcache_races.py) instead needs a separate copy with the
+[test-only barrier patch](playwright-bfcache-test-barrier.patch) applied **after** the reply
+patch, producing `69241956c0c94e480ada6bd232e9fa8f18571e60c213d07c5560a6b7668fcb57`.
+The barrier holds a real reply; ready/continued/timeout markers prove the race timing.
+**Never package or install that test barrier.** The fresh upstream audit remains
+`behind-stable`; successful lifecycle tests do not resolve the release blocker.
+
 [Binding reply draft](binding-replies70-observations.json) passes **4/4 complete
 UI-ordered recording/replay phases**: desktop/mobile initial/restart, six documents,
 all 13 recorded steps and nine clicks, genuine BFCache in recording and replay,
 no pending replies or flush warnings. **25 modeled controls** and the **18-check
 existing runtime baseline** passed with the draft. It remains **unselected**:
-real navigation/close races, resource stress and pinned package integration are still open.
+specific navigation/close races passed in the later gate above, but cancellation under
+load, peak resource measurements and pinned package integration are still open.
 
 The [patch](playwright-bfcache-replies-prototype.patch) binds one exact Playwright
 bundle hash; it is not a replacement browser binary. Apply it only to an isolated

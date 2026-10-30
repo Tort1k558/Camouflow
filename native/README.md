@@ -22,7 +22,7 @@ readiness. Rebase and repeat the full gates before production publication.
 Use `scripts/audit_native_upstream.py --output <new-external-report.json>` to
 refresh this comparison; it never changes the source pin or admits a release.
 
-**Refresh, October 29:** the official Windows Stable response now includes
+**Refresh, October 30:** the official Windows Stable response now includes
 **157.0.8103.27** and, within milestone 156, **156.0.8078.75**. Both the default
 148 pin and the active 156.0.8078.36 candidate audit as `behind-stable`.
 The linked 156 candidate remains frozen as a development/rebase checkpoint, not
@@ -33,9 +33,11 @@ Do not infer a completed security review or restart a live build from audit stat
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
 | Registered Windows source | 001-062 | Runtime/branding verified; selected controls enabled experimentally for one reviewed local package. General fork admission remains closed |
-| Latest compiled Windows candidate | 156.0.8078.36 / 001-070 | **17m02.68s, j4, 52 steps**; 269 runtime assets preserved. [Six first-script/restart phases passed](drafts/environment/screen70-first-script-observations.json), including Mobile Web DPR 3 across six document roles. Extended lifecycle still fails; native tests and package/release admission remain separate gates |
+| Latest compiled Windows candidate | 156.0.8078.36 / 001-070 | **17m02.68s, j4, 52 steps**; 269 runtime assets preserved. [Six first-script/restart phases passed](drafts/environment/screen70-first-script-observations.json), including Mobile Web DPR 3 across six document roles. Earlier extra-CDP screen stress remains failed; package/privacy/release admission is closed |
+| Executed native batch | 156.0.8078.36 / 001-070 | [**484 C++ cases / 20 groups passed**](drafts/upstream-156/native-batch70-observations.json), including 9 screen metrics and 7 widget cases; final source/SDK guards passed. Not combined browser-policy admission |
 | Candidate manager baseline | 156.0.8078.36 / 001-070 | [**18 runtime checks passed**](drafts/upstream-156/runtime-baseline70-observations.json): storage/locks, permissions, owned proxy, scenarios/Recorder, backup/restore and recovery. Three three-profile crash rounds left zero owned processes. Fingerprint policies were **off**; not package/privacy admission |
-| BFCache launch experiment | 156.0.8078.36 / 001-070 | [Four owner-aware history phases and 18 baseline checks passed](drafts/environment/managed-bfcache-optin70-observations.json) in an unregistered source overlay. [Repeated Recorder capture is unstable: 3/4, then 2/4](drafts/environment/managed-bfcache-recorder70-observations.json), with silent missed events also reproduced on stock; active manager BFCache remains disabled |
+| BFCache driver experiment | 156.0.8078.36 / 001-070 | [Four complete Recorder/history/replay phases passed](drafts/environment/binding-replies70-observations.json), then [6 controlled races and 32 uninstrumented cycles](drafts/environment/bfcache-races70-observations.json). Earlier failures retained; installed driver unchanged and active manager BFCache disabled |
+| Full canonical Python repeat | `f99957d` | [**4330 passed, 1 skipped**](drafts/environment/canonical-python70-replies-observations.json), source/status guards passed. Not native/privacy/release admission |
 | Candidate Windows baseline | 156.0.8078.36 / 001-065 | Built; 62 native key cases, two 18-check baseline lifecycle repeats and 45 native Audio calibration captures passed. Full policy/installed suites pending; an initial shutdown timeout remains unresolved. [Evidence](drafts/upstream-156/windows-runtime-observations.json) |
 | Native identity keys/service | 001-059 | **62/62** passed, repeating the 001-058 result: 19 new derivation/mode cases and 43 legacy checks; unchanged browser core/GN/receipt |
 | Native identity contexts/transport | 001-059 | **37/37 + 20/20** passed in the linked Chromium content target; not a linked identity-mode browser or renderer delivery proof |

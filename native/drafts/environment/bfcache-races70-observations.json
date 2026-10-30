@@ -1,0 +1,740 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Owned Windows real BFCache navigation/close races plus repeated uninstrumented result delivery; not general browser/privacy/package admission",
+  "selected": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "full_lifecycle_admitted": false,
+  "installed_driver_unchanged": true,
+  "installed_driver_sha256": "f74353fcb8e406756a70a6af0dfc4a5069acd577e35ec9d923ccf36ac009c2f5",
+  "base_reply_driver_sha256": "39b80ab30d21113e0b1169d53744661a98fc6fb12bde6bea95d9ecc22dba0043",
+  "instrumented_driver_sha256": "69241956c0c94e480ada6bd232e9fa8f18571e60c213d07c5560a6b7668fcb57",
+  "barrier_patch": "playwright-bfcache-test-barrier.patch",
+  "barrier_patch_sha256": "1b6e7931b1b6b5e294e5a9d76a4b23d7f3216da07c80763d2faf6c2d2d39bde2",
+  "barrier_patch_replay_verified": true,
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "runners": {
+    "first-script/bfcache_races.py": "4ac147c519b2352cb7b065587198882a09aabc594a51c09371c954ab6ca4317d",
+    "first-script/bfcache_stress.py": "c34470e059b2fe5de627f87cddd3e3bc13dc44dc68766dff51d8a940a0dfffd7"
+  },
+  "raw_reports_sha256": {
+    "races": "ce5598649002a3f780422be3d888207ba6b5b6331cdc18929fe590c6c8528802",
+    "stress": "4e9bd4001ae9c99ceb1dd062a5d78d075ac9465bbde8c6265cfe2f37fcbafe02"
+  },
+  "controlled_races": {
+    "driver_instrumented": true,
+    "runs": [
+      {
+        "mode": "manager-desktop",
+        "case": "navigate",
+        "passed": true,
+        "native_bfcache_restored": true,
+        "barrier_held_before_action": true,
+        "barrier_held_until_action_finished": true,
+        "replacement_document_preserved": true,
+        "same_profile_identity_and_storage_restored": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 23
+      },
+      {
+        "mode": "manager-desktop",
+        "case": "close-page",
+        "passed": true,
+        "native_bfcache_restored": true,
+        "barrier_held_before_action": true,
+        "barrier_held_until_action_finished": true,
+        "closed_page_and_peer_intact": true,
+        "same_profile_identity_and_storage_restored": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 23
+      },
+      {
+        "mode": "manager-desktop",
+        "case": "close-runtime",
+        "passed": true,
+        "native_bfcache_restored": true,
+        "barrier_held_before_action": true,
+        "barrier_held_until_action_finished": true,
+        "runtime_resources_released_while_held": true,
+        "same_profile_identity_and_storage_restored": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 24
+      },
+      {
+        "mode": "manager-mobile-web",
+        "case": "navigate",
+        "passed": true,
+        "native_bfcache_restored": true,
+        "barrier_held_before_action": true,
+        "barrier_held_until_action_finished": true,
+        "replacement_document_preserved": true,
+        "same_profile_identity_and_storage_restored": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 23
+      },
+      {
+        "mode": "manager-mobile-web",
+        "case": "close-page",
+        "passed": true,
+        "native_bfcache_restored": true,
+        "barrier_held_before_action": true,
+        "barrier_held_until_action_finished": true,
+        "closed_page_and_peer_intact": true,
+        "same_profile_identity_and_storage_restored": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 24
+      },
+      {
+        "mode": "manager-mobile-web",
+        "case": "close-runtime",
+        "passed": true,
+        "native_bfcache_restored": true,
+        "barrier_held_before_action": true,
+        "barrier_held_until_action_finished": true,
+        "runtime_resources_released_while_held": true,
+        "same_profile_identity_and_storage_restored": true,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 23
+      }
+    ],
+    "note": "A real main-target frame-tree response is held after receipt. Ready/continued/timeout markers prove the requested action finished before manual release; runtime close may terminate the held driver instead. No fake frame payloads."
+  },
+  "uninstrumented_stress": {
+    "driver_instrumented": false,
+    "runs": [
+      {
+        "mode": "manager-desktop",
+        "phase": "initial",
+        "passed": true,
+        "cycles": [
+          {
+            "cycle": 0,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 1,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 2,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 3,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 4,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 5,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 6,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 7,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          }
+        ],
+        "binding_handler_calls": 56,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 12
+      },
+      {
+        "mode": "manager-desktop",
+        "phase": "persistent-profile-restart",
+        "passed": true,
+        "cycles": [
+          {
+            "cycle": 0,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 1,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 2,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 3,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 4,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 5,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 6,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 7,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          }
+        ],
+        "identity_stable_after_restart": true,
+        "storage_stable_after_restart": true,
+        "binding_handler_calls": 56,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 11
+      },
+      {
+        "mode": "manager-mobile-web",
+        "phase": "initial",
+        "passed": true,
+        "cycles": [
+          {
+            "cycle": 0,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 1,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 2,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 3,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 4,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 5,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 6,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 7,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          }
+        ],
+        "binding_handler_calls": 56,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 12
+      },
+      {
+        "mode": "manager-mobile-web",
+        "phase": "persistent-profile-restart",
+        "passed": true,
+        "cycles": [
+          {
+            "cycle": 0,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 1,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 2,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 3,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 4,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 5,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 6,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          },
+          {
+            "cycle": 7,
+            "passed": true,
+            "native_bfcache_restored": true,
+            "held_handler_calls": 1,
+            "held_reply_resolved": true,
+            "result_released_on_native_away_navigation": true,
+            "echo_roles": [
+              "about-blank",
+              "cross",
+              "main",
+              "nested-return",
+              "same",
+              "srcdoc"
+            ],
+            "screen_snapshots_unchanged": true
+          }
+        ],
+        "identity_stable_after_restart": true,
+        "storage_stable_after_restart": true,
+        "binding_handler_calls": 56,
+        "native_runtime_resources_released": true,
+        "remaining_owned_processes": 0,
+        "owned_processes_observed": 12
+      }
+    ],
+    "total_cycles": 32,
+    "binding_handler_calls": 224
+  },
+  "remaining_gates": [
+    "cancelled BFCache teardown under load",
+    "peak allocation and long-running resource limits",
+    "isolation/compatibility for other engines in a staged driver package",
+    "pinned driver packaging and manager selection",
+    "combined fingerprint and release/security gates"
+  ],
+  "fresh_upstream_audit": {
+    "observed_utc": "2026-10-30T02:24:46.657062+00:00",
+    "source_url": "https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Windows&num=20",
+    "pinned_version": "156.0.8078.36",
+    "highest_observed_stable": {
+      "version": "157.0.8103.27",
+      "chromium_revision": "f9d7b13a569b352a0267234ea5740fdecc83ffa2",
+      "published_utc": "2026-10-28T17:56:24.686000+00:00"
+    },
+    "highest_observed_same_milestone": {
+      "version": "156.0.8078.80",
+      "chromium_revision": "fb096c0011f9d50f0a264a9376420cdea9c421e3",
+      "published_utc": "2026-10-29T21:25:50.434000+00:00"
+    },
+    "status": "behind-stable",
+    "security_review_complete": false,
+    "production_admitted": false,
+    "raw_report_sha256": "0dbe074543da203cba60cd7c13de957399b56498d3413ceb15550c720b6c9a80"
+  }
+}

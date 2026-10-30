@@ -347,11 +347,12 @@ def test_binding_reply_draft_replays_complete_history_without_selecting_the_driv
     assert all(record[name] is False for name in ("selected", "privacy_admitted", "production_admitted", "full_lifecycle_admitted"))
 
 
-def test_history_replay_cli_rejects_unknown_driver_before_creating_workspace(tmp_path):
+@pytest.mark.parametrize("script_name", ["recorder_replay.py", "bfcache_races.py", "bfcache_stress.py"])
+def test_lifecycle_cli_rejects_unknown_driver_before_creating_workspace(tmp_path, script_name):
     import sys
 
     root = Path(__file__).resolve().parents[1]
-    script = root / "native/drafts/environment/first-script/recorder_replay.py"
+    script = root / "native/drafts/environment/first-script" / script_name
     help_result = subprocess.run([sys.executable, str(script), "--help"], check=True, capture_output=True, text=True, timeout=15)
     assert "--driver-sha256" in help_result.stdout and "--application-root" in help_result.stdout
     driver = tmp_path / "driver"
@@ -372,4 +373,55 @@ def test_document_open_full_regression_failure_remains_retained_until_complete_r
     assert record["passed"] is False and record["measurement_complete"] and record["postguards_passed"]
     assert record["counts"] == {"tests": 4328, "passed": 4325, "failures": 2, "errors": 0, "skipped": 1}
     assert len(record["failed_tests"]) == 2 and record["changed_tracked_files"] == []
+    assert all(record[name] is False for name in ("native_runtime_verified", "privacy_admitted", "production_admitted"))
+
+
+def test_real_bfcache_races_keep_instrumented_and_uninstrumented_proof_distinct():
+    root = Path(__file__).resolve().parents[1]
+    folder = root / "native/drafts/environment"
+    record = json.loads((folder / "bfcache-races70-observations.json").read_bytes())
+    replies = json.loads((folder / "binding-replies70-observations.json").read_bytes())
+    assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
+    assert record["installed_driver_unchanged"] and record["barrier_patch_replay_verified"]
+    assert record["base_reply_driver_sha256"] == replies["prepared_driver_sha256"]
+    assert record["instrumented_driver_sha256"] != record["base_reply_driver_sha256"]
+    assert record["runtime_core_sha256_measured"] == replies["runtime_core_sha256_measured"]
+    assert hashlib.sha256((folder / record["barrier_patch"]).read_bytes()).hexdigest() == record["barrier_patch_sha256"]
+    for name, value in record["runners"].items():
+        assert hashlib.sha256((folder / name).read_bytes()).hexdigest() == value
+    races = record["controlled_races"]
+    assert races["driver_instrumented"] and len(races["runs"]) == 6
+    assert {(row["mode"], row["case"]) for row in races["runs"]} == {
+        (mode, case) for mode in ("manager-desktop", "manager-mobile-web")
+        for case in ("navigate", "close-page", "close-runtime")}
+    for row in races["runs"]:
+        assert all(row[name] for name in ("passed", "native_bfcache_restored", "barrier_held_before_action",
+            "barrier_held_until_action_finished", "same_profile_identity_and_storage_restored", "native_runtime_resources_released"))
+        assert row["remaining_owned_processes"] == 0 and row["owned_processes_observed"] > 2
+    stress = record["uninstrumented_stress"]
+    assert stress["driver_instrumented"] is False and len(stress["runs"]) == 4
+    assert stress["total_cycles"] == 32 and stress["binding_handler_calls"] == 224
+    roles = {"main", "same", "cross", "srcdoc", "about-blank", "nested-return"}
+    for row in stress["runs"]:
+        assert row["passed"] and len(row["cycles"]) == 8 and row["binding_handler_calls"] == 56
+        assert row["native_runtime_resources_released"] and row["remaining_owned_processes"] == 0
+        if row["phase"] == "persistent-profile-restart":
+            assert row["identity_stable_after_restart"] and row["storage_stable_after_restart"]
+        for cycle in row["cycles"]:
+            assert all(cycle[name] for name in ("passed", "native_bfcache_restored", "held_reply_resolved",
+                "result_released_on_native_away_navigation", "screen_snapshots_unchanged"))
+            assert cycle["held_handler_calls"] == 1 and set(cycle["echo_roles"]) == roles
+    assert record["fresh_upstream_audit"]["status"] == "behind-stable"
+    assert record["fresh_upstream_audit"]["production_admitted"] is False
+    assert record["remaining_gates"]
+    assert all(record[name] is False for name in ("selected", "privacy_admitted", "production_admitted", "full_lifecycle_admitted"))
+
+
+def test_complete_python_repeat_after_historical_source_repairs_is_not_browser_admission():
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / "native/drafts/environment/canonical-python70-replies-observations.json").read_bytes())
+    assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
+    assert record["counts"] == {"tests": 4331, "passed": 4330, "failures": 0, "errors": 0, "skipped": 1}
+    assert record["git_head"].startswith("f99957d") and record["changed_tracked_files"] == []
+    assert len(record["skipped_tests"]) == 1 and "schannel_off_windows" in record["skipped_tests"][0]["name"]
     assert all(record[name] is False for name in ("native_runtime_verified", "privacy_admitted", "production_admitted"))

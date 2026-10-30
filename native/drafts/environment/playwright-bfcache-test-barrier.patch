@@ -1,0 +1,32 @@
+diff --git a/playwright/driver/package/lib/coreBundle.js b/playwright/driver/package/lib/coreBundle.js
+--- a/playwright/driver/package/lib/coreBundle.js
++++ b/playwright/driver/package/lib/coreBundle.js
+@@ -36336,6 +36336,28 @@
+       _restoreBfcacheFrameTree(framePayload) {
+         const generation = this._contextGeneration;
+         this._client.send("Page.getFrameTree").then(async ({ frameTree }) => {
++          const gate = process.env.GLINT_OWNED_BFCACHE_GATE;
++          if (gate) {
++            const fs = require("node:fs");
++            if (!fs.existsSync(gate + ".used")) {
++              fs.writeFileSync(gate + ".used", "owned");
++              fs.writeFileSync(gate + ".ready", JSON.stringify({target: frameTree.frame.id, loader: frameTree.frame.loaderId}));
++              await new Promise((resolve, reject) => {
++                const started = Date.now();
++                const timer = setInterval(() => {
++                  if (fs.existsSync(gate + ".release")) {
++                    clearInterval(timer);
++                    fs.writeFileSync(gate + ".continued", "released");
++                    resolve();
++                  } else if (Date.now() - started > 15000) {
++                    clearInterval(timer);
++                    fs.writeFileSync(gate + ".timeout", "expired");
++                    reject(new Error("Owned BFCache gate was not released"));
++                  }
++                }, 5);
++              });
++            }
++          }
+           if (generation !== this._contextGeneration || frameTree.frame.id !== framePayload.id || frameTree.frame.loaderId !== framePayload.loaderId)
+             return;
+           const sessions = Array.from(this._crPage._sessions.values()).filter(session => !session._swappedIn);

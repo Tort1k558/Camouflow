@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## Real BFCache race/stress gates and complete Python repeat — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Navigation, page close, runtime close during restoration | **6/6 passed** across desktop/mobile; a real frame-tree reply held until the action finished; profile key/storage survive restart; zero surviving observed owned processes | [Evidence and public runners](../native/drafts/environment/bfcache-races70-observations.json); explicit test-only driver barrier, not artificial frame payloads |
+| Uninstrumented reply draft | **32/32 genuine BFCache cycles**, four initial/restart phases; **224 Python handler calls**, including 32 delayed outcomes and 192 role-verified echoes | No handler replay; six screen snapshots unchanged per cycle; identity/storage survive restart; observed processes exit |
+| Complete Python at `f99957d` | **4330 passed, 1 skipped**, 420.875s; all tracked-source/status guards passed | [Full repeat](../native/drafts/environment/canonical-python70-replies-observations.json); the skipped case rejects Schannel off Windows, not a browser capability gate |
+| Fresh upstream audit | Development candidate still **behind-stable** | Same dated observation records the official response; release/security review remains closed |
+
+These results do not install or select the driver. Cancelled teardown under BFCache
+load, peak allocation/long-run resource limits, other-engine compatibility in a staged
+package, combined fingerprint policies and release/update/rollback admission remain open.
+
 ## Complete UI-ordered BFCache recording and replay draft — 2026-10-30
 
 | Gate | Observed result | Boundary |
@@ -13,8 +26,8 @@
 The draft retains binding **outcomes**, not Python handlers, for the original unique
 execution context. It also closes a modeled race where an old failed RPC completed
 after context restoration. The old failing captures remain unchanged. The installed
-driver and default manager launch policy are **not changed**; real navigation/close
-races and pinned package integration remain open.
+driver and default manager launch policy are **not changed**. Specific navigation/page/runtime-close
+races passed in the later gate above; cancellation-under-load and pinned package integration remain open.
 
 ## Recorder document.open repair — 2026-10-30
 

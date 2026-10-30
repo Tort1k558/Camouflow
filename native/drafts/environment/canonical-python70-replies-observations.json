@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "f99957ddb3002a0f2ae7bbc4983ab70846ab7cc8",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 839,
+  "duration_seconds": 420.875,
+  "returncode": 0,
+  "counts": {
+    "tests": 4331,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4330
+  },
+  "postguards_passed": true,
+  "changed_tracked_files": [],
+  "log_sha256": "949f044c8bc449ab6f37af6cfb7233da35c3719faad2641d0964af4b21dd6e4c",
+  "junit_sha256": "ffb5fbee862c72c571ebe621a9e724cf95bf547e61655ea046bf9b6a38f96609",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "raw_report_sha256": "956ece54ab9d5422a9ab2569a7e1fa358e103854db77204150991f90adcb12e0",
+  "skipped_tests": [
+    {
+      "name": "tests.test_release_tools::test_native_git_backend_rejects_schannel_off_windows",
+      "reason": "Schannel is supported on Windows"
+    }
+  ],
+  "note": "Complete repeat after the two historical-source assertions were corrected. This does not select the experimental driver or admit browser fingerprint policies."
+}
