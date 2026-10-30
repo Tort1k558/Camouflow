@@ -1,8 +1,18 @@
 # Chromium 156 rebase candidate
 
-## Selected 001–072: linked Canvas formats and orientation/visibility
+## Current 001–072 browser: build and baseline passed, protected gates pending
 
-The preserved compiled browser is **001–070**, with 484 native cases in 20 groups
+The linked package compiled with **j4: 64 actions / 15m14s**, and 269 assets are
+preserved separately from the writable build output. The new exact binary passed
+**18/18 baseline NativeRuntime checks**. [Build](build72-observations.json),
+[runtime](runtime-baseline72-observations.json).
+The 21-group native batch and protected format/export/combined checks are not
+admitted by that baseline. Security rebase and release remain open. Older sections
+below retain their original selection and measurement boundaries.
+
+## Selection history, before the 001–072 build
+
+At selection time the preserved compiled browser was **001–070**, with 484 native cases in 20 groups
 and the separately scoped combined-surface measurements. The source chain now
 selects **0071 orientation/visibility + 0072 extended Canvas** in one nine-file
 package. Three joint-overlay compiler checks passed. The verifier has 21 groups,

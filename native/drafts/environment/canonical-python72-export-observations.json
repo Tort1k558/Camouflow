@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "5fbf8dc0de58612afc85709154e6bd7bf34e46ad",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 900,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 690.875,
+  "returncode": 0,
+  "counts": {
+    "tests": 4465,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4464
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "6f6522d25ac1118919c1c45063d1e3fd32155c481c97b21f475a8831ea2376f0",
+  "junit_sha256": "f40341b4dbf92a7d1bdd1c45dda93f2232abb34cd454ac3895ef20a28ccef627",
+  "raw_report_sha256": "4d9886844c6c927fac977a587cd7d393b62a2d724cb8ee6b4f64dda214879c4d",
+  "note": "Full repeat at 5fbf8dc including historical binding fixes and PNG probe; before build/runtime observation publication."
+}

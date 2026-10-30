@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Compiled 001–072 baseline — 2026-10-30
+
+| Gate | Observed | Boundary |
+| --- | --- | --- |
+| Windows build | **PASS**, j4, 64 actions, 15m14s; 269 assets preserved separately | Not a policy or release gate |
+| NativeRuntime baseline | **18/18**, including storage/restart/permissions/proxy/Recorder/backup | No protected-policy, installed-package or cloud isolation admission |
+| Full Python after historical fixes | **4464 passed, 1 skipped**, guards passed | Before the new build-result tests |
+
+[Build](../native/drafts/upstream-156/build72-observations.json),
+[runtime](../native/drafts/upstream-156/runtime-baseline72-observations.json),
+[Python](../native/drafts/environment/canonical-python72-export-observations.json).
+The new 21-group native batch and protected format/export/combined gates remain
+pending. Older 001–070 failures below are retained, not silently labelled fixed.
+
 ## Export capture reference and selection follow-up — 2026-10-30
 
 The **unprotected preserved 001–070** passes eight HTML/Offscreen × sRGB/P3 ×

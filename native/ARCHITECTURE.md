@@ -2,15 +2,24 @@
 
 ## Current implementation boundary
 
+**001–072 is now compiled and separately preserved on Windows**: j4, 64 actions,
+15m14s, 269 assets. The new binary passed all 18 baseline NativeRuntime checks.
+[Build](drafts/upstream-156/build72-observations.json),
+[baseline](drafts/upstream-156/runtime-baseline72-observations.json).
+This does not admit protected Canvas formats/export, the new native unit batch,
+the combined policies, security or release. Those gates must use the new exact
+core/receipt; historical 001–070 results do not carry forward automatically.
+The full Python repeat after historical-binding fixes passed 4464 tests, 1 skipped.
+
 The selected development source chain is now **001–072**: linked orientation/
 visibility and extended Canvas, nine changed files. Three joint-overlay compiler
 checks passed, and the existing native verifier gains a strict four-case orientation
 target (21 groups total). [Selection](drafts/environment/linked72-selection-observations.json).
-The compiled/preserved browser remains **001–070** until the owned j4 refresh and
-fresh browser/native tests complete. The full Python repeat at `ba72a17` passed
+That selection record predates the completed 001–072 build above; the separately
+preserved **001–070** remains the comparison/rollback binary. The full Python repeat at `ba72a17` passed
 **4447 tests, 1 skipped**, before this source selection.
 
-**Current compatibility blocker:** protected Canvas fails 30 of 32 tested
+**Unclosed compatibility gate:** protected Canvas on preserved **001–070** fails 30 of 32 tested
 HTML/Offscreen sRGB/Display-P3/unorm8/float16 combinations, while the same binary
 without the policy supports all 32. Only default sRGB/RGBA8 succeeds. The error is
 fail-closed, but still a compatibility regression, not a passing privacy gate.
@@ -20,8 +29,8 @@ A source-format extension is now an [isolated native draft](drafts/environment/c
 with compiler checks and 12 transform controls including 65,536 half encodings.
 The adaptive replacement for the single-LSB variant also passes 283 linked Skia
 copy/projection controls: four source/read color-space pairs and distinct F16/RGBA8
-outputs for 32 native seeds on the owned fixture. It is not compiled into the
-browser; broad HDR quality, export/workers and runtime compatibility remain open.
+outputs for 32 native seeds on the owned fixture. This extension is compiled into
+001–072; fresh format/export/worker tests and broad HDR quality remain open.
 The full repeat at `4400f45` passed **4446 tests, 1 skipped**, before that extension.
 
 The subsequent [concurrent desktop gate](drafts/environment/combined-concurrent70-observations.json)

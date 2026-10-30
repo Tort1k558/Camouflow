@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "scope": "Full existing NativeRuntime baseline suite on preserved 001-072; no protected-policy or installed-package admission",
+  "candidate_manifest_sha256": "a281e7b67ae83fb6c9fa81d4b17ec74df640aafc6ec1b37bcbebc3ec296aac18",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "3fa8284bf94254bf7775e9c5a8e42400d268919d3f635aa378ba4e4904e96915",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "62ea7fdb9cd1a4b20c89c72c5082de3daf715ac2f3fde541341d1766eba9f7ca",
+  "chromium_version": "156.0.8078.36",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "returncode": 0,
+  "postguards_passed": true,
+  "log_sha256": "f6f23a6a63406490946c9a0e7c8fa4c04c09d4c4725e71ba8fdf13ecf6801605",
+  "runtime_report_sha256": "4da1ac5127e491f51fb7cbc45fc01d1fbac6969569770437e1e57b081f7659f4",
+  "raw_report_sha256": "4231f1a4feb67d68aafa7616b4c608dd961a40be0f00c3b0012da72d819b2fa4",
+  "check_count": 18,
+  "checks": [
+    "concurrent-profile-isolation",
+    "cross-process-owner-exclusion",
+    "navigation-tabs-fill-click-extract-screenshot",
+    "mobile-web-viewport-dpr-touch",
+    "native-document-worker-configuration-diagnostics",
+    "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+    "configured-permissions-isolation-revocation-and-restart",
+    "dead-owner-profile-lock-recovery",
+    "browser-crash-restart-preserves-committed-storage",
+    "authenticated-http-proxy-no-direct-dns-route",
+    "existing-browser-interface-and-scenario-executor",
+    "existing-recorder-capture-and-replay",
+    "native-profile-backup-restore-storage-and-engine-isolation",
+    "native-binary-headless-health-and-disposable-profile-cleanup",
+    "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+    "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+    "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+    "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+  ],
+  "mobile_observed": {
+    "width": 390,
+    "height": 844,
+    "dpr": 3,
+    "touch": 1,
+    "webdriver": true
+  },
+  "protected_policies_enabled": false,
+  "installed_package_verified": false,
+  "cloud_server_team_isolation_verified": false,
+  "uncommitted_transactions_recovery_verified": false,
+  "source_sha256": {
+    "app/core/native/runtime.py": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "app/services/scenario_recorder.py": "caa81f07e418062f1b22eb1b97b2f2ce02b2cc8d32c39429396ea93318cfaff9",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "scripts/verify_native_privacy_units.py": "7cde3a8b19962085657cf52fb41c9535962a8864f0e6e9c6f0c6306e9f4eeb63",
+    "native/drafts/upstream-156/manifest.json": "a281e7b67ae83fb6c9fa81d4b17ec74df640aafc6ec1b37bcbebc3ec296aac18"
+  }
+}

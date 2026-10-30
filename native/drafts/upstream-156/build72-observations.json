@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Compiled and preserved 001-072 Windows browser; no protected-policy/native-unit/release admission.",
+  "candidate_manifest_sha256": "a281e7b67ae83fb6c9fa81d4b17ec74df640aafc6ec1b37bcbebc3ec296aac18",
+  "required_manifest": "checkpoints/001-072.json",
+  "registered_patches": 72,
+  "build_jobs": 4,
+  "build_steps": 64,
+  "build_duration_seconds": 913.62,
+  "completed_stages": [
+    "sync",
+    "hooks",
+    "patch",
+    "build"
+  ],
+  "changed_source_files": [
+    "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc",
+    "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc",
+    "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller.cc",
+    "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc"
+  ],
+  "unchanged_source_mtimes_restored": 280,
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "3fa8284bf94254bf7775e9c5a8e42400d268919d3f635aa378ba4e4904e96915",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "build_receipt_sha256": "62ea7fdb9cd1a4b20c89c72c5082de3daf715ac2f3fde541341d1766eba9f7ca",
+  "preserved_runtime_assets": 269,
+  "raw_refresh_sha256": "d245f2d370201bd9ec6dcc53aee7a0b486270a74187c2aa768b8dadc23e193e3",
+  "raw_preservation_sha256": "5a5e7a4d76d5d344397c1ac1e8c6ec221c3bbe0ea09d7f7812a8698794557d97",
+  "native_units_verified": false,
+  "protected_formats_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

@@ -1,6 +1,8 @@
 # Canvas format extension — isolated draft
 
-**Selected as 0072 in the development 001–072 source chain; not yet compiled into Chrome or admitted.**
+**Selected as 0072 and now compiled in the development 001–072 browser; protected format/export gates are not yet admitted.**
+[Build and baseline](../../upstream-156/build72-observations.json) do not supersede
+the required real browser format/export/worker and combined-policy checks.
 [Linked selection](../linked72-selection-observations.json) also includes orientation/visibility
 and its strict four-case native gate. Source selection does not prove application,
 compilation, native case execution or browser compatibility. The isolated records
