@@ -101,6 +101,15 @@ release-контракта и восстановления историческ�
 
 ### Новый защищённый BFCache-прогон
 
+Следующий диагностический пакет готовится отдельно от активной сборки. Подготовлен
+[невыбранный split коллектора](../native/drafts/environment/retained-contexts-next.patch):
+читать уже существующие document/iframe/worker-контексты без навигации и пересоздания iframe.
+**10 публичных mock-проверок** проходят, включая отсутствие элемента/контекста без подстановок.
+Текущий `verify_native_canvas.py` не изменён. Это только компонент: после BFCache нельзя
+считать устаревшие Playwright frame objects доказательством восстановления; для GPU/Audio
+ещё нужен проверенный CDP/retained-responder путь и реальное исполнение валидаторов.
+[Граница подготовки](../native/drafts/environment/retained-contexts74-preparation-observations.json).
+
 Полный Python-повтор с этим collector на `f59e578`: **4568 passed, 1 skipped**, 6м23с;
 исходники и рабочее дерево не изменились во время проверки.
 [Результат](../native/drafts/environment/canonical-python73-protected-history-observations.json).

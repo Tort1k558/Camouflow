@@ -1,0 +1,15 @@
+diff --git a/scripts/verify_native_canvas.py b/scripts/verify_native_canvas.py
+--- a/scripts/verify_native_canvas.py
++++ b/scripts/verify_native_canvas.py
+@@ -293,6 +293,11 @@
+       document.body.append(srcdoc);
+     }""", frame_allow)
+     await page.locator("#owned-srcdoc").content_frame.locator("h1").wait_for(timeout=15000)
++    return await observe_ready(page, read)
++
++
++async def observe_ready(page, read: str = READ) -> dict:
++    """Read retained fixture contexts without navigating or recreating frames."""
+     observed = {"document": await read_owned_context(page, read, "document")}
+     for name, frame_id in (("same_origin_frame", "owned-frame"), ("cross_origin_frame", "cross-origin"),
+                            ("about_blank_frame", "owned-about-blank"), ("srcdoc_frame", "owned-srcdoc")):

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "passed": true,
+  "public_source_unchanged": true,
+  "source_sha256": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+  "prepared_source_sha256": "d24b72fc21ae2fd1f58a6ec06f91051f4bf71aa18710f180ea4b8e47850a3161",
+  "patch_sha256": "0f5e8d7b2e30830ced0f127219544808460205b2301870b55a08d690fe082a96",
+  "mocked_cases": 5,
+  "scope": "Unapplied retained-context collector split; no browser/BFCache/GPU/Audio runtime evidence",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "source": "scripts/verify_native_canvas.py",
+  "patch": "retained-contexts-next.patch",
+  "selected": false,
+  "source_normalized_utf8_lf_sha256": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+  "boundary": "Collection split only. Playwright frame objects are not BFCache evidence; restored reads still require a verified CDP/retained-responder path.",
+  "raw_report": "D:\\GlintManagerQA\\current-contexts74-draft-v1\\report.json"
+}
