@@ -43,7 +43,7 @@ def test_owned_tls_factory_rejects_unknown_case_and_missing_fixture_files(tmp_pa
         negotiation.create_server(tmp_path / "certificate.pem", tmp_path / "key.pem", ssl.TLSVersion.TLSv1_3, "tls13", {})
 
 
-def test_owned_tls_runtime_evidence_is_negotiation_not_general_trust_or_impersonation():
+def test_owned_tls_runtime_evidence_is_negotiation_not_general_trust_or_impersonation(recorder_before_document_open_sha256):
     import hashlib
     import json
     from pathlib import Path
@@ -62,7 +62,8 @@ def test_owned_tls_runtime_evidence_is_negotiation_not_general_trust_or_imperson
         "session_resumption_verified", "native_0069_verified", "tls_impersonation_implemented",
         "privacy_admitted", "production_admitted"))
     for name, value in record["source_sha256"].items():
-        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+        expected = recorder_before_document_open_sha256 if name == "app/services/scenario_recorder.py" else hashlib.sha256((root / name).read_bytes()).hexdigest()
+        assert "\\" not in name and expected == value
 
 
 def vector(value, width=2):

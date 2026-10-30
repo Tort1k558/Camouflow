@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## Complete UI-ordered BFCache recording and replay draft — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Public source-bound replay runner | **4/4 phases passed**: desktop/mobile, initial/persistent restart; record before first navigation → trusted link out/back → genuine BFCache → six documents | [Evidence](../native/drafts/environment/binding-replies70-observations.json); same preserved 001–070 binary, isolated application/driver copies |
+| Entire unchanged recorded draft | **13 steps / 9 clicks per phase replayed**, including both navigation waits; replay also restores BFCache; main probe clicked twice, each child once | No skipped steps or rewritten recording; six pending-binding sets empty and no flush warnings |
+| Reply identity and lifecycle models | **25 controls passed**, including numeric-id reuse, foreign frames, explicit destruction/dispose, duplicate acknowledgements, 1024-entry limit and late old-RPC failure | Exact-method models, not real rapid-navigation/close stress or allocation measurements |
+| Existing full runtime suite with new reply driver | **18/18 passed**; source/package guards and installed-driver-unchanged check passed | Baseline policies only; not combined fingerprint or release admission |
+| Full Python at `46c3b4d` | **4325 passed, 2 failed, 1 skipped**, source guards passed | [Retained result](../native/drafts/environment/canonical-python70-document-open-observations.json); two historical Recorder-source checks corrected, complete repeat still required |
+
+The draft retains binding **outcomes**, not Python handlers, for the original unique
+execution context. It also closes a modeled race where an old failed RPC completed
+after context restoration. The old failing captures remain unchanged. The installed
+driver and default manager launch policy are **not changed**; real navigation/close
+races and pinned package integration remain open.
+
 ## Recorder document.open repair — 2026-10-30
 
 | Gate | Observed result | Boundary |
@@ -7,7 +23,7 @@
 | Attach before first navigation, unchanged installed driver | Original Recorder captures **5/6** clicks; repaired Recorder captures **6/6** and replays all six frame roles with trusted input | [Paired desktop control](../native/drafts/environment/recorder-document-open70-observations.json); no BFCache or mobile-history admission |
 | Listener reinjection model | Old registrations aborted, no duplicate clicks, same-document pending flush retained, replaced-document listeners removed | Executed exact `RECORDER_SCRIPT` in Node; model complements the real browser control |
 | Current application runtime regression | **18/18 passed**, source and binary guards passed; installed Playwright and manager BFCache default unchanged | Fresh run of actual patched application source, not reuse of the older Recorder baseline |
-| Complete UI-ordered BFCache recording | Six roles restored, **9 clicks recorded**, but one main-document binding acknowledgement remains pending; stop emits a flush warning | **FAIL retained**; complete history-draft replay not reached, BFCache opt-in remains unselected |
+| Earlier UI-ordered BFCache recording, before reply draft | Six roles restored, **9 clicks recorded**, but one main-document binding acknowledgement remains pending; stop emits a flush warning | **FAIL retained**; later isolated reply-draft result above is separate, BFCache opt-in remains unselected |
 
 `document.open()` can clear listeners without changing the document/window object.
 The Recorder now aborts previous listener registrations and reinstalls all four handlers,

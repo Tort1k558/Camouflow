@@ -1,0 +1,415 @@
+{
+  "schema": 1,
+  "scope": "Unselected Chromium Playwright BFCache result-delivery draft; UI-ordered six-role capture and unchanged ScenarioExecutor replay on preserved Glint 001-070",
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "selected": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "full_lifecycle_admitted": false,
+  "base_driver_sha256": "f74353fcb8e406756a70a6af0dfc4a5069acd577e35ec9d923ccf36ac009c2f5",
+  "prepared_driver_sha256": "39b80ab30d21113e0b1169d53744661a98fc6fb12bde6bea95d9ecc22dba0043",
+  "installed_driver_unchanged": true,
+  "patch": "playwright-bfcache-replies-prototype.patch",
+  "patch_sha256": "09747a5d1da5fa59f9ffe75e8133a25a0fa6d791a17c628b591b85b3e1a1779e",
+  "patch_replay_verified": true,
+  "model": "playwright-bfcache-replies-model.cjs",
+  "model_sha256": "52ffb5288d8ef1da3626fc9ab7871dcb9659b8a2b5c8d48efccb9a6eb85dc7b7",
+  "modeled_controls": {
+    "passed": true,
+    "tests": 25,
+    "results": [
+      {
+        "name": "restores-root-child-contexts-and-delivers-queued-bindings-once",
+        "passed": true
+      },
+      {
+        "name": "clear-invalidates-queued-events-and-stale-tree-reply",
+        "passed": true
+      },
+      {
+        "name": "destroyed-context-does-not-deliver-queued-events",
+        "passed": true
+      },
+      {
+        "name": "wrong-loader-tree-is-not-applied",
+        "passed": true
+      },
+      {
+        "name": "dispose-invalidates-tree-and-clears-retained-data",
+        "passed": true
+      },
+      {
+        "name": "unknown-unattributed-binding-is-not-queued",
+        "passed": true
+      },
+      {
+        "name": "existing-context-binding-path-remains-direct",
+        "passed": true
+      },
+      {
+        "name": "restores-main-and-nested-cross-process-session-contexts",
+        "passed": true
+      },
+      {
+        "name": "remote-context-clear-invalidates-the-whole-pending-restore",
+        "passed": true
+      },
+      {
+        "name": "remote-session-replacement-invalidates-the-whole-pending-restore",
+        "passed": true
+      },
+      {
+        "name": "missing-remote-parent-is-rejected-before-frame-mutation",
+        "passed": true
+      },
+      {
+        "name": "cyclic-remote-ancestry-is-rejected-before-frame-mutation",
+        "passed": true
+      },
+      {
+        "name": "conflicting-session-frame-loaders-are-rejected-before-mutation",
+        "passed": true
+      },
+      {
+        "name": "binding-result-delivers-once-to-current-context",
+        "passed": true
+      },
+      {
+        "name": "binding-error-payload-is-preserved",
+        "passed": true
+      },
+      {
+        "name": "binding-result-waits-for-original-unique-context-not-reused-numeric-id",
+        "passed": true
+      },
+      {
+        "name": "binding-result-rejects-foreign-frame-with-matching-unique-id",
+        "passed": true
+      },
+      {
+        "name": "explicit-unique-context-destruction-drops-retained-outcome",
+        "passed": true
+      },
+      {
+        "name": "dispose-clears-retained-binding-outcomes",
+        "passed": true
+      },
+      {
+        "name": "non-navigation-binding-delivery-errors-are-not-queued-as-success",
+        "passed": true
+      },
+      {
+        "name": "navigation-binding-delivery-errors-wait-for-reexposed-context",
+        "passed": true
+      },
+      {
+        "name": "pending-binding-outcomes-are-bounded-and-overflow-is-explicit",
+        "passed": true
+      },
+      {
+        "name": "late-old-context-failure-does-not-starve-an-already-restored-reply",
+        "passed": true
+      },
+      {
+        "name": "disposed-session-cannot-retain-new-binding-results",
+        "passed": true
+      },
+      {
+        "name": "duplicate-result-delivery-does-not-resolve-a-binding-twice",
+        "passed": true
+      }
+    ],
+    "scope": "Extracted exact prototype FrameSession methods with modeled frame/client fixtures; not real browser admission"
+  },
+  "runner": "first-script/recorder_replay.py",
+  "runner_sha256": "fe85d6528c8e3843fc581418b7bdc761a744b2041d8eb60141ee36389dcc4908",
+  "raw_report_sha256": "33a2e36a397376d19ada7644d12217249b2e6f457e1527bf0b16317b80455a8c",
+  "frozen_source_input_count": 168,
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "recorder_normalized_utf8_lf_sha256": "73e1eb9fabb7fe9cbd700a8203f29c6a031254e2a063a913add7b4556c9a9523",
+  "initial_navigation_included": true,
+  "history_recorded_draft_replay_verified": true,
+  "binding_reply_limit_per_session": 1024,
+  "binding_identity": "CDP executionContext.uniqueId plus frameId, binding name and sequence; never numeric contextId alone",
+  "runs": [
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "passed": true,
+      "attached_before_initial_navigation": true,
+      "history_navigation_type": "BackForwardCacheRestore",
+      "restored_roles": [
+        "about-blank",
+        "cross",
+        "main",
+        "nested-return",
+        "same",
+        "srcdoc"
+      ],
+      "pending_counts": {
+        "main": 0,
+        "same": 0,
+        "srcdoc": 0,
+        "about-blank": 0,
+        "cross": 0,
+        "nested-return": 0
+      },
+      "warnings": [],
+      "replay_passed": true,
+      "replay_navigation_types": [
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "BackForwardCacheRestore"
+      ],
+      "replay_click_counts": {
+        "main": 2,
+        "same": 1,
+        "srcdoc": 1,
+        "about-blank": 1,
+        "cross": 1,
+        "nested-return": 1
+      },
+      "recorded_clicks": 9,
+      "recorded_step_count": 13,
+      "recorded_actions": [
+        "start",
+        "goto",
+        "click",
+        "click",
+        "wait_for_load_state",
+        "click",
+        "wait_for_load_state",
+        "click",
+        "click",
+        "click",
+        "click",
+        "click",
+        "click"
+      ]
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "persistent-profile-restart",
+      "passed": true,
+      "attached_before_initial_navigation": true,
+      "history_navigation_type": "BackForwardCacheRestore",
+      "restored_roles": [
+        "about-blank",
+        "cross",
+        "main",
+        "nested-return",
+        "same",
+        "srcdoc"
+      ],
+      "pending_counts": {
+        "main": 0,
+        "same": 0,
+        "srcdoc": 0,
+        "about-blank": 0,
+        "cross": 0,
+        "nested-return": 0
+      },
+      "warnings": [],
+      "replay_passed": true,
+      "replay_navigation_types": [
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "BackForwardCacheRestore"
+      ],
+      "replay_click_counts": {
+        "main": 2,
+        "same": 1,
+        "srcdoc": 1,
+        "about-blank": 1,
+        "cross": 1,
+        "nested-return": 1
+      },
+      "recorded_clicks": 9,
+      "recorded_step_count": 13,
+      "recorded_actions": [
+        "start",
+        "goto",
+        "click",
+        "click",
+        "wait_for_load_state",
+        "click",
+        "wait_for_load_state",
+        "click",
+        "click",
+        "click",
+        "click",
+        "click",
+        "click"
+      ]
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "passed": true,
+      "attached_before_initial_navigation": true,
+      "history_navigation_type": "BackForwardCacheRestore",
+      "restored_roles": [
+        "about-blank",
+        "cross",
+        "main",
+        "nested-return",
+        "same",
+        "srcdoc"
+      ],
+      "pending_counts": {
+        "main": 0,
+        "same": 0,
+        "srcdoc": 0,
+        "about-blank": 0,
+        "cross": 0,
+        "nested-return": 0
+      },
+      "warnings": [],
+      "replay_passed": true,
+      "replay_navigation_types": [
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "BackForwardCacheRestore"
+      ],
+      "replay_click_counts": {
+        "main": 2,
+        "same": 1,
+        "srcdoc": 1,
+        "about-blank": 1,
+        "cross": 1,
+        "nested-return": 1
+      },
+      "recorded_clicks": 9,
+      "recorded_step_count": 13,
+      "recorded_actions": [
+        "start",
+        "goto",
+        "click",
+        "click",
+        "wait_for_load_state",
+        "click",
+        "wait_for_load_state",
+        "click",
+        "click",
+        "click",
+        "click",
+        "click",
+        "click"
+      ]
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "persistent-profile-restart",
+      "passed": true,
+      "attached_before_initial_navigation": true,
+      "history_navigation_type": "BackForwardCacheRestore",
+      "restored_roles": [
+        "about-blank",
+        "cross",
+        "main",
+        "nested-return",
+        "same",
+        "srcdoc"
+      ],
+      "pending_counts": {
+        "main": 0,
+        "same": 0,
+        "srcdoc": 0,
+        "about-blank": 0,
+        "cross": 0,
+        "nested-return": 0
+      },
+      "warnings": [],
+      "replay_passed": true,
+      "replay_navigation_types": [
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "Navigation",
+        "BackForwardCacheRestore"
+      ],
+      "replay_click_counts": {
+        "main": 2,
+        "same": 1,
+        "srcdoc": 1,
+        "about-blank": 1,
+        "cross": 1,
+        "nested-return": 1
+      },
+      "recorded_clicks": 9,
+      "recorded_step_count": 13,
+      "recorded_actions": [
+        "start",
+        "goto",
+        "click",
+        "click",
+        "wait_for_load_state",
+        "click",
+        "wait_for_load_state",
+        "click",
+        "click",
+        "click",
+        "click",
+        "click",
+        "click"
+      ]
+    }
+  ],
+  "full_runtime_overlay": {
+    "passed": true,
+    "measurement_complete": true,
+    "original_source_unchanged": true,
+    "overlay_source_unchanged": true,
+    "driver_unchanged": true,
+    "shared_driver_unchanged": true,
+    "checks": [
+      "concurrent-profile-isolation",
+      "cross-process-owner-exclusion",
+      "navigation-tabs-fill-click-extract-screenshot",
+      "mobile-web-viewport-dpr-touch",
+      "native-document-worker-configuration-diagnostics",
+      "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+      "configured-permissions-isolation-revocation-and-restart",
+      "dead-owner-profile-lock-recovery",
+      "browser-crash-restart-preserves-committed-storage",
+      "authenticated-http-proxy-no-direct-dns-route",
+      "existing-browser-interface-and-scenario-executor",
+      "existing-recorder-capture-and-replay",
+      "native-profile-backup-restore-storage-and-engine-isolation",
+      "native-binary-headless-health-and-disposable-profile-cleanup",
+      "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+      "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+      "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+      "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+    ],
+    "raw_controller_sha256": "a249c789dff2bf7b8fc9e7c6b068d18149a0968a5a17c79deff0b5dc239755d7",
+    "runtime_report_sha256": "47a35308b6299735d18c9dc1f0c499a0989a7a5258222beb893f8f01f06cf6f2"
+  },
+  "superseded_failures_retained": [
+    {
+      "name": "prior UI-ordered capture with main-document flush pending",
+      "raw_report_sha256": "0f87d01c66555a2ebf400c8ed9b6272b4ac78f057d4878e0efda5c9cab66909c"
+    },
+    {
+      "name": "first reply draft late-RPC model race left one pending reply; corrected before this measurement",
+      "passed": false
+    }
+  ],
+  "note": "Python binding handlers are not retried: only their results are held for the original unique context. Queue bounds, duplicate acknowledgements, explicit destruction and late RPC replacement are modeled; real rapid-navigation/close races and package integration remain separate gates."
+}

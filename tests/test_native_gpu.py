@@ -1225,7 +1225,7 @@ def test_large_attachment_validator_rejects_incomplete_or_inconsistent_reads(lar
         large_attachment_probe["validate"](value)
 
 
-def test_large_attachment_runtime_evidence_keeps_loaded_timings_and_memory_scope_explicit():
+def test_large_attachment_runtime_evidence_keeps_loaded_timings_and_memory_scope_explicit(recorder_before_document_open_sha256):
     import hashlib
 
     root = Path(__file__).resolve().parents[1]
@@ -1245,4 +1245,5 @@ def test_large_attachment_runtime_evidence_keeps_loaded_timings_and_memory_scope
         assert row["outside_sentinel_unchanged"] and row["gl_state_unchanged"]
         assert row["gl_state"]["viewport"] == [0, 0, 2, 2]
     for name, value in record["source_sha256"].items():
-        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+        expected = recorder_before_document_open_sha256 if name == "app/services/scenario_recorder.py" else hashlib.sha256((root / name).read_bytes()).hexdigest()
+        assert "\\" not in name and expected == value

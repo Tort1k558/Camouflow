@@ -2,6 +2,30 @@
 
 ## Current compatibility gate
 
+[Binding reply draft](binding-replies70-observations.json) passes **4/4 complete
+UI-ordered recording/replay phases**: desktop/mobile initial/restart, six documents,
+all 13 recorded steps and nine clicks, genuine BFCache in recording and replay,
+no pending replies or flush warnings. **25 modeled controls** and the **18-check
+existing runtime baseline** passed with the draft. It remains **unselected**:
+real navigation/close races, resource stress and pinned package integration are still open.
+
+The [patch](playwright-bfcache-replies-prototype.patch) binds one exact Playwright
+bundle hash; it is not a replacement browser binary. Apply it only to an isolated
+copy containing the full `playwright/` package. Prepare a separate application copy
+with the [BFCache launch opt-in](manager-bfcache-launch-experiment.patch), not the installed application.
+The [public runner](first-script/recorder_replay.py) checks the explicit driver hash
+and measured browser-core reference before its four-phase flow:
+
+```text
+python native/drafts/environment/first-script/recorder_replay.py --executable D:/glint-qa/runtime/chrome.exe --runtime-reference D:/glint-qa/runtime/camouflow-build.json --application-root D:/glint-qa/app --driver-root D:/glint-qa/driver --driver-sha256 39b80ab30d21113e0b1169d53744661a98fc6fb12bde6bea95d9ecc22dba0043 --work-dir D:/glint-qa/fresh-replay
+```
+
+The work directory must be new and outside this checkout. The reference must contain
+the measured `runtime_core_sha256_measured` map. No dependency is installed or selected
+by the runner. Matching uses the system-unique context identity documented in
+[CDP Runtime](https://chromedevtools.github.io/devtools-protocol/tot/Runtime/#type-ExecutionContextDescription),
+plus frame and binding sequence; numeric context ids alone are not used for queued replies.
+
 [Recorder document.open repair](recorder-document-open70-observations.json) is applied
 to the application: abort/rebind listeners without losing same-document in-flight work.
 An unchanged-driver desktop control improved **5/6 → 6/6 captured clicks with six-role replay**;

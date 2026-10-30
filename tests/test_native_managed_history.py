@@ -308,3 +308,68 @@ def test_multisession_driver_draft_covers_six_roles_without_admitting_full_histo
     assert record["superseded_immediate_snapshot_attempt"]["passed"] is False
     assert all(record[name] is False for name in ("initial_navigation_included", "recorded_draft_replay_verified",
                                                 "selected", "privacy_admitted", "production_admitted", "full_lifecycle_admitted"))
+
+
+def test_binding_reply_draft_replays_complete_history_without_selecting_the_driver():
+    root = Path(__file__).resolve().parents[1]
+    folder = root / "native/drafts/environment"
+    record = json.loads((folder / "binding-replies70-observations.json").read_bytes())
+    build = json.loads((root / "native/drafts/upstream-156/build70-observations.json").read_bytes())
+    assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
+    assert record["patch_replay_verified"] and record["installed_driver_unchanged"]
+    assert record["initial_navigation_included"] and record["history_recorded_draft_replay_verified"]
+    assert record["runtime_core_sha256_measured"] == build["runtime_core_sha256_measured"]
+    assert record["binding_reply_limit_per_session"] == 1024 and record["frozen_source_input_count"] >= 100
+    for key in ("patch", "model", "runner"):
+        assert hashlib.sha256((folder / record[key]).read_bytes()).hexdigest() == record[key + "_sha256"]
+    recorder = (root / "app/services/scenario_recorder.py").read_text(encoding="utf-8-sig").encode("utf-8")
+    assert hashlib.sha256(recorder).hexdigest() == record["recorder_normalized_utf8_lf_sha256"]
+    models = record["modeled_controls"]
+    assert models["passed"] and models["tests"] == len(models["results"]) == 25
+    assert all(case["passed"] for case in models["results"])
+    assert len(record["runs"]) == 4
+    assert {(run["mode"], run["phase"]) for run in record["runs"]} == {
+        (mode, phase) for mode in ("manager-desktop", "manager-mobile-web")
+        for phase in ("initial", "persistent-profile-restart")}
+    expected = {"main": 2, "same": 1, "cross": 1, "srcdoc": 1, "about-blank": 1, "nested-return": 1}
+    for run in record["runs"]:
+        assert run["passed"] and run["replay_passed"] and run["attached_before_initial_navigation"]
+        assert run["recorded_clicks"] == 9 and run["recorded_step_count"] == len(run["recorded_actions"]) == 13
+        assert run["recorded_actions"][:2] == ["start", "goto"] and run["recorded_actions"].count("wait_for_load_state") == 2
+        assert run["history_navigation_type"] == "BackForwardCacheRestore"
+        assert "BackForwardCacheRestore" in run["replay_navigation_types"] and run["warnings"] == []
+        assert run["replay_click_counts"] == expected
+        assert set(run["restored_roles"]) == set(run["pending_counts"]) == set(expected)
+        assert not any(run["pending_counts"].values())
+    full = record["full_runtime_overlay"]
+    assert all(full[key] for key in ("passed", "measurement_complete", "original_source_unchanged", "overlay_source_unchanged", "driver_unchanged", "shared_driver_unchanged"))
+    assert len(full["checks"]) == 18
+    assert all(record[name] is False for name in ("selected", "privacy_admitted", "production_admitted", "full_lifecycle_admitted"))
+
+
+def test_history_replay_cli_rejects_unknown_driver_before_creating_workspace(tmp_path):
+    import sys
+
+    root = Path(__file__).resolve().parents[1]
+    script = root / "native/drafts/environment/first-script/recorder_replay.py"
+    help_result = subprocess.run([sys.executable, str(script), "--help"], check=True, capture_output=True, text=True, timeout=15)
+    assert "--driver-sha256" in help_result.stdout and "--application-root" in help_result.stdout
+    driver = tmp_path / "driver"
+    bundle = driver / "playwright/driver/package/lib/coreBundle.js"
+    bundle.parent.mkdir(parents=True)
+    bundle.write_text("unknown driver", encoding="utf-8")
+    owned = tmp_path / "owned"
+    result = subprocess.run([sys.executable, str(script), "--driver-root", str(driver), "--driver-sha256", "0" * 64,
+        "--application-root", str(root), "--executable", str(tmp_path / "unknown.exe"), "--runtime-reference", str(tmp_path / "unknown.json"),
+        "--work-dir", str(owned)], capture_output=True, text=True, timeout=15)
+    assert result.returncode != 0 and "Driver differs from the explicitly pinned bundle" in result.stderr
+    assert not owned.exists()
+
+
+def test_document_open_full_regression_failure_remains_retained_until_complete_repeat():
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / "native/drafts/environment/canonical-python70-document-open-observations.json").read_bytes())
+    assert record["passed"] is False and record["measurement_complete"] and record["postguards_passed"]
+    assert record["counts"] == {"tests": 4328, "passed": 4325, "failures": 2, "errors": 0, "skipped": 1}
+    assert len(record["failed_tests"]) == 2 and record["changed_tracked_files"] == []
+    assert all(record[name] is False for name in ("native_runtime_verified", "privacy_admitted", "production_admitted"))

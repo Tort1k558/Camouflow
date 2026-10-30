@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "git_head": "46c3b4dc7bfcb5424b13d90b75edca6e10430972",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 834,
+  "duration_seconds": 415.938,
+  "returncode": 1,
+  "counts": {
+    "tests": 4328,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4325
+  },
+  "postguards_passed": true,
+  "changed_tracked_files": [],
+  "log_sha256": "745f436148195b54b7a2f7f15b7d32bdf455cf282de7812950e50fbb193a763a",
+  "junit_sha256": "9cd00bdb4ba9b6380abfd3891ebaf2d63ed256dc865d68450ac0bd61ce3e6094",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "raw_report_sha256": "9cccdbb4c81a7401c9ef777926cf624d03b60b984cce8ac8660c830508573769",
+  "failed_tests": [
+    "tests.test_native_client_hello::test_owned_tls_runtime_evidence_is_negotiation_not_general_trust_or_impersonation",
+    "tests.test_native_gpu::test_large_attachment_runtime_evidence_keeps_loaded_timings_and_memory_scope_explicit"
+  ],
+  "note": "Retained full regression after Recorder repair. Two stale historical-source checks were corrected to reconstruct pre-repair source through the published reverse patch; a complete full-suite repeat is still required."
+}
