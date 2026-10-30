@@ -232,3 +232,37 @@ def test_repeated_recorder_bfcache_capture_keeps_silent_delivery_loss_as_failure
     assert "app/services/scenario_recorder.py" in record["source_sha256"]
     assert all(record[name] is False for name in ("initial_navigation_included", "recorded_draft_replay_verified",
                                                 "all_frame_input_verified", "selected", "privacy_admitted", "production_admitted"))
+
+
+def test_driver_diagnosis_does_not_misattribute_received_bindings_to_v8_loss():
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / "native/drafts/environment/binding-driver70-diagnosis.json").read_bytes())
+    assert record["measurement_complete"] and record["shared_driver_unchanged"] and record["instrumented_driver_unchanged"]
+    counts = record["trace_counts"]
+    assert counts == {"context": 268, "receive": 13, "before-python": 11, "after-python": 11}
+    assert record["binding_events_with_unknown_context"] == counts["receive"] - counts["before-python"] == 2
+    assert record["playwright_dropped_unknown_frame_context_demonstrated"]
+    assert record["native_v8_binding_callback_loss_demonstrated"] is False
+    assert len(record["missing_context_diagnostics"]) == 2
+    assert all(item == {"default": True, "frameKnown": False, "stale": None}
+               for item in record["missing_context_diagnostics"])
+    assert all(record[name] is False for name in ("selected", "privacy_admitted", "production_admitted"))
+
+
+def test_root_only_driver_prototype_does_not_admit_missing_cross_process_frames():
+    root = Path(__file__).resolve().parents[1]
+    folder = root / "native/drafts/environment"
+    record = json.loads((folder / "binding-driver70-prototype-observations.json").read_bytes())
+    assert record["measurement_complete"] and record["passed"] is False and record["shared_driver_unchanged"]
+    patch = folder / record["patch"]
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record["patch_sha256"]
+    positive, negative = record["root_only_repeat"], record["six_frame_capture"]
+    assert positive["passed"] and positive["postguards_passed"]
+    assert positive["phases"] == 4 and positive["recorded_clicks_per_phase"] == 2
+    assert negative["passed"] is False and negative["measurement_complete"] is False and negative["postguards_passed"]
+    assert negative["observed_roles"] == ["about-blank", "cross", "main", "srcdoc"]
+    assert negative["missing_roles"] == ["nested-return", "same"]
+    assert set(negative["observed_roles"]) | set(negative["missing_roles"]) == {
+        "main", "same", "cross", "nested-return", "srcdoc", "about-blank"}
+    assert all(record[name] is False for name in ("recorded_draft_replay_verified", "all_frame_input_verified",
+                                                "selected", "privacy_admitted", "production_admitted"))

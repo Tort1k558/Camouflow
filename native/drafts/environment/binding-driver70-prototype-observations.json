@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "scope": "Unselected D-only Playwright context reconstruction prototype; root-only success is not full-frame or Recorder replay admission",
+  "passed": false,
+  "measurement_complete": true,
+  "selected": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "shared_driver_unchanged": true,
+  "base_driver_sha256": "f74353fcb8e406756a70a6af0dfc4a5069acd577e35ec9d923ccf36ac009c2f5",
+  "prepared_driver_sha256": "4e9da2176cd74cdb5cbdbd63186d7ff94a2dfe2e061b4993cc6f8c37573ab639",
+  "patch": "playwright-bfcache-context-prototype.patch",
+  "patch_sha256": "be71483c506afea5664863bfad8a2299f344c407dab1f6c2350bcb6d693c50cc",
+  "root_only_repeat": {
+    "passed": true,
+    "phases": 4,
+    "recorded_clicks_per_phase": 2,
+    "postguards_passed": true,
+    "raw_report_sha256": "10ee0f6769c3304830d852ea36f87426ac16ad251490ba3bc533c0c6c3780cfe"
+  },
+  "six_frame_capture": {
+    "passed": false,
+    "measurement_complete": false,
+    "postguards_passed": true,
+    "observed_roles": [
+      "about-blank",
+      "cross",
+      "main",
+      "srcdoc"
+    ],
+    "missing_roles": [
+      "nested-return",
+      "same"
+    ],
+    "error": "Restored Playwright frame tree does not contain all six owned roles",
+    "raw_report_sha256": "d81d511ddb4e8c05a49564654709f182d795b27ca672efd077a777560c65dc20"
+  },
+  "initial_six_frame_attempt": {
+    "passed": false,
+    "measurement_complete": false,
+    "reason": "Page.goto exceeded the unchanged 10000ms timeout before BFCache validation"
+  },
+  "recorded_draft_replay_verified": false,
+  "all_frame_input_verified": false,
+  "note": "The main-target Page.getFrameTree response and public Playwright frame tree both omitted the two cross-process frame roles in this measurement. A root-only reconstruction must not replace full OOPIF session reconciliation. No active manager source or installed dependency was changed."
+}

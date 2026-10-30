@@ -1,0 +1,230 @@
+{
+  "schema": 1,
+  "passed": true,
+  "postguards_passed": true,
+  "build_invocations": 1,
+  "jobs": 4,
+  "candidate": "upstream-156",
+  "candidate_manifest_sha256": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
+  "source_chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "build_receipt_sha256": "088e4b1bdce37ddb05e422819a826fb352e16f68759eeebfcbb657ab5a5d0652",
+  "local_windows_toolchain_sha256": "68aa63de741ddd1a8a5362863cf49943c725644a209bcc6c59da9efc67a797e7",
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "targets": [
+    {
+      "target": "keys",
+      "build_target": "camouflow_native_privacy_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "29de536cc54a4b593a190e4d24883ae7f1e6cdd06cdb4b95de241363c51cb098",
+      "results": "keys-tests.json",
+      "returncode": 0,
+      "tests": 43,
+      "result_sha256": "7657077ffd241fce0d6271f4390b873c5b5fc0a8a14b7cedac30e58a180f29d5"
+    },
+    {
+      "target": "contexts",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "06d0cff68437c575bb061ac22a9146df746b54a80bbadf123626bce451403b73",
+      "results": "contexts-tests.json",
+      "returncode": 0,
+      "tests": 26,
+      "result_sha256": "8fdf792cb612231b5e4fbe8f94273bbd37931606d1ca8d7c918b4e831e0500e9"
+    },
+    {
+      "target": "delivery",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "06d0cff68437c575bb061ac22a9146df746b54a80bbadf123626bce451403b73",
+      "results": "delivery-tests.json",
+      "returncode": 0,
+      "tests": 34,
+      "result_sha256": "57c95bac2e73959160a3f59f39b8a78df3175e76d688d391dd21da66547aad4a"
+    },
+    {
+      "target": "worker-handoff",
+      "build_target": "blink_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "89be5b8319447fa39634cef6ea5ea6e89d82e72d359a1173514fd4972be8feb0",
+      "results": "worker-handoff-tests.json",
+      "returncode": 0,
+      "tests": 4,
+      "result_sha256": "a1a052c66ec4db115b8d2f6df55822cc8735d748a2d654c0b68935b194d763ca"
+    },
+    {
+      "target": "document-partition",
+      "build_target": "camouflow_native_privacy_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "29de536cc54a4b593a190e4d24883ae7f1e6cdd06cdb4b95de241363c51cb098",
+      "results": "document-partition-tests.json",
+      "returncode": 0,
+      "tests": 9,
+      "result_sha256": "e1175a72aac182295847d75b8fcce88594150bf6836fe451a9e20d68c4be780d"
+    },
+    {
+      "target": "document-navigation",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "06d0cff68437c575bb061ac22a9146df746b54a80bbadf123626bce451403b73",
+      "results": "document-navigation-tests.json",
+      "returncode": 0,
+      "tests": 12,
+      "result_sha256": "7c3c7bf89a6222299ecea095db128b5ca7b61109fad4e2fa57999080599d1fd2"
+    },
+    {
+      "target": "surface-navigation",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "06d0cff68437c575bb061ac22a9146df746b54a80bbadf123626bce451403b73",
+      "results": "surface-navigation-tests.json",
+      "returncode": 0,
+      "tests": 42,
+      "result_sha256": "9db45c00912381623807555252069db6ebd055331c6d847b2385dde59bdde096"
+    },
+    {
+      "target": "window-transport",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "06d0cff68437c575bb061ac22a9146df746b54a80bbadf123626bce451403b73",
+      "results": "window-transport-tests.json",
+      "returncode": 0,
+      "tests": 13,
+      "result_sha256": "8256c6b22794f15f2275528ebc3bc77081efa26835151c3e7cf4c7dd767e7b49"
+    },
+    {
+      "target": "gpu-pack-copy",
+      "build_target": "blink_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "89be5b8319447fa39634cef6ea5ea6e89d82e72d359a1173514fd4972be8feb0",
+      "results": "gpu-pack-copy-tests.json",
+      "returncode": 0,
+      "tests": 14,
+      "result_sha256": "c7eefea9b8d12277f3567a6798b6a84fc4800b2ce464150b19ecd9a7dc3dbc3d"
+    },
+    {
+      "target": "gpu-readback",
+      "build_target": "blink_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "89be5b8319447fa39634cef6ea5ea6e89d82e72d359a1173514fd4972be8feb0",
+      "results": "gpu-readback-tests.json",
+      "returncode": 0,
+      "tests": 31,
+      "result_sha256": "f256ecce164c54d002365a20a71e2eaaa8446841d5b3d69140d15a20772f61a8"
+    },
+    {
+      "target": "gpu-metadata",
+      "build_target": "gpu_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "ede508fd2ed63edb9638eb767e8bfe940157d51a17cd4183287b8bf5ca8d2f76",
+      "results": "gpu-metadata-tests.json",
+      "returncode": 0,
+      "tests": 34,
+      "result_sha256": "7cd002e86a01e95ffac259d4773592c43ae4521968dbabc352d3edbc35a7f2e5"
+    },
+    {
+      "target": "worker-surfaces",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "06d0cff68437c575bb061ac22a9146df746b54a80bbadf123626bce451403b73",
+      "results": "worker-surfaces-tests.json",
+      "returncode": 0,
+      "tests": 55,
+      "result_sha256": "3c23adc84d1f2aa8fb5304eb646aa9a22b7c390b9c11074fd2c87695ba7e8ffd"
+    },
+    {
+      "target": "font-rasterization",
+      "build_target": "gfx_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "6aa97ad0c19fbb27a1862007fad8e50d5ceefa2087149ec5eac5a9b875fdd194",
+      "results": "font-rasterization-tests.json",
+      "returncode": 0,
+      "tests": 5,
+      "result_sha256": "670c79cd3401a5b7f720c0a2183d07ebcbfbba95f209352d7c0e1ea23fca82f1"
+    },
+    {
+      "target": "identity-keys",
+      "build_target": "camouflow_native_privacy_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "29de536cc54a4b593a190e4d24883ae7f1e6cdd06cdb4b95de241363c51cb098",
+      "results": "identity-keys-tests.json",
+      "returncode": 0,
+      "tests": 62,
+      "result_sha256": "d3661c19ed5888db55bece03277b909c2469b43e84fc19ce9981f4d6de114d34"
+    },
+    {
+      "target": "identity-contexts",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "06d0cff68437c575bb061ac22a9146df746b54a80bbadf123626bce451403b73",
+      "results": "identity-contexts-tests.json",
+      "returncode": 0,
+      "tests": 37,
+      "result_sha256": "deb62cfd004f79693669e97d8342be2038c6555d27f89742382c994b25fbafc6"
+    },
+    {
+      "target": "identity-transport",
+      "build_target": "content_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "06d0cff68437c575bb061ac22a9146df746b54a80bbadf123626bce451403b73",
+      "results": "identity-transport-tests.json",
+      "returncode": 0,
+      "tests": 20,
+      "result_sha256": "c93a771a1b0c99128604e18430be7ebcd24f0be62b49390124820921f1dabcf1"
+    },
+    {
+      "target": "identity-handoff",
+      "build_target": "blink_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "89be5b8319447fa39634cef6ea5ea6e89d82e72d359a1173514fd4972be8feb0",
+      "results": "identity-handoff-tests.json",
+      "returncode": 0,
+      "tests": 15,
+      "result_sha256": "ebcd77c6edf1fa0646ee7a95bf1afb96f687dcbdcc6af0228e04d167556ee0fb"
+    },
+    {
+      "target": "audio-math",
+      "build_target": "blink_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "89be5b8319447fa39634cef6ea5ea6e89d82e72d359a1173514fd4972be8feb0",
+      "results": "audio-math-tests.json",
+      "returncode": 0,
+      "tests": 12,
+      "result_sha256": "9f7e833bd71b4081572a41114958883a7c8eebf50f25e08a837e191e2097924e"
+    },
+    {
+      "target": "screen-metrics",
+      "build_target": "blink_common_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "ac722e57dd623240595c22adeedd67a63e260895fbd2fc8878c62be942f34dae",
+      "results": "screen-metrics-tests.json",
+      "returncode": 0,
+      "tests": 9,
+      "result_sha256": "da384c86818a0bdebaa71d6455b67041d388bc66e1b1868701f35880f3b61683"
+    },
+    {
+      "target": "screen-widget",
+      "build_target": "blink_unittests",
+      "native_cases_passed": true,
+      "test_binary_sha256": "89be5b8319447fa39634cef6ea5ea6e89d82e72d359a1173514fd4972be8feb0",
+      "results": "screen-widget-tests.json",
+      "returncode": 0,
+      "tests": 7,
+      "result_sha256": "82a4a3ecd2bdc7cf01ecde2012116487b667158697463e99b949bdd6ac257909"
+    }
+  ],
+  "scope": "Executed Windows native unit fixtures for selected 001-070; not combined browser-policy or release admission",
+  "required_manifest": "checkpoints/001-070.json",
+  "compiled_patch_count": 70,
+  "measurement_complete": true,
+  "tests_passed": 484,
+  "frozen_inputs_checked": 212,
+  "raw_batch_sha256": "6a2f9638524ba24df15913f365f8cc609c8bed253a31c4723f8aaaabda850fff"
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "measurement_complete": true,
+  "git_head": "2a59a24c541e54d227c695c884cf425f3d27ac18",
+  "tracked_file_count": 823,
+  "duration_seconds": 426.609,
+  "returncode": 0,
+  "counts": {
+    "tests": 4321,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4320
+  },
+  "postguards_passed": true,
+  "changed_tracked_files": [],
+  "log_sha256": "7126cf1cd3d5101a4be07f4773646b5668c7e4439afdb98173a940916a208a11",
+  "junit_sha256": "ccba1428938c37c7b793b5eb907a2bb533bd6f0ad0857d3710005e9ada99e71d",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "raw_report_sha256": "86eaeac3ff463032032f4490284d1bfccfb5b67efd18c53b9032626a17aefb67",
+  "note": "Full canonical Python suite including owner-aware history and retained Recorder failures. Green verifier tests do not mean the failing Recorder/BFCache integration or native C++ batch is admitted."
+}

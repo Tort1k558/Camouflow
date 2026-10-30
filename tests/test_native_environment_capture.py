@@ -1138,6 +1138,37 @@ def test_full_python_70_regression_pass_does_not_admit_native_runtime():
     assert all(record[name] is False for name in ("native_runtime_verified", "privacy_admitted", "production_admitted"))
 
 
+def test_owner_aware_full_python_regression_preserves_runtime_admission_boundary():
+    record = json.loads((environment.ROOT / "native/drafts/environment/canonical-python70-owner-observations.json").read_bytes())
+    assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
+    assert record["counts"] == {"tests": 4321, "passed": 4320, "failures": 0, "errors": 0, "skipped": 1}
+    assert record["returncode"] == 0 and record["changed_tracked_files"] == []
+    assert record["git_head"] == "2a59a24c541e54d227c695c884cf425f3d27ac18"
+    assert all(record[name] is False for name in ("native_runtime_verified", "privacy_admitted", "production_admitted"))
+
+
+def test_actual_70_native_batch_completed_all_twenty_groups_without_admitting_browser_policies():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/upstream-156/native-batch70-observations.json").read_bytes())
+    build = json.loads((root / "native/drafts/upstream-156/build70-observations.json").read_bytes())
+    manifest = root / "native/drafts/upstream-156" / record["required_manifest"]
+    assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
+    assert record["jobs"] == 4 and record["build_invocations"] == 1 and record["compiled_patch_count"] == 70
+    assert record["candidate_manifest_sha256"] == hashlib.sha256(manifest.read_bytes()).hexdigest()
+    assert record["runtime_core_sha256_measured"] == build["runtime_core_sha256_measured"]
+    assert record["build_receipt_sha256"] == build["build_receipt_sha256"]
+    assert record["frozen_inputs_checked"] == 212
+    targets = record["targets"]
+    assert len(targets) == len({item["target"] for item in targets}) == 20
+    assert record["tests_passed"] == sum(item["tests"] for item in targets) == 484
+    assert all(item["native_cases_passed"] and item["returncode"] == 0 and item["tests"] > 0 for item in targets)
+    assert {item["target"]: item["tests"] for item in targets if item["target"].startswith("screen-")} == {
+        "screen-metrics": 9, "screen-widget": 7}
+    assert all(record[name] is False for name in ("browser_runtime_verified", "privacy_admitted", "production_admitted"))
+
+
 def test_actual_70_first_script_pass_binds_build_without_admitting_lifecycle():
     import hashlib
 

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "scope": "Diagnostic-only D copy of the installed Playwright driver, owned BFCache fixture; not a production fix or native binary admission",
+  "measurement_complete": true,
+  "shared_driver_unchanged": true,
+  "instrumented_driver_unchanged": true,
+  "base_driver_sha256": "f74353fcb8e406756a70a6af0dfc4a5069acd577e35ec9d923ccf36ac009c2f5",
+  "instrumented_driver_sha256": "8b1215650c9683bf8184a00de4625410aab5c267437fd3d8ee04c8ed2077f507",
+  "raw_controller_sha256": "28ad85a00547ab90d146c97a4e6b59b98cf4f23034aa26cb136627415e3ee90f",
+  "raw_summary_sha256": "268346f4dbec68c4c292e78859e1d33d7d9664d46a1548d002cf999eeee82825",
+  "protocol_log_sha256": "d3257481412c5d12f9e87048601160975bdb3866b02ff95c72f9700e1bcc7d8e",
+  "trace_counts": {
+    "context": 268,
+    "receive": 13,
+    "before-python": 11,
+    "after-python": 11
+  },
+  "binding_events_with_unknown_context": 2,
+  "missing_context_diagnostics": [
+    {
+      "default": true,
+      "frameKnown": false,
+      "stale": null
+    },
+    {
+      "default": true,
+      "frameKnown": false,
+      "stale": null
+    }
+  ],
+  "native_v8_binding_callback_loss_demonstrated": false,
+  "playwright_dropped_unknown_frame_context_demonstrated": true,
+  "selected": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "note": "In this run Chromium delivered Runtime.bindingCalled. The driver received two Recorder calls whose default execution context it had earlier rejected because the frame was not yet known; _onBindingCalled then skipped them because the context map entry was absent. Do not patch V8 binding callbacks on this evidence. A separate unselected D prototype is testing frame-tree/context reconstruction and queued bindings."
+}

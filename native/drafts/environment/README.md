@@ -1,5 +1,17 @@
 # Measured reference environments
 
+## Current compatibility gate
+
+[Native 001–070](../upstream-156/native-batch70-observations.json): **484 C++ cases,
+20 groups**, final source guards passed. [Canonical Python](canonical-python70-owner-observations.json):
+**4320 passed, 1 skipped**. Neither result admits combined fingerprint policies.
+
+[Recorder diagnosis](binding-driver70-diagnosis.json) identifies a driver context-map
+loss, not missing Chromium binding events. The [unselected reconstruction patch](binding-driver70-prototype-observations.json)
+passes root-only capture in four phases but **fails six-frame coverage**: cross-process
+`same` and `nested-return` roles are absent. The installed Playwright package and manager
+launch policy remain unchanged. Reconcile all OOPIF sessions before full Recorder/replay admission.
+
 One coherent observation is more useful than independently invented OS, GPU and
 CPU strings. This tool captures actual stock Chromium values; it **does not
 generate, import or apply a fingerprint**.
