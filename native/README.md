@@ -33,6 +33,7 @@ Do not infer a completed security review or restart a live build from audit stat
 | Layer | Patch chain | Evidence and boundary |
 | --- | --- | --- |
 | Registered Windows source | 001-062 | Runtime/branding verified; selected controls enabled experimentally for one reviewed local package. General fork admission remains closed |
+| Latest compiled Windows candidate | 156.0.8078.36 / 001-070 | **17m02.68s, j4, 52 steps**; 269 runtime assets preserved. [Six first-script/restart phases passed](drafts/environment/screen70-first-script-observations.json), including Mobile Web DPR 3 across six document roles. Extended lifecycle still fails; native tests and package/release admission remain separate gates |
 | Candidate Windows baseline | 156.0.8078.36 / 001-065 | Built; 62 native key cases, two 18-check baseline lifecycle repeats and 45 native Audio calibration captures passed. Full policy/installed suites pending; an initial shutdown timeout remains unresolved. [Evidence](drafts/upstream-156/windows-runtime-observations.json) |
 | Native identity keys/service | 001-059 | **62/62** passed, repeating the 001-058 result: 19 new derivation/mode cases and 43 legacy checks; unchanged browser core/GN/receipt |
 | Native identity contexts/transport | 001-059 | **37/37 + 20/20** passed in the linked Chromium content target; not a linked identity-mode browser or renderer delivery proof |
@@ -47,7 +48,7 @@ Do not infer a completed security review or restart a live build from audit stat
 | Native GPU metadata | 001-058 | **33/33** Chromium `gpu_unittests` cases passed: codec 14, passthrough protocol 5, attachment 14. Not validating-decoder, WebGPU or browser readback admission |
 | Windows font rendering policy | 001-062 | **5/5** Chromium units and standalone/combined rendering comparisons passed; raw/HDR controls retained. Experimental reviewed-package activation, not five distinct identities |
 | Windows text gamma/contrast | Reviewed 148 / 001-062 | Nine bounded presets; **36 manager starts / 288 first-script scope observations**, desktop and Mobile Web. Three-profile recovery passed for one combined policy. Not 156 or OS/GPU simulation |
-| Current linked Windows candidate | 001-062 | Incremental j4 build succeeded in **29m02s**, 52 executed steps; separate runnable 001-061 rollback copy retained |
+| Reviewed 148 Windows baseline | 001-062 | Incremental j4 build succeeded in **29m02s**, 52 executed steps; separate runnable 001-061 rollback copy retained |
 | Windows development package | 001-062 | 261 checksummed files, 220.95 MiB archive; installed-copy **160/160** and same-Chromium rollback passed. Selected controls have experimental local admission; artifact remains unsigned |
 | Complete eight-gate runtime suite | 001-062 | **160 checks passed** in continuation v2; first-run font NetworkError remains unexplained and recorded |
 | Compiled branding | Reviewed 148 / 001-062 and candidate 156 / 001-065 | Main/app-list icons match the project logo; EXE/DLL ProductName and version-page name are Glint. Not cached taskbar/shortcut migration or every UI screen |

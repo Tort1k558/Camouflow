@@ -8,6 +8,17 @@
 | Verifier integration | `screen-widget` active in existing tools, exact seven cases in `blink_unittests`, explicit upstream-156 and registered 0069/0070 required; batch now 20 groups | Python replay/result-rejection controls passed; not seven executed C++ cases |
 | Baseline controls after selection | Preserved 001–068 crash/TLS/large WebGL controls rerun with current manifest/verifier source bindings | Still baseline-only evidence, not execution of new 0070 |
 
+## Compiled 001–070 screen/DPR checkpoint — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Source build | **52 steps, j4, 17m02.68s**; source/SDK/core guards passed; 269 exact runtime assets preserved | [Build](../native/drafts/upstream-156/build70-observations.json); no package/release admission |
+| First script, six document roles, persistent restart | **6/6 phases passed**; desktop/mobile/native control; Mobile Web DPR remains **3** at first and settled reads | [Evidence](../native/drafts/environment/screen70-first-script-observations.json); not full lifecycle or device-profile admission |
+| Manager two-tab fixed-screen stress | **4/20 stages passed**, all failures retained; `set_viewport_size` resets screen by Playwright contract | [Evidence](../native/drafts/environment/manager-screen70-observations.json); no silent contract relaxation |
+| Extra-CDP / BFCache stress | Overall **FAIL**; real BFCache restore with six persisted documents; peer-state/screenshot and cached-orientation inconsistencies retained | [Evidence](../native/drafts/environment/screen-lifecycle70-observations.json); not full lifecycle admission |
+| Input/screenshot after BFCache restore | Main document trusted click passed; screenshot **1170×2532** matches DPR 3; screen stable across input | [Evidence](../native/drafts/environment/history-interaction70-observations.json); all-frame input and complete lifecycle remain unverified; earlier navigation timeout retained |
+| Next orientation package | Three-file draft with four native regression cases; apply-check passed against 001–070 | [Preparation](../native/drafts/environment/orientation-visibility71-preparation.json); unregistered, uncompiled and unverified |
+
 ## Canonical Python regression — 2026-10-30
 
 | Gate | Observed result | Boundary |
@@ -16,6 +27,7 @@
 | QML race diagnosis/repair | Controlled 1500-ms model-delivery delay reproduces original failure; waiting for public `getProfile()` within the unchanged 3-second deadline passes; corrected full QML module **9 passed** | Test-only synchronization; production UI unchanged; full regression after repair still pending |
 | Full main 8bbca7c after 0070 selection | **4268 passed, 5 failed, 1 skipped**; tracked-source guards passed; QML case no longer failed | [Retained full result](../native/drafts/environment/canonical-python70-preparation-observations.json); five stale release-test contracts, not full-suite PASS |
 | Versioned release-test contracts | Current candidate checks updated to exact 70 and its patch list; historical 65/66 batch lists still exclude later groups; complete release-tools module **1131 passed, 1 skipped** | Test-only contract update; source/package/runtime guards unchanged; another full run pending |
+| Full main 748e0f5 after contract corrections | **4274 passed, 1 skipped**, 689.171s; all tracked-source/status guards passed | [Complete result](../native/drafts/environment/canonical-python70-observations.json); not native C++ execution or runtime/package/privacy admission |
 
 ## Screen/DPR source package 0069, compiled / partial runtime checks — 2026-10-30
 

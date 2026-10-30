@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Main document after actual BFCache restore; no Playwright Frame APIs after restoration",
+  "before": {
+    "sample": {
+      "screen": {
+        "width": 390,
+        "height": 844,
+        "availWidth": 390,
+        "availHeight": 844,
+        "availLeft": 0,
+        "availTop": 0,
+        "colorDepth": 24,
+        "pixelDepth": 24,
+        "dpr": 3,
+        "orientation": {
+          "type": "landscape-primary",
+          "angle": 0
+        }
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "media": {
+        "width": true,
+        "height": true,
+        "resolution": true
+      }
+    },
+    "clicks": [],
+    "rect": {
+      "x": 16,
+      "y": 24,
+      "width": 72,
+      "height": 28
+    }
+  },
+  "after": {
+    "sample": {
+      "screen": {
+        "width": 390,
+        "height": 844,
+        "availWidth": 390,
+        "availHeight": 844,
+        "availLeft": 0,
+        "availTop": 0,
+        "colorDepth": 24,
+        "pixelDepth": 24,
+        "dpr": 3,
+        "orientation": {
+          "type": "landscape-primary",
+          "angle": 0
+        }
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "media": {
+        "width": true,
+        "height": true,
+        "resolution": true
+      }
+    },
+    "clicks": [
+      {
+        "trusted": true,
+        "x": 52,
+        "y": 38,
+        "inside": true
+      }
+    ]
+  },
+  "trusted_input_passed": true,
+  "screen_stable_across_input": true,
+  "screenshot_size": [
+    1170,
+    2532
+  ],
+  "expected_screenshot_size": [
+    1170,
+    2532
+  ],
+  "screenshot_sha256": "74f9dd9e29bf0090a02e7e934a41ba51b7bf3361cd3efcd8b0679c767bafa08d",
+  "all_frame_input_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "088e4b1bdce37ddb05e422819a826fb352e16f68759eeebfcbb657ab5a5d0652",
+  "checkpoint_sha256": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
+  "raw_report_sha256": "5c94cc575885983743ff26a16626bc39239e271c758d9fd596965b905d57c95f",
+  "overall_lifecycle_passed": false,
+  "bfcache_restored": true,
+  "persisted_document_count": 6,
+  "source_sha256": {
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "native/drafts/environment/first-script/runtime.py": "e387b5107340754af303b56b404ab86cea3195410b0b9ca4ea99c66516df4e1a",
+    "native/drafts/environment/first-script/owner_process.py": "d86f90e386925d0d2940e06046eca85b4ca2e94b901abc751cafc494f9b4468b",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "native/drafts/environment/first-script/manager.py": "71d0e333e682205beda57e963fa8df1483505bf7bac24f44caaed27a527a3e6d",
+    "native/drafts/upstream-156/checkpoints/001-070.json": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "native/drafts/environment/first-script/history_interaction.py": "f6c2e8358cc3b5232ac46d5e450c53f4fbea027764ea9dec2a8a34a09b12c971"
+  },
+  "collector_source": "native/drafts/environment/first-script/history_interaction.py",
+  "collector_source_sha256": "f6c2e8358cc3b5232ac46d5e450c53f4fbea027764ea9dec2a8a34a09b12c971",
+  "retained_incomplete_attempt": {
+    "passed": false,
+    "measurement_complete": false,
+    "postguards_passed": true,
+    "report_sha256": "ae8d342ac4a84df998544f122619f21ad06febf416c1f5ff51f26edba9994247",
+    "error_type": "TimeoutError",
+    "operation": "Page.goto",
+    "timeout_ms": 10000
+  },
+  "note": "Same collector bytes as the private measured helper. Fresh retry without increased deadlines after an incomplete navigation-timeout attempt. Main trusted input and exact-DPR screenshot passed after actual BFCache restore; all-frame input, cached-orientation repair, full lifecycle and admission remain unverified."
+}

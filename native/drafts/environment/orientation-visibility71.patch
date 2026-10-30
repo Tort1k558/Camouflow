@@ -1,0 +1,190 @@
+diff --git a/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller.cc b/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller.cc
+--- a/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller.cc
++++ b/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller.cc
+@@ -152,11 +152,14 @@
+ 
+   DCHECK(GetPage());
+ 
+-  // The orientation type and angle are tied in a way that if the angle has
+-  // changed, the type must have changed.
+   LocalFrame& frame = *DomWindow()->GetFrame();
+-  uint16_t current_angle =
+-      GetPage()->GetChromeClient().GetScreenInfo(frame).orientation_angle;
++  const display::ScreenInfo& screen_info =
++      GetPage()->GetChromeClient().GetScreenInfo(frame);
++  auto current_type = screen_info.orientation_type;
++  if (current_type == display::mojom::blink::ScreenOrientation::kUndefined) {
++    current_type =
++        ComputeOrientation(screen_info.rect, screen_info.orientation_angle);
++  }
+ 
+   // FIXME: sendOrientationChangeEvent() currently send an event all the
+   // children of the frame, so it should only be called on the frame on
+@@ -164,8 +167,11 @@
+   // sendOrientationChangeEvent on every WebFrame part of a WebView to be
+   // able to remove this.
+   if (&frame == frame.LocalFrameRoot() &&
+-      orientation_->angle() != current_angle)
++      (orientation_->angle() != screen_info.orientation_angle ||
++       orientation_->type().AsEnum() !=
++           ScreenOrientation::OrientationTypeToV8Enum(current_type))) {
+     NotifyOrientationChanged();
++  }
+ }
+ 
+ void ScreenOrientationController::NotifyOrientationChanged() {
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+@@ -1945,6 +1945,7 @@
+ void WebFrameWidgetImpl::UpdateVisualProperties(
+     const VisualProperties& properties) {
+   const display::ScreenInfos previous_logical = GlintWebExposedScreenInfos();
++  const bool had_logical_screen = glint_logical_screen_infos_.has_value();
+   glint_logical_screen_infos_ = properties.glint_logical_screen_infos;
+   VisualProperties visual_properties(properties);
+   if (browser_controls_top_height_override_) {
+@@ -2082,7 +2083,8 @@
+     ScrollFocusedEditableElementIntoView();
+ 
+   const display::ScreenInfos logical = GlintWebExposedScreenInfos();
+-  if (ForSubframe() && previous_logical != logical) {
++  if (previous_logical != logical &&
++      (ForSubframe() || had_logical_screen || glint_logical_screen_infos_)) {
+     ForEachLocalFrameControlledByWidget(
+         LocalRootImpl()->GetFrame(),
+         [&logical](WebLocalFrameImpl* local_frame) {
+diff --git a/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc b/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc
+--- a/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc
++++ b/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc
+@@ -8,8 +8,10 @@
+ #include <tuple>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
+ #include "mojo/public/cpp/bindings/associated_remote.h"
+ #include "testing/gtest/include/gtest/gtest.h"
++#include "third_party/blink/public/common/widget/visual_properties.h"
+ #include "third_party/blink/public/web/web_local_frame.h"
+ #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+@@ -298,4 +300,119 @@
+   web_view_helper.Reset();
+ }
+ 
++
++class GlintScreenOrientationVisibilityTest
++    : public ScreenOrientationControllerTest {
++ protected:
++  void CheckSameAngleVisibilityRestore(bool explicit_type) {
++    frame_test_helpers::WebViewHelper helper;
++    helper.InitializeAndLoad("about:blank");
++    auto* page = helper.GetWebView()->GetPage();
++    auto* frame = To<LocalFrame>(page->MainFrame());
++    auto* widget =
++        static_cast<WebFrameWidgetImpl*>(frame->GetWidgetForLocalRoot());
++    display::ScreenInfos screens((display::ScreenInfo()));
++    auto& current = screens.mutable_current();
++    current.rect = gfx::Rect(800, 600);
++    current.available_rect = current.rect;
++    current.orientation_angle = 0;
++    current.orientation_type =
++        explicit_type ? display::mojom::blink::ScreenOrientation::kLandscapePrimary
++                      : display::mojom::blink::ScreenOrientation::kUndefined;
++    widget->UpdateScreenInfo(screens);
++    auto* orientation = ScreenOrientation::Create(frame->DomWindow());
++    EXPECT_EQ(orientation->type().AsEnum(),
++              V8OrientationType::Enum::kLandscapePrimary);
++    for (bool portrait : {true, false}) {
++      page->SetVisibilityState(mojom::blink::PageVisibilityState::kHidden, false);
++      current.rect = portrait ? gfx::Rect(390, 844) : gfx::Rect(800, 600);
++      current.available_rect = current.rect;
++      current.orientation_type =
++          explicit_type
++              ? (portrait
++                     ? display::mojom::blink::ScreenOrientation::kPortraitPrimary
++                     : display::mojom::blink::ScreenOrientation::kLandscapePrimary)
++              : display::mojom::blink::ScreenOrientation::kUndefined;
++      widget->UpdateScreenInfo(screens);
++      EXPECT_EQ(orientation->angle(), 0);
++      page->SetVisibilityState(mojom::blink::PageVisibilityState::kVisible, false);
++      EXPECT_EQ(orientation->type().AsEnum(),
++                portrait ? V8OrientationType::Enum::kPortraitPrimary
++                         : V8OrientationType::Enum::kLandscapePrimary);
++      EXPECT_EQ(orientation->angle(), 0);
++    }
++    test::RunPendingTasks();
++    helper.Reset();
++  }
++
++  void CheckLogicalVisibilityRestore(bool hidden) {
++    frame_test_helpers::WebViewHelper helper;
++    helper.InitializeAndLoad("about:blank");
++    auto* page = helper.GetWebView()->GetPage();
++    auto* frame = To<LocalFrame>(page->MainFrame());
++    auto* widget =
++        static_cast<WebFrameWidgetImpl*>(frame->GetWidgetForLocalRoot());
++    VisualProperties properties;
++    display::ScreenInfo physical;
++    physical.rect = gfx::Rect(800, 600);
++    physical.available_rect = physical.rect;
++    physical.orientation_type =
++        display::mojom::blink::ScreenOrientation::kLandscapePrimary;
++    properties.screen_infos = display::ScreenInfos(physical);
++    properties.new_size_device_px = gfx::Size(800, 600);
++    properties.visible_viewport_size_device_px = properties.new_size_device_px;
++    properties.compositor_viewport_pixel_rect =
++        gfx::Rect(properties.new_size_device_px);
++    viz::ParentLocalSurfaceIdAllocator allocator;
++    allocator.GenerateId();
++    properties.local_surface_id = allocator.GetCurrentLocalSurfaceId();
++    widget->ApplyVisualProperties(properties);
++    auto* orientation = ScreenOrientation::Create(frame->DomWindow());
++    EXPECT_EQ(orientation->type().AsEnum(),
++              V8OrientationType::Enum::kLandscapePrimary);
++    if (hidden)
++      page->SetVisibilityState(mojom::blink::PageVisibilityState::kHidden, false);
++    properties.glint_logical_screen_infos = properties.screen_infos;
++    auto& logical = properties.glint_logical_screen_infos->mutable_current();
++    logical.rect = gfx::Rect(390, 844);
++    logical.available_rect = logical.rect;
++    logical.orientation_type =
++        display::mojom::blink::ScreenOrientation::kPortraitPrimary;
++    logical.orientation_angle = 0;
++    widget->ApplyVisualProperties(properties);
++    if (hidden)
++      page->SetVisibilityState(mojom::blink::PageVisibilityState::kVisible, false);
++    EXPECT_EQ(orientation->type().AsEnum(),
++              V8OrientationType::Enum::kPortraitPrimary);
++    EXPECT_EQ(orientation->angle(), 0);
++    properties.glint_logical_screen_infos.reset();
++    widget->ApplyVisualProperties(properties);
++    EXPECT_EQ(orientation->type().AsEnum(),
++              V8OrientationType::Enum::kLandscapePrimary);
++    EXPECT_EQ(widget->GetScreenInfo().rect, gfx::Rect(800, 600));
++    test::RunPendingTasks();
++    helper.Reset();
++  }
++};
++
++TEST_F(GlintScreenOrientationVisibilityTest,
++       GlintExplicitTypeRestoresAtUnchangedAngle) {
++  CheckSameAngleVisibilityRestore(true);
++}
++
++TEST_F(GlintScreenOrientationVisibilityTest,
++       GlintComputedTypeRestoresAtUnchangedAngle) {
++  CheckSameAngleVisibilityRestore(false);
++}
++
++TEST_F(GlintScreenOrientationVisibilityTest,
++       GlintVisibleMainLogicalOrientationUpdatesAndClears) {
++  CheckLogicalVisibilityRestore(false);
++}
++
++TEST_F(GlintScreenOrientationVisibilityTest,
++       GlintHiddenMainLogicalOrientationRestoresAndClears) {
++  CheckLogicalVisibilityRestore(true);
++}
++
+ }  // namespace blink

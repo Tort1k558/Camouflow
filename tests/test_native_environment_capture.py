@@ -1128,3 +1128,71 @@ def test_second_full_regression_retains_contract_failures_without_claiming_full_
     assert all(record[name] is False for name in ("full_regression_after_contract_updates_verified", "native_runtime_verified",
         "privacy_admitted", "production_admitted"))
     assert hashlib.sha256((root / record["corrected_test_source"]).read_bytes()).hexdigest() == record["corrected_test_source_sha256"]
+
+
+def test_full_python_70_regression_pass_does_not_admit_native_runtime():
+    record = json.loads((environment.ROOT / "native/drafts/environment/canonical-python70-observations.json").read_bytes())
+    assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
+    assert record["counts"] == {"tests": 4275, "passed": 4274, "failures": 0, "errors": 0, "skipped": 1}
+    assert record["returncode"] == 0 and record["changed_tracked_files"] == []
+    assert all(record[name] is False for name in ("native_runtime_verified", "privacy_admitted", "production_admitted"))
+
+
+def test_actual_70_first_script_pass_binds_build_without_admitting_lifecycle():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/environment/screen70-first-script-observations.json").read_bytes())
+    build = json.loads((root / "native/drafts/upstream-156/build70-observations.json").read_bytes())
+    assert build["passed"] and build["build_jobs"] == 4 and build["build_steps"] == 52
+    assert build["registered_patches"] == 70 and build["preserved_runtime_assets"] == 269
+    assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
+    assert record["runtime_core_sha256_measured"] == build["runtime_core_sha256_measured"]
+    assert record["receipt_sha256"] == build["build_receipt_sha256"]
+    assert record["checkpoint_sha256"] == build["candidate_manifest_sha256"]
+    assert len(record["phases"]) == 6 and all(phase["passed"] for phase in record["phases"])
+    for phase in record["phases"]:
+        assert set(phase["observations"]) == {"main", "same", "cross", "nested-return", "srcdoc", "about-blank"}
+        assert not phase["errors"] and phase["browser_connection_closed"]
+        if phase["mode"] == "manager-mobile-web":
+            assert all(observation[state]["screen"]["dpr"] == 3
+                       for observation in phase["observations"].values() for state in ("first", "settled"))
+    assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
+               for path, value in record["source_sha256"].items())
+    assert all(record[name] is False for name in ("browser_runtime_fully_verified", "privacy_admitted", "production_admitted"))
+
+
+def test_70_extended_screen_findings_retain_failures_and_real_bfcache():
+    root = environment.ROOT / "native/drafts/environment"
+    manager = json.loads((root / "manager-screen70-observations.json").read_bytes())
+    lifecycle = json.loads((root / "screen-lifecycle70-observations.json").read_bytes())
+    for record in (manager, lifecycle):
+        assert record["passed"] is False and record["measurement_complete"] and record["postguards_passed"]
+        assert record["raw_observations_summarized"] is True
+        assert any(not row["passed"] and row["errors"] for row in record["stages"])
+        for stage in record["stages"]:
+            for page in stage["pages"].values():
+                roles = [role for variant in page["screen_variants"] for role in variant["roles"]]
+                assert len(roles) == len(set(roles)) == page["observed_role_count"] == 6
+                assert set(roles) == {"main", "same", "cross", "nested-return", "srcdoc", "about-blank"}
+        assert all(record[name] is False for name in ("browser_runtime_fully_verified", "process_swap_verified",
+                                                    "privacy_admitted", "production_admitted"))
+    assert len(manager["stages"]) == 20 and sum(row["passed"] for row in manager["stages"]) == 4
+    assert lifecycle["bfcache_restored"] and lifecycle["history_navigation"]["type"] == "BackForwardCacheRestore"
+    restored = lifecycle["bfcache_state"]["snapshots"]
+    assert len(restored) == 6 and all(row["persisted"] is True for row in restored.values())
+    assert restored["main"]["snapshot"]["screen"]["orientation"] != restored["same"]["snapshot"]["screen"]["orientation"]
+
+
+def test_orientation_visibility_draft_remains_unregistered_and_unverified():
+    import hashlib
+
+    root = environment.ROOT / "native/drafts/environment"
+    record = json.loads((root / "orientation-visibility71-preparation.json").read_bytes())
+    patch = (root / record["patch_file"]).read_bytes()
+    assert hashlib.sha256(patch).hexdigest() == record["patch_sha256"]
+    assert record["apply_check_passed"] and len(record["prepared_cases"]) == 4
+    assert patch.count(b"diff --git ") == 3
+    assert b"orientation_->type().AsEnum()" in patch and b"had_logical_screen" in patch
+    assert all(record[name] is False for name in ("selected_in_manifest", "cpp_compiled", "native_tests_executed",
+                                                "bfcache_fixed_verified", "privacy_admitted", "production_admitted"))

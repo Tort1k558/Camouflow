@@ -60,6 +60,22 @@ contexts without changing identity or rendered pixels.
 
 ## Evidence and remaining work
 
+### 001–070 screen checkpoint
+
+[First-script/restart checks](screen70-first-script-observations.json) passed all
+six phases across six document roles, including Mobile Web DPR 3. The separate
+[two-tab manager](manager-screen70-observations.json) and
+[extra-CDP/BFCache](screen-lifecycle70-observations.json) stress results remain
+failed; they are not replaced by the narrower successful gate.
+
+[Restored-main interaction](history-interaction70-observations.json) confirms a
+trusted click and a 1170×2532 screenshot after actual BFCache restoration.
+`first-script/history_interaction.py::capture(session, owned)` uses the existing
+owned CDP session after `restore_history`; it does not use Playwright Frame APIs
+on restored documents or create another competing page session. All-frame input
+and the cached-orientation repair remain unverified. An earlier navigation
+timeout is retained; the retry used unchanged deadlines.
+
 [Source-bound calibration](stock156-capture-observations.json) covers two phases,
 all eight contexts, exact request-header availability and three failure controls:
 existing evidence, unknown runtime and fixture-server failure. Raw host values,

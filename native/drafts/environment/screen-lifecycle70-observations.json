@@ -1,0 +1,986 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "scope": "Two owned pages, explicit CDP screen metrics, updates/clear, cross-site navigation and observed BFCache; not a complete mobile/device profile",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "088e4b1bdce37ddb05e422819a826fb352e16f68759eeebfcbb657ab5a5d0652",
+  "postguards_passed": true,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "raw_report_sha256": "91c6ded9b5bf1ff3fde03f158cec9dfa85bed4efb7880b04546aba327552878e",
+  "stages": [
+    {
+      "name": "baseline",
+      "pages": {
+        "A": {
+          "errors": [],
+          "screenshot_size": [
+            764,
+            485
+          ],
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 800,
+                "height": 600,
+                "availWidth": 800,
+                "availHeight": 600,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        },
+        "B": {
+          "errors": [],
+          "screenshot_size": [
+            764,
+            485
+          ],
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 800,
+                "height": 600,
+                "availWidth": 800,
+                "availHeight": 600,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        }
+      },
+      "errors": [],
+      "passed": true
+    },
+    {
+      "name": "set-a",
+      "pages": {
+        "A": {
+          "errors": [],
+          "screenshot_size": [
+            1366,
+            768
+          ],
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 1366,
+                "height": 768,
+                "availWidth": 1366,
+                "availHeight": 768,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        },
+        "B": {
+          "errors": [],
+          "screenshot_size": [
+            764,
+            485
+          ],
+          "unchanged_by_other_page": true,
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 800,
+                "height": 600,
+                "availWidth": 800,
+                "availHeight": 600,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        }
+      },
+      "errors": [],
+      "passed": true
+    },
+    {
+      "name": "set-b",
+      "pages": {
+        "A": {
+          "errors": [
+            "main: logical screen differs from requested state",
+            "same: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state"
+          ],
+          "screenshot_size": [
+            1366,
+            768
+          ],
+          "unchanged_by_other_page": false,
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "main",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 800,
+                "height": 600,
+                "availWidth": 800,
+                "availHeight": 600,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            },
+            {
+              "roles": [
+                "cross",
+                "nested-return"
+              ],
+              "screen": {
+                "width": 1366,
+                "height": 768,
+                "availWidth": 1366,
+                "availHeight": 768,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        },
+        "B": {
+          "errors": [
+            "main: logical screen differs from requested state",
+            "same: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state"
+          ],
+          "screenshot_size": [
+            390,
+            844
+          ],
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "main",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 390,
+                "height": 844,
+                "availWidth": 390,
+                "availHeight": 844,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "portrait-primary",
+                  "angle": 0
+                }
+              }
+            },
+            {
+              "roles": [
+                "cross",
+                "nested-return"
+              ],
+              "screen": {
+                "width": 390,
+                "height": 844,
+                "availWidth": 390,
+                "availHeight": 844,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 3,
+                "orientation": {
+                  "type": "portrait-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        }
+      },
+      "errors": [
+        "A/main: logical screen differs from requested state",
+        "A/same: logical screen differs from requested state",
+        "A/srcdoc: logical screen differs from requested state",
+        "A/about-blank: logical screen differs from requested state",
+        "A: other page update changed this screen",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B: screenshot dimensions disagree with requested DPR"
+      ],
+      "passed": false
+    },
+    {
+      "name": "update-a",
+      "pages": {
+        "A": {
+          "errors": [],
+          "screenshot_size": [
+            1280,
+            720
+          ],
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 1280,
+                "height": 720,
+                "availWidth": 1280,
+                "availHeight": 720,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 2,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        },
+        "B": {
+          "errors": [
+            "main: logical screen differs from requested state",
+            "same: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state"
+          ],
+          "screenshot_size": [
+            390,
+            844
+          ],
+          "unchanged_by_other_page": false,
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "main",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 800,
+                "height": 600,
+                "availWidth": 800,
+                "availHeight": 600,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            },
+            {
+              "roles": [
+                "cross",
+                "nested-return"
+              ],
+              "screen": {
+                "width": 390,
+                "height": 844,
+                "availWidth": 390,
+                "availHeight": 844,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 3,
+                "orientation": {
+                  "type": "portrait-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        }
+      },
+      "errors": [
+        "A: screenshot dimensions disagree with requested DPR",
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B: screenshot dimensions disagree with requested DPR",
+        "B: other page update changed this screen"
+      ],
+      "passed": false
+    },
+    {
+      "name": "clear-a",
+      "pages": {
+        "A": {
+          "errors": [],
+          "screenshot_size": [
+            764,
+            485
+          ],
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 800,
+                "height": 600,
+                "availWidth": 800,
+                "availHeight": 600,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        },
+        "B": {
+          "errors": [
+            "main: logical screen differs from requested state",
+            "same: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state"
+          ],
+          "screenshot_size": [
+            390,
+            844
+          ],
+          "unchanged_by_other_page": true,
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "main",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 800,
+                "height": 600,
+                "availWidth": 800,
+                "availHeight": 600,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            },
+            {
+              "roles": [
+                "cross",
+                "nested-return"
+              ],
+              "screen": {
+                "width": 390,
+                "height": 844,
+                "availWidth": 390,
+                "availHeight": 844,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 3,
+                "orientation": {
+                  "type": "portrait-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        }
+      },
+      "errors": [
+        "B/main: logical screen differs from requested state",
+        "B/same: logical screen differs from requested state",
+        "B/srcdoc: logical screen differs from requested state",
+        "B/about-blank: logical screen differs from requested state",
+        "B: screenshot dimensions disagree with requested DPR"
+      ],
+      "passed": false
+    },
+    {
+      "name": "cross-site-navigation",
+      "pages": {
+        "A": {
+          "errors": [],
+          "screenshot_size": [
+            764,
+            485
+          ],
+          "unchanged_by_other_page": true,
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 800,
+                "height": 600,
+                "availWidth": 800,
+                "availHeight": 600,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 1,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        },
+        "B": {
+          "errors": [],
+          "screenshot_size": [
+            390,
+            844
+          ],
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 390,
+                "height": 844,
+                "availWidth": 390,
+                "availHeight": 844,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 3,
+                "orientation": {
+                  "type": "portrait-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        }
+      },
+      "errors": [
+        "B: screenshot dimensions disagree with requested DPR"
+      ],
+      "passed": false
+    },
+    {
+      "name": "history-return",
+      "pages": {
+        "B": {
+          "errors": [
+            "main: logical screen differs from requested state",
+            "cross: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state"
+          ],
+          "screen_variants": [
+            {
+              "roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "srcdoc"
+              ],
+              "screen": {
+                "width": 390,
+                "height": 844,
+                "availWidth": 390,
+                "availHeight": 844,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 3,
+                "orientation": {
+                  "type": "landscape-primary",
+                  "angle": 0
+                }
+              }
+            },
+            {
+              "roles": [
+                "nested-return",
+                "same"
+              ],
+              "screen": {
+                "width": 390,
+                "height": 844,
+                "availWidth": 390,
+                "availHeight": 844,
+                "availLeft": 0,
+                "availTop": 0,
+                "colorDepth": 24,
+                "pixelDepth": 24,
+                "dpr": 3,
+                "orientation": {
+                  "type": "portrait-primary",
+                  "angle": 0
+                }
+              }
+            }
+          ],
+          "observed_role_count": 6,
+          "css_media_consistent": true,
+          "embedded_viewports_consistent": true
+        }
+      },
+      "errors": [
+        "main: logical screen differs from requested state",
+        "cross: logical screen differs from requested state",
+        "srcdoc: logical screen differs from requested state",
+        "about-blank: logical screen differs from requested state"
+      ],
+      "passed": false
+    }
+  ],
+  "source_sha256": {
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "native/drafts/environment/first-script/owner_process.py": "d86f90e386925d0d2940e06046eca85b4ca2e94b901abc751cafc494f9b4468b",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "native/drafts/environment/first-script/manager.py": "71d0e333e682205beda57e963fa8df1483505bf7bac24f44caaed27a527a3e6d",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "native/drafts/upstream-156/checkpoints/001-070.json": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "native/drafts/environment/first-script/runtime.py": "e387b5107340754af303b56b404ab86cea3195410b0b9ca4ea99c66516df4e1a",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63"
+  },
+  "runner_sha256": {
+    "run-screen70-lifecycle-20261030-v1.py": "4a5a3b24f32dbd3dd30278055deafb16bee579f6f672aab31680cf79bc5fa0ce"
+  },
+  "browser_runtime_fully_verified": false,
+  "process_swap_verified": false,
+  "checkpoint_sha256": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
+  "bfcache_restored": true,
+  "bfcache_state": {
+    "registered": true,
+    "events": [
+      true
+    ],
+    "snapshots": {
+      "main": {
+        "snapshot": {
+          "screen": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 3,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "media": {
+            "width": true,
+            "height": true,
+            "resolution": true
+          }
+        },
+        "origin": "http://localhost:52337",
+        "location": "http://localhost:52337/screen?role=main&navigation=1",
+        "parent": null,
+        "persisted": true,
+        "children_sizes": {
+          "same": {
+            "width": 320,
+            "height": 140
+          },
+          "cross": {
+            "width": 320,
+            "height": 140
+          },
+          "srcdoc": {
+            "width": 320,
+            "height": 140
+          },
+          "about-blank": {
+            "width": 320,
+            "height": 140
+          }
+        }
+      },
+      "cross": {
+        "snapshot": {
+          "screen": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 3,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "viewport": {
+            "width": 320,
+            "height": 140
+          },
+          "media": {
+            "width": true,
+            "height": true,
+            "resolution": true
+          }
+        },
+        "origin": "http://localhost:52337",
+        "location": "http://localhost:52337/screen?role=cross",
+        "parent": "main",
+        "persisted": true,
+        "children_sizes": {
+          "nested-return": {
+            "width": 260,
+            "height": 64
+          }
+        }
+      },
+      "srcdoc": {
+        "snapshot": {
+          "screen": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 3,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "viewport": {
+            "width": 320,
+            "height": 140
+          },
+          "media": {
+            "width": true,
+            "height": true,
+            "resolution": true
+          }
+        },
+        "origin": "http://localhost:52337",
+        "location": "about:srcdoc",
+        "parent": "main",
+        "persisted": true,
+        "children_sizes": {}
+      },
+      "about-blank": {
+        "snapshot": {
+          "screen": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 3,
+            "orientation": {
+              "type": "landscape-primary",
+              "angle": 0
+            }
+          },
+          "viewport": {
+            "width": 320,
+            "height": 140
+          },
+          "media": {
+            "width": true,
+            "height": true,
+            "resolution": true
+          }
+        },
+        "origin": "http://localhost:52337",
+        "location": "http://localhost:52337/screen?role=main&navigation=1",
+        "parent": "main",
+        "persisted": true,
+        "children_sizes": {}
+      },
+      "same": {
+        "snapshot": {
+          "screen": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 3,
+            "orientation": {
+              "type": "portrait-primary",
+              "angle": 0
+            }
+          },
+          "viewport": {
+            "width": 320,
+            "height": 140
+          },
+          "media": {
+            "width": true,
+            "height": true,
+            "resolution": true
+          }
+        },
+        "origin": "http://127.0.0.1:52337",
+        "location": "http://127.0.0.1:52337/screen?role=same",
+        "parent": "main",
+        "persisted": true,
+        "children_sizes": {}
+      },
+      "nested-return": {
+        "snapshot": {
+          "screen": {
+            "width": 390,
+            "height": 844,
+            "availWidth": 390,
+            "availHeight": 844,
+            "availLeft": 0,
+            "availTop": 0,
+            "colorDepth": 24,
+            "pixelDepth": 24,
+            "dpr": 3,
+            "orientation": {
+              "type": "portrait-primary",
+              "angle": 0
+            }
+          },
+          "viewport": {
+            "width": 260,
+            "height": 64
+          },
+          "media": {
+            "width": true,
+            "height": true,
+            "resolution": true
+          }
+        },
+        "origin": "http://127.0.0.1:52337",
+        "location": "http://127.0.0.1:52337/screen?role=nested-return",
+        "parent": "cross",
+        "persisted": true,
+        "children_sizes": {}
+      }
+    },
+    "protocolErrors": [],
+    "timedOut": false
+  },
+  "history_navigation": {
+    "frame": {
+      "id": "5E80F847BEFFC5A45354FA0ECD062938",
+      "loaderId": "5AAE06A94075AE6CD27F5D207C0A282B",
+      "url": "http://localhost:52337/screen?role=main&navigation=1",
+      "domainAndRegistry": "",
+      "securityOrigin": "http://localhost:52337",
+      "securityOriginDetails": {
+        "isLocalhost": true
+      },
+      "mimeType": "text/html",
+      "adFrameStatus": {
+        "adFrameType": "none"
+      },
+      "secureContextType": "SecureLocalhost",
+      "crossOriginIsolatedContextType": "NotIsolated",
+      "gatedAPIFeatures": []
+    },
+    "type": "BackForwardCacheRestore"
+  },
+  "browser_connection_closed": true,
+  "note": "Mixed extra-CDP stress remains failed. Actual BFCache restore and all six persisted documents observed; four roles retain stale orientation. DPR/screenshot/peer-update failures before history are retained. No unsupported Playwright history fallback was used.",
+  "raw_observations_summarized": true,
+  "public_capture_format": "Exact distinct screen values grouped by document roles; input/media/embedding summaries. Full raw capture remains bound by raw_report_sha256."
+}

@@ -1,5 +1,23 @@
 # Glint: план проверки и развития
 
+## 001–070 собран: первый screen/DPR-прогон прошёл, расширенный lifecycle ещё нет
+
+| Проверка | Фактический результат | Дальше |
+| --- | --- | --- |
+| Windows build 001–070 | **52 шага, j4, 17м02,68с**; 269 файлов runtime сохранены отдельно с хешами | [Сборка](../native/drafts/upstream-156/build70-observations.json); не release admission |
+| Первый скрипт / iframe / перезапуск | **6/6 фаз**, по шесть документов; Mobile Web DPR **3** при первом и повторном чтении | [Результаты](../native/drafts/environment/screen70-first-script-observations.json); исправление main-root подтверждено в этом сценарии |
+| Полный Python suite на 748e0f5 | **4274 passed, 1 skipped**, 689,171с; source guards прошли | [Полный прогон](../native/drafts/environment/canonical-python70-observations.json); не выполнение нативных C++-кейсов |
+| Две вкладки через менеджер | **4/20** строгих fixed-screen стадий; resize меняет screen вместе с viewport по контракту Playwright | [Сохранённый FAIL](../native/drafts/environment/manager-screen70-observations.json); не подменять провал PASS |
+| Дополнительный CDP / BFCache | Полный stress **FAIL**, настоящий BFCache и `persisted` всех шести документов подтверждены; остаются screenshot/peer-state и cached-orientation расхождения | [Результаты](../native/drafts/environment/screen-lifecycle70-observations.json) |
+| Ввод / снимок после BFCache | Main trusted click и PNG **1170×2532** при DPR 3 прошли; экран не изменился от ввода | [Узкий результат](../native/drafts/environment/history-interaction70-observations.json); ввод во всех iframe и весь lifecycle не подтверждены; ранний navigation timeout сохранён |
+
+Следующий связанный пакет: обновление cached orientation при смене типа без смены угла,
+уведомления main-root при обновлении/сбросе logical screen и четыре нативных регрессии.
+[Черновик](../native/drafts/environment/orientation-visibility71-preparation.json)
+прошёл apply-check на 001–070, **не выбран в manifest и не проверен бинарником**.
+Текущие 20 групп C++ собираются отдельно на j4; активные исходники не изменяются.
+После их результата — новый пакет, полный screen/lifecycle-прогон, затем Audio и общий admission.
+
 ## Полная регрессия после выбора 0070: пять устаревших тестовых контрактов
 
 На 8bbca7c: **4268 passed, 5 failed, 1 skipped**, tracked-source guards прошли;

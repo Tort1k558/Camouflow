@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "scope": "Unregistered same-angle visibility draft; no active source modification",
+  "patch_sha256": "1435687f9cbd3a7cbd61fbd291faa68a10ab00e3cfe061c45f2d4e5c3431503e",
+  "source_sha256": {
+    "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller.cc": "07c80c4ae1102b9f48970c87104bb88c324b26f8863945f55f95fd14c8e7cb5c",
+    "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "c73909d028d0cfca579577c001792d7a4dcd5936d087e14001191f4806e45034",
+    "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc": "6a78e4747a6903f0aded9f090c1eaca691b3e228ad4bd4ab42b96a6431ff472e"
+  },
+  "prepared_cases": [
+    "GlintScreenOrientationVisibilityTest.GlintExplicitTypeRestoresAtUnchangedAngle",
+    "GlintScreenOrientationVisibilityTest.GlintComputedTypeRestoresAtUnchangedAngle",
+    "GlintScreenOrientationVisibilityTest.GlintVisibleMainLogicalOrientationUpdatesAndClears",
+    "GlintScreenOrientationVisibilityTest.GlintHiddenMainLogicalOrientationRestoresAndClears"
+  ],
+  "cpp_compiled": false,
+  "native_tests_executed": false,
+  "bfcache_fixed_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "patch_file": "orientation-visibility71.patch",
+  "apply_check_passed": true,
+  "selected_in_manifest": false,
+  "note": "Prepared linked visibility/type and main logical-screen notifications plus four native regression cases. Apply-check passed against unchanged 001-070 sources; not compiled or executed, and not a verified BFCache repair."
+}

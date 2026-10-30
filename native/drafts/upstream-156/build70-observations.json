@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Chromium 156 / 001-070 Windows source build and exact preserved runtime assets; not complete browser policy or package/release admission",
+  "candidate": "upstream-156",
+  "candidate_manifest_sha256": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "native_version": "0.2.0-dev",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "build_receipt_sha256": "088e4b1bdce37ddb05e422819a826fb352e16f68759eeebfcbb657ab5a5d0652",
+  "source_build_report_sha256": "5ce88a0e43a318685efaa4e4b10414a019f7a80f9fb06a50692f574d3736880a",
+  "build_log_sha256": "5cc50056214f8c2b486cdbd65714a101eef9ce76810a7dd7fb73259d28c9c51e",
+  "preservation_report_sha256": "e5da18d7a69df56a56becb0877db24896c69f9890651f18a2e27eabfeb20b435",
+  "build_jobs": 4,
+  "build_steps": 52,
+  "build_elapsed_seconds": 1022.68,
+  "local_windows_toolchain_sha256": "68aa63de741ddd1a8a5362863cf49943c725644a209bcc6c59da9efc67a797e7",
+  "args_sha256": "222ad77f8e78da92e478b520876a131275aafd3639ac5ddda8b28318c32a0de1",
+  "completed_stages": [
+    "sync",
+    "hooks",
+    "patch",
+    "build"
+  ],
+  "frozen_inputs_count": 213,
+  "frozen_input_postguards_passed": true,
+  "preserved_runtime_assets": 269,
+  "preserved_asset_hashes_postguards_passed": true,
+  "registered_patches": 70,
+  "native_case_results_included": false,
+  "browser_runtime_fully_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

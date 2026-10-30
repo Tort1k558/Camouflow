@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "measurement_complete": true,
+  "git_head": "748e0f560421d8595ec0f474390d6b848b0056a6",
+  "tracked_file_count": 804,
+  "duration_seconds": 689.171,
+  "returncode": 0,
+  "counts": {
+    "tests": 4275,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4274
+  },
+  "postguards_passed": true,
+  "changed_tracked_files": [],
+  "log_sha256": "ff21726ce949f8ab9e49c56ed3515387c95324b785bba365563fdd43cd3f6bcf",
+  "junit_sha256": "6260b77cb99059757665cd196dedfb80a762dc3da53e72202ead9d1e149dd726",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "raw_report_sha256": "90434bd8c9061e877d27df326b166cfedeea4b39949c81a0e0e27ba572ac6baa",
+  "note": "Full canonical regression after exact 0070 test-contract updates; Python-suite evidence only, not native binary, privacy, installed-package or release admission."
+}
