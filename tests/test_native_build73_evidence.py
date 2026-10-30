@@ -43,8 +43,8 @@ def test_all_21_native_groups_pass_including_the_four_retained_orientation_cases
     assert record['runtime_core_sha256_measured'] == build['runtime_core_sha256_measured']
     assert record['build_receipt_sha256'] == build['build_receipt_sha256']
     assert record['required_manifest'] == 'checkpoints/001-073.json' and record['compiled_patch_count'] == 73
-    assert len(record['targets']) == len(units.SUPPORTED_TARGETS) == 21
-    assert {row['target'] for row in record['targets']} == set(units.SUPPORTED_TARGETS)
+    assert len(record['targets']) == 21
+    assert {row['target'] for row in record['targets']} == set(units.SUPPORTED_TARGETS[:21])
     assert all(row['native_cases_passed'] and row['returncode'] == 0 for row in record['targets'])
     assert sum(row['tests'] for row in record['targets']) == record['tests_passed'] == 488
     assert next(row for row in record['targets'] if row['target'] == 'screen-orientation')['tests'] == 4

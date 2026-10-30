@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "candidate_manifest_sha256": "71b15700678f928a5997938e5c5c69a3c5380935ee6bfb445983a4107370f2e6",
+  "free_bytes": 118075637760,
+  "required_free_gib": 180,
+  "jobs": 4,
+  "build_started": false,
+  "source_refresh_started": false,
+  "preserved_baseline": "001-073",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "reason": "Native preflight refuses less than locked free-space reserve; no override or cleanup performed"
+}

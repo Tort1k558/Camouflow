@@ -39,9 +39,10 @@ def test_draft_covers_dispatch_invalidation_and_live_emulator_without_weakening_
 def test_preflight_does_not_select_or_admit_the_unbuilt_six_case_package():
     record = json.loads((ENV / 'live-screen-linked-next-observations.json').read_bytes())
     candidate = build.load_candidate('upstream-156')
-    assert candidate['manifest_sha256'] == record['base_manifest_sha256']
-    assert len(candidate['manifest']['patches']) == 73
-    assert not any(row['file'] == record['proposed_registered_name'] for row in candidate['manifest']['patches'])
+    checkpoint = (candidate['directory'] / 'checkpoints/001-073.json').read_bytes()
+    assert hashlib.sha256(checkpoint).hexdigest() == record['base_manifest_sha256']
+    assert len(json.loads(checkpoint)['patches']) == 73
+    assert not any(row['file'] == record['proposed_registered_name'] for row in json.loads(checkpoint)['patches'])
     assert all(record[key] is False for key in ('selected', 'native_tests_executed', 'compiled_into_browser',
                                                'privacy_admitted', 'production_admitted'))
 

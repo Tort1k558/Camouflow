@@ -17,6 +17,8 @@ def native_units_before_orientation(tmp_path, monkeypatch):
     path.parent.mkdir(parents=True)
     path.write_text((root / record["base_source"]).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
+                    str(directory / "live-screen74-unit-gate.patch")], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
                     str(directory / record["patch"])], cwd=tmp_path, check=True, capture_output=True)
     value = hashlib.sha256(path.read_bytes()).hexdigest()
     assert value == record["base_source_sha256"]

@@ -1551,6 +1551,10 @@
     {
       "file": "0073-native-main-screen-exposure.patch",
       "sha256": "2e5e5719f11b85cc3dcd5520c4d50ccbb4d5152077d9164800767d2ca2b744b3"
+    },
+    {
+      "file": "0074-native-live-screen-updates.patch",
+      "sha256": "7f9c2bb3e08e72c55db981e6a18b58cdbc10e408ca25746a93fd0b20b09bbc05"
     }
   ],
   "build": {

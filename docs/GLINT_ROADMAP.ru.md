@@ -2,6 +2,21 @@
 
 ## Текущий результат 001–073 — 30 октября 2026
 
+### Выбран 001–074; проверенный бинарник пока 001–073
+
+Связанный пакет 0074 зарегистрирован; checkpoint 001–073 и сохранённый runtime не менялись.
+Добавлены обязательные `screen-live-main` / `screen-dispatch`: **23 группы, 494 native-кейса**,
+включая прежние 488 и шесть новых. **1179 Python-проверок прошли, 1 skipped** после обновления
+release-контракта и восстановления исторического verifier через обратимый test-only patch.
+[Выбор](../native/drafts/environment/screen74-selection-observations.json).
+
+Сборка **не запущена**: на D: около 110 ГиБ свободно при обязательном резерве 180 ГиБ.
+Проверка остановилась до изменения Chromium-исходников; лимит не снижен, старые runtime/профили
+не удалялись. Выполняется read-only оценка собственных временных артефактов.
+[Preflight](../native/drafts/environment/screen74-build-preflight-observations.json).
+После освобождения резерва: связанная сборка на j4 → все 494 native-кейса → исходный CDP stress
+и защищённый BFCache, без ослабления критериев. До этого исправление не считается работающим.
+
 ### Новый защищённый BFCache-прогон
 
 Полный Python-повтор с этим collector на `f59e578`: **4568 passed, 1 skipped**, 6м23с;
@@ -13,7 +28,8 @@ browser-side invalidation учитывает logical screen, главный rend
 эмулятор задержанному transport-снимку, clear снимает старый logical override.
 Добавлены шесть native-тестов: add/update/clear в browser и live/update/clear в Blink.
 Четыре изменённых translation units прошли clang; активные Chromium-исходники не менялись.
-**Патч пока не зарегистрирован, эти шесть тестов не выполнены, runtime-исправление не доказано.**
+На момент preflight патч не был зарегистрирован; теперь выбран 001–074, но эти шесть тестов
+ещё не выполнены и runtime-исправление не доказано.
 [Подготовка](../native/drafts/environment/live-screen-linked-next-observations.json).
 
 В текущем browser-коде `StoredVisualPropertiesNeedsUpdate` сравнивает физический screen,

@@ -2,6 +2,14 @@
 
 ## Current compiled 001–073 — 2026-10-30
 
+**Selected source is now 001–074; compiled/qualified baseline remains 001–073.**
+The complete old checkpoint is retained. Two new native gates require all six new
+cases, for **23 groups / 494 total required cases**. Selection/release Python checks:
+**1179 passed, 1 skipped**. [Selection](../native/drafts/environment/screen74-selection-observations.json).
+The build has **not started**: about 110 GiB free on D: is below the locked 180 GiB
+reserve. No source refresh, deletion or reserve override was performed.
+[Preflight](../native/drafts/environment/screen74-build-preflight-observations.json).
+
 Full Python after the protected-history collector: **4568 passed, 1 skipped**, 383s,
 source/status postguards passed at `f59e578`.
 [Evidence](../native/drafts/environment/canonical-python73-protected-history-observations.json).
@@ -9,8 +17,9 @@ source/status postguards passed at `f59e578`.
 The [next linked screen patch](../native/drafts/environment/live-screen-linked-next.patch)
 passes four isolated translation-unit checks and prepares six native tests. It adds
 logical-screen invalidation to the browser visual-properties update predicate and
-prefers live main-frame emulation over delayed transported metadata. It is **not selected,
-not built, and the new tests have not executed**; the raw CDP failure is still open.
+prefers live main-frame emulation over delayed transported metadata. Its preparation
+record predates selection; it is now selected as 0074, but **not built and the new tests
+have not executed**. The raw CDP failure is still open.
 [Preparation only](../native/drafts/environment/live-screen-linked-next-observations.json).
 
 Protected manager BFCache follow-up: **12 screen phases** and **32 top-document Canvas

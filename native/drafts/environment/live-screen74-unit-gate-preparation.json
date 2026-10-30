@@ -1,0 +1,15 @@
+{
+  "base_source_sha256": "7cde3a8b19962085657cf52fb41c9535962a8864f0e6e9c6f0c6306e9f4eeb63",
+  "selected_source_sha256": "e79329f5180126c7f20234364d85374f369ea1cf94485c0cd3bf7a1d96d9c1cf",
+  "prepared_cases": [
+    "WebFrameWidgetSimTest.GlintLiveMainEmulationReplacesStaleTransport",
+    "WebFrameWidgetSimTest.GlintLiveMainEmulationUpdateIgnoresStaleSnapshot",
+    "WebFrameWidgetSimTest.GlintLiveMainEmulationClearDropsStaleTransport",
+    "RenderWidgetHostTest.GlintLogicalScreenAdditionRequiresVisualUpdate",
+    "RenderWidgetHostTest.GlintLogicalScreenOnlyChangesRequireVisualUpdate",
+    "RenderWidgetHostTest.GlintLogicalScreenClearRequiresVisualUpdate"
+  ],
+  "native_tests_executed": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

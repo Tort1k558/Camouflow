@@ -35,8 +35,7 @@ def test_selected_72_preserves_exact_70_prefix_and_binds_both_native_patches():
 
 def test_current_orientation_gate_extends_all_twenty_historical_targets(native_units_before_orientation):
     historical = native_units_before_orientation["namespace"]
-    assert units.SUPPORTED_TARGETS == (*historical["SUPPORTED_TARGETS"], "screen-orientation")
-    assert len(units.SUPPORTED_TARGETS) == 21
+    assert units.SUPPORTED_TARGETS[:21] == (*historical["SUPPORTED_TARGETS"], "screen-orientation")
     for target in historical["SUPPORTED_TARGETS"]:
         assert units.required_tests(target) == historical["required_tests"](target)
         assert units.unit_binary_target(target) == historical["unit_binary_target"](target)
@@ -61,13 +60,15 @@ def test_selected_73_keeps_verified_72_and_corrects_main_screen_without_weakenin
     record = json.loads((ENV / 'screen73-selection-observations.json').read_bytes())
     baseline = (candidate['directory'] / 'checkpoints/001-072.json').read_bytes()
     assert hashlib.sha256(baseline).hexdigest() == record['base_manifest_sha256']
-    assert candidate['manifest_sha256'] == record['selected_manifest_sha256']
-    assert (candidate['directory'] / 'checkpoints/001-073.json').read_bytes() == (candidate['directory'] / 'manifest.json').read_bytes()
-    assert len(candidate['manifest']['patches']) == 73
-    assert {**candidate['manifest'], 'patches': candidate['manifest']['patches'][:72]} == json.loads(baseline)
+    selected = (candidate['directory'] / 'checkpoints/001-073.json').read_bytes()
+    assert hashlib.sha256(selected).hexdigest() == record['selected_manifest_sha256']
+    checkpoint = json.loads(selected)
+    assert len(checkpoint['patches']) == 73
+    assert checkpoint['patches'] == candidate['manifest']['patches'][:73]
+    assert {**checkpoint, 'patches': checkpoint['patches'][:72]} == json.loads(baseline)
     patch = candidate['directory'] / 'patches' / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
-    assert candidate['manifest']['patches'][-1] == {'file': record['patch'], 'sha256': record['patch_sha256']}
+    assert checkpoint['patches'][-1] == {'file': record['patch'], 'sha256': record['patch_sha256']}
     text = patch.read_text(encoding='utf-8')
     assert '-  if (ForSubframe() && glint_logical_screen_infos_)' in text
     assert '+  if (glint_logical_screen_infos_)' in text

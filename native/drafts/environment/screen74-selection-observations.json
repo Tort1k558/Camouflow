@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "selected": true,
+  "base_manifest_sha256": "b5b34bd0e597594191e42f957ce96710540bc72ab8000c8eba64a510e0295ba6",
+  "selected_manifest_sha256": "71b15700678f928a5997938e5c5c69a3c5380935ee6bfb445983a4107370f2e6",
+  "patch": "0074-native-live-screen-updates.patch",
+  "patch_sha256": "7f9c2bb3e08e72c55db981e6a18b58cdbc10e408ca25746a93fd0b20b09bbc05",
+  "source_paths": [
+    {
+      "path": "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc",
+      "before_sha256": "a564e6398b1177a6c5bcac6e06a4a85167e4ce8c3d04f3780473ae6128674cf1",
+      "after_sha256": "7d59ac34430df3a24acecfcb11a4e9243bd05922a8379ee2143cf4468bc16b44"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/web_frame_widget_test.cc",
+      "before_sha256": "2ef068b3caf5854ba4bc3e76559929028519b445f5a3ed0f88d2374100688285",
+      "after_sha256": "2b45eb47896c7a59cc101514923b0603a40c53c13c0203b27cdd2baeffb02073"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_impl.cc",
+      "before_sha256": "42024fe3042806161febc2e7f8e2fbf6aa6d47eff29c192886a58808766d5348",
+      "after_sha256": "71cf98416c1d3a833a4086d07baa3f48b599021f04f0c092ce8b616d7c37dff3"
+    },
+    {
+      "path": "content/browser/renderer_host/mock_render_widget_host.h",
+      "before_sha256": "b6369b51e088ac49a706a5c5fb1f48d52093df9b54815a1bee5b1cebd6671a6e",
+      "after_sha256": "185dd8638097e6aad6ad2a95cd70f3148970b35ec69440b924081560dba80170"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_unittest.cc",
+      "before_sha256": "ef37796f5143972870088c42e81432f5054b9fbb788485fed34fcab27b305e81",
+      "after_sha256": "710e91787d8fdde611d2ab923c7994d6c1e2d81679740b36ab056cbcfb0a7f23"
+    }
+  ],
+  "jobs": 4,
+  "source_preflight": {
+    "passed": true,
+    "measurement_complete": true,
+    "base_source_sha256": {
+      "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "a564e6398b1177a6c5bcac6e06a4a85167e4ce8c3d04f3780473ae6128674cf1",
+      "third_party/blink/renderer/core/frame/web_frame_widget_test.cc": "2ef068b3caf5854ba4bc3e76559929028519b445f5a3ed0f88d2374100688285",
+      "content/browser/renderer_host/render_widget_host_impl.cc": "42024fe3042806161febc2e7f8e2fbf6aa6d47eff29c192886a58808766d5348",
+      "content/browser/renderer_host/mock_render_widget_host.h": "b6369b51e088ac49a706a5c5fb1f48d52093df9b54815a1bee5b1cebd6671a6e",
+      "content/browser/renderer_host/render_widget_host_unittest.cc": "ef37796f5143972870088c42e81432f5054b9fbb788485fed34fcab27b305e81"
+    },
+    "prepared_source_sha256": {
+      "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "7d59ac34430df3a24acecfcb11a4e9243bd05922a8379ee2143cf4468bc16b44",
+      "third_party/blink/renderer/core/frame/web_frame_widget_test.cc": "2b45eb47896c7a59cc101514923b0603a40c53c13c0203b27cdd2baeffb02073",
+      "content/browser/renderer_host/render_widget_host_impl.cc": "71cf98416c1d3a833a4086d07baa3f48b599021f04f0c092ce8b616d7c37dff3",
+      "content/browser/renderer_host/mock_render_widget_host.h": "185dd8638097e6aad6ad2a95cd70f3148970b35ec69440b924081560dba80170",
+      "content/browser/renderer_host/render_widget_host_unittest.cc": "710e91787d8fdde611d2ab923c7994d6c1e2d81679740b36ab056cbcfb0a7f23"
+    },
+    "patch_sha256": "7f9c2bb3e08e72c55db981e6a18b58cdbc10e408ca25746a93fd0b20b09bbc05",
+    "patch_file": "live-screen-linked-next.patch",
+    "checks": [
+      {
+        "source": "content/browser/renderer_host/render_widget_host_impl.cc",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "content/browser/renderer_host/render_widget_host_unittest.cc",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "inherited_blink_checks": [
+      {
+        "source": "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "third_party/blink/renderer/core/frame/web_frame_widget_test.cc",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "inherited_preflight_sha256": "dd852c8be10b8a8a93751474ded78a60e191a6587a823e0dc48f082620ef5768",
+    "base_manifest_sha256": "b5b34bd0e597594191e42f957ce96710540bc72ab8000c8eba64a510e0295ba6",
+    "selected": false,
+    "native_tests_executed": false,
+    "compiled_into_browser": false,
+    "privacy_admitted": false,
+    "production_admitted": false,
+    "scope": "Linked browser logical-metadata invalidation and live main-emulator precedence; isolated syntax only, not runtime proof",
+    "source_unchanged": true,
+    "proposed_registered_name": "0074-native-live-screen-updates.patch",
+    "raw_report_sha256": "5fd8f5f80319900a6da8c61a95770c34651354aac87acc0a6c027907b87bca94",
+    "prepared_cases": [
+      "WebFrameWidgetSimTest.GlintLiveMainEmulationReplacesStaleTransport",
+      "WebFrameWidgetSimTest.GlintLiveMainEmulationUpdateIgnoresStaleSnapshot",
+      "WebFrameWidgetSimTest.GlintLiveMainEmulationClearDropsStaleTransport",
+      "RenderWidgetHostTest.GlintLogicalScreenAdditionRequiresVisualUpdate",
+      "RenderWidgetHostTest.GlintLogicalScreenOnlyChangesRequireVisualUpdate",
+      "RenderWidgetHostTest.GlintLogicalScreenClearRequiresVisualUpdate"
+    ]
+  },
+  "preserved_baseline": "001-073",
+  "prepared_cases": [
+    "WebFrameWidgetSimTest.GlintLiveMainEmulationReplacesStaleTransport",
+    "WebFrameWidgetSimTest.GlintLiveMainEmulationUpdateIgnoresStaleSnapshot",
+    "WebFrameWidgetSimTest.GlintLiveMainEmulationClearDropsStaleTransport",
+    "RenderWidgetHostTest.GlintLogicalScreenAdditionRequiresVisualUpdate",
+    "RenderWidgetHostTest.GlintLogicalScreenOnlyChangesRequireVisualUpdate",
+    "RenderWidgetHostTest.GlintLogicalScreenClearRequiresVisualUpdate"
+  ],
+  "native_target_groups": 23,
+  "compiled_into_browser": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
