@@ -36,6 +36,9 @@ def release_tools_before_72_sha256(tmp_path):
     path.parent.mkdir(parents=True)
     path.write_text((root / relative).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
+                    str(root / "native/drafts/environment/screen75-test-contract.patch")],
+                   cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
                     str(root / "native/drafts/environment/linked72-test-contract.patch")],
                    cwd=tmp_path, check=True, capture_output=True)
     return hashlib.sha256(path.read_bytes()).hexdigest()

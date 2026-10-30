@@ -2,6 +2,11 @@
 
 ## Selected 001–075; compiled 074 has a retained native fixture crash
 
+The first full 075 Python run had 4708 passes, one skip and one historical-fixture
+error, with source/status guards intact. Layered contract reconstruction is fixed;
+219 targeted checks pass. A fresh full repeat is pending, and that failed queue
+did not start 075 compilation. [Retained result](../native/drafts/environment/canonical-python75-history-failure-observations.json).
+
 074 completed 491 cases with postguards intact. The final `screen-dispatch` group
 crashed on its first test's empty `ScreenInfos`; its other two cases did not run.
 Browser queues stopped without launch. [Native failure](../native/drafts/upstream-156/native-batch74-observations.json).

@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "git_head": "d85c181f4e9df0e406c6bcb0c79fa382652248aa",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "counts": {
+    "tests": 4710,
+    "failures": 0,
+    "errors": 1,
+    "skipped": 1,
+    "passed": 4708
+  },
+  "postguards_passed": true,
+  "duration_seconds": 431.735,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "log_sha256": "695695ecad1ad5ce9eaa5b2165415602d4c217ac1e1cf89249140ee1e500ff28",
+  "junit_sha256": "54f5bb9551cd1e4f0849cdf8d9c3a9cfac4a7429ffff45959bcfdd8bc53027db",
+  "raw_report_sha256": "5271f1b5059d447a8a7e3df741d241fc86c51fe55c504ceb8c215d2c470a8f5f",
+  "failed_tests": [
+    "tests.test_native_environment_capture::test_second_full_regression_retains_contract_failures_without_claiming_full_followup"
+  ],
+  "cause": "Historical release-test reconstruction reversed the 72 contract directly from newly selected 75 instead of first restoring the 74 test contract.",
+  "compiler_not_started_by_failed_pipeline": true,
+  "full_followup_verified": false,
+  "targeted_followup": {
+    "passed": 219,
+    "full_followup_verified": false
+  }
+}
