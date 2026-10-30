@@ -10,11 +10,19 @@ PNG совпадает с пикселями до изменения Canvas, ц�
 [Результат](../native/drafts/environment/worker-export72-observations.json).
 Это не проверка 001–073, worker restart/nested или HDR-качества.
 
-Полный Python-повтор: **4488 passed, 1 failed, 1 skipped**; оба QML-теста доставки
-профиля прошли. Единственный сбой — сравнение исторического теста с его новой
-диагностической версией. Историческая версия теперь восстанавливается обратным
-патчем, старый отчёт не переписывается; новый полный прогон ещё обязателен.
-[Сохранённый сбой](../native/drafts/environment/canonical-python73-diagnostics-failures.json).
+Новый finite Float16-прогон прошёл **4/4 HTML/Offscreen × sRGB/P3 контекста**:
+negative/HDR/subnormal-сигналы присутствуют; alpha и неopaque-цвета сохранены,
+ограничения mantissa/sign/exponent и crop/repeat/re-put соблюдены. Это не широкая
+HDR-совместимость редакторов. Первый неподходящий oracle без соседних opaque-пикселей
+сохранён отдельно; алгоритм браузера ради теста не менялся.
+[Проверка](../native/drafts/environment/canvas-hdr72-observations.json),
+[исходный oracle](../native/drafts/environment/canvas-hdr72-initial-oracle-observations.json).
+
+Полный Python-повтор после восстановления исторической привязки:
+**4503 passed, 1 skipped**, контроль исходников/статуса прошёл, оба QML-теста доставки
+профиля зелёные. Этот полный прогон предшествует новым finite HDR-тестам.
+[Полный повтор](../native/drafts/environment/canonical-python73-worker-export-observations.json),
+[сохранённый предыдущий сбой](../native/drafts/environment/canonical-python73-diagnostics-failures.json).
 
 После исчезновения процессов сборки успешное завершение 0073 не подтверждено.
 Возобновляется только build на j4: sync/hooks/patch завершены, объекты и сохранённый

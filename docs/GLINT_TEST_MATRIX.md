@@ -1,19 +1,33 @@
 # Glint browser test matrix
 
-## Worker PNG capture and full Python follow-up — 2026-10-30
+## Worker PNG, finite Float16 fidelity and Python follow-up — 2026-10-30
 
 | Gate | Result | Boundary |
 | --- | --- | --- |
 | Worker PNG export | **24/24 cases/carriers per baseline and protected profile** | Six classic/module worker classes × four Offscreen cases; exact pre-mutation pixels, color metadata and document coherence |
-| Full Python at `2852d42` | **4488 passed, 1 failed, 1 skipped**; both QML profile-delivery cases pass | Remaining failure compares a historical test with its later diagnostics; historical reconstruction repaired, full repeat still required |
+| Finite Float16 fidelity | **4/4 HTML/Offscreen × sRGB/P3 contexts** | Negative/above-one/subnormal samples present; alpha, nonopaque colors, sign/exponent, bounded mantissa changes, crop/repeat/re-put checked |
+| Full Python at `f4c8001` | **4503 passed, 1 skipped**, source/status guards passed | Includes worker PNG and historical QML binding repair; precedes the new finite HDR probe/tests |
 
 [PNG evidence](../native/drafts/environment/worker-export72-observations.json),
-[retained Python failure](../native/drafts/environment/canonical-python73-diagnostics-failures.json).
+[finite F16 evidence](../native/drafts/environment/canvas-hdr72-observations.json),
+[Python](../native/drafts/environment/canonical-python73-worker-export-observations.json),
+[retained earlier failure](../native/drafts/environment/canonical-python73-diagnostics-failures.json).
 The exact public PNG collector ran from a local frozen **001–072** source layout,
 bound to the preserved 001–072 core/receipt. No network clone or changes to the
 active Chromium checkout were needed. This does **not** validate 001–073, worker
-restart/nesting, HDR fidelity, security or release. The interrupted 001–073 build
+restart/nesting, broad HDR fidelity, security or release. The interrupted 001–073 build
 stage is being resumed with its completed sync/hooks/patch and existing objects.
+The first HDR effect oracle isolated every opaque pixel and therefore supplied
+no eligible opaque edges; its [negative result](../native/drafts/environment/canvas-hdr72-initial-oracle-observations.json)
+is retained. The revised fixture adds contiguous opaque HDR edges, without changing
+the native policy or relaxing the fidelity bounds. Isolated/transparent drawings
+are not claimed to change under the current edge-only policy.
+
+Security admission remains blocked: the pinned **156.0.8078.36** predates the
+[156.0.8078.79/.80 stable update](https://chromereleases.googleblog.com/2026/10/stable-channel-update-for-desktop_02107719452.html).
+[157.0.8103.26/.27](https://chromereleases.googleblog.com/2026/10/early-stable-update-for-desktop_01255863767.html)
+was announced as early stable, not a general stable rollout. Resolve the current
+stable source and replay/retest before release; individual CVE applicability is not verified.
 
 ## Completed 001–072 gates and corrective 001–073 selection — 2026-10-30
 

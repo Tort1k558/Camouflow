@@ -72,3 +72,11 @@ def test_later_full_repeat_passes_qml_but_retains_a_historical_source_binding_fa
     assert record['failed_tests'] == ['tests.test_native_environment_capture::test_failed_full_regression_retains_failure_and_distinguishes_qml_followup']
     assert record['historical_record_rewritten'] is record['full_repeat_after_binding_repair_verified'] is False
     assert record['reconstruction_proof']['historical_source_sha256'] == qml_before_delivery_diagnostics_sha256
+
+
+def test_full_worker_export_repeat_after_history_repair_is_green_without_runtime_admission():
+    record = json.loads((ROOT / 'native/drafts/environment/canonical-python73-worker-export-observations.json').read_bytes())
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['counts'] == {'tests': 4504, 'failures': 0, 'errors': 0, 'skipped': 1, 'passed': 4503}
+    assert record['changed_tracked_files'] == []
+    assert record['native_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False

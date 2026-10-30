@@ -8,10 +8,17 @@ reads and document outputs, including async capture and color metadata. The exac
 public probe ran from a local frozen 001–072 source layout with the preserved
 001–072 receipt while 001–073 was building; this is not a 001–073 result.
 [Worker PNG](drafts/environment/worker-export72-observations.json).
-The later full Python repeat passes both QML profile-delivery cases: 4488 passed,
-one historical-source-binding failure, one skipped. Historical reconstruction is
-repaired without rewriting the old record; a full repeat remains required.
-[Retained failure](drafts/environment/canonical-python73-diagnostics-failures.json).
+The full Python repeat after the historical-source reconstruction repair passes
+**4503 tests, one skipped**, with source/status guards and both QML profile-delivery
+cases passing. It precedes the new finite HDR probe/tests.
+[Full repeat](drafts/environment/canonical-python73-worker-export-observations.json),
+[retained earlier failure](drafts/environment/canonical-python73-diagnostics-failures.json).
+Four finite Float16 contexts additionally pass bounded bit/alpha/crop/repeat/re-put
+controls on preserved 001–072, with negative, above-one and subnormal signals present.
+[Finite fidelity](drafts/environment/canvas-hdr72-observations.json).
+These extend the existing `scripts/native_canvas_hdr.py` conversion observer;
+they are not broad image-editor quality or 001–073 admission. The edge-only policy
+does not promise an effect on every isolated or transparent drawing.
 
 The compiled browser remains **001–072**. Its 21-group native batch completed with
 **485/488 passing cases**: all 484 existing cases pass, but three new orientation

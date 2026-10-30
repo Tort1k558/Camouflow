@@ -21,6 +21,13 @@ Worker PNG also passes 24/24 cases/carriers per baseline and protected profile,
 including async capture, color metadata and document coherence, on preserved
 001–072. [Worker PNG evidence](worker-export72-observations.json).
 Nested/Blob restart and broad HDR quality remain open; this is not 001–073 admission.
+The additional [finite F16 gate](canvas-hdr72-observations.json) passes four
+HTML/Offscreen × sRGB/P3 contexts with alpha/nonopaque preservation, bounded
+mantissa changes, sign/exponent preservation and crop/repeat/re-put controls.
+It extends the existing conversion observer, not a claim of lossless HDR PNG.
+The [initial unsuitable effect oracle](canvas-hdr72-initial-oracle-observations.json)
+is retained: isolated opaque pixels supplied no eligible edges. The revised
+fixture includes adjacent opaque HDR colors; the native policy was not changed.
 
 ## Cause of the retained 001–070 failure
 
@@ -80,6 +87,7 @@ $stage = 'D:\GlintManagerQA\staged-python-js70-20261030-v1'
 & $python native/drafts/environment/first-script/canvas_export_runtime.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\canvas-export72-recheck
 & $python native/drafts/environment/first-script/worker_formats_runtime.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\worker-formats72-recheck
 & $python native/drafts/environment/first-script/worker_exports_runtime.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\worker-export72-recheck
+& $python native/drafts/environment/first-script/canvas_hdr_runtime.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\canvas-hdr72-recheck
 ```
 
 The export gate compares decoded PNG bytes with pre-mutation pixels and validates

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "f4c80014071de8caa8fefd6908667057daee6033",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 926,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 617.906,
+  "returncode": 0,
+  "counts": {
+    "tests": 4504,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4503
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "0cf8d22b4a61b0e9ec83315a5f880e25bf8d6992320cad8933c94077bf423365",
+  "junit_sha256": "7be4058be54876b558322e195c646bf465cd93dde89e99f36abda9c572c5a4d8",
+  "raw_report_sha256": "4946cf131e23349f2fdea7db6c1dd548c1a1750e56214a11d52eab996faf31c9",
+  "note": "Full repeat at f4c8001 after the historical QML binding repair, including worker PNG tests; before the new finite HDR readback probe/tests."
+}
