@@ -1,6 +1,21 @@
 # Glint browser test matrix
 
-## Selected 001–075; compiled 074 has a retained native fixture crash
+## Current Windows 001–075 — compiled; scoped browser gates measured
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Full Python regression | 4709 passed, 1 skipped; source/status guards passed | Before this evidence publication |
+| Native unit batch | 494/494, 23 groups; postguards passed | Not complete browser admission |
+| Preserved runtime | 269 assets verified; core/receipt/checkpoint bound | Older 073/148 retained |
+| First-script screen | Three launch modes × initial/restart × six document roles passed | Not full device cohorts |
+| Protected BFCache | Desktop + Mobile Web; six screen phases and 32 Canvas cases per mode passed | Actual BFCache observed |
+| Combined BFCache | Recreated top-document WebGL1/2 and OfflineAudio continuity passed | No retained GPU objects, worker restoration or WebGPU readback |
+| Same-session CDP capture | With/without clip passed; clipped control also checks immediately after capture | Exact owned local fixture |
+| Separate-session capture | **FAIL**: without clip wrong PNG/DPR; with clip immediate same-page screen reset | Also reproduces without Playwright screenshot API |
+
+[Exact results, raw hashes and retained negatives](../native/drafts/environment/screen75-runtime-observations.json). Browser credits: 1 step / 2m40s; native build: 2 steps / 7m16s, j4, no clean/sync/hooks repeat. The original mixed-client lifecycle failure remains negative. The session/clip controls separate a same-target capture-state conflict from the earlier cross-page attribution. Exact-version official stock controls, using byte-identical diagnostic modules, also reproduce the cross-session clipped reset. Stock additionally fails existing cross-origin screen assertions with same-session capture; GN/toolchain equality is not verified. Ownership-safe multi-client capture is next; privacy/release admission remains closed.
+
+## Historical selection before the completed 075 pipeline
 
 The first full 075 Python run had 4708 passes, one skip and one historical-fixture
 error, with source/status guards intact. Layered contract reconstruction is fixed;

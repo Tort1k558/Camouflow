@@ -1,6 +1,14 @@
 # Chromium 156 rebase candidate
 
-## Current: selected 001–075, compiled 074 with a retained native fixture crash
+## Current: 001–075 built and preserved; 494 native cases passed
+
+The j4 cached rebuild retained all objects: browser credits 1 step / 2m40s, native build 2 steps / 7m16s. All 23 native groups / 494 cases passed and 269 runtime assets were independently preserved. Full Python: 4709 passed, 1 skipped.
+
+First-script initial/restart and protected screen/Canvas BFCache checks passed. Combined history passed recreated top-document WebGL/Audio reads, not worker restoration or WebGPU readback. **Cross-session screenshots remain broken:** clipped capture resets the same target screen; unclipped capture has wrong DPR bounds. Same-session controls pass, including immediate post-capture screen checks. The original failure is retained, not reclassified as passing.
+
+[Exact 075 evidence](../environment/screen75-runtime-observations.json). No full-policy, privacy or release admission; 073 and 148 remain available for rollback.
+
+## Historical selection and failed 074 native fixture
 
 074 compiled with j4 (53 steps / 14m35s), then completed 491 native cases.
 Its last group crashed on an empty ScreenInfos fixture; two cases were not run.

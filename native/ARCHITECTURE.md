@@ -2,21 +2,31 @@
 
 ## Current implementation boundary
 
-**Selected: 001–075. Built candidate: Chromium 156.0.8078.36, 001–074. Qualified baseline: 001–073.**
-The 074 browser completed 53 build steps in 14m35s with j4. Native execution
-completed 491 cases; the last group's empty ScreenInfos fixture crashed its first
-case, leaving two unexecuted. Postguards passed; browser queues stopped.
-[Retained failure](drafts/upstream-156/native-batch74-observations.json).
-075 initializes only those test fixtures from the existing TestView screen;
-all assertions and 494 cases remain required. It passed syntax but is not applied
-or compiled. The independent 074 copy is explicitly unqualified diagnostic data.
-The preserved 073 runtime passed 488 native cases in 21 groups. The linked
-074 screen package adds six mandatory cases in two groups. Three renderer cases
-passed; the browser group requires the fixture correction and fresh execution.
-The normal full-build reserve remains 180 GiB. A separate bounded local Siso
-controller built 074 with a 64 GiB cached profile; its baseline
-dry-run required zero steps. Compilation success is not browser runtime admission.
+**Selected, compiled and independently preserved: Windows Chromium 156.0.8078.36, 001–075.**
+All **494 native cases / 23 groups** passed with postguards; 269 runtime assets are preserved.
+The fixture-only 075 corrects the retained 074 crash without removing assertions.
+Full Python at `6ad4ff9`: **4709 passed, 1 skipped** with source/status guards intact.
+
+Scoped browser gates pass first-script initial/restart (three modes, six document roles),
+protected screen/Canvas BFCache, and recreated top-document WebGL/Audio after BFCache.
+This does not prove retained GPU objects, worker restoration, WebGPU readback or device cohorts.
+
+**Open: same-target, cross-CDP-session screenshot state.** Independent controls isolate
+session ownership from clip: same-session captures pass; another session without clip
+preserves screen but returns wrong DPR bounds, while another session with clip immediately
+resets that page's six document screens. This also reproduces without Playwright screenshots.
+The previous cross-page attribution was confounded by capture side effects; the original
+negative report remains unchanged. Byte-identical diagnostic modules on exact-version
+stock also reproduce the cross-session clipped reset; stock has additional cross-origin
+screen failures even in the same-session control. Equal GN/toolchain flags are not proven.
+Next fix effective-state ownership and
+restore semantics without hiding failures or relaxing PNG/screen checks.
+[Exact 075 evidence](drafts/environment/screen75-runtime-observations.json).
+
+The ordinary 180 GiB build reserve is unchanged. Cached j4 build retained objects,
+with 1 browser step / 2m40s and 2 native-build steps / 7m16s; no sync/hooks repeat.
 See [cached rebuild boundaries](BUILDING.md#bounded-cached-chromium-156-rebuild).
+No complete privacy/release admission; older 073 and 148 are retained.
 
 | Boundary | Verified scope | Still open |
 | --- | --- | --- |

@@ -1,0 +1,3498 @@
+{
+  "schema": 1,
+  "measurement_complete": true,
+  "scope": "Compiled Windows 001-075, scoped native/browser results and retained cross-session screenshot failures; not complete device/privacy/release admission",
+  "platform": "win32",
+  "required_manifest": "checkpoints/001-075.json",
+  "checkpoint_sha256": "edf97d81da753d2980c91a383baab346f7bf5e21cc393a75540c669aa5ab14c1",
+  "receipt_sha256": "69d91504463c1e93612af6f1bf6ee53357b91f4ebe79795c3d096a01360f0907",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "chromium_version": "156.0.8078.36",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "f09657095bcde2331e504508ccad2017b8054c2777a4228615834bdba498b030",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "build": {
+    "raw_report": {
+      "file": "report.json",
+      "directory": "incremental75-rebuild-20261030-v1",
+      "sha256": "aa5f901a7d4610607a739588ebc1d5aca4e812affe4a2c5c1ff0b3c8acfdca06"
+    },
+    "passed": true,
+    "measurement_complete": true,
+    "jobs": 4,
+    "baseline_planned_steps": 0,
+    "conservative_append_steps": 5,
+    "sync_rerun": false,
+    "hooks_rerun": false,
+    "objects_cleaned": false,
+    "browser_steps": 1,
+    "browser_seconds": 160.42,
+    "native_build_steps": 2,
+    "native_build_seconds": 436.44,
+    "browser_log_sha256": "004ab5a5012762fcd085371dbbd0024944290e023643059164a9c2c66fab3233",
+    "native_build_log_sha256": "41136a4383321c5d2ae2c9411da0fdafd6048829ca69cefc357819a3dc57ce9a"
+  },
+  "native_batch": {
+    "raw_report": {
+      "file": "batch.json",
+      "directory": "native-batch-1",
+      "sha256": "cd3f4a01c92ba0374654e15eeedfe5760fd16cd8700de6b7e2c0e75635607ab9"
+    },
+    "passed": true,
+    "postguards_passed": true,
+    "tests_passed": 494,
+    "groups": 23,
+    "targets": [
+      {
+        "target": "keys",
+        "build_target": "camouflow_native_privacy_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "29de536cc54a4b593a190e4d24883ae7f1e6cdd06cdb4b95de241363c51cb098",
+        "results": "keys-tests.json",
+        "returncode": 0,
+        "tests": 43,
+        "result_sha256": "9310a363f23259805c7f1707d63a359a764db430121ea28e333ff91c09be838b"
+      },
+      {
+        "target": "contexts",
+        "build_target": "content_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "e12b31154e19f247ae39593c725a4cd49048242709ce83eb70a8200179ab2e98",
+        "results": "contexts-tests.json",
+        "returncode": 0,
+        "tests": 26,
+        "result_sha256": "03d4e67a0cb0498dfb94add24b3970e3715d103b867a283cfa8d756501efabe7"
+      },
+      {
+        "target": "delivery",
+        "build_target": "content_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "e12b31154e19f247ae39593c725a4cd49048242709ce83eb70a8200179ab2e98",
+        "results": "delivery-tests.json",
+        "returncode": 0,
+        "tests": 34,
+        "result_sha256": "fd73cf62a3f65d3e53d94f8fde5eee003bcd86c0a35369bc1ca0290ed8f4d6ba"
+      },
+      {
+        "target": "worker-handoff",
+        "build_target": "blink_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "54d92d24d3c1ac3fd59bec5c79700937fbaee644c77154d342b08732fcd17b11",
+        "results": "worker-handoff-tests.json",
+        "returncode": 0,
+        "tests": 4,
+        "result_sha256": "ae0905aa4b462b461a866fd54215515e1b64bdcd577c6de1145bed0f2e317e49"
+      },
+      {
+        "target": "document-partition",
+        "build_target": "camouflow_native_privacy_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "29de536cc54a4b593a190e4d24883ae7f1e6cdd06cdb4b95de241363c51cb098",
+        "results": "document-partition-tests.json",
+        "returncode": 0,
+        "tests": 9,
+        "result_sha256": "4ae0adc6dd772bd65fff36992a2366884d723a02759356a895481bd106c23a01"
+      },
+      {
+        "target": "document-navigation",
+        "build_target": "content_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "e12b31154e19f247ae39593c725a4cd49048242709ce83eb70a8200179ab2e98",
+        "results": "document-navigation-tests.json",
+        "returncode": 0,
+        "tests": 12,
+        "result_sha256": "19a926fcdf0cd3175bf36c9a7a7f9f93671cbabbf948e11ae49ba4945bbca862"
+      },
+      {
+        "target": "surface-navigation",
+        "build_target": "content_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "e12b31154e19f247ae39593c725a4cd49048242709ce83eb70a8200179ab2e98",
+        "results": "surface-navigation-tests.json",
+        "returncode": 0,
+        "tests": 42,
+        "result_sha256": "c68af1d1449eb4918cd14e05b605c0b7e4cdc850dcf9c2266a835e91c3ce8314"
+      },
+      {
+        "target": "window-transport",
+        "build_target": "content_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "e12b31154e19f247ae39593c725a4cd49048242709ce83eb70a8200179ab2e98",
+        "results": "window-transport-tests.json",
+        "returncode": 0,
+        "tests": 13,
+        "result_sha256": "b40200b7c145b582d27f7159bf4333447adda0b0ebcfb996d586a79c185f3031"
+      },
+      {
+        "target": "gpu-pack-copy",
+        "build_target": "blink_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "54d92d24d3c1ac3fd59bec5c79700937fbaee644c77154d342b08732fcd17b11",
+        "results": "gpu-pack-copy-tests.json",
+        "returncode": 0,
+        "tests": 14,
+        "result_sha256": "87476d3125333173e9d064cc78f1574c5b88eac61c54b17ad0e3692597bd2208"
+      },
+      {
+        "target": "gpu-readback",
+        "build_target": "blink_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "54d92d24d3c1ac3fd59bec5c79700937fbaee644c77154d342b08732fcd17b11",
+        "results": "gpu-readback-tests.json",
+        "returncode": 0,
+        "tests": 31,
+        "result_sha256": "64f444d5ffcfce9f0bf1417116c95f615e03229bd931bb23c169c7e6a5428224"
+      },
+      {
+        "target": "gpu-metadata",
+        "build_target": "gpu_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "ede508fd2ed63edb9638eb767e8bfe940157d51a17cd4183287b8bf5ca8d2f76",
+        "results": "gpu-metadata-tests.json",
+        "returncode": 0,
+        "tests": 34,
+        "result_sha256": "c449cc1787fb910a94b41593a900520453561b16d2c4a617936202addd4c2d5d"
+      },
+      {
+        "target": "worker-surfaces",
+        "build_target": "content_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "e12b31154e19f247ae39593c725a4cd49048242709ce83eb70a8200179ab2e98",
+        "results": "worker-surfaces-tests.json",
+        "returncode": 0,
+        "tests": 55,
+        "result_sha256": "a328df65bc235ba565c30b088d6d7e9a913d5bcb9df8a18acdeb518d0141a0bc"
+      },
+      {
+        "target": "font-rasterization",
+        "build_target": "gfx_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "6aa97ad0c19fbb27a1862007fad8e50d5ceefa2087149ec5eac5a9b875fdd194",
+        "results": "font-rasterization-tests.json",
+        "returncode": 0,
+        "tests": 5,
+        "result_sha256": "69c2ca5cba8095e2746259e380908b1bc106c9a8c5b407f616cafb738394c26a"
+      },
+      {
+        "target": "identity-keys",
+        "build_target": "camouflow_native_privacy_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "29de536cc54a4b593a190e4d24883ae7f1e6cdd06cdb4b95de241363c51cb098",
+        "results": "identity-keys-tests.json",
+        "returncode": 0,
+        "tests": 62,
+        "result_sha256": "d780bffe17bdebf765dffd9cf569476299eb792efb2ae82a79502d88fe4b1f11"
+      },
+      {
+        "target": "identity-contexts",
+        "build_target": "content_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "e12b31154e19f247ae39593c725a4cd49048242709ce83eb70a8200179ab2e98",
+        "results": "identity-contexts-tests.json",
+        "returncode": 0,
+        "tests": 37,
+        "result_sha256": "4f4a521ecab7220bd0332c7251ccb88ddf36a8c398ffa516e5617b12c8bc6c2d"
+      },
+      {
+        "target": "identity-transport",
+        "build_target": "content_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "e12b31154e19f247ae39593c725a4cd49048242709ce83eb70a8200179ab2e98",
+        "results": "identity-transport-tests.json",
+        "returncode": 0,
+        "tests": 20,
+        "result_sha256": "7bca1006e3d10835e268449e3d37a99c61f16ff298ff5bae2d3947048c0dce40"
+      },
+      {
+        "target": "identity-handoff",
+        "build_target": "blink_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "54d92d24d3c1ac3fd59bec5c79700937fbaee644c77154d342b08732fcd17b11",
+        "results": "identity-handoff-tests.json",
+        "returncode": 0,
+        "tests": 15,
+        "result_sha256": "904d3797a1aa082901702df841d2f343e3b53b6f3209a77e7b8d888490f67ee7"
+      },
+      {
+        "target": "audio-math",
+        "build_target": "blink_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "54d92d24d3c1ac3fd59bec5c79700937fbaee644c77154d342b08732fcd17b11",
+        "results": "audio-math-tests.json",
+        "returncode": 0,
+        "tests": 12,
+        "result_sha256": "75229dfcec0a296cddeca8668aa767d104ea48cbd7dc3dfde9627b4231dd8d5f"
+      },
+      {
+        "target": "screen-metrics",
+        "build_target": "blink_common_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "ac722e57dd623240595c22adeedd67a63e260895fbd2fc8878c62be942f34dae",
+        "results": "screen-metrics-tests.json",
+        "returncode": 0,
+        "tests": 9,
+        "result_sha256": "566cdc9981faa8c7c08ed0c9354e9113ac55efa13d2071a8efd625f0c777b6f4"
+      },
+      {
+        "target": "screen-widget",
+        "build_target": "blink_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "54d92d24d3c1ac3fd59bec5c79700937fbaee644c77154d342b08732fcd17b11",
+        "results": "screen-widget-tests.json",
+        "returncode": 0,
+        "tests": 7,
+        "result_sha256": "e270a418c7e9ac30b903ad95bc0dd764447776b3a8d18ff27c015e2340a47099"
+      },
+      {
+        "target": "screen-orientation",
+        "build_target": "blink_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "54d92d24d3c1ac3fd59bec5c79700937fbaee644c77154d342b08732fcd17b11",
+        "results": "screen-orientation-tests.json",
+        "returncode": 0,
+        "tests": 4,
+        "result_sha256": "0121ab0af83116cfd057a15b121c25370e47884f6048488c13387e5f4b0b2838"
+      },
+      {
+        "target": "screen-live-main",
+        "build_target": "blink_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "54d92d24d3c1ac3fd59bec5c79700937fbaee644c77154d342b08732fcd17b11",
+        "results": "screen-live-main-tests.json",
+        "returncode": 0,
+        "tests": 3,
+        "result_sha256": "afd688ad552150ec6b942bf25066c7dbeeffead92a8ae4d565e7dbc4c0f3d4a7"
+      },
+      {
+        "target": "screen-dispatch",
+        "build_target": "content_unittests",
+        "native_cases_passed": true,
+        "test_binary_sha256": "e12b31154e19f247ae39593c725a4cd49048242709ce83eb70a8200179ab2e98",
+        "results": "screen-dispatch-tests.json",
+        "returncode": 0,
+        "tests": 3,
+        "result_sha256": "c4c5551f7c0437e38af83163c45a59ba501f6240e18d8a61b470b16686b5ce27"
+      }
+    ]
+  },
+  "preservation": {
+    "raw_report": {
+      "file": "report.json",
+      "directory": "preserved-runtime75-20261030-v1",
+      "sha256": "a60c1caf35af9646c9a14d27a5fb22f188b52d5ae4f74a4c068f033d2a73f85a"
+    },
+    "passed": true,
+    "postguards_passed": true,
+    "assets": 269,
+    "note": "The raw preservation scope text accidentally says 074; its candidate hash, core, build and native report hashes bind 075. Raw evidence is unchanged."
+  },
+  "browser_runs": [
+    {
+      "kind": "first-script",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-first-script-20261030-v1",
+        "sha256": "5bdca16a9ceba5d00cbb70bf0d98f0064eb1ee66879b2a8171f9bf0b8fa8c179"
+      },
+      "passed": true,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "phases": [
+        {
+          "mode": "manager-desktop",
+          "phase": "initial",
+          "passed": true,
+          "document_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "browser_connection_closed": true
+        },
+        {
+          "mode": "manager-desktop",
+          "phase": "persistent-profile-restart",
+          "passed": true,
+          "document_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "browser_connection_closed": true
+        },
+        {
+          "mode": "manager-mobile-web",
+          "phase": "initial",
+          "passed": true,
+          "document_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "browser_connection_closed": true
+        },
+        {
+          "mode": "manager-mobile-web",
+          "phase": "persistent-profile-restart",
+          "passed": true,
+          "document_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "browser_connection_closed": true
+        },
+        {
+          "mode": "native-control",
+          "phase": "initial",
+          "passed": true,
+          "document_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "browser_connection_closed": true
+        },
+        {
+          "mode": "native-control",
+          "phase": "persistent-profile-restart",
+          "passed": true,
+          "document_roles": [
+            "about-blank",
+            "cross",
+            "main",
+            "nested-return",
+            "same",
+            "srcdoc"
+          ],
+          "browser_connection_closed": true
+        }
+      ]
+    },
+    {
+      "kind": "protected-history",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "protected-screen75-lifecycle-20261030-v1",
+        "sha256": "f76eb36b8d9ef4c6b044c34858f3efaeb49c698058db42890de019b3f531af17"
+      },
+      "passed": true,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "validation": {
+        "passed": true,
+        "runs": [
+          {
+            "mode": "manager-desktop",
+            "passed": true,
+            "errors": [],
+            "screen_phases": 6,
+            "canvas_cases": 32
+          },
+          {
+            "mode": "manager-mobile-web",
+            "passed": true,
+            "errors": [],
+            "screen_phases": 6,
+            "canvas_cases": 32
+          }
+        ],
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    },
+    {
+      "kind": "protected-combined",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "protected-combined75-lifecycle-20261030-v1",
+        "sha256": "39d9a4c4608979d4b11300e71981fe2f00ec5a2486f1b09009d319f458b20b17"
+      },
+      "passed": true,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "validation": {
+        "passed": true,
+        "runs": [
+          {
+            "mode": "manager-desktop",
+            "passed": true,
+            "errors": [],
+            "screen_phases": 6,
+            "canvas_cases": 32
+          },
+          {
+            "mode": "manager-mobile-web",
+            "passed": true,
+            "errors": [],
+            "screen_phases": 6,
+            "canvas_cases": 32
+          }
+        ],
+        "privacy_admitted": false,
+        "production_admitted": false
+      },
+      "surface_validation": {
+        "passed": true,
+        "runs": [
+          {
+            "mode": "manager-desktop",
+            "passed": true,
+            "document_contexts": 1,
+            "webgl_apis": 2,
+            "audio_phases": 3,
+            "webgpu_readback_verified": false,
+            "privacy_admitted": false,
+            "production_admitted": false
+          },
+          {
+            "mode": "manager-mobile-web",
+            "passed": true,
+            "document_contexts": 1,
+            "webgl_apis": 2,
+            "audio_phases": 3,
+            "webgpu_readback_verified": false,
+            "privacy_admitted": false,
+            "production_admitted": false
+          }
+        ],
+        "privacy_admitted": false,
+        "production_admitted": false
+      },
+      "scope": "Recreated top-document WebGL1/2 and OfflineAudio reads after actual BFCache, plus six-document screen and Canvas format continuity; not retained GPU objects, worker restoration or WebGPU readback"
+    },
+    {
+      "kind": "original-mixed-client",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-lifecycle-20261030-v1",
+        "sha256": "b02f9d193731e2b37bad8b335178bbc98831dd04097ad750bb0052ed304d7b46"
+      },
+      "passed": false,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "bfcache_restored": true,
+      "browser_connection_closed": true,
+      "cleanup_errors": [],
+      "stages": [
+        {
+          "name": "baseline",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ]
+            }
+          }
+        },
+        {
+          "name": "set-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1366,
+                768
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "set-b",
+          "passed": false,
+          "errors": [
+            "A/main: logical screen differs from requested state",
+            "A/same: logical screen differs from requested state",
+            "A/cross: logical screen differs from requested state",
+            "A/srcdoc: logical screen differs from requested state",
+            "A/about-blank: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: other page update changed this screen",
+            "B: screenshot dimensions disagree with requested DPR"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "screenshot_size": [
+                1366,
+                768
+              ],
+              "unchanged_by_other_page": false
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                390,
+                844
+              ]
+            }
+          }
+        },
+        {
+          "name": "update-a",
+          "passed": false,
+          "errors": [
+            "A: screenshot dimensions disagree with requested DPR",
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: other page update changed this screen"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1280,
+                720
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "unchanged_by_other_page": false
+            }
+          }
+        },
+        {
+          "name": "clear-a",
+          "passed": false,
+          "errors": [
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "cross-site-navigation",
+          "passed": false,
+          "errors": [
+            "B: screenshot dimensions disagree with requested DPR"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                390,
+                844
+              ]
+            }
+          }
+        },
+        {
+          "name": "history-return",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            }
+          }
+        }
+      ],
+      "diagnostic_source_sha256": {}
+    },
+    {
+      "kind": "no-capture",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-capture-none-v2",
+        "sha256": "fff1930d9731c395cc0d4ebead0c59b1e2dcc03b72c113b49712a2f1924fc2b6"
+      },
+      "passed": true,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "bfcache_restored": true,
+      "browser_connection_closed": true,
+      "cleanup_errors": [],
+      "stages": [
+        {
+          "name": "baseline",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            }
+          }
+        },
+        {
+          "name": "set-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "set-b",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            }
+          }
+        },
+        {
+          "name": "update-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "clear-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "cross-site-navigation",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            }
+          }
+        },
+        {
+          "name": "history-return",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            }
+          }
+        }
+      ],
+      "diagnostic_source_sha256": {
+        "none-controller.py": "881dfe9762e9100d1f6503ca1b0c7ac1bfcaee5d1b3d70345a3069a656fa9bec",
+        "none-module.py": "d4dd75d092e17507ecc37ef6ab778fa4f83b6ea3a6f739a9f06e95e45c5bd8a6"
+      }
+    },
+    {
+      "kind": "same-session-no-clip",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-capture-cdp-v2",
+        "sha256": "5c3bbe30dde70ef271f492a9dc92f6ad54212aca4d14aa9a2d917f5913ce3d27"
+      },
+      "passed": true,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "bfcache_restored": true,
+      "browser_connection_closed": true,
+      "cleanup_errors": [],
+      "stages": [
+        {
+          "name": "baseline",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ]
+            }
+          }
+        },
+        {
+          "name": "set-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1366,
+                768
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "set-b",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1366,
+                768
+              ],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1170,
+                2532
+              ]
+            }
+          }
+        },
+        {
+          "name": "update-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                2560,
+                1440
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1170,
+                2532
+              ],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "clear-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1170,
+                2532
+              ],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "cross-site-navigation",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1170,
+                2532
+              ]
+            }
+          }
+        },
+        {
+          "name": "history-return",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            }
+          }
+        }
+      ],
+      "diagnostic_source_sha256": {
+        "cdp-controller.py": "a37c412003390a305cd03caeb38fdb766f0a46c04740ce56a8690a4f45a78f79",
+        "cdp-module.py": "af71986979f4b33be29785403437709c3e517e59116d304b06f100d089d1b024"
+      }
+    },
+    {
+      "kind": "playwright-postcheck",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-capture-playwright-postcheck-v2",
+        "sha256": "85cba7e6276321c3f3912a453eff6489849d5c824516f49f5cba6bb045956dc0"
+      },
+      "passed": false,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "bfcache_restored": true,
+      "browser_connection_closed": true,
+      "cleanup_errors": [],
+      "stages": [
+        {
+          "name": "baseline",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "set-a",
+          "passed": false,
+          "errors": [
+            "A: own Playwright capture: main: logical screen differs from requested state",
+            "A: own Playwright capture: same: logical screen differs from requested state",
+            "A: own Playwright capture: cross: logical screen differs from requested state",
+            "A: own Playwright capture: srcdoc: logical screen differs from requested state",
+            "A: own Playwright capture: about-blank: logical screen differs from requested state",
+            "A: own Playwright capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1366,
+                768
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "set-b",
+          "passed": false,
+          "errors": [
+            "A/main: logical screen differs from requested state",
+            "A/same: logical screen differs from requested state",
+            "A/cross: logical screen differs from requested state",
+            "A/srcdoc: logical screen differs from requested state",
+            "A/about-blank: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: own Playwright capture: main: logical screen differs from requested state",
+            "A: own Playwright capture: same: logical screen differs from requested state",
+            "A: own Playwright capture: cross: logical screen differs from requested state",
+            "A: own Playwright capture: srcdoc: logical screen differs from requested state",
+            "A: own Playwright capture: about-blank: logical screen differs from requested state",
+            "A: own Playwright capture: nested-return: logical screen differs from requested state",
+            "A: other page update changed this screen",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own Playwright capture: main: logical screen differs from requested state",
+            "B: own Playwright capture: same: logical screen differs from requested state",
+            "B: own Playwright capture: cross: logical screen differs from requested state",
+            "B: own Playwright capture: srcdoc: logical screen differs from requested state",
+            "B: own Playwright capture: about-blank: logical screen differs from requested state",
+            "B: own Playwright capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "screenshot_size": [
+                1366,
+                768
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "unchanged_by_other_page": false
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "update-a",
+          "passed": false,
+          "errors": [
+            "A: screenshot dimensions disagree with requested DPR",
+            "A: own Playwright capture: main: logical screen differs from requested state",
+            "A: own Playwright capture: same: logical screen differs from requested state",
+            "A: own Playwright capture: cross: logical screen differs from requested state",
+            "A: own Playwright capture: srcdoc: logical screen differs from requested state",
+            "A: own Playwright capture: about-blank: logical screen differs from requested state",
+            "A: own Playwright capture: nested-return: logical screen differs from requested state",
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own Playwright capture: main: logical screen differs from requested state",
+            "B: own Playwright capture: same: logical screen differs from requested state",
+            "B: own Playwright capture: cross: logical screen differs from requested state",
+            "B: own Playwright capture: srcdoc: logical screen differs from requested state",
+            "B: own Playwright capture: about-blank: logical screen differs from requested state",
+            "B: own Playwright capture: nested-return: logical screen differs from requested state",
+            "B: other page update changed this screen"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1280,
+                720
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "unchanged_by_other_page": false
+            }
+          }
+        },
+        {
+          "name": "clear-a",
+          "passed": false,
+          "errors": [
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own Playwright capture: main: logical screen differs from requested state",
+            "B: own Playwright capture: same: logical screen differs from requested state",
+            "B: own Playwright capture: cross: logical screen differs from requested state",
+            "B: own Playwright capture: srcdoc: logical screen differs from requested state",
+            "B: own Playwright capture: about-blank: logical screen differs from requested state",
+            "B: own Playwright capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "cross-site-navigation",
+          "passed": false,
+          "errors": [
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own Playwright capture: main: logical screen differs from requested state",
+            "B: own Playwright capture: same: logical screen differs from requested state",
+            "B: own Playwright capture: cross: logical screen differs from requested state",
+            "B: own Playwright capture: srcdoc: logical screen differs from requested state",
+            "B: own Playwright capture: about-blank: logical screen differs from requested state",
+            "B: own Playwright capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "history-return",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            }
+          }
+        }
+      ],
+      "diagnostic_source_sha256": {
+        "playwright-postcheck-module.py": "73b3dbf625f262a76cefb8eb70173fedcef210bdf94982d522285b50b89042d3",
+        "playwright-postcheck-controller.py": "04702f874ec67c4eedba3bfe2be50dfedab03b3b4a624b99b2ad5f886ca357b9"
+      }
+    },
+    {
+      "kind": "same-session-clip-postcheck",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-factorial-own-clip-v2",
+        "sha256": "43d22eadabdc9008ff6ffa367f067767ce116de48b03c2665940d87a53034d0b"
+      },
+      "passed": true,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "bfcache_restored": true,
+      "browser_connection_closed": true,
+      "cleanup_errors": [],
+      "stages": [
+        {
+          "name": "baseline",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "set-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1366,
+                768
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "set-b",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1366,
+                768
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1170,
+                2532
+              ],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "update-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                2560,
+                1440
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1170,
+                2532
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "clear-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1170,
+                2532
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "cross-site-navigation",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1170,
+                2532
+              ],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "history-return",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            }
+          }
+        }
+      ],
+      "diagnostic_source_sha256": {
+        "own-clip-module.py": "2db3fcb202e042693a26b76bc21b573d178ee384677bd5d332c862e3a0a93d5a",
+        "own-clip-controller.py": "ce2583a1f265c18e113b159357ebc006d3474b8100b51fc313de8f3d37812114"
+      }
+    },
+    {
+      "kind": "other-session-no-clip-postcheck",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-factorial-other-no-clip-v2",
+        "sha256": "206e987632d5d0d7eb6c6259655ecc33ec62221531060e8b3c588a46e1993638"
+      },
+      "passed": false,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "bfcache_restored": true,
+      "browser_connection_closed": true,
+      "cleanup_errors": [],
+      "stages": [
+        {
+          "name": "baseline",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "set-a",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1366,
+                768
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "set-b",
+          "passed": false,
+          "errors": [
+            "B: screenshot dimensions disagree with requested DPR"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1366,
+                768
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "update-a",
+          "passed": false,
+          "errors": [
+            "A: screenshot dimensions disagree with requested DPR",
+            "B: screenshot dimensions disagree with requested DPR"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1280,
+                720
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "clear-a",
+          "passed": false,
+          "errors": [
+            "B: screenshot dimensions disagree with requested DPR"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "cross-site-navigation",
+          "passed": false,
+          "errors": [
+            "B: screenshot dimensions disagree with requested DPR"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "history-return",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            }
+          }
+        }
+      ],
+      "diagnostic_source_sha256": {
+        "other-no-clip-controller.py": "58452ac57db6bc112b6e505c948504f23c67a9f2075fdce15a15a394876bf65b",
+        "other-no-clip-module.py": "4ae1cff3704e5f021403bb849cb21832c034234b7a8166d23660fb5391b63177"
+      }
+    },
+    {
+      "kind": "other-session-clip-postcheck",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-factorial-other-clip-v2",
+        "sha256": "4b51ab3bfeb35033f8ab188cff641843af1b5550409e0ea2d07d802aee78c081"
+      },
+      "passed": false,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "bfcache_restored": true,
+      "browser_connection_closed": true,
+      "cleanup_errors": [],
+      "stages": [
+        {
+          "name": "baseline",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "set-a",
+          "passed": false,
+          "errors": [
+            "A: own capture: main: logical screen differs from requested state",
+            "A: own capture: same: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: srcdoc: logical screen differs from requested state",
+            "A: own capture: about-blank: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1366,
+                768
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "set-b",
+          "passed": false,
+          "errors": [
+            "A/main: logical screen differs from requested state",
+            "A/same: logical screen differs from requested state",
+            "A/cross: logical screen differs from requested state",
+            "A/srcdoc: logical screen differs from requested state",
+            "A/about-blank: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: own capture: main: logical screen differs from requested state",
+            "A: own capture: same: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: srcdoc: logical screen differs from requested state",
+            "A: own capture: about-blank: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state",
+            "A: other page update changed this screen",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: main: logical screen differs from requested state",
+            "B: own capture: same: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: srcdoc: logical screen differs from requested state",
+            "B: own capture: about-blank: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "screenshot_size": [
+                1366,
+                768
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "unchanged_by_other_page": false
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "update-a",
+          "passed": false,
+          "errors": [
+            "A: screenshot dimensions disagree with requested DPR",
+            "A: own capture: main: logical screen differs from requested state",
+            "A: own capture: same: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: srcdoc: logical screen differs from requested state",
+            "A: own capture: about-blank: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state",
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: main: logical screen differs from requested state",
+            "B: own capture: same: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: srcdoc: logical screen differs from requested state",
+            "B: own capture: about-blank: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state",
+            "B: other page update changed this screen"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                1280,
+                720
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "unchanged_by_other_page": false
+            }
+          }
+        },
+        {
+          "name": "clear-a",
+          "passed": false,
+          "errors": [
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: main: logical screen differs from requested state",
+            "B: own capture: same: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: srcdoc: logical screen differs from requested state",
+            "B: own capture: about-blank: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": []
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "unchanged_by_other_page": true
+            }
+          }
+        },
+        {
+          "name": "cross-site-navigation",
+          "passed": false,
+          "errors": [
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: main: logical screen differs from requested state",
+            "B: own capture: same: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: srcdoc: logical screen differs from requested state",
+            "B: own capture: about-blank: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                764,
+                485
+              ],
+              "post_capture_errors": [],
+              "unchanged_by_other_page": true
+            },
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": [],
+              "screenshot_size": [
+                390,
+                844
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "history-return",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "B": {
+              "document_roles": [
+                "about-blank",
+                "cross",
+                "main",
+                "nested-return",
+                "same",
+                "srcdoc"
+              ],
+              "errors": []
+            }
+          }
+        }
+      ],
+      "diagnostic_source_sha256": {
+        "other-clip-controller.py": "c740df7d70bda37b2cf3b64c1c3b5d358ed97931f78b7796b2d210fd4baee6ad",
+        "other-clip-module.py": "975c2511234ea3427d2b77df2f7c8102f2021ec04243103f5e3c02c10e746aeb"
+      }
+    }
+  ],
+  "python_regression": {
+    "raw_report": {
+      "file": "report.json",
+      "directory": "canonical-regression-20261030-v28",
+      "sha256": "47a1da566b192f1ce3ea860ff4b9124313889d567d80cd16ba97d2c1e294f694"
+    },
+    "passed": true,
+    "postguards_passed": true,
+    "counts": {
+      "tests": 4710,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 4709
+    },
+    "git_head": "6ad4ff9cd393f2a31aa22587414313565ddb6978",
+    "duration_seconds": 394.984,
+    "scope": "Full repository before this evidence publication; not native browser execution"
+  },
+  "diagnostic_cleanup_followup": {
+    "scope": "The first factorial control retained an extra session until after page A closed; its detach cleanup failed. Fresh v2 detaches that owned session before closing A, keeps every measurement assertion, and preserves the same behavioral outcomes with clean cleanup.",
+    "historical_reports": [
+      {
+        "mode": "own-clip",
+        "raw_report": {
+          "file": "report.json",
+          "directory": "screen75-factorial-own-clip-v1",
+          "sha256": "d24d72ddc37ea180148b2bc9f5a3e26e7befb54c9ac88d3bc13d17283c2c4b3f"
+        },
+        "cleanup_errors": []
+      },
+      {
+        "mode": "other-no-clip",
+        "raw_report": {
+          "file": "report.json",
+          "directory": "screen75-factorial-other-no-clip-v1",
+          "sha256": "2b7717ad590c12f303d43fce0cf14cb36904f2d7ffa8b74b85df6e089455f879"
+        },
+        "cleanup_errors": [
+          "CDPSession.detach: Target page, context or browser has been closed"
+        ]
+      },
+      {
+        "mode": "other-clip",
+        "raw_report": {
+          "file": "report.json",
+          "directory": "screen75-factorial-other-clip-v1",
+          "sha256": "5b7970c3ef4572d999152b5c4ee8f64985487cf98cdd8b3dc12c6f3a4fc39962"
+        },
+        "cleanup_errors": [
+          "CDPSession.detach: Target page, context or browser has been closed"
+        ]
+      }
+    ]
+  },
+  "stock_controls": [
+    {
+      "mode": "own-clip",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-stock-capture-own-clip-v1",
+        "sha256": "6740818b9102fdd40b6061b1069e4f958aac7936f9036bedea54775be189e7ce"
+      },
+      "passed": false,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "cleanup_errors": [],
+      "same_diagnostic_module_as_glint": true,
+      "diagnostic_module_sha256": "2db3fcb202e042693a26b76bc21b573d178ee384677bd5d332c862e3a0a93d5a",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+        "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+        "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+      },
+      "reference_record_sha256": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+      "bfcache_restored": true,
+      "browser_connection_closed": true,
+      "stages": [
+        {
+          "name": "baseline",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "errors": [],
+              "post_capture_errors": []
+            },
+            "B": {
+              "errors": [],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "set-a",
+          "passed": false,
+          "errors": [
+            "A/cross: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "errors": [],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "set-b",
+          "passed": false,
+          "errors": [
+            "A/cross: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state",
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "update-a",
+          "passed": false,
+          "errors": [
+            "A/cross: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state",
+            "B: other page update changed this screen"
+          ],
+          "pages": {
+            "A": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "clear-a",
+          "passed": false,
+          "errors": [
+            "B/cross: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [],
+              "post_capture_errors": []
+            },
+            "B": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "cross-site-navigation",
+          "passed": false,
+          "errors": [
+            "B/same: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: own capture: same: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [],
+              "post_capture_errors": []
+            },
+            "B": {
+              "errors": [
+                "same: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "same: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "history-return",
+          "passed": false,
+          "errors": [
+            "same: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "B": {
+              "errors": [
+                "same: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "mode": "other-no-clip",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-stock-capture-other-no-clip-v1",
+        "sha256": "dbe2a67017f8d3907343a6ba4f92402df149b0ba9ea3ac1a6a610af748fd7119"
+      },
+      "passed": false,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "cleanup_errors": [],
+      "same_diagnostic_module_as_glint": true,
+      "diagnostic_module_sha256": "4ae1cff3704e5f021403bb849cb21832c034234b7a8166d23660fb5391b63177",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+        "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+        "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+      },
+      "reference_record_sha256": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+      "bfcache_restored": true,
+      "browser_connection_closed": true,
+      "stages": [
+        {
+          "name": "baseline",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "errors": [],
+              "post_capture_errors": []
+            },
+            "B": {
+              "errors": [],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "set-a",
+          "passed": false,
+          "errors": [
+            "A/cross: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "errors": [],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "set-b",
+          "passed": false,
+          "errors": [
+            "A/cross: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state",
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "update-a",
+          "passed": false,
+          "errors": [
+            "A/cross: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: screenshot dimensions disagree with requested DPR",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state",
+            "B: other page update changed this screen"
+          ],
+          "pages": {
+            "A": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "clear-a",
+          "passed": false,
+          "errors": [
+            "B/cross: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [],
+              "post_capture_errors": []
+            },
+            "B": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "cross-site-navigation",
+          "passed": false,
+          "errors": [
+            "B/same: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: same: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [],
+              "post_capture_errors": []
+            },
+            "B": {
+              "errors": [
+                "same: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "same: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "history-return",
+          "passed": false,
+          "errors": [
+            "same: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "B": {
+              "errors": [
+                "same: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "mode": "other-clip",
+      "raw_report": {
+        "file": "report.json",
+        "directory": "screen75-stock-capture-other-clip-v1",
+        "sha256": "c5c2c2dbf2964d1abea2ee63baba8f5e95976b8f835317a15d88c8008bfb195b"
+      },
+      "passed": false,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "cleanup_errors": [],
+      "same_diagnostic_module_as_glint": true,
+      "diagnostic_module_sha256": "975c2511234ea3427d2b77df2f7c8102f2021ec04243103f5e3c02c10e746aeb",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+        "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+        "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+      },
+      "reference_record_sha256": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+      "bfcache_restored": true,
+      "browser_connection_closed": true,
+      "stages": [
+        {
+          "name": "baseline",
+          "passed": true,
+          "errors": [],
+          "pages": {
+            "A": {
+              "errors": [],
+              "post_capture_errors": []
+            },
+            "B": {
+              "errors": [],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "set-a",
+          "passed": false,
+          "errors": [
+            "A/cross: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: own capture: main: logical screen differs from requested state",
+            "A: own capture: same: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: srcdoc: logical screen differs from requested state",
+            "A: own capture: about-blank: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "errors": [],
+              "post_capture_errors": []
+            }
+          }
+        },
+        {
+          "name": "set-b",
+          "passed": false,
+          "errors": [
+            "A/main: logical screen differs from requested state",
+            "A/same: logical screen differs from requested state",
+            "A/cross: logical screen differs from requested state",
+            "A/srcdoc: logical screen differs from requested state",
+            "A/about-blank: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: own capture: main: logical screen differs from requested state",
+            "A: own capture: same: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: srcdoc: logical screen differs from requested state",
+            "A: own capture: about-blank: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state",
+            "A: other page update changed this screen",
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: main: logical screen differs from requested state",
+            "B: own capture: same: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: srcdoc: logical screen differs from requested state",
+            "B: own capture: about-blank: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "update-a",
+          "passed": false,
+          "errors": [
+            "A/cross: logical screen differs from requested state",
+            "A/nested-return: logical screen differs from requested state",
+            "A: screenshot dimensions disagree with requested DPR",
+            "A: own capture: main: logical screen differs from requested state",
+            "A: own capture: same: logical screen differs from requested state",
+            "A: own capture: cross: logical screen differs from requested state",
+            "A: own capture: srcdoc: logical screen differs from requested state",
+            "A: own capture: about-blank: logical screen differs from requested state",
+            "A: own capture: nested-return: logical screen differs from requested state",
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: main: logical screen differs from requested state",
+            "B: own capture: same: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: srcdoc: logical screen differs from requested state",
+            "B: own capture: about-blank: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state",
+            "B: other page update changed this screen"
+          ],
+          "pages": {
+            "A": {
+              "errors": [
+                "cross: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            },
+            "B": {
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "clear-a",
+          "passed": false,
+          "errors": [
+            "B/main: logical screen differs from requested state",
+            "B/same: logical screen differs from requested state",
+            "B/cross: logical screen differs from requested state",
+            "B/srcdoc: logical screen differs from requested state",
+            "B/about-blank: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: main: logical screen differs from requested state",
+            "B: own capture: same: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: srcdoc: logical screen differs from requested state",
+            "B: own capture: about-blank: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [],
+              "post_capture_errors": []
+            },
+            "B": {
+              "errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "cross-site-navigation",
+          "passed": false,
+          "errors": [
+            "B/same: logical screen differs from requested state",
+            "B/nested-return: logical screen differs from requested state",
+            "B: screenshot dimensions disagree with requested DPR",
+            "B: own capture: main: logical screen differs from requested state",
+            "B: own capture: same: logical screen differs from requested state",
+            "B: own capture: cross: logical screen differs from requested state",
+            "B: own capture: srcdoc: logical screen differs from requested state",
+            "B: own capture: about-blank: logical screen differs from requested state",
+            "B: own capture: nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "A": {
+              "errors": [],
+              "post_capture_errors": []
+            },
+            "B": {
+              "errors": [
+                "same: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": [
+                "main: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "history-return",
+          "passed": false,
+          "errors": [
+            "main: logical screen differs from requested state",
+            "cross: logical screen differs from requested state",
+            "srcdoc: logical screen differs from requested state",
+            "about-blank: logical screen differs from requested state",
+            "same: logical screen differs from requested state",
+            "nested-return: logical screen differs from requested state"
+          ],
+          "pages": {
+            "B": {
+              "errors": [
+                "main: logical screen differs from requested state",
+                "cross: logical screen differs from requested state",
+                "srcdoc: logical screen differs from requested state",
+                "about-blank: logical screen differs from requested state",
+                "same: logical screen differs from requested state",
+                "nested-return: logical screen differs from requested state"
+              ],
+              "post_capture_errors": []
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "diagnosis": {
+    "measured": "Same-session capture passes with and without clip. Separate-session capture without clip preserves screen checks but fails DPR image bounds. Separate-session clipped capture immediately changes all six document screens on that same page. Original mixed-client failures are retained.",
+    "source_inference": "PageHandler capture consults its own EmulationHandler parameters and applies temporary/restored state. The capture session differs from the metrics owner; this is consistent with the measured same-target cross-session failure, not proof of cross-page leakage.",
+    "stock_comparison_executed": true,
+    "cross_session_capture_fixed": false,
+    "next_gate": "Use the retained exact-version stock/Glint controls to design and validate ownership-safe screenshot state restoration, including concurrent changes and navigation, without weakening screen or PNG/DPR assertions.",
+    "protocol_trace_sha256": "08f835da2db4f8e1fd33b1b84bc14414b9a8d9b5842512a7b853eea36b330b8a",
+    "sources": {
+      "content/browser/devtools/protocol/page_handler.cc": "008a11651f5048ea8630f4a2d0f710904d1595c890287b55aa1a0517d8fd4dab",
+      "content/browser/devtools/protocol/emulation_handler.cc": "ebc935bf3a6b6fecb4284736810563b53c4f3363fba44fc4770dc59533cb5ef5"
+    }
+  },
+  "public_collector_sources_sha256": {
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "native/drafts/environment/first-script/protected_history_runtime.py": "a93112c3abc9b07892e79ddf47213ef0475334e9dac9d0fa396940a45755554a",
+    "native/drafts/environment/first-script/protected_surface_history.py": "0720799654142df31db49bccbbea8a50101c172c858ebe54511b342abd25005a",
+    "native/drafts/environment/playwright-driver-stage-binding-close.json": "6d18cf727cfe1b4533b611edbd560f4ac031e4c02aa69aff2e037d110df352c5"
+  }
+}

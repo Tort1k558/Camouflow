@@ -8,13 +8,18 @@ Windows package passed all eight runtime gates (160 checks), including the
 separate installed copy. The first font-regression `NetworkError` remains
 unexplained; successful repeats are not evidence that its cause was fixed.
 Experimental **Chromium 156** has a separate manifest, patch chain, workspace
-and SDK requirement. The preserved 001–073 Windows candidate was compiled and
-passed 488 native unit cases. Source selection 001–074 has now compiled the
-browser (53 steps / 14m35s); 491 native cases passed before an empty-screen
-fixture crashed the final group. Source selection 001–075 corrects only that
-fixture and still requires all 494 cases; it is not compiled. This does not admit all combined fingerprint policies
-or make it the default release. Use the [candidate guide](drafts/upstream-156/README.md),
-not the default 148 commands below. Exact results and retained failures:
+and SDK requirement. Windows **001–075 is built and independently preserved**:
+269 assets, **494/494 native cases in 23 groups**, postguards passed. Cached j4
+browser build: 1 step / 2m40s; native build: 2 steps / 7m16s. These are measured
+incremental timings, not estimates for a clean build. Objects were not cleaned,
+sync/hooks were not repeated, and older 073/148 runtimes remain intact.
+
+Scoped first-script and protected BFCache checks passed, but cross-session
+screenshots still fail (screen-state reset with clip, wrong PNG/DPR without clip).
+Do not run a user browser from the writable build output; use the independent
+preserved runtime. No full-policy/privacy/release admission or default-engine switch.
+[Exact results](drafts/environment/screen75-runtime-observations.json),
+[candidate commands](drafts/upstream-156/README.md),
 [test matrix](../docs/GLINT_TEST_MATRIX.md).
 
 ## Bounded cached Chromium 156 rebuild
