@@ -1,0 +1,11 @@
+diff --git a/app/core/native/runtime.py b/app/core/native/runtime.py
+--- a/app/core/native/runtime.py
++++ b/app/core/native/runtime.py
+@@ -104,6 +104,7 @@
+                 self.context = await self.playwright.chromium.launch_persistent_context(
+                     str(self.profile_dir), executable_path=str(self.executable), headless=headless,
+                     chromium_sandbox=True, proxy=proxy, timeout=30000,
++                    ignore_default_args=["--disable-back-forward-cache"],
+                     args=arguments, **options,
+                 )
+                 self._policy_admission = admission

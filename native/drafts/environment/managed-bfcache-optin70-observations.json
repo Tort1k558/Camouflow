@@ -1,0 +1,590 @@
+{
+  "schema": 1,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Experimental unregistered NativeRuntime launch overlay; Glint/stock paired BFCache and owner-API calibration, not active manager or release admission",
+  "selected": false,
+  "bfcache_enabled_in_current_manager": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "bfcache_optin_ready_for_release": false,
+  "experimental_runtime_overlay": {
+    "schema": 1,
+    "scope": "Private unregistered NativeRuntime launch experiment; exactly one driver default removed, no active source change",
+    "base_source": "app/core/native/runtime.py",
+    "base_source_sha256": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "prepared_source_sha256": "9d7965fff18ddf4a03d456bb9a2911e88a09fa86404e78861744000fe63b0b35",
+    "patch_sha256": "7b3b2a6c0412a7c2ff0fded33f50f577874b9ace2326c1bcf15e4f66d8f66ae9",
+    "selected": false,
+    "production_admitted": false,
+    "privacy_admitted": false
+  },
+  "patch": "manager-bfcache-launch-experiment.patch",
+  "patch_sha256": "7b3b2a6c0412a7c2ff0fded33f50f577874b9ace2326c1bcf15e4f66d8f66ae9",
+  "results": {
+    "glint70": {
+      "passed": true,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "chromium_version": "156.0.8078.36",
+      "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+        "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+        "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+      },
+      "raw_report_sha256": "35fda7878d6ff878b3f1b70a16a01da588f5cc15cbbae7fa186e548682fc67a6",
+      "runs": [
+        {
+          "mode": "manager-desktop",
+          "phase": "initial",
+          "passed": true,
+          "bfcache_restored": true,
+          "persisted_documents_before_owner": 6,
+          "persisted_documents_after_owner": 6,
+          "owner_screenshot": {
+            "passed": true,
+            "size": [
+              1366,
+              768
+            ],
+            "expected_size": [
+              1366,
+              768
+            ],
+            "sha256": "98c1bf72c3469ba35e0250ba65d1592ecd1402467d043657ae150a863ac2c6fb",
+            "api": "Playwright Page.screenshot / existing owner session"
+          },
+          "post_owner_snapshots_unchanged": true,
+          "independent_cdp_probe": {
+            "passed": true,
+            "trusted_input_passed": true,
+            "screen_stable_across_input": true,
+            "screenshot_size": [
+              1366,
+              768
+            ],
+            "expected_screenshot_size": [
+              1366,
+              768
+            ]
+          },
+          "stage_error_counts": {
+            "baseline": {},
+            "cross-site-navigation": {},
+            "close-peer": {},
+            "history-return": {}
+          }
+        },
+        {
+          "mode": "manager-desktop",
+          "phase": "persistent-profile-restart",
+          "passed": true,
+          "bfcache_restored": true,
+          "persisted_documents_before_owner": 6,
+          "persisted_documents_after_owner": 6,
+          "owner_screenshot": {
+            "passed": true,
+            "size": [
+              1366,
+              768
+            ],
+            "expected_size": [
+              1366,
+              768
+            ],
+            "sha256": "98c1bf72c3469ba35e0250ba65d1592ecd1402467d043657ae150a863ac2c6fb",
+            "api": "Playwright Page.screenshot / existing owner session"
+          },
+          "post_owner_snapshots_unchanged": true,
+          "independent_cdp_probe": {
+            "passed": true,
+            "trusted_input_passed": true,
+            "screen_stable_across_input": true,
+            "screenshot_size": [
+              1366,
+              768
+            ],
+            "expected_screenshot_size": [
+              1366,
+              768
+            ]
+          },
+          "stage_error_counts": {
+            "baseline": {},
+            "cross-site-navigation": {},
+            "close-peer": {},
+            "history-return": {}
+          }
+        },
+        {
+          "mode": "manager-mobile-web",
+          "phase": "initial",
+          "passed": true,
+          "bfcache_restored": true,
+          "persisted_documents_before_owner": 6,
+          "persisted_documents_after_owner": 6,
+          "owner_screenshot": {
+            "passed": true,
+            "size": [
+              1170,
+              2532
+            ],
+            "expected_size": [
+              1170,
+              2532
+            ],
+            "sha256": "74f9dd9e29bf0090a02e7e934a41ba51b7bf3361cd3efcd8b0679c767bafa08d",
+            "api": "Playwright Page.screenshot / existing owner session"
+          },
+          "post_owner_snapshots_unchanged": true,
+          "independent_cdp_probe": {
+            "passed": false,
+            "trusted_input_passed": true,
+            "screen_stable_across_input": true,
+            "screenshot_size": [
+              390,
+              844
+            ],
+            "expected_screenshot_size": [
+              1170,
+              2532
+            ]
+          },
+          "stage_error_counts": {
+            "baseline": {},
+            "cross-site-navigation": {},
+            "close-peer": {},
+            "history-return": {}
+          }
+        },
+        {
+          "mode": "manager-mobile-web",
+          "phase": "persistent-profile-restart",
+          "passed": true,
+          "bfcache_restored": true,
+          "persisted_documents_before_owner": 6,
+          "persisted_documents_after_owner": 6,
+          "owner_screenshot": {
+            "passed": true,
+            "size": [
+              1170,
+              2532
+            ],
+            "expected_size": [
+              1170,
+              2532
+            ],
+            "sha256": "74f9dd9e29bf0090a02e7e934a41ba51b7bf3361cd3efcd8b0679c767bafa08d",
+            "api": "Playwright Page.screenshot / existing owner session"
+          },
+          "post_owner_snapshots_unchanged": true,
+          "independent_cdp_probe": {
+            "passed": false,
+            "trusted_input_passed": true,
+            "screen_stable_across_input": true,
+            "screenshot_size": [
+              390,
+              844
+            ],
+            "expected_screenshot_size": [
+              1170,
+              2532
+            ]
+          },
+          "stage_error_counts": {
+            "baseline": {},
+            "cross-site-navigation": {},
+            "close-peer": {},
+            "history-return": {}
+          }
+        }
+      ]
+    },
+    "stock156": {
+      "passed": false,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "chromium_version": "156.0.8078.36",
+      "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+      "runtime_core_sha256_measured": {
+        "chrome.exe": "987ef46ad8e70f4115c6ac3c71520cd854dbbc7652160dcd067d96d8ae0342bd",
+        "chrome.dll": "7d484c902485fddee302013457d817249bf489b6e003163b979bf01f1989587f",
+        "chrome_elf.dll": "91e30d9f7dbd302b4e3a79c6a5ecc074aae78d78da718012222032332153d874"
+      },
+      "raw_report_sha256": "b991f4b1edeac56ad6d03210bbe340fe623fe0d0c77b15068f066cb5b1453839",
+      "runs": [
+        {
+          "mode": "manager-desktop",
+          "phase": "initial",
+          "passed": false,
+          "bfcache_restored": true,
+          "persisted_documents_before_owner": 6,
+          "persisted_documents_after_owner": 6,
+          "owner_screenshot": {
+            "passed": true,
+            "size": [
+              1366,
+              768
+            ],
+            "expected_size": [
+              1366,
+              768
+            ],
+            "sha256": "98c1bf72c3469ba35e0250ba65d1592ecd1402467d043657ae150a863ac2c6fb",
+            "api": "Playwright Page.screenshot / existing owner session"
+          },
+          "post_owner_snapshots_unchanged": true,
+          "independent_cdp_probe": {
+            "passed": true,
+            "trusted_input_passed": true,
+            "screen_stable_across_input": true,
+            "screenshot_size": [
+              1366,
+              768
+            ],
+            "expected_screenshot_size": [
+              1366,
+              768
+            ]
+          },
+          "stage_error_counts": {
+            "baseline": {
+              "A/cross: logical screen differs from requested state": 1,
+              "A/nested-return: logical screen differs from requested state": 1,
+              "B/cross: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "cross-site-navigation": {
+              "A/cross: logical screen differs from requested state": 1,
+              "A/nested-return: logical screen differs from requested state": 1,
+              "B/same: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "close-peer": {
+              "B/same: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "history-return": {
+              "same: logical screen differs from requested state": 2,
+              "nested-return: logical screen differs from requested state": 2
+            }
+          }
+        },
+        {
+          "mode": "manager-desktop",
+          "phase": "persistent-profile-restart",
+          "passed": false,
+          "bfcache_restored": true,
+          "persisted_documents_before_owner": 6,
+          "persisted_documents_after_owner": 6,
+          "owner_screenshot": {
+            "passed": true,
+            "size": [
+              1366,
+              768
+            ],
+            "expected_size": [
+              1366,
+              768
+            ],
+            "sha256": "98c1bf72c3469ba35e0250ba65d1592ecd1402467d043657ae150a863ac2c6fb",
+            "api": "Playwright Page.screenshot / existing owner session"
+          },
+          "post_owner_snapshots_unchanged": true,
+          "independent_cdp_probe": {
+            "passed": true,
+            "trusted_input_passed": true,
+            "screen_stable_across_input": true,
+            "screenshot_size": [
+              1366,
+              768
+            ],
+            "expected_screenshot_size": [
+              1366,
+              768
+            ]
+          },
+          "stage_error_counts": {
+            "baseline": {
+              "A/cross: logical screen differs from requested state": 1,
+              "A/nested-return: logical screen differs from requested state": 1,
+              "B/cross: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "cross-site-navigation": {
+              "A/cross: logical screen differs from requested state": 1,
+              "A/nested-return: logical screen differs from requested state": 1,
+              "B/same: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "close-peer": {
+              "B/same: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "history-return": {
+              "same: logical screen differs from requested state": 2,
+              "nested-return: logical screen differs from requested state": 2
+            }
+          }
+        },
+        {
+          "mode": "manager-mobile-web",
+          "phase": "initial",
+          "passed": false,
+          "bfcache_restored": true,
+          "persisted_documents_before_owner": 6,
+          "persisted_documents_after_owner": 6,
+          "owner_screenshot": {
+            "passed": true,
+            "size": [
+              1170,
+              2532
+            ],
+            "expected_size": [
+              1170,
+              2532
+            ],
+            "sha256": "74f9dd9e29bf0090a02e7e934a41ba51b7bf3361cd3efcd8b0679c767bafa08d",
+            "api": "Playwright Page.screenshot / existing owner session"
+          },
+          "post_owner_snapshots_unchanged": true,
+          "independent_cdp_probe": {
+            "passed": false,
+            "trusted_input_passed": true,
+            "screen_stable_across_input": true,
+            "screenshot_size": [
+              390,
+              844
+            ],
+            "expected_screenshot_size": [
+              1170,
+              2532
+            ]
+          },
+          "stage_error_counts": {
+            "baseline": {
+              "A/main: logical screen differs from requested state": 1,
+              "A/same: logical screen differs from requested state": 1,
+              "A/cross: logical screen differs from requested state": 1,
+              "A/srcdoc: logical screen differs from requested state": 1,
+              "A/about-blank: logical screen differs from requested state": 1,
+              "A/nested-return: logical screen differs from requested state": 1,
+              "B/main: logical screen differs from requested state": 1,
+              "B/same: logical screen differs from requested state": 1,
+              "B/cross: logical screen differs from requested state": 1,
+              "B/srcdoc: logical screen differs from requested state": 1,
+              "B/about-blank: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "cross-site-navigation": {
+              "A/main: logical screen differs from requested state": 1,
+              "A/same: logical screen differs from requested state": 1,
+              "A/cross: logical screen differs from requested state": 1,
+              "A/srcdoc: logical screen differs from requested state": 1,
+              "A/about-blank: logical screen differs from requested state": 1,
+              "A/nested-return: logical screen differs from requested state": 1,
+              "B/same: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "close-peer": {
+              "B/same: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "history-return": {
+              "same: logical screen differs from requested state": 2,
+              "nested-return: logical screen differs from requested state": 2
+            }
+          }
+        },
+        {
+          "mode": "manager-mobile-web",
+          "phase": "persistent-profile-restart",
+          "passed": false,
+          "bfcache_restored": true,
+          "persisted_documents_before_owner": 6,
+          "persisted_documents_after_owner": 6,
+          "owner_screenshot": {
+            "passed": true,
+            "size": [
+              1170,
+              2532
+            ],
+            "expected_size": [
+              1170,
+              2532
+            ],
+            "sha256": "74f9dd9e29bf0090a02e7e934a41ba51b7bf3361cd3efcd8b0679c767bafa08d",
+            "api": "Playwright Page.screenshot / existing owner session"
+          },
+          "post_owner_snapshots_unchanged": true,
+          "independent_cdp_probe": {
+            "passed": false,
+            "trusted_input_passed": true,
+            "screen_stable_across_input": true,
+            "screenshot_size": [
+              390,
+              844
+            ],
+            "expected_screenshot_size": [
+              1170,
+              2532
+            ]
+          },
+          "stage_error_counts": {
+            "baseline": {
+              "A/main: logical screen differs from requested state": 1,
+              "A/same: logical screen differs from requested state": 1,
+              "A/cross: logical screen differs from requested state": 1,
+              "A/srcdoc: logical screen differs from requested state": 1,
+              "A/about-blank: logical screen differs from requested state": 1,
+              "A/nested-return: logical screen differs from requested state": 1,
+              "B/main: logical screen differs from requested state": 1,
+              "B/same: logical screen differs from requested state": 1,
+              "B/cross: logical screen differs from requested state": 1,
+              "B/srcdoc: logical screen differs from requested state": 1,
+              "B/about-blank: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "cross-site-navigation": {
+              "A/main: logical screen differs from requested state": 1,
+              "A/same: logical screen differs from requested state": 1,
+              "A/cross: logical screen differs from requested state": 1,
+              "A/srcdoc: logical screen differs from requested state": 1,
+              "A/about-blank: logical screen differs from requested state": 1,
+              "A/nested-return: logical screen differs from requested state": 1,
+              "B/same: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "close-peer": {
+              "B/same: logical screen differs from requested state": 1,
+              "B/nested-return: logical screen differs from requested state": 1
+            },
+            "history-return": {
+              "same: logical screen differs from requested state": 2,
+              "nested-return: logical screen differs from requested state": 2
+            }
+          }
+        }
+      ]
+    }
+  },
+  "paired_snapshot_comparison": {
+    "snapshots_per_runtime": 168,
+    "exact_snapshot_matches": 88,
+    "snapshot_differences": 80
+  },
+  "source_sha256": {
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "native/drafts/environment/first-script/managed_history.py": "86f5d15ac0e71a880fe174182c73f2ea27faca96ef095d75e5b57e2ccaf15691",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "app/core/native/runtime.py": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "native/drafts/environment/first-script/history_interaction.py": "f6c2e8358cc3b5232ac46d5e450c53f4fbea027764ea9dec2a8a34a09b12c971",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "native/drafts/environment/first-script/runtime.py": "e387b5107340754af303b56b404ab86cea3195410b0b9ca4ea99c66516df4e1a",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "native/drafts/upstream-156/checkpoints/001-070.json": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
+    "native/drafts/environment/first-script/owner_process.py": "d86f90e386925d0d2940e06046eca85b4ca2e94b901abc751cafc494f9b4468b",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "native/drafts/environment/first-script/manager.py": "71d0e333e682205beda57e963fa8df1483505bf7bac24f44caaed27a527a3e6d",
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa"
+  },
+  "independent_cdp_pre_post_control": [
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "before_size": [
+        1366,
+        768
+      ],
+      "after_size": [
+        1366,
+        768
+      ],
+      "same_before_after_history": true
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "persistent-profile-restart",
+      "before_size": [
+        1366,
+        768
+      ],
+      "after_size": [
+        1366,
+        768
+      ],
+      "same_before_after_history": true
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "before_size": [
+        390,
+        844
+      ],
+      "after_size": [
+        390,
+        844
+      ],
+      "same_before_after_history": true
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "persistent-profile-restart",
+      "before_size": [
+        390,
+        844
+      ],
+      "after_size": [
+        390,
+        844
+      ],
+      "same_before_after_history": true
+    }
+  ],
+  "independent_cdp_pre_post_report_sha256": "a3f78b0bea14ad70347b3221ca7bbb3843eca2735bc11730096bdc0be501bfb1",
+  "full_runtime_overlay": {
+    "passed": true,
+    "measurement_complete": true,
+    "original_source_unchanged": true,
+    "overlay_source_unchanged": true,
+    "runtime_import_verified": true,
+    "raw_controller_sha256": "c5bf621ac4e0029327dc61f9a361e4f91b35a32f8cdba65357a0d05470d43111",
+    "runtime_report_sha256": "bd302a18c3f0f6e33e09afd2fb51fb37ec1b0b85b4f814fd8982d8eb36a2fd28",
+    "check_count": 18,
+    "checks": [
+      "concurrent-profile-isolation",
+      "cross-process-owner-exclusion",
+      "navigation-tabs-fill-click-extract-screenshot",
+      "mobile-web-viewport-dpr-touch",
+      "native-document-worker-configuration-diagnostics",
+      "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+      "configured-permissions-isolation-revocation-and-restart",
+      "dead-owner-profile-lock-recovery",
+      "browser-crash-restart-preserves-committed-storage",
+      "authenticated-http-proxy-no-direct-dns-route",
+      "existing-browser-interface-and-scenario-executor",
+      "existing-recorder-capture-and-replay",
+      "native-profile-backup-restore-storage-and-engine-isolation",
+      "native-binary-headless-health-and-disposable-profile-cleanup",
+      "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+      "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+      "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+      "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+    ],
+    "returncode": 0,
+    "source_inventory_count": 694
+  },
+  "note": "Glint passes all four owner-aware BFCache phases with all six retained documents rechecked after the existing Playwright owner screenshot. Independent CDP raster results are retained separately, not treated as equivalent to the owner EmulationHandler. Their mobile size is already 390x844 before history, also reproduced in stock; it is not evidence of DPR loss caused by BFCache. No production flag or native binary was changed. Recorder history-specific and full protected-policy compatibility remain required."
+}

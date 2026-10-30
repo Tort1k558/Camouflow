@@ -8,6 +8,18 @@
 | Verifier integration | `screen-widget` active in existing tools, exact seven cases in `blink_unittests`, explicit upstream-156 and registered 0069/0070 required; batch now 20 groups | Python replay/result-rejection controls passed; not seven executed C++ cases |
 | Baseline controls after selection | Preserved 001–068 crash/TLS/large WebGL controls rerun with current manifest/verifier source bindings | Still baseline-only evidence, not execution of new 0070 |
 
+## BFCache launch-overlay / owner API calibration — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Glint genuine BFCache, owner-aware geometry/input | **4/4 phases passed**, six persisted documents rechecked after owner screenshot; desktop/mobile initial/restart | [Paired evidence](../native/drafts/environment/managed-bfcache-optin70-observations.json); unregistered launch overlay, no active manager change |
+| Owner PNG vs independent CDP PNG | Owner mobile **1170×2532**; separate CDP **390×844**, already before history and also on stock | Different session-local emulation contracts; not evidence of BFCache-caused DPR regression |
+| Paired stock156 comparison | 168 snapshots per runtime; **88 equal / 80 different**; stock strict screen gate fails | Exact screen/viewport/CSS observations, not detector scores or ordinary-user realism |
+| Full existing runtime suite in tracked-source launch-overlay | **18/18 passed**, original/overlay source guards passed | Baseline policies; not proof of history-specific Recorder/replay or release admission |
+| Repeated Recorder BFCache capture | **3/4**, then **2/4** with bridge tracing; trusted post-click sometimes never enters Python despite active JS markers, without warnings | [Retained failure](../native/drafts/environment/managed-bfcache-recorder70-observations.json); blocks launch integration; full recorded-draft replay unverified |
+| Recorder stock156 control | Same missing post-click bridge event in **4/4** phases, despite trusted DOM input and no warnings | Same source-bound trace setup; not unique to Glint, still a required integration fix |
+| Recorder listener/binding diagnosis | Recorder DOM listener retained in **4/4** phases; empty binding ping reaches Python in **1/4**, times out before Python in three | [Diagnostic](../native/drafts/environment/managed-bfcache-recorder70-observations.json); narrows the issue to binding/session delivery, not a proven implementation fix |
+
 ## Compiled 001–070 screen/DPR checkpoint — 2026-10-30
 
 | Gate | Observed result | Boundary |

@@ -1,5 +1,30 @@
 # Glint: план проверки и развития
 
+## BFCache: owner-aware прогон прошёл, повтор Recorder выявил блокер
+
+| Проверка на сохранённом 001–070 | Результат | Граница |
+| --- | --- | --- |
+| Изолированный launch-overlay без driver-disable BFCache | **4/4 фазы** desktop/mobile initial/restart; настоящий BFCache, по шесть документов до и после штатного снимка | [Эксперимент](../native/drafts/environment/managed-bfcache-optin70-observations.json); патч не применён в менеджере |
+| Штатный screenshot owner | Desktop **1366×768**, Mobile Web **1170×2532**; snapshot всех iframe не меняется от снимка | Используется `Page.screenshot` существующего владельца, не чужой EmulationHandler |
+| Отдельная CDP-сессия | Mobile PNG **390×844** и до, и после history; воспроизведено и на stock156 | Не доказательство потери DPR от BFCache и не причина менять движок под ошибочное сравнение API |
+| Полный baseline на source-overlay приложения | **18/18** existing runtime checks; исходные и overlay-файлы остались неизменными | Не запись history-specific сценария и не protected-policy/release admission |
+| Повтор Recorder через BFCache | **3/4**, затем **2/4** с bridge trace; trusted DOM-click не всегда попадает в Python, без warning, при активных JS-маркерах | [Сохранённый FAIL](../native/drafts/environment/managed-bfcache-recorder70-observations.json); блокирует интеграцию BFCache |
+
+В парном screen/CSS-прогоне по **168 snapshots** на runtime: 88 совпали,
+80 различались; это сравнение конкретной конфигурации Glint/stock, **не антибот-рейтинг**.
+Вначале Recorder-calibration прошла, повтор не прошёл; успешный первый запуск не
+заменяет отрицательный результат. Replay полного UI-started draft ещё не проверен.
+Следующий шаг — локализовать потерю Recorder-event с трассировкой bridge/JS-state,
+без увеличения таймаутов и без включения BFCache в production. Текущий manager-default
+остаётся прежним. Параллельная C++-сборка 20 групп не прерывается.
+На stock156 та же Recorder/driver-конфигурация потеряла post-click в **4/4**
+трассированных фазах. Это не наблюдение, уникальное для Glint; интеграционный
+блокер всё равно остаётся нашим обязательным gate.
+Дополнительная диагностика: Recorder DOM-listener сохранён в **4/4** фазах,
+но пустой binding-ping дошёл до Python только в **1/4**, в трёх — timeout без
+входа в bridge. Далее исследуется восстановление Runtime binding/session после
+BFCache; точная причина в реализации и исправление пока не заявляются.
+
 ## 001–070 собран: первый screen/DPR-прогон прошёл, расширенный lifecycle ещё нет
 
 | Проверка | Фактический результат | Дальше |

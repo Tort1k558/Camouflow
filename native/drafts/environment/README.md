@@ -87,6 +87,26 @@ history reload is recorded separately, never relabeled as cache restoration.
 it does not silently remove driver flags or invoke Frame APIs after a real
 BFCache restoration.
 
+[The unregistered launch experiment](managed-bfcache-optin70-observations.json)
+removes only that driver default in an isolated source overlay. Its four Glint
+geometry/input phases pass with the existing Playwright owner screenshot and
+six retained documents rechecked afterwards; the full 18-check runtime baseline
+also passes in a complete tracked-source overlay. The active manager is unchanged.
+
+An independent CDP screenshot does not necessarily inherit the owner's emulation
+parameters: pinned Chromium `content/browser/devtools/protocol/page_handler.cc`
+reads its own `emulation_handler_` in `CaptureScreenshot`. The control observed
+390×844 mobile pixels both before and after history, while the owner API returns
+1170×2532. Raw independent-session failures are retained separately, not silently
+used to fail or admit the owner API.
+
+[Repeated Recorder capture](managed-bfcache-recorder70-observations.json) passed
+3/4 phases, then 2/4 with bridge tracing: trusted post-clicks sometimes never
+enter Python despite active JS markers, without warnings. The same loss appeared
+in all four stock156 control phases. This blocks launch integration despite the geometry result.
+The probe attaches to an already-loaded page; complete UI-started draft replay
+and all-frame input are still separate requirements.
+
 [Source-bound calibration](stock156-capture-observations.json) covers two phases,
 all eight contexts, exact request-header availability and three failure controls:
 existing evidence, unknown runtime and fixture-server failure. Raw host values,

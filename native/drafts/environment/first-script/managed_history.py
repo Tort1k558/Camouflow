@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import json
 from pathlib import Path
 import runpy
+import struct
 from urllib.parse import urlsplit
 
 HERE = Path(__file__).resolve().parent
@@ -22,9 +26,36 @@ def expected_screen(configuration, baseline: dict) -> dict:
     })
 
 
+async def recapture_retained_history(session, previous: dict) -> dict:
+    token = await INTERACTION["evaluate"](session, "glintHistoryProbe.token")
+    if not isinstance(token, str) or not 1 <= len(token) <= 256:
+        raise ValueError("Restored history protocol token is invalid")
+    origins = {role: row["origin"] for role, row in previous["snapshots"].items()}
+    expression = "(" + LIFECYCLE["COLLECT_HISTORY"] + ")(" + json.dumps({"token": token, "origins": origins}) + ")"
+    response = await asyncio.wait_for(session.send("Runtime.evaluate", {
+        "expression": expression, "awaitPromise": True, "returnByValue": True, "timeout": 5000}), timeout=8)
+    if response.get("exceptionDetails") or "value" not in response.get("result", {}):
+        raise ValueError("Post-screenshot retained history evaluation failed")
+    state = response["result"]["value"]
+    LIFECYCLE["restored_observations"](state)
+    return state
+
+
+async def capture_owner_screenshot(page, destination: Path, configuration) -> dict:
+    png = await page.screenshot(timeout=10000)
+    if len(png) < 24 or png[:8] != b"\x89PNG\r\n\x1a\n" or png[12:16] != b"IHDR":
+        raise ValueError("Managed owner screenshot is not PNG")
+    dimensions = list(struct.unpack(">II", png[16:24]))
+    expected = [round(size * configuration.device_scale_factor) for size in (configuration.width, configuration.height)]
+    (destination / "history-return-owner.png").write_bytes(png)
+    return {"passed": dimensions == expected, "size": dimensions, "expected_size": expected,
+            "sha256": hashlib.sha256(png).hexdigest(), "api": "Playwright Page.screenshot / existing owner session"}
+
+
 async def capture(executable: Path, owned: Path, server, report: dict, save) -> None:
     report.update(runs=[], scope="Actual NativeRuntime desktop/mobile-web, two tabs, peer close, cross-site navigation and requested genuine BFCache, initial and persistent restart; disabled BFCache remains a failed gate",
                   device_metrics_commands_sent=False, all_frame_input_verified=False,
+                  independent_cdp_raster_used_as_owner_contract=False,
                   process_swap_verified=False, protected_policies_enabled=False,
                   full_lifecycle_admitted=False, privacy_admitted=False, production_admitted=False)
     origin = f"http://127.0.0.1:{server.server_port}"
@@ -117,8 +148,18 @@ async def capture(executable: Path, owned: Path, server, report: dict, save) -> 
                     screenshots.mkdir(exist_ok=False)
                     interaction = await INTERACTION["capture"](session, screenshots)
                     run["restored_main_interaction"] = interaction
-                    if not interaction["passed"]:
-                        errors.append("Restored main trusted input/screenshot failed")
+                    if not interaction["trusted_input_passed"] or not interaction["screen_stable_across_input"]:
+                        errors.append("Restored main trusted input or screen stability failed")
+                    owner = await capture_owner_screenshot(pages["B"], screenshots, configuration)
+                    run["owner_screenshot"] = owner
+                    if not owner["passed"]:
+                        errors.append("Restored owner screenshot differs from configured viewport/DPR")
+                    post_screenshot = await recapture_retained_history(session, state)
+                    run["post_screenshot_bfcache_state"] = post_screenshot
+                    post_observed = LIFECYCLE["restored_observations"](post_screenshot)
+                    errors.extend(LIFECYCLE["validate_page"](post_observed, baseline))
+                    if any(row["snapshot"] != observed[role]["snapshot"] for role, row in post_observed.items()):
+                        errors.append("Owner screenshot changed a retained document snapshot")
                 else:
                     # A replaced document permits normal Frame APIs, but cannot pass the BFCache gate.
                     await pages["B"].wait_for_load_state("load", timeout=10000)
