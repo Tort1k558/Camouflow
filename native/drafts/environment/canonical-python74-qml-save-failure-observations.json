@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "git_head": "060bf1f65834b807c29d954ea18ab9d5d7eb50a3",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 967,
+  "before_status": " M docs/HUB.md\n",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 388.578,
+  "returncode": 1,
+  "counts": {
+    "tests": 4578,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4576
+  },
+  "changed_tracked_files": [],
+  "after_status": " M docs/HUB.md\n",
+  "postguards_passed": true,
+  "log_sha256": "43ff97d5726ce95e6ce1c7534e548e58d285b07ca26509af7e82a93e45181953",
+  "junit_sha256": "f62d19276721bf14be67347dca775aba1f6abf5c6a480e7d49fbae37b9d44b10",
+  "raw_report_sha256": "62aa0a470922bd09b25b6d32a0956dad623ff2527ad3546310330a5c998ceca1",
+  "failed_tests": [
+    "tests.test_qml_python_editor::test_native_qml_configuration_and_profile_creation[1500]"
+  ],
+  "scope_note": "Retained new QML failure after historical-target repair: empty account list observed while saving profile overrides; cause not yet proven"
+}

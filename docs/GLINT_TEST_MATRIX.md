@@ -3,6 +3,14 @@
 ## Current compiled 001–073 — 2026-10-30
 
 **Selected source is now 001–074; compiled/qualified baseline remains 001–073.**
+Storage follow-up fixes a reproduced same-process Windows accounts read/replace race:
+before, 214 empty reads and 247 failed writes; after, **500/500 writes, zero errors/empty reads**.
+Accounts/settings readers share the existing writer RLock; no retry or deadline relaxation.
+Targeted storage/QML: **56 passed**. [Evidence](../native/drafts/environment/storage-read-lock74-observations.json).
+The preceding full run remains **4576 passed, 1 failed, 1 skipped**, with a QML save-time empty
+account list; this is not the earlier profile-delivery deadline failure.
+[Retained failure](../native/drafts/environment/canonical-python74-qml-save-failure-observations.json).
+No full-suite or cross-process-locking admission after this fix is claimed yet.
 Full Python at `568c934`: **4575 passed, 1 failed, 1 skipped**, source/status guards passed.
 The failure was the 0070 historical-target assertion incorrectly rejecting later groups.
 Its exact historical-prefix comparison was repaired; targeted follow-up: **180/180**.

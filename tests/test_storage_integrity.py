@@ -1,12 +1,67 @@
 """Mutations must not replace unreadable storage with an empty document."""
 
 import json
+import hashlib
+from pathlib import Path
+import threading
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
 from app.storage import db
+
+
+def test_read_lock_fix_retains_the_reproduced_race_and_binds_the_current_source():
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'storage-read-lock74-observations.json').read_bytes())
+    assert record['passed'] and record['measurement_complete']
+    assert record['before']['passed'] is False and record['before']['missing_reads'] == 214
+    assert record['before']['write_error_count'] == 247
+    assert record['before']['read_error_types'] == record['before']['write_error_types'] == ['PermissionError']
+    assert record['after']['passed'] and record['after']['writes'] == 500
+    assert record['after']['missing_reads'] == record['after']['read_error_count'] == record['after']['write_error_count'] == 0
+    assert hashlib.sha256((root / 'app/storage/db.py').read_bytes()).hexdigest() == record['after']['source_sha256']
+    failed = json.loads((directory / 'canonical-python74-qml-save-failure-observations.json').read_bytes())
+    assert failed['passed'] is False and failed['postguards_passed']
+    assert failed['failed_tests'] == ['tests.test_qml_python_editor::test_native_qml_configuration_and_profile_creation[1500]']
+    assert record['full_regression_after_fix_verified'] is record['native_runtime_verified'] is False
+
+
+@pytest.mark.parametrize('kind', ['accounts', 'settings'])
+def test_storage_reads_wait_for_the_existing_write_lock(storage_files, monkeypatch, kind):
+    accounts, settings = storage_files
+    path = accounts if kind == 'accounts' else settings
+    path.write_text('[]' if kind == 'accounts' else '{}', encoding='utf-8')
+    load = db._load_accounts_raw if kind == 'accounts' else db._load_settings
+    started, attempted = threading.Event(), threading.Event()
+    errors, result = [], []
+    original_read = Path.read_text
+
+    def read(file, *args, **kwargs):
+        if file == path:
+            attempted.set()
+        return original_read(file, *args, **kwargs)
+
+    def reader():
+        started.set()
+        try:
+            result.append(load(strict=True))
+        except Exception as error:
+            errors.append(error)
+
+    monkeypatch.setattr(Path, 'read_text', read)
+    thread = threading.Thread(target=reader)
+    try:
+        with db._STORAGE_LOCK:
+            thread.start()
+            assert started.wait(2)
+            assert not attempted.wait(.1), 'Read overlapped a serialized write'
+    finally:
+        thread.join(timeout=2)
+    assert not thread.is_alive() and attempted.is_set() and not errors
+    assert result == ([[]] if kind == 'accounts' else [{}])
 
 
 @pytest.fixture

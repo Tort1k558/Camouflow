@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "scope": "Same-process serialized accounts/settings reads; Windows synthetic account stress, not cross-process locking or full-suite admission",
+  "before": {
+    "passed": false,
+    "measurement_complete": true,
+    "reads": 408029,
+    "missing_reads": 214,
+    "writes": 253,
+    "scope": "Owned same-process account reads during serialized atomic updates; synthetic profile only",
+    "source_sha256": "77fc673142fa2619f8e00f1f8d1d05d78052f09011d1b16235c9799c0aafe951",
+    "duration_seconds": 28.17200000002049,
+    "read_error_count": 214,
+    "write_error_count": 247,
+    "read_error_types": [
+      "PermissionError"
+    ],
+    "write_error_types": [
+      "PermissionError"
+    ],
+    "raw_report_sha256": "a304f09e9152324d7f2573068973a4c0ee5eadbd5fbc8052bbc532bb1cb3bb25"
+  },
+  "after": {
+    "passed": true,
+    "measurement_complete": true,
+    "reads": 327,
+    "missing_reads": 0,
+    "writes": 500,
+    "scope": "Owned same-process account reads during serialized atomic updates; synthetic profile only",
+    "source_sha256": "858fc02d69e6557fdd16036d2cf2f20eec100d2436221136a5968b096c65c798",
+    "duration_seconds": 31.48399999999674,
+    "read_error_count": 0,
+    "write_error_count": 0,
+    "read_error_types": [],
+    "write_error_types": [],
+    "raw_report_sha256": "7e9c5c39f11ea6d2b687c396b1e1ba99764b0c3ae93e6c42538322e25a6a8d5f"
+  },
+  "source_bound_at_publication": true,
+  "targeted_python": {
+    "passed": 56,
+    "failures": 0,
+    "errors": 0,
+    "junit_sha256": "8d9e5a72517f393f23e5e460172ab127898ec7e37852df007442c0846feb9e36"
+  },
+  "full_regression_after_fix_verified": false,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
