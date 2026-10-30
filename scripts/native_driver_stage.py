@@ -92,6 +92,21 @@ def load_manifest(path: Path) -> tuple[dict, Path]:
         raise DriverStageError("Driver patch must be a bounded regular file")
     if digest(patch) != record["patch_sha256"]:
         raise DriverStageError("Driver patch digest mismatch")
+    overlay = record.get("python_overlay")
+    if overlay is not None:
+        if not isinstance(overlay, dict) or set(overlay) != {"file", "base_sha256", "sha256", "patch", "patch_sha256"} or overlay["file"] != "_impl/_page.py":
+            raise DriverStageError("Unsupported Python driver overlay")
+        for name in ("base_sha256", "sha256", "patch_sha256"):
+            if not isinstance(overlay[name], str) or not re.fullmatch(r"[0-9a-f]{64}", overlay[name]):
+                raise DriverStageError("Invalid Python driver overlay digest")
+        python_patch = overlay["patch"]
+        if not isinstance(python_patch, str) or Path(python_patch).name != python_patch:
+            raise DriverStageError("Python driver patch must be a sibling filename")
+        python_patch = path.parent / python_patch
+        if python_patch.is_symlink() or not python_patch.is_file() or python_patch.stat().st_size > 1024 * 1024:
+            raise DriverStageError("Python driver patch must be a bounded regular file")
+        if digest(python_patch) != overlay["patch_sha256"]:
+            raise DriverStageError("Python driver patch digest mismatch")
     return record, patch.resolve()
 
 
@@ -103,6 +118,9 @@ def validate_payload(directory: Path, assets: dict, manifest: dict, *, prepared:
     expected_bundle = manifest["bundle_sha256" if prepared else "base_bundle_sha256"]
     if not isinstance(metadata, dict) or metadata.get("version") != manifest["version"] or assets[BUNDLE] != expected_bundle or assets[NODE] != manifest["node_sha256"]:
         raise DriverStageError("Driver version, bundle or Node executable differs from the pin")
+    overlay = manifest.get("python_overlay")
+    if overlay is not None and assets.get(overlay["file"]) != overlay["sha256" if prepared else "base_sha256"]:
+        raise DriverStageError("Python driver module differs from the pin")
     if any((directory / name).stat().st_size == 0 for name in LEGAL_FILES):
         raise DriverStageError("Third-party license notices cannot be empty")
 
@@ -152,15 +170,19 @@ def stage(source: Path, output: Path, manifest_path: Path = DEFAULT_MANIFEST) ->
         shutil.copy2(source / name, target)
     if inventory(package) != before:
         raise DriverStageError("Driver copy differs from the measured source")
-    for options in (("--check",), ("--whitespace=error",)):
-        try:
-            subprocess.run(["git", "-c", "core.autocrlf=false", "apply", *options, str(patch)],
-                           cwd=output, check=True, capture_output=True, timeout=30)
-        except subprocess.CalledProcessError as error:
-            raise DriverStageError("Pinned driver patch could not be applied") from error
+    patches = [patch]
+    if manifest.get("python_overlay") is not None:
+        patches.append(manifest_path.parent / manifest["python_overlay"]["patch"])
+    for candidate in patches:
+        for options in (("--check",), ("--whitespace=error",)):
+            try:
+                subprocess.run(["git", "-c", "core.autocrlf=false", "apply", *options, str(candidate.resolve())],
+                               cwd=output, check=True, capture_output=True, timeout=30)
+            except subprocess.CalledProcessError as error:
+                raise DriverStageError("Pinned driver patch could not be applied") from error
     assets = inventory(package)
     validate_payload(package, assets, manifest, prepared=True)
-    expected = {**before, BUNDLE: manifest["bundle_sha256"]}
+    expected = prepared_assets(before, manifest)
     if assets != expected or inventory(source, source=True) != before:
         raise DriverStageError("Unexpected driver asset changes during staging")
     receipt = {
@@ -176,6 +198,14 @@ def stage(source: Path, output: Path, manifest_path: Path = DEFAULT_MANIFEST) ->
     return verify(output, manifest_path)
 
 
+def prepared_assets(assets: dict, manifest: dict) -> dict:
+    expected = {**assets, BUNDLE: manifest["bundle_sha256"]}
+    overlay = manifest.get("python_overlay")
+    if overlay is not None:
+        expected[overlay["file"]] = overlay["sha256"]
+    return expected
+
+
 def bundle_datas(entries: list, source: Path, directory: Path, manifest_path: Path = DEFAULT_MANIFEST) -> list:
     """Override only the analyzed JS bundle; all Python/Node assets must match."""
     receipt = verify(directory, manifest_path)
@@ -183,7 +213,7 @@ def bundle_datas(entries: list, source: Path, directory: Path, manifest_path: Pa
     assets = inventory(source, source=True)
     validate_payload(source, assets, manifest, prepared=False)
     tree = hashlib.sha256(json.dumps(assets, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-    if tree != receipt["source_tree_sha256"] or receipt["assets"] != {**assets, BUNDLE: manifest["bundle_sha256"]}:
+    if tree != receipt["source_tree_sha256"] or receipt["assets"] != prepared_assets(assets, manifest):
         raise DriverStageError("Analyzed Playwright installation differs from the stage source")
     target = "playwright/" + BUNDLE
     matches = [entry for entry in entries if entry[0].replace("\\", "/") == target]
@@ -193,6 +223,28 @@ def bundle_datas(entries: list, source: Path, directory: Path, manifest_path: Pa
         raise DriverStageError("Analyzed Playwright bundle has an unexpected source")
     replacement = str((directory / "playwright" / BUNDLE).resolve())
     return [(entry[0], replacement, entry[2]) if entry[0].replace("\\", "/") == target else entry for entry in entries]
+
+
+def bundle_pure(entries: list, source: Path, directory: Path, manifest_path: Path = DEFAULT_MANIFEST) -> list:
+    """Replace the single measured Python module only when explicitly declared."""
+    receipt = verify(directory, manifest_path)
+    manifest, _ = load_manifest(manifest_path)
+    overlay = manifest.get("python_overlay")
+    if overlay is None:
+        return list(entries)
+    assets = inventory(source, source=True)
+    validate_payload(source, assets, manifest, prepared=False)
+    tree = hashlib.sha256(json.dumps(assets, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if tree != receipt["source_tree_sha256"] or receipt["assets"] != prepared_assets(assets, manifest):
+        raise DriverStageError("Analyzed Playwright installation differs from the stage source")
+    target = "playwright._impl._page"
+    matches = [entry for entry in entries if entry[0] == target]
+    if len(matches) != 1 or len(matches[0]) != 3 or matches[0][2] not in {"PYMODULE", "PYMODULE-1", "PYMODULE-2"}:
+        raise DriverStageError("Expected one analyzed Playwright Python module")
+    if Path(matches[0][1]).resolve() != (source / overlay["file"]).resolve():
+        raise DriverStageError("Analyzed Playwright Python module has an unexpected source")
+    replacement = str((directory / "playwright" / overlay["file"]).resolve())
+    return [(entry[0], replacement, entry[2]) if entry[0] == target else entry for entry in entries]
 
 
 def main() -> int:

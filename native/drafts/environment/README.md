@@ -1,5 +1,24 @@
 # Measured reference environments
 
+## Optional Python+JS desktop package
+
+[The linked package](python-js-stage70-observations.json) now carries the declared
+Python BindingCall fix and the explicit-opt-in JS branch together. The original JS-only
+manifest remains verifiable; the normal build/runtime stays unchanged when no stage
+environment is set. [Build commands](../../BUILDING.md#experimental-desktop-driver-staging-not-a-chromium-build).
+
+Actual EXE/PYZ extraction confirms the patched method bytecode, rather than assuming
+PyInstaller invalidated its cache. Both frozen legacy providers passed launch/imports
+and expected timeout controls. The same stage passed **18/18 default Native checks**,
+**4/4 Recorder/replay phases**, **6/6 restoration races** and four strict cancelled-stop
+cases without loop errors. The barrier driver is test-only and never part of the package.
+
+[Full repeat at `0770c2e`](canonical-python70-binding-close-observations.json):
+**4366 passed, 1 skipped**, before packaging integration. This is still an **unselected,
+unsigned development package**, not frozen Native BFCache, combined fingerprint,
+long-run resource or release/update/rollback admission. The dated sections below retain
+earlier evidence, including the JS-only stage's missing Python fix.
+
 ## Pending-binding teardown: retained FAIL and isolated Python draft
 
 The actual staged bundle passed a fresh [32-cycle stress repeat](staged-stress70-observations.json).

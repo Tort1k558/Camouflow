@@ -27,7 +27,7 @@ startup, actual pixels, worker delivery or fingerprint acceptance.
 ## Experimental desktop driver staging (not a Chromium build)
 
 The optional Playwright 1.60.0 overlay is **unselected**. It preserves the installed
-package and changes only the pinned JS bundle in a fresh external copy. Node and
+package and changes only the declared, pinned JS/Python assets in a fresh external copy. Node and
 third-party notices are retained. Verification uses checksums, not a release signature.
 The normal desktop build remains unchanged when the environment variable is unset.
 
@@ -36,17 +36,21 @@ Run from the repository root; use new D: output directories and stop on any erro
 ```powershell
 $python = (Resolve-Path '.\.venv\Scripts\python.exe').Path
 $stage = 'D:\GlintDriverStage-new'
-& $python scripts/native_driver_stage.py stage --source-package .venv/Lib/site-packages/playwright --output $stage
+$manifest = (Resolve-Path 'native/drafts/environment/playwright-driver-stage-binding-close.json').Path
+& $python scripts/native_driver_stage.py stage --source-package .venv/Lib/site-packages/playwright --output $stage --manifest $manifest
 if ($LASTEXITCODE -ne 0) { throw 'Driver staging failed' }
-& $python scripts/native_driver_stage.py verify --directory $stage
+& $python scripts/native_driver_stage.py verify --directory $stage --manifest $manifest
 if ($LASTEXITCODE -ne 0) { throw 'Driver verification failed' }
 $previousStage = $env:CAMOUFLOW_GLINT_DRIVER_STAGE
+$previousManifest = $env:CAMOUFLOW_GLINT_DRIVER_MANIFEST
 try {
     $env:CAMOUFLOW_GLINT_DRIVER_STAGE = $stage
+    $env:CAMOUFLOW_GLINT_DRIVER_MANIFEST = $manifest
     & $python -m PyInstaller --noconfirm --distpath D:\GlintDesktop-new\dist --workpath D:\GlintDesktop-new\work camouflow.spec
     if ($LASTEXITCODE -ne 0) { throw 'Desktop build failed' }
 } finally {
     $env:CAMOUFLOW_GLINT_DRIVER_STAGE = $previousStage
+    $env:CAMOUFLOW_GLINT_DRIVER_MANIFEST = $previousManifest
 }
 ```
 
@@ -54,6 +58,12 @@ This packages CamouFlow, not `chrome.exe`. It does **not** enable BFCache in the
 manager or select a browser runtime. The compatibility branch requires an explicit
 `ignore_default_args=["--disable-back-forward-cache"]` launch option, currently
 confined to the experimental application copy. Never ship the test-barrier patch.
+
+The binding-close manifest packages the declared Python outcome fix as well as
+the JS compatibility branch. The older `playwright-driver-stage.json` remains the
+JS-only variant; omitting both environment variables retains the normal desktop build.
+The stage and manifest must match. This is still an unselected development package,
+not a release signature or permission to enable unverified fingerprint policies.
 
 [Measured results](drafts/environment/driver-stage70-observations.json): actual staged
 desktop EXE, bundled Node, paired Camoufox/CloakBrowser transport checks and four

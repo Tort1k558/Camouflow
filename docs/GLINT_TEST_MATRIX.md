@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## Optional Python+JS desktop package — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Repository spec/tool build | **PASS**, pinned Python and JS packaged together; actual EXE bytecode matches the prepared BindingCall fix | Cached desktop build, not Chromium compilation or default driver replacement |
+| Default Native runtime | **18/18**, installed driver/source unchanged | BFCache remains disabled in the default manager policy |
+| Source-overlay Recorder/replay | **4/4** desktop/mobile initial/restart | Explicit opt-in, not frozen Native BFCache admission |
+| Restoration race repeat on this package | **6/6**, plus four strict cancelled-stop controls without recorded loop errors | Separate test-only JS barrier; not every cancellation phase |
+| Legacy engines | Both cached providers passed transport persistence and actual frozen launch/imports/expected timeout | No fingerprint score or new Cloak Recorder support |
+| Historical full repeat at `0770c2e` | **4366 passed, 1 skipped**, guards passed | Before Python+JS packaging integration |
+
+[Package measurements](../native/drafts/environment/python-js-stage70-observations.json),
+[historical full repeat](../native/drafts/environment/canonical-python70-binding-close-observations.json).
+The package is unselected/unsigned. Frozen Native BFCache, resource/leak checks,
+combined fingerprint, security rebase and release/update/rollback admission remain open.
+
 ## Strict pending-binding teardown and staging regression — 2026-10-30
 
 | Gate | Observed result | Boundary |

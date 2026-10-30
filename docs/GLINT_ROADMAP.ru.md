@@ -1,5 +1,22 @@
 # Glint: план проверки и развития
 
+## Python+JS доставляются вместе в экспериментальный Windows EXE
+
+| Проверка | Результат | Ограничение |
+| --- | --- | --- |
+| Совместная упаковка | 176 закреплённых файлов, Python-модуль и JS включаются по явному manifest | Старая JS-only схема тоже проходит verify; default не менялся |
+| Реальный EXE | Извлечённый `BindingCall.call` совпадает с исправленным кодом, отличается от старого | Проверка содержимого EXE, не полный frozen Native BFCache gate |
+| Штатный Native runtime | **18/18** с новым пакетом; исходники и установленный драйвер не изменились | Основной BFCache по-прежнему выключен |
+| Recorder → replay | **4/4** desktop/mobile initial/restart | Экспериментальная копия приложения с явным opt-in |
+| Гонки восстановления | **6/6**; ещё четыре строгих cancelled-stop случая без loop-ошибок | Barrier только в отдельном тестовом драйвере; не все точки отмены |
+| Camoufox / CloakBrowser | Транспортные и frozen Python launch/imports/timeout проверки прошли | Не fingerprint-оценка и не новая поддержка Cloak Recorder |
+
+[Измерения и хеши](../native/drafts/environment/python-js-stage70-observations.json),
+[команды сборки](../native/BUILDING.md#experimental-desktop-driver-staging-not-a-chromium-build).
+Полная регрессия предыдущего `0770c2e`: **4366 passed, 1 skipped**;
+она предшествует новой интеграции упаковки. Далее — общий повтор, совместные
+Canvas/GPU/Audio проверки, ресурсы и оставшиеся lifecycle/release gates.
+
 ## Полный повтор staging прошёл; закрытие с pending binding проверено отдельно
 
 - **4364 passed, 1 skipped** на `766d9b4`, исходники и статус не менялись во время

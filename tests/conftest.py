@@ -22,3 +22,18 @@ def recorder_before_document_open_sha256(tmp_path):
     assert result == record["source_before"]["normalized_utf8_lf_sha256"] == "b41dc9a12865a0eecf73749b1f69adc70e587f87c14a93973eeff18f60872c8e"
     assert record["source_before"]["raw_sha256"] == "cf37b1e51facc4cf807e0588c2da4869756cbcd170754a3071df261a1817574c"
     return record["source_before"]["raw_sha256"]
+
+
+@pytest.fixture
+def stage_before_python_overlay_sources(tmp_path):
+    """Reconstruct the source-bound JS-only build inputs without rewriting evidence."""
+    root = Path(__file__).resolve().parents[1]
+    names = ("camouflow.spec", "scripts/native_driver_stage.py")
+    for name in names:
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text((root / name).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
+                    str(root / "native/drafts/environment/driver-stage-python-integration.patch")],
+                   cwd=tmp_path, check=True, capture_output=True)
+    return {name: (tmp_path / name).read_text(encoding="utf-8") for name in names}

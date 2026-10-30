@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "package": "playwright",
+  "version": "1.60.0",
+  "platform": "win32",
+  "base_bundle_sha256": "f74353fcb8e406756a70a6af0dfc4a5069acd577e35ec9d923ccf36ac009c2f5",
+  "bundle_sha256": "26c93a2ec2d48fb890d3b7d5b5fa3ee2c4a9514d1b12de26c31d6b06c4ea076c",
+  "node_sha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+  "patch": "playwright-bfcache-optin.patch",
+  "patch_sha256": "bed3d525edb4f3a515ad84b179daa20c32ae9527e80ba9d94288639ebd45f162",
+  "optin_ignored_default": "--disable-back-forward-cache",
+  "selected": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "python_overlay": {
+    "file": "_impl/_page.py",
+    "base_sha256": "ea1efb87c9e0aed59afa8e48986b1dcbb28155f02c70678ea01ea14b88d65c0a",
+    "sha256": "69c114049896668607bb4abd255d42e86785153bb5101e2f00193186001a8207",
+    "patch": "playwright-python-binding-close.patch",
+    "patch_sha256": "bf3343d1ca8487b94d3ec2dbd9074af2e98fe65a66e7c60e4092d7e89f1a2876"
+  }
+}

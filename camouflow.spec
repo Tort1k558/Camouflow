@@ -63,13 +63,18 @@ a = Analysis(
 )
 
 driver_stage = os.environ.get("CAMOUFLOW_GLINT_DRIVER_STAGE")
+driver_manifest = os.environ.get("CAMOUFLOW_GLINT_DRIVER_MANIFEST")
+if driver_manifest and not driver_stage:
+    raise ValueError("An explicit driver manifest requires a stage directory")
 if driver_stage:
     if sys.platform != "win32":
         raise ValueError("Glint driver staging is Windows-only")
     sys.path.insert(0, str(ROOT))
     import playwright
-    from scripts.native_driver_stage import bundle_datas
-    a.datas = bundle_datas(a.datas, Path(playwright.__file__).parent, Path(driver_stage))
+    from scripts.native_driver_stage import DEFAULT_MANIFEST, bundle_datas, bundle_pure
+    manifest = Path(driver_manifest) if driver_manifest else DEFAULT_MANIFEST
+    a.datas = bundle_datas(a.datas, Path(playwright.__file__).parent, Path(driver_stage), manifest)
+    a.pure = bundle_pure(a.pure, Path(playwright.__file__).parent, Path(driver_stage), manifest)
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 

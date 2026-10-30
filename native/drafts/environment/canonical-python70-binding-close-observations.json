@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "0770c2efccab8deca4fecfcf2b48e625ddde2205",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 858,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 399.594,
+  "returncode": 0,
+  "counts": {
+    "tests": 4367,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4366
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "175ebdc84e3b32cb3feb3ce4130a4ba03c664c8a66ad026c33b24d955bd7b9a3",
+  "junit_sha256": "13adadae8a8eb88b4ffad76659c3961f6f038699e40dedd080620ae06a59ae3b",
+  "raw_report_sha256": "9259e08e537cec288c680e3313e455d2132ceffa9e206b9e2defdd88124ab4ee",
+  "note": "Historical full repeat at 0770c2e, including the Python BindingCall draft/model but preceding Python+JS packaging integration."
+}

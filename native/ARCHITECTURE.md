@@ -15,8 +15,12 @@ Camoufox/CloakBrowser transport/frozen Python checks.
 The full Python repeat at `766d9b4` passed **4364 tests, 1 skipped**.
 
 A stricter pending-binding teardown control exposed unhandled Python reject tasks.
-The separate [BindingCall draft](drafts/environment/binding-close70-observations.json)
-passed paired browser controls but is **not included** in the staged desktop package.
+The [paired BindingCall draft](drafts/environment/binding-close70-observations.json)
+is now available in an **optional Python+JS package**, separate from the historical
+JS-only stage. [Package evidence](drafts/environment/python-js-stage70-observations.json)
+confirms the actual EXE's patched Python bytecode, four Recorder/replay phases,
+18 default-runtime checks, six restoration races and both frozen legacy providers.
+Neither the default driver nor the manager BFCache policy is switched.
 Security rebase, verified device-cohort generation and package/update/rollback
 admission still block a complete release. Linux/macOS remain deferred.
 

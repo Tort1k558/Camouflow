@@ -221,12 +221,13 @@ def measured_stage():
     return json.loads((driver.ROOT / "native/drafts/environment/driver-stage70-observations.json").read_bytes())
 
 
-def test_measured_stage_binds_public_sources_without_release_admission(measured_stage):
+def test_measured_stage_binds_public_sources_without_release_admission(measured_stage, stage_before_python_overlay_sources):
     assert measured_stage["passed"] and measured_stage["measurement_complete"]
     for name in ("selected", "privacy_admitted", "production_admitted", "cryptographically_signed", "main_manager_bfcache_enabled"):
         assert measured_stage[name] is False
     for name, expected in measured_stage["public_sources_normalized_utf8_lf_sha256"].items():
-        source = (driver.ROOT / name).read_text(encoding="utf-8-sig").replace("\r\n", "\n")
+        source = (stage_before_python_overlay_sources[name] if name in stage_before_python_overlay_sources
+                  else (driver.ROOT / name).read_text(encoding="utf-8-sig").replace("\r\n", "\n"))
         assert sha(source.encode("utf-8")) == expected, name
     manifest, _ = driver.load_manifest(driver.DEFAULT_MANIFEST)
     assert measured_stage["prepared_driver_sha256"] == manifest["bundle_sha256"]
@@ -332,3 +333,115 @@ def test_strict_gate_patch_reconstructs_the_portable_runner(tmp_path):
                    cwd=tmp_path, capture_output=True, check=True, timeout=15)
     assert sha(target.read_bytes()) == evidence["strict_gate_portable_source_sha256"]
     compile(target.read_text(encoding="utf-8"), str(target), "exec")
+
+@pytest.fixture
+def python_package(package):
+    source, output, manifest = package
+    relative = "_impl/_page.py"
+    original = source / relative
+    original.parent.mkdir(parents=True)
+    original.write_bytes(b"old python\n")
+    patch = manifest.parent / "python.patch"
+    name = "playwright/" + relative
+    patch.write_text("diff --git a/" + name + " b/" + name + "\n" + "".join(difflib.unified_diff(
+        ["old python\n"], ["new python\n"], fromfile="a/" + name, tofile="b/" + name)), encoding="utf-8", newline="\n")
+    record = json.loads(manifest.read_bytes())
+    record["python_overlay"] = {"file": relative, "base_sha256": sha(b"old python\n"), "sha256": sha(b"new python\n"),
+                                "patch": patch.name, "patch_sha256": sha(patch.read_bytes())}
+    manifest.write_text(json.dumps(record), encoding="utf-8")
+    return source, output, manifest
+
+
+def test_python_js_stage_preserves_source_and_replaces_both_analysis_assets(python_package):
+    source, output, manifest = python_package
+    before = driver.inventory(source, source=True)
+    receipt = driver.stage(source, output, manifest)
+    assert driver.inventory(source, source=True) == before
+    assert receipt["assets"] == {**before, driver.BUNDLE: sha(b"new\n"), "_impl/_page.py": sha(b"new python\n")}
+    pure = [("playwright._impl._page", str(source / "_impl/_page.py"), "PYMODULE"), ("app.main", "untouched.py", "PYMODULE")]
+    result = driver.bundle_pure(pure, source, output, manifest)
+    assert result[1] == pure[1] and pure[0][1] == str(source / "_impl/_page.py")
+    assert result[0] == (pure[0][0], str((output / "playwright/_impl/_page.py").resolve()), "PYMODULE")
+    data = [("playwright/" + driver.BUNDLE, str(source / driver.BUNDLE), "DATA")]
+    assert driver.bundle_datas(data, source, output, manifest)[0][1] == str((output / "playwright" / driver.BUNDLE).resolve())
+
+
+@pytest.mark.parametrize("field,value", [("file", "_impl/_connection.py"), ("base_sha256", True), ("patch", "../outside.patch"), ("patch_sha256", "0" * 64)])
+def test_python_overlay_rejects_invalid_selection_before_copy(python_package, field, value):
+    source, output, manifest = python_package
+    record = json.loads(manifest.read_bytes())
+    record["python_overlay"][field] = value
+    manifest.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(driver.DriverStageError):
+        driver.stage(source, output, manifest)
+    assert not output.exists()
+
+
+def test_python_overlay_checks_original_module_before_copy(python_package):
+    source, output, manifest = python_package
+    (source / "_impl/_page.py").write_bytes(b"unknown Python source")
+    with pytest.raises(driver.DriverStageError, match="module differs from the pin"):
+        driver.stage(source, output, manifest)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("kind", ["missing", "duplicate", "data", "foreign"])
+def test_python_analysis_rejects_wrong_or_ambiguous_module(python_package, kind):
+    source, output, manifest = python_package
+    driver.stage(source, output, manifest)
+    module = ("playwright._impl._page", str(source / "_impl/_page.py"), "PYMODULE")
+    entries = {"missing": [], "duplicate": [module, module], "data": [(module[0], module[1], "DATA")],
+               "foreign": [(module[0], "foreign.py", "PYMODULE")]}[kind]
+    with pytest.raises(driver.DriverStageError):
+        driver.bundle_pure(entries, source, output, manifest)
+
+
+def test_js_only_stage_does_not_override_python_analysis(package):
+    source, output, manifest = package
+    driver.stage(source, output, manifest)
+    entries = [("app.main", "owned.py", "PYMODULE")]
+    result = driver.bundle_pure(entries, source, output, manifest)
+    assert result == entries and result is not entries
+
+
+def test_measured_python_js_package_binds_current_sources_and_embedded_python():
+    environment = driver.ROOT / "native/drafts/environment"
+    record = json.loads((environment / "python-js-stage70-observations.json").read_bytes())
+    manifest, _ = driver.load_manifest(environment / record["manifest"])
+    assert record["passed"] and record["measurement_complete"] and record["file_count"] == 176
+    assert record["python_binding_fix_included"] and record["js_bfcache_optin_included"]
+    for field in ("selected", "privacy_admitted", "production_admitted", "cryptographically_signed",
+                  "default_driver_replaced", "main_manager_bfcache_enabled", "frozen_native_bfcache_verified"):
+        assert record[field] is False
+    for name, expected in record["source_normalized_utf8_lf_sha256"].items():
+        assert sha((driver.ROOT / name).read_text(encoding="utf-8-sig").encode("utf-8")) == expected
+    code = record["frozen_binding_code"]
+    assert code["passed"] and code["executable_sha256"] == record["desktop_build"]["executable_sha256"]
+    assert code["prepared_python_sha256"] == manifest["python_overlay"]["sha256"]
+    assert record["desktop_build"]["frozen_driver_sha256"] == manifest["bundle_sha256"]
+    assert record["desktop_build"]["frozen_node_sha256"] == manifest["node_sha256"]
+    assert record["js_only_stage_still_verifies"]
+
+
+def test_measured_python_js_runtime_and_races_keep_their_admission_boundaries():
+    record = json.loads((driver.ROOT / "native/drafts/environment/python-js-stage70-observations.json").read_bytes())
+    baseline = record["default_native_runtime"]
+    assert baseline["passed"] and len(baseline["checks"]) == 18
+    assert baseline["probe"]["default_launch_bfcache_disabled"]
+    assert baseline["source_unchanged"] and baseline["installed_driver_unchanged"]
+    replay = record["recorder_replay"]
+    assert replay["postguards_passed"] and len(replay["runs"]) == 4
+    assert all(row["passed"] and row["replay_passed"] and not row["warnings"]
+               and set(row["pending_counts"].values()) == {0} for row in replay["runs"])
+    strict = record["strict_cancelled_stop"]
+    assert strict["passed"] and strict["asyncio_errors"] == [] and len(strict["runs"]) == 4
+    assert all(row["close_cancellation_observed"] and row["cross_process_profile_owner_retained"]
+               and row["second_close_completed_original_driver_stop"] and row["remaining_owned_processes"] == 0 for row in strict["runs"])
+    races = record["restoration_races"]
+    assert races["passed"] and races["test_only_driver_instrumentation"] and len(races["runs"]) == 6
+    assert races["driver_sha256"] != record["desktop_build"]["frozen_driver_sha256"]
+    assert all(row["passed"] and row["barrier_held_until_action_finished"] and row["remaining_owned_processes"] == 0 for row in races["runs"])
+    assert {row["provider"] for row in record["provider_transport"]} == {"camoufox", "cloakbrowser"}
+    assert all(row["passed"] and row["postguards_passed"] for row in record["provider_transport"])
+    assert {row["runtime"]["engine"] for row in record["frozen_provider_checks"]} == {"camoufox", "cloakbrowser"}
+    assert all(row["passed"] and row["files_unchanged"] for row in record["frozen_provider_checks"])
