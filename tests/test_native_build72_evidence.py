@@ -62,3 +62,13 @@ def test_full_python_ui_failure_is_not_rewritten_as_success_after_targeted_follo
     assert len(record['failed_tests']) == 2 and all('test_native_qml_configuration_and_profile_creation' in name for name in record['failed_tests'])
     assert record['targeted_followup']['tests_passed'] == 2 and record['targeted_followup']['source_and_deadlines_unchanged']
     assert record['fixed'] is record['production_admitted'] is False
+
+
+def test_later_full_repeat_passes_qml_but_retains_a_historical_source_binding_failure(qml_before_delivery_diagnostics_sha256):
+    record = json.loads((ROOT / 'native/drafts/environment/canonical-python73-diagnostics-failures.json').read_bytes())
+    assert record['passed'] is False and record['measurement_complete'] and record['postguards_passed']
+    assert record['counts'] == {'tests': 4490, 'failures': 1, 'errors': 0, 'skipped': 1, 'passed': 4488}
+    assert record['ui_profile_delivery_cases_passed'] == 2
+    assert record['failed_tests'] == ['tests.test_native_environment_capture::test_failed_full_regression_retains_failure_and_distinguishes_qml_followup']
+    assert record['historical_record_rewritten'] is record['full_repeat_after_binding_repair_verified'] is False
+    assert record['reconstruction_proof']['historical_source_sha256'] == qml_before_delivery_diagnostics_sha256

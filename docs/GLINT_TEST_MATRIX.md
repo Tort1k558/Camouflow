@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Worker PNG capture and full Python follow-up — 2026-10-30
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Worker PNG export | **24/24 cases/carriers per baseline and protected profile** | Six classic/module worker classes × four Offscreen cases; exact pre-mutation pixels, color metadata and document coherence |
+| Full Python at `2852d42` | **4488 passed, 1 failed, 1 skipped**; both QML profile-delivery cases pass | Remaining failure compares a historical test with its later diagnostics; historical reconstruction repaired, full repeat still required |
+
+[PNG evidence](../native/drafts/environment/worker-export72-observations.json),
+[retained Python failure](../native/drafts/environment/canonical-python73-diagnostics-failures.json).
+The exact public PNG collector ran from a local frozen **001–072** source layout,
+bound to the preserved 001–072 core/receipt. No network clone or changes to the
+active Chromium checkout were needed. This does **not** validate 001–073, worker
+restart/nesting, HDR fidelity, security or release. The interrupted 001–073 build
+stage is being resumed with its completed sync/hooks/patch and existing objects.
+
 ## Completed 001–072 gates and corrective 001–073 selection — 2026-10-30
 
 | Gate | Result | Boundary / next action |

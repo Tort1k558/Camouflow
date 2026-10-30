@@ -2,6 +2,17 @@
 
 ## Current implementation boundary
 
+Worker PNG capture now passes **24/24 cases/carriers per baseline and protected
+profile**, using the existing independent Qt decoder. Pixels match pre-mutation
+reads and document outputs, including async capture and color metadata. The exact
+public probe ran from a local frozen 001–072 source layout with the preserved
+001–072 receipt while 001–073 was building; this is not a 001–073 result.
+[Worker PNG](drafts/environment/worker-export72-observations.json).
+The later full Python repeat passes both QML profile-delivery cases: 4488 passed,
+one historical-source-binding failure, one skipped. Historical reconstruction is
+repaired without rewriting the old record; a full repeat remains required.
+[Retained failure](drafts/environment/canonical-python73-diagnostics-failures.json).
+
 The compiled browser remains **001–072**. Its 21-group native batch completed with
 **485/488 passing cases**: all 484 existing cases pass, but three new orientation
 cases fail. [Retained failure](drafts/upstream-156/native-batch72-observations.json).
@@ -33,7 +44,7 @@ protected profile, with exact pre-mutation pixels and color metadata. Two live
 profiles pass all six peer-closure/restart phases with observed-process cleanup.
 [PNG](drafts/environment/canvas-export72-observations.json),
 [concurrent](drafts/environment/combined-concurrent72-observations.json).
-The corrective native batch, worker PNG/nested cases, HDR quality, security and
+The corrective native batch, worker restart/nested cases, HDR quality, security and
 release remain open; historical 001–070 results do not carry forward automatically.
 The full Python repeat after historical-binding fixes passed 4464 tests, 1 skipped.
 

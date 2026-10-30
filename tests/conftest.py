@@ -40,6 +40,19 @@ def release_tools_before_72_sha256(tmp_path):
 
 
 @pytest.fixture
+def qml_before_delivery_diagnostics_sha256(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    relative = Path('tests/test_qml_python_editor.py')
+    target = tmp_path / relative
+    target.parent.mkdir(parents=True)
+    target.write_text((root / relative).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error',
+                    str(root / 'native/drafts/environment/qml-profile-delivery-diagnostics.patch')],
+                   cwd=tmp_path, check=True, capture_output=True)
+    return hashlib.sha256(target.read_bytes()).hexdigest()
+
+
+@pytest.fixture
 def native70_historical_source_hashes(native_units_before_orientation, recorder_before_document_open_sha256):
     root = Path(__file__).resolve().parents[1]
     return {

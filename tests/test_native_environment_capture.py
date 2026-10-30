@@ -1038,9 +1038,7 @@ def test_queued_widget_verifier_applies_and_rejects_incomplete_results(tmp_path,
     assert not (tmp_path / "not-created.json").exists()
 
 
-def test_failed_full_regression_retains_failure_and_distinguishes_qml_followup():
-    import hashlib
-
+def test_failed_full_regression_retains_failure_and_distinguishes_qml_followup(qml_before_delivery_diagnostics_sha256):
     root = environment.ROOT
     record = json.loads((root / "native/drafts/environment/canonical-python69-preparation-observations.json").read_bytes())
     assert record["measurement_complete"] and record["postguards_passed"]
@@ -1054,7 +1052,7 @@ def test_failed_full_regression_retains_failure_and_distinguishes_qml_followup()
     assert record["qml_module_followup"]["passed"] == 9
     assert all(record[name] is False for name in ("full_regression_after_repair_verified", "native_runtime_verified",
         "privacy_admitted", "production_admitted"))
-    assert hashlib.sha256((root / record["corrected_test_source"]).read_bytes()).hexdigest() == record["corrected_test_source_sha256"]
+    assert qml_before_delivery_diagnostics_sha256 == record["corrected_test_source_sha256"]
 
 
 def test_0069_source_build_proof_has_receipt_and_preservation_without_native_test_admission():

@@ -17,7 +17,10 @@ baseline and protected profile, including async snapshot and color metadata.
 [Export evidence](canvas-export72-observations.json).
 Six classic/module dedicated/shared/service workers pass all 96 Offscreen format
 cases and match document output within each profile. [Worker evidence](worker-formats72-observations.json).
-Nested/Blob restart, worker PNG exports and broad HDR quality remain open.
+Worker PNG also passes 24/24 cases/carriers per baseline and protected profile,
+including async capture, color metadata and document coherence, on preserved
+001–072. [Worker PNG evidence](worker-export72-observations.json).
+Nested/Blob restart and broad HDR quality remain open; this is not 001–073 admission.
 
 ## Cause of the retained 001–070 failure
 
@@ -76,9 +79,15 @@ $stage = 'D:\GlintManagerQA\staged-python-js70-20261030-v1'
 & $python native/drafts/environment/first-script/canvas_formats.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\canvas-formats72-recheck
 & $python native/drafts/environment/first-script/canvas_export_runtime.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\canvas-export72-recheck
 & $python native/drafts/environment/first-script/worker_formats_runtime.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\worker-formats72-recheck
+& $python native/drafts/environment/first-script/worker_exports_runtime.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\worker-export72-recheck
 ```
 
 The export gate compares decoded PNG bytes with pre-mutation pixels and validates
 color metadata. It does not decode through a second protected Canvas. Reports
 retain source/receipt hashes, native API errors and postguards; a failed gate is
 not automatically retried or treated as protection success.
+
+The selected source manifest, browser receipt and cohort core must match. When
+the checkout has already advanced to 001–073, the 001–072 examples require a
+frozen 001–072 source layout with the exact public diagnostic files overlaid;
+do not rewrite the receipt or relax its checks to reuse an older binary.

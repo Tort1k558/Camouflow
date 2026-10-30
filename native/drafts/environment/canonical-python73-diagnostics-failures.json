@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "git_head": "2852d4212822c759fa21b58a41176f1c42418813",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 920,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 523.093,
+  "returncode": 1,
+  "counts": {
+    "tests": 4490,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4488
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "81a4f1f8acb3d7769f0e436b54bf21df4a537a20121930e28535a1f31b3d0a1a",
+  "junit_sha256": "afe672331ffb3e676a5c850a3fd547feccf3e77253019f5625b146f603d3fdfe",
+  "raw_report_sha256": "9656e1480ba7d90284a11198e3c101dac792f332fc0c1634b24796c6663dd751",
+  "failed_tests": [
+    "tests.test_native_environment_capture::test_failed_full_regression_retains_failure_and_distinguishes_qml_followup"
+  ],
+  "ui_profile_delivery_cases_passed": 2,
+  "failure_kind": "Historical QML test source was compared with its later diagnostic version, not a new runtime failure.",
+  "historical_record_rewritten": false,
+  "full_repeat_after_binding_repair_verified": false,
+  "reconstruction_proof": {
+    "passed": true,
+    "scope": "Historical QML test source reconstruction, not a UI/runtime repair.",
+    "historical_source_sha256": "95aa85e6526d507da0a504438fc49e0ca3d2b1d1b094e2e740b6abd4c5e0a23f",
+    "current_source_sha256": "2f5d0fbd15220bf6db1b5116da4a47047007e1fed764e4d5f334c56b94cd380d",
+    "patch_sha256": "a0a038b913ae0259003b3fe1e6f1428e38a34b6243a8ae3e442b61ba8df37d99",
+    "ui_deadline_changed": false,
+    "production_admitted": false
+  }
+}
