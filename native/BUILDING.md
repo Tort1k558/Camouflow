@@ -15,6 +15,44 @@ or make it the default release. Use the [candidate guide](drafts/upstream-156/RE
 not the default 148 commands below. Exact results and retained failures:
 [test matrix](../docs/GLINT_TEST_MATRIX.md).
 
+## Bounded cached Chromium 156 rebuild
+
+`scripts/native_incremental.py` is a separate Windows-only path for an existing
+local Siso cache. It does **not** reduce the normal build lock's 180 GiB reserve.
+Its 64 GiB reserve is available only with all of these checks:
+
+- Exact baseline checkpoint, applied patch chain, Chromium/V8/depot_tools revisions,
+  local SDK fingerprint and unchanged symbol-free GN arguments.
+- Independently preserved baseline receipt, code and every recorded runtime asset.
+- At most four appended patches touching sixteen existing C++/header files under
+  `content/browser/renderer_host/` or `third_party/blink/renderer/`; no dependency,
+  build-system, added/deleted/renamed or binary files.
+- Existing local-only Siso state, no mixed Ninja cache, no unrelated baseline work,
+  at most 16 MiB of changed source and 256 planned build steps.
+- Workspace lock and idle-builder check; no sync, hooks, clean or alternate-builder
+  fallback. Equivalent dependency identities are explicitly carried forward with
+  their original records retained, not represented as newly executed stages.
+
+First inspect the baseline without applying patches:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/native_incremental.py plan --candidate upstream-156 --workspace D:\Glint156Candidate --base-checkpoint 001-073 --preserved-runtime D:\Glint156Candidate\preserved-runtime73-20261030-v1\runtime --report-dir D:\GlintManagerQA\incremental74-plan-review --jobs 4
+```
+
+Use a fresh report directory. `plan` authorizes neither compilation nor runtime
+admission. For an eligible baseline, `rebuild` with another fresh report applies
+the bounded append, inspects the resulting graph, then invokes the existing build
+and full selected native-unit batch. Do not edit frozen application/build inputs
+while it runs. Source backups and stage records are kept in the report directory.
+
+Before compilation, failure restores only owned source/stage bytes; foreign
+changes are retained and reported. After compilation starts, partial output is
+not rolled back over live objects. `resume` accepts only the same interrupted
+compilation and unchanged inputs; terminal compiler failures are not automatically
+retried. A completed build still requires a separately preserved runtime and
+browser/lifecycle regression checks. Native units alone do not admit fingerprint
+policies, CAPTCHA results, production or a release.
+
 The five new font-policy fixtures use the existing Chromium `gfx_unittests`
 target and the normal isolated verifier:
 
