@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "scope": "Compiled Chromium 156 patch 001-074 browser; selected 494 native cases and runtime checks not yet admitted",
+  "candidate_manifest_sha256": "71b15700678f928a5997938e5c5c69a3c5380935ee6bfb445983a4107370f2e6",
+  "build_completed": true,
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "f09657095bcde2331e504508ccad2017b8054c2777a4228615834bdba498b030",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "build_receipt_sha256": "133ae0e75557a7a3cecfd9b3e047e9572f783b3ebcea398db157cb546d343c45",
+  "compile_steps": 53,
+  "compiler_duration_seconds": 874.81,
+  "jobs": 4,
+  "build_log_sha256": "cb4bec9ead2524ad2648ec4c3ab89a18e84d311c89a1af1ad268af453970fa79",
+  "last_fully_checked_preserved_runtime": "001-073",
+  "native_cases_required": 494,
+  "native_batch_verified": false,
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

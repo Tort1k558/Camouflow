@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "scope": "Optional top-document GPU/Audio readback continuity after actual BFCache; implementation and unit checks only",
+  "before": {
+    "source_sha256": "f6e44f4c5020055e1059224febbf074e55ac2de13f0094a41aa17af0b93af975",
+    "normalized_utf8_lf_sha256": "2e8951068f19ce514157b088d60eb3d72add72f9a8380b1a113da73f95961a2f",
+    "newline": "CRLF"
+  },
+  "runtime_collector_sha256": "a93112c3abc9b07892e79ddf47213ef0475334e9dac9d0fa396940a45755554a",
+  "forward_and_historical_patch_sha256": "0a8c1d6e965bcfd4b821966c5d873d6aa9cb40143e5d7e6289d09173990bc4af",
+  "default_probe": "canvas",
+  "additional_probe": "combined",
+  "browser_runtime_verified": false,
+  "retained_gpu_objects_verified": false,
+  "worker_lifecycle_verified": false,
+  "webgpu_readback_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "validator_sha256": "0720799654142df31db49bccbbea8a50101c172c858ebe54511b342abd25005a",
+  "unit_cases_passed": 23
+}

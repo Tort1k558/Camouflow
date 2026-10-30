@@ -1,6 +1,20 @@
 # Glint browser test matrix
 
-## Current compiled 001–073 — 2026-10-30
+## Built 001–074; full native/runtime qualification pending
+
+The browser build completed in 53 steps / 14m35s with j4 and a new measured
+core-bound receipt. The 494-case native batch is running; preserved/qualified
+runtime remains 001–073. [Build boundary](../native/drafts/upstream-156/build74-pending-unit-observations.json).
+
+The protected history collector now has explicit `--probe combined`: existing
+screen/Canvas coverage plus top-document recreated WebGL/Audio continuity through
+CDP after BFCache. Its 23 unit cases pass; actual browser execution is pending.
+All six screen documents are recaptured through the retained responder after the
+GPU/Audio reads; no stale Playwright frame object is used as restoration evidence.
+This does not cover retained GPU objects, worker restoration or WebGPU readback.
+[Implementation boundary](../native/drafts/environment/protected-surface-history74-preparation-observations.json).
+
+## Previous qualified baseline 001–073 — 2026-10-30
 
 **Selected source is now 001–074; compiled/qualified baseline remains 001–073.**
 Latest full Python includes the nested HDR selector: **4608 passed, 1 skipped**,

@@ -9,8 +9,9 @@ separate installed copy. The first font-regression `NetworkError` remains
 unexplained; successful repeats are not evidence that its cause was fixed.
 Experimental **Chromium 156** has a separate manifest, patch chain, workspace
 and SDK requirement. The preserved 001–073 Windows candidate was compiled and
-passed 488 native unit cases. Source selection 001–074 is not yet compiled;
-its two new groups require six additional cases. This does not admit all combined fingerprint policies
+passed 488 native unit cases. Source selection 001–074 has now compiled the
+browser (53 steps / 14m35s); its complete 494-case native batch remains pending.
+Its two new groups require six additional cases. This does not admit all combined fingerprint policies
 or make it the default release. Use the [candidate guide](drafts/upstream-156/README.md),
 not the default 148 commands below. Exact results and retained failures:
 [test matrix](../docs/GLINT_TEST_MATRIX.md).

@@ -1,0 +1,81 @@
+diff --git a/native/drafts/environment/first-script/protected_history_runtime.py b/native/drafts/environment/first-script/protected_history_runtime.py
+--- a/native/drafts/environment/first-script/protected_history_runtime.py
++++ b/native/drafts/environment/first-script/protected_history_runtime.py
+@@ -12,11 +12,22 @@
+ import argparse
+ 
+ ROOT = Path(__file__).resolve().parents[4]
++async def read_restored_surfaces(session, read):
++    result = await session.send('Runtime.evaluate', {
++        'expression': '(' + read + ')()', 'awaitPromise': True,
++        'returnByValue': True, 'timeout': 30000})
++    if (not isinstance(result, dict) or 'exceptionDetails' in result
++            or not isinstance(result.get('result', {}).get('value'), dict)):
++        raise ValueError('Restored GPU/Audio evaluation failed')
++    return result['result']['value']
++
++
+ def main() -> int:
+     parser = argparse.ArgumentParser(description='Owned protected manager screen/BFCache and Canvas continuity probe')
+     parser.add_argument('--executable', type=Path, required=True)
+     parser.add_argument('--work-dir', type=Path, required=True)
+     parser.add_argument('--driver-stage', type=Path, required=True)
++    parser.add_argument('--probe', choices=('canvas', 'combined'), default='canvas')
+     args = parser.parse_args()
+     OUT, STAGE, EXE = args.work_dir, args.driver_stage, args.executable
+     MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
+@@ -79,6 +90,13 @@
+     canvas_read = canvas_fixture['READ']
+     validator_path = FIXTURE / 'protected_history.py'
+     validator = runpy.run_path(str(validator_path))['validate_runs']
++    surface_validator = None
++    surface_read = None
++    recapture_surfaces_history = None
++    if args.probe == 'combined':
++        surface_validator = runpy.run_path(str(FIXTURE / 'protected_surface_history.py'))['validate_runs']
++        recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
++        surface_read = f"async () => ({{gpu: await ({gpu.READBACK_READ})(), audio: await ({surfaces.AUDIO_READ})(true)}})"
+     paths = {Path(__file__), MANIFEST, canvas_path, validator_path, *(ROOT / name for name in gpu.probe_inputs()), ROOT / 'app/core/native/runtime.py', ROOT / 'app/core/native/identity.py', *FIXTURE.glob('*.py'), FIXTURE / 'sample.js',
+              STAGE / 'playwright/driver/package/lib/coreBundle.js', STAGE / 'playwright/_impl/_page.py',
+              STAGE / 'playwright/driver/node.exe', *(ROOT / name for name in reference['environment'].source_inputs())}
+@@ -88,6 +106,8 @@
+                   privacy_admitted=False, production_admitted=False,
+                   runtime_core_sha256_measured=core, receipt_sha256=hashlib.sha256(receipt).hexdigest(),
+                   measured_inputs_sha256={str(path): value for path, value in inputs.items()})
++    if args.probe == 'combined':
++        report.update(probe='combined', scope='Protected manager BFCache with screen, Canvas formats and top-document recreated GPU/Audio readback continuity; not retained GPU objects, worker lifecycle, WebGPU readback or full policy admission')
+ 
+ 
+     def save():
+@@ -146,6 +166,8 @@
+                         assert canvas_before['float16Available'] and len(canvas_before['rows']) == 32
+                         assert all('error' not in value and value['observed']['finite'] and
+                             value['observed']['hash'] == value['observed']['repeat'] for value in canvas_before['rows'])
++                        if surface_read is not None:
++                            row['surfaces_before'] = await pages[1].evaluate(surface_read)
+                         state = await probe['restore_history'](pages[1], session, before, row)
+                         observed = probe['restored_observations'](state)
+                         restored = await session.send('Runtime.evaluate', {'expression': '(' + canvas_read + ')()',
+@@ -159,6 +181,12 @@
+                         row['canvas_context_cases'] = len(canvas_before['rows'])
+                         row['canvas_before'] = canvas_before
+                         row['canvas_after'] = canvas_after
++                        if surface_read is not None:
++                            row['surfaces_after'] = await read_restored_surfaces(session, surface_read)
++                            post_surfaces = await recapture_surfaces_history(session, state)
++                            observed = probe['restored_observations'](post_surfaces)
++                            row['post_surfaces_history'] = post_surfaces
++                            row['post_surfaces_screen_verified'] = not probe['validate_page'](observed, initial[1])
+                         errors = probe['validate_page'](observed, initial[1])
+                         row['bfcache_restored'] = (probe['history_restored'](state) and
+                             row['history_navigation'].get('type') == 'BackForwardCacheRestore')
+@@ -189,6 +217,9 @@
+             report['measurement_complete'] = True
+             report['validation'] = validator(report['runs'], probe['validate_page'], canvas_fixture['compare_formats'])
+             report['passed'] = report['validation']['passed']
++            if surface_validator is not None:
++                report['surface_validation'] = surface_validator(report['runs'])
++                report['passed'] = report['passed'] and report['surface_validation']['passed']
+ 
+ 
+     server = probe['create_server']()

@@ -2,13 +2,15 @@
 
 ## Current implementation boundary
 
-**Compiled candidate: Chromium 156.0.8078.36, patches 001–073. Selected source: 001–074.**
-The preserved 073 runtime passed 488 native cases in 21 groups. The next linked
-screen package adds six mandatory cases in two groups, but is not built; its
-browser/renderer invalidation fix has syntax checks, not runtime admission.
+**Built candidate: Chromium 156.0.8078.36, patches 001–074. Preserved/qualified baseline: 001–073.**
+The 074 browser completed 53 build steps in 14m35s with j4; its full 494-case
+native batch and browser gates are pending. [Build boundary](drafts/upstream-156/build74-pending-unit-observations.json).
+The preserved 073 runtime passed 488 native cases in 21 groups. The linked
+074 screen package adds six mandatory cases in two groups. Browser compilation
+has succeeded; execution of those cases and runtime admission are still pending.
 The normal full-build reserve remains 180 GiB. A separate bounded local Siso
 controller is now running for 074 with a 64 GiB cached profile; its baseline
-dry-run required zero steps, but no 074 compilation/runtime success is claimed.
+dry-run required zero steps. Compilation success is not browser runtime admission.
 See [cached rebuild boundaries](BUILDING.md#bounded-cached-chromium-156-rebuild).
 
 | Boundary | Verified scope | Still open |
