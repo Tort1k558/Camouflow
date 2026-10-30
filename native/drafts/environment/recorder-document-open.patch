@@ -1,0 +1,54 @@
+diff --git a/app/services/scenario_recorder.py b/app/services/scenario_recorder.py
+--- a/app/services/scenario_recorder.py
++++ b/app/services/scenario_recorder.py
+@@ -12,11 +12,14 @@
+ 
+ RECORDER_SCRIPT = r"""
+ (() => {
+-    // Firefox can replace an iframe's initial document without replacing its window.
+-    if (window.__camouflowRecording && window.__camouflowRecordingDocument === document) return;
++    // document.open can clear listeners without replacing the document or window.
++    const previous = window.__camouflowRecorderState;
++    previous?.controller.abort();
++    const pending = previous?.document === document ? previous.pending : new Set();
++    const controller = new AbortController();
++    window.__camouflowRecorderState = {document, pending, controller};
+     window.__camouflowRecording = true;
+     window.__camouflowRecordingDocument = document;
+-    const pending = new Set();
+     let enterForm = null;
+     let enterAt = 0;
+     const send = payload => {
+@@ -65,13 +68,13 @@
+         if (event.detail === 0 && enterForm && el.form === enterForm && performance.now() - enterAt < 1000) return;
+         if (el.matches('textarea,select,input:not([type="submit"]):not([type="button"])')) return;
+         emit(el, 'click');
+-    }, true);
++    }, {capture: true, signal: controller.signal});
+     document.addEventListener('input', event => {
+         if (!event.isTrusted) return;
+         const el = event.target;
+         if (el.matches('textarea,input:not([type="checkbox"]):not([type="radio"]):not([type="file"])')) emit(el, 'type', el.value);
+         else if (el.isContentEditable) send({warning: 'Rich-text editor input is not supported. Add this step manually.'});
+-    }, true);
++    }, {capture: true, signal: controller.signal});
+     document.addEventListener('change', event => {
+         if (!event.isTrusted) return;
+         const el = event.target;
+@@ -80,14 +83,14 @@
+             else emit(el, 'select_option', el.value);
+         } else if (el.matches('input[type="checkbox"],input[type="radio"]')) emit(el, 'set_checked', el.checked ? 'true' : 'false');
+         else if (el.matches('input[type="file"]')) send({warning: 'File uploads are not recorded.'});
+-    }, true);
++    }, {capture: true, signal: controller.signal});
+     document.addEventListener('keydown', event => {
+         if (event.isTrusted && event.key === 'Enter' && event.target.matches('input')) {
+             enterForm = event.target.form;
+             enterAt = performance.now();
+             emit(event.target, 'press', 'Enter');
+         }
+-    }, true);
++    }, {capture: true, signal: controller.signal});
+ })();
+ """
+ 

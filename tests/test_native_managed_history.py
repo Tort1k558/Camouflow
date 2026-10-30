@@ -192,7 +192,7 @@ def test_actual_bfcache_optin_uses_owner_screenshots_and_preserves_independent_c
         "bfcache_optin_ready_for_release", "privacy_admitted", "production_admitted"))
 
 
-def test_repeated_recorder_bfcache_capture_keeps_silent_delivery_loss_as_failure():
+def test_repeated_recorder_bfcache_capture_keeps_silent_delivery_loss_as_failure(recorder_before_document_open_sha256):
     root = Path(__file__).resolve().parents[1]
     record = json.loads((root / "native/drafts/environment/managed-bfcache-recorder70-observations.json").read_bytes())
     assert record["passed"] is False and record["measurement_complete"] and record["postguards_passed"]
@@ -227,9 +227,9 @@ def test_repeated_recorder_bfcache_capture_keeps_silent_delivery_loss_as_failure
         ping = run["empty_binding_ping"]
         if not ping["measurement_complete"]:
             assert ping["error_type"] == "TimeoutError" and ping["bridge_calls_before"] == ping["bridge_calls_after"] == 2
+    assert record["source_sha256"]["app/services/scenario_recorder.py"] == recorder_before_document_open_sha256
     assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
-               for path, value in record["source_sha256"].items())
-    assert "app/services/scenario_recorder.py" in record["source_sha256"]
+               for path, value in record["source_sha256"].items() if path != "app/services/scenario_recorder.py")
     assert all(record[name] is False for name in ("initial_navigation_included", "recorded_draft_replay_verified",
                                                 "all_frame_input_verified", "selected", "privacy_admitted", "production_admitted"))
 
@@ -269,7 +269,7 @@ def test_root_only_driver_prototype_does_not_admit_missing_cross_process_frames(
                                                 "selected", "privacy_admitted", "production_admitted"))
 
 
-def test_multisession_driver_draft_covers_six_roles_without_admitting_full_history_replay():
+def test_multisession_driver_draft_covers_six_roles_without_admitting_full_history_replay(recorder_before_document_open_sha256):
     root = Path(__file__).resolve().parents[1]
     folder = root / "native/drafts/environment"
     record = json.loads((folder / "binding-driver70-multisession-observations.json").read_bytes())
@@ -279,8 +279,9 @@ def test_multisession_driver_draft_covers_six_roles_without_admitting_full_histo
     assert record["patch_replay_verified"]
     for name in ("patch", "model"):
         assert hashlib.sha256((folder / record[name]).read_bytes()).hexdigest() == record[name + "_sha256"]
+    assert record["source_sha256"]["app/services/scenario_recorder.py"] == recorder_before_document_open_sha256
     assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
-               for path, value in record["source_sha256"].items())
+               for path, value in record["source_sha256"].items() if path != "app/services/scenario_recorder.py")
     assert len(record["runs"]) == 4
     assert {(run["mode"], run["phase"]) for run in record["runs"]} == {
         (mode, phase) for mode in ("manager-desktop", "manager-mobile-web")

@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "scope": "Recorder document.open listener repair on preserved Glint 001-070 with unchanged installed Playwright; one desktop six-frame capture/replay control, not complete BFCache history admission",
+  "passed": true,
+  "measurement_complete": true,
+  "production_admitted": false,
+  "privacy_admitted": false,
+  "source_before": {
+    "raw_sha256": "cf37b1e51facc4cf807e0588c2da4869756cbcd170754a3071df261a1817574c",
+    "normalized_utf8_lf_sha256": "b41dc9a12865a0eecf73749b1f69adc70e587f87c14a93973eeff18f60872c8e",
+    "note": "Measured historical checkout had mixed CRLF/LF. Reverse-patch verification normalizes text, not historical evidence hashes."
+  },
+  "source_after_sha256": "caa81f07e418062f1b22eb1b97b2f2ce02b2cc8d32c39429396ea93318cfaff9",
+  "source_after_normalized_utf8_lf_sha256": "73e1eb9fabb7fe9cbd700a8203f29c6a031254e2a063a913add7b4556c9a9523",
+  "prepared_source_sha256": "73e1eb9fabb7fe9cbd700a8203f29c6a031254e2a063a913add7b4556c9a9523",
+  "patch": "recorder-document-open.patch",
+  "patch_sha256": "00177ccdc073926f318e8e8fdc7befc7d42dc26c97db9df832d57a02597764f5",
+  "controls": {
+    "fixed_no_bfcache": {
+      "passed": true,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "attached_before_initial_navigation": true,
+      "recorded_clicks": 6,
+      "warnings": [],
+      "replay_passed": true,
+      "replay_click_counts": {
+        "main": 1,
+        "same": 1,
+        "cross": 1,
+        "srcdoc": 1,
+        "about-blank": 1,
+        "nested-return": 1
+      },
+      "pending_counts": null,
+      "history_navigation_type": null,
+      "raw_report_sha256": "8d4ab4a877968f968da83d573e053b9b92444a3e5ff82c3a26fd9b5e05e5ba29"
+    },
+    "original_no_bfcache": {
+      "passed": false,
+      "measurement_complete": false,
+      "postguards_passed": true,
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "attached_before_initial_navigation": true,
+      "recorded_clicks": 5,
+      "warnings": [],
+      "replay_passed": false,
+      "replay_click_counts": null,
+      "pending_counts": null,
+      "history_navigation_type": null,
+      "raw_report_sha256": "8145214550ad6328733ae536c4ecfa474cd1f170769097268159db1076e2c844"
+    },
+    "fixed_with_bfcache": {
+      "passed": false,
+      "measurement_complete": false,
+      "postguards_passed": true,
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "attached_before_initial_navigation": true,
+      "recorded_clicks": 9,
+      "warnings": [
+        "Could not flush the last browser events. Review the final steps."
+      ],
+      "replay_passed": false,
+      "replay_click_counts": null,
+      "pending_counts": {
+        "main": 1,
+        "same": 0,
+        "srcdoc": 0,
+        "about-blank": 0,
+        "cross": 0,
+        "nested-return": 0
+      },
+      "history_navigation_type": "BackForwardCacheRestore",
+      "raw_report_sha256": "0f87d01c66555a2ebf400c8ed9b6272b4ac78f057d4878e0efda5c9cab66909c"
+    }
+  },
+  "history_recorded_draft_replay_verified": false,
+  "manager_bfcache_default_changed": false,
+  "note": "Always abort old listener registrations and rebind all four handlers; preserve in-flight pending work when the document is unchanged. Do not hide the independent BFCache binding-acknowledgement failure.",
+  "full_runtime_regression": {
+    "passed": true,
+    "measurement_complete": true,
+    "source_unchanged": true,
+    "core_unchanged": true,
+    "checks": [
+      "concurrent-profile-isolation",
+      "cross-process-owner-exclusion",
+      "navigation-tabs-fill-click-extract-screenshot",
+      "mobile-web-viewport-dpr-touch",
+      "native-document-worker-configuration-diagnostics",
+      "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+      "configured-permissions-isolation-revocation-and-restart",
+      "dead-owner-profile-lock-recovery",
+      "browser-crash-restart-preserves-committed-storage",
+      "authenticated-http-proxy-no-direct-dns-route",
+      "existing-browser-interface-and-scenario-executor",
+      "existing-recorder-capture-and-replay",
+      "native-profile-backup-restore-storage-and-engine-isolation",
+      "native-binary-headless-health-and-disposable-profile-cleanup",
+      "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+      "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+      "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+      "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+    ],
+    "runtime_core_sha256_measured": {
+      "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+      "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+      "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+    },
+    "raw_controller_sha256": "04f9cf37f2cc41789a01bfccdf4e1ed680c79bfa6eb3e57182bf323131a52d80",
+    "runtime_report_sha256": "511ebdbf01597d578ae54b6a13a0d531c15a3bf9c6fe4ccd93a49ba785cadc41",
+    "bfcache_enabled": false,
+    "installed_driver_changed": false
+  }
+}

@@ -2,6 +2,13 @@
 
 ## Current compatibility gate
 
+[Recorder document.open repair](recorder-document-open70-observations.json) is applied
+to the application: abort/rebind listeners without losing same-document in-flight work.
+An unchanged-driver desktop control improved **5/6 → 6/6 captured clicks with six-role replay**;
+the fresh complete runtime baseline passed **18/18 checks**. The complete BFCache recording
+still **fails flush** after all nine clicks: one main-document binding acknowledgement is
+pending. No warning was suppressed, and full history replay remains unverified.
+
 [Multisession reconstruction](binding-driver70-multisession-observations.json) now
 restores **all six roles in four desktop/mobile initial/restart phases**, recording
 seven trusted clicks per phase with correct nested-frame selectors. **13 modeled

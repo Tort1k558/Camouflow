@@ -915,7 +915,7 @@ def test_published_cross_process_result_proves_orderly_handoff_not_crash_recover
         assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
 
 
-def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates():
+def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates(recorder_before_document_open_sha256):
     import hashlib
 
     root = environment.ROOT
@@ -935,7 +935,8 @@ def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gate
         "native_0069_verified", "screen_consistency_verified", "server_team_storage_isolation_verified",
         "protected_policy_recovery_verified", "privacy_admitted", "production_admitted"))
     for name, value in record["source_sha256"].items():
-        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+        expected = recorder_before_document_open_sha256 if name == "app/services/scenario_recorder.py" else hashlib.sha256((root / name).read_bytes()).hexdigest()
+        assert "\\" not in name and expected == value
 
 
 def test_consolidated_screen_batch_is_two_files_and_seven_cases_without_early_admission():
@@ -1308,7 +1309,7 @@ def test_prepared_orientation_gate_replay_rejects_incomplete_results_and_source_
     assert not (tmp_path / "not-created.json").exists()
 
 
-def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime():
+def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(recorder_before_document_open_sha256):
     import hashlib
 
     root = environment.ROOT
@@ -1330,5 +1331,6 @@ def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime():
     assert all(record[name] is False for name in ("protected_policies_enabled", "installed_package_verified",
         "cloud_server_team_isolation_verified", "uncommitted_transactions_recovery_verified",
         "privacy_admitted", "production_admitted"))
+    assert record["source_sha256"]["app/services/scenario_recorder.py"] == recorder_before_document_open_sha256
     assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
-               for path, value in record["source_sha256"].items())
+               for path, value in record["source_sha256"].items() if path != "app/services/scenario_recorder.py")

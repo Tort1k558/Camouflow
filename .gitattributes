@@ -25,6 +25,7 @@ native/drafts/environment/binding-driver70-diagnosis.json text eol=lf
 native/drafts/environment/binding-driver70-prototype-observations.json text eol=lf
 native/drafts/environment/binding-driver70-multisession-observations.json text eol=lf
 native/drafts/environment/playwright-bfcache-multisession-model.cjs text eol=lf
+native/drafts/environment/recorder-document-open70-observations.json text eol=lf
 native/drafts/environment/canonical-python70-owner-observations.json text eol=lf
 native/drafts/upstream-156/audio-profile-matrix-preparation-observations.json text eol=lf
 native/drafts/upstream-156/checkpoints/*.json text eol=lf

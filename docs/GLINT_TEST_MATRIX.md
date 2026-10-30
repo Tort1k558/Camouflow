@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Recorder document.open repair — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Attach before first navigation, unchanged installed driver | Original Recorder captures **5/6** clicks; repaired Recorder captures **6/6** and replays all six frame roles with trusted input | [Paired desktop control](../native/drafts/environment/recorder-document-open70-observations.json); no BFCache or mobile-history admission |
+| Listener reinjection model | Old registrations aborted, no duplicate clicks, same-document pending flush retained, replaced-document listeners removed | Executed exact `RECORDER_SCRIPT` in Node; model complements the real browser control |
+| Current application runtime regression | **18/18 passed**, source and binary guards passed; installed Playwright and manager BFCache default unchanged | Fresh run of actual patched application source, not reuse of the older Recorder baseline |
+| Complete UI-ordered BFCache recording | Six roles restored, **9 clicks recorded**, but one main-document binding acknowledgement remains pending; stop emits a flush warning | **FAIL retained**; complete history-draft replay not reached, BFCache opt-in remains unselected |
+
+`document.open()` can clear listeners without changing the document/window object.
+The Recorder now aborts previous listener registrations and reinstalls all four handlers,
+preserving in-flight work for the same document. Historical evidence retains its original
+source hashes; tests reconstruct the pre-repair normalized source with the reverse patch.
+
 ## Multisession BFCache compatibility draft — 2026-10-30
 
 | Gate | Observed result | Boundary |
