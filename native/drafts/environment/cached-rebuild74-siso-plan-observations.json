@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "scope": "Retained Siso dry-run parsing failure and conservative graph-count repair; not compilation or runtime admission",
+  "failed_attempt": {
+    "report_sha256": "133d53fab42b371b7c5f4f6993147bced10cd3418934c2f53ea203a94ae8a03e",
+    "report": "D:\\GlintManagerQA\\incremental74-rebuild-20261030-v1\\report.json",
+    "error": "Ninja plan did not provide an auditable work count",
+    "compilation_started": false,
+    "source_and_stage_rollback_verified": true,
+    "rollback_errors": []
+  },
+  "siso_plan": {
+    "frontier_steps": 8,
+    "conservative_affected_command_edges": 69,
+    "limit": 256,
+    "log_sha256": "474590faa7cdcfb69fcd580a773ff5da209c1c9f8d382fa5adb3d6d440e73c1f",
+    "graph_sha256": "99ffb664cef4d706449fd616a90ef0f69d4b3d6e7a706ec3b19831649e821baf"
+  },
+  "related_python_tests_passed": 175,
+  "build_completed": false,
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

@@ -33,6 +33,13 @@ Its 64 GiB reserve is available only with all of these checks:
   fallback. Equivalent dependency identities are explicitly carried forward with
   their original records retained, not represented as newly executed stages.
 
+Siso's dry-run summary counts the dirty frontier, not every possible downstream
+link. For non-empty plans the controller also queries the pinned Siso JSON graph,
+binds every printed command to its graph edge, restricts the dependency closure to
+the requested targets, and conservatively counts downstream command edges. The
+256-step admission bound applies to this larger count. The graph and its digest
+remain on D: with the report; no Ninja executor or clean-cache fallback is used.
+
 First inspect the baseline without applying patches:
 
 ```powershell

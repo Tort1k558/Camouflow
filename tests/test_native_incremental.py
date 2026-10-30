@@ -83,17 +83,43 @@ def test_capacity_alone_never_authorizes_execution_or_changes_full_build_reserve
     assert incremental.build.LOCK['minimum_free_gib'] == 180
 
 
-@pytest.mark.parametrize('text,expected', [('ninja: no work to do.\n', 0),
-    ('ninja: Entering directory x\n[1/2] CXX a\n[2/2] LINK b\n', 2)])
-def test_ninja_plan_requires_complete_stable_progress(text, expected):
-    assert incremental.ninja_steps(text) == expected
+@pytest.mark.parametrize('text,expected', [('ninja: no work to do.\n5m44.79s Build Succeeded: 0 steps - 0.00/s\n', 0),
+    ('compile a\ncompile b\n17.63s Build Succeeded: 2 steps - 0.45/s\n', 2)])
+def test_siso_plan_requires_its_actual_success_summary(text, expected):
+    assert incremental.siso_steps(text) == expected
 
 
 @pytest.mark.parametrize('text', ['', '[1/2] CXX x', '[1/1] GEN x\n[1/2] CXX a\n[2/2] LINK b',
-                                '[0/1] CXX x', '[1/2] CXX x\n[2/3] LINK b'])
-def test_ambiguous_or_regenerated_ninja_plan_is_rejected(text):
+    '1s Build Succeeded: 0 steps - 0.00/s',
+    'ninja: no work to do.\n1s Build Succeeded: 2 steps - 0.45/s',
+    '1s Build Succeeded: 2 steps - 0.45/s\n1s Build Succeeded: 2 steps - 0.45/s'])
+def test_missing_or_ambiguous_siso_plan_is_rejected(text):
     with pytest.raises(ValueError):
-        incremental.ninja_steps(text)
+        incremental.siso_steps(text)
+
+
+def test_dirty_frontier_includes_downstream_links_but_not_unrequested_targets():
+    rows = [dict(output='object', rule='cxx', command='compile', inputs=['source']),
+            dict(output='library', rule='link', inputs=['object'], extra_outputs=['import.lib']),
+            dict(output='requested.exe', rule='link', inputs=['import.lib']),
+            dict(output='requested', rule='phony', inputs=['requested.exe']),
+            dict(output='other.exe', rule='link', inputs=['object'])]
+    assert incremental.affected_steps(rows, ['requested'], 'compile', 1) == 3
+
+
+@pytest.mark.parametrize('fault', ['missing-command', 'missing-target', 'duplicate-node', 'duplicate-alias', 'malformed'])
+def test_incomplete_or_ambiguous_graph_is_rejected(fault):
+    rows = [dict(output='object', rule='cxx', command='compile', inputs=['source']),
+            dict(output='requested', rule='link', inputs=['object'])]
+    if fault == 'duplicate-node':
+        rows.append(rows[0])
+    elif fault == 'duplicate-alias':
+        rows[0]['extra_outputs'] = ['requested']
+    elif fault == 'malformed':
+        rows[0]['inputs'] = 'source'
+    with pytest.raises(ValueError):
+        incremental.affected_steps(rows, ['absent' if fault == 'missing-target' else 'requested'],
+                                   'unbound' if fault == 'missing-command' else 'compile', 1)
 
 
 @pytest.fixture
@@ -260,7 +286,7 @@ def execution(tmp_path, monkeypatch):
     def subprocess_run(command, **kwargs):
         if '-n' in command:
             state.plan_calls += 1
-            return SimpleNamespace(stdout='ninja: no work to do.\n', stderr='')
+            return SimpleNamespace(stdout='ninja: no work to do.\n1s Build Succeeded: 0 steps - 0.00/s\n', stderr='')
         if state.failure is not None:
             raise state.failure
         return SimpleNamespace(returncode=0)

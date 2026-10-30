@@ -23,7 +23,7 @@ MINIMUM_FREE_GIB = 64
 MAX_PATCHES = 4
 MAX_FILES = 16
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
-MAX_NINJA_STEPS = 256
+MAX_BUILD_STEPS = 256
 PREFIXES = ('content/browser/renderer_host/', 'third_party/blink/renderer/')
 
 
@@ -97,7 +97,7 @@ def require_capacity(*, free_bytes, source_bytes, planned_steps, valid_cache, ma
         raise ValueError('Cached mode requires all existing-cache, toolchain, args and rollback guards')
     if free_bytes < MINIMUM_FREE_GIB * 1024**3:
         raise ValueError('Cached rebuild reserve is insufficient')
-    if source_bytes > MAX_SOURCE_BYTES or planned_steps > MAX_NINJA_STEPS:
+    if source_bytes > MAX_SOURCE_BYTES or planned_steps > MAX_BUILD_STEPS:
         raise ValueError('Work exceeds the bounded cached mode; full build remains required')
     return {'mode': 'bounded-cached', 'reserve_gib': MINIMUM_FREE_GIB,
             'planned_steps': planned_steps, 'execution_authorized': False}
@@ -108,17 +108,70 @@ def digest(path: Path) -> str:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def ninja_steps(output: str) -> int:
-    rows = [tuple(map(int, match.groups())) for line in output.splitlines()
-            if (match := re.match(r'^\[(\d+)/(\d+)\] ', line))]
-    if not rows:
-        if 'ninja: no work to do.' in output:
-            return 0
-        raise ValueError('Ninja plan did not provide an auditable work count')
-    total = rows[0][1]
-    if total <= 0 or rows != [(index, total) for index in range(1, total + 1)]:
-        raise ValueError('Ninja plan regenerated its graph or has incomplete/mixed progress')
+def siso_steps(output: str) -> int:
+    summaries = re.findall(r'^\d+(?:\.\d+)?(?:ms|s|m[\d.]+s|h[\dm.s]+) Build Succeeded: (\d+) steps - [\d.]+/s\s*$',
+                           output, re.MULTILINE)
+    if len(summaries) != 1 or 'Build Failed' in output:
+        raise ValueError('Siso plan did not provide one successful work summary')
+    total = int(summaries[0])
+    if ('ninja: no work to do.' in output) != (total == 0):
+        raise ValueError('Siso no-work marker and work summary disagree')
     return total
+
+
+def affected_steps(records, targets, planned_output: str, frontier: int) -> int:
+    """Count conservative downstream commands; Siso -n prints only the dirty frontier."""
+    nodes, aliases, seeds = {}, {}, set()
+    commands = set(planned_output.splitlines())
+    for row in records:
+        name, rule = row.get('output'), row.get('rule')
+        if not isinstance(name, str) or not name or not isinstance(rule, str) or name in nodes:
+            raise ValueError('Malformed or duplicate Siso graph node')
+        inputs = []
+        for key in ('inputs', 'implicit_inputs', 'order_only_inputs', 'extra_outputs'):
+            values = row.get(key, [])
+            if not isinstance(values, list) or any(not isinstance(value, str) or not value for value in values):
+                raise ValueError('Malformed Siso graph edges')
+            if key != 'extra_outputs':
+                inputs.extend(values)
+        strong = row.get('inputs', []) + row.get('implicit_inputs', [])
+        nodes[name] = (rule, inputs, strong)
+        for alias in row.get('extra_outputs', []):
+            if alias in aliases or alias == name:
+                raise ValueError('Duplicate Siso output alias')
+            aliases[alias] = name
+        command = row.get('command')
+        if command is not None and not isinstance(command, str):
+            raise ValueError('Malformed Siso graph command')
+        if command in commands:
+            seeds.add(name)
+    if set(nodes).intersection(aliases):
+        raise ValueError('Ambiguous Siso output alias')
+    canonical = lambda name: aliases.get(name, name)
+    pending = [canonical(name) for name in targets]
+    if any(name not in nodes for name in pending):
+        raise ValueError('Requested target missing from Siso graph')
+    needed = set()
+    while pending:
+        name = pending.pop()
+        if name in needed or name not in nodes:
+            continue
+        needed.add(name)
+        pending.extend(canonical(value) for value in nodes[name][1])
+    if len(seeds) != frontier or not seeds.issubset(needed):
+        raise ValueError('Every dry-run command must bind to one requested graph edge')
+    consumers = {}
+    for name in needed:
+        for value in nodes[name][2]:
+            consumers.setdefault(canonical(value), set()).add(name)
+    affected, pending = set(), list(seeds)
+    while pending:
+        name = pending.pop()
+        if name in affected:
+            continue
+        affected.add(name)
+        pending.extend(consumers.get(name, ()))
+    return sum(nodes[name][0] != 'phony' for name in affected)
 
 
 def regular(path: Path) -> Path:
@@ -303,7 +356,21 @@ def execute(action: str, workspace: Path, report_dir: Path, preserved_runtime: P
             command = build.depot_command('autoninja', workspace) + ['-C', 'out/CamouFlowNative', '-n', *targets]
             result = subprocess.run(command, cwd=source, env=env, capture_output=True, text=True, check=True)
             (report_dir / (label + '.log')).write_text(result.stdout + result.stderr, encoding='utf-8')
-            steps = ninja_steps(result.stdout)
+            steps = siso_steps(result.stdout + '\n' + result.stderr)
+            if steps:
+                graph = report_dir / (label + '.graph.jsonl')
+                with graph.open('xb') as stream, (report_dir / (label + '.graph.stderr')).open('xb') as errors:
+                    subprocess.run([str(regular(source / 'third_party/siso/cipd/siso.exe')), 'query', 'graph',
+                                    '-C', 'out/CamouFlowNative'], cwd=source, env=env,
+                                   stdout=stream, stderr=errors, check=True)
+                if graph.stat().st_size > 2 * 1024**3:
+                    raise ValueError('Siso graph exceeds the cached resource profile')
+                with graph.open(encoding='utf-8') as stream:
+                    affected = affected_steps((json.loads(line) for line in stream), targets,
+                                              result.stdout, steps)
+                report.setdefault('graph_plans', {})[label] = dict(frontier_steps=steps,
+                    conservative_affected_steps=affected, graph_sha256=digest(graph))
+                steps = max(steps, affected)
             require_capacity(free_bytes=shutil.disk_usage(workspace).free, source_bytes=total_bytes, planned_steps=steps,
                              valid_cache=True, matching_toolchain=True, matching_args=True, preserved_runtime_verified=True)
             return steps
