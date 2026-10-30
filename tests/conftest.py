@@ -2,8 +2,41 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
 
 import pytest
+
+
+@pytest.fixture
+def native_units_before_orientation(tmp_path, monkeypatch):
+    """Reconstruct the measured 001-070 verifier, without rewriting old evidence."""
+    root = Path(__file__).resolve().parents[1]
+    directory = root / "native/drafts/environment"
+    record = json.loads((directory / "screen-orientation71-gate-preparation.json").read_bytes())
+    path = tmp_path / record["base_source"]
+    path.parent.mkdir(parents=True)
+    path.write_text((root / record["base_source"]).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
+                    str(directory / record["patch"])], cwd=tmp_path, check=True, capture_output=True)
+    value = hashlib.sha256(path.read_bytes()).hexdigest()
+    assert value == record["base_source_sha256"]
+    monkeypatch.setattr(sys, "path", sys.path.copy())
+    namespace = {"__file__": str(root / record["base_source"]), "__name__": "_native_units_before_orientation"}
+    exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), namespace)
+    return {"path": path, "source_sha256": value, "namespace": namespace}
+
+
+@pytest.fixture
+def release_tools_before_72_sha256(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    relative = Path("tests/test_release_tools.py")
+    path = tmp_path / relative
+    path.parent.mkdir(parents=True)
+    path.write_text((root / relative).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
+                    str(root / "native/drafts/environment/linked72-test-contract.patch")],
+                   cwd=tmp_path, check=True, capture_output=True)
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 @pytest.fixture

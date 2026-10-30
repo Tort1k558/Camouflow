@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "scope": "Selected linked orientation/extended-Canvas source package; active source is still 001-070 until owned refresh",
+  "selected": true,
+  "base_manifest_sha256": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
+  "selected_manifest_sha256": "a281e7b67ae83fb6c9fa81d4b17ec74df640aafc6ec1b37bcbebc3ec296aac18",
+  "patches": [
+    "0071-native-logical-screen-orientation.patch",
+    "0072-native-canvas-extended-formats.patch"
+  ],
+  "source_paths": [
+    {
+      "path": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h",
+      "before_sha256": "50aab897ea6798aa949e7f7deb9448d210e8c3301a183b46afdf969418482986",
+      "after_sha256": "07de0456fb75723e36b59e58ff649e0b382b48289e908186461f1ef32598d091"
+    },
+    {
+      "path": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc",
+      "before_sha256": "52a56da36b9c6631a87e36826fcceeb90c93f2c619a23b0f86b85cf68e636858",
+      "after_sha256": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5"
+    },
+    {
+      "path": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h",
+      "before_sha256": "d15301dd6bfd4556df9efa133bb041d9505756148e2aba43643406c6e129bcd4",
+      "after_sha256": "bceb10b936d1c9235e8da9bff221be88ae3f932ec18c9acb5a229898b88b0609"
+    },
+    {
+      "path": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc",
+      "before_sha256": "ee24055c293d023d179599e63f57407c59c80f3164b9f02164afbd1739a67df6",
+      "after_sha256": "3df7f71effe0a5b22fd780501551a9fd48bbf3fc987bafc9fbbbf1cc24da8b00"
+    },
+    {
+      "path": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc",
+      "before_sha256": "1c1f8eb4045278e19e319e017621270f5c64c45745d14a3904be67b8deba7509",
+      "after_sha256": "a7433fa8a680aab29dc15f297a4165cd94228647c4eabe6249727b30de1594a0"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc",
+      "before_sha256": "3cd1da5063fa5b115e53ffcf048be8dbd6e030a801fec3425d9d61c9346cc2db",
+      "after_sha256": "945b6b9cd492a963416bcd6773385abac94c4610cb0b04a6ca263881c6a924ef"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller.cc",
+      "before_sha256": "07c80c4ae1102b9f48970c87104bb88c324b26f8863945f55f95fd14c8e7cb5c",
+      "after_sha256": "4796d5370d2a8299391a2989d0612f52c6617ba36dea42bdfa1d0636be1f37fc"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc",
+      "before_sha256": "c73909d028d0cfca579577c001792d7a4dcd5936d087e14001191f4806e45034",
+      "after_sha256": "8f1df1a4b5e21a21dd224862baa3dbf2bcba71c3b484ec05027f0866c9455c76"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc",
+      "before_sha256": "6a78e4747a6903f0aded9f090c1eaca691b3e228ad4bd4ab42b96a6431ff472e",
+      "after_sha256": "8869d819e47bf1627ab53ac11753f6b9248f1fabaa828b3998fb63d5d550342a"
+    }
+  ],
+  "jobs": 4,
+  "native_target_groups": 21,
+  "native_orientation_cases_required": 4,
+  "isolated_transform_controls": 12,
+  "isolated_copy_controls": 283,
+  "compiled_into_browser": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "preserved_baseline": "001-070",
+  "source_preflight": {
+    "passed": true,
+    "checks": [
+      {
+        "source": "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc",
+        "returncode": 0,
+        "source_sha256": "8f1df1a4b5e21a21dd224862baa3dbf2bcba71c3b484ec05027f0866c9455c76",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller.cc",
+        "returncode": 0,
+        "source_sha256": "4796d5370d2a8299391a2989d0612f52c6617ba36dea42bdfa1d0636be1f37fc",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc",
+        "returncode": 0,
+        "source_sha256": "8869d819e47bf1627ab53ac11753f6b9248f1fabaa828b3998fb63d5d550342a",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ]
+  }
+}

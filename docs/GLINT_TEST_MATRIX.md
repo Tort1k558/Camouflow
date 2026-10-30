@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## Linked 001–072 source selection — 2026-10-30
+
+| Gate | Evidence | Not yet proven |
+| --- | --- | --- |
+| Exact 001–070 prefix + two patches | 0071 orientation/visibility and 0072 extended Canvas selected; nine changed files | Source selection is not a compiled browser |
+| Joint source preflight | Three additional C++ compiler checks passed on the same isolated overlay | Four orientation cases not executed yet |
+| Existing native gate integration | 21 groups; all historical mappings preserved, four strict orientation cases required | New native batch not run yet |
+| Full Python at `ba72a17` | **4447 passed, 1 skipped**, final guards passed | Before source selection |
+
+[Selection](../native/drafts/environment/linked72-selection-observations.json).
+The preserved browser is still 001–070. Owned j4 refresh and actual browser/native
+regressions must follow; privacy, security and release admission remain unchanged.
+
 ## Expanded format and lifecycle gates — 2026-10-30
 
 | Gate | Observed result | Boundary |

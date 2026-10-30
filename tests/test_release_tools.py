@@ -2322,7 +2322,7 @@ def test_native_windows_candidate_package_preserves_manifest_without_admitting_p
     assert metadata["candidate_manifest_sha256"] == candidate["manifest_sha256"]
     assert metadata["chromium_version"] == candidate["lock"]["chromium_version"]
     assert metadata["native_version"] == "0.2.0-dev"
-    assert len(metadata["build_receipt"]["patches"]) == len(candidate["manifest"]["patches"]) == 70
+    assert len(metadata["build_receipt"]["patches"]) == len(candidate["manifest"]["patches"]) == 72
     assert metadata["native_patch_runtime_verified"] is False
     store = NativeBinaryStore(tmp_path / "store")
     installed = store.install_archive(archive, result["sha256"])
@@ -4207,7 +4207,7 @@ def test_native_candidate_requires_exact_checkout_and_complete_patch_chain(tmp_p
             build.candidate_source_patches(source, {}, candidate)
     else:
         rows = build.candidate_source_patches(source, {}, candidate)
-        assert len(rows) == len(candidate["manifest"]["patches"]) == 70 and sum(row.get("repository") == "v8" for row in rows) == 1
+        assert len(rows) == len(candidate["manifest"]["patches"]) == 72 and sum(row.get("repository") == "v8" for row in rows) == 1
 
 
 def test_native_candidate_safe_buffer_port_keeps_bounded_cpp_paths():
@@ -4977,18 +4977,18 @@ def test_selected_gpu_fixture_preserves_baseline_and_requires_negative_case():
     assert sum(map(len, required_tests("gpu-metadata").values())) == 34
 
 
-def test_baseline_native_batch_keeps_gpu_failure_and_all_later_results():
+def test_baseline_native_batch_keeps_gpu_failure_and_all_later_results(native_units_before_orientation):
     import hashlib
     import json
     from scripts import native_build as build
-    from scripts.verify_native_privacy_units import SUPPORTED_TARGETS
+    historical_targets = native_units_before_orientation["namespace"]["SUPPORTED_TARGETS"]
 
     root = build.ROOT / "native/drafts/upstream-156"
     data = json.loads((root / "native-batch65-observations.json").read_bytes())
     assert hashlib.sha256((root / data["required_base_manifest"]).read_bytes()).hexdigest() == data["candidate_manifest_sha256"]
     assert data["passed"] is False and data["postguards_passed"] is True
     assert data["build_invocations"] == 1 and data["jobs"] == 4
-    assert [row["target"] for row in data["targets"]] == [target for target in SUPPORTED_TARGETS
+    assert [row["target"] for row in data["targets"]] == [target for target in historical_targets
                                                         if target not in {"audio-math", "screen-metrics", "screen-widget"}]
     assert [row["target"] for row in data["targets"] if not row["native_cases_passed"]] == ["gpu-metadata"]
     gpu = next(row for row in data["targets"] if row["target"] == "gpu-metadata")
@@ -5000,11 +5000,12 @@ def test_baseline_native_batch_keeps_gpu_failure_and_all_later_results():
     assert data["browser_runtime_verified"] is data["privacy_admitted"] is data["production_admitted"] is False
 
 
-def test_native_66_batch_binds_frozen_manifest_and_complete_native_filters():
+def test_native_66_batch_binds_frozen_manifest_and_complete_native_filters(native_units_before_orientation):
     import hashlib
     import json
     from scripts import native_build as build
-    from scripts.verify_native_privacy_units import SUPPORTED_TARGETS, required_tests
+    from scripts.verify_native_privacy_units import required_tests
+    historical_targets = native_units_before_orientation["namespace"]["SUPPORTED_TARGETS"]
 
     candidate = build.load_candidate("upstream-156")
     root = candidate["directory"]
@@ -5018,7 +5019,7 @@ def test_native_66_batch_binds_frozen_manifest_and_complete_native_filters():
         assert hashlib.sha256((root / "patches" / row["file"]).read_bytes()).hexdigest() == row["sha256"]
     assert data["passed"] and data["postguards_passed"] and data["actual_sync_hooks_completed"]
     assert data["build_invocations"] == 1 and data["jobs"] == 4
-    assert [row["target"] for row in data["targets"]] == [target for target in SUPPORTED_TARGETS
+    assert [row["target"] for row in data["targets"]] == [target for target in historical_targets
                                                         if target not in {"audio-math", "screen-metrics", "screen-widget"}]
     for row in data["targets"]:
         assert row["native_cases_passed"] and row["returncode"] == 0
@@ -5882,13 +5883,14 @@ def test_upstream_draft_manifest_binds_registered_sources_and_compact_lf_patches
 
     manifest = json.loads((draft.DRAFT / "manifest.json").read_text(encoding="utf-8-sig"))
     originals = sorted((draft.ROOT / "native/patches").glob("*.patch"))[:62]
-    assert len(originals) == 62 and len(manifest["patches"]) == 70
+    assert len(originals) == 62 and len(manifest["patches"]) == 72
     assert [row["file"] for row in manifest["patches"][:62]] == [path.name for path in originals]
     assert [row["file"] for row in manifest["patches"][62:]] == [
         "0063-native-safe-buffer-portability.patch", "0064-native-audio-safe-domain-copy.patch",
         "0065-native-fixture-portability.patch", "0066-native-gpu-optional-query-fixture.patch",
         "0067-native-audio-math-context-candidate.patch", "0068-native-audio-math-fixture-readiness.patch",
-        "0069-native-logical-screen-inheritance.patch", "0070-native-logical-screen-lifecycle.patch"]
+        "0069-native-logical-screen-inheritance.patch", "0070-native-logical-screen-lifecycle.patch",
+        "0071-native-logical-screen-orientation.patch", "0072-native-canvas-extended-formats.patch"]
     for row in manifest["patches"]:
         content = (draft.DRAFT / "patches" / row["file"]).read_bytes()
         assert b"\r" not in content and not content.startswith(b"\xef\xbb\xbf")

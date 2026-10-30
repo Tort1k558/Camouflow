@@ -1,6 +1,10 @@
 # Canvas format extension — isolated draft
 
-**Not registered, applied to the active checkout, compiled into Chrome or admitted.**
+**Selected as 0072 in the development 001–072 source chain; not yet compiled into Chrome or admitted.**
+[Linked selection](../linked72-selection-observations.json) also includes orientation/visibility
+and its strict four-case native gate. Source selection does not prove application,
+compilation, native case execution or browser compatibility. The isolated records
+below describe their earlier pre-selection measurements, not mutable readiness flags.
 The preserved 001–070 browser still has the [30/32 format failure](../canvas-formats70-observations.json).
 
 ## Implemented in the draft
@@ -40,7 +44,9 @@ pytest from public patches 0033/0034/0063, without the external Chromium checkou
 [Actual public-runner repeat](reproduction.json) records preparation, four syntax
 checks, both native builds and their executions, with final input guards.
 
-Repeat against the pinned Windows 001–070 source/build, with a fresh output on D:
+Repeat against a retained pinned Windows **001–070 source/build**, with a fresh
+output on D. This historical prototype runner deliberately rejects already-patched
+001–072 input; it never reverses or double-applies active source changes:
 
 ```powershell
 .\.venv\Scripts\python.exe native/drafts/environment/canvas-formats-next/verify_draft.py --source-root D:\Glint156Candidate\chromium\src --build-dir D:\Glint156Candidate\chromium\src\out\CamouFlowNative --work-dir D:\GlintManagerQA\fresh-canvas-format-draft

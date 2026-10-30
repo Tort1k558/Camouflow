@@ -2,6 +2,14 @@
 
 ## Current implementation boundary
 
+The selected development source chain is now **001–072**: linked orientation/
+visibility and extended Canvas, nine changed files. Three joint-overlay compiler
+checks passed, and the existing native verifier gains a strict four-case orientation
+target (21 groups total). [Selection](drafts/environment/linked72-selection-observations.json).
+The compiled/preserved browser remains **001–070** until the owned j4 refresh and
+fresh browser/native tests complete. The full Python repeat at `ba72a17` passed
+**4447 tests, 1 skipped**, before this source selection.
+
 **Current compatibility blocker:** protected Canvas fails 30 of 32 tested
 HTML/Offscreen sRGB/Display-P3/unorm8/float16 combinations, while the same binary
 without the policy supports all 32. Only default sRGB/RGBA8 succeeds. The error is

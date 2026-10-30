@@ -1,5 +1,21 @@
 # Chromium 156 rebase candidate
 
+## Selected 001–072: linked Canvas formats and orientation/visibility
+
+The preserved compiled browser is **001–070**, with 484 native cases in 20 groups
+and the separately scoped combined-surface measurements. The source chain now
+selects **0071 orientation/visibility + 0072 extended Canvas** in one nine-file
+package. Three joint-overlay compiler checks passed. The verifier has 21 groups,
+including four strict orientation cases; those new cases have not run yet.
+[Selection](../environment/linked72-selection-observations.json),
+[Canvas native diagnostics](../environment/canvas-formats-next/README.md).
+
+Selection does not imply an applied checkout, compiled browser, format/runtime
+pass or admission. The owned refresh preserves exact 001–070 assets and unchanged
+source timestamps only, then rebuilds with at most j4. Browser format/export/worker
+and combined-policy gates, security rebase and release admission remain open.
+The sections below retain historical selection/build boundaries.
+
 ## Selected 0070: linked main-DPR/lifecycle batch
 
 The selected chain is **001–070**. The latest compiled baseline remains

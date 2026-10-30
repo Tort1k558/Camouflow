@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "ba72a17fbf2dd3f262dcfa2732328db85d07184d",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 888,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 380.39,
+  "returncode": 0,
+  "counts": {
+    "tests": 4448,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4447
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "1262bfadb476bb3944ce4a9a6016649ecf16c40ca089454ff26dc51b449b1e8d",
+  "junit_sha256": "cd7202c6677f487d4c4b1d268f3e49c6ed70ab8f6f6b3d271dd25cc916b6fb32",
+  "raw_report_sha256": "48b4850f31f209b2ff48bd0eaac50ce0b7c925aec72cfa977a8a3584e38c892f",
+  "note": "Full repeat at ba72a17, before 001-072 source selection and verifier integration."
+}

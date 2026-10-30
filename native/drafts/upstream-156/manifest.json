@@ -1539,6 +1539,14 @@
     {
       "file": "0070-native-logical-screen-lifecycle.patch",
       "sha256": "fb4a7f9a630d3dff03b0b25993a685f73facb835dd7ffe16783bb7fe270ec1fa"
+    },
+    {
+      "file": "0071-native-logical-screen-orientation.patch",
+      "sha256": "1435687f9cbd3a7cbd61fbd291faa68a10ab00e3cfe061c45f2d4e5c3431503e"
+    },
+    {
+      "file": "0072-native-canvas-extended-formats.patch",
+      "sha256": "b911fef3ba8b5f75b3f55dfc921bf6ddd90251f494a1fbabff602c7089c8c652"
     }
   ],
   "build": {

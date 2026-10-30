@@ -915,7 +915,7 @@ def test_published_cross_process_result_proves_orderly_handoff_not_crash_recover
         assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
 
 
-def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates(recorder_before_document_open_sha256):
+def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates(recorder_before_document_open_sha256, native_units_before_orientation):
     import hashlib
 
     root = environment.ROOT
@@ -936,6 +936,10 @@ def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gate
         "protected_policy_recovery_verified", "privacy_admitted", "production_admitted"))
     for name, value in record["source_sha256"].items():
         expected = recorder_before_document_open_sha256 if name == "app/services/scenario_recorder.py" else hashlib.sha256((root / name).read_bytes()).hexdigest()
+        if name == "native/drafts/upstream-156/manifest.json":
+            expected = hashlib.sha256((root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest()
+        elif name == "scripts/verify_native_privacy_units.py":
+            expected = native_units_before_orientation["source_sha256"]
         assert "\\" not in name and expected == value
 
 
@@ -965,7 +969,7 @@ def test_consolidated_screen_batch_is_two_files_and_seven_cases_without_early_ad
     assert "  if (!glint_logical_screen_infos_)" in added
 
 
-def test_queued_screen_widget_gate_binds_seven_cases_without_claiming_native_execution():
+def test_queued_screen_widget_gate_binds_seven_cases_without_claiming_native_execution(native_units_before_orientation):
     import hashlib
 
     root = environment.ROOT
@@ -982,10 +986,10 @@ def test_queued_screen_widget_gate_binds_seven_cases_without_claiming_native_exe
         "runtime_verified", "privacy_admitted", "production_admitted"))
     assert hashlib.sha256((directory / record["patch"]).read_bytes()).hexdigest() == record["patch_sha256"]
     assert hashlib.sha256((directory / record["linked_native_patch"]).read_bytes()).hexdigest() == record["linked_native_patch_sha256"]
-    assert hashlib.sha256((root / record["base_source"]).read_bytes()).hexdigest() == record["prepared_source_sha256"]
+    assert native_units_before_orientation["source_sha256"] == record["prepared_source_sha256"]
 
 
-def test_queued_widget_verifier_applies_and_rejects_incomplete_results(tmp_path, monkeypatch):
+def test_queued_widget_verifier_applies_and_rejects_incomplete_results(tmp_path, monkeypatch, native_units_before_orientation):
     import hashlib
     import runpy
     import subprocess
@@ -994,9 +998,7 @@ def test_queued_widget_verifier_applies_and_rejects_incomplete_results(tmp_path,
     root = environment.ROOT
     directory = root / "native/drafts/environment"
     metadata = json.loads((directory / "screen-widget-gate-preparation.json").read_bytes())
-    path = tmp_path / metadata["base_source"]
-    path.parent.mkdir(parents=True)
-    path.write_bytes((root / metadata["base_source"]).read_bytes())
+    path = native_units_before_orientation["path"]
     assert hashlib.sha256(path.read_bytes()).hexdigest() == metadata["prepared_source_sha256"]
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error", str(directory / metadata["patch"])],
                    cwd=tmp_path, check=True, capture_output=True)
@@ -1091,24 +1093,26 @@ def test_actual_0069_first_script_proves_desktop_repair_but_retains_mobile_main_
         assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
 
 
-def test_selected_0070_is_exact_linked_batch_with_active_strict_gate_not_runtime_admission():
+def test_historical_0070_is_exact_prefix_with_strict_gate_not_runtime_admission(native_units_before_orientation):
     import hashlib
     from scripts import verify_native_privacy_units as units
 
     root = environment.ROOT
     directory = root / "native/drafts/environment"
     record = json.loads((directory / "screen70-selection-observations.json").read_bytes())
-    current = (root / "native/drafts/upstream-156/manifest.json").read_bytes()
+    current = json.loads((root / "native/drafts/upstream-156/manifest.json").read_bytes())
     checkpoint = (root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()
     previous = json.loads((root / "native/drafts/upstream-156/checkpoints/001-069.json").read_bytes())
-    manifest = json.loads(current)
-    assert record["selected"] and current == checkpoint
-    assert hashlib.sha256(current).hexdigest() == record["selected_manifest_sha256"]
+    manifest = json.loads(checkpoint)
+    assert record["selected"] and {**current, "patches": current["patches"][:70]} == manifest
+    assert hashlib.sha256(checkpoint).hexdigest() == record["selected_manifest_sha256"]
     assert manifest["patches"][:-1] == previous["patches"] and len(manifest["patches"]) == 70
     patch = root / "native/drafts/upstream-156/patches" / record["native_patch"]
     assert patch.read_bytes() == (directory / "linked-screen70.patch").read_bytes()
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record["native_patch_sha256"]
-    assert len(units.SUPPORTED_TARGETS) == record["selected_native_target_groups"] == 20
+    historical_targets = native_units_before_orientation["namespace"]["SUPPORTED_TARGETS"]
+    assert len(historical_targets) == record["selected_native_target_groups"] == 20
+    assert tuple(target for target in units.SUPPORTED_TARGETS if target != "screen-orientation") == historical_targets
     assert units.unit_binary_target("screen-widget") == "blink_unittests"
     cases = {suite + "." + name for suite, names in units.required_tests("screen-widget").items() for name in names}
     assert cases == set(record["prepared_cases"]) and len(cases) == record["native_cases_required"] == 7
@@ -1116,7 +1120,7 @@ def test_selected_0070_is_exact_linked_batch_with_active_strict_gate_not_runtime
         "privacy_admitted", "production_admitted"))
 
 
-def test_second_full_regression_retains_contract_failures_without_claiming_full_followup():
+def test_second_full_regression_retains_contract_failures_without_claiming_full_followup(release_tools_before_72_sha256):
     import hashlib
 
     root = environment.ROOT
@@ -1128,7 +1132,8 @@ def test_second_full_regression_retains_contract_failures_without_claiming_full_
     assert record["release_module_followup"]["passed"] == 1131 and record["release_module_followup"]["skipped"] == 1
     assert all(record[name] is False for name in ("full_regression_after_contract_updates_verified", "native_runtime_verified",
         "privacy_admitted", "production_admitted"))
-    assert hashlib.sha256((root / record["corrected_test_source"]).read_bytes()).hexdigest() == record["corrected_test_source_sha256"]
+    assert record["corrected_test_source"] == "tests/test_release_tools.py"
+    assert release_tools_before_72_sha256 == record["corrected_test_source_sha256"]
 
 
 def test_full_python_70_regression_pass_does_not_admit_native_runtime():
@@ -1230,7 +1235,7 @@ def test_orientation_visibility_draft_remains_unregistered_and_unverified():
                                                 "bfcache_fixed_verified", "privacy_admitted", "production_admitted"))
 
 
-def test_prepared_orientation_gate_binds_four_cases_without_changing_current_targets():
+def test_historical_orientation_gate_binds_four_cases_without_changing_prior_targets(native_units_before_orientation):
     import hashlib
 
     root = environment.ROOT
@@ -1244,12 +1249,12 @@ def test_prepared_orientation_gate_binds_four_cases_without_changing_current_tar
     assert len(record["python_controls_passed"]) == 16
     assert hashlib.sha256((folder / record["patch"]).read_bytes()).hexdigest() == record["patch_sha256"]
     assert hashlib.sha256((folder / record["linked_native_patch"]).read_bytes()).hexdigest() == record["linked_native_patch_sha256"]
-    assert hashlib.sha256((root / record["base_source"]).read_bytes()).hexdigest() == record["base_source_sha256"]
+    assert native_units_before_orientation["source_sha256"] == record["base_source_sha256"]
     assert all(record[name] is False for name in ("selected", "cpp_compiled", "native_tests_executed",
                                                 "runtime_verified", "privacy_admitted", "production_admitted"))
 
 
-def test_prepared_orientation_gate_replay_rejects_incomplete_results_and_source_chain(tmp_path, monkeypatch):
+def test_prepared_orientation_gate_replay_rejects_incomplete_results_and_source_chain(tmp_path, monkeypatch, native_units_before_orientation):
     import hashlib
     import runpy
     import subprocess
@@ -1258,9 +1263,7 @@ def test_prepared_orientation_gate_replay_rejects_incomplete_results_and_source_
     root = environment.ROOT
     folder = root / "native/drafts/environment"
     record = json.loads((folder / "screen-orientation71-gate-preparation.json").read_bytes())
-    path = tmp_path / record["base_source"]
-    path.parent.mkdir(parents=True)
-    path.write_bytes((root / record["base_source"]).read_bytes())
+    path = native_units_before_orientation["path"]
     monkeypatch.setattr(sys, "path", sys.path.copy())
     current = runpy.run_path(str(path))
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--whitespace=error", str(folder / record["patch"])],
@@ -1309,7 +1312,7 @@ def test_prepared_orientation_gate_replay_rejects_incomplete_results_and_source_
     assert not (tmp_path / "not-created.json").exists()
 
 
-def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(recorder_before_document_open_sha256):
+def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(recorder_before_document_open_sha256, native_units_before_orientation):
     import hashlib
 
     root = environment.ROOT
@@ -1332,5 +1335,13 @@ def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(record
         "cloud_server_team_isolation_verified", "uncommitted_transactions_recovery_verified",
         "privacy_admitted", "production_admitted"))
     assert record["source_sha256"]["app/services/scenario_recorder.py"] == recorder_before_document_open_sha256
-    assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
-               for path, value in record["source_sha256"].items() if path != "app/services/scenario_recorder.py")
+    for path, value in record["source_sha256"].items():
+        if path == "app/services/scenario_recorder.py":
+            continue
+        if path == "native/drafts/upstream-156/manifest.json":
+            actual = hashlib.sha256((root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest()
+        elif path == "scripts/verify_native_privacy_units.py":
+            actual = native_units_before_orientation["source_sha256"]
+        else:
+            actual = hashlib.sha256((root / path).read_bytes()).hexdigest()
+        assert actual == value
