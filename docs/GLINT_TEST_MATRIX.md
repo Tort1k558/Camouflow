@@ -13,6 +13,8 @@
 | Forced GPU service restart | Four exact-version running/stopped/running chains; new globals, stable reads and retained document GPU/screens | Not stop-all, worker Audio, WebGPU or full profile isolation |
 | Preservation | Independent 076 runtime, 269 assets verified | 075 rollback baseline retained |
 | Full integrated Python baseline | 4854 passed, 1 skipped; source/status guards passed | At `10230bd`, before evidence-only follow-up; not native/privacy admission |
+| Full worker integration Python | **4886 passed, 1 skipped**, source/status guards passed | At `a05fbc6`, before WebGPU source/evidence publication |
+| WebGPU compatibility prototype | **14/14**: baseline/protected document plus six classic/module worker classes | Compute, RGBA8 readback, padding, mapping and API errors; not native protection or retained resources |
 
 [Exact measured evidence](../native/drafts/environment/screen76-runtime-observations.json).
 [Integrated GPU runtime evidence](../native/drafts/environment/retained-gpu-objects76-observations.json)
@@ -22,7 +24,13 @@ version-specific service restarts. The new mode is explicit: `--probe retained-g
 [Public worker GPU evidence](../native/drafts/environment/retained-gpu-workers76-observations.json)
 includes four backward-mode repeats. Use `--verify-retained-gpu-workers` with
 `--probe retained-gpu-objects`; add `--verify-retained-gpu-service-restart` for
-the explicit owned-version restart check. Full Python above predates this expansion.
+the explicit owned-version restart check. The 4886-test full run includes this expansion.
+[Worker integration full result](../native/drafts/environment/canonical-python76-gpu-workers-observations.json).
+[WebGPU compatibility evidence](../native/drafts/environment/webgpu-readback76-observations.json)
+uses the default adapter without unsafe flags or a fallback adapter. Its earlier
+protected SharedWorker harness failure remains recorded; the corrected harness
+reuses the existing exact driver storage-partitioning adjustment. The probe source
+is public, but the standalone controller is not yet integrated into the public CLI.
 These results do not admit WebGPU, full profile isolation, privacy guarantees,
 CAPTCHA outcomes or production/release deployment.
 

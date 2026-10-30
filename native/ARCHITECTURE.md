@@ -25,7 +25,22 @@ new service/GPU globals, stable reads and intact document GPU resources/screens.
 Dedicated/shared retain original objects; service lifetime is not guaranteed.
 Default, document-only and legacy worker/service modes also passed again.
 [Worker GPU evidence](drafts/environment/retained-gpu-workers76-observations.json).
-Next: WebGPU readback, device cohorts and the remaining combined/release gates.
+The worker integration at `a05fbc6` passed **4886 Python tests, 1 skipped**, with
+source/status guards. [Full result](drafts/environment/canonical-python76-gpu-workers-observations.json).
+
+WebGPU compatibility now has **14 measured cases**: baseline/protected document
+and classic/module dedicated, shared and service workers. Integer compute,
+RGBA8 texture copies, padded rows, mapping detachment and invalid API operations
+passed using the default adapter without unsafe flags or a fallback adapter.
+[Measured probe source and evidence](drafts/environment/webgpu-readback76-observations.json).
+This is a standalone owned-fixture prototype, not public CLI integration,
+retained WebGPU resources, native WebGPU readback protection or release admission.
+
+Next: integrate the WebGPU probe, verify retained resources and frame/worker
+lifecycle, then design the native pixel-readback path with explicit provenance.
+Do not apply pixel noise to arbitrary mapped buffers: compute/storage results,
+mapping errors, offsets and padding must remain exact. Device cohorts and the
+remaining combined/release gates stay open.
 
 ## Historical source selection 001–076
 

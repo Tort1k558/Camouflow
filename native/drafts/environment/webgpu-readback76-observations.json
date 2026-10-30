@@ -1,0 +1,698 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Owned baseline/protected WebGPU compute/texture compatibility in document and classic/module dedicated/shared/service workers; no worker retention claim; no native readback protection or privacy/release admission",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "03b34a8d3786d9c313b89afc1609c032091656678f936ee7087d62fca40e1d00",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "ca69cc734d4829bcb2357012d77fdda0fb72130fe91f5cf48da3f67acb17d7b3",
+  "source": "native/drafts/environment/first-script/webgpu_readback.js",
+  "source_sha256": "f6a396b03e3896af68b24d25b2cecf35db580405376aa0a8cd0b0063c9f509e3",
+  "raw_report_sha256": "60b2e92f6bf05f458d9eeede79761a453e1303ead34bc08a395b6cce127ccbb8",
+  "rows": [
+    {
+      "mode": "baseline",
+      "context": "document",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "baseline",
+      "context": "classic-dedicated-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "baseline",
+      "context": "module-dedicated-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "baseline",
+      "context": "classic-shared-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "baseline",
+      "context": "classic-service-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "baseline",
+      "context": "module-shared-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "baseline",
+      "context": "module-service-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "ready",
+      "context": "document",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "ready",
+      "context": "classic-dedicated-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "ready",
+      "context": "module-dedicated-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "ready",
+      "context": "classic-shared-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "ready",
+      "context": "classic-service-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "ready",
+      "context": "module-shared-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    },
+    {
+      "mode": "ready",
+      "context": "module-service-worker",
+      "value": {
+        "secureContext": true,
+        "exposed": true,
+        "measured": true,
+        "compatibilityPassed": true,
+        "privacyAdmitted": false,
+        "computeReads": [
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          },
+          {
+            "words": 64,
+            "referenceMatched": true,
+            "detached": true,
+            "rangeError": "OperationError"
+          }
+        ],
+        "textureReads": [
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          },
+          {
+            "width": 7,
+            "height": 3,
+            "rowPitch": 256,
+            "referenceMatched": true,
+            "paddingZero": true
+          }
+        ],
+        "validation": {
+          "alignmentError": "OperationError",
+          "mapValidation": true,
+          "usageValidation": true
+        },
+        "unexpected": []
+      }
+    }
+  ],
+  "modes": [
+    "baseline",
+    "ready"
+  ],
+  "measured_contexts_per_mode": 7,
+  "driver_partitioning": {
+    "original": "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion",
+    "replacement": "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion"
+  },
+  "public_probe_source": true,
+  "public_cli_integrated": false,
+  "native_webgpu_readback_protection": false,
+  "retained_objects_verified": false,
+  "cross_profile_isolation_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "prior_negative": {
+    "raw_report_sha256": "cd9be206eaa1a6088da00771d3bb98392854070f9848d84954f5f9f7eb172961",
+    "passed": false,
+    "scope": "Extended staged harness failed at protected SharedWorker with driver storage partitioning disabled; retained, not browser admission",
+    "correction": "Reuse existing exact measured driver exclusion removal for ThirdPartyStoragePartitioning; no unsafe WebGPU flags or fallback adapter"
+  }
+}

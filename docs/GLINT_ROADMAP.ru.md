@@ -28,9 +28,18 @@ restart — дополнительным `--verify-retained-gpu-service-restart`
 
 **Далее:** WebGPU readback и согласованные device cohorts. Полный профиль,
 совместимость, ресурсы/восстановление и production-допуск остаются открытыми.
-Последний полный Python: **4854 passed, 1 skipped** на `10230bd`, до расширения GPU-workers;
+Последний полный Python: **4886 passed, 1 skipped** на `a05fbc6`, включая расширение GPU-workers;
 новый полный повтор ещё требуется.
-[Полный результат](../native/drafts/environment/canonical-python76-retained-gpu-observations.json).
+[Полный результат](../native/drafts/environment/canonical-python76-gpu-workers-observations.json).
+
+WebGPU-прототип: **14/14** — документ и classic/module dedicated, shared и service
+workers в базовом и защищённом режимах. Проверены compute, RGBA8 readback,
+выравнивание строк, отключение mapped buffer после unmap и ошибки API.
+[Исходник и результаты](../native/drafts/environment/webgpu-readback76-observations.json).
+Использован штатный адаптер, без unsafe-флагов и fallback. Это ещё не нативная
+WebGPU-защита, не сохранение ресурсов через BFCache и не интеграция публичного CLI.
+Далее: интеграция прогона, lifecycle ресурсов, затем нативный путь пикселей с
+контролем происхождения данных; произвольные compute/storage-буферы менять нельзя.
 Успех этих проверок не означает гарантированного обхода CAPTCHA или детекторов.
 
 ## История: выбор пакета 001–076
