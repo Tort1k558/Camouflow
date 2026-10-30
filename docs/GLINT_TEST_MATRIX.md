@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## Explicit-opt-in driver staging and Windows desktop package — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Pinned stage | 176 assets, source unchanged, legal notices retained; only JS overridden in optional desktop build | Unsigned, unselected; no installation replacement |
+| Opt-in branch | **30 model controls**, **18/18 default Native runtime checks** | Default manager BFCache remains disabled |
+| Actual staged Node/driver with Glint source overlay | **4/4 Recorder/replay phases**, desktop/mobile initial/restart, genuine BFCache, no pending outcomes | Not frozen Native BFCache integration |
+| Original vs staged legacy engines | Both Camoufox and CloakBrowser passed initial/restart forms, iframe, bindings, screenshot and five-store checks | Transport compatibility, not fingerprint acceptance or new Cloak Recorder support |
+| Actual frozen desktop EXE | Both providers passed packaged Python imports/browser and expected hard-timeout checks | No combined Native policy or release admission |
+| Historical canonical `87f74ea` | **4334 passed, 1 skipped** | Before new staging script/spec edits |
+
+[Measured packet and exact hashes](../native/drafts/environment/driver-stage70-observations.json),
+[historical Python report](../native/drafts/environment/canonical-python70-races-observations.json).
+Earlier 6 controlled races and 32 cycles below used the previous reply bundle; they
+are not silently transferred to this opt-in bundle. Cancelled teardown under BFCache
+load, resource checks, combined fingerprint, security rebase and release gates remain open.
+
 ## Real BFCache race/stress gates and complete Python repeat — 2026-10-30
 
 | Gate | Observed result | Boundary |

@@ -1,5 +1,29 @@
 # Measured reference environments
 
+## Explicit opt-in staging and actual desktop package — 2026-10-30
+
+[Measured staging packet](driver-stage70-observations.json): the compatibility branch
+activates only for an `ignoreDefaultArgs` array containing `--disable-back-forward-cache`.
+**30 model controls**, **18 default Native runtime checks**, and **4/4 genuine BFCache
+Recorder/replay phases** passed. The default manager launch still disables BFCache.
+
+The public [stage tool](../../../scripts/native_driver_stage.py) creates an isolated,
+hash-pinned 176-file Playwright copy without changing `.venv`; the optional spec hook
+overrides exactly one JS asset. Actual Windows desktop builds passed, as did packaged
+Python launch/imports and expected timeout checks for both cached legacy engines.
+[Build commands](../../BUILDING.md#experimental-desktop-driver-staging-not-a-chromium-build).
+
+[legacy_transport.py](first-script/legacy_transport.py) compares original/staged drivers
+using explicit cached browser paths: main/iframe forms, binding roles, screenshots and
+five-store persistence across restart. Four provider/driver combinations passed; this
+does not introduce CloakBrowser Recorder support or test fingerprint quality.
+
+This driver remains **unselected and unsigned**. The 6 race cases / 32 cycles below
+belong to the earlier reply bundle, not the newly gated one. Frozen Native BFCache,
+cancelled teardown under load, resource limits and combined fingerprint admission
+remain open. [Historical full regression at `87f74ea`](canonical-python70-races-observations.json)
+passed **4334 tests, 1 skipped**, before the new staging code/spec edits.
+
 ## Current compatibility gate
 
 [Real lifecycle gates](bfcache-races70-observations.json) passed **6/6 controlled

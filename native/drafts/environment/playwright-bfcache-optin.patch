@@ -1,0 +1,273 @@
+diff --git a/playwright/driver/package/lib/coreBundle.js b/playwright/driver/package/lib/coreBundle.js
+--- a/playwright/driver/package/lib/coreBundle.js
++++ b/playwright/driver/package/lib/coreBundle.js
+@@ -15988,6 +15988,9 @@
+         this.frame = frame;
+         this.world = world;
+       }
++      deliverBindingResult(controllerName, arg) {
++        return this.evaluateExpressionHandle(`arg => globalThis[${JSON.stringify(controllerName)}].deliverBindingResult(arg)`, { isFunction: true }, arg);
++      }
+       adoptIfNeeded(handle) {
+         if (handle instanceof ElementHandle && handle._context !== this)
+           return this.frame._page.delegate.adoptElementHandle(handle, this);
+@@ -20458,9 +20461,9 @@
+             throw new Error(`serializedArgs is not an array. This can happen when Array.prototype.toJSON is defined incorrectly`);
+           const args = serializedArgs.map((a) => parseEvaluationResultValue(a));
+           const result2 = await binding.playwrightFunction({ frame: context2.frame, page, context: page.browserContext }, ...args);
+-          context2.evaluateExpressionHandle(`arg => globalThis['${_PageBinding.kController}'].deliverBindingResult(arg)`, { isFunction: true }, { name, seq, result: result2 }).catch((e) => debugLogger.log("error", e));
++          context2.deliverBindingResult(_PageBinding.kController, { name, seq, result: result2 }).catch((e) => debugLogger.log("error", e));
+         } catch (error) {
+-          context2.evaluateExpressionHandle(`arg => globalThis['${_PageBinding.kController}'].deliverBindingResult(arg)`, { isFunction: true }, { name, seq, error }).catch((e) => debugLogger.log("error", e));
++          context2.deliverBindingResult(_PageBinding.kController, { name, seq, error }).catch((e) => debugLogger.log("error", e));
+         }
+       }
+       async dispose() {
+@@ -36103,6 +36106,11 @@
+       constructor(crPage, client, targetId, parentSession) {
+         this._childSessions = /* @__PURE__ */ new Set();
+         this._contextIdToContext = /* @__PURE__ */ new Map();
++        this._contextPayloads = /* @__PURE__ */ new Map();
++        this._bindingReplies = /* @__PURE__ */ new Map();
++        this._bindingRepliesDisposed = false;
++        this._pendingBindingEvents = [];
++        this._contextGeneration = 0;
+         this._eventListeners = [];
+         this._firstNonInitialNavigationCommittedFulfill = () => {
+         };
+@@ -36115,6 +36123,8 @@
+         this._initScriptIds = /* @__PURE__ */ new Map();
+         this._client = client;
+         this._crPage = crPage;
++        const ignoredDefaults = crPage._browserContext._browser.options.originalLaunchOptions.ignoreDefaultArgs;
++        this._bfcacheCompatibilityEnabled = Array.isArray(ignoredDefaults) && ignoredDefaults.includes("--disable-back-forward-cache");
+         this._page = crPage._page;
+         this._targetId = targetId;
+         this._parentSession = parentSession;
+@@ -36136,7 +36146,7 @@
+           eventsHelper.addEventListener(this._client, "Page.fileChooserOpened", (event) => this._onFileChooserOpened(event)),
+           eventsHelper.addEventListener(this._client, "Page.frameAttached", (event) => this._onFrameAttached(event.frameId, event.parentFrameId)),
+           eventsHelper.addEventListener(this._client, "Page.frameDetached", (event) => this._onFrameDetached(event.frameId, event.reason)),
+-          eventsHelper.addEventListener(this._client, "Page.frameNavigated", (event) => this._onFrameNavigated(event.frame, false)),
++          eventsHelper.addEventListener(this._client, "Page.frameNavigated", (event) => this._onFrameNavigated(event.frame, false, event.type === "BackForwardCacheRestore")),
+           eventsHelper.addEventListener(this._client, "Page.frameRequestedNavigation", (event) => this._onFrameRequestedNavigation(event)),
+           eventsHelper.addEventListener(this._client, "Page.javascriptDialogOpening", (event) => this._onDialog(event)),
+           eventsHelper.addEventListener(this._client, "Page.navigatedWithinDocument", (event) => this._onFrameNavigatedWithinDocument(event.frameId, event.url)),
+@@ -36144,7 +36154,7 @@
+           eventsHelper.addEventListener(this._client, "Runtime.consoleAPICalled", (event) => this._onConsoleAPI(event)),
+           eventsHelper.addEventListener(this._client, "Runtime.exceptionThrown", (exception) => this._handleException(exception.exceptionDetails)),
+           eventsHelper.addEventListener(this._client, "Runtime.executionContextCreated", (event) => this._onExecutionContextCreated(event.context)),
+-          eventsHelper.addEventListener(this._client, "Runtime.executionContextDestroyed", (event) => this._onExecutionContextDestroyed(event.executionContextId)),
++          eventsHelper.addEventListener(this._client, "Runtime.executionContextDestroyed", (event) => this._onExecutionContextDestroyed(event.executionContextId, event.executionContextUniqueId)),
+           eventsHelper.addEventListener(this._client, "Runtime.executionContextsCleared", (event) => this._onExecutionContextsCleared())
+         ]);
+       }
+@@ -36254,6 +36264,11 @@
+         await Promise.all(promises);
+       }
+       dispose() {
++        this._contextGeneration++;
++        this._contextPayloads.clear();
++        this._pendingBindingEvents = [];
++        this._bindingReplies.clear();
++        this._bindingRepliesDisposed = true;
+         this._firstNonInitialNavigationCommittedReject(new TargetClosedError(this._page.closeReason()));
+         for (const childSession of this._childSessions)
+           childSession.dispose();
+@@ -36309,13 +36324,89 @@
+         }
+         this._page.frameManager.frameAttached(frameId, parentFrameId);
+       }
+-      _onFrameNavigated(framePayload, initial) {
++      _onFrameNavigated(framePayload, initial, restored = false) {
++        if (this._bfcacheCompatibilityEnabled && restored && this._isMainFrame() && !framePayload.parentId && framePayload.id === this._targetId) {
++          this._restoreBfcacheFrameTree(framePayload);
++          return;
++        }
+         if (this._eventBelongsToStaleFrame(framePayload.id))
+           return;
+         this._page.frameManager.frameCommittedNewDocumentNavigation(framePayload.id, framePayload.url + (framePayload.urlFragment || ""), framePayload.name || "", framePayload.loaderId, initial);
+         if (!initial)
+           this._firstNonInitialNavigationCommittedFulfill();
+       }
++      _restoreBfcacheFrameTree(framePayload) {
++        const generation = this._contextGeneration;
++        this._client.send("Page.getFrameTree").then(async ({ frameTree }) => {
++          if (generation !== this._contextGeneration || frameTree.frame.id !== framePayload.id || frameTree.frame.loaderId !== framePayload.loaderId)
++            return;
++          const sessions = Array.from(this._crPage._sessions.values()).filter(session => !session._swappedIn);
++          const generations = sessions.map(session => session._contextGeneration);
++          const replies = [{ frameTree }, ...await Promise.all(sessions.filter(session => session !== this).map(session => session._client.send("Page.getFrameTree")))];
++          if (generation !== this._contextGeneration || sessions.some((session, index) =>
++              session._contextGeneration !== generations[index] || this._crPage._sessions.get(session._targetId) !== session))
++            return;
++          const nodes = new Map();
++          const collect = (node, parentId) => {
++            const payload = node.frame;
++            const parent = payload.parentId || parentId || null;
++            const previous = nodes.get(payload.id);
++            if (previous && (previous.parent !== parent || previous.payload.loaderId !== payload.loaderId))
++              throw new Error("Conflicting BFCache frame snapshots");
++            nodes.set(payload.id, { payload, parent });
++            for (const child of node.childFrames || [])
++              collect(child, payload.id);
++          };
++          for (const reply of replies)
++            collect(reply.frameTree, null);
++          const root = nodes.get(framePayload.id);
++          if (!root || root.parent !== null || root.payload.loaderId !== framePayload.loaderId)
++            return;
++          const ordered = [];
++          const pending = new Map(nodes);
++          const included = new Set();
++          while (pending.size) {
++            let progressed = false;
++            for (const [id, node] of pending) {
++              if (id !== framePayload.id && !included.has(node.parent))
++                continue;
++              ordered.push(node);
++              included.add(id);
++              pending.delete(id);
++              progressed = true;
++            }
++            if (!progressed)
++              throw new Error("Incomplete BFCache cross-process frame ancestry");
++          }
++          const manager = this._page.frameManager;
++          for (const { payload, parent } of ordered) {
++            if (!manager.frame(payload.id))
++              manager.frameAttached(payload.id, parent);
++            manager.frameCommittedNewDocumentNavigation(payload.id, payload.url + (payload.urlFragment || ""), payload.name || "", payload.loaderId, true);
++          }
++          for (const session of sessions) {
++            const payloads = Array.from(session._contextPayloads.values());
++            for (const context of session._contextIdToContext.values())
++              context.frame.contextDestroyed(context);
++            session._contextIdToContext.clear();
++            for (const payload of payloads)
++              session._onExecutionContextCreated(payload);
++          }
++          for (const session of sessions) {
++            const pendingBindings = session._pendingBindingEvents;
++            session._pendingBindingEvents = [];
++            for (const entry of pendingBindings) {
++              if (entry.generation === session._contextGeneration)
++                session._onBindingCalled(entry.event).catch(error => debugLogger.log("error", error));
++            }
++          }
++          const frame = manager.frame(framePayload.id);
++          if (frame) {
++            this._page.frameNavigatedToNewDocument(frame);
++            this._firstNonInitialNavigationCommittedFulfill();
++          }
++        }).catch(error => debugLogger.log("error", error));
++      }
+       _onFrameRequestedNavigation(payload) {
+         if (this._eventBelongsToStaleFrame(payload.frameId))
+           return;
+@@ -36340,6 +36431,8 @@
+         this._page.frameManager.frameDetached(frameId);
+       }
+       _onExecutionContextCreated(contextPayload) {
++        if (this._bfcacheCompatibilityEnabled && contextPayload.auxData && contextPayload.auxData.frameId)
++          this._contextPayloads.set(contextPayload.id, contextPayload);
+         const frame = contextPayload.auxData ? this._page.frameManager.frame(contextPayload.auxData.frameId) : null;
+         if (!frame || this._eventBelongsToStaleFrame(frame._id))
+           return;
+@@ -36352,9 +36445,67 @@
+         const context2 = new FrameExecutionContext(delegate, frame, worldName);
+         if (worldName)
+           frame.contextCreated(worldName, context2);
++        if (this._bfcacheCompatibilityEnabled)
++          context2.deliverBindingResult = (controllerName, arg) => this._deliverBindingResult(contextPayload, controllerName, arg);
+         this._contextIdToContext.set(contextPayload.id, context2);
+-      }
+-      _onExecutionContextDestroyed(executionContextId) {
++        for (const [key, entry] of this._bindingReplies) {
++          if (entry.uniqueId === contextPayload.uniqueId)
++            this._tryDeliverBindingReply(key, entry).catch(error => debugLogger.log("error", error));
++        }
++      }
++      async _deliverBindingResult(payload, controllerName, arg) {
++        if (this._bindingRepliesDisposed)
++          throw new TargetClosedError(this._page.closeReason());
++        if (!payload.uniqueId || !payload.auxData || !payload.auxData.frameId)
++          throw new Error("Binding reply requires a unique frame execution context");
++        const key = JSON.stringify([payload.uniqueId, controllerName, arg.name, arg.seq]);
++        if (!this._bindingReplies.has(key)) {
++          if (this._bindingReplies.size >= 1024)
++            throw new Error("Pending BFCache binding reply limit exceeded");
++          this._bindingReplies.set(key, {uniqueId: payload.uniqueId, frameId: payload.auxData.frameId,
++            controllerName, arg, sending: false});
++        }
++        await this._tryDeliverBindingReply(key, this._bindingReplies.get(key));
++      }
++      async _tryDeliverBindingReply(key, entry) {
++        if (entry.sending || this._bindingReplies.get(key) !== entry)
++          return;
++        const payload = Array.from(this._contextPayloads.values()).find(value => value.uniqueId === entry.uniqueId);
++        const context = payload && this._contextIdToContext.get(payload.id);
++        if (!context || payload.auxData.frameId !== entry.frameId)
++          return;
++        const generation = this._contextGeneration;
++        entry.sending = true;
++        try {
++          await context.evaluateExpression(`arg => {
++            const controller = globalThis[${JSON.stringify(entry.controllerName)}];
++            const binding = controller && controller._bindings.get(arg.name);
++            if (binding && binding.callbacks.has(arg.seq)) controller.deliverBindingResult(arg);
++          }`, {isFunction: true}, entry.arg);
++          if (this._bindingReplies.get(key) === entry)
++            this._bindingReplies.delete(key);
++        } catch (error) {
++          if (generation === this._contextGeneration && !String(error).includes("Execution context was destroyed")) {
++            this._bindingReplies.delete(key);
++            throw error;
++          }
++        } finally {
++          entry.sending = false;
++        }
++        const currentPayload = Array.from(this._contextPayloads.values()).find(value => value.uniqueId === entry.uniqueId);
++        const currentContext = currentPayload && this._contextIdToContext.get(currentPayload.id);
++        if (this._bindingReplies.get(key) === entry && currentContext && currentContext !== context)
++          await this._tryDeliverBindingReply(key, entry);
++      }
++      _onExecutionContextDestroyed(executionContextId, uniqueId) {
++        if (uniqueId) {
++          for (const [key, entry] of this._bindingReplies) {
++            if (entry.uniqueId === uniqueId)
++              this._bindingReplies.delete(key);
++          }
++        }
++        this._contextPayloads.delete(executionContextId);
++        this._pendingBindingEvents = this._pendingBindingEvents.filter((entry) => entry.event.executionContextId !== executionContextId);
+         const context2 = this._contextIdToContext.get(executionContextId);
+         if (!context2)
+           return;
+@@ -36362,6 +36513,9 @@
+         context2.frame.contextDestroyed(context2);
+       }
+       _onExecutionContextsCleared() {
++        this._contextGeneration++;
++        this._contextPayloads.clear();
++        this._pendingBindingEvents = [];
+         for (const contextId4 of Array.from(this._contextIdToContext.keys()))
+           this._onExecutionContextDestroyed(contextId4);
+       }
+@@ -36452,9 +36606,16 @@
+         this._page.addConsoleMessage(null, event.type, values, stackTraceToLocation(event.stackTrace), void 0, event.timestamp);
+       }
+       async _onBindingCalled(event) {
++        const generation = this._contextGeneration;
+         const pageOrError = await this._crPage._page.waitForInitializedOrError();
++        if (this._bfcacheCompatibilityEnabled && generation !== this._contextGeneration)
++          return;
+         if (!(pageOrError instanceof Error)) {
+           const context2 = this._contextIdToContext.get(event.executionContextId);
++          if (!context2 && this._contextPayloads.has(event.executionContextId)) {
++            this._pendingBindingEvents.push({ event, generation });
++            return;
++          }
+           if (context2)
+             await this._page.onBindingCalled(event.payload, context2);
+         }

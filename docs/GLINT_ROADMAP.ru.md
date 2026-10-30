@@ -1,5 +1,23 @@
 # Glint: план проверки и развития
 
+## Новый пакет: явный opt-in и проверяемая упаковка драйвера
+
+| Направление | Подтверждено | Граница |
+| --- | --- | --- |
+| Изолированный staging Playwright | 176 файлов, закреплённые JS/Node, лицензии сохранены; `.venv` не изменяется | Контроль целостности, не подпись релиза |
+| Явное включение совместимости BFCache | 30 модельных проверок; штатный Native baseline **18/18** | Основной менеджер по-прежнему отключает BFCache |
+| Recorder → replay с новым драйвером | **4/4**, desktop/mobile, initial/restart, настоящий BFCache | Экспериментальная копия приложения, не основной запуск |
+| Camoufox и CloakBrowser | Парные original/staged проверки форм, iframe, binding и пяти хранилищ прошли | Не новая поддержка Recorder для CloakBrowser |
+| Собранный Windows desktop EXE | Оба движка прошли packaged Python launch/imports и ожидаемый timeout | Не frozen Native BFCache и не Chromium-пересборка |
+| Полная регрессия `87f74ea` | **4334 passed, 1 skipped** | Исторический прогон до нового staging-кода |
+
+[Измерения](../native/drafts/environment/driver-stage70-observations.json),
+[воспроизводимая сборка](../native/BUILDING.md#experimental-desktop-driver-staging-not-a-chromium-build).
+Пакет остаётся экспериментальным: дальше отмена teardown под BFCache-нагрузкой,
+контроль ресурсов и frozen Native-интеграция. Полный объём Canvas/GPU/Audio,
+генерации согласованных профилей, security rebase и доставки/отката не закрыт.
+Разделы ниже сохраняют историю измерений и прежние отрицательные результаты.
+
 ## Текущий итог: реальные гонки и полный повтор прошли
 
 | Проверка | Подтверждено | Не означает |

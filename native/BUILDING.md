@@ -8,8 +8,9 @@ Windows package passed all eight runtime gates (160 checks), including the
 separate installed copy. The first font-regression `NetworkError` remains
 unexplained; successful repeats are not evidence that its cause was fixed.
 Experimental **Chromium 156** has a separate manifest, patch chain, workspace
-and SDK requirement. Its source replay and GPU generation checks do not prove
-a compiled browser. Use the [candidate guide](drafts/upstream-156/README.md),
+and SDK requirement. The preserved 001–070 Windows candidate was compiled and
+passed 484 native unit cases; this does not admit its combined fingerprint policies
+or make it the default release. Use the [candidate guide](drafts/upstream-156/README.md),
 not the default 148 commands below. Exact results and retained failures:
 [test matrix](../docs/GLINT_TEST_MATRIX.md).
 
@@ -22,6 +23,42 @@ target and the normal isolated verifier:
 
 Use a fresh report path. Passing these policy units does not prove renderer
 startup, actual pixels, worker delivery or fingerprint acceptance.
+
+## Experimental desktop driver staging (not a Chromium build)
+
+The optional Playwright 1.60.0 overlay is **unselected**. It preserves the installed
+package and changes only the pinned JS bundle in a fresh external copy. Node and
+third-party notices are retained. Verification uses checksums, not a release signature.
+The normal desktop build remains unchanged when the environment variable is unset.
+
+Run from the repository root; use new D: output directories and stop on any error:
+
+```powershell
+$python = (Resolve-Path '.\.venv\Scripts\python.exe').Path
+$stage = 'D:\GlintDriverStage-new'
+& $python scripts/native_driver_stage.py stage --source-package .venv/Lib/site-packages/playwright --output $stage
+if ($LASTEXITCODE -ne 0) { throw 'Driver staging failed' }
+& $python scripts/native_driver_stage.py verify --directory $stage
+if ($LASTEXITCODE -ne 0) { throw 'Driver verification failed' }
+$previousStage = $env:CAMOUFLOW_GLINT_DRIVER_STAGE
+try {
+    $env:CAMOUFLOW_GLINT_DRIVER_STAGE = $stage
+    & $python -m PyInstaller --noconfirm --distpath D:\GlintDesktop-new\dist --workpath D:\GlintDesktop-new\work camouflow.spec
+    if ($LASTEXITCODE -ne 0) { throw 'Desktop build failed' }
+} finally {
+    $env:CAMOUFLOW_GLINT_DRIVER_STAGE = $previousStage
+}
+```
+
+This packages CamouFlow, not `chrome.exe`. It does **not** enable BFCache in the
+manager or select a browser runtime. The compatibility branch requires an explicit
+`ignore_default_args=["--disable-back-forward-cache"]` launch option, currently
+confined to the experimental application copy. Never ship the test-barrier patch.
+
+[Measured results](drafts/environment/driver-stage70-observations.json): actual staged
+desktop EXE, bundled Node, paired Camoufox/CloakBrowser transport checks and four
+Glint Recorder/replay phases passed. Frozen-provider launch/timeout checks are not
+a frozen Native BFCache test or a fingerprint/release gate.
 
 ## Requirements
 

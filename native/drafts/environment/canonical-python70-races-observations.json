@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "87f74eaab35daf94e8f15c39c649b7e8d126d8da",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 844,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 443.672,
+  "returncode": 0,
+  "counts": {
+    "tests": 4335,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4334
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "fbaf8789adf2e306364876d44d43819d45d65f7f5e33f474d092a108d3370601",
+  "junit_sha256": "30bed73a8ea289fb9fb392a482c904612e54cd5b8ae36e7b239599e5f096bc01",
+  "raw_report_sha256": "ea528e64b0d2ccb771901a8ca18002f91a1237e31ac4ded82408a97304d82265",
+  "note": "Historical full regression at 87f74ea, before the new staging script, spec hook and staging tests; does not cover subsequent edits."
+}

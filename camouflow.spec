@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
+import os
 import sys
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
@@ -61,6 +62,15 @@ a = Analysis(
     noarchive=False,
 )
 
+driver_stage = os.environ.get("CAMOUFLOW_GLINT_DRIVER_STAGE")
+if driver_stage:
+    if sys.platform != "win32":
+        raise ValueError("Glint driver staging is Windows-only")
+    sys.path.insert(0, str(ROOT))
+    import playwright
+    from scripts.native_driver_stage import bundle_datas
+    a.datas = bundle_datas(a.datas, Path(playwright.__file__).parent, Path(driver_stage))
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
@@ -85,7 +95,7 @@ coll = COLLECT(
     a.datas,
     strip=False,
     upx=True,
-    upx_exclude=[],
+    upx_exclude=["node.exe"] if driver_stage else [],
     name="CamouFlow",
 )
 

@@ -1,0 +1,589 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "date": "2026-10-30",
+  "scope": "Explicit-opt-in Playwright driver staging and actual Windows desktop/provider compatibility; not combined fingerprint or Native frozen BFCache admission",
+  "selected": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "cryptographically_signed": false,
+  "main_manager_bfcache_enabled": false,
+  "manifest": "playwright-driver-stage.json",
+  "prepared_driver_sha256": "26c93a2ec2d48fb890d3b7d5b5fa3ee2c4a9514d1b12de26c31d6b06c4ea076c",
+  "activation": "Only an ignoreDefaultArgs array containing --disable-back-forward-cache enables the compatibility branch",
+  "model": {
+    "passed": true,
+    "tests": 30,
+    "results": [
+      {
+        "name": "restores-root-child-contexts-and-delivers-queued-bindings-once",
+        "passed": true
+      },
+      {
+        "name": "clear-invalidates-queued-events-and-stale-tree-reply",
+        "passed": true
+      },
+      {
+        "name": "destroyed-context-does-not-deliver-queued-events",
+        "passed": true
+      },
+      {
+        "name": "wrong-loader-tree-is-not-applied",
+        "passed": true
+      },
+      {
+        "name": "dispose-invalidates-tree-and-clears-retained-data",
+        "passed": true
+      },
+      {
+        "name": "unknown-unattributed-binding-is-not-queued",
+        "passed": true
+      },
+      {
+        "name": "existing-context-binding-path-remains-direct",
+        "passed": true
+      },
+      {
+        "name": "restores-main-and-nested-cross-process-session-contexts",
+        "passed": true
+      },
+      {
+        "name": "remote-context-clear-invalidates-the-whole-pending-restore",
+        "passed": true
+      },
+      {
+        "name": "remote-session-replacement-invalidates-the-whole-pending-restore",
+        "passed": true
+      },
+      {
+        "name": "missing-remote-parent-is-rejected-before-frame-mutation",
+        "passed": true
+      },
+      {
+        "name": "cyclic-remote-ancestry-is-rejected-before-frame-mutation",
+        "passed": true
+      },
+      {
+        "name": "conflicting-session-frame-loaders-are-rejected-before-mutation",
+        "passed": true
+      },
+      {
+        "name": "binding-result-delivers-once-to-current-context",
+        "passed": true
+      },
+      {
+        "name": "binding-error-payload-is-preserved",
+        "passed": true
+      },
+      {
+        "name": "binding-result-waits-for-original-unique-context-not-reused-numeric-id",
+        "passed": true
+      },
+      {
+        "name": "binding-result-rejects-foreign-frame-with-matching-unique-id",
+        "passed": true
+      },
+      {
+        "name": "explicit-unique-context-destruction-drops-retained-outcome",
+        "passed": true
+      },
+      {
+        "name": "dispose-clears-retained-binding-outcomes",
+        "passed": true
+      },
+      {
+        "name": "non-navigation-binding-delivery-errors-are-not-queued-as-success",
+        "passed": true
+      },
+      {
+        "name": "navigation-binding-delivery-errors-wait-for-reexposed-context",
+        "passed": true
+      },
+      {
+        "name": "pending-binding-outcomes-are-bounded-and-overflow-is-explicit",
+        "passed": true
+      },
+      {
+        "name": "late-old-context-failure-does-not-starve-an-already-restored-reply",
+        "passed": true
+      },
+      {
+        "name": "disposed-session-cannot-retain-new-binding-results",
+        "passed": true
+      },
+      {
+        "name": "duplicate-result-delivery-does-not-resolve-a-binding-twice",
+        "passed": true
+      },
+      {
+        "name": "default-launch-path-missing-option",
+        "passed": true
+      },
+      {
+        "name": "default-launch-path-boolean-is-not-an-optin",
+        "passed": true
+      },
+      {
+        "name": "default-launch-path-string-is-not-an-optin",
+        "passed": true
+      },
+      {
+        "name": "default-launch-path-other-ignored-default-is-not-an-optin",
+        "passed": true
+      },
+      {
+        "name": "explicit-ignore-default-array-enables-compatibility",
+        "passed": true
+      }
+    ],
+    "scope": "Extracted exact prototype FrameSession methods with modeled frame/client fixtures; not real browser admission",
+    "source_sha256": "859c36883a6d6590b6fae741f1e529463a5037ab883bc835f24ced60720e7ec2"
+  },
+  "stage": {
+    "file_count": 176,
+    "source_tree_sha256": "c05d4ce9ff81bc9854926bcf91bc5b7ccb986513a4ff401f87258954534587c5",
+    "receipt_sha256": "85d7edfe3507b99fda26154cf5dc535ad948a09c1aadf3772ffaf040792a0a60",
+    "source_unchanged": true,
+    "legal_notices_preserved": true,
+    "signed_release": false
+  },
+  "public_sources_sha256": {
+    "camouflow.spec": "6ccdcdf032fc39cc471cc9aac6a26c315adb16b3fc70acb473eb38c53d7e0a19",
+    "scripts/native_driver_stage.py": "742fc6cdead2edc58031721bd32a9d7d04fa6064edfbb79e0f52945023b97437",
+    "native/drafts/environment/playwright-driver-stage.json": "44be62f2570a93a4bd57ce178641a1a91c4c0bda3f764071179a77228afd43bd",
+    "native/drafts/environment/playwright-bfcache-optin.patch": "bed3d525edb4f3a515ad84b179daa20c32ae9527e80ba9d94288639ebd45f162",
+    "native/drafts/environment/playwright-bfcache-optin-model.cjs": "859c36883a6d6590b6fae741f1e529463a5037ab883bc835f24ced60720e7ec2",
+    "native/drafts/environment/first-script/legacy_transport.py": "16458da91b61258389ce1e2c4bed7d2ab309b7a65f8fa566903716d70b2abeae"
+  },
+  "recorder_replay": {
+    "raw_report_sha256": "18dd17db6a75424958b00ef4bfb0cd613ebaece5ff01afcf00683bd5df7a2490",
+    "postguards_passed": true,
+    "runtime_core_sha256_measured": {
+      "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+      "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+      "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+    },
+    "runs": [
+      {
+        "mode": "manager-desktop",
+        "phase": "initial",
+        "passed": true,
+        "history_navigation_type": "BackForwardCacheRestore",
+        "restored_roles": [
+          "about-blank",
+          "cross",
+          "main",
+          "nested-return",
+          "same",
+          "srcdoc"
+        ],
+        "pending_counts": {
+          "main": 0,
+          "same": 0,
+          "srcdoc": 0,
+          "about-blank": 0,
+          "cross": 0,
+          "nested-return": 0
+        },
+        "warnings": [],
+        "replay_passed": true
+      },
+      {
+        "mode": "manager-desktop",
+        "phase": "persistent-profile-restart",
+        "passed": true,
+        "history_navigation_type": "BackForwardCacheRestore",
+        "restored_roles": [
+          "about-blank",
+          "cross",
+          "main",
+          "nested-return",
+          "same",
+          "srcdoc"
+        ],
+        "pending_counts": {
+          "main": 0,
+          "same": 0,
+          "srcdoc": 0,
+          "about-blank": 0,
+          "cross": 0,
+          "nested-return": 0
+        },
+        "warnings": [],
+        "replay_passed": true
+      },
+      {
+        "mode": "manager-mobile-web",
+        "phase": "initial",
+        "passed": true,
+        "history_navigation_type": "BackForwardCacheRestore",
+        "restored_roles": [
+          "about-blank",
+          "cross",
+          "main",
+          "nested-return",
+          "same",
+          "srcdoc"
+        ],
+        "pending_counts": {
+          "main": 0,
+          "same": 0,
+          "srcdoc": 0,
+          "about-blank": 0,
+          "cross": 0,
+          "nested-return": 0
+        },
+        "warnings": [],
+        "replay_passed": true
+      },
+      {
+        "mode": "manager-mobile-web",
+        "phase": "persistent-profile-restart",
+        "passed": true,
+        "history_navigation_type": "BackForwardCacheRestore",
+        "restored_roles": [
+          "about-blank",
+          "cross",
+          "main",
+          "nested-return",
+          "same",
+          "srcdoc"
+        ],
+        "pending_counts": {
+          "main": 0,
+          "same": 0,
+          "srcdoc": 0,
+          "about-blank": 0,
+          "cross": 0,
+          "nested-return": 0
+        },
+        "warnings": [],
+        "replay_passed": true
+      }
+    ]
+  },
+  "default_native_runtime": {
+    "raw_report_sha256": "b2137bba6bee1b3441552ff6a71855cb156f1173a2e4c4d172e16241ecf205a3",
+    "probe": {
+      "default_launch_bfcache_disabled": true,
+      "resources_released": true,
+      "driver_import_verified": true
+    },
+    "checks": [
+      "concurrent-profile-isolation",
+      "cross-process-owner-exclusion",
+      "navigation-tabs-fill-click-extract-screenshot",
+      "mobile-web-viewport-dpr-touch",
+      "native-document-worker-configuration-diagnostics",
+      "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+      "configured-permissions-isolation-revocation-and-restart",
+      "dead-owner-profile-lock-recovery",
+      "browser-crash-restart-preserves-committed-storage",
+      "authenticated-http-proxy-no-direct-dns-route",
+      "existing-browser-interface-and-scenario-executor",
+      "existing-recorder-capture-and-replay",
+      "native-profile-backup-restore-storage-and-engine-isolation",
+      "native-binary-headless-health-and-disposable-profile-cleanup",
+      "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+      "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+      "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+      "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+    ],
+    "passed": true,
+    "source_unchanged": true,
+    "installed_driver_unchanged": true
+  },
+  "provider_comparisons": [
+    {
+      "schema": 1,
+      "passed": true,
+      "measurement_complete": true,
+      "provider": "camoufox",
+      "mode": "original",
+      "driver_sha256": "f74353fcb8e406756a70a6af0dfc4a5069acd577e35ec9d923ccf36ac009c2f5",
+      "browser_core_sha256": {
+        "camoufox.exe": "02c0a72610014670aec0d82f9b10b33cf99db89758e0863db0ae283775a08e72",
+        "xul.dll": "a4ff74c368bc785f91ceeffef7968528e1f04187fc90e780df13833dba6af136"
+      },
+      "scope": "Existing cached provider binaries with original versus explicit-opt-in-capable driver, no Native BFCache opt-in; local form/frame/binding and five-store persistent restart controls",
+      "runs": [
+        {
+          "phase": "initial",
+          "passed": true,
+          "form_and_frame_actions": true,
+          "binding_roles": [
+            "main",
+            "child"
+          ],
+          "five_stores": true,
+          "screenshot_png": true
+        },
+        {
+          "phase": "persistent-profile-restart",
+          "passed": true,
+          "form_and_frame_actions": true,
+          "binding_roles": [
+            "main",
+            "child"
+          ],
+          "five_stores": true,
+          "screenshot_png": true
+        }
+      ],
+      "automatic_downloads_enabled": false,
+      "privacy_admitted": false,
+      "production_admitted": false,
+      "owned_processes_observed": 18,
+      "remaining_owned_processes": 0,
+      "postguards_passed": true,
+      "raw_report_sha256": "cf2372a02ce21c22d238d99ea401640d440f66232a157574c938af90eee559a6"
+    },
+    {
+      "schema": 1,
+      "passed": true,
+      "measurement_complete": true,
+      "provider": "camoufox",
+      "mode": "staged",
+      "driver_sha256": "26c93a2ec2d48fb890d3b7d5b5fa3ee2c4a9514d1b12de26c31d6b06c4ea076c",
+      "browser_core_sha256": {
+        "camoufox.exe": "02c0a72610014670aec0d82f9b10b33cf99db89758e0863db0ae283775a08e72",
+        "xul.dll": "a4ff74c368bc785f91ceeffef7968528e1f04187fc90e780df13833dba6af136"
+      },
+      "scope": "Existing cached provider binaries with original versus explicit-opt-in-capable driver, no Native BFCache opt-in; local form/frame/binding and five-store persistent restart controls",
+      "runs": [
+        {
+          "phase": "initial",
+          "passed": true,
+          "form_and_frame_actions": true,
+          "binding_roles": [
+            "main",
+            "child"
+          ],
+          "five_stores": true,
+          "screenshot_png": true
+        },
+        {
+          "phase": "persistent-profile-restart",
+          "passed": true,
+          "form_and_frame_actions": true,
+          "binding_roles": [
+            "main",
+            "child"
+          ],
+          "five_stores": true,
+          "screenshot_png": true
+        }
+      ],
+      "automatic_downloads_enabled": false,
+      "privacy_admitted": false,
+      "production_admitted": false,
+      "owned_processes_observed": 18,
+      "remaining_owned_processes": 0,
+      "postguards_passed": true,
+      "raw_report_sha256": "c8ef5b2ae73c4e410042e9e9156d5c537b201530c87e3b76811472cde38da415"
+    },
+    {
+      "schema": 1,
+      "passed": true,
+      "measurement_complete": true,
+      "provider": "cloakbrowser",
+      "mode": "original",
+      "driver_sha256": "f74353fcb8e406756a70a6af0dfc4a5069acd577e35ec9d923ccf36ac009c2f5",
+      "browser_core_sha256": {
+        "chrome.exe": "65fbc5c918b94274c505e3bbb3dac7b9ef371737ee126e07edd3e880a91cba40",
+        "chrome.dll": "b3dea0db96522c78db4c7d223640af995c9c484eb8387c4e79687d13a27eb0c0"
+      },
+      "scope": "Existing cached provider binaries with original versus explicit-opt-in-capable driver, no Native BFCache opt-in; local form/frame/binding and five-store persistent restart controls",
+      "runs": [
+        {
+          "phase": "initial",
+          "passed": true,
+          "default_bfcache_disable_flag": true,
+          "form_and_frame_actions": true,
+          "binding_roles": [
+            "main",
+            "child"
+          ],
+          "five_stores": true,
+          "screenshot_png": true
+        },
+        {
+          "phase": "persistent-profile-restart",
+          "passed": true,
+          "default_bfcache_disable_flag": true,
+          "form_and_frame_actions": true,
+          "binding_roles": [
+            "main",
+            "child"
+          ],
+          "five_stores": true,
+          "screenshot_png": true
+        }
+      ],
+      "automatic_downloads_enabled": false,
+      "privacy_admitted": false,
+      "production_admitted": false,
+      "owned_processes_observed": 16,
+      "remaining_owned_processes": 0,
+      "postguards_passed": true,
+      "raw_report_sha256": "7e331bf057923bc5c140a4f6cf5a35d6b9b908e58c9c9ee6c684d89e9cd426bc"
+    },
+    {
+      "schema": 1,
+      "passed": true,
+      "measurement_complete": true,
+      "provider": "cloakbrowser",
+      "mode": "staged",
+      "driver_sha256": "26c93a2ec2d48fb890d3b7d5b5fa3ee2c4a9514d1b12de26c31d6b06c4ea076c",
+      "browser_core_sha256": {
+        "chrome.exe": "65fbc5c918b94274c505e3bbb3dac7b9ef371737ee126e07edd3e880a91cba40",
+        "chrome.dll": "b3dea0db96522c78db4c7d223640af995c9c484eb8387c4e79687d13a27eb0c0"
+      },
+      "scope": "Existing cached provider binaries with original versus explicit-opt-in-capable driver, no Native BFCache opt-in; local form/frame/binding and five-store persistent restart controls",
+      "runs": [
+        {
+          "phase": "initial",
+          "passed": true,
+          "default_bfcache_disable_flag": true,
+          "form_and_frame_actions": true,
+          "binding_roles": [
+            "main",
+            "child"
+          ],
+          "five_stores": true,
+          "screenshot_png": true
+        },
+        {
+          "phase": "persistent-profile-restart",
+          "passed": true,
+          "default_bfcache_disable_flag": true,
+          "form_and_frame_actions": true,
+          "binding_roles": [
+            "main",
+            "child"
+          ],
+          "five_stores": true,
+          "screenshot_png": true
+        }
+      ],
+      "automatic_downloads_enabled": false,
+      "privacy_admitted": false,
+      "production_admitted": false,
+      "owned_processes_observed": 16,
+      "remaining_owned_processes": 0,
+      "postguards_passed": true,
+      "raw_report_sha256": "6f7c8306caad3912628d8e98dc6c16ab4ab82a5573618e8186d17707b44a0939"
+    }
+  ],
+  "desktop_build": {
+    "schema": 1,
+    "passed": true,
+    "measurement_complete": true,
+    "selected": false,
+    "scope": "Experimental Windows desktop one-folder build with explicit staged JS overlay; not a Chromium rebuild, frozen-browser runtime admission or production release",
+    "source_sha256": {
+      "camouflow.spec": "6ccdcdf032fc39cc471cc9aac6a26c315adb16b3fc70acb473eb38c53d7e0a19",
+      "scripts/native_driver_stage.py": "742fc6cdead2edc58031721bd32a9d7d04fa6064edfbb79e0f52945023b97437",
+      "native/drafts/environment/playwright-driver-stage.json": "44be62f2570a93a4bd57ce178641a1a91c4c0bda3f764071179a77228afd43bd",
+      "native/drafts/environment/playwright-bfcache-optin.patch": "bed3d525edb4f3a515ad84b179daa20c32ae9527e80ba9d94288639ebd45f162"
+    },
+    "production_admitted": false,
+    "returncode": 0,
+    "duration_seconds": 5.985,
+    "sources_unchanged": true,
+    "installed_driver_unchanged": true,
+    "frozen_driver_sha256": "26c93a2ec2d48fb890d3b7d5b5fa3ee2c4a9514d1b12de26c31d6b06c4ea076c",
+    "frozen_node_sha256": "3331e1ffe19874215472217c5e94f5a0c6d8e18c4ac7111d3937aa0ad5e9b4a5",
+    "frozen_node_syntax_check_passed": true,
+    "executable_sha256": "61d869d7c468add9069741de3841523323c2229304165627497dfde637ba4193",
+    "stage_unchanged_and_verified": true,
+    "raw_report_sha256": "e0d68c6b137965a208c2b0aedff2b43206f130c67c91245f28a67103996ff4e7",
+    "repeat_distribution": {
+      "identical": true,
+      "first_files": 2521,
+      "second_files": 2521,
+      "differences": [],
+      "tree_sha256": "313022393e814b303aa646cd3148056cf34cd418e9d66f4b292952993e05b095"
+    }
+  },
+  "frozen_provider_checks": [
+    {
+      "schema": 1,
+      "passed": true,
+      "returncode": 0,
+      "measurement_complete": true,
+      "scope": "Actual staged Windows executable, bundled default driver, cached CloakBrowser, packaged Python imports/browser and hard-timeout gates; not Native policy/release admission",
+      "runtime_report_exists": true,
+      "files_unchanged": true,
+      "production_admitted": false,
+      "runtime": {
+        "passed": true,
+        "engine": "cloakbrowser",
+        "data_directory": "D:\\GlintManagerQA\\desktop-optin70-frozen-check-20261030-v2\\temp\\camouflow-python-runtime-64m7p769",
+        "checks": [
+          {
+            "name": "browser-and-imports",
+            "passed": true,
+            "status": "success",
+            "error": ""
+          },
+          {
+            "name": "hard-timeout",
+            "passed": true,
+            "status": "failed",
+            "error": "Python timeout"
+          }
+        ]
+      },
+      "runtime_report_sha256": "65bd5bc0ed9a51d133b335f0199793970954f0d032c992f1a5915faa37666687",
+      "raw_report_sha256": "ed9af2280cf849b3b84b4cbbc787a6fa8d99dcf702cb9e08a5db8cf7b18c9037"
+    },
+    {
+      "schema": 1,
+      "passed": true,
+      "returncode": 0,
+      "measurement_complete": true,
+      "scope": "Actual staged Windows executable, bundled default driver, cached Camoufox, packaged Python imports/browser and hard-timeout gates; not Native policy/release admission",
+      "runtime_report_exists": true,
+      "files_unchanged": true,
+      "production_admitted": false,
+      "runtime": {
+        "passed": true,
+        "engine": "camoufox",
+        "data_directory": "D:\\GlintManagerQA\\desktop-optin70-frozen-camoufox-20261030-v2\\temp\\camouflow-python-runtime-w6fxypnv",
+        "checks": [
+          {
+            "name": "browser-and-imports",
+            "passed": true,
+            "status": "success",
+            "error": ""
+          },
+          {
+            "name": "hard-timeout",
+            "passed": true,
+            "status": "failed",
+            "error": "Python timeout"
+          }
+        ]
+      },
+      "runtime_report_sha256": "55f98dafa8d7fcb714f7dfda6f89cf1b01969cb7609ab1fece66672ad7fb54c0",
+      "raw_report_sha256": "3b6d85749478f33832f2ced54264c167f1f66bf07a197004e050edf1c2d70012"
+    }
+  ],
+  "limitations": [
+    "Legacy provider checks cover local transport, forms, frames, bindings, screenshots and five stores, not full manager GUI or fingerprint quality.",
+    "CloakBrowser Recorder support is not introduced by this transport test.",
+    "Frozen checks cover packaged Python/provider launch and expected hard timeout, not frozen Native policy/BFCache.",
+    "Earlier 6 race cases and 32 stress cycles were measured on the previous 39b80a reply draft, not this gated bundle.",
+    "No combined Canvas/GPU/Audio admission, resource gate, security rebase or release/update/rollback admission."
+  ],
+  "public_sources_normalized_utf8_lf_sha256": {
+    "camouflow.spec": "6ccdcdf032fc39cc471cc9aac6a26c315adb16b3fc70acb473eb38c53d7e0a19",
+    "scripts/native_driver_stage.py": "742fc6cdead2edc58031721bd32a9d7d04fa6064edfbb79e0f52945023b97437",
+    "native/drafts/environment/playwright-driver-stage.json": "44be62f2570a93a4bd57ce178641a1a91c4c0bda3f764071179a77228afd43bd",
+    "native/drafts/environment/playwright-bfcache-optin.patch": "bed3d525edb4f3a515ad84b179daa20c32ae9527e80ba9d94288639ebd45f162",
+    "native/drafts/environment/playwright-bfcache-optin-model.cjs": "859c36883a6d6590b6fae741f1e529463a5037ab883bc835f24ced60720e7ec2",
+    "native/drafts/environment/first-script/legacy_transport.py": "16458da91b61258389ce1e2c4bed7d2ab309b7a65f8fa566903716d70b2abeae"
+  }
+}
