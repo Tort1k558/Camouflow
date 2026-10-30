@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Resumed and preserved Windows 001-073 build, not browser-policy or production admission.",
+  "required_manifest": "checkpoints/001-073.json",
+  "candidate_manifest_sha256": "b5b34bd0e597594191e42f957ce96710540bc72ab8000c8eba64a510e0295ba6",
+  "registered_patches": 73,
+  "build_jobs": 4,
+  "build_steps": 51,
+  "ninja_build_duration_seconds": 2634.88,
+  "resume_controller_duration_seconds": 3564.016,
+  "completed_stages": [
+    "sync",
+    "hooks",
+    "patch",
+    "build"
+  ],
+  "resumed_only_build": true,
+  "sync_repeated_on_resume": false,
+  "objects_cleaned": false,
+  "changed_source_files": [
+    "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc",
+    "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc"
+  ],
+  "unchanged_source_mtimes_restored": 287,
+  "preserved_runtime_assets": 269,
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "af79d5053ac9d54f37682af19b2d3e7c32d854dfb2511f5b0606fecdab596ded",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "build_receipt_sha256": "16d736c33b3a76625d3b4c081f4b2a503613caf786f997c7e26ff08fb6d47164",
+  "raw_resume_report_sha256": "c55457271e60294f811e17f5aed6c8325d67f914b07d0bfd5e103f96be7281a4",
+  "raw_preservation_sha256": "a08381797e605ffb8677ceb6ca5ab75d7365a7bbf58c024f903849e38547c8f7",
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

@@ -1,5 +1,35 @@
 # Glint: план проверки и развития
 
+## Текущий результат 001–073 — 30 октября 2026
+
+**Пакет собран, 488/488 нативных тестов прошли**, включая четыре строгих orientation-теста.
+Инкрементальная сборка: j4, 51 шаг, 43м55с Ninja; полный resume-controller — 59м24с.
+269 runtime-файлов сохранены отдельно; объекты не очищались, sync повторно не запускался.
+[Сборка](../native/drafts/upstream-156/build73-observations.json),
+[нативные проверки](../native/drafts/upstream-156/native-batch73-observations.json).
+
+| Проверка нового бинарника | Результат | Ограничение |
+| --- | --- | --- |
+| Базовый runtime | [18/18](../native/drafts/upstream-156/runtime-baseline73-observations.json) | Storage, прокси, permissions, Recorder, backup/restore; не защищённые политики |
+| Canvas + WebGL + AudioMath | [18/18 фаз](../native/drafts/environment/combined-math73-observations.json) | Baseline + 8 профилей, запуск/перезапуск, оба AudioMath selector; не реалистичный device cohort |
+| Canvas formats | [32/32](../native/drafts/environment/canvas-formats73-observations.json) | HTML/Offscreen, sRGB/P3, unorm8/float16 |
+| PNG document | [Пройдено](../native/drafts/environment/canvas-export73-observations.json) | Совпадение с пикселями до изменения Canvas и цветовые метаданные |
+| Worker formats | [96/96](../native/drafts/environment/worker-formats73-observations.json) | Шесть classic/module-классов; не nested/restart |
+| Worker PNG | [24 варианта на профиль](../native/drafts/environment/worker-export73-observations.json) | Document-контроли учитываются отдельно |
+| Finite Float16 | [4 контекста](../native/drafts/environment/canvas-hdr73-observations.json) | Alpha, crop/repeat/re-put и ограниченные изменения RGB; не широкая HDR-совместимость |
+| Worker Float16 | [12 worker-контекстов на профиль](../native/drafts/environment/worker-hdr73-observations.json) | Согласованность с document; наблюдавшиеся процессы завершены |
+| Два одновременных профиля | [6/6 фаз](../native/drafts/environment/combined-concurrent73-observations.json) | Не длительная ресурсная проверка |
+
+Mobile Web 073 пока не засчитан: прогон ещё выполняется. Полный Python-прогон ниже
+предшествует новым worker HDR-тестам; свежая целевая проверка новых записей и валидатора — 26/26.
+Нативный успех orientation не заменяет проверки first-script/BFCache/hidden/restore в браузере.
+
+**Далее:** browser lifecycle для логического экрана → worker restart/nesting → WebGPU/readback
+и согласованные устройства → длительные ресурсы → security rebase → пакет/обновление/откат.
+Production, внешние антибот-тесты и гарантированный обход CAPTCHA этим не подтверждены.
+
+Ниже сохранены предыдущие снимки результатов; их статусы сборки относятся к соответствующей версии.
+
 ## Worker PNG закрыт на 001–072; сборка 0073 возобновляется без очистки
 
 Worker PNG-прогон прошёл **24/24 варианта на каждом baseline/защищённом профиле**:

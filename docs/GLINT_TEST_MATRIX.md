@@ -1,5 +1,35 @@
 # Glint browser test matrix
 
+## Current compiled 001–073 — 2026-10-30
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Windows incremental build | **51 steps, j4, 43m55s Ninja**, 269 preserved assets | No clean/resync; controller 59m24s; not release admission |
+| Native batch | **488/488**, 21 groups, all four strict orientation cases | Does not prove browser lifecycle/first-script/BFCache behavior |
+| Baseline runtime | [**18/18**](../native/drafts/upstream-156/runtime-baseline73-observations.json) | Storage/proxy/permissions/Recorder/backup; not protected-policy admission |
+| Canvas/WebGL/AudioMath | **18/18 phases**, eight protected profiles plus baseline, restart, both selectors | Not a verified device cohort |
+| Canvas formats / worker formats | **32/32 / 96/96** | Six classic/module worker classes; no nested/restart coverage |
+| PNG document / workers | **Passed / 24 worker cases per profile** | Pre-mutation pixels, async capture and color metadata; not HDR fidelity |
+| Finite Float16 document / workers | **4 / 12 actual contexts per profile** | Bounded finite samples, alpha/crop/re-put; not broad HDR or nonfinite coverage |
+| Concurrent protected profiles | **6/6 phases**, observed processes released | Not long-run leak/resource admission |
+| New evidence/worker HDR validator tests | **26 passed** | Targeted Python run, not a full-suite replacement |
+| Mobile Web 073 | **Pending live run** | No pass claimed; Windows emulation, not Android/iOS |
+
+[Build](../native/drafts/upstream-156/build73-observations.json),
+[native batch](../native/drafts/upstream-156/native-batch73-observations.json),
+[combined](../native/drafts/environment/combined-math73-observations.json),
+[formats](../native/drafts/environment/canvas-formats73-observations.json),
+[worker formats](../native/drafts/environment/worker-formats73-observations.json),
+[PNG](../native/drafts/environment/canvas-export73-observations.json),
+[worker PNG](../native/drafts/environment/worker-export73-observations.json),
+[finite F16](../native/drafts/environment/canvas-hdr73-observations.json),
+[worker F16](../native/drafts/environment/worker-hdr73-observations.json),
+[concurrent](../native/drafts/environment/combined-concurrent73-observations.json).
+
+All records bind the preserved 001–073 core/receipt and measured collector sources.
+Earlier failures remain historical evidence below, not rewritten passes.
+Privacy, public anti-bot results, security and production admission remain unproven.
+
 ## Worker PNG, finite Float16 fidelity and Python follow-up — 2026-10-30
 
 | Gate | Result | Boundary |

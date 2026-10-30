@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "scope": "Full existing NativeRuntime baseline suite on preserved 001-073; no protected-policy or installed-package admission",
+  "candidate_manifest_sha256": "b5b34bd0e597594191e42f957ce96710540bc72ab8000c8eba64a510e0295ba6",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "af79d5053ac9d54f37682af19b2d3e7c32d854dfb2511f5b0606fecdab596ded",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "16d736c33b3a76625d3b4c081f4b2a503613caf786f997c7e26ff08fb6d47164",
+  "chromium_version": "156.0.8078.36",
+  "chromium_revision": "5a93aa59e3043e747eff68659dcf7d20193d160e",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "returncode": 0,
+  "postguards_passed": true,
+  "log_sha256": "bb38ee68f8ff3ae062df5c9cbd7ae10877e1e624e567b520ef09761c98a1678d",
+  "runtime_report_sha256": "6528d579643fbbfbd1aa58cdc3ad2f793fa8cef7ca5efd980c872a5375cb01ae",
+  "raw_report_sha256": "508ba209f6a6a1343532477ca226393b2792743648391dec2d431e5df522e717",
+  "raw_report_local_path": "D:\\GlintManagerQA\\full-runtime73-20261030-v1\\controller.json",
+  "completed_check_count": 18,
+  "required_manifest": "checkpoints/001-073.json",
+  "fingerprint_patched": false
+}
