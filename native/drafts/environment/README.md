@@ -1,5 +1,26 @@
 # Measured reference environments
 
+## Native combined surface / AudioMath gate
+
+[Measured cohort](combined-math70-observations.json): baseline plus eight protected
+Windows profiles, **18 initial/restart phases**, with Canvas, WebGL readback and
+AudioMath enabled together. Canvas/WebGL isolation, five-document fidelity,
+analyser/worklet/realtime, first-parser Canvas/Audio, key stability and observed-process
+cleanup passed. Long compressor captures exercise both math selectors across all
+documents and restarts; they represent **two pipelines**, not eight device identities.
+
+Run the [collector](../../../scripts/verify_native_combined_math.py) with explicit,
+compiled candidate and verified driver-stage paths; the output must be new on D:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/verify_native_combined_math.py --executable D:\GlintQA\runtime\chrome.exe --work-dir D:\GlintQA\fresh-combined --driver-stage D:\GlintDriverStage-new --candidate upstream-156 --profiles 8
+```
+
+This preserves owned profile data outside Git. It does not admit concurrent protected
+profiles, Mobile Web, combined BFCache, WebGPU readback, first-parser WebGL, broad
+Audio quality, resource limits or production. [Full Python at `9ca759a`](canonical-python70-python-js-observations.json)
+passed **4379 tests, 1 skipped**, before this collector was introduced.
+
 ## Optional Python+JS desktop package
 
 [The linked package](python-js-stage70-observations.json) now carries the declared

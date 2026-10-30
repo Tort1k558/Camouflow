@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Simultaneous native Canvas / WebGL readback / AudioMath — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Combined policies, profile-identity mode | **18/18 phases**, baseline + eight protected profiles, each initial/restart | Sequential Windows contexts, not concurrent profiles or Mobile Web |
+| Canvas / WebGL readback | Context/export/restart checks and cross-profile isolation passed | Not WebGPU readback admission or anti-bot acceptance |
+| Audio API compatibility | Five documents × 54 short fidelity cases per phase; analyser, worklet and trusted muted realtime controls passed | Not a physical-device cohort or broad perceptual quality gate |
+| AudioMath effect | Both selectors observed; long compressor matches native baseline for 0 and differs for 1; all five documents/restarts agree | Two compressor pipelines, not eight unique Audio identities |
+| Parser and lifecycle | Canvas/Audio first-parser/initial-child checks passed; keys stable, observed owned processes exit; guards passed | First-parser WebGL, concurrency, BFCache, mobile and long-run resources still open |
+| Full Python at `9ca759a` | **4379 passed, 1 skipped**, source/status guards passed | Before the new combined collector |
+
+[Measured packet and reproducible collector](../native/drafts/environment/combined-math70-observations.json),
+[historical full regression](../native/drafts/environment/canonical-python70-python-js-observations.json).
+No default privacy/runtime switch, package admission or release follows from this gate.
+
 ## Optional Python+JS desktop package — 2026-10-30
 
 | Gate | Observed result | Boundary |

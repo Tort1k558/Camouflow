@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "9ca759ad1ab9948bed17a60a8bb13e5c7ac644ea",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 862,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 390.531,
+  "returncode": 0,
+  "counts": {
+    "tests": 4380,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4379
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "2350001f5e366072a2f870b7806b43078a02d575b9baec52f5af31d4e37a92b4",
+  "junit_sha256": "a8d315e5f9cdd1731d13db9e58fdd663a360b8a47770d51363adf640fdbdd9bd",
+  "raw_report_sha256": "49cf77c65a55f75510e62374a6e24f7084e3dff1f498a576b1cf4955e7dff68a",
+  "note": "Full repeat at 9ca759a covering the Python+JS packaging integration; precedes the new combined AudioMath/WebGL collector and its tests."
+}

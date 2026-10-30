@@ -4,8 +4,12 @@
 
 The current preserved Windows candidate is **Chromium 156 / 001–070**, compiled
 and checked with **484 native cases in 20 groups**. Logical-screen desktop/mobile
-and profile-restart checks passed; combined Canvas/GPU/Audio and release admission
-remain open. [Native results](drafts/upstream-156/native-batch70-observations.json).
+and profile-restart checks passed. The first [combined surface gate](drafts/environment/combined-math70-observations.json)
+also passed: Canvas/WebGL readback/AudioMath, eight protected Windows profiles and
+baseline, 18 initial/restart phases. Both AudioMath pipelines were exercised, not
+eight real-device Audio identities. Concurrency/mobile/BFCache combinations, full
+WebGPU/quality/resources and release admission remain open.
+[Native results](drafts/upstream-156/native-batch70-observations.json).
 
 The default manager still disables BFCache. An explicit-opt-in driver has a pinned,
 unselected staging/build path and passed four Recorder/replay phases plus paired

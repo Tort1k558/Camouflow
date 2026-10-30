@@ -1,5 +1,22 @@
 # Glint: план проверки и развития
 
+## Совместный Canvas / WebGL / AudioMath: первый Windows gate прошёл
+
+| Проверка | Подтверждено | Граница |
+| --- | --- | --- |
+| Все три модуля включены вместе | 8 защищённых профилей + baseline, **18 initial/restart фаз** | Последовательные профили, пока не конкурентный запуск |
+| Canvas и WebGL readback | Согласованность чтения/экспорта, контекстов и перезапуска; межпрофильная изоляция | Не полная защита WebGPU и не антибот-оценка |
+| Audio | 5 документов × 54 коротких fidelity-case в каждой фазе; analyser/worklet/realtime controls | Не полная перцептивная оценка качества |
+| Реальный эффект AudioMath | Длинный compressor совпадает с baseline для selector 0, отличается для selector 1; стабилен во всех документах и после перезапуска | Два экспериментальных backend, **не восемь Audio-идентичностей** |
+| Первый parser script и initial about:blank | Canvas/Audio соответствуют установившемуся документу | WebGL на первом parser script ещё не включён в этот gate |
+| Жизненный цикл | Ключи стабильны, наблюдаемые процессы завершены; source/core/receipt guards прошли | Не длительный leak/peak-RAM тест |
+
+[Исходник и измерения](../native/drafts/environment/combined-math70-observations.json).
+Полный Python-повтор `9ca759a`: **4379 passed, 1 skipped**, до нового collector.
+Следующий пакет: конкурентные защищённые профили, Mobile Web/BFCache в сочетании
+с поверхностями, оставшиеся WebGPU/quality/resource gates и security rebase.
+Основные настройки и допуск production не изменены.
+
 ## Python+JS доставляются вместе в экспериментальный Windows EXE
 
 | Проверка | Результат | Ограничение |
