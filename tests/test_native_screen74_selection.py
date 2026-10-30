@@ -52,3 +52,11 @@ def test_live_screen_gates_reject_missing_compiled_patch_and_implicit_candidate(
     assert units.require_target_sources(tmp_path, patches, target) is None
     with pytest.raises(ValueError, match='explicit upstream-156'):
         units.verify(tmp_path, tmp_path / 'report.json', target=target)
+
+
+def test_full_regression_retains_history_failure_without_claiming_a_runtime_failure():
+    record = json.loads((ENV / 'canonical-python74-history-failure-observations.json').read_bytes())
+    assert record['passed'] is False and record['measurement_complete'] and record['postguards_passed']
+    assert record['counts'] == dict(tests=4577, passed=4575, failures=1, errors=0, skipped=1)
+    assert record['failed_tests'] == ['tests.test_native_environment_capture::test_historical_0070_is_exact_prefix_with_strict_gate_not_runtime_admission']
+    assert record['native_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False

@@ -3,6 +3,11 @@
 ## Current compiled 001–073 — 2026-10-30
 
 **Selected source is now 001–074; compiled/qualified baseline remains 001–073.**
+Full Python at `568c934`: **4575 passed, 1 failed, 1 skipped**, source/status guards passed.
+The failure was the 0070 historical-target assertion incorrectly rejecting later groups.
+Its exact historical-prefix comparison was repaired; targeted follow-up: **180/180**.
+No full-suite pass after this repair is claimed yet.
+[Retained failure](../native/drafts/environment/canonical-python74-history-failure-observations.json).
 The complete old checkpoint is retained. Two new native gates require all six new
 cases, for **23 groups / 494 total required cases**. Selection/release Python checks:
 **1179 passed, 1 skipped**. [Selection](../native/drafts/environment/screen74-selection-observations.json).

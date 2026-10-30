@@ -1110,7 +1110,7 @@ def test_historical_0070_is_exact_prefix_with_strict_gate_not_runtime_admission(
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record["native_patch_sha256"]
     historical_targets = native_units_before_orientation["namespace"]["SUPPORTED_TARGETS"]
     assert len(historical_targets) == record["selected_native_target_groups"] == 20
-    assert tuple(target for target in units.SUPPORTED_TARGETS if target != "screen-orientation") == historical_targets
+    assert units.SUPPORTED_TARGETS[:len(historical_targets)] == historical_targets
     assert units.unit_binary_target("screen-widget") == "blink_unittests"
     cases = {suite + "." + name for suite, names in units.required_tests("screen-widget").items() for name in names}
     assert cases == set(record["prepared_cases"]) and len(cases) == record["native_cases_required"] == 7

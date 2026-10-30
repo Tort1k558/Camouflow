@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "git_head": "568c934c11bac133b73cbf88b8c54580058ab70e",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 966,
+  "before_status": " M docs/HUB.md\n",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 469.156,
+  "returncode": 1,
+  "counts": {
+    "tests": 4577,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4575
+  },
+  "changed_tracked_files": [],
+  "after_status": " M docs/HUB.md\n",
+  "postguards_passed": true,
+  "log_sha256": "731e318cbeb153e0e06b4b22edd07622bd9c6d50222787196dd8c75654f2285c",
+  "junit_sha256": "d874c7e9181aaad812e9630b0be4335cab5f295da3a39d382f2e102fde4e6181",
+  "raw_report_sha256": "862064ebd13ab521b4978894a2ad349c52beeba2d0ca12123d53fe80e23e7df8",
+  "failed_tests": [
+    "tests.test_native_environment_capture::test_historical_0070_is_exact_prefix_with_strict_gate_not_runtime_admission"
+  ],
+  "scope_note": "Retained full 074-selection failure: historical 0070 verifier test incorrectly rejects later native targets; no source or runtime admission"
+}
