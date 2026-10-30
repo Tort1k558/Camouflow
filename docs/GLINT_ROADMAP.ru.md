@@ -19,7 +19,9 @@ GPU-probe интегрирован; повторены стандартный `c
 сценарий, включая четыре принудительных restart. [Публичный прогон](../native/drafts/environment/retained-gpu-objects76-observations.json).
 
 **Далее:** GPU-объекты workers, затем WebGPU. Полный профиль/совместимость и
-production-допуск остаются открытыми; полный Python после интеграции ещё впереди.
+production-допуск остаются открытыми. Полный Python после интеграции: **4854 passed,
+1 skipped**, контроль исходников/статуса пройден на `10230bd`.
+[Полный результат](../native/drafts/environment/canonical-python76-retained-gpu-observations.json).
 Успех этих проверок не означает гарантированного обхода CAPTCHA или детекторов.
 
 ## История: выбор пакета 001–076

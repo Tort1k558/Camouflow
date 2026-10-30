@@ -10,11 +10,13 @@
 | Transaction stress | Twelve phases passed, including observed cancellations and invalid-request recovery | Exact race timing not guaranteed; BFCache measured separately |
 | Retained GPU public CLI | Original WebGL1/2 resources passed in six BFCache documents, desktop/Mobile Web | Not worker GPU retention, WebGPU or cross-profile isolation |
 | Preservation | Independent 076 runtime, 269 assets verified | 075 rollback baseline retained |
+| Full integrated Python baseline | 4854 passed, 1 skipped; source/status guards passed | At `10230bd`, before evidence-only follow-up; not native/privacy admission |
 
 [Exact measured evidence](../native/drafts/environment/screen76-runtime-observations.json).
 [Integrated GPU runtime evidence](../native/drafts/environment/retained-gpu-objects76-observations.json)
 also retains passing default `canvas` and worker/service repeats, including four
 version-specific service restarts. The new mode is explicit: `--probe retained-gpu-objects`.
+[Full Python result](../native/drafts/environment/canonical-python76-retained-gpu-observations.json).
 These results do not admit WebGPU, full profile isolation, privacy guarantees,
 CAPTCHA outcomes or production/release deployment.
 

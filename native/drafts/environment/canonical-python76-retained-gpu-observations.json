@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "git_head": "10230bdc01159f6d4a7cab766869ce3b444df428",
+  "counts": {
+    "tests": 4855,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4854
+  },
+  "duration_seconds": 451.109,
+  "log_sha256": "58e9eb61175a44bb2c4b2bbd7ec49dc9f15aa919adb00efea7635a03ee71aa14",
+  "junit_sha256": "1c853e2512f8516ead32899d8b790302432e0b69644238952f5f8eca9691a382",
+  "schema": 1,
+  "raw_report_sha256": "91479daf71f574bc4263260a9e22426c07fb26b037595fc5b6924ba705e29574",
+  "scope": "Full canonical Python regression after integrated retained-GPU CLI and exact historical reconstruction at 10230bd, before this evidence-only publication; not native compilation or privacy/release admission",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

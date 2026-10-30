@@ -161,3 +161,12 @@ def test_exact_public_gpu_runtime_binds_sources_and_keeps_default_and_workers():
     for key in ('workers_verified', 'webgpu_readback_verified', 'cross_profile_isolation_verified',
                 'privacy_admitted', 'production_admitted'):
         assert record['validation'][key] is False
+
+
+def test_full_integration_regression_is_bound_to_its_measured_head_and_scope():
+    record = json.loads((ROOT / 'native/drafts/environment/canonical-python76-retained-gpu-observations.json').read_bytes())
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['git_head'].startswith('10230bd')
+    assert record['counts'] == dict(tests=4855, passed=4854, skipped=1, failures=0, errors=0)
+    assert 'before this evidence-only publication' in record['scope']
+    assert record['native_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False

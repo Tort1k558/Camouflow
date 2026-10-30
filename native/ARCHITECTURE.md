@@ -15,6 +15,8 @@ original WebGL1/2 resources in six BFCache documents. The exact public CLI defau
 and worker/service modes also passed again. This does not admit worker GPU-object
 retention, WebGPU, complete profile isolation or privacy/release capabilities.
 [Public GPU evidence](drafts/environment/retained-gpu-objects76-observations.json).
+The integration baseline at `10230bd` passed **4854 Python tests, 1 skipped**,
+with source/status guards. [Full result](drafts/environment/canonical-python76-retained-gpu-observations.json).
 [Measured evidence](drafts/environment/screen76-runtime-observations.json).
 Next: retained worker GPU resources, then WebGPU readback and combined admission.
 
