@@ -6,6 +6,8 @@
 | --- | --- | --- |
 | Windows build 001–070 | **52 шага, j4, 17м02,68с**; 269 файлов runtime сохранены отдельно с хешами | [Сборка](../native/drafts/upstream-156/build70-observations.json); не release admission |
 | Первый скрипт / iframe / перезапуск | **6/6 фаз**, по шесть документов; Mobile Web DPR **3** при первом и повторном чтении | [Результаты](../native/drafts/environment/screen70-first-script-observations.json); исправление main-root подтверждено в этом сценарии |
+| Полный baseline NativeRuntime | **18/18 проверок**: изоляция, permissions, owned proxy, сценарии/Recorder, backup/restore, shutdown/cancellation/crash recovery; три раунда по три профиля, остаточных процессов **0** | [Результаты](../native/drafts/upstream-156/runtime-baseline70-observations.json); fingerprint-политики выключены, installed package и cloud team isolation не проверены |
+| Реальный менеджер без resize / дополнительных metrics | **144 снимка** screen/CSS/embedding согласованы: две вкладки, навигация, закрытие соседа, initial/restart desktop/mobile | [История](../native/drafts/environment/managed-history70-observations.json); BFCache-gate **FAIL**: флаг драйвера отключает BFCache во всех четырёх фазах, подтверждено `chrome://version` и CDP reasons |
 | Полный Python suite на 748e0f5 | **4274 passed, 1 skipped**, 689,171с; source guards прошли | [Полный прогон](../native/drafts/environment/canonical-python70-observations.json); не выполнение нативных C++-кейсов |
 | Две вкладки через менеджер | **4/20** строгих fixed-screen стадий; resize меняет screen вместе с viewport по контракту Playwright | [Сохранённый FAIL](../native/drafts/environment/manager-screen70-observations.json); не подменять провал PASS |
 | Дополнительный CDP / BFCache | Полный stress **FAIL**, настоящий BFCache и `persisted` всех шести документов подтверждены; остаются screenshot/peer-state и cached-orientation расхождения | [Результаты](../native/drafts/environment/screen-lifecycle70-observations.json) |
@@ -16,7 +18,15 @@
 [Черновик](../native/drafts/environment/orientation-visibility71-preparation.json)
 прошёл apply-check на 001–070, **не выбран в manifest и не проверен бинарником**.
 Текущие 20 групп C++ собираются отдельно на j4; активные исходники не изменяются.
+Для следующего пакета [подготовлен gate `screen-orientation`](../native/drafts/environment/screen-orientation71-gate-preparation.json):
+четыре точных имени кейсов в `blink_unittests`, явный upstream-156 и цепочка 0069/0070/0071;
+16 Python-контролей выбора/отклонения прошли. Это будущая 21-я группа, **не выполненные C++-кейсы**;
+существующие 20 mappings не меняются. Интеграция — только после завершения активного producer.
 После их результата — новый пакет, полный screen/lifecycle-прогон, затем Audio и общий admission.
+Отдельно проверить opt-in BFCache в изолированном launch-пакете и совместимость Recorder/history.
+Не убирать флаг драйвера в production без этих проверок и не выдавать обычную повторную
+загрузку history-entry за восстановление BFCache. Прежний extra-CDP stress и этот
+manager-прогон имеют разные условия и не заменяют друг друга.
 
 ## Полная регрессия после выбора 0070: пять устаревших тестовых контрактов
 

@@ -1196,3 +1196,108 @@ def test_orientation_visibility_draft_remains_unregistered_and_unverified():
     assert b"orientation_->type().AsEnum()" in patch and b"had_logical_screen" in patch
     assert all(record[name] is False for name in ("selected_in_manifest", "cpp_compiled", "native_tests_executed",
                                                 "bfcache_fixed_verified", "privacy_admitted", "production_admitted"))
+
+
+def test_prepared_orientation_gate_binds_four_cases_without_changing_current_targets():
+    import hashlib
+
+    root = environment.ROOT
+    folder = root / "native/drafts/environment"
+    record = json.loads((folder / "screen-orientation71-gate-preparation.json").read_bytes())
+    source = json.loads((folder / "orientation-visibility71-preparation.json").read_bytes())
+    assert record["required_cases"] == source["prepared_cases"] and len(record["required_cases"]) == 4
+    assert (record["current_target_groups"], record["proposed_target_groups"]) == (20, 21)
+    assert record["existing_target_mappings_unchanged"] and record["active_source_postguards_passed"]
+    assert record["requires_idle_producer_before_integration"] and record["apply_check_passed"]
+    assert len(record["python_controls_passed"]) == 16
+    assert hashlib.sha256((folder / record["patch"]).read_bytes()).hexdigest() == record["patch_sha256"]
+    assert hashlib.sha256((folder / record["linked_native_patch"]).read_bytes()).hexdigest() == record["linked_native_patch_sha256"]
+    assert hashlib.sha256((root / record["base_source"]).read_bytes()).hexdigest() == record["base_source_sha256"]
+    assert all(record[name] is False for name in ("selected", "cpp_compiled", "native_tests_executed",
+                                                "runtime_verified", "privacy_admitted", "production_admitted"))
+
+
+def test_prepared_orientation_gate_replay_rejects_incomplete_results_and_source_chain(tmp_path, monkeypatch):
+    import hashlib
+    import runpy
+    import subprocess
+    import sys
+
+    root = environment.ROOT
+    folder = root / "native/drafts/environment"
+    record = json.loads((folder / "screen-orientation71-gate-preparation.json").read_bytes())
+    path = tmp_path / record["base_source"]
+    path.parent.mkdir(parents=True)
+    path.write_bytes((root / record["base_source"]).read_bytes())
+    monkeypatch.setattr(sys, "path", sys.path.copy())
+    current = runpy.run_path(str(path))
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--whitespace=error", str(folder / record["patch"])],
+                   cwd=tmp_path, check=True, capture_output=True)
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == record["prepared_source_sha256"]
+    proposed = runpy.run_path(str(path))
+    assert proposed["SUPPORTED_TARGETS"] == (*current["SUPPORTED_TARGETS"], "screen-orientation")
+    for target in current["SUPPORTED_TARGETS"]:
+        assert current["required_tests"](target) == proposed["required_tests"](target)
+        assert current["unit_binary_target"](target) == proposed["unit_binary_target"](target)
+    target = record["target"]
+    assert proposed["unit_binary_target"](target) == "blink_unittests"
+    good = {"tests": 4, "disabled": 0, "failures": 0, "testsuites": [
+        {"name": suite, "testsuite": [{"name": case, "status": "RUN", "result": "COMPLETED"}
+                                     for case in sorted(cases)]}
+        for suite, cases in proposed["required_tests"](target).items()]}
+    proposed["validate_results"](good, target=target)
+    for failure in ("missing", "duplicate", "not-run", "failed", "disabled", "wrong-suite", "boolean-total"):
+        value = copy.deepcopy(good)
+        rows = value["testsuites"][0]["testsuite"]
+        if failure == "missing":
+            rows.pop()
+        elif failure == "duplicate":
+            rows[0]["name"] = rows[1]["name"]
+        elif failure == "not-run":
+            rows[0]["status"] = "NOTRUN"
+        elif failure == "failed":
+            rows[0]["failures"] = [{"failure": "owned rejection control"}]
+        elif failure == "disabled":
+            value["disabled"] = 1
+        elif failure == "wrong-suite":
+            value["testsuites"][0]["name"] = "UnexpectedSuite"
+        else:
+            value["tests"] = True
+        with pytest.raises(ValueError):
+            proposed["validate_results"](value, target=target)
+    names = ["0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch",
+             "0069-native-logical-screen-inheritance.patch", "0070-native-logical-screen-lifecycle.patch",
+             record["proposed_registered_native_patch"]]
+    for missing in names:
+        with pytest.raises(ValueError):
+            proposed["require_target_sources"](tmp_path, [{"name": name} for name in names if name != missing], target)
+    assert proposed["require_target_sources"](tmp_path, [{"name": name} for name in names], target) is None
+    with pytest.raises(ValueError, match="explicit upstream-156"):
+        proposed["verify"](tmp_path, tmp_path / "not-created.json", target=target, candidate_name=None)
+    assert not (tmp_path / "not-created.json").exists()
+
+
+def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime():
+    import hashlib
+
+    root = environment.ROOT
+    record = json.loads((root / "native/drafts/upstream-156/runtime-baseline70-observations.json").read_bytes())
+    build = json.loads((root / "native/drafts/upstream-156/build70-observations.json").read_bytes())
+    assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
+    assert record["returncode"] == 0 and record["check_count"] == len(set(record["checks"])) == 18
+    assert {"concurrent-profile-isolation", "cross-process-owner-exclusion", "existing-recorder-capture-and-replay",
+            "existing-browser-interface-and-scenario-executor", "authenticated-http-proxy-no-direct-dns-route",
+            "configured-permissions-isolation-revocation-and-restart"}.issubset(record["checks"])
+    assert record["runtime_core_sha256_measured"] == build["runtime_core_sha256_measured"]
+    assert record["receipt_sha256"] == build["build_receipt_sha256"]
+    assert record["mobile_observed"] == {"width": 390, "height": 844, "dpr": 3, "touch": 1, "webdriver": True}
+    assert [row["crashed_profile"] for row in record["multi_profile_restart_rounds"]] == [0, 1, 2]
+    for row in record["multi_profile_restart_rounds"]:
+        assert row["concurrent_profiles"] == row["independent_drivers"] == 3
+        assert row["remaining_owned_processes"] == 0 and row["checkpoint_before_crash"]
+        assert row["policy_capabilities"] == []
+    assert all(record[name] is False for name in ("protected_policies_enabled", "installed_package_verified",
+        "cloud_server_team_isolation_verified", "uncommitted_transactions_recovery_verified",
+        "privacy_admitted", "production_admitted"))
+    assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
+               for path, value in record["source_sha256"].items())

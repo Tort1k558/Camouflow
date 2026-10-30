@@ -76,6 +76,17 @@ on restored documents or create another competing page session. All-frame input
 and the cached-orientation repair remain unverified. An earlier navigation
 timeout is retained; the retry used unchanged deadlines.
 
+[Actual NativeRuntime managed history](managed-history70-observations.json)
+separates normal manager behavior from the extra-CDP stress: 144 screen/CSS/
+embedding snapshots agree across two tabs, navigation, peer close and desktop/
+mobile persistent restarts, without resize or device-metrics commands. Its
+BFCache gate remains failed. The owned native version page and CDP not-restored
+reasons independently show that the current driver disables BFCache. A normal
+history reload is recorded separately, never relabeled as cache restoration.
+`first-script/managed_history.py` retains this failure and calibration attempts;
+it does not silently remove driver flags or invoke Frame APIs after a real
+BFCache restoration.
+
 [Source-bound calibration](stock156-capture-observations.json) covers two phases,
 all eight contexts, exact request-header availability and three failure controls:
 existing evidence, unknown runtime and fixture-server failure. Raw host values,

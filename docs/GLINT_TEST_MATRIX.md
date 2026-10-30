@@ -13,11 +13,14 @@
 | Gate | Observed result | Boundary |
 | --- | --- | --- |
 | Source build | **52 steps, j4, 17m02.68s**; source/SDK/core guards passed; 269 exact runtime assets preserved | [Build](../native/drafts/upstream-156/build70-observations.json); no package/release admission |
+| Complete existing NativeRuntime baseline | **18/18 checks passed**, including permissions, owned authenticated proxy, scenarios/Recorder, backup/restore and crash/cancellation recovery; three three-profile crash rounds left **zero owned processes** | [Evidence](../native/drafts/upstream-156/runtime-baseline70-observations.json); unprotected policies, not installed-package/cloud-team/privacy admission |
+| Actual NativeRuntime managed history, no metrics override/resize | **144 document screen/CSS/embedding snapshots consistent** over four desktop/mobile initial/restart phases | [Evidence](../native/drafts/environment/managed-history70-observations.json); BFCache gate remains **FAIL**: explicit driver flag and CDP `BackForwardCacheDisabledByCommandLine`; normal reload is not BFCache |
 | First script, six document roles, persistent restart | **6/6 phases passed**; desktop/mobile/native control; Mobile Web DPR remains **3** at first and settled reads | [Evidence](../native/drafts/environment/screen70-first-script-observations.json); not full lifecycle or device-profile admission |
 | Manager two-tab fixed-screen stress | **4/20 stages passed**, all failures retained; `set_viewport_size` resets screen by Playwright contract | [Evidence](../native/drafts/environment/manager-screen70-observations.json); no silent contract relaxation |
 | Extra-CDP / BFCache stress | Overall **FAIL**; real BFCache restore with six persisted documents; peer-state/screenshot and cached-orientation inconsistencies retained | [Evidence](../native/drafts/environment/screen-lifecycle70-observations.json); not full lifecycle admission |
 | Input/screenshot after BFCache restore | Main document trusted click passed; screenshot **1170×2532** matches DPR 3; screen stable across input | [Evidence](../native/drafts/environment/history-interaction70-observations.json); all-frame input and complete lifecycle remain unverified; earlier navigation timeout retained |
 | Next orientation package | Three-file draft with four native regression cases; apply-check passed against 001–070 | [Preparation](../native/drafts/environment/orientation-visibility71-preparation.json); unregistered, uncompiled and unverified |
+| Next orientation gate | Four exact `blink_unittests` cases; 16 Python selection/result controls passed, all current 20 mappings unchanged | [Preparation](../native/drafts/environment/screen-orientation71-gate-preparation.json); proposed 21st group, not integrated or executed C++ cases |
 
 ## Canonical Python regression — 2026-10-30
 
