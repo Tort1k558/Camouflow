@@ -1,0 +1,382 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Integrated diagnostic collector: six actual owned documents, recreated protected GPU/Audio reads before/after genuine BFCache, desktop and Mobile Web; not retained GPU objects, worker lifecycle, WebGPU readback or complete policy admission",
+  "selected_probe": "retained-documents",
+  "required_manifest": "checkpoints/001-075.json",
+  "checkpoint_sha256": "edf97d81da753d2980c91a383baab346f7bf5e21cc393a75540c669aa5ab14c1",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "f09657095bcde2331e504508ccad2017b8054c2777a4228615834bdba498b030",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "69d91504463c1e93612af6f1bf6ee53357b91f4ebe79795c3d096a01360f0907",
+  "raw_report_directory": "retained-document-surfaces75-public-20261030-v2",
+  "raw_report_sha256": "fb2ee975134c0e87ba4937d43012e378aadcb7003569bfda3507c9c6d2be7291",
+  "measured_inputs_sha256": {
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "native/drafts/environment/first-script/worker_formats.py": "b4cd0773f6a605952671e5264e9bdd8416792d278c153ac882d3eba50bc1cd21",
+    "native/drafts/environment/first-script/worker_hdr.py": "0fe4ee4ff122069b650afd877e347dda0bede6bbd5d192222e48e46a1a19d2e0",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "native/drafts/environment/first-script/retained_document_surfaces.py": "ce0604fe9181d666f9c11db212f3d2c822f51a8a288faf35ab7e8891da441a3d",
+    "app/core/native/runtime.py": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "native/drafts/environment/first-script/history_interaction.py": "f6c2e8358cc3b5232ac46d5e450c53f4fbea027764ea9dec2a8a34a09b12c971",
+    "native/drafts/environment/first-script/worker_formats_runtime.py": "1d36361217a59a2c5c57bcddd15880eaf0c8d8f26cc6bf69c75fb224e00445e0",
+    "native/drafts/environment/first-script/bfcache_stress.py": "c34470e059b2fe5de627f87cddd3e3bc13dc44dc68766dff51d8a940a0dfffd7",
+    "scripts/verify_native_gpu_readback.py": "d9174f360beb373c6176c6cd9d97be849fde9e236358487ad7dc4795f5375b3e",
+    "scripts/verify_native_gpu.py": "32018a5fd71efa0a51074095857a59de83ce1dd6777df160621293efc0a885aa",
+    "native/drafts/environment/first-script/protected_history_runtime.py": "c7ade33493f95833936b9a8fc54a4d92191ca54e6362221d681a8995211a36d4",
+    "scripts/verify_native_audio_quality.py": "f2ee7735ab1c2b1b46adf17e661da749729201624baec39cf9019afe40ead39b",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "native/drafts/environment/first-script/canvas_export.py": "20d54e6b2da2fed7f4995bfb8edbc5817e0dbd3f8ef4fe6842fdee9d41b16817",
+    "native/drafts/environment/first-script/protected_history.py": "e38b65a836c34e8bb464aa4aa1c74e100ae02abf553269983fd20f10aa2bfd40",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "native/drafts/environment/first-script/protected_surface_history.py": "0720799654142df31db49bccbbea8a50101c172c858ebe54511b342abd25005a",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "native/drafts/environment/first-script/managed_history.py": "86f5d15ac0e71a880fe174182c73f2ea27faca96ef095d75e5b57e2ccaf15691",
+    "native/drafts/environment/first-script/manager.py": "71d0e333e682205beda57e963fa8df1483505bf7bac24f44caaed27a527a3e6d",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "scripts/verify_native_surfaces.py": "5a2d8ed28577a2fa78809d37ccd7e4a1ced1aebb2011a86621d0a9cca2cf3f8a",
+    "native/drafts/environment/first-script/combined_concurrent.py": "469a281a9c2126df5e2c3de251034534b103e66aff5e3dc8cd87686b8acc6c9b",
+    "native/drafts/environment/first-script/canvas_hdr.py": "9b4806f748aaa29d6b7a9738a76972e66a3b9341375e4ab8d1fe5d577b98698a",
+    "native/drafts/environment/first-script/owner_process.py": "d86f90e386925d0d2940e06046eca85b4ca2e94b901abc751cafc494f9b4468b",
+    "native/drafts/environment/first-script/recorder_replay.py": "fe85d6528c8e3843fc581418b7bdc761a744b2041d8eb60141ee36389dcc4908",
+    "native/drafts/environment/first-script/worker_exports_runtime.py": "e08a0dfd3eb68c2a6f5d54e0c71c92bbfade3cfb6db86378fde1e2454d0d85d6",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "native/drafts/environment/first-script/worker_hdr_runtime.py": "02087e0457ff3757da9ca0a78b3361ce67415dfbbbe9f9262af44d93913b419d",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "app/core/native/identity.py": "ade6571746cff6eebb3b049a6725a9260fff1f9cb499080f00af95a6aeb654c9",
+    "native/drafts/environment/first-script/runtime.py": "e387b5107340754af303b56b404ab86cea3195410b0b9ca4ea99c66516df4e1a",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "native/drafts/environment/first-script/binding_outcome_model.py": "a0bbb7f4ca45f64f02e1dabb8be35b3b2633eea91110b1965fdb698f00be4ae8",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "native/drafts/environment/first-script/bfcache_races.py": "4ac147c519b2352cb7b065587198882a09aabc594a51c09371c954ab6ca4317d",
+    "native/drafts/environment/first-script/canvas_export_runtime.py": "578326693d50fa2d234e8b4c543f947b8b66c4c3e6c1626f9563d24fee97bf08",
+    "native/drafts/environment/first-script/nested_formats.py": "62f9a8a5f3f2b8ca07d4d72c86824918c5a4558c158b8b34e35575200f334e7e",
+    "native/drafts/environment/first-script/canvas_formats.py": "b10ff77277f2d0a030e71ab27585a50969b907cdea5d02fb9a329c1c9b1c38fb",
+    "scripts/verify_native_nested_canvas.py": "f50d6a50bc567f1390d7212d715dc473b4967c1e0e53e5ed0a2a775a77bb039d",
+    "scripts/verify_native_audio.py": "20ec4aee54e7f10375623bc5a33157009cbacfca7c8b037e2b52a83131492617",
+    "native/drafts/environment/first-script/canvas_hdr_runtime.py": "0abe98637458acbf16437dcd931b236bb63a2f64e32c421db0259291a1f38fed",
+    "native/drafts/environment/first-script/nested_hdr.py": "78f2c7bbfdf3e2ec3e7853a13c7674fe75e76744426cb20847f4d849ff2e4713",
+    "native/drafts/environment/first-script/worker_exports.py": "5d032dbd97379fa12f9356dd15e0c56a882aff2e880a4960efc7a6cda9ac9571",
+    "native/drafts/environment/playwright-driver-stage-binding-close.json": "6d18cf727cfe1b4533b611edbd560f4ac031e4c02aa69aff2e037d110df352c5",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "native/drafts/environment/first-script/legacy_transport.py": "16458da91b61258389ce1e2c4bed7d2ab309b7a65f8fa566903716d70b2abeae",
+    "native/drafts/environment/first-script/nested_formats_runtime.py": "b1f5520de431f4c9149e85249ead3c6e7d74585daadfa4fad3fdb21abbddb187"
+  },
+  "runs": [
+    {
+      "mode": "manager-desktop",
+      "passed": true,
+      "validation": {
+        "passed": true,
+        "document_contexts": 6,
+        "webgl_apis": 2,
+        "audio_phases": 3,
+        "retained_gpu_objects_verified": false,
+        "workers_verified": false,
+        "webgpu_readback_verified": false,
+        "privacy_admitted": false,
+        "production_admitted": false
+      },
+      "bfcache_navigation_type": "BackForwardCacheRestore",
+      "post_surfaces_screen_verified": true,
+      "browser_connection_closed": true,
+      "runtime_resources_released": true,
+      "remaining_observed_processes": 0,
+      "document_roles": [
+        "about-blank",
+        "cross",
+        "main",
+        "nested-return",
+        "same",
+        "srcdoc"
+      ],
+      "same_document_identity_fields": [
+        "nonce",
+        "origin",
+        "location",
+        "timeOrigin"
+      ],
+      "all_documents_persisted_before": false,
+      "all_documents_persisted_after": true
+    },
+    {
+      "mode": "manager-mobile-web",
+      "passed": true,
+      "validation": {
+        "passed": true,
+        "document_contexts": 6,
+        "webgl_apis": 2,
+        "audio_phases": 3,
+        "retained_gpu_objects_verified": false,
+        "workers_verified": false,
+        "webgpu_readback_verified": false,
+        "privacy_admitted": false,
+        "production_admitted": false
+      },
+      "bfcache_navigation_type": "BackForwardCacheRestore",
+      "post_surfaces_screen_verified": true,
+      "browser_connection_closed": true,
+      "runtime_resources_released": true,
+      "remaining_observed_processes": 0,
+      "document_roles": [
+        "about-blank",
+        "cross",
+        "main",
+        "nested-return",
+        "same",
+        "srcdoc"
+      ],
+      "same_document_identity_fields": [
+        "nonce",
+        "origin",
+        "location",
+        "timeOrigin"
+      ],
+      "all_documents_persisted_before": false,
+      "all_documents_persisted_after": true
+    }
+  ],
+  "screen_canvas_validation": {
+    "passed": true,
+    "runs": [
+      {
+        "mode": "manager-desktop",
+        "passed": true,
+        "errors": [],
+        "screen_phases": 6,
+        "canvas_cases": 32
+      },
+      {
+        "mode": "manager-mobile-web",
+        "passed": true,
+        "errors": [],
+        "screen_phases": 6,
+        "canvas_cases": 32
+      }
+    ],
+    "privacy_admitted": false,
+    "production_admitted": false
+  },
+  "top_document_validation": {
+    "passed": true,
+    "runs": [
+      {
+        "mode": "manager-desktop",
+        "passed": true,
+        "document_contexts": 1,
+        "webgl_apis": 2,
+        "audio_phases": 3,
+        "webgpu_readback_verified": false,
+        "privacy_admitted": false,
+        "production_admitted": false
+      },
+      {
+        "mode": "manager-mobile-web",
+        "passed": true,
+        "document_contexts": 1,
+        "webgl_apis": 2,
+        "audio_phases": 3,
+        "webgpu_readback_verified": false,
+        "privacy_admitted": false,
+        "production_admitted": false
+      }
+    ],
+    "privacy_admitted": false,
+    "production_admitted": false
+  },
+  "retained_gpu_objects_verified": false,
+  "workers_verified": false,
+  "webgpu_readback_verified": false,
+  "cross_session_screenshot_fixed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "routing_fault_controls": {
+    "passed": true,
+    "scope": "Synthetic message routing only, not additional fingerprint coverage",
+    "raw_report_directory": "retained-document-protocol75-faults-v1",
+    "raw_report_sha256": "4eaff9413a939855f8636155fc581ce4889d8f3e104d7da8d32658ec8297a0d7",
+    "controller_sha256": "d418e78a95cba0ceaed36430261c88c5ed5da00e1a9feeda9aec09b1c21e8f6e",
+    "measurement_complete": true,
+    "postguards_passed": true,
+    "runs": [
+      {
+        "mode": "manager-desktop",
+        "cases": [
+          {
+            "fault": "valid-main",
+            "accepted": true,
+            "rejected": false,
+            "ignored": false,
+            "error": null
+          },
+          {
+            "fault": "source",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Retained response source/origin/nonce/document mismatch"
+          },
+          {
+            "fault": "nonce",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Retained response source/origin/nonce/document mismatch"
+          },
+          {
+            "fault": "origin",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Retained response source/origin/nonce/document mismatch"
+          },
+          {
+            "fault": "url",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Retained response source/origin/nonce/document mismatch"
+          },
+          {
+            "fault": "persisted",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Duplicate or wrong-lifecycle retained response"
+          },
+          {
+            "fault": "duplicate",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Duplicate or wrong-lifecycle retained response"
+          },
+          {
+            "fault": "unknown-role",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Retained response source/origin/nonce/document mismatch"
+          },
+          {
+            "fault": "stale-request",
+            "accepted": false,
+            "rejected": false,
+            "ignored": true
+          },
+          {
+            "fault": "wrong-token",
+            "accepted": false,
+            "rejected": false,
+            "ignored": true
+          }
+        ]
+      },
+      {
+        "mode": "manager-mobile-web",
+        "cases": [
+          {
+            "fault": "valid-main",
+            "accepted": true,
+            "rejected": false,
+            "ignored": false,
+            "error": null
+          },
+          {
+            "fault": "source",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Retained response source/origin/nonce/document mismatch"
+          },
+          {
+            "fault": "nonce",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Retained response source/origin/nonce/document mismatch"
+          },
+          {
+            "fault": "origin",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Retained response source/origin/nonce/document mismatch"
+          },
+          {
+            "fault": "url",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Retained response source/origin/nonce/document mismatch"
+          },
+          {
+            "fault": "persisted",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Duplicate or wrong-lifecycle retained response"
+          },
+          {
+            "fault": "duplicate",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Duplicate or wrong-lifecycle retained response"
+          },
+          {
+            "fault": "unknown-role",
+            "accepted": false,
+            "rejected": true,
+            "ignored": false,
+            "error": "Retained response source/origin/nonce/document mismatch"
+          },
+          {
+            "fault": "stale-request",
+            "accepted": false,
+            "rejected": false,
+            "ignored": true
+          },
+          {
+            "fault": "wrong-token",
+            "accepted": false,
+            "rejected": false,
+            "ignored": true
+          }
+        ]
+      }
+    ]
+  },
+  "unit_regression": {
+    "passed": true,
+    "counts": {
+      "tests": 460,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "junit_sha256": "fb134f5dda1571c81d6866221e6d700eb76233f148aab3b6effb225320f8aba0"
+  },
+  "previous_full_regression": {
+    "raw_report_sha256": "91d7e1e65be613f7cdb1a454ee69eff24c4eb83c6bd1c70b9bfcf6ac29efece7",
+    "git_head": "eddea3db02507f8cfe099f3e062465a671829872",
+    "counts": {
+      "tests": 4717,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 4716
+    },
+    "passed": true,
+    "postguards_passed": true,
+    "scope": "Full 4716-pass regression before this retained-document package; not a full pass of the changed sources"
+  }
+}

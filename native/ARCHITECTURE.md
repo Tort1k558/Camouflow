@@ -1,5 +1,19 @@
 # Glint architecture
 
+## Retained six-document surface diagnostics
+
+The integrated `retained-documents` probe extends existing protected BFCache checks
+to recreated WebGL1/2 and OfflineAudio reads in six real documents, with shared
+single-context validators rather than fabricated copies of eight-context matrices.
+The original full-matrix validators retain their context/partition requirements.
+The responder binds actual WindowProxy/origin/nonce/URL/timeOrigin and rejects
+replacement documents. Both desktop and Mobile Web passed on preserved 001–075;
+20 synthetic routing controls and 460 related unit cases passed.
+[Evidence](drafts/environment/retained-document-surfaces75-observations.json).
+
+This does not retain GPU objects or test worker BFCache restoration/WebGPU readback.
+The screenshot ownership conflict remains open; no full-policy/release admission.
+
 ## Current implementation boundary
 
 **Selected, compiled and independently preserved: Windows Chromium 156.0.8078.36, 001–075.**

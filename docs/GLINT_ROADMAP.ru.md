@@ -1,5 +1,22 @@
 # Glint: план проверки и развития
 
+## Новый пакет: GPU/Audio в шести сохранённых документах
+
+Режим `--probe retained-documents` интегрирован: main, same/cross-origin iframe,
+nested-return, srcdoc и about:blank. **Desktop и Mobile Web прошли** чтения
+WebGL1/2 и OfflineAudio до/после настоящего BFCache. Сохранены прежние screen/Canvas
+проверки; контролируются WindowProxy, origin, nonce, URL и `performance.timeOrigin`.
+Новые наблюдения не подменяются копиями главного документа.
+
+Связанные тесты: **460 passed**; в реальном браузере — **20 синтетических проверок
+маршрутизации сообщений**, не дополнительные fingerprint-кейсы.
+[Результаты](../native/drafts/environment/retained-document-surfaces75-observations.json).
+Полный прогон перед этим пакетом: **4716 passed, 1 skipped** на `eddea3d`;
+это не полный прогон уже изменённых исходников.
+
+Осталось: lifecycle workers, сохранённые GPU-объекты, WebGPU readback и исправление
+состояния скриншотов между CDP-клиентами. Объём цели и ограничения не сокращены.
+
 ## Актуально: Windows 001–075 собран и проверен в ограниченном объёме
 
 | Проверка | Результат | Что не доказано |

@@ -1,0 +1,659 @@
+diff --git a/scripts/verify_native_audio.py b/scripts/verify_native_audio.py
+--- a/scripts/verify_native_audio.py
++++ b/scripts/verify_native_audio.py
+@@ -90,6 +90,50 @@
+         "scripts/verify_native_hardware.py", "scripts/verify_native_runtime.py")}
+ 
+ 
++def validate_context(name: str, values: dict, previous: dict | None = None) -> bool:
++    """Validate one real observation; False means unavailable, not coverage."""
++    if not isinstance(name, str) or not name:
++        raise ValueError("An explicit context label is required")
++    if previous is not None:
++        validate_context(name, previous)
++    if not isinstance(values, dict) or type(values.get("available")) is not bool:
++        raise ValueError(f"Missing Audio availability: {name}")
++    if not values["available"]:
++        if not isinstance(values.get("reason"), str) or not values["reason"]:
++            raise ValueError(f"Missing Audio unavailability reason: {name}")
++        if previous is not None and previous["available"]:
++            raise ValueError(f"Audio capability disappeared: {name}")
++        return False
++    if (set(values) != {"available", "completionMutationVisible", "signal", "repeat", "silence"}
++            or values["completionMutationVisible"] is not True):
++        raise ValueError(f"Missing Audio render phases: {name}")
++    for phase in ("signal", "repeat", "silence"):
++        result = values[phase]
++        if not isinstance(result, dict):
++            raise TypeError(f"Invalid Audio result: {name}/{phase}")
++        digest = result.get("hash")
++        if (not isinstance(digest, str) or len(digest) != 64
++                or any(character not in "0123456789abcdef" for character in digest)
++                or result.get("copiedHash") != digest or result.get("rightHash") != digest):
++            raise ValueError(f"Inconsistent Audio channel/copy reads: {name}/{phase}")
++        if any(result.get(key) is not True for key in ("finite", "eventSameBuffer", "liveMutation",
++                "copyFromSeesMutation", "copyToSeesMutation", "closed")):
++            raise ValueError(f"Audio buffer semantics failed: {name}/{phase}")
++        if (result.get("invalidChannel") != "IndexSizeError" or result.get("sampleRate") != 44100
++                or result.get("channels") != 2 or result.get("frames") != 4096):
++            raise ValueError(f"Audio format/error semantics failed: {name}/{phase}")
++        if phase == "silence":
++            if result.get("silence") is not True or result.get("signal") is not None:
++                raise ValueError(f"Offline silence changed: {name}")
++        elif result.get("signal") is not True or result.get("silence") is not None:
++            raise ValueError(f"Offline signal disappeared: {name}/{phase}")
++    if values["signal"] != values["repeat"]:
++        raise ValueError(f"Repeated offline rendering changed: {name}")
++    if previous is not None and previous != values:
++        raise ValueError(f"Offline Audio changed across restart: {name}")
++    return True
++
++
+ def validate_observations(observed: dict, previous: dict | None = None) -> dict:
+     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
+         raise ValueError("Audio probe must observe every document and worker context")
+@@ -97,43 +141,8 @@
+         validate_observations(previous)
+     coverage = {"available": [], "unavailable": []}
+     for name, values in observed.items():
+-        if not isinstance(values, dict) or type(values.get("available")) is not bool:
+-            raise ValueError(f"Missing Audio availability: {name}")
+-        if not values["available"]:
+-            if not isinstance(values.get("reason"), str) or not values["reason"]:
+-                raise ValueError(f"Missing Audio unavailability reason: {name}")
+-            if previous is not None and previous[name]["available"]:
+-                raise ValueError(f"Audio capability disappeared: {name}")
+-            coverage["unavailable"].append(name)
+-            continue
+-        coverage["available"].append(name)
+-        if (set(values) != {"available", "completionMutationVisible", "signal", "repeat", "silence"}
+-                or values["completionMutationVisible"] is not True):
+-            raise ValueError(f"Missing Audio render phases: {name}")
+-        for phase in ("signal", "repeat", "silence"):
+-            result = values[phase]
+-            if not isinstance(result, dict):
+-                raise TypeError(f"Invalid Audio result: {name}/{phase}")
+-            digest = result.get("hash")
+-            if (not isinstance(digest, str) or len(digest) != 64
+-                    or any(character not in "0123456789abcdef" for character in digest)
+-                    or result.get("copiedHash") != digest or result.get("rightHash") != digest):
+-                raise ValueError(f"Inconsistent Audio channel/copy reads: {name}/{phase}")
+-            if any(result.get(key) is not True for key in ("finite", "eventSameBuffer", "liveMutation",
+-                    "copyFromSeesMutation", "copyToSeesMutation", "closed")):
+-                raise ValueError(f"Audio buffer semantics failed: {name}/{phase}")
+-            if (result.get("invalidChannel") != "IndexSizeError" or result.get("sampleRate") != 44100
+-                    or result.get("channels") != 2 or result.get("frames") != 4096):
+-                raise ValueError(f"Audio format/error semantics failed: {name}/{phase}")
+-            if phase == "silence":
+-                if result.get("silence") is not True or result.get("signal") is not None:
+-                    raise ValueError(f"Offline silence changed: {name}")
+-            elif result.get("signal") is not True or result.get("silence") is not None:
+-                raise ValueError(f"Offline signal disappeared: {name}/{phase}")
+-        if values["signal"] != values["repeat"]:
+-            raise ValueError(f"Repeated offline rendering changed: {name}")
+-        if previous is not None and previous[name] != values:
+-            raise ValueError(f"Offline Audio changed across restart: {name}")
++        available = validate_context(name, values, None if previous is None else previous[name])
++        coverage["available" if available else "unavailable"].append(name)
+     if not coverage["available"]:
+         raise ValueError("No available OfflineAudioContext; cannot pass diagnostics")
+     return {key: sorted(value) for key, value in coverage.items()}
+diff --git a/scripts/verify_native_gpu.py b/scripts/verify_native_gpu.py
+--- a/scripts/verify_native_gpu.py
++++ b/scripts/verify_native_gpu.py
+@@ -403,6 +403,103 @@
+             raise ValueError("Shader/crop/PBO/padding readback mismatch: " + api + "/" + name)
+ 
+ 
++def validate_context(context: str, values: dict, *, minimized: bool = False,
++                     baseline: dict | None = None) -> dict:
++    """Validate a single measured context without inventing aggregate coverage."""
++    if not isinstance(context, str) or not context:
++        raise ValueError("An explicit context label is required")
++    if baseline is not None:
++        validate_context(context, baseline)
++    coverage = {"webgl": 0, "webgl2": 0, "webgpu": 0}
++    if not isinstance(values, dict) or set(values) != {"webgl", "webgpu"}:
++        raise ValueError(f"Malformed GPU observation: {context}")
++    if not isinstance(values["webgl"], dict) or set(values["webgl"]) != {"webgl", "webgl2"}:
++        raise ValueError(f"Missing WebGL variants: {context}")
++    for api, gl in values["webgl"].items():
++        if not isinstance(gl, dict) or type(gl.get("available")) is not bool:
++            raise ValueError(f"Missing availability: {context}/{api}")
++        if not gl["available"]:
++            if baseline is not None and baseline["webgl"][api]["available"]:
++                raise ValueError(f"GPU context disappeared: {context}/{api}")
++            continue
++        coverage[api] += 1
++        validate_shader_readback(gl.get("scene"), api)
++        if (gl.get("pixels") != [17, 34, 51, 255] or type(gl.get("error")) is not int or gl["error"] != 0
++                or gl.get("contextLost") is not False):
++            raise ValueError(f"WebGL operation failed: {context}/{api}")
++        extensions = gl.get("extensions")
++        limits = gl.get("limits")
++        if (not isinstance(extensions, list) or any(not isinstance(item, str) for item in extensions)
++                or len(extensions) != len(set(extensions))
++                or not isinstance(limits, dict) or set(limits) != WEBGL_LIMITS
++                or any(type(value) is not int or value <= 0 for value in limits.values())
++                or type(gl.get("debug")) is not bool):
++            raise ValueError(f"Invalid WebGL metadata: {context}/{api}")
++        if gl["debug"] != ("WEBGL_debug_renderer_info" in extensions):
++            raise ValueError(f"Inconsistent debug extension: {context}/{api}")
++        if (type(gl.get("debugShaders")) is not bool
++                or gl["debugShaders"] != ("WEBGL_debug_shaders" in extensions)
++                or type(gl.get("translatedShaderLength")) is not int
++                or gl["translatedShaderLength"] < 0
++                or (not gl["debugShaders"] and gl["translatedShaderLength"] != 0)):
++            raise ValueError(f"Inconsistent translated-shader debug extension: {context}/{api}")
++        if minimized and gl["debugShaders"]:
++            raise ValueError(f"Translated shader metadata still exposed: {context}/{api}")
++        if minimized and gl["debug"]:
++            raise ValueError(f"GPU debug metadata still exposed: {context}/{api}")
++        if not gl["debug"] and (gl.get("vendor") is not None or gl.get("renderer") is not None
++                or gl.get("unavailableParameter") != {"value": None, "error": 1280}):
++            raise ValueError(f"Unavailable extension changed API semantics: {context}/{api}")
++        if baseline is not None:
++            previous = baseline["webgl"][api]
++            if not previous["available"] or previous["limits"] != limits:
++                raise ValueError(f"WebGL availability/limits changed: {context}/{api}")
++            previous_extensions = [item for item in previous["extensions"]
++                                   if not minimized or item not in {"WEBGL_debug_renderer_info", "WEBGL_debug_shaders"}]
++            if previous_extensions != extensions:
++                raise ValueError(f"Unrelated WebGL extensions changed: {context}/{api}")
++    gpu = values["webgpu"]
++    if not isinstance(gpu, dict) or type(gpu.get("available")) is not bool:
++        raise ValueError(f"Missing WebGPU availability: {context}")
++    if not gpu["available"]:
++        if not isinstance(gpu.get("reason"), str) or not gpu["reason"]:
++            raise ValueError(f"Missing WebGPU unavailability reason: {context}")
++        if baseline is not None and baseline["webgpu"]["available"]:
++            raise ValueError(f"WebGPU adapter disappeared: {context}")
++        return coverage
++    coverage["webgpu"] += 1
++    validate_texture_readback(gpu.get("textures"))
++    info = gpu.get("info")
++    if (not isinstance(info, dict) or set(info) != {"vendor", "architecture", "device",
++            "description", "subgroupMinSize", "subgroupMaxSize", "isFallbackAdapter"}
++            or any(not isinstance(info[key], str) for key in ("vendor", "architecture", "device", "description"))
++            or any(type(info[key]) is not int or info[key] < 0 for key in ("subgroupMinSize", "subgroupMaxSize"))
++            or info["subgroupMinSize"] > info["subgroupMaxSize"]
++            or type(info["isFallbackAdapter"]) is not bool):
++        raise ValueError(f"Invalid WebGPU adapter info: {context}")
++    if gpu.get("repeat") != info or gpu.get("deviceInfo") != info:
++        raise ValueError(f"Inconsistent adapter/device info: {context}")
++    if minimized and any(info[key] for key in ("vendor", "architecture", "device", "description")):
++        raise ValueError(f"WebGPU identifying strings still exposed: {context}")
++    if (gpu.get("roundtrip") != [17, 34, 51, 255] or gpu.get("compute") != [18, 35, 52, 256]
++            or gpu.get("validationError") is not None or gpu.get("errors") != []):
++        raise ValueError(f"WebGPU buffer/compute operation failed: {context}")
++    if (not isinstance(gpu.get("features"), list)
++            or any(not isinstance(item, str) for item in gpu["features"])
++            or len(gpu["features"]) != len(set(gpu["features"]))
++            or not isinstance(gpu.get("limits"), dict) or set(gpu["limits"]) != WEBGPU_LIMITS
++            or any(type(value) is not int or value <= 0 for value in gpu["limits"].values())):
++        raise ValueError(f"Invalid WebGPU features/limits: {context}")
++    if baseline is not None:
++        previous = baseline["webgpu"]
++        if (not previous["available"] or previous["limits"] != gpu["limits"]
++                or previous["features"] != gpu["features"]
++                or any(previous["info"][key] != info[key] for key in
++                       ("subgroupMinSize", "subgroupMaxSize", "isFallbackAdapter"))):
++            raise ValueError(f"WebGPU capabilities changed: {context}")
++    return coverage
++
++
+ def validate_observations(observed: dict, *, minimized: bool = False,
+                           baseline: dict | None = None) -> dict:
+     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
+@@ -411,92 +508,10 @@
+         validate_observations(baseline)
+     coverage = {"webgl": 0, "webgl2": 0, "webgpu": 0}
+     for context, values in observed.items():
+-        if not isinstance(values, dict) or set(values) != {"webgl", "webgpu"}:
+-            raise ValueError(f"Malformed GPU observation: {context}")
+-        if not isinstance(values["webgl"], dict) or set(values["webgl"]) != {"webgl", "webgl2"}:
+-            raise ValueError(f"Missing WebGL variants: {context}")
+-        for api, gl in values["webgl"].items():
+-            if not isinstance(gl, dict) or type(gl.get("available")) is not bool:
+-                raise ValueError(f"Missing availability: {context}/{api}")
+-            if not gl["available"]:
+-                if baseline is not None and baseline[context]["webgl"][api]["available"]:
+-                    raise ValueError(f"GPU context disappeared: {context}/{api}")
+-                continue
+-            coverage[api] += 1
+-            validate_shader_readback(gl.get("scene"), api)
+-            if (gl.get("pixels") != [17, 34, 51, 255] or type(gl.get("error")) is not int or gl["error"] != 0
+-                    or gl.get("contextLost") is not False):
+-                raise ValueError(f"WebGL operation failed: {context}/{api}")
+-            extensions = gl.get("extensions")
+-            limits = gl.get("limits")
+-            if (not isinstance(extensions, list) or any(not isinstance(item, str) for item in extensions)
+-                    or len(extensions) != len(set(extensions))
+-                    or not isinstance(limits, dict) or set(limits) != WEBGL_LIMITS
+-                    or any(type(value) is not int or value <= 0 for value in limits.values())
+-                    or type(gl.get("debug")) is not bool):
+-                raise ValueError(f"Invalid WebGL metadata: {context}/{api}")
+-            if gl["debug"] != ("WEBGL_debug_renderer_info" in extensions):
+-                raise ValueError(f"Inconsistent debug extension: {context}/{api}")
+-            if (type(gl.get("debugShaders")) is not bool
+-                    or gl["debugShaders"] != ("WEBGL_debug_shaders" in extensions)
+-                    or type(gl.get("translatedShaderLength")) is not int
+-                    or gl["translatedShaderLength"] < 0
+-                    or (not gl["debugShaders"] and gl["translatedShaderLength"] != 0)):
+-                raise ValueError(f"Inconsistent translated-shader debug extension: {context}/{api}")
+-            if minimized and gl["debugShaders"]:
+-                raise ValueError(f"Translated shader metadata still exposed: {context}/{api}")
+-            if minimized and gl["debug"]:
+-                raise ValueError(f"GPU debug metadata still exposed: {context}/{api}")
+-            if not gl["debug"] and (gl.get("vendor") is not None or gl.get("renderer") is not None
+-                    or gl.get("unavailableParameter") != {"value": None, "error": 1280}):
+-                raise ValueError(f"Unavailable extension changed API semantics: {context}/{api}")
+-            if baseline is not None:
+-                previous = baseline[context]["webgl"][api]
+-                if not previous["available"] or previous["limits"] != limits:
+-                    raise ValueError(f"WebGL availability/limits changed: {context}/{api}")
+-                previous_extensions = [item for item in previous["extensions"]
+-                                       if not minimized or item not in {"WEBGL_debug_renderer_info", "WEBGL_debug_shaders"}]
+-                if previous_extensions != extensions:
+-                    raise ValueError(f"Unrelated WebGL extensions changed: {context}/{api}")
+-        gpu = values["webgpu"]
+-        if not isinstance(gpu, dict) or type(gpu.get("available")) is not bool:
+-            raise ValueError(f"Missing WebGPU availability: {context}")
+-        if not gpu["available"]:
+-            if not isinstance(gpu.get("reason"), str) or not gpu["reason"]:
+-                raise ValueError(f"Missing WebGPU unavailability reason: {context}")
+-            if baseline is not None and baseline[context]["webgpu"]["available"]:
+-                raise ValueError(f"WebGPU adapter disappeared: {context}")
+-            continue
+-        coverage["webgpu"] += 1
+-        validate_texture_readback(gpu.get("textures"))
+-        info = gpu.get("info")
+-        if (not isinstance(info, dict) or set(info) != {"vendor", "architecture", "device",
+-                "description", "subgroupMinSize", "subgroupMaxSize", "isFallbackAdapter"}
+-                or any(not isinstance(info[key], str) for key in ("vendor", "architecture", "device", "description"))
+-                or any(type(info[key]) is not int or info[key] < 0 for key in ("subgroupMinSize", "subgroupMaxSize"))
+-                or info["subgroupMinSize"] > info["subgroupMaxSize"]
+-                or type(info["isFallbackAdapter"]) is not bool):
+-            raise ValueError(f"Invalid WebGPU adapter info: {context}")
+-        if gpu.get("repeat") != info or gpu.get("deviceInfo") != info:
+-            raise ValueError(f"Inconsistent adapter/device info: {context}")
+-        if minimized and any(info[key] for key in ("vendor", "architecture", "device", "description")):
+-            raise ValueError(f"WebGPU identifying strings still exposed: {context}")
+-        if (gpu.get("roundtrip") != [17, 34, 51, 255] or gpu.get("compute") != [18, 35, 52, 256]
+-                or gpu.get("validationError") is not None or gpu.get("errors") != []):
+-            raise ValueError(f"WebGPU buffer/compute operation failed: {context}")
+-        if (not isinstance(gpu.get("features"), list)
+-                or any(not isinstance(item, str) for item in gpu["features"])
+-                or len(gpu["features"]) != len(set(gpu["features"]))
+-                or not isinstance(gpu.get("limits"), dict) or set(gpu["limits"]) != WEBGPU_LIMITS
+-                or any(type(value) is not int or value <= 0 for value in gpu["limits"].values())):
+-            raise ValueError(f"Invalid WebGPU features/limits: {context}")
+-        if baseline is not None:
+-            previous = baseline[context]["webgpu"]
+-            if (not previous["available"] or previous["limits"] != gpu["limits"]
+-                    or previous["features"] != gpu["features"]
+-                    or any(previous["info"][key] != info[key] for key in
+-                           ("subgroupMinSize", "subgroupMaxSize", "isFallbackAdapter"))):
+-                raise ValueError(f"WebGPU capabilities changed: {context}")
++        counts = validate_context(context, values, minimized=minimized,
++                                  baseline=None if baseline is None else baseline[context])
++        for api, count in counts.items():
++            coverage[api] += count
+     if not coverage["webgl"] or not coverage["webgl2"]:
+         raise ValueError("No working WebGL1/2 coverage; this cannot pass diagnostics")
+     return coverage
+diff --git a/scripts/verify_native_gpu_readback.py b/scripts/verify_native_gpu_readback.py
+--- a/scripts/verify_native_gpu_readback.py
++++ b/scripts/verify_native_gpu_readback.py
+@@ -32,6 +32,7 @@
+     validate_shader_readback,
+ )
+ from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
++from scripts.verify_native_gpu import validate_context as validate_gpu_context
+ from scripts.verify_native_surfaces import DERIVATION_MODES, IDENTITY_ARGUMENT, SAME_PARTITION, SurfaceConfiguration
+ from scripts.verify_native_surfaces import validate_receipt as validate_surface_receipt
+ from scripts.verify_native_worker_startup import (
+@@ -285,6 +286,64 @@
+             for byte in data[row * image.bytesPerLine():row * image.bytesPerLine() + 16]]
+ 
+ 
++def validate_context(context: str, values: dict, *, protected: bool) -> dict:
++    """Return capability-normalized evidence; compare original input for identity."""
++    if not isinstance(context, str) or not context:
++        raise ValueError("An explicit context label is required")
++    normalized = copy.deepcopy(values)
++    if not isinstance(values, dict) or set(values) != {"webgl", "webgpu"} or not isinstance(values.get("webgl"), dict):
++        raise ValueError("Missing WebGL observations")
++    for api in ("webgl", "webgl2"):
++        gl = values["webgl"].get(api)
++        if not isinstance(gl, dict) or gl.get("available") is not True:
++            raise ValueError("WebGL readback coverage is unavailable: " + context + "/" + api)
++        scene = gl.get("scene")
++        fields = {"pixels", "repeat", "crop", "pbo", "packed", "png", "packState",
++                  "exportState", "initialState", "validation", "lost", "renderbuffer"}
++        if not isinstance(scene, dict) or set(scene) != fields:
++            raise ValueError("Readback/export/state observations are incomplete")
++        full = scene["pixels"]
++        read_scene = {key: scene[key] for key in ("pixels", "repeat", "crop", "pbo", "packed")}
++        validate_shader_readback(read_scene, api, expected_pixels=full)
++        validate_errors(scene["validation"], api, full[:4], scene["lost"])
++        if api == "webgl2":
++            try:
++                validate_renderbuffer(scene["renderbuffer"], protected=protected)
++            except ValueError as error:
++                raise ValueError(f"{context}/{api}/renderbuffer: {error}") from error
++        elif scene["renderbuffer"] is not None:
++            raise ValueError("WebGL1 claimed WebGL2 renderbuffer coverage")
++        if any((byte != reference if not protected or index % 4 == 3 else
++                byte >> 1 != reference >> 1) for index, (byte, reference) in enumerate(zip(full, SHADER_PIXELS))):
++            raise ValueError("Readback changed alpha, upper colour bits or baseline pixels")
++        if decode_png(scene["png"]) != full:
++            raise ValueError("Native PNG export disagrees with WebGL pixels")
++        initial = {"alignment": 4, "framebuffer": True, "rowLength": 0,
++                   "skipRows": 0, "skipPixels": 0, "packBound": False}
++        packed = {**initial, "rowLength": 6, "skipRows": 1, "skipPixels": 1} if api == "webgl2" else initial
++        for field in ("initialState", "packState", "exportState"):
++            state = scene[field]
++            if (not isinstance(state, dict) or set(state) != set(initial)
++                    or any(type(state[key]) is not type(value) for key, value in initial.items())):
++                raise ValueError("Readback GL-state evidence is malformed")
++        if scene["initialState"] != initial or scene["packState"] != packed or scene["exportState"] != packed:
++            raise ValueError("Readback/export changed pack state or framebuffer binding")
++        # Reuse the existing GPU capability/operation validator independently
++        # of the candidate's allowed pixel changes.
++        normal_scene = copy.deepcopy(read_scene)
++        normal_scene.update(pixels=SHADER_PIXELS.copy(), repeat=SHADER_PIXELS.copy(),
++                            crop=SHADER_PIXELS[20:28] + SHADER_PIXELS[36:44])
++        if api == "webgl2":
++            normal_scene["pbo"] = [165] * 12 + SHADER_PIXELS + [165] * 8
++            normal_scene["packed"] = [165] * 120
++            for row in range(4):
++                start = (row + 1) * 24 + 4
++                normal_scene["packed"][start:start + 16] = SHADER_PIXELS[row * 16:(row + 1) * 16]
++        normalized["webgl"][api]["scene"] = normal_scene
++    validate_gpu_context(context, normalized)
++    return normalized
++
++
+ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None = None,
+                       derivation_mode: str = "partitioned-privacy", previous: dict | None = None) -> dict:
+     if not isinstance(derivation_mode, str) or derivation_mode not in {
+@@ -294,55 +353,7 @@
+         raise ValueError("Readback must cover all document and worker contexts")
+     normalized = copy.deepcopy(observed)
+     for context, values in observed.items():
+-        if not isinstance(values, dict) or set(values) != {"webgl", "webgpu"} or not isinstance(values.get("webgl"), dict):
+-            raise ValueError("Missing WebGL observations")
+-        for api in ("webgl", "webgl2"):
+-            gl = values["webgl"].get(api)
+-            if not isinstance(gl, dict) or gl.get("available") is not True:
+-                raise ValueError("WebGL readback coverage is unavailable: " + context + "/" + api)
+-            scene = gl.get("scene")
+-            fields = {"pixels", "repeat", "crop", "pbo", "packed", "png", "packState",
+-                      "exportState", "initialState", "validation", "lost", "renderbuffer"}
+-            if not isinstance(scene, dict) or set(scene) != fields:
+-                raise ValueError("Readback/export/state observations are incomplete")
+-            full = scene["pixels"]
+-            read_scene = {key: scene[key] for key in ("pixels", "repeat", "crop", "pbo", "packed")}
+-            validate_shader_readback(read_scene, api, expected_pixels=full)
+-            validate_errors(scene["validation"], api, full[:4], scene["lost"])
+-            if api == "webgl2":
+-                try:
+-                    validate_renderbuffer(scene["renderbuffer"], protected=protected)
+-                except ValueError as error:
+-                    raise ValueError(f"{context}/{api}/renderbuffer: {error}") from error
+-            elif scene["renderbuffer"] is not None:
+-                raise ValueError("WebGL1 claimed WebGL2 renderbuffer coverage")
+-            if any((byte != reference if not protected or index % 4 == 3 else
+-                    byte >> 1 != reference >> 1) for index, (byte, reference) in enumerate(zip(full, SHADER_PIXELS))):
+-                raise ValueError("Readback changed alpha, upper colour bits or baseline pixels")
+-            if decode_png(scene["png"]) != full:
+-                raise ValueError("Native PNG export disagrees with WebGL pixels")
+-            initial = {"alignment": 4, "framebuffer": True, "rowLength": 0,
+-                       "skipRows": 0, "skipPixels": 0, "packBound": False}
+-            packed = {**initial, "rowLength": 6, "skipRows": 1, "skipPixels": 1} if api == "webgl2" else initial
+-            for field in ("initialState", "packState", "exportState"):
+-                state = scene[field]
+-                if (not isinstance(state, dict) or set(state) != set(initial)
+-                        or any(type(state[key]) is not type(value) for key, value in initial.items())):
+-                    raise ValueError("Readback GL-state evidence is malformed")
+-            if scene["initialState"] != initial or scene["packState"] != packed or scene["exportState"] != packed:
+-                raise ValueError("Readback/export changed pack state or framebuffer binding")
+-            # Reuse the existing GPU capability/operation validator independently
+-            # of the candidate's allowed pixel changes.
+-            normal_scene = copy.deepcopy(read_scene)
+-            normal_scene.update(pixels=SHADER_PIXELS.copy(), repeat=SHADER_PIXELS.copy(),
+-                                crop=SHADER_PIXELS[20:28] + SHADER_PIXELS[36:44])
+-            if api == "webgl2":
+-                normal_scene["pbo"] = [165] * 12 + SHADER_PIXELS + [165] * 8
+-                normal_scene["packed"] = [165] * 120
+-                for row in range(4):
+-                    start = (row + 1) * 24 + 4
+-                    normal_scene["packed"][start:start + 16] = SHADER_PIXELS[row * 16:(row + 1) * 16]
+-            normalized[context]["webgl"][api]["scene"] = normal_scene
++        normalized[context] = validate_context(context, values, protected=protected)
+     coverage = validate_observations(normalized, baseline=baseline)
+     if coverage["webgl"] != len(CONTEXTS) or coverage["webgl2"] != len(CONTEXTS):
+         raise ValueError("Incomplete native WebGL coverage")
+diff --git a/native/drafts/environment/first-script/retained_document_surfaces.py b/native/drafts/environment/first-script/retained_document_surfaces.py
+new file mode 100644
+--- /dev/null
++++ b/native/drafts/environment/first-script/retained_document_surfaces.py
+@@ -0,0 +1,144 @@
++"""Owned six-document recreated GPU/Audio reads; no worker or live-object claim."""
++import json
++import secrets
++
++from scripts import verify_native_audio as audio
++from scripts import verify_native_gpu_readback as gpu
++from scripts.verify_native_audio_quality import strip_quality
++
++
++INSTALL = r'''spec => {
++  if (Object.hasOwn(window, 'glintRetainedSurfaceProbe')) throw new Error('Duplicate retained surface installation');
++  const read = __OWNED_READ__;
++  const state = {spec, events: [], active: null};
++  Object.defineProperty(window, 'glintRetainedSurfaceProbe', {value: state});
++  addEventListener('pageshow', event => state.events.push(event.persisted));
++  if (spec.role === 'main') {
++    state.sources = new Map();
++    for (const [role, item] of Object.entries(spec.registry)) {
++      let source = self;
++      for (const index of item.path) source = source.frames[index];
++      if (!source) throw new Error('Missing owned WindowProxy: ' + role);
++      state.sources.set(role, source);
++    }
++    state.collect = async persisted => {
++      if (state.active !== null) throw new Error('Overlapping retained surface collection');
++      const request = crypto.randomUUID();
++      return await new Promise((resolve, reject) => {
++        const result = {};
++        let timer;
++        const finish = error => {
++          clearTimeout(timer);
++          state.active = null;
++          if (error) reject(new Error(error)); else resolve(result);
++        };
++        state.active = {request, persisted, result, finish};
++        timer = setTimeout(() => finish('Incomplete retained document surface coverage'), 30000);
++        for (const [role, item] of Object.entries(spec.registry)) {
++          state.sources.get(role).postMessage({kind: 'owned-glint-surface-request', token: spec.token,
++            nonce: item.nonce, role, request}, item.origin);
++        }
++      });
++    };
++  }
++  addEventListener('message', async event => {
++    const value = event.data;
++    if (!value || value.token !== spec.token) return;
++    if (value.kind === 'owned-glint-surface-response' && spec.role === 'main') {
++      const active = state.active;
++      if (!active || value.request !== active.request) return;
++      const expected = spec.registry[value.role];
++      if (!expected || event.source !== state.sources.get(value.role) || event.origin !== expected.origin ||
++          value.origin !== expected.origin || value.nonce !== expected.nonce || value.location !== expected.location) {
++        active.finish('Retained response source/origin/nonce/document mismatch');
++        return;
++      }
++      if (Object.hasOwn(active.result, value.role) || value.persisted !== active.persisted || value.error) {
++        active.finish(value.error || 'Duplicate or wrong-lifecycle retained response');
++        return;
++      }
++      active.result[value.role] = {nonce: value.nonce, origin: value.origin, location: value.location,
++        persisted: value.persisted, timeOrigin: value.timeOrigin, observed: value.observed};
++      if (Object.keys(active.result).length === Object.keys(spec.registry).length) active.finish(null);
++      return;
++    }
++    if (value.kind !== 'owned-glint-surface-request' || event.source !== top ||
++        event.origin !== spec.rootOrigin || value.role !== spec.role || value.nonce !== spec.nonce ||
++        typeof value.request !== 'string' || !value.request) return;
++    const response = {kind: 'owned-glint-surface-response', token: spec.token, request: value.request,
++      role: spec.role, nonce: spec.nonce, origin: self.origin, location: location.href,
++      timeOrigin: performance.timeOrigin, persisted: state.events.includes(true)};
++    try { response.observed = await read(); }
++    catch (error) { response.error = String(error); }
++    top.postMessage(response, spec.rootOrigin);
++  });
++}'''
++
++
++async def install(page, before, read):
++    frames = {frame.name or 'main': frame for frame in page.frames}
++    if set(frames) != set(before) or len(page.frames) != len(before) or len(before) != 6:
++        raise ValueError('Six actual registered documents are required')
++    registry = {}
++    for role, frame in frames.items():
++        path = []
++        current = frame
++        while current.parent_frame is not None:
++            parent = current.parent_frame
++            path.insert(0, parent.child_frames.index(current))
++            current = parent
++        row = before[role]
++        if not row['origin'].startswith('http://'):
++            raise ValueError('Only exact owned nonopaque HTTP fixture origins are allowed')
++        registry[role] = dict(nonce=secrets.token_hex(24), path=path,
++                              origin=row['origin'], location=row['location'])
++    token = secrets.token_hex(24)
++    expression = INSTALL.replace('__OWNED_READ__', '(' + read + ')')
++    for role in ('main', *sorted(set(frames) - {'main'})):
++        await frames[role].evaluate(expression, dict(token=token, role=role, nonce=registry[role]['nonce'],
++            rootOrigin=before['main']['origin'], registry=registry if role == 'main' else None))
++    return dict(token=token, registry=registry)
++
++
++async def collect(session, registration, *, persisted):
++    expression = ('(async spec => { const probe = window.glintRetainedSurfaceProbe; '
++                  'if (!probe || probe.spec.token !== spec.token) throw new Error("Retained registration missing"); '
++                  'return await probe.collect(spec.persisted); })(' +
++                  json.dumps(dict(token=registration['token'], persisted=persisted)) + ')')
++    response = await session.send('Runtime.evaluate', dict(expression=expression, awaitPromise=True,
++        returnByValue=True, timeout=40000))
++    if ('exceptionDetails' in response or not isinstance(response.get('result', {}).get('value'), dict)):
++        raise ValueError('Retained document surface CDP evaluation failed: ' + str(response.get('exceptionDetails')))
++    result = response['result']['value']
++    if set(result) != set(registration['registry']):
++        raise ValueError('Retained surface result has incomplete or extra document roles')
++    for role, row in result.items():
++        expected = registration['registry'][role]
++        if (row['persisted'] is not persisted or row['nonce'] != expected['nonce']
++                or row['origin'] != expected['origin'] or row['location'] != expected['location']):
++            raise ValueError('Measured document identity/lifecycle differs: ' + role)
++    return result
++
++
++def validate_pair(before, after):
++    roles = {'main', 'same', 'cross', 'nested-return', 'srcdoc', 'about-blank'}
++    if set(before) != roles or set(after) != roles:
++        raise ValueError('Six actual document surface observations are required')
++    for role in sorted(roles):
++        first, second = before[role], after[role]
++        if (first['persisted'] is not False or second['persisted'] is not True
++                or any(first[key] != second[key] for key in ('nonce', 'origin', 'location', 'timeOrigin'))):
++            raise ValueError('Document was replaced or not genuinely restored: ' + role)
++        previous = None
++        for row in (first, second):
++            observed = row['observed']
++            stripped = strip_quality({role: observed['audio']})[role]
++            if not audio.validate_context(role, stripped, previous):
++                raise ValueError('Unavailable Audio does not count as document coverage: ' + role)
++            gpu.validate_context(role, observed['gpu'], protected=True)
++            previous = stripped
++        if gpu.restart_state({role: first['observed']['gpu']}) != gpu.restart_state({role: second['observed']['gpu']}):
++            raise ValueError('GPU observations changed after retained restoration: ' + role)
++    return dict(passed=True, document_contexts=6, webgl_apis=2, audio_phases=3,
++                retained_gpu_objects_verified=False, workers_verified=False,
++                webgpu_readback_verified=False, privacy_admitted=False, production_admitted=False)
+diff --git a/native/drafts/environment/first-script/protected_history_runtime.py b/native/drafts/environment/first-script/protected_history_runtime.py
+--- a/native/drafts/environment/first-script/protected_history_runtime.py
++++ b/native/drafts/environment/first-script/protected_history_runtime.py
+@@ -27,7 +27,7 @@
+     parser.add_argument('--executable', type=Path, required=True)
+     parser.add_argument('--work-dir', type=Path, required=True)
+     parser.add_argument('--driver-stage', type=Path, required=True)
+-    parser.add_argument('--probe', choices=('canvas', 'combined'), default='canvas')
++    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents'), default='canvas')
+     args = parser.parse_args()
+     OUT, STAGE, EXE = args.work_dir, args.driver_stage, args.executable
+     MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
+@@ -93,10 +93,13 @@
+     surface_validator = None
+     surface_read = None
+     recapture_surfaces_history = None
+-    if args.probe == 'combined':
++    if args.probe in {'combined', 'retained-documents'}:
+         surface_validator = runpy.run_path(str(FIXTURE / 'protected_surface_history.py'))['validate_runs']
+         recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
+         surface_read = f"async () => ({{gpu: await ({gpu.READBACK_READ})(), audio: await ({surfaces.AUDIO_READ})(true)}})"
++    if args.probe == 'retained-documents':
++        import retained_document_surfaces as retained
++
+     paths = {Path(__file__), MANIFEST, canvas_path, validator_path, *(ROOT / name for name in gpu.probe_inputs()), ROOT / 'app/core/native/runtime.py', ROOT / 'app/core/native/identity.py', *FIXTURE.glob('*.py'), FIXTURE / 'sample.js',
+              STAGE / 'playwright/driver/package/lib/coreBundle.js', STAGE / 'playwright/_impl/_page.py',
+              STAGE / 'playwright/driver/node.exe', *(ROOT / name for name in reference['environment'].source_inputs())}
+@@ -106,9 +109,12 @@
+                   privacy_admitted=False, production_admitted=False,
+                   runtime_core_sha256_measured=core, receipt_sha256=hashlib.sha256(receipt).hexdigest(),
+                   measured_inputs_sha256={str(path): value for path, value in inputs.items()})
+-    if args.probe == 'combined':
+-        report.update(probe='combined', scope='Protected manager BFCache with screen, Canvas formats and top-document recreated GPU/Audio readback continuity; not retained GPU objects, worker lifecycle, WebGPU readback or full policy admission')
+-
++    if args.probe in {'combined', 'retained-documents'}:
++        report.update(probe=args.probe, scope='Protected manager BFCache with screen, Canvas formats and top-document recreated GPU/Audio readback continuity; not retained GPU objects, worker lifecycle, WebGPU readback or full policy admission')
++
++
++    if args.probe == 'retained-documents':
++        report['scope'] = 'Six registered real documents with recreated protected GPU/Audio reads before/after actual BFCache; source/window/origin/nonce/URL/timeOrigin checked; not retained GPU objects, workers, WebGPU readback or full policy admission'
+ 
+     def save():
+         (OUT / 'report.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+@@ -168,6 +174,9 @@
+                             value['observed']['hash'] == value['observed']['repeat'] for value in canvas_before['rows'])
+                         if surface_read is not None:
+                             row['surfaces_before'] = await pages[1].evaluate(surface_read)
++                            if args.probe == 'retained-documents':
++                                registration = await retained.install(pages[1], before, surface_read)
++                                row['retained_documents_before'] = await retained.collect(session, registration, persisted=False)
+                         state = await probe['restore_history'](pages[1], session, before, row)
+                         observed = probe['restored_observations'](state)
+                         restored = await session.send('Runtime.evaluate', {'expression': '(' + canvas_read + ')()',
+@@ -183,6 +192,9 @@
+                         row['canvas_after'] = canvas_after
+                         if surface_read is not None:
+                             row['surfaces_after'] = await read_restored_surfaces(session, surface_read)
++                            if args.probe == 'retained-documents':
++                                row['retained_documents_after'] = await retained.collect(session, registration, persisted=True)
++                                row['retained_document_validation'] = retained.validate_pair(row['retained_documents_before'], row['retained_documents_after'])
+                             post_surfaces = await recapture_surfaces_history(session, state)
+                             observed = probe['restored_observations'](post_surfaces)
+                             row['post_surfaces_history'] = post_surfaces
+@@ -217,6 +229,9 @@
+             report['measurement_complete'] = True
+             report['validation'] = validator(report['runs'], probe['validate_page'], canvas_fixture['compare_formats'])
+             report['passed'] = report['validation']['passed']
++            if args.probe == 'retained-documents':
++                report['retained_document_coverage'] = all(row['retained_document_validation']['passed'] for row in report['runs'])
++                report['passed'] = report['passed'] and report['retained_document_coverage']
+             if surface_validator is not None:
+                 report['surface_validation'] = surface_validator(report['runs'])
+                 report['passed'] = report['passed'] and report['surface_validation']['passed']

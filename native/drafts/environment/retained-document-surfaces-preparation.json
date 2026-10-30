@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "sources": [
+    {
+      "source": "scripts/verify_native_audio.py",
+      "before_sha256": "eff19a51d09e9d18a254a7c98d7be34394c2a74d07494cd5d6d26deda2c1dead",
+      "staged_sha256": "20ec4aee54e7f10375623bc5a33157009cbacfca7c8b037e2b52a83131492617",
+      "before_normalized_utf8_lf_sha256": "eff19a51d09e9d18a254a7c98d7be34394c2a74d07494cd5d6d26deda2c1dead",
+      "before_newline": "LF"
+    },
+    {
+      "source": "scripts/verify_native_gpu.py",
+      "before_sha256": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+      "staged_sha256": "32018a5fd71efa0a51074095857a59de83ce1dd6777df160621293efc0a885aa",
+      "before_normalized_utf8_lf_sha256": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+      "before_newline": "LF"
+    },
+    {
+      "source": "scripts/verify_native_gpu_readback.py",
+      "before_sha256": "f08919882123f5f144a74169be5d19c141825cc27f138ee90f5820a63d517e06",
+      "staged_sha256": "d9174f360beb373c6176c6cd9d97be849fde9e236358487ad7dc4795f5375b3e",
+      "before_normalized_utf8_lf_sha256": "f08919882123f5f144a74169be5d19c141825cc27f138ee90f5820a63d517e06",
+      "before_newline": "LF"
+    },
+    {
+      "source": "native/drafts/environment/first-script/retained_document_surfaces.py",
+      "before_sha256": null,
+      "staged_sha256": "ce0604fe9181d666f9c11db212f3d2c822f51a8a288faf35ab7e8891da441a3d"
+    },
+    {
+      "source": "native/drafts/environment/first-script/protected_history_runtime.py",
+      "before_sha256": "a93112c3abc9b07892e79ddf47213ef0475334e9dac9d0fa396940a45755554a",
+      "staged_sha256": "c7ade33493f95833936b9a8fc54a4d92191ca54e6362221d681a8995211a36d4",
+      "before_normalized_utf8_lf_sha256": "a93112c3abc9b07892e79ddf47213ef0475334e9dac9d0fa396940a45755554a",
+      "before_newline": "LF"
+    }
+  ],
+  "patch_sha256": "b4139527e9e194b0c6f28acbb91c686121596fce2640c24a24adf8a6d149cf51",
+  "selected": true,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "integration_kind": "diagnostic probe, not a Chromium patch or policy admission",
+  "patch": "retained-document-surfaces.patch",
+  "shared_validator_differential_cases": 72,
+  "historical_phases_revalidated": 18,
+  "existing_validator_unit_cases_passed": 366
+}

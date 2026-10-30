@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## Retained-document surfaces — Windows 001–075
+
+`--probe retained-documents` now validates recreated WebGL1/2 readback, PNG/pack/error
+semantics and OfflineAudio across **six actual documents** before/after genuine
+BFCache, in desktop and Mobile Web. Source WindowProxy, origin, per-document nonce,
+URL and `performance.timeOrigin` are checked; restored reads use CDP/postMessage,
+not stale Playwright frame handles. Existing screen/Canvas and top-document gates remain.
+
+Both environments passed, plus **20 synthetic message-routing controls** (including
+wrong source/nonce/origin/URL, duplicate and stale responses). Related regression:
+**460 passed**. Previous full suite at `eddea3d`: **4716 passed, 1 skipped**, before
+this package; a full pass of these changed sources is not claimed yet.
+[Exact runtime evidence](../native/drafts/environment/retained-document-surfaces75-observations.json).
+
+Still open: worker restoration, retained GPU objects, WebGPU readback, cross-session
+screenshots and complete privacy/release admission. Linux/macOS remain deferred.
+
 ## Current Windows 001–075 — compiled; scoped browser gates measured
 
 | Gate | Measured result | Boundary |

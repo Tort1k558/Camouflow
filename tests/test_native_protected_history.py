@@ -104,7 +104,8 @@ def test_stability_flags_cannot_override_bad_pixels_cleanup_or_navigation(runs, 
     assert not validate(runs)['passed']
 
 
-def test_public_browser_probe_binds_exact_sources_and_revalidates_actual_observations(protected_runtime_before_surfaces_sha256):
+def test_public_browser_probe_binds_exact_sources_and_revalidates_actual_observations(
+        protected_runtime_before_surfaces_sha256, surface_sources_before_retained):
     record = json.loads((ROOT / 'native/drafts/environment/protected-history73-observations.json').read_bytes())
     build = json.loads((ROOT / 'native/drafts/upstream-156/build73-observations.json').read_bytes())
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
@@ -114,6 +115,8 @@ def test_public_browser_probe_binds_exact_sources_and_revalidates_actual_observa
     for relative, expected in record['measured_inputs_sha256'].items():
         measured = (protected_runtime_before_surfaces_sha256
                     if relative == 'native/drafts/environment/first-script/protected_history_runtime.py'
+                    else surface_sources_before_retained['sha256'][relative]
+                    if relative in surface_sources_before_retained['sha256']
                     else hashlib.sha256((ROOT / relative).read_bytes()).hexdigest())
         assert measured == expected, relative
     assert record['privacy_admitted'] is record['production_admitted'] is False

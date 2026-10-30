@@ -59,11 +59,12 @@ def qml_before_delivery_diagnostics_sha256(tmp_path):
 
 @pytest.fixture
 def native70_historical_source_hashes(native_units_before_orientation, recorder_before_document_open_sha256,
-                                     storage_before_read_lock_sha256):
+                                     storage_before_read_lock_sha256, surface_sources_before_retained):
     root = Path(__file__).resolve().parents[1]
     return {
         "native/drafts/upstream-156/manifest.json": hashlib.sha256(
             (root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest(),
+        **surface_sources_before_retained['sha256'],
         "scripts/verify_native_privacy_units.py": native_units_before_orientation["source_sha256"],
         "app/services/scenario_recorder.py": recorder_before_document_open_sha256,
         "app/storage/db.py": storage_before_read_lock_sha256,
@@ -101,12 +102,12 @@ def nested_runtime_before_selector_sha256(tmp_path):
 
 
 @pytest.fixture
-def protected_runtime_before_surfaces_sha256(tmp_path):
+def protected_runtime_before_surfaces_sha256(tmp_path, surface_sources_before_retained):
     root = Path(__file__).resolve().parents[1]
     relative = Path('native/drafts/environment/first-script/protected_history_runtime.py')
     target = tmp_path / relative
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text((root / relative).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+    target.write_text(surface_sources_before_retained['sources'][relative.as_posix()], encoding='utf-8', newline='\n')
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error',
                     str(root / 'native/drafts/environment/protected-surface-history74.patch')],
                    cwd=tmp_path, check=True, capture_output=True)
@@ -150,3 +151,36 @@ def stage_before_python_overlay_sources(tmp_path):
                     str(root / "native/drafts/environment/driver-stage-python-integration.patch")],
                    cwd=tmp_path, check=True, capture_output=True)
     return {name: (tmp_path / name).read_text(encoding="utf-8") for name in names}
+
+
+@pytest.fixture
+def surface_sources_before_retained(tmp_path):
+    """Reconstruct exact pre-extraction sources; never rewrite historical observations."""
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'retained-document-surfaces-preparation.json').read_bytes())
+    base = tmp_path / 'before-retained-document-surfaces'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text((root / row['source']).read_text(encoding='utf-8-sig'),
+                          encoding='utf-8', newline='\n')
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=30)
+    result = {'sha256': {}, 'sources': {}}
+    for row in record['sources']:
+        target = base / row['source']
+        if row['before_sha256'] is None:
+            assert not target.exists()
+            continue
+        normalized = target.read_bytes()
+        assert hashlib.sha256(normalized).hexdigest() == row['before_normalized_utf8_lf_sha256']
+        assert row['before_newline'] in {'LF', 'CRLF'}
+        original = normalized if row['before_newline'] == 'LF' else normalized.replace(b'\n', b'\r\n')
+        value = hashlib.sha256(original).hexdigest()
+        assert value == row['before_sha256'], row['source']
+        result['sha256'][row['source']] = value
+        result['sources'][row['source']] = target.read_text(encoding='utf-8')
+    return result

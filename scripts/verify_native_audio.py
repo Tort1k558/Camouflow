@@ -90,6 +90,50 @@ def probe_inputs() -> dict[str, str]:
         "scripts/verify_native_hardware.py", "scripts/verify_native_runtime.py")}
 
 
+def validate_context(name: str, values: dict, previous: dict | None = None) -> bool:
+    """Validate one real observation; False means unavailable, not coverage."""
+    if not isinstance(name, str) or not name:
+        raise ValueError("An explicit context label is required")
+    if previous is not None:
+        validate_context(name, previous)
+    if not isinstance(values, dict) or type(values.get("available")) is not bool:
+        raise ValueError(f"Missing Audio availability: {name}")
+    if not values["available"]:
+        if not isinstance(values.get("reason"), str) or not values["reason"]:
+            raise ValueError(f"Missing Audio unavailability reason: {name}")
+        if previous is not None and previous["available"]:
+            raise ValueError(f"Audio capability disappeared: {name}")
+        return False
+    if (set(values) != {"available", "completionMutationVisible", "signal", "repeat", "silence"}
+            or values["completionMutationVisible"] is not True):
+        raise ValueError(f"Missing Audio render phases: {name}")
+    for phase in ("signal", "repeat", "silence"):
+        result = values[phase]
+        if not isinstance(result, dict):
+            raise TypeError(f"Invalid Audio result: {name}/{phase}")
+        digest = result.get("hash")
+        if (not isinstance(digest, str) or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)
+                or result.get("copiedHash") != digest or result.get("rightHash") != digest):
+            raise ValueError(f"Inconsistent Audio channel/copy reads: {name}/{phase}")
+        if any(result.get(key) is not True for key in ("finite", "eventSameBuffer", "liveMutation",
+                "copyFromSeesMutation", "copyToSeesMutation", "closed")):
+            raise ValueError(f"Audio buffer semantics failed: {name}/{phase}")
+        if (result.get("invalidChannel") != "IndexSizeError" or result.get("sampleRate") != 44100
+                or result.get("channels") != 2 or result.get("frames") != 4096):
+            raise ValueError(f"Audio format/error semantics failed: {name}/{phase}")
+        if phase == "silence":
+            if result.get("silence") is not True or result.get("signal") is not None:
+                raise ValueError(f"Offline silence changed: {name}")
+        elif result.get("signal") is not True or result.get("silence") is not None:
+            raise ValueError(f"Offline signal disappeared: {name}/{phase}")
+    if values["signal"] != values["repeat"]:
+        raise ValueError(f"Repeated offline rendering changed: {name}")
+    if previous is not None and previous != values:
+        raise ValueError(f"Offline Audio changed across restart: {name}")
+    return True
+
+
 def validate_observations(observed: dict, previous: dict | None = None) -> dict:
     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
         raise ValueError("Audio probe must observe every document and worker context")
@@ -97,43 +141,8 @@ def validate_observations(observed: dict, previous: dict | None = None) -> dict:
         validate_observations(previous)
     coverage = {"available": [], "unavailable": []}
     for name, values in observed.items():
-        if not isinstance(values, dict) or type(values.get("available")) is not bool:
-            raise ValueError(f"Missing Audio availability: {name}")
-        if not values["available"]:
-            if not isinstance(values.get("reason"), str) or not values["reason"]:
-                raise ValueError(f"Missing Audio unavailability reason: {name}")
-            if previous is not None and previous[name]["available"]:
-                raise ValueError(f"Audio capability disappeared: {name}")
-            coverage["unavailable"].append(name)
-            continue
-        coverage["available"].append(name)
-        if (set(values) != {"available", "completionMutationVisible", "signal", "repeat", "silence"}
-                or values["completionMutationVisible"] is not True):
-            raise ValueError(f"Missing Audio render phases: {name}")
-        for phase in ("signal", "repeat", "silence"):
-            result = values[phase]
-            if not isinstance(result, dict):
-                raise TypeError(f"Invalid Audio result: {name}/{phase}")
-            digest = result.get("hash")
-            if (not isinstance(digest, str) or len(digest) != 64
-                    or any(character not in "0123456789abcdef" for character in digest)
-                    or result.get("copiedHash") != digest or result.get("rightHash") != digest):
-                raise ValueError(f"Inconsistent Audio channel/copy reads: {name}/{phase}")
-            if any(result.get(key) is not True for key in ("finite", "eventSameBuffer", "liveMutation",
-                    "copyFromSeesMutation", "copyToSeesMutation", "closed")):
-                raise ValueError(f"Audio buffer semantics failed: {name}/{phase}")
-            if (result.get("invalidChannel") != "IndexSizeError" or result.get("sampleRate") != 44100
-                    or result.get("channels") != 2 or result.get("frames") != 4096):
-                raise ValueError(f"Audio format/error semantics failed: {name}/{phase}")
-            if phase == "silence":
-                if result.get("silence") is not True or result.get("signal") is not None:
-                    raise ValueError(f"Offline silence changed: {name}")
-            elif result.get("signal") is not True or result.get("silence") is not None:
-                raise ValueError(f"Offline signal disappeared: {name}/{phase}")
-        if values["signal"] != values["repeat"]:
-            raise ValueError(f"Repeated offline rendering changed: {name}")
-        if previous is not None and previous[name] != values:
-            raise ValueError(f"Offline Audio changed across restart: {name}")
+        available = validate_context(name, values, None if previous is None else previous[name])
+        coverage["available" if available else "unavailable"].append(name)
     if not coverage["available"]:
         raise ValueError("No available OfflineAudioContext; cannot pass diagnostics")
     return {key: sorted(value) for key, value in coverage.items()}

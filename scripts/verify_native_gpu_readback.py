@@ -32,6 +32,7 @@ from scripts.verify_native_gpu import (
     validate_shader_readback,
 )
 from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
+from scripts.verify_native_gpu import validate_context as validate_gpu_context
 from scripts.verify_native_surfaces import DERIVATION_MODES, IDENTITY_ARGUMENT, SAME_PARTITION, SurfaceConfiguration
 from scripts.verify_native_surfaces import validate_receipt as validate_surface_receipt
 from scripts.verify_native_worker_startup import (
@@ -285,6 +286,64 @@ def decode_png(value: list[int]) -> list[int]:
             for byte in data[row * image.bytesPerLine():row * image.bytesPerLine() + 16]]
 
 
+def validate_context(context: str, values: dict, *, protected: bool) -> dict:
+    """Return capability-normalized evidence; compare original input for identity."""
+    if not isinstance(context, str) or not context:
+        raise ValueError("An explicit context label is required")
+    normalized = copy.deepcopy(values)
+    if not isinstance(values, dict) or set(values) != {"webgl", "webgpu"} or not isinstance(values.get("webgl"), dict):
+        raise ValueError("Missing WebGL observations")
+    for api in ("webgl", "webgl2"):
+        gl = values["webgl"].get(api)
+        if not isinstance(gl, dict) or gl.get("available") is not True:
+            raise ValueError("WebGL readback coverage is unavailable: " + context + "/" + api)
+        scene = gl.get("scene")
+        fields = {"pixels", "repeat", "crop", "pbo", "packed", "png", "packState",
+                  "exportState", "initialState", "validation", "lost", "renderbuffer"}
+        if not isinstance(scene, dict) or set(scene) != fields:
+            raise ValueError("Readback/export/state observations are incomplete")
+        full = scene["pixels"]
+        read_scene = {key: scene[key] for key in ("pixels", "repeat", "crop", "pbo", "packed")}
+        validate_shader_readback(read_scene, api, expected_pixels=full)
+        validate_errors(scene["validation"], api, full[:4], scene["lost"])
+        if api == "webgl2":
+            try:
+                validate_renderbuffer(scene["renderbuffer"], protected=protected)
+            except ValueError as error:
+                raise ValueError(f"{context}/{api}/renderbuffer: {error}") from error
+        elif scene["renderbuffer"] is not None:
+            raise ValueError("WebGL1 claimed WebGL2 renderbuffer coverage")
+        if any((byte != reference if not protected or index % 4 == 3 else
+                byte >> 1 != reference >> 1) for index, (byte, reference) in enumerate(zip(full, SHADER_PIXELS))):
+            raise ValueError("Readback changed alpha, upper colour bits or baseline pixels")
+        if decode_png(scene["png"]) != full:
+            raise ValueError("Native PNG export disagrees with WebGL pixels")
+        initial = {"alignment": 4, "framebuffer": True, "rowLength": 0,
+                   "skipRows": 0, "skipPixels": 0, "packBound": False}
+        packed = {**initial, "rowLength": 6, "skipRows": 1, "skipPixels": 1} if api == "webgl2" else initial
+        for field in ("initialState", "packState", "exportState"):
+            state = scene[field]
+            if (not isinstance(state, dict) or set(state) != set(initial)
+                    or any(type(state[key]) is not type(value) for key, value in initial.items())):
+                raise ValueError("Readback GL-state evidence is malformed")
+        if scene["initialState"] != initial or scene["packState"] != packed or scene["exportState"] != packed:
+            raise ValueError("Readback/export changed pack state or framebuffer binding")
+        # Reuse the existing GPU capability/operation validator independently
+        # of the candidate's allowed pixel changes.
+        normal_scene = copy.deepcopy(read_scene)
+        normal_scene.update(pixels=SHADER_PIXELS.copy(), repeat=SHADER_PIXELS.copy(),
+                            crop=SHADER_PIXELS[20:28] + SHADER_PIXELS[36:44])
+        if api == "webgl2":
+            normal_scene["pbo"] = [165] * 12 + SHADER_PIXELS + [165] * 8
+            normal_scene["packed"] = [165] * 120
+            for row in range(4):
+                start = (row + 1) * 24 + 4
+                normal_scene["packed"][start:start + 16] = SHADER_PIXELS[row * 16:(row + 1) * 16]
+        normalized["webgl"][api]["scene"] = normal_scene
+    validate_gpu_context(context, normalized)
+    return normalized
+
+
 def validate_readback(observed: dict, *, protected: bool, baseline: dict | None = None,
                       derivation_mode: str = "partitioned-privacy", previous: dict | None = None) -> dict:
     if not isinstance(derivation_mode, str) or derivation_mode not in {
@@ -294,55 +353,7 @@ def validate_readback(observed: dict, *, protected: bool, baseline: dict | None 
         raise ValueError("Readback must cover all document and worker contexts")
     normalized = copy.deepcopy(observed)
     for context, values in observed.items():
-        if not isinstance(values, dict) or set(values) != {"webgl", "webgpu"} or not isinstance(values.get("webgl"), dict):
-            raise ValueError("Missing WebGL observations")
-        for api in ("webgl", "webgl2"):
-            gl = values["webgl"].get(api)
-            if not isinstance(gl, dict) or gl.get("available") is not True:
-                raise ValueError("WebGL readback coverage is unavailable: " + context + "/" + api)
-            scene = gl.get("scene")
-            fields = {"pixels", "repeat", "crop", "pbo", "packed", "png", "packState",
-                      "exportState", "initialState", "validation", "lost", "renderbuffer"}
-            if not isinstance(scene, dict) or set(scene) != fields:
-                raise ValueError("Readback/export/state observations are incomplete")
-            full = scene["pixels"]
-            read_scene = {key: scene[key] for key in ("pixels", "repeat", "crop", "pbo", "packed")}
-            validate_shader_readback(read_scene, api, expected_pixels=full)
-            validate_errors(scene["validation"], api, full[:4], scene["lost"])
-            if api == "webgl2":
-                try:
-                    validate_renderbuffer(scene["renderbuffer"], protected=protected)
-                except ValueError as error:
-                    raise ValueError(f"{context}/{api}/renderbuffer: {error}") from error
-            elif scene["renderbuffer"] is not None:
-                raise ValueError("WebGL1 claimed WebGL2 renderbuffer coverage")
-            if any((byte != reference if not protected or index % 4 == 3 else
-                    byte >> 1 != reference >> 1) for index, (byte, reference) in enumerate(zip(full, SHADER_PIXELS))):
-                raise ValueError("Readback changed alpha, upper colour bits or baseline pixels")
-            if decode_png(scene["png"]) != full:
-                raise ValueError("Native PNG export disagrees with WebGL pixels")
-            initial = {"alignment": 4, "framebuffer": True, "rowLength": 0,
-                       "skipRows": 0, "skipPixels": 0, "packBound": False}
-            packed = {**initial, "rowLength": 6, "skipRows": 1, "skipPixels": 1} if api == "webgl2" else initial
-            for field in ("initialState", "packState", "exportState"):
-                state = scene[field]
-                if (not isinstance(state, dict) or set(state) != set(initial)
-                        or any(type(state[key]) is not type(value) for key, value in initial.items())):
-                    raise ValueError("Readback GL-state evidence is malformed")
-            if scene["initialState"] != initial or scene["packState"] != packed or scene["exportState"] != packed:
-                raise ValueError("Readback/export changed pack state or framebuffer binding")
-            # Reuse the existing GPU capability/operation validator independently
-            # of the candidate's allowed pixel changes.
-            normal_scene = copy.deepcopy(read_scene)
-            normal_scene.update(pixels=SHADER_PIXELS.copy(), repeat=SHADER_PIXELS.copy(),
-                                crop=SHADER_PIXELS[20:28] + SHADER_PIXELS[36:44])
-            if api == "webgl2":
-                normal_scene["pbo"] = [165] * 12 + SHADER_PIXELS + [165] * 8
-                normal_scene["packed"] = [165] * 120
-                for row in range(4):
-                    start = (row + 1) * 24 + 4
-                    normal_scene["packed"][start:start + 16] = SHADER_PIXELS[row * 16:(row + 1) * 16]
-            normalized[context]["webgl"][api]["scene"] = normal_scene
+        normalized[context] = validate_context(context, values, protected=protected)
     coverage = validate_observations(normalized, baseline=baseline)
     if coverage["webgl"] != len(CONTEXTS) or coverage["webgl2"] != len(CONTEXTS):
         raise ValueError("Incomplete native WebGL coverage")

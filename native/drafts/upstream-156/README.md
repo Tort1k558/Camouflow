@@ -1,5 +1,22 @@
 # Chromium 156 rebase candidate
 
+## Retained-document diagnostic command
+
+```powershell
+.venv\Scripts\python.exe native\drafts\environment\first-script\protected_history_runtime.py `
+  --executable D:\Glint156Candidate\preserved-runtime75-20261030-v1\runtime\chrome.exe `
+  --work-dir D:\GlintManagerQA\retained-documents-fresh-run `
+  --driver-stage D:\GlintManagerQA\staged-python-js70-20261030-v1 `
+  --probe retained-documents
+```
+
+Use a **new, nonexistent** output directory. This adds six actual document GPU/Audio
+reads around BFCache while keeping existing screen/Canvas checks and source/runtime
+guards. Default `canvas` and existing `combined` modes are unchanged.
+Desktop/Mobile Web passed; this is not worker restoration, retained GPU objects,
+WebGPU readback or a fix for cross-session screenshots.
+[Exact results](../environment/retained-document-surfaces75-observations.json).
+
 ## Current: 001–075 built and preserved; 494 native cases passed
 
 The j4 cached rebuild retained all objects: browser credits 1 step / 2m40s, native build 2 steps / 7m16s. All 23 native groups / 494 cases passed and 269 runtime assets were independently preserved. Full Python: 4709 passed, 1 skipped.

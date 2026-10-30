@@ -403,6 +403,103 @@ def validate_shader_readback(scene: dict, api: str, *, expected_pixels: list[int
             raise ValueError("Shader/crop/PBO/padding readback mismatch: " + api + "/" + name)
 
 
+def validate_context(context: str, values: dict, *, minimized: bool = False,
+                     baseline: dict | None = None) -> dict:
+    """Validate a single measured context without inventing aggregate coverage."""
+    if not isinstance(context, str) or not context:
+        raise ValueError("An explicit context label is required")
+    if baseline is not None:
+        validate_context(context, baseline)
+    coverage = {"webgl": 0, "webgl2": 0, "webgpu": 0}
+    if not isinstance(values, dict) or set(values) != {"webgl", "webgpu"}:
+        raise ValueError(f"Malformed GPU observation: {context}")
+    if not isinstance(values["webgl"], dict) or set(values["webgl"]) != {"webgl", "webgl2"}:
+        raise ValueError(f"Missing WebGL variants: {context}")
+    for api, gl in values["webgl"].items():
+        if not isinstance(gl, dict) or type(gl.get("available")) is not bool:
+            raise ValueError(f"Missing availability: {context}/{api}")
+        if not gl["available"]:
+            if baseline is not None and baseline["webgl"][api]["available"]:
+                raise ValueError(f"GPU context disappeared: {context}/{api}")
+            continue
+        coverage[api] += 1
+        validate_shader_readback(gl.get("scene"), api)
+        if (gl.get("pixels") != [17, 34, 51, 255] or type(gl.get("error")) is not int or gl["error"] != 0
+                or gl.get("contextLost") is not False):
+            raise ValueError(f"WebGL operation failed: {context}/{api}")
+        extensions = gl.get("extensions")
+        limits = gl.get("limits")
+        if (not isinstance(extensions, list) or any(not isinstance(item, str) for item in extensions)
+                or len(extensions) != len(set(extensions))
+                or not isinstance(limits, dict) or set(limits) != WEBGL_LIMITS
+                or any(type(value) is not int or value <= 0 for value in limits.values())
+                or type(gl.get("debug")) is not bool):
+            raise ValueError(f"Invalid WebGL metadata: {context}/{api}")
+        if gl["debug"] != ("WEBGL_debug_renderer_info" in extensions):
+            raise ValueError(f"Inconsistent debug extension: {context}/{api}")
+        if (type(gl.get("debugShaders")) is not bool
+                or gl["debugShaders"] != ("WEBGL_debug_shaders" in extensions)
+                or type(gl.get("translatedShaderLength")) is not int
+                or gl["translatedShaderLength"] < 0
+                or (not gl["debugShaders"] and gl["translatedShaderLength"] != 0)):
+            raise ValueError(f"Inconsistent translated-shader debug extension: {context}/{api}")
+        if minimized and gl["debugShaders"]:
+            raise ValueError(f"Translated shader metadata still exposed: {context}/{api}")
+        if minimized and gl["debug"]:
+            raise ValueError(f"GPU debug metadata still exposed: {context}/{api}")
+        if not gl["debug"] and (gl.get("vendor") is not None or gl.get("renderer") is not None
+                or gl.get("unavailableParameter") != {"value": None, "error": 1280}):
+            raise ValueError(f"Unavailable extension changed API semantics: {context}/{api}")
+        if baseline is not None:
+            previous = baseline["webgl"][api]
+            if not previous["available"] or previous["limits"] != limits:
+                raise ValueError(f"WebGL availability/limits changed: {context}/{api}")
+            previous_extensions = [item for item in previous["extensions"]
+                                   if not minimized or item not in {"WEBGL_debug_renderer_info", "WEBGL_debug_shaders"}]
+            if previous_extensions != extensions:
+                raise ValueError(f"Unrelated WebGL extensions changed: {context}/{api}")
+    gpu = values["webgpu"]
+    if not isinstance(gpu, dict) or type(gpu.get("available")) is not bool:
+        raise ValueError(f"Missing WebGPU availability: {context}")
+    if not gpu["available"]:
+        if not isinstance(gpu.get("reason"), str) or not gpu["reason"]:
+            raise ValueError(f"Missing WebGPU unavailability reason: {context}")
+        if baseline is not None and baseline["webgpu"]["available"]:
+            raise ValueError(f"WebGPU adapter disappeared: {context}")
+        return coverage
+    coverage["webgpu"] += 1
+    validate_texture_readback(gpu.get("textures"))
+    info = gpu.get("info")
+    if (not isinstance(info, dict) or set(info) != {"vendor", "architecture", "device",
+            "description", "subgroupMinSize", "subgroupMaxSize", "isFallbackAdapter"}
+            or any(not isinstance(info[key], str) for key in ("vendor", "architecture", "device", "description"))
+            or any(type(info[key]) is not int or info[key] < 0 for key in ("subgroupMinSize", "subgroupMaxSize"))
+            or info["subgroupMinSize"] > info["subgroupMaxSize"]
+            or type(info["isFallbackAdapter"]) is not bool):
+        raise ValueError(f"Invalid WebGPU adapter info: {context}")
+    if gpu.get("repeat") != info or gpu.get("deviceInfo") != info:
+        raise ValueError(f"Inconsistent adapter/device info: {context}")
+    if minimized and any(info[key] for key in ("vendor", "architecture", "device", "description")):
+        raise ValueError(f"WebGPU identifying strings still exposed: {context}")
+    if (gpu.get("roundtrip") != [17, 34, 51, 255] or gpu.get("compute") != [18, 35, 52, 256]
+            or gpu.get("validationError") is not None or gpu.get("errors") != []):
+        raise ValueError(f"WebGPU buffer/compute operation failed: {context}")
+    if (not isinstance(gpu.get("features"), list)
+            or any(not isinstance(item, str) for item in gpu["features"])
+            or len(gpu["features"]) != len(set(gpu["features"]))
+            or not isinstance(gpu.get("limits"), dict) or set(gpu["limits"]) != WEBGPU_LIMITS
+            or any(type(value) is not int or value <= 0 for value in gpu["limits"].values())):
+        raise ValueError(f"Invalid WebGPU features/limits: {context}")
+    if baseline is not None:
+        previous = baseline["webgpu"]
+        if (not previous["available"] or previous["limits"] != gpu["limits"]
+                or previous["features"] != gpu["features"]
+                or any(previous["info"][key] != info[key] for key in
+                       ("subgroupMinSize", "subgroupMaxSize", "isFallbackAdapter"))):
+            raise ValueError(f"WebGPU capabilities changed: {context}")
+    return coverage
+
+
 def validate_observations(observed: dict, *, minimized: bool = False,
                           baseline: dict | None = None) -> dict:
     if not isinstance(observed, dict) or set(observed) != CONTEXTS:
@@ -411,92 +508,10 @@ def validate_observations(observed: dict, *, minimized: bool = False,
         validate_observations(baseline)
     coverage = {"webgl": 0, "webgl2": 0, "webgpu": 0}
     for context, values in observed.items():
-        if not isinstance(values, dict) or set(values) != {"webgl", "webgpu"}:
-            raise ValueError(f"Malformed GPU observation: {context}")
-        if not isinstance(values["webgl"], dict) or set(values["webgl"]) != {"webgl", "webgl2"}:
-            raise ValueError(f"Missing WebGL variants: {context}")
-        for api, gl in values["webgl"].items():
-            if not isinstance(gl, dict) or type(gl.get("available")) is not bool:
-                raise ValueError(f"Missing availability: {context}/{api}")
-            if not gl["available"]:
-                if baseline is not None and baseline[context]["webgl"][api]["available"]:
-                    raise ValueError(f"GPU context disappeared: {context}/{api}")
-                continue
-            coverage[api] += 1
-            validate_shader_readback(gl.get("scene"), api)
-            if (gl.get("pixels") != [17, 34, 51, 255] or type(gl.get("error")) is not int or gl["error"] != 0
-                    or gl.get("contextLost") is not False):
-                raise ValueError(f"WebGL operation failed: {context}/{api}")
-            extensions = gl.get("extensions")
-            limits = gl.get("limits")
-            if (not isinstance(extensions, list) or any(not isinstance(item, str) for item in extensions)
-                    or len(extensions) != len(set(extensions))
-                    or not isinstance(limits, dict) or set(limits) != WEBGL_LIMITS
-                    or any(type(value) is not int or value <= 0 for value in limits.values())
-                    or type(gl.get("debug")) is not bool):
-                raise ValueError(f"Invalid WebGL metadata: {context}/{api}")
-            if gl["debug"] != ("WEBGL_debug_renderer_info" in extensions):
-                raise ValueError(f"Inconsistent debug extension: {context}/{api}")
-            if (type(gl.get("debugShaders")) is not bool
-                    or gl["debugShaders"] != ("WEBGL_debug_shaders" in extensions)
-                    or type(gl.get("translatedShaderLength")) is not int
-                    or gl["translatedShaderLength"] < 0
-                    or (not gl["debugShaders"] and gl["translatedShaderLength"] != 0)):
-                raise ValueError(f"Inconsistent translated-shader debug extension: {context}/{api}")
-            if minimized and gl["debugShaders"]:
-                raise ValueError(f"Translated shader metadata still exposed: {context}/{api}")
-            if minimized and gl["debug"]:
-                raise ValueError(f"GPU debug metadata still exposed: {context}/{api}")
-            if not gl["debug"] and (gl.get("vendor") is not None or gl.get("renderer") is not None
-                    or gl.get("unavailableParameter") != {"value": None, "error": 1280}):
-                raise ValueError(f"Unavailable extension changed API semantics: {context}/{api}")
-            if baseline is not None:
-                previous = baseline[context]["webgl"][api]
-                if not previous["available"] or previous["limits"] != limits:
-                    raise ValueError(f"WebGL availability/limits changed: {context}/{api}")
-                previous_extensions = [item for item in previous["extensions"]
-                                       if not minimized or item not in {"WEBGL_debug_renderer_info", "WEBGL_debug_shaders"}]
-                if previous_extensions != extensions:
-                    raise ValueError(f"Unrelated WebGL extensions changed: {context}/{api}")
-        gpu = values["webgpu"]
-        if not isinstance(gpu, dict) or type(gpu.get("available")) is not bool:
-            raise ValueError(f"Missing WebGPU availability: {context}")
-        if not gpu["available"]:
-            if not isinstance(gpu.get("reason"), str) or not gpu["reason"]:
-                raise ValueError(f"Missing WebGPU unavailability reason: {context}")
-            if baseline is not None and baseline[context]["webgpu"]["available"]:
-                raise ValueError(f"WebGPU adapter disappeared: {context}")
-            continue
-        coverage["webgpu"] += 1
-        validate_texture_readback(gpu.get("textures"))
-        info = gpu.get("info")
-        if (not isinstance(info, dict) or set(info) != {"vendor", "architecture", "device",
-                "description", "subgroupMinSize", "subgroupMaxSize", "isFallbackAdapter"}
-                or any(not isinstance(info[key], str) for key in ("vendor", "architecture", "device", "description"))
-                or any(type(info[key]) is not int or info[key] < 0 for key in ("subgroupMinSize", "subgroupMaxSize"))
-                or info["subgroupMinSize"] > info["subgroupMaxSize"]
-                or type(info["isFallbackAdapter"]) is not bool):
-            raise ValueError(f"Invalid WebGPU adapter info: {context}")
-        if gpu.get("repeat") != info or gpu.get("deviceInfo") != info:
-            raise ValueError(f"Inconsistent adapter/device info: {context}")
-        if minimized and any(info[key] for key in ("vendor", "architecture", "device", "description")):
-            raise ValueError(f"WebGPU identifying strings still exposed: {context}")
-        if (gpu.get("roundtrip") != [17, 34, 51, 255] or gpu.get("compute") != [18, 35, 52, 256]
-                or gpu.get("validationError") is not None or gpu.get("errors") != []):
-            raise ValueError(f"WebGPU buffer/compute operation failed: {context}")
-        if (not isinstance(gpu.get("features"), list)
-                or any(not isinstance(item, str) for item in gpu["features"])
-                or len(gpu["features"]) != len(set(gpu["features"]))
-                or not isinstance(gpu.get("limits"), dict) or set(gpu["limits"]) != WEBGPU_LIMITS
-                or any(type(value) is not int or value <= 0 for value in gpu["limits"].values())):
-            raise ValueError(f"Invalid WebGPU features/limits: {context}")
-        if baseline is not None:
-            previous = baseline[context]["webgpu"]
-            if (not previous["available"] or previous["limits"] != gpu["limits"]
-                    or previous["features"] != gpu["features"]
-                    or any(previous["info"][key] != info[key] for key in
-                           ("subgroupMinSize", "subgroupMaxSize", "isFallbackAdapter"))):
-                raise ValueError(f"WebGPU capabilities changed: {context}")
+        counts = validate_context(context, values, minimized=minimized,
+                                  baseline=None if baseline is None else baseline[context])
+        for api, count in counts.items():
+            coverage[api] += count
     if not coverage["webgl"] or not coverage["webgl2"]:
         raise ValueError("No working WebGL1/2 coverage; this cannot pass diagnostics")
     return coverage

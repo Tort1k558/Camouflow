@@ -121,6 +121,9 @@ def test_stock_controls_use_identical_collectors_but_do_not_claim_equal_build_fl
     assert not stage['pages']['B']['post_capture_errors']
 
 
-def test_evidence_still_binds_the_measured_public_collectors():
+def test_evidence_still_binds_the_measured_public_collectors(surface_sources_before_retained):
     for name, expected in record()['public_collector_sources_sha256'].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        actual = (surface_sources_before_retained['sha256'][name]
+                  if name in surface_sources_before_retained['sha256']
+                  else hashlib.sha256((ROOT / name).read_bytes()).hexdigest())
+        assert actual == expected

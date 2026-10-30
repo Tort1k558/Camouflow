@@ -27,7 +27,7 @@ def main() -> int:
     parser.add_argument('--executable', type=Path, required=True)
     parser.add_argument('--work-dir', type=Path, required=True)
     parser.add_argument('--driver-stage', type=Path, required=True)
-    parser.add_argument('--probe', choices=('canvas', 'combined'), default='canvas')
+    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents'), default='canvas')
     args = parser.parse_args()
     OUT, STAGE, EXE = args.work_dir, args.driver_stage, args.executable
     MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
@@ -93,10 +93,13 @@ def main() -> int:
     surface_validator = None
     surface_read = None
     recapture_surfaces_history = None
-    if args.probe == 'combined':
+    if args.probe in {'combined', 'retained-documents'}:
         surface_validator = runpy.run_path(str(FIXTURE / 'protected_surface_history.py'))['validate_runs']
         recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
         surface_read = f"async () => ({{gpu: await ({gpu.READBACK_READ})(), audio: await ({surfaces.AUDIO_READ})(true)}})"
+    if args.probe == 'retained-documents':
+        import retained_document_surfaces as retained
+
     paths = {Path(__file__), MANIFEST, canvas_path, validator_path, *(ROOT / name for name in gpu.probe_inputs()), ROOT / 'app/core/native/runtime.py', ROOT / 'app/core/native/identity.py', *FIXTURE.glob('*.py'), FIXTURE / 'sample.js',
              STAGE / 'playwright/driver/package/lib/coreBundle.js', STAGE / 'playwright/_impl/_page.py',
              STAGE / 'playwright/driver/node.exe', *(ROOT / name for name in reference['environment'].source_inputs())}
@@ -106,9 +109,12 @@ def main() -> int:
                   privacy_admitted=False, production_admitted=False,
                   runtime_core_sha256_measured=core, receipt_sha256=hashlib.sha256(receipt).hexdigest(),
                   measured_inputs_sha256={str(path): value for path, value in inputs.items()})
-    if args.probe == 'combined':
-        report.update(probe='combined', scope='Protected manager BFCache with screen, Canvas formats and top-document recreated GPU/Audio readback continuity; not retained GPU objects, worker lifecycle, WebGPU readback or full policy admission')
+    if args.probe in {'combined', 'retained-documents'}:
+        report.update(probe=args.probe, scope='Protected manager BFCache with screen, Canvas formats and top-document recreated GPU/Audio readback continuity; not retained GPU objects, worker lifecycle, WebGPU readback or full policy admission')
 
+
+    if args.probe == 'retained-documents':
+        report['scope'] = 'Six registered real documents with recreated protected GPU/Audio reads before/after actual BFCache; source/window/origin/nonce/URL/timeOrigin checked; not retained GPU objects, workers, WebGPU readback or full policy admission'
 
     def save():
         (OUT / 'report.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
@@ -168,6 +174,9 @@ def main() -> int:
                             value['observed']['hash'] == value['observed']['repeat'] for value in canvas_before['rows'])
                         if surface_read is not None:
                             row['surfaces_before'] = await pages[1].evaluate(surface_read)
+                            if args.probe == 'retained-documents':
+                                registration = await retained.install(pages[1], before, surface_read)
+                                row['retained_documents_before'] = await retained.collect(session, registration, persisted=False)
                         state = await probe['restore_history'](pages[1], session, before, row)
                         observed = probe['restored_observations'](state)
                         restored = await session.send('Runtime.evaluate', {'expression': '(' + canvas_read + ')()',
@@ -183,6 +192,9 @@ def main() -> int:
                         row['canvas_after'] = canvas_after
                         if surface_read is not None:
                             row['surfaces_after'] = await read_restored_surfaces(session, surface_read)
+                            if args.probe == 'retained-documents':
+                                row['retained_documents_after'] = await retained.collect(session, registration, persisted=True)
+                                row['retained_document_validation'] = retained.validate_pair(row['retained_documents_before'], row['retained_documents_after'])
                             post_surfaces = await recapture_surfaces_history(session, state)
                             observed = probe['restored_observations'](post_surfaces)
                             row['post_surfaces_history'] = post_surfaces
@@ -217,6 +229,9 @@ def main() -> int:
             report['measurement_complete'] = True
             report['validation'] = validator(report['runs'], probe['validate_page'], canvas_fixture['compare_formats'])
             report['passed'] = report['validation']['passed']
+            if args.probe == 'retained-documents':
+                report['retained_document_coverage'] = all(row['retained_document_validation']['passed'] for row in report['runs'])
+                report['passed'] = report['passed'] and report['retained_document_coverage']
             if surface_validator is not None:
                 report['surface_validation'] = surface_validator(report['runs'])
                 report['passed'] = report['passed'] and report['surface_validation']['passed']
