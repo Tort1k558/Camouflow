@@ -1,6 +1,28 @@
 # Glint: план проверки и развития
 
-## Следующий пакет: шесть классов workers, пока не интегрирован
+## Интегрирован worker/service lifecycle — 31 октября 2026
+
+| Проверка | Результат |
+| --- | --- |
+| Шесть classic/module классов workers | Desktop/Mobile Web прошли Canvas/WebGL до/после BFCache |
+| Service-controlled страницы | Реальный controller и BFCache подтверждены для classic/module в обоих режимах |
+| Принудительный restart service worker | Четыре цепочки running → stopped → running; новый instanceId/timeOrigin, sequence=1 |
+| Согласованность | Результаты поверхностей стабильны; шесть сохранённых экранов проверены после restart |
+| Worker OfflineAudioContext | Недоступен; **Audio readback не заявлен** |
+| Связанные тесты | 399 passed |
+
+[Результаты](../native/drafts/environment/worker-service75-observations.json).
+Доступны `--probe retained-workers --verify-service-lifecycle`; остановка затрагивает
+только точный versionId из собственного изолированного тестового профиля.
+Старый default `canvas` сохранён. Полный Python после предыдущего исправления:
+**4767 passed, 1 skipped**, guards пройдены на `87ae4ed` — до этого нового пакета.
+[Полный повтор](../native/drafts/environment/canonical-python75-historical-binding-repair-observations.json).
+
+**Следующий приоритет — нативное владение состоянием CDP-скриншотов**, затем
+сохранённые GPU-объекты и WebGPU readback. Worker-проверки не заменяют оставшийся
+объём цели, реальные сайты, совместимость и production-допуск.
+
+## История подготовки шести классов workers
 
 На D прототип прошёл desktop/Mobile Web с настоящим BFCache: classic/module
 dedicated, shared и service workers; по 16 Offscreen Canvas-кейсов и WebGL1/2.

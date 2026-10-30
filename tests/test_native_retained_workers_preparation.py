@@ -31,17 +31,17 @@ def test_worker_prototype_is_scoped_and_does_not_admit_the_unselected_package():
         'webgpu_readback_verified', 'privacy_admitted', 'production_admitted'))
 
 
-def test_unselected_worker_package_applies_to_exact_base_and_binds_strict_helper(tmp_path):
+def test_unselected_worker_package_applies_to_exact_base_and_binds_strict_helper(tmp_path, worker_sources_before_integration):
     record = json.loads((ENV / 'retained-workers75-preparation-observations.json').read_bytes())
     patch = ENV / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     for row in record['sources']:
         if row['before_sha256'] is not None:
-            source = ROOT / row['source']
-            assert hashlib.sha256(source.read_bytes()).hexdigest() == row['before_sha256']
+            source = worker_sources_before_integration['sources'][row['source']]
+            assert hashlib.sha256(source.encode('utf-8')).hexdigest() == row['before_sha256']
             target = tmp_path / row['source']
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(source.read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+            target.write_text(source, encoding='utf-8', newline='\n')
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error', str(patch)],
                    cwd=tmp_path, check=True, capture_output=True, timeout=30)
     for row in record['sources']:

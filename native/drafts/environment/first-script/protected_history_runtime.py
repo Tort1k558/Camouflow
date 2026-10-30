@@ -27,8 +27,12 @@ def main() -> int:
     parser.add_argument('--executable', type=Path, required=True)
     parser.add_argument('--work-dir', type=Path, required=True)
     parser.add_argument('--driver-stage', type=Path, required=True)
-    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents'), default='canvas')
+    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents', 'retained-workers'), default='canvas')
+    parser.add_argument('--verify-service-lifecycle', action='store_true',
+                        help='Verify owned service-controlled BFCache and explicit per-version stop/restart')
     args = parser.parse_args()
+    if args.verify_service_lifecycle and args.probe != 'retained-workers':
+        parser.error('--verify-service-lifecycle requires --probe retained-workers')
     OUT, STAGE, EXE = args.work_dir, args.driver_stage, args.executable
     MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
     for path in (OUT, STAGE, EXE):
@@ -93,12 +97,23 @@ def main() -> int:
     surface_validator = None
     surface_read = None
     recapture_surfaces_history = None
-    if args.probe in {'combined', 'retained-documents'}:
+    if args.probe in {'combined', 'retained-documents', 'retained-workers'}:
         surface_validator = runpy.run_path(str(FIXTURE / 'protected_surface_history.py'))['validate_runs']
         recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
         surface_read = f"async () => ({{gpu: await ({gpu.READBACK_READ})(), audio: await ({surfaces.AUDIO_READ})(true)}})"
-    if args.probe == 'retained-documents':
+    if args.probe in {'retained-documents', 'retained-workers'}:
         import retained_document_surfaces as retained
+
+    worker_fixture = None
+    worker_read = None
+    if args.probe == 'retained-workers':
+        import retained_worker_lifecycle as worker_fixture
+        worker_canvas_read = runpy.run_path(str(FIXTURE / 'worker_formats.py'))['worker_read'](canvas_read)
+        worker_read = f"async () => ({{canvas: await ({worker_canvas_read})(), gpu: await ({gpu.READBACK_READ})(), audio: await ({surfaces.AUDIO_READ})(true)}})"
+
+    controlled_services = None
+    if args.verify_service_lifecycle:
+        import controlled_service_workers as controlled_services
 
     paths = {Path(__file__), MANIFEST, canvas_path, validator_path, *(ROOT / name for name in gpu.probe_inputs()), ROOT / 'app/core/native/runtime.py', ROOT / 'app/core/native/identity.py', *FIXTURE.glob('*.py'), FIXTURE / 'sample.js',
              STAGE / 'playwright/driver/package/lib/coreBundle.js', STAGE / 'playwright/_impl/_page.py',
@@ -109,12 +124,18 @@ def main() -> int:
                   privacy_admitted=False, production_admitted=False,
                   runtime_core_sha256_measured=core, receipt_sha256=hashlib.sha256(receipt).hexdigest(),
                   measured_inputs_sha256={str(path): value for path, value in inputs.items()})
-    if args.probe in {'combined', 'retained-documents'}:
+    if args.probe in {'combined', 'retained-documents', 'retained-workers'}:
         report.update(probe=args.probe, scope='Protected manager BFCache with screen, Canvas formats and top-document recreated GPU/Audio readback continuity; not retained GPU objects, worker lifecycle, WebGPU readback or full policy admission')
 
 
-    if args.probe == 'retained-documents':
+    if args.probe in {'retained-documents', 'retained-workers'}:
         report['scope'] = 'Six registered real documents with recreated protected GPU/Audio reads before/after actual BFCache; source/window/origin/nonce/URL/timeOrigin checked; not retained GPU objects, workers, WebGPU readback or full policy admission'
+
+    if worker_fixture is not None:
+        report['scope'] += '; six actual classic/module worker policy observations around document BFCache; dedicated/shared instance retention, service restart classification; service does not control the primary restored document, no retained GPU objects or WebGPU readback admission'
+
+    if controlled_services is not None:
+        report['scope'] += '; additional classic/module service-controlled clients with genuine BFCache and confirmed per-version stop/restart'
 
     def save():
         (OUT / 'report.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
@@ -167,6 +188,8 @@ def main() -> int:
                     session = await context.new_cdp_session(pages[1])
                     try:
                         await session.send('Page.enable')
+                        if controlled_services is not None:
+                            service_versions = await controlled_services.subscribe(session)
                         before = await probe['capture_page'](pages[1])
                         canvas_before = await pages[1].evaluate(canvas_read)
                         assert canvas_before['float16Available'] and len(canvas_before['rows']) == 32
@@ -174,7 +197,10 @@ def main() -> int:
                             value['observed']['hash'] == value['observed']['repeat'] for value in canvas_before['rows'])
                         if surface_read is not None:
                             row['surfaces_before'] = await pages[1].evaluate(surface_read)
-                            if args.probe == 'retained-documents':
+                            if worker_fixture is not None:
+                                worker_token = await worker_fixture.install(pages[1])
+                                row['worker_lifecycle_before'] = await worker_fixture.collect(session, worker_token, persisted=False)
+                            if args.probe in {'retained-documents', 'retained-workers'}:
                                 registration = await retained.install(pages[1], before, surface_read)
                                 row['retained_documents_before'] = await retained.collect(session, registration, persisted=False)
                         state = await probe['restore_history'](pages[1], session, before, row)
@@ -192,9 +218,15 @@ def main() -> int:
                         row['canvas_after'] = canvas_after
                         if surface_read is not None:
                             row['surfaces_after'] = await read_restored_surfaces(session, surface_read)
-                            if args.probe == 'retained-documents':
+                            if args.probe in {'retained-documents', 'retained-workers'}:
                                 row['retained_documents_after'] = await retained.collect(session, registration, persisted=True)
                                 row['retained_document_validation'] = retained.validate_pair(row['retained_documents_before'], row['retained_documents_after'])
+                                if worker_fixture is not None:
+                                    row['worker_lifecycle_after'] = await worker_fixture.collect(session, worker_token, persisted=True)
+                                    row['worker_lifecycle_validation'] = worker_fixture.validate_pair(row['worker_lifecycle_before'], row['worker_lifecycle_after'], canvas_document=canvas_before, document_gpu=row['surfaces_before']['gpu'])
+                                    if controlled_services is not None:
+                                        row['controlled_service_validation'] = await controlled_services.capture(context, session, service_versions, row, probe, recapture_surfaces_history, initial[1])
+                                    row['worker_lifecycle_cleanup'] = await read_restored_surfaces(session, 'async () => await window.glintRetainedWorkers.close()')
                             post_surfaces = await recapture_surfaces_history(session, state)
                             observed = probe['restored_observations'](post_surfaces)
                             row['post_surfaces_history'] = post_surfaces
@@ -229,15 +261,23 @@ def main() -> int:
             report['measurement_complete'] = True
             report['validation'] = validator(report['runs'], probe['validate_page'], canvas_fixture['compare_formats'])
             report['passed'] = report['validation']['passed']
-            if args.probe == 'retained-documents':
+            if args.probe in {'retained-documents', 'retained-workers'}:
                 report['retained_document_coverage'] = all(row['retained_document_validation']['passed'] for row in report['runs'])
                 report['passed'] = report['passed'] and report['retained_document_coverage']
             if surface_validator is not None:
                 report['surface_validation'] = surface_validator(report['runs'])
                 report['passed'] = report['passed'] and report['surface_validation']['passed']
+            if worker_fixture is not None:
+                report['worker_lifecycle_validation'] = worker_fixture.validate_runs(report['runs'])
+                report['passed'] = report['passed'] and report['worker_lifecycle_validation']['passed']
+            if controlled_services is not None:
+                report['controlled_service_validation'] = controlled_services.validate_runs(report['runs'], probe['restored_observations'], probe['validate_page'])
+                report['passed'] = report['passed'] and report['controlled_service_validation']['passed']
 
 
-    server = probe['create_server']()
+    server = (probe['create_server']() if worker_fixture is None else
+              probe['ThreadingHTTPServer'](('127.0.0.1', 0), (worker_fixture.server_type(probe['CacheableHandler'], worker_read) if controlled_services is None else
+               controlled_services.server_type(worker_fixture.server_type(probe['CacheableHandler'], worker_read)))))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     save()

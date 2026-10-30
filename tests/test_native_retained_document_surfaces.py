@@ -106,16 +106,19 @@ def test_cdp_failure_or_partial_collection_has_no_recreation_fallback(response):
         asyncio.run(PROBE['collect'](session, dict(token='owned-token', registry={'main': {}}), persisted=True))
 
 
-def test_integrated_package_binds_every_selected_source_and_reversible_archive():
+def test_integrated_package_binds_every_selected_source_and_reversible_archive(worker_sources_before_integration):
     directory = ROOT / 'native/drafts/environment'
     record = json.loads((directory / 'retained-document-surfaces-preparation.json').read_bytes())
     assert record['selected'] and record['runtime_verified'] is False
     assert hashlib.sha256((directory / record['patch']).read_bytes()).hexdigest() == record['patch_sha256']
     for row in record['sources']:
-        assert hashlib.sha256((ROOT / row['source']).read_bytes()).hexdigest() == row['staged_sha256']
+        actual = (worker_sources_before_integration['sha256'][row['source']]
+                  if row['source'] in worker_sources_before_integration['sha256']
+                  else hashlib.sha256((ROOT / row['source']).read_bytes()).hexdigest())
+        assert actual == row['staged_sha256']
 
 
-def test_measured_runtime_keeps_all_six_actual_documents_and_pending_boundaries():
+def test_measured_runtime_keeps_all_six_actual_documents_and_pending_boundaries(worker_sources_before_integration):
     directory = ROOT / 'native/drafts/environment'
     record = json.loads((directory / 'retained-document-surfaces75-observations.json').read_bytes())
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
@@ -130,7 +133,10 @@ def test_measured_runtime_keeps_all_six_actual_documents_and_pending_boundaries(
                 'cross_session_screenshot_fixed', 'privacy_admitted', 'production_admitted'):
         assert record[key] is False
     for name, expected in record['measured_inputs_sha256'].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+        actual = (worker_sources_before_integration['sha256'][name]
+                  if name in worker_sources_before_integration['sha256']
+                  else hashlib.sha256((ROOT / name).read_bytes()).hexdigest())
+        assert actual == expected, name
 
 
 def test_real_browser_message_faults_are_routing_tests_not_extra_surface_coverage():

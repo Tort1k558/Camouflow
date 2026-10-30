@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "git_head": "87ae4ed316bf1b68c4882e531e179b5f847a6152",
+  "counts": {
+    "tests": 4768,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4767
+  },
+  "duration_seconds": 471.844,
+  "log_sha256": "1d70e8b577a7991e23d3a197f08886b2b3ec0b0bd51801c8067ecf02f439f6d9",
+  "junit_sha256": "c78de707ea40919d47aecb1b57c81521061c61790786735fd966448872020bae",
+  "schema": 1,
+  "raw_report_sha256": "159430e45e42a89864a8cb8a8a89b20cb0483603f141fe65ccd58ef4efe480b9",
+  "scope": "Full regression after exact historical Audio/GPU source reconstruction, before the worker/service diagnostic integration; not a full pass of the later changed sources",
+  "previous_failure": "canonical-python75-retained-binding-failure-observations.json",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

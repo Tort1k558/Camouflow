@@ -1,6 +1,26 @@
 # Glint browser test matrix
 
-## Worker lifecycle preparation and full-regression follow-up
+## Integrated worker and controlled-service lifecycle — 2026-10-31
+
+| Gate | Measured Windows 001–075 result | Boundary |
+| --- | --- | --- |
+| Six classic/module worker classes | Desktop/Mobile Web passed; 16 Offscreen cases + WebGL1/2 per worker/phase | Not retained GPU objects |
+| Actual service-controlled clients | Classic/module clients restored through genuine BFCache in both modes | Controlled local fixtures, not arbitrary websites |
+| Explicit service worker restart | Four version-specific running → stopped → running chains; new worker ID/epoch and sequence 1 | Only owned isolated versions were stopped |
+| Profile/screen continuity | Normalized surfaces unchanged; six retained document screens recaptured after restart | Not complete device cohorts or WebGPU readback |
+| Worker Audio | OfflineAudioContext unavailable | **No Audio readback coverage claimed** |
+| Related Python | 399 passed | New full-suite repeat still required |
+
+[Exact public runtime evidence](../native/drafts/environment/worker-service75-observations.json).
+The old default `canvas` mode remains default; `retained-workers` and
+`--verify-service-lifecycle` are explicit opt-ins. Cross-session screenshot ownership
+remains open and is the next native-code package; no privacy/release admission.
+
+Full suite after the historical binding repair: **4767 passed, 1 skipped**, guards
+passed at `87ae4ed`, **before this worker/service integration**.
+[Full repair result](../native/drafts/environment/canonical-python75-historical-binding-repair-observations.json).
+
+## Historical worker preparation and full-regression follow-up
 
 An **unselected** six-class classic/module dedicated/shared/service package is
 public. Its D-only prototype passed desktop/Mobile Web around actual BFCache:

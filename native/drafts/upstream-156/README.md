@@ -1,6 +1,23 @@
 # Chromium 156 rebase candidate
 
-## Next worker lifecycle package — not selected
+## Integrated worker/service diagnostic command
+
+```powershell
+.venv\Scripts\python.exe native\drafts\environment\first-script\protected_history_runtime.py `
+  --executable D:\Glint156Candidate\preserved-runtime75-20261030-v1\runtime\chrome.exe `
+  --work-dir D:\GlintManagerQA\worker-service-fresh-run `
+  --driver-stage D:\GlintManagerQA\staged-python-js70-20261030-v1 `
+  --probe retained-workers --verify-service-lifecycle
+```
+
+The output must not exist. This verifies six actual worker classes plus scoped
+service-controlled client BFCache and four owned per-version stop/restarts across
+desktop/Mobile Web. It never calls stopAllWorkers. Omit `--verify-service-lifecycle`
+for worker-only diagnostics; the unchanged default remains `canvas`.
+[Measured result](../environment/worker-service75-observations.json).
+Not retained GPU objects, WebGPU readback, cross-session screenshot repair or release admission.
+
+## Historical worker lifecycle preparation — superseded
 
 The public [prepared package](../environment/retained-workers75-preparation-observations.json)
 contains `retained-workers-next.patch`; **do not treat its proposed CLI mode as

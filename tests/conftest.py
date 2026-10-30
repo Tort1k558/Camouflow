@@ -154,7 +154,7 @@ def stage_before_python_overlay_sources(tmp_path):
 
 
 @pytest.fixture
-def surface_sources_before_retained(tmp_path):
+def surface_sources_before_retained(tmp_path, worker_sources_before_integration):
     """Reconstruct exact pre-extraction sources; never rewrite historical observations."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -163,7 +163,10 @@ def surface_sources_before_retained(tmp_path):
     for row in record['sources']:
         target = base / row['source']
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text((root / row['source']).read_text(encoding='utf-8-sig'),
+        source = (worker_sources_before_integration['sources'][row['source']]
+                  if row['source'] in worker_sources_before_integration['sources']
+                  else (root / row['source']).read_text(encoding='utf-8-sig'))
+        target.write_text(source,
                           encoding='utf-8', newline='\n')
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
@@ -205,3 +208,31 @@ def historical_surface_source_sha256(surface_sources_before_retained):
         return hashlib.sha256(source).hexdigest()
 
     return source_sha256
+
+
+@pytest.fixture
+def worker_sources_before_integration(tmp_path):
+    """Reverse the exact worker integration before reconstructing earlier layers."""
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'retained-worker-lifecycle-preparation.json').read_bytes())
+    base = tmp_path / 'before-worker-integration'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text((root / row['source']).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=30)
+    result = {'sha256': {}, 'sources': {}}
+    for row in record['sources']:
+        target = base / row['source']
+        if row['before_sha256'] is None:
+            assert not target.exists()
+        else:
+            value = hashlib.sha256(target.read_bytes()).hexdigest()
+            assert value == row['before_sha256'], row['source']
+            result['sha256'][row['source']] = value
+            result['sources'][row['source']] = target.read_text(encoding='utf-8')
+    return result

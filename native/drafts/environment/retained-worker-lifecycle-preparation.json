@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "selected": true,
+  "sources": [
+    {
+      "source": "native/drafts/environment/first-script/retained_worker_lifecycle.py",
+      "before_sha256": null,
+      "staged_sha256": "3be27437cc17e64dd48c6d8783a2ef673f8c1193cc4a9d548ae9234ca53ff0f3"
+    },
+    {
+      "source": "native/drafts/environment/first-script/controlled_service_workers.py",
+      "before_sha256": null,
+      "staged_sha256": "26c93f4d46aae4189307c0963ac2ace57ed8c67f733ff6ef371eb7550a460115"
+    },
+    {
+      "source": "native/drafts/environment/first-script/protected_history_runtime.py",
+      "before_sha256": "c7ade33493f95833936b9a8fc54a4d92191ca54e6362221d681a8995211a36d4",
+      "staged_sha256": "20fbbc8503e060dfff0edb17144e6bd773c432ac5964036127c5cd7087c8cf00"
+    }
+  ],
+  "patch_sha256": "4142b77d65298ad20193d4f5d7725b940814e27af563ac3db8a936cc5902b937",
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "patch": "retained-worker-lifecycle.patch",
+  "integration_kind": "opt-in diagnostic collector, not a Chromium patch or release admission"
+}

@@ -1,6 +1,22 @@
 # Glint architecture
 
-## Unselected worker lifecycle extension
+## Integrated worker and service-controlled lifecycle
+
+`retained-workers` adds six actual classic/module worker classes to the protected
+retained-document probe. `--verify-service-lifecycle` additionally verifies scoped
+service-controlled clients, real BFCache and per-version worker stop/restart.
+Both desktop/Mobile Web passed; four stops have observed running/stopped/running
+events, new worker identity/epoch and stable normalized Canvas/WebGL observations.
+Full six-document screens are checked again after restart. Worker OfflineAudioContext
+is unavailable and is not counted as Audio readback. Cleanup and source/core guards passed.
+[Exact evidence](drafts/environment/worker-service75-observations.json).
+
+Default `canvas` and existing modes remain opt-in compatible. The primary retained
+document itself is outside the service scope; separate scoped clients prove control.
+Native cross-session screenshot state ownership is next. Retained GPU objects,
+WebGPU readback, device cohorts and complete privacy/release admission remain open.
+
+## Historical unselected worker lifecycle preparation
 
 [Prepared package](drafts/environment/retained-workers75-preparation-observations.json)
 adds six real classic/module worker classes to the retained-document probe.
