@@ -57,6 +57,15 @@ Canvas export protection must not be mistaken for coherent WebGPU protection.
 [Retained mismatch and probe source](drafts/environment/webgpu-canvas-export76-observations.json).
 
 Next: fix the native WebGPU pixel-readback/export path with explicit provenance.
+An unselected C++ layout foundation is now [public](drafts/webgpu-readback-layout/README.md):
+detached RGBA8/BGRA8 transfer, checked mappings and unchanged padding/source bytes.
+Its exact sources passed 1024 deterministic variations and boundary cases in
+isolated normal and AddressSanitizer builds. There is no Dawn/Chromium hook or
+pixel transform yet; the canvas mismatch remains open.
+[Foundation evidence](drafts/environment/webgpu-readback-layout-preparation.json).
+Full lifecycle Python at `8e46cb2`: **4956 passed, 1 skipped**, source/status guards
+passed, before this unselected foundation publication.
+[Full result](drafts/environment/canonical-python76-webgpu-lifecycle-observations.json).
 Do not apply pixel noise to arbitrary mapped buffers: compute/storage results,
 mapping errors, offsets and padding must remain exact. Device cohorts and the
 remaining combined/release gates stay open.

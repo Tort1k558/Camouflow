@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "selected": false,
+  "patch": "webgpu-readback-layout-next.patch",
+  "patch_sha256": "b0e5cda3ccbbeb3e91bd5c778dd8d93be3661235ad72a7c0f8dab94d5b86dc1c",
+  "scope": "Detached one-layer RGBA8/BGRA8 layout extraction/store, bounds/overflow/alias rejection and padding preservation; no provenance or privacy transform, no Chromium/Dawn hook",
+  "sources": [
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_layout.h",
+      "before_sha256": null,
+      "staged_sha256": "7074c8224f7141880c8f5a2912f4522ba1f97ae58fc16a686673612673401b3b",
+      "staged_source": "native/drafts/webgpu-readback-layout/webgpu_readback_layout.h"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_layout.cc",
+      "before_sha256": null,
+      "staged_sha256": "c80a265e895d2dafc788720bcd3fd2358137f2380e0843834897be8d7c5af02d",
+      "staged_source": "native/drafts/webgpu-readback-layout/webgpu_readback_layout.cc"
+    }
+  ],
+  "isolated_native_compile_verified": true,
+  "isolated_native_tests": {
+    "passed": true,
+    "property_iterations": 1024,
+    "assertions": 525936,
+    "browser_integrated": false
+  },
+  "compile_seconds": 2.032,
+  "raw_report_sha256": "0279fdcf9910460b1d8eb84feff8b612d4b743c7b57fa102335b58a947b95407",
+  "compiler_sha256": "46ec91bea01ec2a79087ed161a6cc39e5d99f8d90ae6423dbb6ca8e215fcf886",
+  "linker_sha256": "b69f799434e48cbc53053e2dee9ef53d606fb5e155f57135bfd1c4986ca06fda",
+  "standalone_harness_sha256": "869119ac8a7fea99f4293cd7e4bab6e7245b3cfd17135972117b7b86fa5a8409",
+  "browser_integrated": false,
+  "runtime_verified": false,
+  "native_webgpu_readback_protection": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "isolated_address_sanitizer_verified": true,
+  "address_sanitizer_report_sha256": "e5184aa3fbb342235ef1b119e7db828a97acc4d35bac949072f6a67468ebc07e",
+  "asan_runtime_sha256": "2f1e2f21cc9482055963b8ac869a01a7e2a18cac8dbd0ae9a64c69200f7d8584",
+  "address_sanitizer_result": {
+    "passed": true,
+    "property_iterations": 1024,
+    "assertions": 525936,
+    "browser_integrated": false
+  },
+  "standalone_harness": "native/drafts/webgpu-readback-layout/layout_test.cc"
+}
