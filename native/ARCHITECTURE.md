@@ -1,6 +1,22 @@
 # Glint architecture
 
-## Selected screenshot source append 001–076
+## Measured Windows 001–076 screenshot transactions
+
+All **506 native cases / 24 groups** passed, including twelve real-session
+screenshot transaction units, with source/build postguards. The independently
+preserved runtime passed six unchanged capture controls (including Playwright and
+cross-session clip/no-clip), PNG/DPR bounds and actual six-document BFCache.
+Twelve additional stress phases passed concurrent targets, same-value/permanent
+updates, owner/capturer detach, full-page restoration, navigation and invalid
+requests. Cancellations were observed; their exact race schedule is not guaranteed.
+
+A separately staged retained-GPU probe passed desktop/Mobile Web with original
+WebGL1/2 resources in six BFCache documents. It is **not public CLI integration**,
+worker retention, WebGPU, complete profile isolation or privacy/release admission.
+[Measured evidence](drafts/environment/screen76-runtime-observations.json).
+Next: integrate/repeat the opt-in GPU probe, then retained worker GPU resources.
+
+## Historical source selection 001–076
 
 The five-file screenshot transaction draft is now registered as
 `0076-native-screenshot-transactions.patch`, preserving the exact 001–075 prefix
@@ -10,7 +26,7 @@ The cached rebuild controller admits only the five named DevTools files, not
 neighboring protocol/session sources. Its 256-command, 16-file, 16-MiB and four-job
 limits remain unchanged, as do the normal 180-GiB full-build requirements.
 Selection/package/controller tests passed **1215, with 1 skipped**. Compilation,
-native execution and the six-factorial browser repeat are still pending.
+native execution and the six-factorial browser repeat were pending at this stage.
 [Selection](drafts/environment/screenshot76-selection-observations.json).
 
 The next unselected diagnostic package adds opt-in `retained-gpu-objects`, with

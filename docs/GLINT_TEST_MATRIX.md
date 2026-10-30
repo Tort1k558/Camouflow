@@ -1,6 +1,21 @@
 # Glint browser test matrix
 
-## Selected screenshot source append 001–076
+## Measured Windows 001–076
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Native unit batch | **506/506, 24 groups**, postguards passed | Includes twelve screenshot cases, not complete browser admission |
+| Six capture controls | All passed, including Playwright and cross-session clip/no-clip | Controlled fixtures; old 075 failures retained |
+| Screen/PNG/DPR/BFCache | Six actual document roles retained | Not arbitrary sites or complete device cohorts |
+| Transaction stress | Twelve phases passed, including observed cancellations and invalid-request recovery | Exact race timing not guaranteed; BFCache measured separately |
+| Retained GPU prototype | Original WebGL1/2 resources passed in six BFCache documents, desktop/Mobile Web | Staged only; public CLI repeat and worker retention pending |
+| Preservation | Independent 076 runtime, 269 assets verified | 075 rollback baseline retained |
+
+[Exact measured evidence](../native/drafts/environment/screen76-runtime-observations.json).
+These results do not admit WebGPU, full profile isolation, privacy guarantees,
+CAPTCHA outcomes or production/release deployment.
+
+## Historical source selection 001–076
 
 | Gate | Result | Boundary |
 | --- | --- | --- |
