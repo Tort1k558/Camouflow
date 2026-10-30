@@ -4,6 +4,23 @@
 
 ### Новый защищённый BFCache-прогон
 
+Полный Python-повтор с этим collector на `f59e578`: **4568 passed, 1 skipped**, 6м23с;
+исходники и рабочее дерево не изменились во время проверки.
+[Результат](../native/drafts/environment/canonical-python73-protected-history-observations.json).
+
+Подготовлен [следующий связанный C++-пакет](../native/drafts/environment/live-screen-linked-next.patch):
+browser-side invalidation учитывает logical screen, главный renderer предпочитает актуальный
+эмулятор задержанному transport-снимку, clear снимает старый logical override.
+Добавлены шесть native-тестов: add/update/clear в browser и live/update/clear в Blink.
+Четыре изменённых translation units прошли clang; активные Chromium-исходники не менялись.
+**Патч пока не зарегистрирован, эти шесть тестов не выполнены, runtime-исправление не доказано.**
+[Подготовка](../native/drafts/environment/live-screen-linked-next-observations.json).
+
+В текущем browser-коде `StoredVisualPropertiesNeedsUpdate` сравнивает физический screen,
+но пропускает logical screen: изменение только логических данных не гарантирует отправку
+нового snapshot. Следующий этап — зарегистрировать связанный пакет, выполнить все шесть новых
+native-кейсов вместе с прежними и повторить исходный CDP stress без ослабления проверок.
+
 [Публичный collector](../native/drafts/environment/first-script/protected_history_runtime.py)
 прошёл desktop и Mobile Web: **12 экранных фаз**, по **32 Canvas-варианта до/после BFCache**
 в каждом окружении. Включены флаги Canvas/WebGL/AudioMath, но после восстановления

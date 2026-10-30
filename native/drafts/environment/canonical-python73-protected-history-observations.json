@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "f59e5788e33afea2a5bc428ecaff9f816b82fe30",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 955,
+  "before_status": " M docs/HUB.md\n",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 383.157,
+  "returncode": 0,
+  "counts": {
+    "tests": 4569,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4568
+  },
+  "changed_tracked_files": [],
+  "after_status": " M docs/HUB.md\n",
+  "postguards_passed": true,
+  "log_sha256": "fd0667ad9fdfaca4bfcc87ae9fb7a33c8c2f5881c9807861bbc42111e56611b9",
+  "junit_sha256": "30d4199434efed2884f0d8ab9b6156f5cfe0154a4697cb985e7793f918aba1e2",
+  "raw_report_sha256": "7eb164598e694acd75443954be1e7d36707f30f6744938982447be236bb0453c",
+  "scope_note": "Full Python at f59e578, including protected BFCache validator/runtime evidence; not new native patch execution"
+}

@@ -2,6 +2,17 @@
 
 ## Current compiled 001–073 — 2026-10-30
 
+Full Python after the protected-history collector: **4568 passed, 1 skipped**, 383s,
+source/status postguards passed at `f59e578`.
+[Evidence](../native/drafts/environment/canonical-python73-protected-history-observations.json).
+
+The [next linked screen patch](../native/drafts/environment/live-screen-linked-next.patch)
+passes four isolated translation-unit checks and prepares six native tests. It adds
+logical-screen invalidation to the browser visual-properties update predicate and
+prefers live main-frame emulation over delayed transported metadata. It is **not selected,
+not built, and the new tests have not executed**; the raw CDP failure is still open.
+[Preparation only](../native/drafts/environment/live-screen-linked-next-observations.json).
+
 Protected manager BFCache follow-up: **12 screen phases** and **32 top-document Canvas
 format cases before/after restoration per desktop/Mobile Web mode** passed. All combined
 feature flags were effective, but restored GPU/Audio output was not measured. Requested
