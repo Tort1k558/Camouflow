@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "status": "unselected isolated native draft",
+  "scope": "Source-format extension and linked binary16 transform diagnostic, not a compiled browser fix.",
+  "patch_sha256": "c4d917998a94f623e3db15d105aa0531ce3d8eabc87882bb5dc937699195a3f9",
+  "fixture_sha256": "4edd589f3adb122b10c8a3a1cfd770eed67f8330b25920121fe7f962516407e2",
+  "base_source_sha256": {
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h": "50aab897ea6798aa949e7f7deb9448d210e8c3301a183b46afdf969418482986",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc": "52a56da36b9c6631a87e36826fcceeb90c93f2c619a23b0f86b85cf68e636858",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h": "d15301dd6bfd4556df9efa133bb041d9505756148e2aba43643406c6e129bcd4",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc": "ee24055c293d023d179599e63f57407c59c80f3164b9f02164afbd1739a67df6",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc": "1c1f8eb4045278e19e319e017621270f5c64c45745d14a3904be67b8deba7509",
+    "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc": "3cd1da5063fa5b115e53ffcf048be8dbd6e030a801fec3425d9d61c9346cc2db",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.h": "0a7aea2fc385fa0d197714fda12234ef11a4b6b4b4762e16389e61a4d6b46c93"
+  },
+  "prepared_source_sha256": {
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h": "07de0456fb75723e36b59e58ff649e0b382b48289e908186461f1ef32598d091",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc": "7a55967d673cefe80670be5394e4ab3a12842c02cdb3e93ff6cab14e09c592df",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h": "bceb10b936d1c9235e8da9bff221be88ae3f932ec18c9acb5a229898b88b0609",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc": "3df7f71effe0a5b22fd780501551a9fd48bbf3fc987bafc9fbbbf1cc24da8b00",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc": "a7433fa8a680aab29dc15f297a4165cd94228647c4eabe6249727b30de1594a0",
+    "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc": "945b6b9cd492a963416bcd6773385abac94c4610cb0b04a6ca263881c6a924ef"
+  },
+  "source_unchanged": true,
+  "existing_rgba8_transform_unchanged": true,
+  "syntax": {
+    "schema": 1,
+    "scope": "isolated source syntax, not link or runtime",
+    "checks": [
+      {
+        "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc",
+        "returncode": 0,
+        "source_sha256": "7a55967d673cefe80670be5394e4ab3a12842c02cdb3e93ff6cab14e09c592df",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc",
+        "returncode": 0,
+        "source_sha256": "3df7f71effe0a5b22fd780501551a9fd48bbf3fc987bafc9fbbbf1cc24da8b00",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc",
+        "returncode": 0,
+        "source_sha256": "a7433fa8a680aab29dc15f297a4165cd94228647c4eabe6249727b30de1594a0",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "passed": true,
+    "native_runtime_verified": false
+  },
+  "canvas2d_integration_syntax": {
+    "schema": 1,
+    "passed": true,
+    "returncode": 0,
+    "scope": "Canvas2D integration syntax, not linked or runtime",
+    "source": "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc",
+    "source_sha256": "945b6b9cd492a963416bcd6773385abac94c4610cb0b04a6ca263881c6a924ef",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "half_diagnostic": {
+    "schema": 1,
+    "passed": true,
+    "steps": [
+      {
+        "name": "half-transform-compile",
+        "returncode": 0
+      },
+      {
+        "name": "half-diagnostic-compile",
+        "returncode": 0
+      },
+      {
+        "name": "half-diagnostic-link",
+        "returncode": 0
+      },
+      {
+        "name": "half-diagnostic-run",
+        "returncode": 0
+      }
+    ],
+    "observed": {
+      "controls": 12,
+      "failed": 0,
+      "half_encodings": 65536,
+      "changed_normal_channels": 92160,
+      "runtime_verified": false
+    },
+    "executable_sha256": "5e54b903243692c7cf00c6e3365cab8f9d85b636c585801f9aa780a3890c5243",
+    "native_browser_runtime_verified": false,
+    "privacy_admitted": false
+  },
+  "registered": false,
+  "applied_to_active_checkout": false,
+  "compiled_into_browser": false,
+  "native_browser_runtime_verified": false,
+  "all_32_format_cases_passed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "limitations": [
+    "F16 mantissa-LSB effects can disappear after lower-precision conversion; this draft does not establish protected RGBA8 output from F16 storage.",
+    "No runtime export/crop/worker/HDR quality or combined-policy results apply to this draft.",
+    "Existing generated modules and transitive thin-archive objects were not a complete hermetic build.",
+    "Preserved 001-070 browser and registered candidate manifest remain unchanged."
+  ]
+}

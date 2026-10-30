@@ -8,6 +8,13 @@ combinations; protected reads only the two default sRGB/RGBA8 cases. The other 3
 throw `NotReadableError`. This is a compatibility bug, not an accepted privacy
 result. [Native fix contract](CANVAS_FORMATS.md); no native fix is compiled.
 
+[An isolated format extension](canvas-formats-next/README.md) is now prepared and
+source-bound: four syntax checks and 12 linked binary16-transform controls pass.
+It is **not compiled into Chrome** and does not establish lower-precision output
+protection or runtime/HDR/export compatibility. The preserved browser failure
+remains open. [Full repeat at `ed64d93`](canonical-python70-lifecycle-formats-observations.json):
+**4441 passed, 1 skipped**, before this C++ draft.
+
 [Concurrent protected desktop profiles](combined-concurrent70-observations.json)
 passed six controls, including closing either peer and restarting each profile.
 [Combined Mobile Web](combined-mobile70-observations.json) passed 18 phases with

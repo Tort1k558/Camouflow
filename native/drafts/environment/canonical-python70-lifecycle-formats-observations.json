@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "ed64d93359efcab52a80cd1fca4528c4c73e8503",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 876,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 423.0,
+  "returncode": 0,
+  "counts": {
+    "tests": 4442,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4441
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "a0c818ac5c5955bbb51463fc0437c1a8a64d03e6ccc4964b696365aa761eb51c",
+  "junit_sha256": "8239f5748d521fce65764abcbb857b429efa4772d241998e93663b17b4bc98b2",
+  "raw_report_sha256": "797f5d5c2a6421950d736a20e39a4d76bcebfdfed4f4603fb26b2a38e599e67d",
+  "note": "Full repeat at ed64d93, including concurrent/mobile/format diagnostics; before the new isolated C++ draft/runner."
+}

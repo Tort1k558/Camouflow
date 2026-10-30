@@ -1,9 +1,15 @@
 # Canvas extended-format compatibility
 
-Status: **measured failure; native fix not implemented or compiled**.
+Status: **measured browser failure; isolated native extension drafted, not compiled into the browser**.
 Baseline: preserved Chromium 156 / patches 001–070, Windows.
 [Retained result](canvas-formats70-observations.json),
 [reproducer](first-script/canvas_formats.py).
+
+[The new draft](canvas-formats-next/README.md) preserves source formats and adds a
+binary16 transform. Four translation units pass syntax; a linked transform fixture
+passes 12 controls including all 65,536 half encodings. This does not close the
+browser defect: lower-precision conversion can erase the new F16 LSB effect, and
+copy/HDR/export/runtime acceptance is still open.
 
 ## Cause
 

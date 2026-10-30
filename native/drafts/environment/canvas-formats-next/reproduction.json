@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "steps": [
+    {
+      "name": "apply-isolated-draft",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "canvas_readback_candidate-syntax",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "canvas_readback_copy-syntax",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "canvas_readback_image-syntax",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "canvas2d-integration-syntax",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "half-transform",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "half-diagnostic",
+      "returncode": 0,
+      "log_sha256": "404406cafd92c7fb67f0fa430a60888bc5a2dba4f042a193f379ca33e7ba0bbc"
+    },
+    {
+      "name": "half-diagnostic-link",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "half-diagnostic-run",
+      "returncode": 0,
+      "log_sha256": "6ca6af01b95f553ac9ce6655e38bf344060f3815b8a53ae0b5c977f6ee8f3603"
+    }
+  ],
+  "scope": "Isolated C++ syntax and linked half-transform diagnostic, not a browser build.",
+  "native_browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "limitations": [
+    "Existing generated modules and transitive thin-archive objects are not a full hermetic build."
+  ],
+  "observed": {
+    "controls": 12,
+    "failed": 0,
+    "half_encodings": 65536,
+    "changed_normal_channels": 92160,
+    "runtime_verified": false
+  },
+  "executable_sha256": "79468286bd09ae7d43e922c1eeab3fe3026374f9dceb96a2b29edc84327da064",
+  "changed_inputs": [],
+  "postguards_passed": true,
+  "raw_report_sha256": "457bb85320fa7d9c34cd6e7554d855c11d8d8ca1fa2c039eefa2ad3f05c4eb33",
+  "runner_sha256": "526f3faa51f3e293e65d6ad86a0dca5de8113d032614f84ce0bd047b5b64f059",
+  "observations_sha256": "d630ae584ee87fa8ce230a3296fdcd5f9e96fc7da8260394720da47ec5ca4749",
+  "fixture_sha256": "4edd589f3adb122b10c8a3a1cfd770eed67f8330b25920121fe7f962516407e2",
+  "note": "Actual public runner repeat; isolated compilation/link only, no Chrome rebuild or runtime fix."
+}

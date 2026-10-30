@@ -1,0 +1,302 @@
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h
+@@ -40,5 +40,13 @@
+     uint32_t height,
+     const std::array<uint8_t, 32>& partition_seed);
+ 
++// Experimental binary16 extension. Full detached, unpremultiplied RGBA only.
++// Alpha, non-normal RGB and non-finite pixels are never modified.
++bool TransformEdgeCoherentCanvasF16(
++    std::span<uint16_t> rgba,
++    uint32_t width,
++    uint32_t height,
++    const std::array<uint8_t, 32>& partition_seed);
++
+ }  // namespace glint::candidate
+ #endif
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc
+@@ -187,4 +187,117 @@
+   return TransformReadback(rgba, width, height, 0, 0, width, height,
+                            partition_seed, Strategy::kEdgeColour);
+ }
++namespace {
++constexpr char kHalfDomain[] = "glint.canvas.edge.rgba16f.candidate.v1";
++
++bool IsNormalHalf(uint16_t value) {
++  const uint16_t exponent = value & 0x7c00;
++  return exponent != 0 && exponent != 0x7c00;
++}
++
++bool IsFiniteOpaqueHalfPixel(std::span<const uint16_t> rgba, size_t offset) {
++  if (rgba[offset + 3] != 0x3c00) {
++    return false;
++  }
++  for (size_t channel = 0; channel < 3; ++channel) {
++    if ((rgba[offset + channel] & 0x7c00) == 0x7c00) {
++      return false;
++    }
++  }
++  return true;
++}
++
++bool DifferentHalfColour(std::span<const uint16_t> rgba,
++                         size_t offset,
++                         size_t neighbour) {
++  if (!IsFiniteOpaqueHalfPixel(rgba, neighbour)) {
++    return false;
++  }
++  for (size_t channel = 0; channel < 3; ++channel) {
++    // Clearing only the mantissa LSB makes classification idempotent. Normalize
++    // signed zero for comparison without changing its stored representation.
++    uint16_t first = rgba[offset + channel] & 0xfffe;
++    uint16_t second = rgba[neighbour + channel] & 0xfffe;
++    if ((first & 0x7fff) == 0) {
++      first = 0;
++    }
++    if ((second & 0x7fff) == 0) {
++      second = 0;
++    }
++    if (first != second) {
++      return true;
++    }
++  }
++  return false;
++}
++}  // namespace
++
++bool TransformEdgeCoherentCanvasF16(
++    std::span<uint16_t> rgba,
++    uint32_t width,
++    uint32_t height,
++    const std::array<uint8_t, 32>& partition_seed) {
++  if (width == 0 || height == 0 ||
++      width > std::numeric_limits<size_t>::max() / 4 / height ||
++      rgba.size() != static_cast<size_t>(width) * height * 4) {
++    return false;
++  }
++  struct HalfPaletteEntry {
++    uint64_t key = std::numeric_limits<uint64_t>::max();
++    uint8_t bits = 0;
++  };
++  std::array<HalfPaletteEntry, 256> palette{};
++  std::array<uint8_t, sizeof(kHalfDomain) - 1 + 6> message{};
++  std::copy_n(reinterpret_cast<const uint8_t*>(kHalfDomain),
++              sizeof(kHalfDomain) - 1, message.begin());
++  const size_t row_words = static_cast<size_t>(width) * 4;
++  for (uint32_t y = 0; y < height; ++y) {
++    for (uint32_t x = 0; x < width; ++x) {
++      const size_t offset = (static_cast<size_t>(y) * width + x) * 4;
++      if (!IsFiniteOpaqueHalfPixel(rgba, offset)) {
++        continue;
++      }
++      const bool edge =
++          (x > 0 && DifferentHalfColour(rgba, offset, offset - 4)) ||
++          (x + 1 < width && DifferentHalfColour(rgba, offset, offset + 4)) ||
++          (y > 0 && DifferentHalfColour(rgba, offset, offset - row_words)) ||
++          (y + 1 < height &&
++           DifferentHalfColour(rgba, offset, offset + row_words));
++      if (!edge) {
++        continue;
++      }
++      uint64_t colour = 0;
++      for (size_t channel = 0; channel < 3; ++channel) {
++        uint16_t value = rgba[offset + channel] & 0xfffe;
++        if ((value & 0x7fff) == 0) {
++          value = 0;
++        }
++        colour = (colour << 16) | value;
++        const size_t index = sizeof(kHalfDomain) - 1 + channel * 2;
++        message[index] = static_cast<uint8_t>(value >> 8);
++        message[index + 1] = static_cast<uint8_t>(value);
++      }
++      auto& entry = palette[(colour ^ (colour >> 16) ^ (colour >> 32)) & 255];
++      if (entry.key != colour) {
++        std::array<uint8_t, 32> digest{};
++        unsigned length = 0;
++        if (!HMAC(EVP_sha256(), partition_seed.data(), partition_seed.size(),
++                  message.data(), message.size(), digest.data(), &length) ||
++            length != digest.size()) {
++          return false;
++        }
++        entry.key = colour;
++        entry.bits = digest[0] & 7;
++      }
++      for (size_t channel = 0; channel < 3; ++channel) {
++        const uint16_t value = rgba[offset + channel];
++        if (IsNormalHalf(value)) {
++          rgba[offset + channel] =
++              (value & 0xfffe) | ((entry.bits >> channel) & 1);
++        }
++      }
++    }
++  }
++  return true;
++}
+ }  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h
+@@ -21,8 +21,12 @@
+   kTransformFailed,
+ };
+ 
++// Shared format check for the detached copy and image adapter.
++bool IsSupportedCanvasCopyFormat(const SkImageInfo& info);
++
+ // Full raster snapshot only, after the caller's native access checks.
+-// Returns an owned immutable RGBA8/unpremultiplied/sRGB copy. Never writes source.
++// Returns owned immutable RGBA8 or RGBA_F16, unpremultiplied, in the
++// original sRGB or Display-P3 color space. Never writes source.
+ // Crop/encoding must retain this result; errors are not unprotected fallback.
+ base::expected<SkBitmap, CanvasCopyError> CreateProtectedCanvasCopy(
+     const SkPixmap& source,
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc
+@@ -10,52 +10,80 @@
+ 
+ namespace glint::candidate {
+ 
++bool IsSupportedCanvasCopyFormat(const SkImageInfo& info) {
++  const auto type = info.colorType();
++  if ((type != kRGBA_8888_SkColorType && type != kBGRA_8888_SkColorType &&
++       type != kRGBA_F16_SkColorType && type != kRGBA_F16Norm_SkColorType) ||
++      (info.alphaType() != kOpaque_SkAlphaType &&
++       info.alphaType() != kUnpremul_SkAlphaType &&
++       info.alphaType() != kPremul_SkAlphaType) || !info.colorSpace()) {
++    return false;
++  }
++  if (info.colorSpace()->isSRGB()) {
++    return true;
++  }
++  const auto p3 = SkColorSpace::MakeRGB(SkNamedTransferFn::kSRGB,
++                                        SkNamedGamut::kDisplayP3);
++  return p3 && SkColorSpace::Equals(info.colorSpace(), p3.get());
++}
++
+ base::expected<SkBitmap, CanvasCopyError> CreateProtectedCanvasCopy(
+     const SkPixmap& source,
+     const std::array<uint8_t, 32>& partition_seed,
+     size_t memory_limit_bytes) {
+-  if ((source.colorType() != kRGBA_8888_SkColorType &&
+-       source.colorType() != kBGRA_8888_SkColorType) ||
+-      (source.alphaType() != kOpaque_SkAlphaType &&
+-       source.alphaType() != kUnpremul_SkAlphaType &&
+-       source.alphaType() != kPremul_SkAlphaType) ||
+-      !source.colorSpace() || !source.colorSpace()->isSRGB()) {
++  if (!IsSupportedCanvasCopyFormat(source.info())) {
+     return base::unexpected(CanvasCopyError::kUnsupportedFormat);
+   }
+   if (source.width() <= 0 || source.height() <= 0 || !source.addr()) {
+     return base::unexpected(CanvasCopyError::kInvalidLayout);
+   }
++  const bool half = source.colorType() == kRGBA_F16_SkColorType ||
++                    source.colorType() == kRGBA_F16Norm_SkColorType;
++  const size_t pixel_bytes = half ? 8 : 4;
+   const size_t width = source.width();
+   const size_t height = source.height();
+-  if (width > std::numeric_limits<size_t>::max() / 4 / height ||
+-      source.rowBytes() < width * 4 ||
++  if (width > std::numeric_limits<size_t>::max() / pixel_bytes / height ||
++      source.rowBytes() < width * pixel_bytes ||
+       source.computeByteSize() == std::numeric_limits<size_t>::max()) {
+     return base::unexpected(CanvasCopyError::kInvalidLayout);
+   }
+-  const size_t bytes = width * height * 4;
++  const size_t bytes = width * height * pixel_bytes;
+   if (bytes > memory_limit_bytes) {
+     return base::unexpected(CanvasCopyError::kMemoryLimit);
+   }
+   const auto info = SkImageInfo::Make(source.width(), source.height(),
+-                                     kRGBA_8888_SkColorType,
++                                     half ? kRGBA_F16_SkColorType
++                                          : kRGBA_8888_SkColorType,
+                                      kUnpremul_SkAlphaType,
+                                      source.refColorSpace());
+   SkBitmap copy;
+-  if (!copy.tryAllocPixels(info, width * 4)) {
++  if (!copy.tryAllocPixels(info, width * pixel_bytes)) {
+     return base::unexpected(CanvasCopyError::kAllocationFailed);
+   }
+   if (!source.readPixels(copy.pixmap(), 0, 0)) {
+     return base::unexpected(CanvasCopyError::kReadFailed);
+   }
+-  auto pixels = std::span(static_cast<uint8_t*>(copy.getPixels()), bytes);
+-  if (source.alphaType() == kOpaque_SkAlphaType) {
+-    // Opaque metadata makes the stored alpha byte semantically irrelevant.
+-    for (size_t offset = 3; offset < pixels.size(); offset += 4) {
+-      pixels[offset] = 255;
++  bool transformed;
++  if (half) {
++    auto pixels = std::span(static_cast<uint16_t*>(copy.getPixels()), bytes / 2);
++    if (source.alphaType() == kOpaque_SkAlphaType) {
++      for (size_t offset = 3; offset < pixels.size(); offset += 4) {
++        pixels[offset] = 0x3c00;
++      }
+     }
++    transformed = TransformEdgeCoherentCanvasF16(
++        pixels, source.width(), source.height(), partition_seed);
++  } else {
++    auto pixels = std::span(static_cast<uint8_t*>(copy.getPixels()), bytes);
++    if (source.alphaType() == kOpaque_SkAlphaType) {
++      for (size_t offset = 3; offset < pixels.size(); offset += 4) {
++        pixels[offset] = 255;
++      }
++    }
++    transformed = TransformEdgeCoherentCanvas(
++        pixels, source.width(), source.height(), partition_seed);
+   }
+-  if (!TransformEdgeCoherentCanvas(pixels, source.width(), source.height(),
+-                                   partition_seed)) {
++  if (!transformed) {
+     return base::unexpected(CanvasCopyError::kTransformFailed);
+   }
+   copy.setImmutable();
+diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc
+--- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc
++++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc
+@@ -27,15 +27,13 @@
+   if (source_info.isEmpty()) {
+     return base::unexpected(CanvasCopyError::kInvalidLayout);
+   }
+-  if ((source_info.colorType() != kRGBA_8888_SkColorType &&
+-       source_info.colorType() != kBGRA_8888_SkColorType) ||
+-      (source_info.alphaType() != kOpaque_SkAlphaType &&
+-       source_info.alphaType() != kUnpremul_SkAlphaType &&
+-       source_info.alphaType() != kPremul_SkAlphaType) ||
+-      !source_info.colorSpace() || !source_info.colorSpace()->isSRGB()) {
++  if (!IsSupportedCanvasCopyFormat(source_info)) {
+     return base::unexpected(CanvasCopyError::kUnsupportedFormat);
+   }
+-  const auto info = source_info.makeColorType(kRGBA_8888_SkColorType)
++  const bool half = source_info.colorType() == kRGBA_F16_SkColorType ||
++                    source_info.colorType() == kRGBA_F16Norm_SkColorType;
++  const auto info = source_info.makeColorType(half ? kRGBA_F16_SkColorType
++                                                : kRGBA_8888_SkColorType)
+                         .makeAlphaType(source_info.alphaType() == kOpaque_SkAlphaType
+                                            ? kOpaque_SkAlphaType
+                                            : kUnpremul_SkAlphaType);
+diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+--- a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
++++ b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+@@ -563,15 +563,8 @@
+       return nullptr;
+     }
+     if (const auto& partition_seed = seed.value()) {
+-      const auto& info = image_data_pixmap.info();
+-      if (info.colorType() != kRGBA_8888_SkColorType ||
+-          info.alphaType() != kUnpremul_SkAlphaType || !info.colorSpace() ||
+-          !info.colorSpace()->isSRGB()) {
+-        exception_state.ThrowDOMException(
+-            DOMExceptionCode::kNotReadableError,
+-            "Glint Canvas candidate does not support this ImageData format.");
+-        return nullptr;
+-      }
++      // Transform in source precision/color space exactly once. Native readPixels
++      // below converts the protected full snapshot to the requested ImageData.
+       auto protected_image = glint::candidate::CreateProtectedCanvasImage(
+           snapshot, *partition_seed, glint::candidate::kCandidateAdditionalPixelBudget);
+       if (!protected_image.has_value()) {

@@ -8,7 +8,11 @@ without the policy supports all 32. Only default sRGB/RGBA8 succeeds. The error 
 fail-closed, but still a compatibility regression, not a passing privacy gate.
 [Measured failure](drafts/environment/canvas-formats70-observations.json),
 [format-preserving fix contract](drafts/environment/CANVAS_FORMATS.md).
-No P3/F16 native fix has been implemented or compiled.
+A source-format extension is now an [isolated native draft](drafts/environment/canvas-formats-next/README.md),
+with four syntax checks and 12 linked transform controls. It is not compiled into
+the browser and does not yet establish lower-precision effects, copy/HDR fidelity,
+export or runtime compatibility. The full repeat at `ed64d93` passed **4441 tests,
+1 skipped**, before the new C++ draft.
 
 The subsequent [concurrent desktop gate](drafts/environment/combined-concurrent70-observations.json)
 passed six controls across two protected profiles and peer closure/restart.

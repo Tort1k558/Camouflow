@@ -13,7 +13,12 @@
 [concurrency](../native/drafts/environment/combined-concurrent70-observations.json),
 [Mobile Web](../native/drafts/environment/combined-mobile70-observations.json),
 [full Python](../native/drafts/environment/canonical-python70-combined-math-observations.json).
-The P3/F16 native fix is not implemented/compiled. Combined BFCache, full WebGPU,
+An [isolated P3/F16 draft](../native/drafts/environment/canvas-formats-next/README.md)
+passes four C++ syntax checks and 12 linked transform controls, including 65,536
+half encodings. It is not compiled into the browser; F16 LSB effects may disappear
+after lower-precision conversion. Copy/HDR/export/runtime checks remain open.
+[Full repeat at `ed64d93`](../native/drafts/environment/canonical-python70-lifecycle-formats-observations.json):
+**4441 passed, 1 skipped**, before that C++ draft. Combined BFCache, full WebGPU,
 quality/resources, security rebase and release/update/rollback gates remain open.
 Earlier tables below describe their original, narrower measurements.
 
