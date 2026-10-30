@@ -1559,6 +1559,10 @@
     {
       "file": "0075-native-logical-screen-fixture.patch",
       "sha256": "ead7637b703ad40c8b20f36646f6842a5d7a84eea6679caa695ad30e07be06ef"
+    },
+    {
+      "file": "0076-native-screenshot-transactions.patch",
+      "sha256": "d0b58b5756d4b0aaf25bc11ebced11c91eb3ef262ce4611849d06b18f3e0a501"
     }
   ],
   "build": {

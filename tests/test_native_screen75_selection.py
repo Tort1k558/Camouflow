@@ -15,10 +15,11 @@ def test_fixture_append_keeps_exact_74_prefix_and_all_non_patch_settings():
     candidate = build.load_candidate('upstream-156')
     before = json.loads((CANDIDATE / 'checkpoints/001-074.json').read_bytes())
     selected = (CANDIDATE / 'checkpoints/001-075.json').read_bytes()
-    assert selected == (CANDIDATE / 'manifest.json').read_bytes()
-    assert candidate['manifest']['patches'][:-1] == before['patches']
-    assert len(candidate['manifest']['patches']) == 75
-    assert {key: value for key, value in candidate['manifest'].items() if key != 'patches'} == {
+    historical = json.loads(selected)
+    assert candidate['manifest']['patches'][:75] == historical['patches']
+    assert historical['patches'][:-1] == before['patches']
+    assert len(historical['patches']) == 75
+    assert {key: value for key, value in historical.items() if key != 'patches'} == {
         key: value for key, value in before.items() if key != 'patches'}
 
 
@@ -38,9 +39,13 @@ def test_fixture_correction_retains_assertions_and_only_initializes_real_test_vi
         'runtime_verified', 'privacy_admitted', 'production_admitted'))
 
 
-def test_all_494_cases_remain_required_including_all_three_dispatch_cases():
-    assert len(units.SUPPORTED_TARGETS) == 23
-    assert sum(len(names) for target in units.SUPPORTED_TARGETS for names in units.required_tests(target).values()) == 494
+def test_all_494_cases_remain_required_including_all_three_dispatch_cases(native_units_before_screenshot):
+    historical = native_units_before_screenshot['namespace']
+    assert len(historical['SUPPORTED_TARGETS']) == 23
+    assert sum(len(names) for target in historical['SUPPORTED_TARGETS']
+               for names in historical['required_tests'](target).values()) == 494
+    for target in historical['SUPPORTED_TARGETS']:
+        assert units.required_tests(target) == historical['required_tests'](target)
     assert units.required_tests('screen-dispatch') == {'RenderWidgetHostTest': {
         'GlintLogicalScreenAdditionRequiresVisualUpdate',
         'GlintLogicalScreenOnlyChangesRequireVisualUpdate',

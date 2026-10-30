@@ -25,6 +25,13 @@ MAX_FILES = 16
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
 MAX_BUILD_STEPS = 256
 PREFIXES = ('content/browser/renderer_host/', 'third_party/blink/renderer/')
+DEVTOOLS_CAPTURE_FILES = frozenset({
+    'content/browser/devtools/protocol/emulation_handler.cc',
+    'content/browser/devtools/protocol/emulation_handler.h',
+    'content/browser/devtools/protocol/page_handler.cc',
+    'content/browser/devtools/protocol/page_handler.h',
+    'content/browser/devtools/devtools_agent_host_impl_unittest.cc',
+})
 
 
 def appended_patches(before, after):
@@ -59,7 +66,8 @@ def changed_paths(contents):
                     raise ValueError('Only ordinary same-path source edits are eligible')
                 path = PurePosixPath(match[1])
                 if (path.is_absolute() or '..' in path.parts or '\\' in match[1]
-                        or path.suffix not in ('.cc', '.h') or not match[1].startswith(PREFIXES)):
+                        or path.suffix not in ('.cc', '.h')
+                        or not (match[1].startswith(PREFIXES) or match[1] in DEVTOOLS_CAPTURE_FILES)):
                     raise ValueError('Patch changes dependency/build inputs or unsupported source paths')
                 count += 1
                 paths.add(path.as_posix())

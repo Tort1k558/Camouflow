@@ -201,7 +201,16 @@ NEW_TARGETS = ("surface-navigation", "window-transport", "gpu-pack-copy", "gpu-r
 IDENTITY_TARGETS = ("identity-keys", "identity-contexts", "identity-transport", "identity-handoff")
 SUPPORTED_TARGETS = ("keys", "contexts", "delivery", "worker-handoff", "document-partition",
                      "document-navigation", *NEW_TARGETS, *IDENTITY_TARGETS, "audio-math", "screen-metrics", "screen-widget", "screen-orientation",
-                     "screen-live-main", "screen-dispatch")
+                     "screen-live-main", "screen-dispatch", "screenshot-transaction")
+
+SCREENSHOT_TRANSACTION_TESTS = {"GlintScreenshotEmulationTest": {
+    "CrossSessionUsesEffectiveParameters", "TemporaryReadbackNeverClaimsPersistentOwnership",
+    "CapturesAreFifoPerTarget", "PermanentUpdateInvalidatesOldLease",
+    "SameValueUpdateRestoresOriginalView", "StaleOwnerClearKeepsCurrentOverride",
+    "CapturerDetachRestoresWithoutClearingOwner", "OwnerDetachCancelsForeignCaptureAndClearsOverride",
+    "NavigationDropsOldDocumentLeaseAndQueue", "FullPageRestoresOnlyItsPreferenceFields",
+    "IndependentTargetsDoNotShareLeases", "DestroyedTargetCancelsSafely",
+}}
 
 LIVE_SCREEN_TESTS = {
     "screen-live-main": {"WebFrameWidgetSimTest": {
@@ -285,6 +294,8 @@ def snapshot_delivery_sources(source: Path) -> dict[str, str]:
 
 
 def required_tests(target: str) -> dict[str, set[str]]:
+    if target == "screenshot-transaction":
+        return SCREENSHOT_TRANSACTION_TESTS
     if target in LIVE_SCREEN_TESTS:
         return LIVE_SCREEN_TESTS[target]
     if target == "screen-orientation":
@@ -490,6 +501,9 @@ def verified_source_chain(workspace: Path, candidate: dict | None, lock: dict, e
 
 def require_target_sources(source: Path, patches: list[dict], target: str) -> dict[str, str] | None:
     required_patches = {"0015-native-browser-context-key-ownership.patch", "0016-native-private-key-readiness.patch"}
+    if target == "screenshot-transaction":
+        required_patches.update({"0075-native-logical-screen-fixture.patch",
+                                 "0076-native-screenshot-transactions.patch"})
     if target in LIVE_SCREEN_TESTS:
         required_patches.update({"0069-native-logical-screen-inheritance.patch",
                                  "0073-native-main-screen-exposure.patch",
@@ -570,6 +584,8 @@ def require_target_sources(source: Path, patches: list[dict], target: str) -> di
 
 
 def unit_binary_target(target: str) -> str:
+    if target == "screenshot-transaction":
+        return "content_unittests"
     if target in LIVE_SCREEN_TESTS:
         return "blink_unittests" if target == "screen-live-main" else "content_unittests"
     return ("blink_common_unittests" if target == "screen-metrics" else
@@ -583,6 +599,8 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
            target: str = "keys", candidate_name: str | None = None,
            git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
     required = required_tests(target)
+    if target == "screenshot-transaction" and candidate_name != "upstream-156":
+        raise ValueError("Screenshot transaction units require the explicit upstream-156 candidate")
     if target in LIVE_SCREEN_TESTS and candidate_name != "upstream-156":
         raise ValueError("Live screen unit verification requires the explicit upstream-156 candidate")
     if target == "audio-math" and candidate_name != "upstream-156":
@@ -639,7 +657,9 @@ def _verify_locked(workspace: Path, report: Path, *, vs_installation: Path | Non
     arguments = (output / "args.gn").read_bytes()
     receipt = (output / "camouflow-build.json").read_bytes()
     core = measure_runtime_core(output / "chrome.exe")
-    scope = ("Live main-emulation precedence and browser logical-screen invalidation units; not screenshot, BFCache or browser admission"
+    scope = ("Target-owned screenshot lease/session/document units; not PNG, BFCache or browser admission"
+             if target == "screenshot-transaction" else
+             "Live main-emulation precedence and browser logical-screen invalidation units; not screenshot, BFCache or browser admission"
              if target in LIVE_SCREEN_TESTS else
              "Logical screen orientation update/clear and visibility units; not BFCache, browser delivery or admission"
              if target == "screen-orientation" else

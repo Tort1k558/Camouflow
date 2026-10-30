@@ -1,5 +1,17 @@
 # Glint browser test matrix
 
+## Selected screenshot source append 001–076
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Ordered source selection | Exact 001–075 prefix plus registered 0076 | Not a compiled runtime |
+| Required native cases | 24 groups / 506 cases, including all previous 494 | Execution pending |
+| Cached build allowlist | Exactly five named DevTools files added; resource limits unchanged | Graph/resource checks still required |
+| Selection/package/controller Python | 1215 passed, 1 skipped | Not native test execution |
+
+[Source selection](../native/drafts/environment/screenshot76-selection-observations.json).
+Preserved 001–075 remains the measured browser baseline and rollback source.
+
 ## Screenshot transaction preparation — not runtime admission
 
 | Gate | Result | Boundary |

@@ -30,9 +30,11 @@ def test_selected_74_preserves_compiled_73_and_binds_all_five_changes():
                                                'privacy_admitted', 'production_admitted'))
 
 
-def test_both_native_binaries_require_all_six_cases_without_removing_old_gates(native_units_before_orientation):
-    assert units.SUPPORTED_TARGETS[-2:] == ('screen-live-main', 'screen-dispatch')
-    assert len(units.SUPPORTED_TARGETS) == 23
+def test_both_native_binaries_require_all_six_cases_without_removing_old_gates(native_units_before_orientation,
+                                                                          native_units_before_screenshot):
+    historical = native_units_before_screenshot['namespace']
+    assert historical['SUPPORTED_TARGETS'][-2:] == ('screen-live-main', 'screen-dispatch')
+    assert len(historical['SUPPORTED_TARGETS']) == 23
     record = json.loads((ENV / 'screen74-selection-observations.json').read_bytes())
     cases = {suite + '.' + name for target in units.LIVE_SCREEN_TESTS
              for suite, names in units.required_tests(target).items() for name in names}

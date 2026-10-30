@@ -8,6 +8,26 @@ import pytest
 
 
 @pytest.fixture
+def native_units_before_screenshot(tmp_path, monkeypatch):
+    root = Path(__file__).resolve().parents[1]
+    relative = 'scripts/verify_native_privacy_units.py'
+    directory = tmp_path / 'before-screenshot'
+    path = directory / relative
+    path.parent.mkdir(parents=True)
+    path.write_text((root / relative).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error',
+                    str(root / 'native/drafts/environment/screenshot76-unit-gate.patch')],
+                   cwd=directory, check=True, capture_output=True)
+    record = json.loads((root / 'native/drafts/environment/screenshot76-selection-observations.json').read_bytes())
+    expected = next(row['before_sha256'] for row in record['reversible_gate_archives'] if row['source'] == relative)
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == expected
+    monkeypatch.setattr(sys, 'path', sys.path.copy())
+    namespace = {'__file__': str(root / relative), '__name__': '_native_units_before_screenshot'}
+    exec(compile(path.read_text(encoding='utf-8'), str(path), 'exec'), namespace)
+    return {'path': path, 'namespace': namespace, 'source_sha256': expected}
+
+
+@pytest.fixture
 def native_units_before_orientation(tmp_path, monkeypatch):
     """Reconstruct the measured 001-070 verifier, without rewriting old evidence."""
     root = Path(__file__).resolve().parents[1]
@@ -16,6 +36,8 @@ def native_units_before_orientation(tmp_path, monkeypatch):
     path = tmp_path / record["base_source"]
     path.parent.mkdir(parents=True)
     path.write_text((root / record["base_source"]).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
+                    str(directory / "screenshot76-unit-gate.patch")], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
                     str(directory / "live-screen74-unit-gate.patch")], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
@@ -35,6 +57,9 @@ def release_tools_before_72_sha256(tmp_path):
     path = tmp_path / relative
     path.parent.mkdir(parents=True)
     path.write_text((root / relative).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
+    subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
+                    str(root / "native/drafts/environment/screenshot76-test-contract.patch")],
+                   cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
                     str(root / "native/drafts/environment/screen75-test-contract.patch")],
                    cwd=tmp_path, check=True, capture_output=True)

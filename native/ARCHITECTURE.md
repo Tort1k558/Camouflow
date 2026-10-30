@@ -1,5 +1,18 @@
 # Glint architecture
 
+## Selected screenshot source append 001–076
+
+The five-file screenshot transaction draft is now registered as
+`0076-native-screenshot-transactions.patch`, preserving the exact 001–075 prefix
+and all non-patch settings. A separate required native group adds twelve cases;
+the previous 494 cases remain required (24 groups / 506 cases total).
+The cached rebuild controller admits only the five named DevTools files, not
+neighboring protocol/session sources. Its 256-command, 16-file, 16-MiB and four-job
+limits remain unchanged, as do the normal 180-GiB full-build requirements.
+Selection/package/controller tests passed **1215, with 1 skipped**. Compilation,
+native execution and the six-factorial browser repeat are still pending.
+[Selection](drafts/environment/screenshot76-selection-observations.json).
+
 ## Document-bound screenshot transaction draft
 
 The unselected five-file native package shares effective emulation ownership and

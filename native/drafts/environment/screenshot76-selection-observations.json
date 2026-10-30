@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "selected": true,
+  "base_manifest_sha256": "edf97d81da753d2980c91a383baab346f7bf5e21cc393a75540c669aa5ab14c1",
+  "selected_manifest_sha256": "f5bb6cbae7084df2f539127aa3b2c5f83c737900185aaca5ae3ada16909dc4ea",
+  "patch": "0076-native-screenshot-transactions.patch",
+  "patch_sha256": "d0b58b5756d4b0aaf25bc11ebced11c91eb3ef262ce4611849d06b18f3e0a501",
+  "sources": [
+    {
+      "source": "content/browser/devtools/devtools_agent_host_impl_unittest.cc",
+      "before_sha256": "e312e7b3d0d5b8da47bdfba6f732a6dd4f2be44a8c55708e7836f084f8c103cd",
+      "staged_sha256": "97a9619be5b978a2dd305f80c6a2cb88f6a910ea30d47e61798440487ca34684"
+    },
+    {
+      "source": "content/browser/devtools/protocol/emulation_handler.cc",
+      "before_sha256": "ebc935bf3a6b6fecb4284736810563b53c4f3363fba44fc4770dc59533cb5ef5",
+      "staged_sha256": "ad26b07cc76216f512fd05cedc9ced1b89ffd2508dd3bec323cb5f28391afbba"
+    },
+    {
+      "source": "content/browser/devtools/protocol/emulation_handler.h",
+      "before_sha256": "4e088d40f5d1035f04884a00db2d722f0d4f5a0bd1cb218caca4443ee4204664",
+      "staged_sha256": "e22693c3d6257bb8dacd32dd15d239c2782b0bab4f952e4347c0ea53953c44cc"
+    },
+    {
+      "source": "content/browser/devtools/protocol/page_handler.cc",
+      "before_sha256": "008a11651f5048ea8630f4a2d0f710904d1595c890287b55aa1a0517d8fd4dab",
+      "staged_sha256": "4053352892369874b53c2876e31630305e4ec42e868596e6b2e919b70f5c88a3"
+    },
+    {
+      "source": "content/browser/devtools/protocol/page_handler.h",
+      "before_sha256": "28dc66d929b5357157e12278751fe910d3c7e05d9740ffd5f0d2687d411af222",
+      "staged_sha256": "fcaff21f2c7b008919273d8b02b72063a27e77b3d63ecdc72c785230523fc3f7"
+    }
+  ],
+  "exact_replay_passed": true,
+  "compiler_syntax_checks_passed": true,
+  "native_cases_prepared": 12,
+  "groups_required": 24,
+  "cases_required": 506,
+  "jobs": 4,
+  "compiled_into_browser": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "reversible_gate_archives": [
+    {
+      "source": "scripts/verify_native_privacy_units.py",
+      "before_sha256": "e79329f5180126c7f20234364d85374f369ea1cf94485c0cd3bf7a1d96d9c1cf",
+      "after_sha256": "dd349a894bac1af7324b0ab7fa7334fe5f7734d31b364f002501f52afc58511c",
+      "patch": "screenshot76-unit-gate.patch",
+      "patch_sha256": "b4d01addde0e617c0954d858ea28b9abc5e682f1281dc172b0bc2c0d5ebfa632"
+    },
+    {
+      "source": "scripts/native_incremental.py",
+      "before_sha256": "2a87909c0323c8b452f72b6e788a8dd3f2ce24d5eebb5ba4645aa9c438a853f3",
+      "after_sha256": "c15232d55f763a665c251209e70945a24a4d9ae99318a6388c242e455ac06049",
+      "patch": "screenshot76-cache-allowlist.patch",
+      "patch_sha256": "ce69d4ec6a50900bc2224815a1a40843f12216a332f8df834bbf84c510c58ec7"
+    },
+    {
+      "source": "tests/test_release_tools.py",
+      "before_sha256": "300f3c17afc0fd8d1250d67ccdb0c4c1893305a09d7a447d4a68160faeb674f3",
+      "after_sha256": "8ca0ad0d80b9b320e65e03e564ff55a6a9b1a64575f7c3e5e2418652aed74a9c",
+      "patch": "screenshot76-test-contract.patch",
+      "patch_sha256": "2b5d7d2b4e34e0762db34859574bc2862e6694b4655e1a76d0e20f4850ad034a"
+    }
+  ],
+  "scope": "Selected source append only; bounded build plan and actual native/runtime execution pending"
+}
