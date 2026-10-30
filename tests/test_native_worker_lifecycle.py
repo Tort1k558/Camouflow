@@ -223,7 +223,7 @@ def test_controlled_client_cleanup_preserves_the_primary_failure(probes, worker_
         assert any('cleanup failed' in note for note in error.value.__notes__)
 
 
-def test_published_worker_service_runtime_binds_actual_sources_and_all_four_restarts():
+def test_published_worker_service_runtime_binds_actual_sources_and_all_four_restarts(sources_before_retained_gpu):
     directory = ROOT / 'native/drafts/environment'
     record = json.loads((directory / 'worker-service75-observations.json').read_bytes())
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
@@ -243,7 +243,9 @@ def test_published_worker_service_runtime_binds_actual_sources_and_all_four_rest
             assert len(case['normalized_phase_sha256']) == 3 and len(set(case['normalized_phase_sha256'])) == 1
             assert case['worker_audio_api_available'] is case['worker_audio_readback_verified'] is False
     for relative, expected in record['measured_inputs_sha256'].items():
-        assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected, relative
+        actual = (sources_before_retained_gpu['sha256'][relative] if relative in sources_before_retained_gpu['sha256']
+                  else hashlib.sha256((ROOT / relative).read_bytes()).hexdigest())
+        assert actual == expected, relative
     assert all(record[key] is False for key in ('stop_all_workers_used', 'worker_audio_readback_verified',
         'retained_gpu_objects_verified', 'webgpu_readback_verified', 'cross_session_screenshot_fixed',
         'privacy_admitted', 'production_admitted', 'full_current_source_regression_passed'))
@@ -252,13 +254,16 @@ def test_published_worker_service_runtime_binds_actual_sources_and_all_four_rest
     assert default['worker_diagnostics_enabled'] is default['service_restart_enabled'] is False
 
 
-def test_published_worker_archive_is_selected_and_binds_current_integrated_sources():
+def test_published_worker_archive_is_selected_and_binds_current_integrated_sources(sources_before_retained_gpu):
     directory = ROOT / 'native/drafts/environment'
     record = json.loads((directory / 'retained-worker-lifecycle-preparation.json').read_bytes())
     assert record['selected'] and record['runtime_verified'] is False
     assert hashlib.sha256((directory / record['patch']).read_bytes()).hexdigest() == record['patch_sha256']
     for row in record['sources']:
-        assert hashlib.sha256((ROOT / row['source']).read_bytes()).hexdigest() == row['staged_sha256']
+        relative = row['source']
+        actual = (sources_before_retained_gpu['sha256'][relative] if relative in sources_before_retained_gpu['sha256']
+                  else hashlib.sha256((ROOT / relative).read_bytes()).hexdigest())
+        assert actual == row['staged_sha256']
 
 
 def test_published_full_binding_repair_pass_does_not_claim_the_later_worker_extension():

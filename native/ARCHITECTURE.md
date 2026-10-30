@@ -10,11 +10,13 @@ Twelve additional stress phases passed concurrent targets, same-value/permanent
 updates, owner/capturer detach, full-page restoration, navigation and invalid
 requests. Cancellations were observed; their exact race schedule is not guaranteed.
 
-A separately staged retained-GPU probe passed desktop/Mobile Web with original
-WebGL1/2 resources in six BFCache documents. It is **not public CLI integration**,
-worker retention, WebGPU, complete profile isolation or privacy/release admission.
+The integrated opt-in `retained-gpu-objects` CLI passed desktop/Mobile Web with
+original WebGL1/2 resources in six BFCache documents. The exact public CLI default
+and worker/service modes also passed again. This does not admit worker GPU-object
+retention, WebGPU, complete profile isolation or privacy/release capabilities.
+[Public GPU evidence](drafts/environment/retained-gpu-objects76-observations.json).
 [Measured evidence](drafts/environment/screen76-runtime-observations.json).
-Next: integrate/repeat the opt-in GPU probe, then retained worker GPU resources.
+Next: retained worker GPU resources, then WebGPU readback and combined admission.
 
 ## Historical source selection 001–076
 

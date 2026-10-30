@@ -27,7 +27,7 @@ def main() -> int:
     parser.add_argument('--executable', type=Path, required=True)
     parser.add_argument('--work-dir', type=Path, required=True)
     parser.add_argument('--driver-stage', type=Path, required=True)
-    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents', 'retained-workers'), default='canvas')
+    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents', 'retained-workers', 'retained-gpu-objects'), default='canvas')
     parser.add_argument('--verify-service-lifecycle', action='store_true',
                         help='Verify owned service-controlled BFCache and explicit per-version stop/restart')
     args = parser.parse_args()
@@ -101,8 +101,15 @@ def main() -> int:
         surface_validator = runpy.run_path(str(FIXTURE / 'protected_surface_history.py'))['validate_runs']
         recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
         surface_read = f"async () => ({{gpu: await ({gpu.READBACK_READ})(), audio: await ({surfaces.AUDIO_READ})(true)}})"
-    if args.probe in {'retained-documents', 'retained-workers'}:
+    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
         import retained_document_surfaces as retained
+
+    retained_objects = None
+    if args.probe == 'retained-gpu-objects':
+        import retained_gpu_objects as retained_objects
+        surface_read = retained_objects.READ
+        surface_validator = None
+        recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
 
     worker_fixture = None
     worker_read = None
@@ -128,8 +135,11 @@ def main() -> int:
         report.update(probe=args.probe, scope='Protected manager BFCache with screen, Canvas formats and top-document recreated GPU/Audio readback continuity; not retained GPU objects, worker lifecycle, WebGPU readback or full policy admission')
 
 
-    if args.probe in {'retained-documents', 'retained-workers'}:
+    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
         report['scope'] = 'Six registered real documents with recreated protected GPU/Audio reads before/after actual BFCache; source/window/origin/nonce/URL/timeOrigin checked; not retained GPU objects, workers, WebGPU readback or full policy admission'
+
+    if retained_objects is not None:
+        report['scope'] = 'Original WebGL1/2 resources, known textured draw, framebuffer/default reads and PNG across six genuine BFCache documents; not recreated Audio/GPU full coverage, workers, WebGPU, profile isolation or privacy/release admission'
 
     if worker_fixture is not None:
         report['scope'] += '; six actual classic/module worker policy observations around document BFCache; dedicated/shared instance retention, service restart classification; service does not control the primary restored document, no retained GPU objects or WebGPU readback admission'
@@ -200,7 +210,7 @@ def main() -> int:
                             if worker_fixture is not None:
                                 worker_token = await worker_fixture.install(pages[1])
                                 row['worker_lifecycle_before'] = await worker_fixture.collect(session, worker_token, persisted=False)
-                            if args.probe in {'retained-documents', 'retained-workers'}:
+                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
                                 registration = await retained.install(pages[1], before, surface_read)
                                 row['retained_documents_before'] = await retained.collect(session, registration, persisted=False)
                         state = await probe['restore_history'](pages[1], session, before, row)
@@ -218,9 +228,12 @@ def main() -> int:
                         row['canvas_after'] = canvas_after
                         if surface_read is not None:
                             row['surfaces_after'] = await read_restored_surfaces(session, surface_read)
-                            if args.probe in {'retained-documents', 'retained-workers'}:
+                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
                                 row['retained_documents_after'] = await retained.collect(session, registration, persisted=True)
-                                row['retained_document_validation'] = retained.validate_pair(row['retained_documents_before'], row['retained_documents_after'])
+                                if retained_objects is not None:
+                                    row['retained_gpu_object_validation'] = retained_objects.validate_pair(row['retained_documents_before'], row['retained_documents_after'])
+                                else:
+                                    row['retained_document_validation'] = retained.validate_pair(row['retained_documents_before'], row['retained_documents_after'])
                                 if worker_fixture is not None:
                                     row['worker_lifecycle_after'] = await worker_fixture.collect(session, worker_token, persisted=True)
                                     row['worker_lifecycle_validation'] = worker_fixture.validate_pair(row['worker_lifecycle_before'], row['worker_lifecycle_after'], canvas_document=canvas_before, document_gpu=row['surfaces_before']['gpu'])
@@ -261,6 +274,9 @@ def main() -> int:
             report['measurement_complete'] = True
             report['validation'] = validator(report['runs'], probe['validate_page'], canvas_fixture['compare_formats'])
             report['passed'] = report['validation']['passed']
+            if retained_objects is not None:
+                report['retained_gpu_object_validation'] = retained_objects.validate_runs(report['runs'])
+                report['passed'] = report['passed'] and report['retained_gpu_object_validation']['passed']
             if args.probe in {'retained-documents', 'retained-workers'}:
                 report['retained_document_coverage'] = all(row['retained_document_validation']['passed'] for row in report['runs'])
                 report['passed'] = report['passed'] and report['retained_document_coverage']

@@ -8,10 +8,13 @@
 | Six capture controls | All passed, including Playwright and cross-session clip/no-clip | Controlled fixtures; old 075 failures retained |
 | Screen/PNG/DPR/BFCache | Six actual document roles retained | Not arbitrary sites or complete device cohorts |
 | Transaction stress | Twelve phases passed, including observed cancellations and invalid-request recovery | Exact race timing not guaranteed; BFCache measured separately |
-| Retained GPU prototype | Original WebGL1/2 resources passed in six BFCache documents, desktop/Mobile Web | Staged only; public CLI repeat and worker retention pending |
+| Retained GPU public CLI | Original WebGL1/2 resources passed in six BFCache documents, desktop/Mobile Web | Not worker GPU retention, WebGPU or cross-profile isolation |
 | Preservation | Independent 076 runtime, 269 assets verified | 075 rollback baseline retained |
 
 [Exact measured evidence](../native/drafts/environment/screen76-runtime-observations.json).
+[Integrated GPU runtime evidence](../native/drafts/environment/retained-gpu-objects76-observations.json)
+also retains passing default `canvas` and worker/service repeats, including four
+version-specific service restarts. The new mode is explicit: `--probe retained-gpu-objects`.
 These results do not admit WebGPU, full profile isolation, privacy guarantees,
 CAPTCHA outcomes or production/release deployment.
 

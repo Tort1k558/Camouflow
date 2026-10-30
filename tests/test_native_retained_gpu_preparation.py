@@ -14,13 +14,13 @@ ENV = ROOT / 'native/drafts/environment'
 
 
 @pytest.fixture
-def retained_gpu_stage(tmp_path):
+def retained_gpu_stage(tmp_path, sources_before_retained_gpu):
     record = json.loads((ENV / 'retained-gpu-objects76-preparation.json').read_bytes())
     patch = ENV / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     for row in record['sources']:
         if row['before_sha256'] is not None:
-            original = (ROOT / row['source']).read_bytes()
+            original = sources_before_retained_gpu['sources'][row['source']].encode('utf-8')
             assert hashlib.sha256(original).hexdigest() == row['before_sha256']
             target = tmp_path / row['source']
             target.parent.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "selected": true,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "patch": "retained-gpu-objects-integration.patch",
+  "patch_sha256": "b7aa220d5d5c6fa1f3a73a0ba86b7cd3309f61cecd756370a4a4c6a80778c12c",
+  "sources": [
+    {
+      "source": "native/drafts/environment/first-script/retained_gpu_objects.py",
+      "before_sha256": null,
+      "staged_sha256": "82f5f1bb2dad752e9c8b5007b03dc23c84eaf5012433eaab6bd6a04dcf70ab0a"
+    },
+    {
+      "source": "native/drafts/environment/first-script/protected_history_runtime.py",
+      "before_sha256": "20fbbc8503e060dfff0edb17144e6bd773c432ac5964036127c5cd7087c8cf00",
+      "staged_sha256": "aa169685e6e40b8103c1571e9c57a47e774f58d9d02510721d5b4acdc5e6c020"
+    }
+  ],
+  "scope": "Integrated opt-in GPU-resource probe; selection record only, exact public runtime pending"
+}
