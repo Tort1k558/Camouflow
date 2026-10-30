@@ -238,7 +238,8 @@ def test_preserved_runtime_inventory_is_measured(tmp_path, fault):
 
 @pytest.fixture
 def execution(tmp_path, monkeypatch):
-    assert tmp_path.drive.upper() == 'D:'
+    if sys.platform != 'win32' or tmp_path.drive.upper() != 'D:':
+        pytest.skip('Windows D: filesystem contract requires an explicit D: pytest basetemp')
     workspace = tmp_path / 'workspace'
     source = workspace / 'chromium/src'
     output = source / 'out/CamouFlowNative'
