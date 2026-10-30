@@ -21,6 +21,7 @@
 | WebGPU canvas export consistency | **OPEN:** baseline zero changed channels; protected PNG differs from direct GPU copy in 403 channels, max delta 1 | Stable export and exact GPU reference; not a PASS or external detector result |
 | Full WebGPU lifecycle Python | **4956 passed, 1 skipped**, source/status guards passed | At `8e46cb2`, before unselected native layout publication |
 | Native layout foundation | Isolated normal + AddressSanitizer builds; 1024 deterministic variations and boundary checks | Unselected C++ RGBA/BGRA helper; no Chromium/Dawn hook, transform or mismatch resolution |
+| Native provenance/snapshot components | Normal + AddressSanitizer: 18 provenance cases + 256 oracle variations; 26 snapshot cases + 64 crop/partial-read variations | Full-source native Canvas transform in detached snapshots; no browser capture/queue hook, transport, mapped-JS integration or mismatch resolution |
 
 [Exact measured evidence](../native/drafts/environment/screen76-runtime-observations.json).
 [Integrated GPU runtime evidence](../native/drafts/environment/retained-gpu-objects76-observations.json)
@@ -59,6 +60,7 @@ WebGL or WebGPU backend. The prior WebGL forced-restart, new WebGPU documents-on
 and workers-only, and default Canvas modes were all repeated successfully.
 [Open WebGPU PNG/direct-copy mismatch](../native/drafts/environment/webgpu-canvas-export76-observations.json).
 [Unselected layout sources and reproduction](../native/drafts/webgpu-readback-layout/README.md).
+[Current native component evidence](../native/drafts/environment/webgpu-readback-provenance-preparation.json).
 [Full lifecycle Python result](../native/drafts/environment/canonical-python76-webgpu-lifecycle-observations.json).
 These results do not admit WebGPU, full profile isolation, privacy guarantees,
 CAPTCHA outcomes or production/release deployment.

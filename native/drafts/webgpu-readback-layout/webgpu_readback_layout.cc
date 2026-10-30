@@ -57,6 +57,18 @@ std::optional<size_t> WebGpuPackedPixelBytes(
   return static_cast<size_t>(row_bytes * layout.height);
 }
 
+std::optional<uint64_t> WebGpuReadbackEnd(
+    const WebGpuReadbackLayout& layout,
+    size_t buffer_bytes) {
+  const auto packed = WebGpuPackedPixelBytes(layout);
+  if (!packed || !MappingStart(layout, 0, buffer_bytes, *packed)) {
+    return std::nullopt;
+  }
+  return layout.offset + static_cast<uint64_t>(layout.height - 1) *
+                             layout.row_pitch +
+         static_cast<uint64_t>(layout.width) * 4;
+}
+
 bool ExtractWebGpuRgba8(std::span<const uint8_t> mapped,
                        uint64_t mapping_offset,
                        const WebGpuReadbackLayout& layout,

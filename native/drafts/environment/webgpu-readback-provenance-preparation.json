@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "selected": false,
+  "patch": "webgpu-readback-provenance-next.patch",
+  "patch_sha256": "449102b61f2c846cc8a228c1d50c3aa0400763d425c121d2c8248ea66c817c2e",
+  "scope": "Isolated native executed-write provenance model and bounded full-surface snapshot/shadow pipeline; no GPU execution hook, capture producer, wire protocol or mapped-JS integration",
+  "sources": [
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_layout.h",
+      "before_sha256": null,
+      "staged_source": "native/drafts/webgpu-readback-layout/webgpu_readback_layout.h",
+      "staged_sha256": "8fc612e505fca6b3c43dd6d25a9ca02673fe983c58b64f0b68e11841f5268813",
+      "previous_staged_sha256": "7074c8224f7141880c8f5a2912f4522ba1f97ae58fc16a686673612673401b3b"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_provenance.h",
+      "before_sha256": null,
+      "staged_source": "native/drafts/webgpu-readback-layout/webgpu_readback_provenance.h",
+      "staged_sha256": "a4e9b8a662e565b4e9aa7820b3bbe5390dda0f4d1fe4a16fa91c0619c79665bf",
+      "previous_staged_sha256": null
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_snapshot.h",
+      "before_sha256": null,
+      "staged_source": "native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.h",
+      "staged_sha256": "585c5e0968a8855f5b96af8c59fd21b4480b65bd332b056fdb655bdd49cad770",
+      "previous_staged_sha256": null
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_layout.cc",
+      "before_sha256": null,
+      "staged_source": "native/drafts/webgpu-readback-layout/webgpu_readback_layout.cc",
+      "staged_sha256": "5ccfdf992444e21500f15a3500b4b0a3def048118415a429d4a974bc4d2c27a3",
+      "previous_staged_sha256": "c80a265e895d2dafc788720bcd3fd2358137f2380e0843834897be8d7c5af02d"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_provenance.cc",
+      "before_sha256": null,
+      "staged_source": "native/drafts/webgpu-readback-layout/webgpu_readback_provenance.cc",
+      "staged_sha256": "57a562b68059761fe0ad2930fd5c780539f04e952545774fc96c73eb555cdb63",
+      "previous_staged_sha256": null
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_snapshot.cc",
+      "before_sha256": null,
+      "staged_source": "native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.cc",
+      "staged_sha256": "e6d7b59c3afaed61e81c2f181e0273ba12adcb964fd66e3f45b4e3777965d2fa",
+      "previous_staged_sha256": null
+    }
+  ],
+  "raw_report_sha256": "948971744cd83c25e554db511edf65bef6ab0b58013c5d84d38603b4e5434ef2",
+  "isolated_component_checks": [
+    {
+      "name": "layout",
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "compile_seconds": 1.859,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "property_iterations": 1024,
+        "assertions": 525936,
+        "browser_integrated": false
+      },
+      "executable_sha256": "42e3a045933dbdec6aaee5176e153986e4288550b34da2eee4177571c2b68572"
+    },
+    {
+      "name": "provenance",
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "compile_seconds": 2.266,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "named_cases": 18,
+        "property_iterations": 256,
+        "assertions": 1232777,
+        "browser_integrated": false
+      },
+      "executable_sha256": "811841ad523103286efe5da1a32efd1967c66066f6c35faffd587c17e5316006"
+    },
+    {
+      "name": "snapshot",
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "compile_seconds": 3.625,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "named_cases": 26,
+        "formats": 2,
+        "property_iterations": 64,
+        "assertions": 748,
+        "browser_integrated": false
+      },
+      "executable_sha256": "4566559497c0848dadf10f38665a3fd9e66f1821abd89349e41d110f95874c53"
+    },
+    {
+      "name": "layout",
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "compile_seconds": 1.875,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "property_iterations": 1024,
+        "assertions": 525936,
+        "browser_integrated": false
+      },
+      "executable_sha256": "d03d48ccd7a7b4b7099cea30ed1f35f40b89f30eb3694ffeab03e3fd34b0b360"
+    },
+    {
+      "name": "provenance",
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "compile_seconds": 2.281,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "named_cases": 18,
+        "property_iterations": 256,
+        "assertions": 1232777,
+        "browser_integrated": false
+      },
+      "executable_sha256": "891da701c61298bd7217957f00885252d0a781facd78380ee595e25830e0f454"
+    },
+    {
+      "name": "snapshot",
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "compile_seconds": 3.657,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "named_cases": 26,
+        "formats": 2,
+        "property_iterations": 64,
+        "assertions": 748,
+        "browser_integrated": false
+      },
+      "executable_sha256": "9e8a0384ce6f9f63773fc49460ea17a113da8470cbf96120c49c433562f7fb91"
+    }
+  ],
+  "measured_inputs_sha256": {
+    "native/drafts/webgpu-readback-layout/webgpu_readback_layout.h": "8fc612e505fca6b3c43dd6d25a9ca02673fe983c58b64f0b68e11841f5268813",
+    "native/drafts/webgpu-readback-layout/webgpu_readback_provenance.h": "a4e9b8a662e565b4e9aa7820b3bbe5390dda0f4d1fe4a16fa91c0619c79665bf",
+    "native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.h": "585c5e0968a8855f5b96af8c59fd21b4480b65bd332b056fdb655bdd49cad770",
+    "native/drafts/webgpu-readback-layout/layout_test.cc": "869119ac8a7fea99f4293cd7e4bab6e7245b3cfd17135972117b7b86fa5a8409",
+    "native/drafts/webgpu-readback-layout/provenance_test.cc": "05614b3d6b9bba93c6e610aaab56bf274ec459522b91dc1281ef5da09b81e691",
+    "native/drafts/webgpu-readback-layout/snapshot_test.cc": "05ea29931d86cb373da6df8d8ad8a7f2650e07320a5b26a03b14cac107f4e0ec",
+    "native/drafts/webgpu-readback-layout/webgpu_readback_layout.cc": "5ccfdf992444e21500f15a3500b4b0a3def048118415a429d4a974bc4d2c27a3",
+    "native/drafts/webgpu-readback-layout/webgpu_readback_provenance.cc": "57a562b68059761fe0ad2930fd5c780539f04e952545774fc96c73eb555cdb63",
+    "native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.cc": "e6d7b59c3afaed61e81c2f181e0273ba12adcb964fd66e3f45b4e3777965d2fa",
+    "native/drafts/webgpu-readback-layout/check.py": "1897db0eb66585aa4a4323a731840ce3adcc5249569d90ea8f20ae4af762b964"
+  },
+  "borrowed_inputs_sha256": {
+    "D:\\Glint156Candidate\\chromium\\src\\third_party\\llvm-build\\Release+Asserts\\bin\\clang-cl.exe": "46ec91bea01ec2a79087ed161a6cc39e5d99f8d90ae6423dbb6ca8e215fcf886",
+    "D:\\Glint156Candidate\\chromium\\src\\third_party\\llvm-build\\Release+Asserts\\bin\\lld-link.exe": "b69f799434e48cbc53053e2dee9ef53d606fb5e155f57135bfd1c4986ca06fda",
+    "D:\\Glint156Candidate\\chromium\\src\\third_party\\llvm-build\\Release+Asserts\\lib\\clang\\24\\lib\\windows\\clang_rt.asan_dynamic-x86_64.dll": "2f1e2f21cc9482055963b8ac869a01a7e2a18cac8dbd0ae9a64c69200f7d8584",
+    "D:\\Glint156Candidate\\chromium\\src\\third_party\\blink\\renderer\\core\\html\\canvas\\glint\\canvas_readback_candidate.cc": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5",
+    "D:\\Glint156Candidate\\chromium\\src\\third_party\\blink\\renderer\\core\\html\\canvas\\glint\\canvas_readback_candidate.h": "07de0456fb75723e36b59e58ff649e0b382b48289e908186461f1ef32598d091",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\obj\\third_party\\boringssl\\boringssl.lib": "995ef21ca217d9d35d9c831388e59b176b0c41dd5bedc9a3ab51e6fbd5c090e9",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\obj\\third_party\\boringssl\\boringssl_asm.lib": "0e4131781946f68ea5a26ca1e36ebe3999a3020eee4bbce1b9977d04a83206cf",
+    "D:\\Glint156Candidate\\chromium\\src\\out\\CamouFlowNative\\obj\\buildtools\\third_party\\libc++\\libc++\\verbose_abort.obj": "f368d74537cf713fbd9177ed2a4ab1f35d3bdb61dd15465f7d49a266da6df7e3"
+  },
+  "isolated_provenance_verified": true,
+  "isolated_snapshot_transform_verified": true,
+  "isolated_address_sanitizer_verified": true,
+  "browser_integrated": false,
+  "native_queue_hooks_installed": false,
+  "full_surface_capture_producer_verified": false,
+  "mapped_js_lifetime_verified": false,
+  "runtime_verified": false,
+  "native_webgpu_readback_protection": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

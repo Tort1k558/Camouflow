@@ -1,51 +1,53 @@
-# WebGPU readback layout foundation
+# Native WebGPU readback components
 
-**Unselected native prototype. No Chromium/Dawn hook or pixel protection yet.**
-The existing PNG/direct-GPU mismatch remains open.
+**Unselected. Not connected to Chromium/Dawn or JavaScript mapped-buffer lifetime.**
+The browser's PNG/direct-GPU mismatch remains open.
 
-- Detached one-layer RGBA8/BGRA8 extraction and storage.
-- Checked offsets, dimensions, row pitch, overflow and mapping bounds.
-- Rejection of partial mappings, aliasing and unsupported formats before writes.
-- Preserved alpha, padding, prefix/suffix bytes and source storage.
+| Component | Implemented behavior |
+| --- | --- |
+| Layout | Detached RGBA8/BGRA8 transfer; bounds/overflow/alias checks; preserved alpha and padding |
+| Provenance | Executed-write ordering, buffer copies, crop coordinates, partial reads, write invalidation and device/version tokens |
+| Snapshot cache | Bounded full-surface original/protected copies using the existing native Canvas transform; detached mapping shadows |
 
-The caller must establish trusted copy provenance and API validation first.
-These helpers neither classify compute buffers nor apply fingerprint transforms.
-Layered, compressed, depth and floating-point formats are outside this prototype.
-Layout validation follows the relevant subset of the
-[WebGPU copy-layout rules](https://www.w3.org/TR/webgpu/#abstract-opdef-validating-linear-texture-data).
+Only a trusted native execution hook may register a copy or full-surface capture.
+**Buffer shape or contents are not proof of provenance.** The hook/producer is
+not implemented yet. Layered, compressed, depth and floating-point formats remain
+outside this prototype.
 
-## Measured checks
+The tracker rejects stale ordering, wrong devices and metadata exhaustion. The
+cache rejects missing/stale snapshots, changed original bytes, overlapping plans
+and memory-limit failures. No raw-data fallback is returned from these failures.
+Unrelated compute bytes and row padding are not pixel-transformed.
 
-The exact sources compiled with the pinned Windows Clang/MSVC SDK, `/W4 /WX`,
-and passed **1024 deterministic layout variations** plus boundary checks, both
-normally and with AddressSanitizer. This is not a Chromium unit/runtime batch.
-[Source-bound evidence](../environment/webgpu-readback-layout-preparation.json).
+The exact public check passed normally and under AddressSanitizer:
 
-## Reproduce the isolated check
+- Layout: 1024 deterministic variations and boundary checks.
+- Provenance: 18 named cases and 256 independent byte-oracle variations.
+- Snapshot pipeline: 26 named cases, two formats and 64 crop/partial-read variations.
 
-Use the existing pinned toolchain; keep objects/executables on D:.
+[Current source-bound evidence](../environment/webgpu-readback-provenance-preparation.json).
+[Historical layout-only evidence](../environment/webgpu-readback-layout-preparation.json)
+retains its exact earlier sources in its patch archive.
+
+## Reproduce on Windows
+
+Use the existing pinned Chromium source, SDK, compiler and native crypto objects.
+No downloads or Chromium rebuild occur; all objects, executables and logs go to a
+fresh external D: directory. Normal and AddressSanitizer checks are both required.
 
 ```powershell
-$src = (Resolve-Path native/drafts/webgpu-readback-layout).Path
-$out = 'D:/GlintManagerQA/layout-manual'
-$sdk = 'D:/Glint156Candidate/toolchain/local-msvc-sdk-28000-v1'
-$clang = 'D:/Glint156Candidate/chromium/src/third_party/llvm-build/Release+Asserts/bin/clang-cl.exe'
-New-Item -ItemType Directory -Path $out -ErrorAction Stop | Out-Null
-& $clang /nologo /std:c++20 /W4 /WX /EHsc /MT /Zc:__cplusplus "/winsysroot:$sdk" `
-  "/imsvc$sdk/VC/Tools/MSVC/14.51.36231/include" `
-  "/imsvc$sdk/Windows Kits/10/Include/10.0.28000.0/ucrt" `
-  "/imsvc$sdk/Windows Kits/10/Include/10.0.28000.0/shared" `
-  "/imsvc$sdk/Windows Kits/10/Include/10.0.28000.0/um" `
-  "$src/webgpu_readback_layout.cc" "$src/layout_test.cc" "/Fo$out/" "/Fe$out/layout_test.exe" `
-  -fuse-ld=lld /link "/LIBPATH:$sdk/VC/Tools/MSVC/14.51.36231/lib/x64" `
-  "/LIBPATH:$sdk/Windows Kits/10/Lib/10.0.28000.0/ucrt/x64" `
-  "/LIBPATH:$sdk/Windows Kits/10/Lib/10.0.28000.0/um/x64"
-if ($LASTEXITCODE -ne 0) { throw 'Layout compile failed' }
-& "$out/layout_test.exe"
-if ($LASTEXITCODE -ne 0) { throw 'Layout check failed' }
+python native/drafts/webgpu-readback-layout/check.py `
+  --chromium-root D:/Glint156Candidate/chromium/src `
+  --sdk-root D:/Glint156Candidate/toolchain/local-msvc-sdk-28000-v1 `
+  --work-dir D:/GlintManagerQA/fresh-native-readback-check
 ```
 
-Next integration needs validated copy/submission provenance, write invalidation,
-full-surface canonical data for partial reads, and consistent export routing.
-Do not transform arbitrary compute/storage results or publish a privacy capability
-from these standalone checks.
+The snapshot check links the existing native Canvas transform and crypto through
+their pinned source/object hashes, not a replacement implementation. Its protected
+data is compared with the same full-surface Canvas policy, including ROI reads and
+copied buffers. This does not prove a browser GPU capture, policy transport,
+mapped-JS detachment or cross-profile isolation.
+
+Next: trusted GPU execution/capture integration, policy-context transport, native
+mapped-buffer ownership/detachment, matching Canvas export routing and real runtime
+checks. Do not publish a privacy capability from these standalone components.

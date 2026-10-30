@@ -57,8 +57,14 @@ Lifecycle затем интегрирован: `--probe retained-webgpu-objects`
 Нативная основа layout подготовлена отдельно: RGBA/BGRA, границы, переполнения,
 aliasing и сохранение padding. **1024 варианта** и граничные случаи прошли обычную
 сборку и AddressSanitizer. [Исходники и повторение](../native/drafts/webgpu-readback-layout/README.md).
-Патч **не выбран**: нет Dawn/Chromium hook, классификации происхождения или
-преобразования пикселей; проблема PNG/GPU остаётся открытой.
+Начальный layout-патч **не выбран**. Текущий пакет дополнен tracker происхождения
+и snapshot-кэшем: копии буферов, crop, частичные чтения, инвалидирование записи,
+контроль epoch/version, лимиты памяти и нативный Canvas-алгоритм на полных копиях.
+Обычный прогон и AddressSanitizer прошли: **18 случаев + 256 вариантов** tracker,
+**26 случаев + 64 варианта** snapshot pipeline.
+[Текущий результат](../native/drafts/environment/webgpu-readback-provenance-preparation.json).
+Пока нет реального GPU execution/capture hook, доставки контекста и mapped-JS
+lifetime. Пакет не включён в браузер; проблема PNG/GPU остаётся открытой.
 Успех этих проверок не означает гарантированного обхода CAPTCHA или детекторов.
 
 ## История: выбор пакета 001–076

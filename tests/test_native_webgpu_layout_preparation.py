@@ -15,11 +15,14 @@ def test_native_layout_patch_round_trips_exact_compiled_sources(tmp_path):
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error', str(patch)],
                    cwd=tmp_path, check=True, capture_output=True, timeout=15)
+    upgrade = json.loads((DIRECTORY / 'webgpu-readback-provenance-preparation.json').read_bytes())
     for row in record['sources']:
         source, applied = ROOT / row['staged_source'], tmp_path / row['source']
         assert row['before_sha256'] is None
-        assert source.read_bytes() == applied.read_bytes()
-        assert hashlib.sha256(source.read_bytes()).hexdigest() == row['staged_sha256']
+        assert hashlib.sha256(applied.read_bytes()).hexdigest() == row['staged_sha256']
+        current = next(value for value in upgrade['sources'] if value['source'] == row['source'])
+        assert current['previous_staged_sha256'] == row['staged_sha256']
+        assert hashlib.sha256(source.read_bytes()).hexdigest() == current['staged_sha256']
         assert not source.read_bytes().startswith(bytes.fromhex('efbbbf')) and b'\r' not in source.read_bytes()
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
                    cwd=tmp_path, check=True, capture_output=True, timeout=15)

@@ -61,8 +61,17 @@ An unselected C++ layout foundation is now [public](drafts/webgpu-readback-layou
 detached RGBA8/BGRA8 transfer, checked mappings and unchanged padding/source bytes.
 Its exact sources passed 1024 deterministic variations and boundary cases in
 isolated normal and AddressSanitizer builds. There is no Dawn/Chromium hook or
-pixel transform yet; the canvas mismatch remains open.
+pixel transform in that initial layout-only revision; the canvas mismatch remains open.
 [Foundation evidence](drafts/environment/webgpu-readback-layout-preparation.json).
+The current unselected component package adds an executed-write provenance model
+and bounded full-surface snapshot/shadow cache. Buffer copies retain source ROI
+coordinates; writes remove affected provenance. The cache uses the existing native
+Canvas transform, checks original bytes and rejects stale/missing captures or
+ambiguous plans. Its exact public checker passed all three components normally and
+under AddressSanitizer: 18 provenance cases + 256 oracle variations, and 26 snapshot
+cases + 64 crop/partial-read variations. [Current evidence](drafts/environment/webgpu-readback-provenance-preparation.json).
+No trusted GPU execution/capture hook, context transport or mapped-JS lifetime
+integration is installed. These component checks do not resolve the runtime mismatch.
 Full lifecycle Python at `8e46cb2`: **4956 passed, 1 skipped**, source/status guards
 passed, before this unselected foundation publication.
 [Full result](drafts/environment/canonical-python76-webgpu-lifecycle-observations.json).

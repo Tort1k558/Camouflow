@@ -23,6 +23,10 @@ struct WebGpuReadbackLayout {
 
 std::optional<size_t> WebGpuPackedPixelBytes(const WebGpuReadbackLayout& layout);
 
+// Exclusive end of a complete, one-layer native copy in a buffer of this size.
+std::optional<uint64_t> WebGpuReadbackEnd(const WebGpuReadbackLayout& layout,
+                                       size_t buffer_bytes);
+
 // Detached non-overlapping storage only. Partial mappings and invalid layouts
 // fail before writing any output. These helpers do not select or protect data.
 bool ExtractWebGpuRgba8(std::span<const uint8_t> mapped,
