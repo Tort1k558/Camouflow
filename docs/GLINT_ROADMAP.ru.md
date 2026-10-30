@@ -4,6 +4,23 @@
 
 ### Выбран 001–074; проверенный бинарник пока 001–073
 
+**Вложенные dedicated workers проверены на сохранённом 073.** Публичные collector/fixture
+прошли четыре classic/module parent-child пути, по 16 Offscreen-вариантов в каждом:
+**64 Canvas-кейса на профиль и фазу**, два создания worker на путь, initial/restart браузера.
+Baseline и защищённый профиль согласованы с document; ключи профилей/результаты стабильны,
+наблюдавшиеся процессы завершены. В репозитории сохраняется компактное резюме, raw-отчёт — на D:.
+[Collector](../native/drafts/environment/first-script/nested_formats_runtime.py),
+[результат](../native/drafts/environment/nested-formats73-observations.json).
+Это не новый runtime 074, не nested WebGL/Audio и не произвольная глубина вложенности.
+Точный публичный код запускался из локального frozen Git-снимка 073 с соответствующим receipt.
+
+Полный повтор после storage-исправления: **4576 passed, 4 failed, 1 skipped**; оба QML-кейса прошли.
+Все четыре сбоя — привязки исторических runtime-отчётов к прежнему `db.py`, а не ошибки их runtime.
+Старый исходник теперь реконструируется обратимым test-only patch; исходные отчёты не переписываются.
+Целевой повтор TLS/GPU/environment/storage: **605/605**. Новый nested collector/валидатор: **13/13**.
+[Сохранённые сбои](../native/drafts/environment/canonical-python74-storage-history-failure-observations.json).
+Полный повтор после восстановления этих исторических привязок ещё обязателен.
+
 **Исправлена гонка локального хранилища при сохранении настроек профиля.** Чтение accounts/settings
 теперь использует тот же существующий RLock, что и атомарные записи; форматы файлов, таймауты
 и обработка повреждённых документов не менялись. На отдельном Windows-профиле до исправления:
@@ -66,14 +83,16 @@ native-кейсов вместе с прежними и повторить ис�
 desktop/Mobile Web завершились; runtime-ресурсы освобождены.
 [Результат](../native/drafts/environment/protected-history73-observations.json).
 
-Запуск из корня проекта, без новой сборки:
+Параметры collector из корня проекта:
 
 ```powershell
-.\.venv\Scripts\python.exe native/drafts/environment/first-script/protected_history_runtime.py --executable D:/Glint156Candidate/preserved-runtime73-20261030-v1/runtime/chrome.exe --work-dir D:/GlintManagerQA/protected-history-new-run --driver-stage D:/GlintManagerQA/staged-python-js70-20261030-v1
+.\.venv\Scripts\python.exe native/drafts/environment/first-script/protected_history_runtime.py --help
 ```
 
-Выходной каталог должен быть новым. Диагностический staged driver обязателен;
-установленный SDK не меняется, production-допуск не выдаётся.
+Выходной каталог должен быть новым. Runtime receipt обязан соответствовать выбранному
+manifest используемого source layout: текущий 074 не принимает receipt сохранённого 073.
+Для исторического прогона нужен соответствующий frozen layout, а не ослабление receipt-проверки.
+Диагностический staged driver обязателен; установленный SDK не меняется, production-допуск не выдаётся.
 
 **Пакет собран, 488/488 нативных тестов прошли**, включая четыре строгих orientation-теста.
 Инкрементальная сборка: j4, 51 шаг, 43м55с Ninja; полный resume-controller — 59м24с.

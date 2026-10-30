@@ -915,7 +915,7 @@ def test_published_cross_process_result_proves_orderly_handoff_not_crash_recover
         assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
 
 
-def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates(recorder_before_document_open_sha256, native_units_before_orientation):
+def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates(recorder_before_document_open_sha256, native_units_before_orientation, storage_before_read_lock_sha256):
     import hashlib
 
     root = environment.ROOT
@@ -940,6 +940,8 @@ def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gate
             expected = hashlib.sha256((root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest()
         elif name == "scripts/verify_native_privacy_units.py":
             expected = native_units_before_orientation["source_sha256"]
+        elif name == "app/storage/db.py":
+            expected = storage_before_read_lock_sha256
         assert "\\" not in name and expected == value
 
 
@@ -1310,7 +1312,7 @@ def test_prepared_orientation_gate_replay_rejects_incomplete_results_and_source_
     assert not (tmp_path / "not-created.json").exists()
 
 
-def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(recorder_before_document_open_sha256, native_units_before_orientation):
+def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(recorder_before_document_open_sha256, native_units_before_orientation, storage_before_read_lock_sha256):
     import hashlib
 
     root = environment.ROOT
@@ -1340,6 +1342,8 @@ def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(record
             actual = hashlib.sha256((root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest()
         elif path == "scripts/verify_native_privacy_units.py":
             actual = native_units_before_orientation["source_sha256"]
+        elif path == "app/storage/db.py":
+            actual = storage_before_read_lock_sha256
         else:
             actual = hashlib.sha256((root / path).read_bytes()).hexdigest()
         assert actual == value

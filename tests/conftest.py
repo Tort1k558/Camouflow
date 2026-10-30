@@ -55,14 +55,33 @@ def qml_before_delivery_diagnostics_sha256(tmp_path):
 
 
 @pytest.fixture
-def native70_historical_source_hashes(native_units_before_orientation, recorder_before_document_open_sha256):
+def native70_historical_source_hashes(native_units_before_orientation, recorder_before_document_open_sha256,
+                                     storage_before_read_lock_sha256):
     root = Path(__file__).resolve().parents[1]
     return {
         "native/drafts/upstream-156/manifest.json": hashlib.sha256(
             (root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest(),
         "scripts/verify_native_privacy_units.py": native_units_before_orientation["source_sha256"],
         "app/services/scenario_recorder.py": recorder_before_document_open_sha256,
+        "app/storage/db.py": storage_before_read_lock_sha256,
     }
+
+
+@pytest.fixture
+def storage_before_read_lock_sha256(tmp_path):
+    """Reconstruct the measured storage source without modifying historical evidence."""
+    root = Path(__file__).resolve().parents[1]
+    relative = Path('app/storage/db.py')
+    target = tmp_path / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text((root / relative).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error',
+                    str(root / 'native/drafts/environment/storage-read-lock74.patch')],
+                   cwd=tmp_path, check=True, capture_output=True)
+    record = json.loads((root / 'native/drafts/environment/storage-read-lock74-observations.json').read_bytes())
+    value = hashlib.sha256(target.read_bytes()).hexdigest()
+    assert value == record['before']['source_sha256']
+    return value
 
 
 @pytest.fixture

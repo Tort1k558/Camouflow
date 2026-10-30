@@ -3,6 +3,20 @@
 ## Current compiled 001–073 — 2026-10-30
 
 **Selected source is now 001–074; compiled/qualified baseline remains 001–073.**
+Nested dedicated-worker follow-up on preserved 073 passed: four classic/module parent-child
+paths, **64 Offscreen Canvas cases per profile/phase**, two worker creations per path,
+baseline/protected profiles and browser restart. Document coherence, effect, repeated reads,
+identity-file postguards and observed-process cleanup passed. This does not qualify selected
+074, nested GPU/Audio, shared/service parents or arbitrary nesting depth.
+[Exact public probe evidence](../native/drafts/environment/nested-formats73-observations.json),
+[collector](../native/drafts/environment/first-script/nested_formats_runtime.py).
+
+Full Python after the storage fix: **4576 passed, 4 failed, 1 skipped**, source/status guards
+passed and both QML cases passed. All failures bind historical runtime records to the old
+storage source. A reversible test-only patch reconstructs that source; no old observations
+are rewritten. Targeted TLS/GPU/environment/storage follow-up: **605 passed**; nested probe
+validator/server/evidence tests: **13 passed**. Full regression after this repair remains open.
+[Retained failures](../native/drafts/environment/canonical-python74-storage-history-failure-observations.json).
 Storage follow-up fixes a reproduced same-process Windows accounts read/replace race:
 before, 214 empty reads and 247 failed writes; after, **500/500 writes, zero errors/empty reads**.
 Accounts/settings readers share the existing writer RLock; no retry or deadline relaxation.

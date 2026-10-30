@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "git_head": "73387deec1b1c100851e6bbcc54b0bd03808095c",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 969,
+  "before_status": " M docs/HUB.md\n",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 381.297,
+  "returncode": 1,
+  "counts": {
+    "tests": 4581,
+    "failures": 4,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4576
+  },
+  "changed_tracked_files": [],
+  "after_status": " M docs/HUB.md\n",
+  "postguards_passed": true,
+  "log_sha256": "e16b1f6a3e476448a0e8ae3814caa92e3c91b08a13e146f2c3525fca119b8fed",
+  "junit_sha256": "0c2c7d57136827ec99ae4f92f80196a9b33f9132b9ea798f0d2b7151256db4d5",
+  "failed_tests": [
+    "tests.test_native_client_hello::test_owned_tls_runtime_evidence_is_negotiation_not_general_trust_or_impersonation",
+    "tests.test_native_environment_capture::test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates",
+    "tests.test_native_environment_capture::test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime",
+    "tests.test_native_gpu::test_large_attachment_runtime_evidence_keeps_loaded_timings_and_memory_scope_explicit"
+  ],
+  "raw_report_sha256": "b5491b03e0f7974a6cad8041aafe3393d2b470fb236dfd9199b780601156ef6e",
+  "scope_note": "All four failures compare historical runtime evidence with the changed current storage source; QML profile tests passed. Historical observations are not rewritten."
+}

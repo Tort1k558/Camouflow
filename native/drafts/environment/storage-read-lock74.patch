@@ -1,0 +1,67 @@
+diff --git a/app/storage/db.py b/app/storage/db.py
+--- a/app/storage/db.py
++++ b/app/storage/db.py
+@@ -401,18 +401,19 @@
+ 
+ 
+ def _load_accounts_raw(*, strict: bool = False) -> List[Dict]:
+-    try:
+-        data = json.loads(ACCOUNTS_FILE.read_text(encoding="utf-8-sig"))
+-        if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
+-            raise ValueError("Accounts must be a list of objects")
+-        return data
+-    except FileNotFoundError:
+-        return []
+-    except Exception as exc:
+-        if strict:
+-            raise RuntimeError("Cannot update unreadable accounts.json; restore the file first") from exc
+-        LOGGER.exception("Failed to load accounts.json")
+-        return []
++    with _STORAGE_LOCK:
++        try:
++            data = json.loads(ACCOUNTS_FILE.read_text(encoding="utf-8-sig"))
++            if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
++                raise ValueError("Accounts must be a list of objects")
++            return data
++        except FileNotFoundError:
++            return []
++        except Exception as exc:
++            if strict:
++                raise RuntimeError("Cannot update unreadable accounts.json; restore the file first") from exc
++            LOGGER.exception("Failed to load accounts.json")
++            return []
+ 
+ 
+ def _save_accounts_raw(accounts: List[Dict]) -> None:
+@@ -532,18 +533,19 @@
+ 
+ 
+ def _load_settings(*, strict: bool = False) -> Dict[str, str]:
+-    try:
+-        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8-sig"))
+-        if not isinstance(data, dict):
+-            raise ValueError("Settings must be an object")
+-        return data
+-    except FileNotFoundError:
+-        return {}
+-    except Exception as exc:
+-        if strict:
+-            raise RuntimeError("Cannot update unreadable settings.json; restore the file first") from exc
+-        LOGGER.exception("Failed to load settings.json")
+-        return {}
++    with _STORAGE_LOCK:
++        try:
++            data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8-sig"))
++            if not isinstance(data, dict):
++                raise ValueError("Settings must be an object")
++            return data
++        except FileNotFoundError:
++            return {}
++        except Exception as exc:
++            if strict:
++                raise RuntimeError("Cannot update unreadable settings.json; restore the file first") from exc
++            LOGGER.exception("Failed to load settings.json")
++            return {}
+ 
+ 
+ def _save_settings(settings: Dict[str, str]) -> None:

@@ -2,6 +2,35 @@
 
 ## Current implementation boundary
 
+**Compiled candidate: Chromium 156.0.8078.36, patches 001–073. Selected source: 001–074.**
+The preserved 073 runtime passed 488 native cases in 21 groups. The next linked
+screen package adds six mandatory cases in two groups, but is not built; its
+browser/renderer invalidation fix has syntax checks, not runtime admission.
+The configured disk reserve currently prevents the 074 source refresh/build.
+
+| Boundary | Verified scope | Still open |
+| --- | --- | --- |
+| Native identity | Private profile keys and browser-owned document/worker policy delivery | Complete plausible device cohorts; not arbitrary OS/GPU impersonation |
+| Combined surfaces | Canvas/WebGL/AudioMath, eight protected desktop profiles, initial/restart; Mobile Web separately | General compatibility and full protected lifecycle |
+| Canvas formats/export | HTML/Offscreen, sRGB/P3, unorm8/F16; document and six worker-class PNG paths | Broad HDR/nonfinite/perceptual quality |
+| Nested dedicated workers | Four classic/module parent-child paths, 64 Canvas cases per profile/phase, two creation samples and browser restart on frozen 073 | Selected 074, nested worker GPU/Audio, shared/service parents and arbitrary depth |
+| Manager BFCache | Requested screen/DPR in six documents and stable top-document Canvas after actual restoration | Raw per-page CDP metrics stress still fails; restored GPU/Audio output not measured |
+| Local storage | Account/settings readers share the existing writer RLock; Windows same-process race reproduction is fixed | No new cross-process locking guarantee |
+
+[Current matrix](../docs/GLINT_TEST_MATRIX.md),
+[073 native batch](drafts/upstream-156/native-batch73-observations.json),
+[nested worker measurements](drafts/environment/nested-formats73-observations.json),
+[074 selection](drafts/environment/screen74-selection-observations.json).
+The nested collector ran byte-identical diagnostic overlays on a local frozen 073
+Git layout; inherited source bindings retain both measured raw and normalized text
+hashes. It is not evidence for the changed 074 selection or the installed package.
+The older 148 package/runtime remains available for comparison/rollback. No universal
+CAPTCHA result, full CDP invisibility, current security or production admission is implied.
+
+## Historical implementation notes
+
+The following snapshots describe their recorded checkpoints, not the current selection.
+
 Worker PNG capture now passes **24/24 cases/carriers per baseline and protected
 profile**, using the existing independent Qt decoder. Pixels match pre-mutation
 reads and document outputs, including async capture and color metadata. The exact
