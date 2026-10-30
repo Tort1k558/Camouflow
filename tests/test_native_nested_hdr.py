@@ -78,7 +78,7 @@ def test_unchanged_baseline_is_not_an_effect_pass(observations):
     assert not compare([observations[0], copy.deepcopy(observations[0])])['passed']
 
 
-def test_exact_finite_hdr_probe_qualifies_frozen_73_and_binds_public_sources():
+def test_exact_finite_hdr_probe_qualifies_frozen_73_and_binds_public_sources(historical_surface_source_sha256):
     record = json.loads((ENV / 'nested-hdr73-observations.json').read_bytes())
     assert record['probe'] == 'finite-hdr' and record['passed'] and record['postguards_passed']
     assert record['measurement_complete'] and record['comparison']['restart_stable']
@@ -88,7 +88,7 @@ def test_exact_finite_hdr_probe_qualifies_frozen_73_and_binds_public_sources():
         assert row['worker_recreation_verified'] and row['resources_released']
         assert row['observed_processes'] > 0 and row['remaining_observed_processes'] == 0
     for name, binding in record['source_bindings'].items():
-        actual = hashlib.sha256((ROOT / name).read_text(encoding='utf-8-sig').encode('utf-8')).hexdigest()
+        actual = historical_surface_source_sha256(name, normalized=True)
         assert actual == binding['normalized_utf8_lf_sha256'], name
 
 

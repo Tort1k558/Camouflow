@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## Worker lifecycle preparation and full-regression follow-up
+
+An **unselected** six-class classic/module dedicated/shared/service package is
+public. Its D-only prototype passed desktop/Mobile Web around actual BFCache:
+16 Offscreen Canvas cases and WebGL1/2 per worker, identity/sequence and cleanup.
+OfflineAudioContext was unavailable in all workers; this is **not Audio readback coverage**.
+Service workers did not control the restored document; forced restart, live GPU
+objects and exact public CLI integration remain open.
+[Package and scoped prototype](../native/drafts/environment/retained-workers75-preparation-observations.json).
+
+The full run after `14e1aa2` found **28 historical source-binding failures**, with
+4736 passes / one skip and intact source guards. Tests now reconstruct the exact
+old Audio/GPU sources; **291 targeted checks passed** without rewriting old records.
+The full repeat is pending, not green by inference.
+[Retained failure](../native/drafts/environment/canonical-python75-retained-binding-failure-observations.json).
+
 ## Retained-document surfaces — Windows 001–075
 
 `--probe retained-documents` now validates recreated WebGL1/2 readback, PNG/pack/error

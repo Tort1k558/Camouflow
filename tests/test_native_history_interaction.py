@@ -99,7 +99,7 @@ def test_restored_main_evaluation_requires_actual_value(history_interaction, res
         asyncio.run(history_interaction['evaluate'](Session(), 'owned sample'))
 
 
-def test_actual_restored_main_result_keeps_full_lifecycle_failure():
+def test_actual_restored_main_result_keeps_full_lifecycle_failure(historical_surface_source_sha256):
     root = Path(__file__).resolve().parents[1]
     record = json.loads((root / 'native/drafts/environment/history-interaction70-observations.json').read_bytes())
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
@@ -110,6 +110,6 @@ def test_actual_restored_main_result_keeps_full_lifecycle_failure():
                                                 'privacy_admitted', 'production_admitted'))
     assert record['retained_incomplete_attempt']['measurement_complete'] is False
     assert record['retained_incomplete_attempt']['timeout_ms'] == 10000
-    assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
+    assert all(historical_surface_source_sha256(path) == value
                for path, value in record['source_sha256'].items())
     assert hashlib.sha256(COLLECTOR.read_bytes()).hexdigest() == record['collector_source_sha256']

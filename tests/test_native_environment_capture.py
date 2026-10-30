@@ -10,10 +10,10 @@ from test_native_gpu import observation as gpu_observation
 VERSION = "156.0.8078.36"
 
 
-def test_environment_reference_summary_binds_sources_without_admitting_generated_profiles():
+def test_environment_reference_summary_binds_sources_without_admitting_generated_profiles(historical_surface_source_sha256):
     record = json.loads((environment.ROOT / "native/drafts/environment/stock156-capture-observations.json").read_bytes())
     assert record["passed"] is True and record["postguards_passed"] is True
-    assert record["source_sha256"] == environment.source_inputs()
+    assert record["source_sha256"] == {name: historical_surface_source_sha256(name) for name in environment.source_inputs()}
     assert record["capture_mode"] == "headless-automation-control" and record["viewport_emulation"] is False
     assert record["measured_hosts"] == 1
     assert [row["name"] for row in record["phases"]] == ["initial", "persistent-profile-restart"]
@@ -28,10 +28,10 @@ def test_environment_reference_summary_binds_sources_without_admitting_generated
         assert record[key] is False
 
 
-def test_published_manager_mode_findings_remain_failed_and_reproducible():
+def test_published_manager_mode_findings_remain_failed_and_reproducible(historical_surface_source_sha256):
     record = json.loads((environment.ROOT / "native/drafts/environment/stock156-screen-consistency-observations.json").read_bytes())
     assert record["passed"] is False and record["measurement_completed"] is True
-    assert record["postguards_passed"] is True and record["source_sha256"] == environment.source_inputs()
+    assert record["postguards_passed"] is True and record["source_sha256"] == {name: historical_surface_source_sha256(name) for name in environment.source_inputs()}
     assert [row["name"] for row in record["modes"]] == ["native-control", "manager-desktop", "manager-mobile-web"]
     for row in record["modes"]:
         native = row["name"] == "native-control"
@@ -501,8 +501,7 @@ def test_first_script_observers_accept_playwright_page_events_and_keep_phase_own
                      "lifecycle_events": ["domcontentloaded", "load"]} for index in range(2)]
 
 
-def test_public_first_script_execution_binds_current_sources_and_retains_incomplete_attempts():
-    import hashlib
+def test_public_first_script_execution_binds_current_sources_and_retains_incomplete_attempts(historical_surface_source_sha256):
 
     root = environment.ROOT
     record = json.loads((root / "native/drafts/environment/public-first-script-cli-observations.json").read_bytes())
@@ -512,7 +511,7 @@ def test_public_first_script_execution_binds_current_sources_and_retains_incompl
     assert record["final_owned_chrome_processes_remaining"] == 0
     assert all("\\" not in name for name in record["source_sha256"])
     for name, expected in record["source_sha256"].items():
-        assert hashlib.sha256((root / name).read_bytes()).hexdigest() == expected
+        assert historical_surface_source_sha256(name) == expected
     assert [row["passed"] for row in record["phases"]] == [False, False, False, False, True, True]
     assert all(row["document_contexts"] == 6 and row["browser_connection_closed"] and not row["page_errors"]
                for row in record["phases"])
@@ -675,8 +674,7 @@ def test_screen_lifecycle_history_uses_cdp_not_unsupported_playwright_back(scree
     assert report["history_navigation"]["type"] == ("BackForwardCacheRestore" if cache_restored else "Navigation")
 
 
-def test_screen_lifecycle_calibration_matches_stock_without_false_manager_or_native_admission():
-    import hashlib
+def test_screen_lifecycle_calibration_matches_stock_without_false_manager_or_native_admission(historical_surface_source_sha256):
 
     root = environment.ROOT
     record = json.loads((root / "native/drafts/environment/screen-lifecycle68-calibration-observations.json").read_bytes())
@@ -691,7 +689,7 @@ def test_screen_lifecycle_calibration_matches_stock_without_false_manager_or_nat
     assert len(record["stages"]) == 7
     assert sum(page["document_contexts"] for row in record["stages"] for page in row["pages"].values()) == 78
     for name, expected in record["source_sha256"].items():
-        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == expected
+        assert "\\" not in name and historical_surface_source_sha256(name) == expected
     assert record["prior_incomplete_attempt"]["measurement_complete"] is False
 
 
@@ -742,8 +740,7 @@ def test_manager_screen_validator_rejects_inconsistent_supported_path(manager_sc
     assert manager_screen_collector["validate_capture"](observed, configuration, viewport, baseline)
 
 
-def test_manager_screen_calibration_binds_sources_and_retains_failed_identity_contract():
-    import hashlib
+def test_manager_screen_calibration_binds_sources_and_retains_failed_identity_contract(historical_surface_source_sha256):
 
     root = environment.ROOT
     record = json.loads((root / "native/drafts/environment/manager-screen68-calibration-observations.json").read_bytes())
@@ -767,7 +764,7 @@ def test_manager_screen_calibration_binds_sources_and_retains_failed_identity_co
                 assert all(click == {"trusted": True, "x": 52, "y": 38, "inside": True}
                            for click in page[kind + "_trusted_last_clicks"].values())
     for name, value in record["source_sha256"].items():
-        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+        assert "\\" not in name and historical_surface_source_sha256(name) == value
 
 
 def test_queued_native_lifecycle_cases_bind_to_dpr70_without_claiming_execution():
@@ -817,8 +814,7 @@ def test_runtime_storage_control_rejects_cross_profile_missing_or_duplicate_valu
         collector["validate_storage"](value, "A")
 
 
-def test_real_runtime_ownership_record_keeps_lifecycle_and_screen_admission_separate():
-    import hashlib
+def test_real_runtime_ownership_record_keeps_lifecycle_and_screen_admission_separate(historical_surface_source_sha256):
 
     root = environment.ROOT
     record = json.loads((root / "native/drafts/environment/runtime-ownership68-observations.json").read_bytes())
@@ -834,7 +830,7 @@ def test_real_runtime_ownership_record_keeps_lifecycle_and_screen_admission_sepa
         "cross_process_owner_rejection_verified", "server_team_storage_isolation_verified", "native_0069_verified",
         "privacy_admitted", "production_admitted"))
     for name, value in record["source_sha256"].items():
-        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+        assert "\\" not in name and historical_surface_source_sha256(name) == value
 
 
 @pytest.fixture
@@ -896,8 +892,7 @@ def test_cross_process_worker_always_closes_its_runtime(owner_process_collector,
     assert len(instances) == 1 and instances[0].closed and not instances[0].has_resources
 
 
-def test_published_cross_process_result_proves_orderly_handoff_not_crash_recovery(owner_process_collector):
-    import hashlib
+def test_published_cross_process_result_proves_orderly_handoff_not_crash_recovery(owner_process_collector, historical_surface_source_sha256):
 
     root = environment.ROOT
     record = json.loads((root / "native/drafts/environment/runtime-owner-process68-observations.json").read_bytes())
@@ -912,10 +907,10 @@ def test_published_cross_process_result_proves_orderly_handoff_not_crash_recover
         assert row["completed"] and row["returncode"] == 0
         owner_process_collector["validate_probe"](row["result"], blocked=blocked)
     for name, value in record["source_sha256"].items():
-        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+        assert "\\" not in name and historical_surface_source_sha256(name) == value
 
 
-def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates(recorder_before_document_open_sha256, native_units_before_orientation, storage_before_read_lock_sha256):
+def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates(recorder_before_document_open_sha256, native_units_before_orientation, storage_before_read_lock_sha256, historical_surface_source_sha256):
     import hashlib
 
     root = environment.ROOT
@@ -935,7 +930,7 @@ def test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gate
         "native_0069_verified", "screen_consistency_verified", "server_team_storage_isolation_verified",
         "protected_policy_recovery_verified", "privacy_admitted", "production_admitted"))
     for name, value in record["source_sha256"].items():
-        expected = recorder_before_document_open_sha256 if name == "app/services/scenario_recorder.py" else hashlib.sha256((root / name).read_bytes()).hexdigest()
+        expected = recorder_before_document_open_sha256 if name == "app/services/scenario_recorder.py" else historical_surface_source_sha256(name)
         if name == "native/drafts/upstream-156/manifest.json":
             expected = hashlib.sha256((root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest()
         elif name == "scripts/verify_native_privacy_units.py":
@@ -1068,8 +1063,7 @@ def test_0069_source_build_proof_has_receipt_and_preservation_without_native_tes
         "privacy_admitted", "production_admitted"))
 
 
-def test_actual_0069_first_script_proves_desktop_repair_but_retains_mobile_main_failure():
-    import hashlib
+def test_actual_0069_first_script_proves_desktop_repair_but_retains_mobile_main_failure(historical_surface_source_sha256):
 
     root = environment.ROOT
     record = json.loads((root / "native/drafts/environment/screen69-first-script-observations.json").read_bytes())
@@ -1090,7 +1084,7 @@ def test_actual_0069_first_script_proves_desktop_repair_but_retains_mobile_main_
             assert row["observations"]["nested-return"]["settled"]["screen"]["dpr"] == 3
             assert len(row["errors"]) == 4 and all("screen differs" in error for error in row["errors"])
     for name, value in record["source_sha256"].items():
-        assert "\\" not in name and hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+        assert "\\" not in name and historical_surface_source_sha256(name) == value
 
 
 def test_historical_0070_is_exact_prefix_with_strict_gate_not_runtime_admission(native_units_before_orientation):
@@ -1175,8 +1169,7 @@ def test_actual_70_native_batch_completed_all_twenty_groups_without_admitting_br
     assert all(record[name] is False for name in ("browser_runtime_verified", "privacy_admitted", "production_admitted"))
 
 
-def test_actual_70_first_script_pass_binds_build_without_admitting_lifecycle():
-    import hashlib
+def test_actual_70_first_script_pass_binds_build_without_admitting_lifecycle(historical_surface_source_sha256):
 
     root = environment.ROOT
     record = json.loads((root / "native/drafts/environment/screen70-first-script-observations.json").read_bytes())
@@ -1194,7 +1187,7 @@ def test_actual_70_first_script_pass_binds_build_without_admitting_lifecycle():
         if phase["mode"] == "manager-mobile-web":
             assert all(observation[state]["screen"]["dpr"] == 3
                        for observation in phase["observations"].values() for state in ("first", "settled"))
-    assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
+    assert all(historical_surface_source_sha256(path) == value
                for path, value in record["source_sha256"].items())
     assert all(record[name] is False for name in ("browser_runtime_fully_verified", "privacy_admitted", "production_admitted"))
 
@@ -1312,7 +1305,7 @@ def test_prepared_orientation_gate_replay_rejects_incomplete_results_and_source_
     assert not (tmp_path / "not-created.json").exists()
 
 
-def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(recorder_before_document_open_sha256, native_units_before_orientation, storage_before_read_lock_sha256):
+def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(recorder_before_document_open_sha256, native_units_before_orientation, storage_before_read_lock_sha256, historical_surface_source_sha256):
     import hashlib
 
     root = environment.ROOT
@@ -1345,5 +1338,5 @@ def test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime(record
         elif path == "app/storage/db.py":
             actual = storage_before_read_lock_sha256
         else:
-            actual = hashlib.sha256((root / path).read_bytes()).hexdigest()
+            actual = historical_surface_source_sha256(path)
         assert actual == value

@@ -12,7 +12,7 @@ GATES = ('combined-math', 'canvas-formats', 'canvas-export', 'worker-formats',
 
 
 @pytest.mark.parametrize('gate', GATES)
-def test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources(gate):
+def test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources(gate, historical_surface_source_sha256):
     record = json.loads((EVIDENCE / f'{gate}73-observations.json').read_bytes())
     build = json.loads((ROOT / 'native/drafts/upstream-156/build73-observations.json').read_bytes())
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
@@ -23,7 +23,7 @@ def test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources(gate
     assert record['privacy_admitted'] is record['production_admitted'] is False
     assert record['measured_inputs_sha256']
     for relative, expected in record['measured_inputs_sha256'].items():
-        assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected, relative
+        assert historical_surface_source_sha256(relative) == expected, relative
 
 
 def test_worker_hdr_has_twelve_real_contexts_and_observed_process_cleanup():
@@ -67,7 +67,7 @@ def test_mobile_repeat_covers_eighteen_phases_without_device_cohort_admission():
     assert 'not Android/iOS' in record['scope']
 
 
-def test_supported_screen_gates_do_not_hide_the_failed_per_page_stress():
+def test_supported_screen_gates_do_not_hide_the_failed_per_page_stress(historical_surface_source_sha256):
     record = json.loads((EVIDENCE / 'screen73-browser-observations.json').read_bytes())
     assert record['passed'] is False and record['measurement_complete']
     first = record['first_script']
@@ -84,7 +84,7 @@ def test_supported_screen_gates_do_not_hide_the_failed_per_page_stress():
                for stage in stress['stages'] for error in stage['errors'])
     for gate in (first, manager, stress):
         for relative, expected in gate['measured_inputs_sha256'].items():
-            assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected
+            assert historical_surface_source_sha256(relative) == expected
 
 
 def test_full_runtime73_python_regression_covers_the_committed_worker_hdr_tests():

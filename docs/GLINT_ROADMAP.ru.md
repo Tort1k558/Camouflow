@@ -1,5 +1,21 @@
 # Glint: план проверки и развития
 
+## Следующий пакет: шесть классов workers, пока не интегрирован
+
+На D прототип прошёл desktop/Mobile Web с настоящим BFCache: classic/module
+dedicated, shared и service workers; по 16 Offscreen Canvas-кейсов и WebGL1/2.
+Проверены экземпляры, последовательность сообщений и освобождение ресурсов.
+Audio API в workers недоступен — это не успешная проверка Audio readback.
+[Публичный пакет пока не выбран](../native/drafts/environment/retained-workers75-preparation-observations.json).
+Для service ещё нужны управляемый ими документ и принудительный перезапуск;
+точный CLI этого пакета также требует интеграции и нового прогона.
+
+Полный Python после `14e1aa2`: **4736 passed, 28 failed, 1 skipped** — падали
+сравнения старых отчётов с хешами обновлённых валидаторов. Восстановление точных
+исторических исходников исправлено; **291 связанная проверка прошла**, старые
+результаты не переписаны. Новый полный прогон пока не заявлен успешным.
+[Сохранённый сбой](../native/drafts/environment/canonical-python75-retained-binding-failure-observations.json).
+
 ## Новый пакет: GPU/Audio в шести сохранённых документах
 
 Режим `--probe retained-documents` интегрирован: main, same/cross-origin iframe,

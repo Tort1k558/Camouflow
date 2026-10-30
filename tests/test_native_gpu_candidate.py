@@ -9,9 +9,9 @@ def supported_contexts():
     return {name: {"webgpu": {"available": name in gpu.WEBGPU_CONTEXTS}} for name in gpu.CONTEXTS}
 
 
-def test_stock_gpu_calibration_matches_executed_sources_without_admitting_glint():
+def test_stock_gpu_calibration_matches_executed_sources_without_admitting_glint(historical_surface_source_sha256):
     record = json.loads((gpu.ROOT / "native/drafts/gpu/stock156-runtime-observations.json").read_bytes())
-    assert record["source_sha256"] == gpu.probe_inputs()
+    assert record["source_sha256"] == {name: historical_surface_source_sha256(name) for name in gpu.probe_inputs()}
     assert record["passed"] is True and record["postguards_passed"] is True
     assert record["all_eight_contexts_required"] is True
     assert record["effective_feature_arguments_verified"] is True

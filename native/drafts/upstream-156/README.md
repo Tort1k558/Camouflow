@@ -1,5 +1,13 @@
 # Chromium 156 rebase candidate
 
+## Next worker lifecycle package — not selected
+
+The public [prepared package](../environment/retained-workers75-preparation-observations.json)
+contains `retained-workers-next.patch`; **do not treat its proposed CLI mode as
+currently integrated**. D-only desktop/Mobile Web controls passed all six classic/module
+dedicated/shared/service classes around BFCache. Service-controlled document and
+forced service restart checks remain pending; worker Audio was unavailable, not verified.
+
 ## Retained-document diagnostic command
 
 ```powershell

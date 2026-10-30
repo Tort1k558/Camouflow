@@ -1,5 +1,16 @@
 # Glint architecture
 
+## Unselected worker lifecycle extension
+
+[Prepared package](drafts/environment/retained-workers75-preparation-observations.json)
+adds six real classic/module worker classes to the retained-document probe.
+Its D-only prototype passed desktop/Mobile Web; the stricter staged record verifier
+also passed 16 positive/fault replay controls. **It is not yet integrated or admitted**.
+Service control of the restored document, forced service restart and retained GPU
+objects remain open; unavailable worker Audio is not counted as readback coverage.
+The source-bound full regression found 28 historical-hash mismatches; exact archive
+reconstruction passed 291 targeted tests, with the full repeat still pending.
+
 ## Retained six-document surface diagnostics
 
 The integrated `retained-documents` probe extends existing protected BFCache checks

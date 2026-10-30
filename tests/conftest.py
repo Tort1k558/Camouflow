@@ -184,3 +184,24 @@ def surface_sources_before_retained(tmp_path):
         result['sha256'][row['source']] = value
         result['sources'][row['source']] = target.read_text(encoding='utf-8')
     return result
+
+
+@pytest.fixture
+def historical_surface_source_sha256(surface_sources_before_retained):
+    """Hash the exact reconstructed Audio/GPU sources used by older runtime records."""
+    root = Path(__file__).resolve().parents[1]
+    names = {'scripts/verify_native_audio.py', 'scripts/verify_native_gpu.py',
+             'scripts/verify_native_gpu_readback.py'}
+
+    def source_sha256(relative, *, normalized=False):
+        name = Path(relative).as_posix()
+        if name in names:
+            if normalized:
+                source = surface_sources_before_retained['sources'][name].encode('utf-8')
+                return hashlib.sha256(source).hexdigest()
+            return surface_sources_before_retained['sha256'][name]
+        path = root / name
+        source = path.read_text(encoding='utf-8-sig').encode('utf-8') if normalized else path.read_bytes()
+        return hashlib.sha256(source).hexdigest()
+
+    return source_sha256

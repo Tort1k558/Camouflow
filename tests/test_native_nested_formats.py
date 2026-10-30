@@ -111,7 +111,7 @@ def test_owned_server_initializes_existing_fixture_state_and_serves_real_worker_
     assert not thread.is_alive()
 
 
-def test_exact_public_probe_qualifies_frozen_73_not_selected_74():
+def test_exact_public_probe_qualifies_frozen_73_not_selected_74(historical_surface_source_sha256):
     record = json.loads((ROOT / 'native/drafts/environment/nested-formats73-probe-selector-observations.json').read_bytes())
     assert record['probe'] == 'formats'
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
@@ -124,7 +124,7 @@ def test_exact_public_probe_qualifies_frozen_73_not_selected_74():
         assert row['worker_recreation_verified'] and row['resources_released']
         assert row['observed_processes'] > 0 and row['remaining_observed_processes'] == 0
     for name, binding in record['source_bindings'].items():
-        actual = hashlib.sha256((ROOT / name).read_text(encoding='utf-8-sig').encode('utf-8')).hexdigest()
+        actual = historical_surface_source_sha256(name, normalized=True)
         assert actual == binding['normalized_utf8_lf_sha256'], name
     assert record['runs'][0]['observations_sha256'] == record['runs'][2]['observations_sha256']
     assert record['runs'][1]['observations_sha256'] == record['runs'][3]['observations_sha256']

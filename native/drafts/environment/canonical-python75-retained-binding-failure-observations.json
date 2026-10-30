@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "scope": "Retained full-suite failure after shared validator extraction, followed by exact historical-source reconstruction; no old runtime evidence rewritten",
+  "full_run_passed": false,
+  "full_run_measurement_complete": true,
+  "full_run_postguards_passed": true,
+  "git_head": "14e1aa2c2a10cf66b78c6a00071a9568f69c7c62",
+  "counts": {
+    "tests": 4765,
+    "failures": 28,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4736
+  },
+  "raw_report_sha256": "00747e6339cbd7f7ad9a83a1618d236084069c2cf81584359ba506ef57595320",
+  "junit_sha256": "157968c79e949d2248b438da525036757c1668df130afe9e604e470bd31e316f",
+  "failed_tests": [
+    "tests.test_native_environment_capture::test_environment_reference_summary_binds_sources_without_admitting_generated_profiles",
+    "tests.test_native_environment_capture::test_published_manager_mode_findings_remain_failed_and_reproducible",
+    "tests.test_native_environment_capture::test_public_first_script_execution_binds_current_sources_and_retains_incomplete_attempts",
+    "tests.test_native_environment_capture::test_screen_lifecycle_calibration_matches_stock_without_false_manager_or_native_admission",
+    "tests.test_native_environment_capture::test_manager_screen_calibration_binds_sources_and_retains_failed_identity_contract",
+    "tests.test_native_environment_capture::test_real_runtime_ownership_record_keeps_lifecycle_and_screen_admission_separate",
+    "tests.test_native_environment_capture::test_published_cross_process_result_proves_orderly_handoff_not_crash_recovery",
+    "tests.test_native_environment_capture::test_checkpointed_browser_and_controller_crash_evidence_reuses_existing_gates",
+    "tests.test_native_environment_capture::test_actual_0069_first_script_proves_desktop_repair_but_retains_mobile_main_failure",
+    "tests.test_native_environment_capture::test_actual_70_first_script_pass_binds_build_without_admitting_lifecycle",
+    "tests.test_native_environment_capture::test_full_native_runtime_70_baseline_is_scoped_to_unprotected_runtime",
+    "tests.test_native_gpu_candidate::test_stock_gpu_calibration_matches_executed_sources_without_admitting_glint",
+    "tests.test_native_history_interaction::test_actual_restored_main_result_keeps_full_lifecycle_failure",
+    "tests.test_native_managed_history::test_actual_managed_history_retains_disabled_bfcache_without_hiding_consistent_screens",
+    "tests.test_native_managed_history::test_actual_bfcache_optin_uses_owner_screenshots_and_preserves_independent_cdp_findings",
+    "tests.test_native_managed_history::test_repeated_recorder_bfcache_capture_keeps_silent_delivery_loss_as_failure",
+    "tests.test_native_managed_history::test_multisession_driver_draft_covers_six_roles_without_admitting_full_history_replay",
+    "tests.test_native_nested_formats::test_exact_public_probe_qualifies_frozen_73_not_selected_74",
+    "tests.test_native_nested_hdr::test_exact_finite_hdr_probe_qualifies_frozen_73_and_binds_public_sources",
+    "tests.test_native_runtime73_evidence::test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources[combined-math]",
+    "tests.test_native_runtime73_evidence::test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources[canvas-formats]",
+    "tests.test_native_runtime73_evidence::test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources[canvas-export]",
+    "tests.test_native_runtime73_evidence::test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources[worker-formats]",
+    "tests.test_native_runtime73_evidence::test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources[worker-export]",
+    "tests.test_native_runtime73_evidence::test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources[canvas-hdr]",
+    "tests.test_native_runtime73_evidence::test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources[worker-hdr]",
+    "tests.test_native_runtime73_evidence::test_completed_runtime_gate_binds_compiled_73_and_current_probe_sources[combined-concurrent]",
+    "tests.test_native_runtime73_evidence::test_supported_screen_gates_do_not_hide_the_failed_per_page_stress"
+  ],
+  "cause": "28 historical source-binding comparisons still used changed current Audio/GPU scripts rather than the exact reconstructed measured versions",
+  "reconstruction_patch": "retained-document-surfaces.patch",
+  "reconstruction_patch_sha256": "b4139527e9e194b0c6f28acbb91c686121596fce2640c24a24adf8a6d149cf51",
+  "targeted_followup": {
+    "passed": true,
+    "counts": {
+      "tests": 291,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "junit_sha256": "8da8448a2673771fe0154aa63fede4fa91cc91ba67bf5c618ff3a353dafebb67"
+  },
+  "full_followup_passed": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

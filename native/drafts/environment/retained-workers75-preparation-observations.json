@@ -1,0 +1,188 @@
+{
+  "schema": 1,
+  "selected": false,
+  "sources": [
+    {
+      "source": "native/drafts/environment/first-script/retained_worker_lifecycle.py",
+      "before_sha256": null,
+      "staged_sha256": "7e39fe45f255f0b1ddcf2799dd516e93018d810eea5dd0aa5dfafecfa73e824d"
+    },
+    {
+      "source": "native/drafts/environment/first-script/protected_history_runtime.py",
+      "before_sha256": "c7ade33493f95833936b9a8fc54a4d92191ca54e6362221d681a8995211a36d4",
+      "staged_sha256": "2b4dc2eaeffacfde6a4ecd934a1f452541a27e858b437c38c5e4f1d0830e5697"
+    }
+  ],
+  "patch_sha256": "d8c44fdf854b633ed316c0777df9b9ad2562f96d8f1c0406e5cd612cb874ac53",
+  "stricter_record_validation": true,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Unselected six-class retained worker diagnostic package; D-only browser prototype passed, stricter staged record verifier replayed, exact public CLI integration/runtime still pending",
+  "patch": "retained-workers-next.patch",
+  "public_package_runtime_verified": false,
+  "prototype_browser_passed": true,
+  "prototype_measurement_complete": true,
+  "prototype_postguards_passed": true,
+  "prototype_raw_report_sha256": "b93b22d20a296b6c8dbb84b6a2a4035dbd04984d39cb490ea07c49b246a4cade",
+  "prototype_raw_report_directory": "retained-worker-lifecycle75-20261030-v1",
+  "prototype_helper_sha256": "86880f48441c788a32f495b6b247070a737340bd834637c8521e88711fd32f7b",
+  "prototype_controller_sha256": "76ca6ee458fba2c460bd83846efd4a7f8dfed8193a3f09d2f8de0ebbe2680b1b",
+  "checkpoint_sha256": "edf97d81da753d2980c91a383baab346f7bf5e21cc393a75540c669aa5ab14c1",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "f09657095bcde2331e504508ccad2017b8054c2777a4228615834bdba498b030",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "69d91504463c1e93612af6f1bf6ee53357b91f4ebe79795c3d096a01360f0907",
+  "prototype_runs": [
+    {
+      "mode": "manager-desktop",
+      "passed": true,
+      "history_navigation_type": "BackForwardCacheRestore",
+      "validation": {
+        "passed": true,
+        "workers": [
+          {
+            "kind": "dedicated-classic",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          },
+          {
+            "kind": "dedicated-module",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          },
+          {
+            "kind": "service-classic",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          },
+          {
+            "kind": "service-module",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          },
+          {
+            "kind": "shared-classic",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          },
+          {
+            "kind": "shared-module",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          }
+        ],
+        "worker_classes": 6,
+        "shared_service_policy_continuity_verified": true,
+        "service_worker_controlled_document_verified": false,
+        "retained_gpu_objects_verified": false,
+        "webgpu_readback_verified": false,
+        "privacy_admitted": false,
+        "production_admitted": false
+      },
+      "owned_worker_cleanup_verified": true,
+      "runtime_resources_released": true,
+      "browser_connection_closed": true
+    },
+    {
+      "mode": "manager-mobile-web",
+      "passed": true,
+      "history_navigation_type": "BackForwardCacheRestore",
+      "validation": {
+        "passed": true,
+        "workers": [
+          {
+            "kind": "dedicated-classic",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          },
+          {
+            "kind": "dedicated-module",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          },
+          {
+            "kind": "service-classic",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          },
+          {
+            "kind": "service-module",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          },
+          {
+            "kind": "shared-classic",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          },
+          {
+            "kind": "shared-module",
+            "same_worker_instance": true,
+            "canvas_cases": 16,
+            "webgl_apis": 2,
+            "audio_api_available": false,
+            "audio_readback_verified": false
+          }
+        ],
+        "worker_classes": 6,
+        "shared_service_policy_continuity_verified": true,
+        "service_worker_controlled_document_verified": false,
+        "retained_gpu_objects_verified": false,
+        "webgpu_readback_verified": false,
+        "privacy_admitted": false,
+        "production_admitted": false
+      },
+      "owned_worker_cleanup_verified": true,
+      "runtime_resources_released": true,
+      "browser_connection_closed": true
+    }
+  ],
+  "stricter_record_replay": {
+    "passed": true,
+    "cases": 16,
+    "raw_report_sha256": "32d4df36a2dc43b841bd4863d9b59ec60c0e04aea94713d9cb4b55ca102c7a20",
+    "staged_helper_sha256": "7e39fe45f255f0b1ddcf2799dd516e93018d810eea5dd0aa5dfafecfa73e824d",
+    "new_browser_execution": false,
+    "service_restart_forced": false
+  },
+  "service_worker_controlled_document_verified": false,
+  "service_worker_forced_restart_verified": false,
+  "retained_gpu_objects_verified": false,
+  "webgpu_readback_verified": false
+}

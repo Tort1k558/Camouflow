@@ -109,7 +109,7 @@ def test_post_screenshot_history_rechecks_all_retained_documents(managed_history
     assert session.send.await_args_list[-1].args[1]["awaitPromise"] is True
 
 
-def test_actual_managed_history_retains_disabled_bfcache_without_hiding_consistent_screens():
+def test_actual_managed_history_retains_disabled_bfcache_without_hiding_consistent_screens(historical_surface_source_sha256):
     root = Path(__file__).resolve().parents[1]
     record = json.loads((root / "native/drafts/environment/managed-history70-observations.json").read_bytes())
     assert record["passed"] is False and record["measurement_complete"] and record["postguards_passed"]
@@ -133,7 +133,7 @@ def test_actual_managed_history_retains_disabled_bfcache_without_hiding_consiste
                     (390, 844, 3) if mobile else (1366, 768, 1))
                 count += len(page["roles"])
     assert count == record["observed_document_snapshots"] == 144
-    assert all(hashlib.sha256((root / name).read_bytes()).hexdigest() == value
+    assert all(historical_surface_source_sha256(name) == value
                for name, value in record["source_sha256"].items())
     assert all(record[name] is False for name in ("device_metrics_commands_sent", "all_frame_input_verified",
         "process_swap_verified", "protected_policies_enabled", "full_lifecycle_admitted", "privacy_admitted", "production_admitted"))
@@ -159,7 +159,7 @@ def test_bfcache_launch_experiment_replays_without_changing_active_runtime(tmp_p
     assert overlay["selected"] is False and record["selected"] is False
 
 
-def test_actual_bfcache_optin_uses_owner_screenshots_and_preserves_independent_cdp_findings():
+def test_actual_bfcache_optin_uses_owner_screenshots_and_preserves_independent_cdp_findings(historical_surface_source_sha256):
     root = Path(__file__).resolve().parents[1]
     record = json.loads((root / "native/drafts/environment/managed-bfcache-optin70-observations.json").read_bytes())
     build = json.loads((root / "native/drafts/upstream-156/build70-observations.json").read_bytes())
@@ -186,13 +186,13 @@ def test_actual_bfcache_optin_uses_owner_screenshots_and_preserves_independent_c
     full = record["full_runtime_overlay"]
     assert full["passed"] and full["measurement_complete"] and full["original_source_unchanged"] and full["overlay_source_unchanged"]
     assert full["runtime_import_verified"] and full["check_count"] == len(full["checks"]) == 18
-    assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
+    assert all(historical_surface_source_sha256(path) == value
                for path, value in record["source_sha256"].items())
     assert all(record[name] is False for name in ("selected", "bfcache_enabled_in_current_manager",
         "bfcache_optin_ready_for_release", "privacy_admitted", "production_admitted"))
 
 
-def test_repeated_recorder_bfcache_capture_keeps_silent_delivery_loss_as_failure(recorder_before_document_open_sha256):
+def test_repeated_recorder_bfcache_capture_keeps_silent_delivery_loss_as_failure(recorder_before_document_open_sha256, historical_surface_source_sha256):
     root = Path(__file__).resolve().parents[1]
     record = json.loads((root / "native/drafts/environment/managed-bfcache-recorder70-observations.json").read_bytes())
     assert record["passed"] is False and record["measurement_complete"] and record["postguards_passed"]
@@ -228,7 +228,7 @@ def test_repeated_recorder_bfcache_capture_keeps_silent_delivery_loss_as_failure
         if not ping["measurement_complete"]:
             assert ping["error_type"] == "TimeoutError" and ping["bridge_calls_before"] == ping["bridge_calls_after"] == 2
     assert record["source_sha256"]["app/services/scenario_recorder.py"] == recorder_before_document_open_sha256
-    assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
+    assert all(historical_surface_source_sha256(path) == value
                for path, value in record["source_sha256"].items() if path != "app/services/scenario_recorder.py")
     assert all(record[name] is False for name in ("initial_navigation_included", "recorded_draft_replay_verified",
                                                 "all_frame_input_verified", "selected", "privacy_admitted", "production_admitted"))
@@ -269,7 +269,7 @@ def test_root_only_driver_prototype_does_not_admit_missing_cross_process_frames(
                                                 "selected", "privacy_admitted", "production_admitted"))
 
 
-def test_multisession_driver_draft_covers_six_roles_without_admitting_full_history_replay(recorder_before_document_open_sha256):
+def test_multisession_driver_draft_covers_six_roles_without_admitting_full_history_replay(recorder_before_document_open_sha256, historical_surface_source_sha256):
     root = Path(__file__).resolve().parents[1]
     folder = root / "native/drafts/environment"
     record = json.loads((folder / "binding-driver70-multisession-observations.json").read_bytes())
@@ -280,7 +280,7 @@ def test_multisession_driver_draft_covers_six_roles_without_admitting_full_histo
     for name in ("patch", "model"):
         assert hashlib.sha256((folder / record[name]).read_bytes()).hexdigest() == record[name + "_sha256"]
     assert record["source_sha256"]["app/services/scenario_recorder.py"] == recorder_before_document_open_sha256
-    assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
+    assert all(historical_surface_source_sha256(path) == value
                for path, value in record["source_sha256"].items() if path != "app/services/scenario_recorder.py")
     assert len(record["runs"]) == 4
     assert {(run["mode"], run["phase"]) for run in record["runs"]} == {
