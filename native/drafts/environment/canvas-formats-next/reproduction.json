@@ -70,5 +70,6 @@
   "runner_sha256": "526f3faa51f3e293e65d6ad86a0dca5de8113d032614f84ce0bd047b5b64f059",
   "observations_sha256": "d630ae584ee87fa8ce230a3296fdcd5f9e96fc7da8260394720da47ec5ca4749",
   "fixture_sha256": "4edd589f3adb122b10c8a3a1cfd770eed67f8330b25920121fe7f962516407e2",
-  "note": "Actual public runner repeat; isolated compilation/link only, no Chrome rebuild or runtime fix."
+  "note": "Actual public runner repeat; isolated compilation/link only, no Chrome rebuild or runtime fix. observations_sha256 binds measured raw bytes; normalized UTF-8/LF hash supports Git checkout line endings.",
+  "observations_normalized_utf8_lf_sha256": "eb676b5e001ab37653dfdba0f7d8484735eab4ce0272bc53cf895d5be01e653c"
 }

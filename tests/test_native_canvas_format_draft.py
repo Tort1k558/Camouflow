@@ -60,9 +60,10 @@ def test_actual_public_runner_repeat_is_bound_to_current_inputs():
     assert record["changed_inputs"] == [] and len(record["steps"]) == 9
     assert all(step["returncode"] == 0 for step in record["steps"])
     assert record["native_browser_runtime_verified"] is record["privacy_admitted"] is record["production_admitted"] is False
-    for filename, field in (("verify_draft.py", "runner_sha256"), ("observations.json", "observations_sha256"),
-                            ("half_diagnostic.cc", "fixture_sha256")):
+    for filename, field in (("verify_draft.py", "runner_sha256"), ("half_diagnostic.cc", "fixture_sha256")):
         assert hashlib.sha256((DRAFT / filename).read_bytes()).hexdigest() == record[field]
+    normalized = (DRAFT / "observations.json").read_text(encoding="utf-8-sig").encode("utf-8")
+    assert hashlib.sha256(normalized).hexdigest() == record["observations_normalized_utf8_lf_sha256"]
 
 
 def test_helper_patch_reconstructs_measured_sources_without_native_checkout(tmp_path):
