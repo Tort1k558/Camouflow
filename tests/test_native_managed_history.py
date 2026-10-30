@@ -267,3 +267,43 @@ def test_root_only_driver_prototype_does_not_admit_missing_cross_process_frames(
         "main", "same", "cross", "nested-return", "srcdoc", "about-blank"}
     assert all(record[name] is False for name in ("recorded_draft_replay_verified", "all_frame_input_verified",
                                                 "selected", "privacy_admitted", "production_admitted"))
+
+
+def test_multisession_driver_draft_covers_six_roles_without_admitting_full_history_replay():
+    root = Path(__file__).resolve().parents[1]
+    folder = root / "native/drafts/environment"
+    record = json.loads((folder / "binding-driver70-multisession-observations.json").read_bytes())
+    build = json.loads((root / "native/drafts/upstream-156/build70-observations.json").read_bytes())
+    assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
+    assert record["runtime_core_sha256_measured"] == build["runtime_core_sha256_measured"]
+    assert record["patch_replay_verified"]
+    for name in ("patch", "model"):
+        assert hashlib.sha256((folder / record[name]).read_bytes()).hexdigest() == record[name + "_sha256"]
+    assert all(hashlib.sha256((root / path).read_bytes()).hexdigest() == value
+               for path, value in record["source_sha256"].items())
+    assert len(record["runs"]) == 4
+    assert {(run["mode"], run["phase"]) for run in record["runs"]} == {
+        (mode, phase) for mode in ("manager-desktop", "manager-mobile-web")
+        for phase in ("initial", "persistent-profile-restart")}
+    expected_selectors = [[], ['iframe[name="about-blank"]'], ['iframe[name="cross"]'],
+                          ['iframe[name="cross"]', 'iframe[name="nested-return"]'],
+                          ['iframe[name="same"]'], ['iframe[name="srcdoc"]'], []]
+    for run in record["runs"]:
+        assert run["passed"] and run["runtime_handles_released"] and run["warnings"] == []
+        assert run["history_navigation_type"] == "BackForwardCacheRestore"
+        assert run["playwright_frame_roles"] == ["about-blank", "cross", "main", "nested-return", "same", "srcdoc"]
+        assert run["recorded_clicks"] == 7 and run["click_frame_selectors"] == expected_selectors
+        assert set(run["child_trusted_clicks"]) == {"about-blank", "cross", "nested-return", "same", "srcdoc"}
+        assert all(click == {"trusted": True, "x": 52, "y": 38, "inside": True}
+                   for click in run["child_trusted_clicks"].values())
+    model = record["modeled_controls"]
+    assert model["passed"] and model["tests"] == len(model["results"]) == 13
+    assert all(case["passed"] for case in model["results"])
+    full = record["full_runtime_overlay"]
+    assert all(full[key] for key in ("passed", "measurement_complete", "original_source_unchanged",
+        "overlay_source_unchanged", "driver_import_verified", "runtime_import_verified", "driver_unchanged", "shared_driver_unchanged"))
+    assert len(full["checks"]) == 18 and "existing-recorder-capture-and-replay" in full["checks"]
+    assert full["baseline_recorded_draft_replay_verified"] and full["history_recorded_draft_replay_verified"] is False
+    assert record["superseded_immediate_snapshot_attempt"]["passed"] is False
+    assert all(record[name] is False for name in ("initial_navigation_included", "recorded_draft_replay_verified",
+                                                "selected", "privacy_admitted", "production_admitted", "full_lifecycle_admitted"))

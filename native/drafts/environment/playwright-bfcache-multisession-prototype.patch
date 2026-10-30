@@ -1,0 +1,168 @@
+diff --git a/playwright/driver/package/lib/coreBundle.js b/playwright/driver/package/lib/coreBundle.js
+--- a/playwright/driver/package/lib/coreBundle.js
++++ b/playwright/driver/package/lib/coreBundle.js
+@@ -36103,6 +36103,9 @@
+       constructor(crPage, client, targetId, parentSession) {
+         this._childSessions = /* @__PURE__ */ new Set();
+         this._contextIdToContext = /* @__PURE__ */ new Map();
++        this._contextPayloads = /* @__PURE__ */ new Map();
++        this._pendingBindingEvents = [];
++        this._contextGeneration = 0;
+         this._eventListeners = [];
+         this._firstNonInitialNavigationCommittedFulfill = () => {
+         };
+@@ -36136,7 +36139,7 @@
+           eventsHelper.addEventListener(this._client, "Page.fileChooserOpened", (event) => this._onFileChooserOpened(event)),
+           eventsHelper.addEventListener(this._client, "Page.frameAttached", (event) => this._onFrameAttached(event.frameId, event.parentFrameId)),
+           eventsHelper.addEventListener(this._client, "Page.frameDetached", (event) => this._onFrameDetached(event.frameId, event.reason)),
+-          eventsHelper.addEventListener(this._client, "Page.frameNavigated", (event) => this._onFrameNavigated(event.frame, false)),
++          eventsHelper.addEventListener(this._client, "Page.frameNavigated", (event) => this._onFrameNavigated(event.frame, false, event.type === "BackForwardCacheRestore")),
+           eventsHelper.addEventListener(this._client, "Page.frameRequestedNavigation", (event) => this._onFrameRequestedNavigation(event)),
+           eventsHelper.addEventListener(this._client, "Page.javascriptDialogOpening", (event) => this._onDialog(event)),
+           eventsHelper.addEventListener(this._client, "Page.navigatedWithinDocument", (event) => this._onFrameNavigatedWithinDocument(event.frameId, event.url)),
+@@ -36254,6 +36257,9 @@
+         await Promise.all(promises);
+       }
+       dispose() {
++        this._contextGeneration++;
++        this._contextPayloads.clear();
++        this._pendingBindingEvents = [];
+         this._firstNonInitialNavigationCommittedReject(new TargetClosedError(this._page.closeReason()));
+         for (const childSession of this._childSessions)
+           childSession.dispose();
+@@ -36309,13 +36315,89 @@
+         }
+         this._page.frameManager.frameAttached(frameId, parentFrameId);
+       }
+-      _onFrameNavigated(framePayload, initial) {
++      _onFrameNavigated(framePayload, initial, restored = false) {
++        if (restored && this._isMainFrame() && !framePayload.parentId && framePayload.id === this._targetId) {
++          this._restoreBfcacheFrameTree(framePayload);
++          return;
++        }
+         if (this._eventBelongsToStaleFrame(framePayload.id))
+           return;
+         this._page.frameManager.frameCommittedNewDocumentNavigation(framePayload.id, framePayload.url + (framePayload.urlFragment || ""), framePayload.name || "", framePayload.loaderId, initial);
+         if (!initial)
+           this._firstNonInitialNavigationCommittedFulfill();
+       }
++      _restoreBfcacheFrameTree(framePayload) {
++        const generation = this._contextGeneration;
++        this._client.send("Page.getFrameTree").then(async ({ frameTree }) => {
++          if (generation !== this._contextGeneration || frameTree.frame.id !== framePayload.id || frameTree.frame.loaderId !== framePayload.loaderId)
++            return;
++          const sessions = Array.from(this._crPage._sessions.values()).filter(session => !session._swappedIn);
++          const generations = sessions.map(session => session._contextGeneration);
++          const replies = [{ frameTree }, ...await Promise.all(sessions.filter(session => session !== this).map(session => session._client.send("Page.getFrameTree")))];
++          if (generation !== this._contextGeneration || sessions.some((session, index) =>
++              session._contextGeneration !== generations[index] || this._crPage._sessions.get(session._targetId) !== session))
++            return;
++          const nodes = new Map();
++          const collect = (node, parentId) => {
++            const payload = node.frame;
++            const parent = payload.parentId || parentId || null;
++            const previous = nodes.get(payload.id);
++            if (previous && (previous.parent !== parent || previous.payload.loaderId !== payload.loaderId))
++              throw new Error("Conflicting BFCache frame snapshots");
++            nodes.set(payload.id, { payload, parent });
++            for (const child of node.childFrames || [])
++              collect(child, payload.id);
++          };
++          for (const reply of replies)
++            collect(reply.frameTree, null);
++          const root = nodes.get(framePayload.id);
++          if (!root || root.parent !== null || root.payload.loaderId !== framePayload.loaderId)
++            return;
++          const ordered = [];
++          const pending = new Map(nodes);
++          const included = new Set();
++          while (pending.size) {
++            let progressed = false;
++            for (const [id, node] of pending) {
++              if (id !== framePayload.id && !included.has(node.parent))
++                continue;
++              ordered.push(node);
++              included.add(id);
++              pending.delete(id);
++              progressed = true;
++            }
++            if (!progressed)
++              throw new Error("Incomplete BFCache cross-process frame ancestry");
++          }
++          const manager = this._page.frameManager;
++          for (const { payload, parent } of ordered) {
++            if (!manager.frame(payload.id))
++              manager.frameAttached(payload.id, parent);
++            manager.frameCommittedNewDocumentNavigation(payload.id, payload.url + (payload.urlFragment || ""), payload.name || "", payload.loaderId, true);
++          }
++          for (const session of sessions) {
++            const payloads = Array.from(session._contextPayloads.values());
++            for (const context of session._contextIdToContext.values())
++              context.frame.contextDestroyed(context);
++            session._contextIdToContext.clear();
++            for (const payload of payloads)
++              session._onExecutionContextCreated(payload);
++          }
++          for (const session of sessions) {
++            const pendingBindings = session._pendingBindingEvents;
++            session._pendingBindingEvents = [];
++            for (const entry of pendingBindings) {
++              if (entry.generation === session._contextGeneration)
++                session._onBindingCalled(entry.event).catch(error => debugLogger.log("error", error));
++            }
++          }
++          const frame = manager.frame(framePayload.id);
++          if (frame) {
++            this._page.frameNavigatedToNewDocument(frame);
++            this._firstNonInitialNavigationCommittedFulfill();
++          }
++        }).catch(error => debugLogger.log("error", error));
++      }
+       _onFrameRequestedNavigation(payload) {
+         if (this._eventBelongsToStaleFrame(payload.frameId))
+           return;
+@@ -36340,6 +36422,8 @@
+         this._page.frameManager.frameDetached(frameId);
+       }
+       _onExecutionContextCreated(contextPayload) {
++        if (contextPayload.auxData && contextPayload.auxData.frameId)
++          this._contextPayloads.set(contextPayload.id, contextPayload);
+         const frame = contextPayload.auxData ? this._page.frameManager.frame(contextPayload.auxData.frameId) : null;
+         if (!frame || this._eventBelongsToStaleFrame(frame._id))
+           return;
+@@ -36355,6 +36439,8 @@
+         this._contextIdToContext.set(contextPayload.id, context2);
+       }
+       _onExecutionContextDestroyed(executionContextId) {
++        this._contextPayloads.delete(executionContextId);
++        this._pendingBindingEvents = this._pendingBindingEvents.filter((entry) => entry.event.executionContextId !== executionContextId);
+         const context2 = this._contextIdToContext.get(executionContextId);
+         if (!context2)
+           return;
+@@ -36362,6 +36448,9 @@
+         context2.frame.contextDestroyed(context2);
+       }
+       _onExecutionContextsCleared() {
++        this._contextGeneration++;
++        this._contextPayloads.clear();
++        this._pendingBindingEvents = [];
+         for (const contextId4 of Array.from(this._contextIdToContext.keys()))
+           this._onExecutionContextDestroyed(contextId4);
+       }
+@@ -36452,9 +36541,16 @@
+         this._page.addConsoleMessage(null, event.type, values, stackTraceToLocation(event.stackTrace), void 0, event.timestamp);
+       }
+       async _onBindingCalled(event) {
++        const generation = this._contextGeneration;
+         const pageOrError = await this._crPage._page.waitForInitializedOrError();
++        if (generation !== this._contextGeneration)
++          return;
+         if (!(pageOrError instanceof Error)) {
+           const context2 = this._contextIdToContext.get(event.executionContextId);
++          if (!context2 && this._contextPayloads.has(event.executionContextId)) {
++            this._pendingBindingEvents.push({ event, generation });
++            return;
++          }
+           if (context2)
+             await this._page.onBindingCalled(event.payload, context2);
+         }

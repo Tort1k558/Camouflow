@@ -2,6 +2,23 @@
 
 ## Current compatibility gate
 
+[Multisession reconstruction](binding-driver70-multisession-observations.json) now
+restores **all six roles in four desktop/mobile initial/restart phases**, recording
+seven trusted clicks per phase with correct nested-frame selectors. **13 modeled
+controls** and the **18-check existing runtime baseline** also passed with this driver.
+The patch remains unselected: UI-ordered complete history-draft replay and real navigation/
+close races still need verification. No installed dependency or active launch default changed.
+
+The [public patch](playwright-bfcache-multisession-prototype.patch) applies only to
+the exact driver bundle hash in the observation record, in an isolated package copy.
+Run its exact-method controls with:
+
+```text
+node native/drafts/environment/playwright-bfcache-multisession-model.cjs D:/isolated-package/playwright/driver/package/lib/coreBundle.js
+```
+
+The model extracts the actual patched `FrameSession`; it does not simulate an entire browser.
+
 [Native 001–070](../upstream-156/native-batch70-observations.json): **484 C++ cases,
 20 groups**, final source guards passed. [Canonical Python](canonical-python70-owner-observations.json):
 **4320 passed, 1 skipped**. Neither result admits combined fingerprint policies.
@@ -9,8 +26,8 @@
 [Recorder diagnosis](binding-driver70-diagnosis.json) identifies a driver context-map
 loss, not missing Chromium binding events. The [unselected reconstruction patch](binding-driver70-prototype-observations.json)
 passes root-only capture in four phases but **fails six-frame coverage**: cross-process
-`same` and `nested-return` roles are absent. The installed Playwright package and manager
-launch policy remain unchanged. Reconcile all OOPIF sessions before full Recorder/replay admission.
+`same` and `nested-return` roles are absent. This older failure is retained rather than
+rewritten as the multisession result. The installed Playwright package and manager launch policy remain unchanged.
 
 One coherent observation is more useful than independently invented OS, GPU and
 CPU strings. This tool captures actual stock Chromium values; it **does not

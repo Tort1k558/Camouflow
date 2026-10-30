@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Multisession BFCache compatibility draft — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Actual restored frame tree | **6/6 roles in 4/4 phases**: desktop/mobile, initial/persistent restart; genuine `BackForwardCacheRestore` | [Evidence and public patch](../native/drafts/environment/binding-driver70-multisession-observations.json); unselected D driver, same preserved 001–070 runtime |
+| Trusted input and Recorder | **7 recorded clicks per phase**, correct five child-frame selector chains including nested OOPIF, no Recorder warnings | Root click before/after history plus five child clicks after history; initial navigation and full history-draft replay not included |
+| Exact-method modeled controls | **13 passed**: context clear/destroy, dispose, changed sessions/generations, missing/cyclic ancestry and conflicting loaders | [Runnable model](../native/drafts/environment/playwright-bfcache-multisession-model.cjs); modeled races are not real-browser lifecycle proof |
+| Existing complete NativeRuntime suite with new driver | **18/18 passed**, source/driver guards passed; includes attach-before-navigation Recorder → replay, cancellation, storage and crash cleanup | Baseline replay is verified separately; the complete six-frame history recording has not yet been replayed |
+
+The main target omits remote frames from its own frame-tree snapshot. The new draft
+collects current OOPIF-session trees after the main snapshot and validates the combined
+ancestry before mutation. The failed root-only and premature-session attempts remain
+retained; neither the installed dependency nor manager BFCache default was changed.
+
 ## Completed native 001–070 batch and driver boundary — 2026-10-30
 
 | Gate | Observed result | Boundary |

@@ -1,0 +1,431 @@
+{
+  "schema": 1,
+  "scope": "Unselected Playwright multisession BFCache reconstruction on preserved Glint 001-070; six owned frame roles, not complete UI-started Recorder replay or production admission",
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "selected": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "base_driver_sha256": "f74353fcb8e406756a70a6af0dfc4a5069acd577e35ec9d923ccf36ac009c2f5",
+  "prepared_driver_sha256": "8401ea9edc47a9cdee21c67f65573cc5f9b46dc3600f95997774023b6f2db0db",
+  "patch": "playwright-bfcache-multisession-prototype.patch",
+  "patch_sha256": "f69a8b1efb607f8dfaa9fa51ec02937b9828a65e9d34ed2d100c287fe310a0e2",
+  "patch_replay_verified": true,
+  "model": "playwright-bfcache-multisession-model.cjs",
+  "model_sha256": "b1714540b8fb9b567fde41466aeadf7876f9372cc27dfcf04aba71d96d11181c",
+  "modeled_controls": {
+    "passed": true,
+    "tests": 13,
+    "results": [
+      {
+        "name": "restores-root-child-contexts-and-delivers-queued-bindings-once",
+        "passed": true
+      },
+      {
+        "name": "clear-invalidates-queued-events-and-stale-tree-reply",
+        "passed": true
+      },
+      {
+        "name": "destroyed-context-does-not-deliver-queued-events",
+        "passed": true
+      },
+      {
+        "name": "wrong-loader-tree-is-not-applied",
+        "passed": true
+      },
+      {
+        "name": "dispose-invalidates-tree-and-clears-retained-data",
+        "passed": true
+      },
+      {
+        "name": "unknown-unattributed-binding-is-not-queued",
+        "passed": true
+      },
+      {
+        "name": "existing-context-binding-path-remains-direct",
+        "passed": true
+      },
+      {
+        "name": "restores-main-and-nested-cross-process-session-contexts",
+        "passed": true
+      },
+      {
+        "name": "remote-context-clear-invalidates-the-whole-pending-restore",
+        "passed": true
+      },
+      {
+        "name": "remote-session-replacement-invalidates-the-whole-pending-restore",
+        "passed": true
+      },
+      {
+        "name": "missing-remote-parent-is-rejected-before-frame-mutation",
+        "passed": true
+      },
+      {
+        "name": "cyclic-remote-ancestry-is-rejected-before-frame-mutation",
+        "passed": true
+      },
+      {
+        "name": "conflicting-session-frame-loaders-are-rejected-before-mutation",
+        "passed": true
+      }
+    ],
+    "scope": "Extracted exact prototype FrameSession methods with modeled frame/client fixtures; not real browser admission"
+  },
+  "raw_controller_sha256": "ba7a7fc935ef28c5f063b32e281794dbada431d4e0523148b731abaffdf37626",
+  "raw_report_sha256": "9798372546e769d163bf9c6f1b83c4b758833744b6cae4f9c0cd7b14da81848e",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "source_sha256": {
+    "native/drafts/environment/first-script/managed_history.py": "86f5d15ac0e71a880fe174182c73f2ea27faca96ef095d75e5b57e2ccaf15691",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "native/drafts/upstream-156/checkpoints/001-070.json": "3e4b1d0b953c70025deb31c75731fff0fcc2cb3ec7488149837e1fabdaf0833f",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "native/drafts/environment/first-script/runtime.py": "e387b5107340754af303b56b404ab86cea3195410b0b9ca4ea99c66516df4e1a",
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "scripts/verify_native_gpu.py": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "native/drafts/environment/first-script/history_interaction.py": "f6c2e8358cc3b5232ac46d5e450c53f4fbea027764ea9dec2a8a34a09b12c971",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "app/core/native/runtime.py": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "native/drafts/environment/first-script/manager.py": "71d0e333e682205beda57e963fa8df1483505bf7bac24f44caaed27a527a3e6d",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "app/services/scenario_recorder.py": "cf37b1e51facc4cf807e0588c2da4869756cbcd170754a3071df261a1817574c",
+    "native/drafts/environment/first-script/owner_process.py": "d86f90e386925d0d2940e06046eca85b4ca2e94b901abc751cafc494f9b4468b"
+  },
+  "runs": [
+    {
+      "mode": "manager-desktop",
+      "phase": "initial",
+      "passed": true,
+      "history_navigation_type": "BackForwardCacheRestore",
+      "playwright_frame_roles": [
+        "about-blank",
+        "cross",
+        "main",
+        "nested-return",
+        "same",
+        "srcdoc"
+      ],
+      "child_trusted_clicks": {
+        "about-blank": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "cross": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "nested-return": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "same": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "srcdoc": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        }
+      },
+      "recorded_clicks": 7,
+      "click_frame_selectors": [
+        [],
+        [
+          "iframe[name=\"about-blank\"]"
+        ],
+        [
+          "iframe[name=\"cross\"]"
+        ],
+        [
+          "iframe[name=\"cross\"]",
+          "iframe[name=\"nested-return\"]"
+        ],
+        [
+          "iframe[name=\"same\"]"
+        ],
+        [
+          "iframe[name=\"srcdoc\"]"
+        ],
+        []
+      ],
+      "warnings": [],
+      "runtime_handles_released": true
+    },
+    {
+      "mode": "manager-desktop",
+      "phase": "persistent-profile-restart",
+      "passed": true,
+      "history_navigation_type": "BackForwardCacheRestore",
+      "playwright_frame_roles": [
+        "about-blank",
+        "cross",
+        "main",
+        "nested-return",
+        "same",
+        "srcdoc"
+      ],
+      "child_trusted_clicks": {
+        "about-blank": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "cross": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "nested-return": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "same": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "srcdoc": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        }
+      },
+      "recorded_clicks": 7,
+      "click_frame_selectors": [
+        [],
+        [
+          "iframe[name=\"about-blank\"]"
+        ],
+        [
+          "iframe[name=\"cross\"]"
+        ],
+        [
+          "iframe[name=\"cross\"]",
+          "iframe[name=\"nested-return\"]"
+        ],
+        [
+          "iframe[name=\"same\"]"
+        ],
+        [
+          "iframe[name=\"srcdoc\"]"
+        ],
+        []
+      ],
+      "warnings": [],
+      "runtime_handles_released": true
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "initial",
+      "passed": true,
+      "history_navigation_type": "BackForwardCacheRestore",
+      "playwright_frame_roles": [
+        "about-blank",
+        "cross",
+        "main",
+        "nested-return",
+        "same",
+        "srcdoc"
+      ],
+      "child_trusted_clicks": {
+        "about-blank": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "cross": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "nested-return": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "same": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "srcdoc": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        }
+      },
+      "recorded_clicks": 7,
+      "click_frame_selectors": [
+        [],
+        [
+          "iframe[name=\"about-blank\"]"
+        ],
+        [
+          "iframe[name=\"cross\"]"
+        ],
+        [
+          "iframe[name=\"cross\"]",
+          "iframe[name=\"nested-return\"]"
+        ],
+        [
+          "iframe[name=\"same\"]"
+        ],
+        [
+          "iframe[name=\"srcdoc\"]"
+        ],
+        []
+      ],
+      "warnings": [],
+      "runtime_handles_released": true
+    },
+    {
+      "mode": "manager-mobile-web",
+      "phase": "persistent-profile-restart",
+      "passed": true,
+      "history_navigation_type": "BackForwardCacheRestore",
+      "playwright_frame_roles": [
+        "about-blank",
+        "cross",
+        "main",
+        "nested-return",
+        "same",
+        "srcdoc"
+      ],
+      "child_trusted_clicks": {
+        "about-blank": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "cross": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "nested-return": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "same": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        },
+        "srcdoc": {
+          "trusted": true,
+          "x": 52,
+          "y": 38,
+          "inside": true
+        }
+      },
+      "recorded_clicks": 7,
+      "click_frame_selectors": [
+        [],
+        [
+          "iframe[name=\"about-blank\"]"
+        ],
+        [
+          "iframe[name=\"cross\"]"
+        ],
+        [
+          "iframe[name=\"cross\"]",
+          "iframe[name=\"nested-return\"]"
+        ],
+        [
+          "iframe[name=\"same\"]"
+        ],
+        [
+          "iframe[name=\"srcdoc\"]"
+        ],
+        []
+      ],
+      "warnings": [],
+      "runtime_handles_released": true
+    }
+  ],
+  "initial_navigation_included": false,
+  "recorded_draft_replay_verified": false,
+  "full_lifecycle_admitted": false,
+  "note": "Read the main-target snapshot first so obsolete pre-restore sessions can detach, then collect current OOPIF snapshots. Validate generations, session identity and the complete ancestry graph before mutating frames. The prior root-only failure remains retained. Generic collector all-frame admission stays false; the extension below verifies exactly six role-specific trusted clicks.",
+  "full_runtime_overlay": {
+    "passed": true,
+    "measurement_complete": true,
+    "returncode": 0,
+    "original_source_unchanged": true,
+    "overlay_source_unchanged": true,
+    "driver_import_verified": true,
+    "runtime_import_verified": true,
+    "driver_unchanged": true,
+    "shared_driver_unchanged": true,
+    "runtime_report_sha256": "405ee50286b7d830e349119d8650061248d09bd17231e274a344688e081e4447",
+    "checks": [
+      "concurrent-profile-isolation",
+      "cross-process-owner-exclusion",
+      "navigation-tabs-fill-click-extract-screenshot",
+      "mobile-web-viewport-dpr-touch",
+      "native-document-worker-configuration-diagnostics",
+      "cookie-localstorage-indexeddb-cache-serviceworker-restart",
+      "configured-permissions-isolation-revocation-and-restart",
+      "dead-owner-profile-lock-recovery",
+      "browser-crash-restart-preserves-committed-storage",
+      "authenticated-http-proxy-no-direct-dns-route",
+      "existing-browser-interface-and-scenario-executor",
+      "existing-recorder-capture-and-replay",
+      "native-profile-backup-restore-storage-and-engine-isolation",
+      "native-binary-headless-health-and-disposable-profile-cleanup",
+      "cancelled-teardown-preserves-driver-stop-and-cross-process-profile-owner",
+      "controller-kill-exits-observed-process-tree-and-restores-five-stores",
+      "cancelled-driver-start-cleans-pending-operation-and-restarts-profile",
+      "three-profile-restarts-isolate-crashes-five-stores-and-exit-owned-processes"
+    ],
+    "raw_controller_sha256": "7ea75992628b3f71468cfa2658e814c5bf62a02d6ecbc117e9507a77b6fea3c1",
+    "baseline_recorded_draft_replay_verified": true,
+    "history_recorded_draft_replay_verified": false
+  },
+  "superseded_immediate_snapshot_attempt": {
+    "passed": false,
+    "raw_report_sha256": "d91bb9e3386bc020a5cb8e7a4df235e242af755d9eacc2303a2d646fd4bc229d",
+    "reason": "Queries launched before the main-target snapshot included obsolete sessions; a Page.getFrameTree session closed error aborted restoration. Retained, not relabeled PASS."
+  }
+}
