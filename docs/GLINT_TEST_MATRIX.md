@@ -3,6 +3,10 @@
 ## Current compiled 001–073 — 2026-10-30
 
 **Selected source is now 001–074; compiled/qualified baseline remains 001–073.**
+Latest full Python includes the nested HDR selector: **4608 passed, 1 skipped**,
+382s, source/status guards passed at `1c9afd2`.
+[Evidence](../native/drafts/environment/canonical-python74-nested-hdr-observations.json).
+This does not compile 074 or execute its six new C++ cases.
 Full Python after the storage and historical-binding repairs: **4593 passed, 1 skipped**,
 398s; source/status guards passed at `bc66849`. This precedes the HDR selector added next.
 [Full pass](../native/drafts/environment/canonical-python74-storage-repair-observations.json).

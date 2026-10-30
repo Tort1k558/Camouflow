@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "1c9afd2bcb6368345bffd038bf791bbfd8b3fb42",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 981,
+  "before_status": " M docs/HUB.md\n",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 382.0,
+  "returncode": 0,
+  "counts": {
+    "tests": 4609,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4608
+  },
+  "changed_tracked_files": [],
+  "after_status": " M docs/HUB.md\n",
+  "postguards_passed": true,
+  "log_sha256": "1bf283b7f160fe855be5525f63e94e4bd574215dda0b4d702f63e46ece9cce87",
+  "junit_sha256": "44cafd1881b7ae78c8516efc1d9496d1eab42fa2ae9127e588807007c535ae85",
+  "raw_report_sha256": "01df16aef2691234bf1a7f2c9e779abbfcfc75a87e1e0b3a98adde4684adda76",
+  "scope_note": "Full Python after the shared nested formats/HDR probe selector; no native build or 074 runtime admission"
+}

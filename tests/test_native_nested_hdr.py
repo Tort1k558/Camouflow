@@ -97,3 +97,12 @@ def test_full_python_storage_repair_pass_precedes_the_new_hdr_probe():
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
     assert record['counts'] == dict(tests=4594, passed=4593, failures=0, errors=0, skipped=1)
     assert record['native_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False
+
+
+def test_full_python_with_the_nested_hdr_selector_is_green_without_runtime_admission():
+    record = json.loads((ENV / 'canonical-python74-nested-hdr-observations.json').read_bytes())
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['git_head'].startswith('1c9afd2')
+    assert record['counts'] == dict(tests=4609, passed=4608, failures=0, errors=0, skipped=1)
+    assert record['changed_tracked_files'] == [] and record['before_status'] == record['after_status']
+    assert record['native_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False

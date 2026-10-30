@@ -4,6 +4,11 @@
 
 ### Выбран 001–074; проверенный бинарник пока 001–073
 
+Последний полный Python-прогон уже включает HDR-selector: **4608 passed, 1 skipped**, 6м22с,
+source/status guards прошли на `1c9afd2`.
+[Результат](../native/drafts/environment/canonical-python74-nested-hdr-observations.json).
+Это не сборка 074 и не исполнение новых шести C++-кейсов.
+
 **Полный Python-повтор зелёный: 4593 passed, 1 skipped**, 6м38с, source/status guards прошли.
 Это проверка на `bc66849` после storage-исправления и восстановления исторических привязок;
 она предшествует новому HDR-selector, для которого отдельно прошли **88/88 целевых проверок**.
