@@ -112,7 +112,8 @@ def test_owned_server_initializes_existing_fixture_state_and_serves_real_worker_
 
 
 def test_exact_public_probe_qualifies_frozen_73_not_selected_74():
-    record = json.loads((ROOT / 'native/drafts/environment/nested-formats73-observations.json').read_bytes())
+    record = json.loads((ROOT / 'native/drafts/environment/nested-formats73-probe-selector-observations.json').read_bytes())
+    assert record['probe'] == 'formats'
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
     assert record['comparison']['restart_stable'] and record['comparison']['worker_cases_per_profile'] == 64
     assert record['comparison']['worker_paths_per_profile'] == 4
@@ -127,3 +128,10 @@ def test_exact_public_probe_qualifies_frozen_73_not_selected_74():
         assert actual == binding['normalized_utf8_lf_sha256'], name
     assert record['runs'][0]['observations_sha256'] == record['runs'][2]['observations_sha256']
     assert record['runs'][1]['observations_sha256'] == record['runs'][3]['observations_sha256']
+
+
+def test_first_nested_probe_record_keeps_its_original_collector_binding(nested_runtime_before_selector_sha256):
+    record = json.loads((ROOT / 'native/drafts/environment/nested-formats73-observations.json').read_bytes())
+    relative = 'native/drafts/environment/first-script/nested_formats_runtime.py'
+    assert nested_runtime_before_selector_sha256 == record['source_bindings'][relative]['normalized_utf8_lf_sha256']
+    assert record['passed'] and record['postguards_passed'] and not record['current_selected_74_verified']

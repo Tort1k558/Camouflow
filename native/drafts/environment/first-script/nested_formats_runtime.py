@@ -1,4 +1,4 @@
-"""Owned nested dedicated-worker Canvas compatibility, recreation and persistent restart; not GPU/Audio, privacy or release admission."""
+"""Owned nested dedicated-worker Canvas formats or finite Float16 continuity; recreation and restart, not broad HDR, GPU/Audio or release admission."""
 import argparse
 import asyncio
 import hashlib
@@ -11,12 +11,6 @@ import threading
 
 ROOT = Path(__file__).resolve().parents[4]
 
-CANVAS_PATH = ROOT / 'native/drafts/environment/first-script/canvas_formats.py'
-CANVAS = runpy.run_path(str(CANVAS_PATH))
-WORKERS_PATH = Path(__file__).with_name('nested_formats.py')
-WORKERS = runpy.run_path(str(WORKERS_PATH))
-WORKER_READ = WORKERS['worker_read'](CANVAS['READ'])
-READ = WORKERS['matrix_read'](CANVAS['READ'])
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -26,7 +20,17 @@ def main() -> int:
     parser.add_argument('--driver-stage', type=Path, required=True)
     parser.add_argument('--driver-manifest', type=Path, default=ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json')
     parser.add_argument('--candidate', choices=('upstream-156',), required=True)
+    parser.add_argument('--probe', choices=('formats', 'finite-hdr'), default='formats')
     args = parser.parse_args()
+    directory = ROOT / 'native/drafts/environment/first-script'
+    CANVAS_PATH = directory / ('canvas_hdr.py' if args.probe == 'finite-hdr' else 'canvas_formats.py')
+    CANVAS = runpy.run_path(str(CANVAS_PATH))
+    WORKERS_PATH = directory / ('nested_hdr.py' if args.probe == 'finite-hdr' else 'nested_formats.py')
+    WORKERS = runpy.run_path(str(WORKERS_PATH))
+    WORKER_READ = WORKERS['worker_read'](CANVAS['READ'])
+    READ = WORKERS['matrix_read'](CANVAS['READ'])
+    compare = WORKERS['compare_nested_hdr'] if args.probe == 'finite-hdr' else WORKERS['compare_nested_formats']
+    compare_canvas = CANVAS['compare_hdr'] if args.probe == 'finite-hdr' else CANVAS['compare_formats']
     OUTPUT, COHORT, STAGE = args.work_dir, args.cohort_directory, args.driver_stage
     for path in (OUTPUT, COHORT, STAGE, args.executable):
         if not path.is_absolute() or path != path.resolve() or path.is_symlink() or path.is_junction():
@@ -69,11 +73,11 @@ def main() -> int:
     if (core != prior['runtime_core_sha256_measured']
             or hashlib.sha256(receipt).hexdigest() != prior.get('receipt_sha256')):
         raise ValueError('Cohort and selected runtime core differ')
-    paths = {CANVAS_PATH, WORKERS_PATH, COHORT / 'baseline' / IDENTITY_FILE, COHORT / target_profile / IDENTITY_FILE, WORKERS_PATH, Path(__file__), ROOT / 'native/drafts/environment/first-script/combined_concurrent.py', COHORT / 'report.json', args.driver_manifest,
+    paths = {directory / 'nested_formats.py', CANVAS_PATH, WORKERS_PATH, COHORT / 'baseline' / IDENTITY_FILE, COHORT / target_profile / IDENTITY_FILE, WORKERS_PATH, Path(__file__), ROOT / 'native/drafts/environment/first-script/combined_concurrent.py', COHORT / 'report.json', args.driver_manifest,
              ROOT / 'scripts/native_driver_stage.py', *[ROOT / name for name in gpu.probe_inputs()],
              STAGE / 'playwright/driver/package/lib/coreBundle.js', STAGE / 'playwright/_impl/_page.py', STAGE / 'playwright/driver/node.exe'}
     inputs = {path: sha(path) for path in paths}
-    report = {'schema': 1, 'measurement_complete': False, 'scope': __doc__, 'runs': [],
+    report = {'schema': 1, 'measurement_complete': False, 'scope': __doc__, 'probe': args.probe, 'runs': [],
               'privacy_admitted': False, 'production_admitted': False, 'passed': False, 'errors': [],
               'runtime_core_sha256_measured': core, 'receipt_sha256': hashlib.sha256(receipt).hexdigest(),
               'candidate_manifest_sha256': prior['candidate_manifest_sha256'], 'measured_inputs_sha256': {str(path): value for path, value in inputs.items()}}
@@ -121,13 +125,13 @@ def main() -> int:
                     row['observed_processes'] = len(owned)
                     row['remaining_observed_processes'] = 0
                     save()
-        comparisons = [WORKERS['compare_nested_formats'](
-            *(row['observed'] for row in report['runs'][start:start+2]), CANVAS['compare_formats'], WORKERS['CASES'])
+        comparisons = [compare(
+            *(row['observed'] for row in report['runs'][start:start+2]), compare_canvas, WORKERS['CASES'])
             for start in (0, 2)]
         stable = all(report['runs'][index]['observed'] == report['runs'][index+2]['observed'] for index in (0, 1))
         report['comparison'] = {'passed': stable and all(value['passed'] for value in comparisons),
             'initial': comparisons[0], 'restart': comparisons[1], 'restart_stable': stable,
-            'worker_cases_per_profile': 64, 'worker_paths_per_profile': 4, 'recreation_samples_per_path': 2}
+            'worker_cases_per_profile': comparisons[0]['worker_cases_per_profile'], 'worker_paths_per_profile': 4, 'recreation_samples_per_path': 2}
         report['passed'] = report['comparison']['passed'] and all(row['resources_released'] and row['remaining_observed_processes'] == 0
                             and row['observed_processes'] > 0 for row in report['runs'])
         report['measurement_complete'] = True

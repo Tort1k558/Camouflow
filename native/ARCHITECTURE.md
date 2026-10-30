@@ -13,13 +13,14 @@ The configured disk reserve currently prevents the 074 source refresh/build.
 | Native identity | Private profile keys and browser-owned document/worker policy delivery | Complete plausible device cohorts; not arbitrary OS/GPU impersonation |
 | Combined surfaces | Canvas/WebGL/AudioMath, eight protected desktop profiles, initial/restart; Mobile Web separately | General compatibility and full protected lifecycle |
 | Canvas formats/export | HTML/Offscreen, sRGB/P3, unorm8/F16; document and six worker-class PNG paths | Broad HDR/nonfinite/perceptual quality |
-| Nested dedicated workers | Four classic/module parent-child paths, 64 Canvas cases per profile/phase, two creation samples and browser restart on frozen 073 | Selected 074, nested worker GPU/Audio, shared/service parents and arbitrary depth |
+| Nested dedicated workers | Four classic/module parent-child paths; 64 Canvas format cases or 8 finite HDR cases per profile/phase; recreation and browser restart on frozen 073 | Selected 074, broad HDR quality, nested worker GPU/Audio, shared/service parents and arbitrary depth |
 | Manager BFCache | Requested screen/DPR in six documents and stable top-document Canvas after actual restoration | Raw per-page CDP metrics stress still fails; restored GPU/Audio output not measured |
 | Local storage | Account/settings readers share the existing writer RLock; Windows same-process race reproduction is fixed | No new cross-process locking guarantee |
 
 [Current matrix](../docs/GLINT_TEST_MATRIX.md),
 [073 native batch](drafts/upstream-156/native-batch73-observations.json),
-[nested worker measurements](drafts/environment/nested-formats73-observations.json),
+[nested format measurements](drafts/environment/nested-formats73-probe-selector-observations.json),
+[nested finite HDR measurements](drafts/environment/nested-hdr73-observations.json),
 [074 selection](drafts/environment/screen74-selection-observations.json).
 The nested collector ran byte-identical diagnostic overlays on a local frozen 073
 Git layout; inherited source bindings retain both measured raw and normalized text

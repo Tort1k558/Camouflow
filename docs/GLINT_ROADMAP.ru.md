@@ -4,6 +4,21 @@
 
 ### Выбран 001–074; проверенный бинарник пока 001–073
 
+**Полный Python-повтор зелёный: 4593 passed, 1 skipped**, 6м38с, source/status guards прошли.
+Это проверка на `bc66849` после storage-исправления и восстановления исторических привязок;
+она предшествует новому HDR-selector, для которого отдельно прошли **88/88 целевых проверок**.
+[Полный результат](../native/drafts/environment/canonical-python74-storage-repair-observations.json).
+
+Один nested collector теперь принимает `--probe formats` (по умолчанию) или `--probe finite-hdr`.
+Оба режима проверены точными публичными байтами в frozen layout 073: **64 format-кейса** либо
+**8 finite HDR-кейсов** на профиль и фазу, четыре parent-child пути, два создания worker и restart.
+В HDR проверены отрицательные/выше-единицы/subnormal-сигналы, alpha, crop/repeat/re-put,
+ограниченные изменения RGB и согласованность с document. Это не широкое HDR-качество редакторов.
+[Formats после selector](../native/drafts/environment/nested-formats73-probe-selector-observations.json),
+[HDR](../native/drafts/environment/nested-hdr73-observations.json).
+Первая версия nested collector и её результат сохранены; старый исходник восстанавливается
+test-only patch, поэтому добавление режима не переписывает старые измерения.
+
 **Вложенные dedicated workers проверены на сохранённом 073.** Публичные collector/fixture
 прошли четыре classic/module parent-child пути, по 16 Offscreen-вариантов в каждом:
 **64 Canvas-кейса на профиль и фазу**, два создания worker на путь, initial/restart браузера.

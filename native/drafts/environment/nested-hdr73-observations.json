@@ -1,0 +1,1224 @@
+{
+  "schema": 1,
+  "measurement_complete": true,
+  "scope": "Owned nested dedicated-worker Canvas formats or finite Float16 continuity; recreation and restart, not broad HDR, GPU/Audio or release admission.",
+  "probe": "finite-hdr",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "passed": true,
+  "errors": [],
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "af79d5053ac9d54f37682af19b2d3e7c32d854dfb2511f5b0606fecdab596ded",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "16d736c33b3a76625d3b4c081f4b2a503613caf786f997c7e26ff08fb6d47164",
+  "candidate_manifest_sha256": "b5b34bd0e597594191e42f957ce96710540bc72ab8000c8eba64a510e0295ba6",
+  "comparison": {
+    "passed": true,
+    "initial": {
+      "passed": true,
+      "worker_cases_per_profile": 8,
+      "worker_paths_per_profile": 4,
+      "recreation_samples_per_path": 2,
+      "document_contexts_per_profile": 4,
+      "document_worker_mismatches": [],
+      "document_comparison": {
+        "baseline_signal_coverage_verified": true,
+        "passed": true,
+        "checks": [
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "changed_channels": 195,
+            "unexpected_changed_channels": [],
+            "baseline_negative_rgb_channels": 121,
+            "baseline_hdr_rgb_channels": 182,
+            "baseline_subnormal_channels": 30,
+            "opaque_pixels": 128,
+            "nonopaque_pixels": 128,
+            "passed": true
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "changed_channels": 195,
+            "unexpected_changed_channels": [],
+            "baseline_negative_rgb_channels": 121,
+            "baseline_hdr_rgb_channels": 182,
+            "baseline_subnormal_channels": 30,
+            "opaque_pixels": 128,
+            "nonopaque_pixels": 128,
+            "passed": true
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "changed_channels": 195,
+            "unexpected_changed_channels": [],
+            "baseline_negative_rgb_channels": 121,
+            "baseline_hdr_rgb_channels": 182,
+            "baseline_subnormal_channels": 30,
+            "opaque_pixels": 128,
+            "nonopaque_pixels": 128,
+            "passed": true
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "changed_channels": 195,
+            "unexpected_changed_channels": [],
+            "baseline_negative_rgb_channels": 121,
+            "baseline_hdr_rgb_channels": 182,
+            "baseline_subnormal_channels": 30,
+            "opaque_pixels": 128,
+            "nonopaque_pixels": 128,
+            "passed": true
+          }
+        ],
+        "baseline_errors": [],
+        "protected_errors": [],
+        "privacy_admitted": false,
+        "production_admitted": false
+      },
+      "comparisons": {
+        "classic-classic/initial": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "classic-classic/recreated": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "classic-module/initial": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "classic-module/recreated": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "module-module/initial": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "module-module/recreated": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "module-classic/initial": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "module-classic/recreated": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        }
+      },
+      "privacy_admitted": false,
+      "production_admitted": false
+    },
+    "restart": {
+      "passed": true,
+      "worker_cases_per_profile": 8,
+      "worker_paths_per_profile": 4,
+      "recreation_samples_per_path": 2,
+      "document_contexts_per_profile": 4,
+      "document_worker_mismatches": [],
+      "document_comparison": {
+        "baseline_signal_coverage_verified": true,
+        "passed": true,
+        "checks": [
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "changed_channels": 195,
+            "unexpected_changed_channels": [],
+            "baseline_negative_rgb_channels": 121,
+            "baseline_hdr_rgb_channels": 182,
+            "baseline_subnormal_channels": 30,
+            "opaque_pixels": 128,
+            "nonopaque_pixels": 128,
+            "passed": true
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "changed_channels": 195,
+            "unexpected_changed_channels": [],
+            "baseline_negative_rgb_channels": 121,
+            "baseline_hdr_rgb_channels": 182,
+            "baseline_subnormal_channels": 30,
+            "opaque_pixels": 128,
+            "nonopaque_pixels": 128,
+            "passed": true
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "changed_channels": 195,
+            "unexpected_changed_channels": [],
+            "baseline_negative_rgb_channels": 121,
+            "baseline_hdr_rgb_channels": 182,
+            "baseline_subnormal_channels": 30,
+            "opaque_pixels": 128,
+            "nonopaque_pixels": 128,
+            "passed": true
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "changed_channels": 195,
+            "unexpected_changed_channels": [],
+            "baseline_negative_rgb_channels": 121,
+            "baseline_hdr_rgb_channels": 182,
+            "baseline_subnormal_channels": 30,
+            "opaque_pixels": 128,
+            "nonopaque_pixels": 128,
+            "passed": true
+          }
+        ],
+        "baseline_errors": [],
+        "protected_errors": [],
+        "privacy_admitted": false,
+        "production_admitted": false
+      },
+      "comparisons": {
+        "classic-classic/initial": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "classic-classic/recreated": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "classic-module/initial": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "classic-module/recreated": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "module-module/initial": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "module-module/recreated": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "module-classic/initial": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        },
+        "module-classic/recreated": {
+          "baseline_signal_coverage_verified": true,
+          "passed": true,
+          "checks": [
+            {
+              "kind": "html",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "html",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "display-p3",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            },
+            {
+              "kind": "offscreen",
+              "colorSpace": "srgb",
+              "changed_channels": 195,
+              "unexpected_changed_channels": [],
+              "baseline_negative_rgb_channels": 121,
+              "baseline_hdr_rgb_channels": 182,
+              "baseline_subnormal_channels": 30,
+              "opaque_pixels": 128,
+              "nonopaque_pixels": 128,
+              "passed": true
+            }
+          ],
+          "baseline_errors": [],
+          "protected_errors": [],
+          "privacy_admitted": false,
+          "production_admitted": false
+        }
+      },
+      "privacy_admitted": false,
+      "production_admitted": false
+    },
+    "restart_stable": true,
+    "worker_cases_per_profile": 8,
+    "worker_paths_per_profile": 4,
+    "recreation_samples_per_path": 2
+  },
+  "postguards_passed": true,
+  "runs": [
+    {
+      "profile": "baseline",
+      "phase": "initial",
+      "resources_released": true,
+      "observed_processes": 11,
+      "remaining_observed_processes": 0,
+      "observations_sha256": "c8ff543b6ed519d2dbbc61dd7ed3bb1761574820579ea737d78d9e6a62bcbc86",
+      "worker_recreation_verified": true
+    },
+    {
+      "profile": "protected",
+      "phase": "initial",
+      "resources_released": true,
+      "observed_processes": 11,
+      "remaining_observed_processes": 0,
+      "observations_sha256": "a419d7d6f82ff589df71e5f04a5cd6f326cb07d271dbfb3f5018b272e78e2e59",
+      "worker_recreation_verified": true
+    },
+    {
+      "profile": "baseline",
+      "phase": "restart",
+      "resources_released": true,
+      "observed_processes": 12,
+      "remaining_observed_processes": 0,
+      "observations_sha256": "c8ff543b6ed519d2dbbc61dd7ed3bb1761574820579ea737d78d9e6a62bcbc86",
+      "worker_recreation_verified": true
+    },
+    {
+      "profile": "protected",
+      "phase": "restart",
+      "resources_released": true,
+      "observed_processes": 12,
+      "remaining_observed_processes": 0,
+      "observations_sha256": "a419d7d6f82ff589df71e5f04a5cd6f326cb07d271dbfb3f5018b272e78e2e59",
+      "worker_recreation_verified": true
+    }
+  ],
+  "source_bindings": {
+    "scripts/verify_native_gpu.py": {
+      "measured_raw_sha256": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044",
+      "normalized_utf8_lf_sha256": "283863db88fe520903a20efa14c6f59fd320fd92abf1fd4b165cb8755b539044"
+    },
+    "scripts/verify_native_runtime.py": {
+      "measured_raw_sha256": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+      "normalized_utf8_lf_sha256": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa"
+    },
+    "scripts/verify_native_audio.py": {
+      "measured_raw_sha256": "697c83154590cc51c19fcdf49858b184231cce2d43341426548d2ea1390c0bd7",
+      "normalized_utf8_lf_sha256": "eff19a51d09e9d18a254a7c98d7be34394c2a74d07494cd5d6d26deda2c1dead"
+    },
+    "native/drafts/environment/playwright-driver-stage-binding-close.json": {
+      "measured_raw_sha256": "6d18cf727cfe1b4533b611edbd560f4ac031e4c02aa69aff2e037d110df352c5",
+      "normalized_utf8_lf_sha256": "6d18cf727cfe1b4533b611edbd560f4ac031e4c02aa69aff2e037d110df352c5"
+    },
+    "native/drafts/environment/first-script/nested_hdr.py": {
+      "measured_raw_sha256": "78f2c7bbfdf3e2ec3e7853a13c7674fe75e76744426cb20847f4d849ff2e4713",
+      "normalized_utf8_lf_sha256": "78f2c7bbfdf3e2ec3e7853a13c7674fe75e76744426cb20847f4d849ff2e4713"
+    },
+    "scripts/verify_native_surfaces.py": {
+      "measured_raw_sha256": "5a2d8ed28577a2fa78809d37ccd7e4a1ced1aebb2011a86621d0a9cca2cf3f8a",
+      "normalized_utf8_lf_sha256": "5a2d8ed28577a2fa78809d37ccd7e4a1ced1aebb2011a86621d0a9cca2cf3f8a"
+    },
+    "scripts/verify_native_canvas.py": {
+      "measured_raw_sha256": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+      "normalized_utf8_lf_sha256": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f"
+    },
+    "native/drafts/environment/first-script/canvas_hdr.py": {
+      "measured_raw_sha256": "9b4806f748aaa29d6b7a9738a76972e66a3b9341375e4ab8d1fe5d577b98698a",
+      "normalized_utf8_lf_sha256": "9b4806f748aaa29d6b7a9738a76972e66a3b9341375e4ab8d1fe5d577b98698a"
+    },
+    "scripts/verify_native_audio_quality.py": {
+      "measured_raw_sha256": "3477bfb7cd1c07a6f0a1ebfce43f9403fa4837993b49057d1116cd02becc8278",
+      "normalized_utf8_lf_sha256": "f2ee7735ab1c2b1b46adf17e661da749729201624baec39cf9019afe40ead39b"
+    },
+    "app/core/native/runtime.py": {
+      "measured_raw_sha256": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+      "normalized_utf8_lf_sha256": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c"
+    },
+    "scripts/verify_native_gpu_readback.py": {
+      "measured_raw_sha256": "f08919882123f5f144a74169be5d19c141825cc27f138ee90f5820a63d517e06",
+      "normalized_utf8_lf_sha256": "f08919882123f5f144a74169be5d19c141825cc27f138ee90f5820a63d517e06"
+    },
+    "scripts/verify_native_worker_startup.py": {
+      "measured_raw_sha256": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+      "normalized_utf8_lf_sha256": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2"
+    },
+    "native/drafts/environment/first-script/combined_concurrent.py": {
+      "measured_raw_sha256": "469a281a9c2126df5e2c3de251034534b103e66aff5e3dc8cd87686b8acc6c9b",
+      "normalized_utf8_lf_sha256": "469a281a9c2126df5e2c3de251034534b103e66aff5e3dc8cd87686b8acc6c9b"
+    },
+    "native/drafts/environment/first-script/nested_formats.py": {
+      "measured_raw_sha256": "62f9a8a5f3f2b8ca07d4d72c86824918c5a4558c158b8b34e35575200f334e7e",
+      "normalized_utf8_lf_sha256": "62f9a8a5f3f2b8ca07d4d72c86824918c5a4558c158b8b34e35575200f334e7e"
+    },
+    "scripts/verify_native_hardware.py": {
+      "measured_raw_sha256": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+      "normalized_utf8_lf_sha256": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c"
+    },
+    "app/core/native/identity.py": {
+      "measured_raw_sha256": "998e41bd8c09d0bcfb161d3141d6dd21e9d0742407d3caf373d776b66fa9ac00",
+      "normalized_utf8_lf_sha256": "ade6571746cff6eebb3b049a6725a9260fff1f9cb499080f00af95a6aeb654c9"
+    },
+    "native/drafts/environment/first-script/nested_formats_runtime.py": {
+      "measured_raw_sha256": "b1f5520de431f4c9149e85249ead3c6e7d74585daadfa4fad3fdb21abbddb187",
+      "normalized_utf8_lf_sha256": "b1f5520de431f4c9149e85249ead3c6e7d74585daadfa4fad3fdb21abbddb187"
+    },
+    "scripts/native_driver_stage.py": {
+      "measured_raw_sha256": "b5e12a27bd0a5bc19b0e26c5f945e16914bc0034e5dde5fa5a14e67932acbfca",
+      "normalized_utf8_lf_sha256": "b5e12a27bd0a5bc19b0e26c5f945e16914bc0034e5dde5fa5a14e67932acbfca"
+    },
+    "app/core/native/configuration.py": {
+      "measured_raw_sha256": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+      "normalized_utf8_lf_sha256": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9"
+    },
+    "scripts/verify_native_nested_canvas.py": {
+      "measured_raw_sha256": "cceda4f64b241b13e31809d3b805378264cc65f2faf49189982ab608a4befd72",
+      "normalized_utf8_lf_sha256": "f50d6a50bc567f1390d7212d715dc473b4967c1e0e53e5ed0a2a775a77bb039d"
+    }
+  },
+  "raw_report_sha256": "410efc1deeba48c589049b86493709af7e646474b849bb04cbc9bca0c0a0fb14",
+  "raw_report_local_path": "D:\\GlintManagerQA\\nested-hdr-public73-20261030-v1\\report.json",
+  "current_selected_74_verified": false,
+  "source_layout": {
+    "kind": "local git archive plus byte-identical diagnostic overlays",
+    "base_commit": "c686c16",
+    "manifest_checkpoint": "001-073",
+    "raw_inputs_verified": true,
+    "current_repository_text_matches_normalized_utf8_lf": true,
+    "provenance_sha256": "5e8965ee52c95c2e5ef9740ccca81e033c8b6ebdee3821eae490c3bc8bffd09d"
+  }
+}

@@ -3,6 +3,19 @@
 ## Current compiled 001–073 — 2026-10-30
 
 **Selected source is now 001–074; compiled/qualified baseline remains 001–073.**
+Full Python after the storage and historical-binding repairs: **4593 passed, 1 skipped**,
+398s; source/status guards passed at `bc66849`. This precedes the HDR selector added next.
+[Full pass](../native/drafts/environment/canonical-python74-storage-repair-observations.json).
+
+The shared nested collector now supports explicit `--probe formats` (default) and
+`--probe finite-hdr`, with no fallback or duplicated runtime/cleanup pipeline. Both exact
+public variants passed on frozen 073: **64 format cases / 8 finite HDR cases per profile/phase**,
+four parent-child types, two worker creations and browser restart. Finite HDR covers the
+bounded negative/HDR/subnormal/alpha/crop/re-put fixture, not general editor quality.
+Targeted selector/HDR/storage tests: **88 passed**.
+[Formats](../native/drafts/environment/nested-formats73-probe-selector-observations.json),
+[HDR](../native/drafts/environment/nested-hdr73-observations.json).
+Initial nested-probe evidence remains unchanged and bound to its reconstructed earlier collector.
 Nested dedicated-worker follow-up on preserved 073 passed: four classic/module parent-child
 paths, **64 Offscreen Canvas cases per profile/phase**, two worker creations per path,
 baseline/protected profiles and browser restart. Document coherence, effect, repeated reads,

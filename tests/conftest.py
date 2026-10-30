@@ -85,6 +85,19 @@ def storage_before_read_lock_sha256(tmp_path):
 
 
 @pytest.fixture
+def nested_runtime_before_selector_sha256(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    relative = Path('native/drafts/environment/first-script/nested_formats_runtime.py')
+    target = tmp_path / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text((root / relative).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error',
+                    str(root / 'native/drafts/environment/nested-probe-selector74.patch')],
+                   cwd=tmp_path, check=True, capture_output=True)
+    return hashlib.sha256(target.read_bytes()).hexdigest()
+
+
+@pytest.fixture
 def recorder_before_document_open_sha256(tmp_path):
     """Reconstruct the measured historical source, without rewriting old evidence."""
     root = Path(__file__).resolve().parents[1]

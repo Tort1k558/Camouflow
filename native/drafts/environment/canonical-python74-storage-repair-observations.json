@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "bc66849e1b3be94a075e23c722d7d55e92d24937",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 975,
+  "before_status": " M docs/HUB.md\n",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 397.719,
+  "returncode": 0,
+  "counts": {
+    "tests": 4594,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4593
+  },
+  "changed_tracked_files": [],
+  "after_status": " M docs/HUB.md\n",
+  "postguards_passed": true,
+  "log_sha256": "180474ae62090651faa01b890f44ae88f33ee6480ffb1f5da02bcebec846a0b8",
+  "junit_sha256": "95ed2bbe1fe6683d7045226d39e3a8b4816a31fa8e685014d59fc064103d3c96",
+  "raw_report_sha256": "a3c07662fa2c8e2ab200bcc6bbbebbfcc978a48c96c008d3b9a4134268b4fe75",
+  "scope_note": "Full Python after storage read-lock and historical-binding repairs; precedes finite-HDR nested probe selector/tests"
+}
