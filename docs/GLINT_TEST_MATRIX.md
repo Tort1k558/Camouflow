@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## Protected 001–072: combined surfaces and Canvas formats — 2026-10-30
+
+| Gate | Observed | Boundary |
+| --- | --- | --- |
+| Canvas + WebGL + AudioMath together | **18/18 phases**, baseline + 8 protected profiles, initial/restart; both AudioMath selectors | Sequential Windows profiles; not simultaneous sessions or a device cohort |
+| Canvas format/readback matrix | **32/32**, no compatibility regressions; repeated reads stable and all differ from baseline | HTML/Offscreen in one document; not workers, PNG export or broad HDR quality |
+| PNG export/capture coherence | **8/8 cases, 12/12 carriers per baseline/protected profile**; exact pre-mutation pixels, async snapshot and color metadata | Qt decoding, no second Canvas; not HDR fidelity or workers |
+| Concurrent protected profiles | **6/6 phases**, both profiles live, peer closure and same-profile restart; no observed processes remaining | Two Windows desktop profiles; not long-run resource limits or Mobile Web |
+
+[Combined evidence](../native/drafts/environment/combined-math72-observations.json),
+[format evidence](../native/drafts/environment/canvas-formats72-observations.json),
+[PNG exports](../native/drafts/environment/canvas-export72-observations.json),
+[concurrent profiles](../native/drafts/environment/combined-concurrent72-observations.json).
+The old **30/32 failures on 001–070** remain recorded below. They are no longer
+reproducible on this exact 001–072 fixture; this does not establish general
+image-editor compatibility, anti-bot acceptance or release readiness.
+
 ## Compiled 001–072 baseline — 2026-10-30
 
 | Gate | Observed | Boundary |
@@ -11,8 +28,8 @@
 [Build](../native/drafts/upstream-156/build72-observations.json),
 [runtime](../native/drafts/upstream-156/runtime-baseline72-observations.json),
 [Python](../native/drafts/environment/canonical-python72-export-observations.json).
-The new 21-group native batch and protected format/export/combined gates remain
-pending. Older 001–070 failures below are retained, not silently labelled fixed.
+The new 21-group native batch and Mobile Web repeat remain pending. The newer
+format/combined/export/concurrent results are above; older 001–070 evidence is retained.
 
 ## Export capture reference and selection follow-up — 2026-10-30
 

@@ -80,9 +80,10 @@ def test_concurrent_selector_rejects_ambiguous_or_unsafe_profile_state(concurren
         concurrent_helpers['choose_cohort_profiles'](cohort)
 
 
-def test_measured_concurrent_lifecycle_preserves_peer_and_restart_evidence():
+@pytest.mark.parametrize('version', ('70', '72'))
+def test_measured_concurrent_lifecycle_preserves_peer_and_restart_evidence(version):
     root = Path(__file__).resolve().parents[1]
-    record = json.loads((root / 'native/drafts/environment/combined-concurrent70-observations.json').read_bytes())
+    record = json.loads((root / f'native/drafts/environment/combined-concurrent{version}-observations.json').read_bytes())
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
     assert record['both_profiles_running'] and record['resources_released'] and record['remaining_observed_processes'] == 0
     assert record['observed_processes'] > 2 and record['concurrent_protected_profiles_verified']

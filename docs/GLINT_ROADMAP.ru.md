@@ -1,5 +1,23 @@
 # Glint: план проверки и развития
 
+## Новый runtime-результат: combined 18/18, Canvas formats 32/32
+
+На собранном 001–072 прошли **18/18 фаз** совместной проверки Canvas/WebGL/AudioMath:
+baseline + 8 защищённых профилей, первый запуск и перезапуск, оба AudioMath selector.
+Все наблюдавшиеся процессы завершены, ключи профилей стабильны.
+[Результат](../native/drafts/environment/combined-math72-observations.json).
+
+Отдельный форматный прогон теперь проходит **32/32** сочетания HTML/Offscreen,
+sRGB/Display-P3, unorm8/float16 и форматов чтения: повторные чтения стабильны,
+эффект относительно baseline есть во всех случаях, `NotReadableError` не воспроизводится.
+[Результат](../native/drafts/environment/canvas-formats72-observations.json).
+PNG-экспорт также прошёл: **8/8 вариантов, 12/12 PNG на baseline и защищённом профиле**,
+точное совпадение с пикселями до изменения Canvas и корректные цветовые метаданные.
+[Экспорт](../native/drafts/environment/canvas-export72-observations.json).
+Два одновременно открытых профиля прошли **6/6 фаз** закрытия соседа и перезапуска;
+наблюдавшиеся процессы завершены. [Concurrent](../native/drafts/environment/combined-concurrent72-observations.json).
+Остаются workers, HDR-качество, длительная ресурсная проверка и новый Mobile Web.
+
 ## 001–072 собран и сохранён; базовый runtime 18/18
 
 Связанный пакет собрался на Windows: **j4, 64 шага, 15м14с**. Отдельно сохранены
@@ -10,8 +28,8 @@
 [Runtime](../native/drafts/upstream-156/runtime-baseline72-observations.json).
 Полный Python-повтор после исправления исторических привязок:
 **4464 passed, 1 skipped**; далее ещё добавлены тесты публикации результатов.
-Сейчас обязательны новый 21-групповой native batch, защищённые Canvas format/export
-и combined-проверки; security rebase и релиз по-прежнему не закрыты.
+Сейчас обязательны новый 21-групповой native batch и Mobile Web-повтор;
+security rebase и релиз по-прежнему не закрыты.
 
 ## История: выбор пакета 001–072 до его сборки
 

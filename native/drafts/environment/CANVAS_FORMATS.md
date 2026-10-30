@@ -1,18 +1,23 @@
 # Canvas extended-format compatibility
 
-Status: **measured browser failure; isolated native extension drafted, not compiled into the browser**.
-Baseline: preserved Chromium 156 / patches 001–070, Windows.
+Status: **compiled in 001–072; fresh format gate passes 32/32 and combined gate 18/18**.
+Comparison baseline: preserved Chromium 156 / patches 001–070, Windows.
 [Retained result](canvas-formats70-observations.json),
 [reproducer](first-script/canvas_formats.py).
+[Current format result](canvas-formats72-observations.json),
+[combined result](combined-math72-observations.json).
 
 [The adaptive draft](canvas-formats-next/README.md) preserves source formats and
 adds a binary16 transform with bounded changes. The single-LSB predecessor's
 RGBA8 projection failure is retained. Its replacement passes 12 transform controls
 including all 65,536 half encodings, plus 283 native Skia copy/projection controls.
 Four source/read sRGB/P3 pairs retain distinct outputs for 32 seeds on the owned
-fixture. Browser export/worker/runtime and broad HDR quality acceptance remain open.
+fixture. The fresh independent PNG gate also passes eight cases / 12 carriers per
+baseline and protected profile, including async snapshot and color metadata.
+[Export evidence](canvas-export72-observations.json).
+Workers and broad HDR quality acceptance remain open.
 
-## Cause
+## Cause of the retained 001–070 failure
 
 `0033-native-surface-readback.patch` restricts `CreateProtectedCanvasCopy` and
 `CreateProtectedCanvasImage` to 8-bit sRGB. The `getImageData` integration also
@@ -50,6 +55,27 @@ protected path supports only default HTML/Offscreen sRGB/RGBA8 (2/32).
 | Regression | Existing sRGB/RGBA8 captures and combined Canvas/WebGL/Audio, Mobile Web and lifecycle checks repeated on the new binary |
 
 The current 32-case collector is an initial format/shape/effect diagnostic, **not**
-proof of all these acceptance requirements. Batch the native correction with the
-queued orientation/visibility work; preserve the verified 001–070 runtime for
-comparison. No release/admission until the linked packet is compiled and checked.
+proof of all these acceptance requirements. The native correction and orientation/
+visibility work are now compiled together. Preserve the verified 001–070 runtime
+for comparison; remaining worker/quality/lifecycle gates still block release.
+
+## Reproduce the browser gates
+
+Use a completed successful eight-profile desktop combined cohort from
+`scripts/verify_native_combined_math.py`, its exact preserved `chrome.exe` and
+driver stage. Run sequentially: these commands reopen existing owned QA profiles.
+Use a fresh absolute D: output directory for each run.
+
+```powershell
+$python = '.\.venv\Scripts\python.exe'
+$browser = 'D:\Glint156Candidate\preserved-runtime72-20261030-v1\runtime\chrome.exe'
+$cohort = 'D:\GlintManagerQA\combined-math72-20261030-v1'
+$stage = 'D:\GlintManagerQA\staged-python-js70-20261030-v1'
+& $python native/drafts/environment/first-script/canvas_formats.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\canvas-formats72-recheck
+& $python native/drafts/environment/first-script/canvas_export_runtime.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\canvas-export72-recheck
+```
+
+The export gate compares decoded PNG bytes with pre-mutation pixels and validates
+color metadata. It does not decode through a second protected Canvas. Reports
+retain source/receipt hashes, native API errors and postguards; a failed gate is
+not automatically retried or treated as protection success.

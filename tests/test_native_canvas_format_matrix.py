@@ -90,6 +90,25 @@ def test_measured_canvas_failure_is_retained_and_binds_the_public_runner(format_
     assert hashlib.sha256(runner.read_text(encoding='utf-8-sig').encode()).hexdigest() == record['public_runner_normalized_utf8_lf_sha256']
 
 
+def test_compiled_72_formats_close_the_measured_compatibility_regression(format_helpers):
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / 'native/drafts/environment/canvas-formats72-observations.json').read_bytes())
+    build = json.loads((root / 'native/drafts/upstream-156/build72-observations.json').read_bytes())
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['native_fix_implemented'] and record['native_fix_compiled']
+    assert record['privacy_admitted'] is record['production_admitted'] is False
+    assert record['runtime_core_sha256_measured'] == build['runtime_core_sha256_measured']
+    assert record['receipt_sha256'] == build['build_receipt_sha256']
+    assert record['candidate_manifest_sha256'] == build['candidate_manifest_sha256']
+    assert format_helpers['compare_formats'](*(row['observed'] for row in record['runs'])) == record['comparison']
+    comparison = record['comparison']
+    assert comparison['cases'] == comparison['baseline_supported'] == comparison['protected_supported'] == 32
+    assert comparison['compatibility_passed'] and comparison['protection_effect_observed']
+    assert not comparison['baseline_unavailable'] and not comparison['compatibility_regressions'] and not comparison['no_effect']
+    runner = root / record['public_runner']
+    assert hashlib.sha256(runner.read_text(encoding='utf-8-sig').encode()).hexdigest() == record['public_runner_normalized_utf8_lf_sha256']
+
+
 def test_mobile_patch_reconstructs_the_measured_portable_variant(tmp_path):
     root = Path(__file__).resolve().parents[1]
     environment = root / 'native/drafts/environment'

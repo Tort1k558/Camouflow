@@ -107,9 +107,9 @@ def test_collector_rejects_invalid_cohort_before_touching_output(tmp_path, count
     assert not output.exists()
 
 
-@pytest.fixture
-def measured_combination():
-    path = combined.ROOT / 'native/drafts/environment/combined-math70-observations.json'
+@pytest.fixture(params=('70', '72'))
+def measured_combination(request):
+    path = combined.ROOT / f'native/drafts/environment/combined-math{request.param}-observations.json'
     return json.loads(path.read_bytes())
 
 

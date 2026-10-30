@@ -4,10 +4,21 @@ import hashlib
 import json
 from pathlib import Path
 import runpy
+import subprocess
+import sys
 
 from PyQt6.QtCore import QBuffer, QIODevice
 from PyQt6.QtGui import QColorSpace, QImage
 import pytest
+
+
+def test_export_runtime_help_has_no_profile_or_browser_side_effects(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    runner = root / 'native/drafts/environment/first-script/canvas_export_runtime.py'
+    result = subprocess.run([sys.executable, str(runner), '--help'], cwd=tmp_path,
+                            capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0 and '--cohort-directory' in result.stdout
+    assert list(tmp_path.iterdir()) == []
 
 
 @pytest.fixture
@@ -103,3 +114,24 @@ def test_actual_export_baseline_is_unprotected_and_binds_the_public_probe():
             assert value['different_bytes'] == 0 and value['color_space_matches_request']
     normalized = (root / record['public_probe']).read_text(encoding='utf-8-sig').encode()
     assert hashlib.sha256(normalized).hexdigest() == record['public_probe_normalized_utf8_lf_sha256']
+
+
+def test_actual_protected_72_exports_match_pre_mutation_pixels_and_color_metadata(export_probe):
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / 'native/drafts/environment/canvas-export72-observations.json').read_bytes())
+    build = json.loads((root / 'native/drafts/upstream-156/build72-observations.json').read_bytes())
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['runtime_core_sha256_measured'] == build['runtime_core_sha256_measured']
+    assert record['receipt_sha256'] == build['build_receipt_sha256']
+    assert record['candidate_manifest_sha256'] == build['candidate_manifest_sha256']
+    assert record['privacy_admitted'] is record['production_admitted'] is False
+    assert [row['profile'] for row in record['runs']] == ['baseline', 'protected']
+    for row in record['runs']:
+        assert row['resources_released']
+        assert export_probe['validate_exports'](row['observed']) == row['validation']
+        assert row['validation']['passed'] and len(row['validation']['rows']) == 8
+        assert sum(len(value['exports']) for value in row['validation']['rows']) == 12
+    assert len(record['effect']) == 8 and all(row['changed_from_baseline'] for row in record['effect'])
+    for name in ('public_runner', 'public_probe'):
+        normalized = (root / record[name]).read_text(encoding='utf-8-sig').encode()
+        assert hashlib.sha256(normalized).hexdigest() == record[name + '_normalized_utf8_lf_sha256']

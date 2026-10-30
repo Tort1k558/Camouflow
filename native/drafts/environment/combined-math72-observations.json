@@ -1,0 +1,2023 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Combined native Canvas/WebGL/AudioMath compatibility collector; no privacy admission.",
+  "candidate": "upstream-156",
+  "candidate_manifest_sha256": "a281e7b67ae83fb6c9fa81d4b17ec74df640aafc6ec1b37bcbebc3ec296aac18",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "3fa8284bf94254bf7775e9c5a8e42400d268919d3f635aa378ba4e4904e96915",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "62ea7fdb9cd1a4b20c89c72c5082de3daf715ac2f3fde541341d1766eba9f7ca",
+  "derivation_mode": "profile-identity",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "device_cohort_verified": false,
+  "protected_profile_count": 8,
+  "audio_reference_selectors_observed": [
+    0,
+    1
+  ],
+  "both_audio_math_selectors_observed": true,
+  "aggregate": {
+    "validations": {
+      "gpu-cross-profile-isolation": {
+        "passed": true,
+        "result": null
+      },
+      "canvas-cross-profile-isolation": {
+        "passed": true,
+        "result": null
+      }
+    }
+  },
+  "date": "2026-10-30",
+  "raw_report_sha256": "49817eb0ab2d6f1dc31c584f29d454cdf39e754647054deb79b12232552b7d80",
+  "checks": [
+    {
+      "profile": "baseline",
+      "phase": "initial",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 13,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "same_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "cross_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "about_blank_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "srcdoc_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        }
+      },
+      "audio_reference_selector": null,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "baseline",
+      "phase": "restart",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 14,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "same_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "cross_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "about_blank_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "srcdoc_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        }
+      },
+      "audio_reference_selector": null,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-00",
+      "phase": "initial",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 13,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-00",
+      "phase": "restart",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 14,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-01",
+      "phase": "initial",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 13,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-01",
+      "phase": "restart",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 14,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-02",
+      "phase": "initial",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 13,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-02",
+      "phase": "restart",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 14,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-03",
+      "phase": "initial",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 14,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-03",
+      "phase": "restart",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 13,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-04",
+      "phase": "initial",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 13,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-04",
+      "phase": "restart",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 14,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-05",
+      "phase": "initial",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 14,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-05",
+      "phase": "restart",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 14,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-06",
+      "phase": "initial",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 13,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-06",
+      "phase": "restart",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 14,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": false
+        }
+      },
+      "audio_reference_selector": 1,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-07",
+      "phase": "initial",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 13,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": true
+        },
+        "same_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": true
+        },
+        "cross_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": true
+        },
+        "about_blank_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": true
+        },
+        "srcdoc_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": true
+        }
+      },
+      "audio_reference_selector": 0,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    },
+    {
+      "profile": "profile-07",
+      "phase": "restart",
+      "passed": true,
+      "effective_features": [
+        "--enable-features=CDPScreenshotNewSurface",
+        "--enable-features=ThirdPartyStoragePartitioning,GlintWebGLReadbackCandidate,GlintReadbackMetadataCandidate,GlintAudioMathCandidate"
+      ],
+      "identity_stable": true,
+      "resources_released": true,
+      "remaining_observed_processes": 0,
+      "observed_processes": 13,
+      "first_script_counts": {
+        "requests": 1,
+        "executions": 1
+      },
+      "compressor_effect": {
+        "document": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": true
+        },
+        "same_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": true
+        },
+        "cross_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": true
+        },
+        "about_blank_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": true
+        },
+        "srcdoc_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": true
+        }
+      },
+      "audio_reference_selector": 0,
+      "validations": {
+        "canvas-paths-contexts-restart": true,
+        "audio-sample-digests": true,
+        "audio-api-contexts-restart": true,
+        "gpu-readback-export-contexts-restart": true,
+        "audio-fidelity-document": true,
+        "audio-fidelity-same_origin_frame": true,
+        "audio-fidelity-cross_origin_frame": true,
+        "audio-fidelity-about_blank_frame": true,
+        "audio-fidelity-srcdoc_frame": true,
+        "audio-fidelity-restart": true,
+        "audio-long-compressor-effect-contexts-restart": true,
+        "canvas-origin-clean-errors": true,
+        "audio-profile-identity-context-consistency": true,
+        "canvas-audio-parser-and-initial-child": true,
+        "full-audio-collection-and-cleanup": true,
+        "full-audio-fidelity": true,
+        "full-audio-analyser": true,
+        "full-audio-worklet": true,
+        "full-audio-realtime": true
+      },
+      "audio_compatibility": {
+        "fidelity": {
+          "passed": true,
+          "coverage": {
+            "cases": 54,
+            "checks_per_case": null
+          }
+        },
+        "analyser": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 14
+          }
+        },
+        "worklet": {
+          "passed": true,
+          "coverage": {
+            "cases": 12,
+            "checks_per_case": 11
+          }
+        },
+        "realtime": {
+          "passed": true,
+          "coverage": {
+            "cases": 1,
+            "checks_per_case": 11
+          }
+        }
+      },
+      "fidelity": {
+        "document_contexts": [
+          "about_blank_frame",
+          "cross_origin_frame",
+          "document",
+          "same_origin_frame",
+          "srcdoc_frame"
+        ],
+        "cases_per_document": 54,
+        "all_passed": true
+      },
+      "parser_state": "loading",
+      "initial_child_url": "about:blank"
+    }
+  ],
+  "selected": false,
+  "concurrent_profiles_verified": false,
+  "mobile_web_verified": false,
+  "webgpu_readback_admitted": false,
+  "public_runner": "scripts/verify_native_combined_math.py",
+  "public_runner_sha256": "9918bc903696e7d759f69dc08f993da9bde6ef72d4be2a7ea55cd11e99caa8a1",
+  "public_runner_normalized_utf8_lf_sha256": "9918bc903696e7d759f69dc08f993da9bde6ef72d4be2a7ea55cd11e99caa8a1",
+  "source_input_count": 27,
+  "audio_selector_profile_counts": {
+    "0": 1,
+    "1": 7
+  },
+  "limitations": [
+    "Sequential owned Windows profiles, not simultaneous protected sessions, mobile Web or other operating systems.",
+    "Canvas and WebGL readback profile isolation is not anti-bot acceptance or a real-device graphics cohort.",
+    "AudioMath has two experimental compressor pipelines, not eight unique Audio identities; long effect is checked against the reference selector.",
+    "Short fidelity graphs and API controls do not establish broad perceptual Audio quality or a physical-device cohort.",
+    "Parser-start and initial about:blank capture Canvas/Audio; combined WebGL first-parser capture is not included.",
+    "No WebGPU readback, long-run peak-resource/leak, security rebase or release/update/rollback admission."
+  ]
+}

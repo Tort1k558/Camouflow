@@ -1,6 +1,10 @@
 # Canvas format extension — isolated draft
 
-**Selected as 0072 and now compiled in the development 001–072 browser; protected format/export gates are not yet admitted.**
+**Selected as 0072 and compiled in the development 001–072 browser; the fresh format gate passes 32/32.**
+[Format evidence](../canvas-formats72-observations.json),
+[combined 18/18](../combined-math72-observations.json),
+[PNG export 8 cases / 12 carriers](../canvas-export72-observations.json).
+Workers and broad HDR quality remain separate gates.
 [Build and baseline](../../upstream-156/build72-observations.json) do not supersede
 the required real browser format/export/worker and combined-policy checks.
 [Linked selection](../linked72-selection-observations.json) also includes orientation/visibility
