@@ -2,6 +2,23 @@
 
 ## Current implementation boundary
 
+The compiled browser remains **001–072**. Its 21-group native batch completed with
+**485/488 passing cases**: all 484 existing cases pass, but three new orientation
+cases fail. [Retained failure](drafts/upstream-156/native-batch72-observations.json).
+**001–073 is selected, not compiled:** main logical-screen exposure plus an accurate
+non-web-test orientation fixture, with the same four strict cases and two isolated
+compiler checks. [Selection](drafts/environment/screen73-selection-observations.json).
+
+Fresh Mobile Web passes 18 phases after native linking, without relaxed deadlines;
+the previous aborted timeout remains recorded. Six classic/module worker classes
+pass all 96 Offscreen format cases and match document output in each profile.
+[Mobile](drafts/environment/combined-mobile72-observations.json),
+[workers](drafts/environment/worker-formats72-observations.json).
+Full Python at `4e838f4`: 4472 passed, two QML profile-delivery deadline failures,
+one skipped. The unchanged isolated follow-up passes both; the full under-load
+failure is retained, not reclassified as fixed.
+[UI evidence](drafts/environment/canonical-python72-ui-failures.json).
+
 **001–072 is now compiled and separately preserved on Windows**: j4, 64 actions,
 15m14s, 269 assets. The new binary passed all 18 baseline NativeRuntime checks.
 [Build](drafts/upstream-156/build72-observations.json),
@@ -16,11 +33,11 @@ protected profile, with exact pre-mutation pixels and color metadata. Two live
 profiles pass all six peer-closure/restart phases with observed-process cleanup.
 [PNG](drafts/environment/canvas-export72-observations.json),
 [concurrent](drafts/environment/combined-concurrent72-observations.json).
-The new native unit batch, Mobile Web repeat, workers/HDR quality, security and
+The corrective native batch, worker PNG/nested cases, HDR quality, security and
 release remain open; historical 001–070 results do not carry forward automatically.
 The full Python repeat after historical-binding fixes passed 4464 tests, 1 skipped.
 
-The selected development source chain is now **001–072**: linked orientation/
+The previous **001–072** selection linked orientation/
 visibility and extended Canvas, nine changed files. Three joint-overlay compiler
 checks passed, and the existing native verifier gains a strict four-case orientation
 target (21 groups total). [Selection](drafts/environment/linked72-selection-observations.json).

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "git_head": "4e838f480ea325c14ea304b130d068c56ef3fa6e",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 909,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 813.906,
+  "returncode": 1,
+  "counts": {
+    "tests": 4475,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4472
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "a2075a6aa4e08fc4cdca1927532158511b642edb4351dc12dc5520677ab6172b",
+  "junit_sha256": "0aa0b71cb7bc2e6e2b21337e0c95070c129763238589e03fce5493749a4bcff5",
+  "raw_report_sha256": "4f1623f9764139ab683c723dc33cdbd1432549fae390e28da73253f497b362c4",
+  "failed_tests": [
+    "tests.test_qml_python_editor::test_native_qml_configuration_and_profile_creation[0]",
+    "tests.test_qml_python_editor::test_native_qml_configuration_and_profile_creation[1500]"
+  ],
+  "targeted_followup": {
+    "tests_passed": 2,
+    "source_and_deadlines_unchanged": true,
+    "junit_sha256": "5cc6274c959a688f277bd24e8ca308286ccdad59b659e4e9fcd11547e5a0f4af"
+  },
+  "diagnosis": "Both UI profile-delivery deadlines failed in the full run and passed unchanged in isolation. The under-load regression remains open.",
+  "fixed": false
+}

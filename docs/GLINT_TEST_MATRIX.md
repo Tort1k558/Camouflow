@@ -1,5 +1,26 @@
 # Glint browser test matrix
 
+## Completed 001–072 gates and corrective 001–073 selection — 2026-10-30
+
+| Gate | Result | Boundary / next action |
+| --- | --- | --- |
+| Native batch, 21 groups | **485/488 passed, 3 orientation failures**; source/tool postguards passed | Existing 20 groups: 484/484. Batch remains failed; 0073 correction selected, not compiled |
+| Mobile Web combined repeat | **18/18 phases**, 390×844, DPR 3, touch; same collector/deadlines | Earlier baseline navigation/shutdown timeout retained; Windows emulation, not Android/iOS |
+| Worker Canvas formats | **96/96**, six classic/module dedicated/shared/service classes × 16 Offscreen cases | Matches document outputs within each profile; not nested workers, PNG export or HDR fidelity |
+| Full Python at `4e838f4` | **4472 passed, 2 failed, 1 skipped** | Both QML profile-delivery deadlines failed; isolated unchanged follow-up: 2/2. Under-load gate remains open |
+
+[Native failure](../native/drafts/upstream-156/native-batch72-observations.json),
+[Mobile Web](../native/drafts/environment/combined-mobile72-observations.json),
+[retained timeout](../native/drafts/environment/combined-mobile72-timeout-observations.json),
+[workers](../native/drafts/environment/worker-formats72-observations.json),
+[Python/UI failure](../native/drafts/environment/canonical-python72-ui-failures.json).
+
+The correction exposes the main-frame logical screen without changing physical
+screen APIs and disables Blink's forced web-test orientation only inside the test
+fixture. Both changed source files pass isolated compiler checks. The four strict
+orientation cases remain required; compilation alone does not establish a fix.
+[Selected 0073](../native/drafts/environment/screen73-selection-observations.json).
+
 ## Protected 001–072: combined surfaces and Canvas formats — 2026-10-30
 
 | Gate | Observed | Boundary |
@@ -28,8 +49,8 @@ image-editor compatibility, anti-bot acceptance or release readiness.
 [Build](../native/drafts/upstream-156/build72-observations.json),
 [runtime](../native/drafts/upstream-156/runtime-baseline72-observations.json),
 [Python](../native/drafts/environment/canonical-python72-export-observations.json).
-The new 21-group native batch and Mobile Web repeat remain pending. The newer
-format/combined/export/concurrent results are above; older 001–070 evidence is retained.
+The completed native failure and Mobile Web/worker results are above. The newer
+format/combined/export/concurrent results do not erase older 001–070 evidence.
 
 ## Export capture reference and selection follow-up — 2026-10-30
 

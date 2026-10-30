@@ -1,0 +1,57 @@
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+@@ -3767,7 +3767,7 @@
+ }
+ 
+ const display::ScreenInfos& WebFrameWidgetImpl::GlintWebExposedScreenInfos() {
+-  if (ForSubframe() && glint_logical_screen_infos_)
++  if (glint_logical_screen_infos_)
+     return *glint_logical_screen_infos_;
+   return GetScreenInfos();
+ }
+diff --git a/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc b/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc
+--- a/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc
++++ b/third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc
+@@ -23,6 +23,7 @@
+ #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_remote.h"
+ #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
+ #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
++#include "third_party/blink/renderer/platform/web_test_support.h"
+ #include "third_party/blink/renderer/platform/wtf/hash_map.h"
+ 
+ namespace blink {
+@@ -305,6 +306,7 @@
+     : public ScreenOrientationControllerTest {
+  protected:
+   void CheckSameAngleVisibilityRestore(bool explicit_type) {
++    ScopedWebTestMode web_test_mode(false);
+     frame_test_helpers::WebViewHelper helper;
+     helper.InitializeAndLoad("about:blank");
+     auto* page = helper.GetWebView()->GetPage();
+@@ -346,6 +348,7 @@
+   }
+ 
+   void CheckLogicalVisibilityRestore(bool hidden) {
++    ScopedWebTestMode web_test_mode(false);
+     frame_test_helpers::WebViewHelper helper;
+     helper.InitializeAndLoad("about:blank");
+     auto* page = helper.GetWebView()->GetPage();
+@@ -380,6 +383,8 @@
+         display::mojom::blink::ScreenOrientation::kPortraitPrimary;
+     logical.orientation_angle = 0;
+     widget->ApplyVisualProperties(properties);
++    EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().rect,
++              gfx::Rect(390, 844));
+     if (hidden)
+       page->SetVisibilityState(mojom::blink::PageVisibilityState::kVisible, false);
+     EXPECT_EQ(orientation->type().AsEnum(),
+@@ -390,6 +395,8 @@
+     EXPECT_EQ(orientation->type().AsEnum(),
+               V8OrientationType::Enum::kLandscapePrimary);
+     EXPECT_EQ(widget->GetScreenInfo().rect, gfx::Rect(800, 600));
++    EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().rect,
++              gfx::Rect(800, 600));
+     test::RunPendingTasks();
+     helper.Reset();
+   }

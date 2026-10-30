@@ -6,8 +6,13 @@ The linked package compiled with **j4: 64 actions / 15m14s**, and 269 assets are
 preserved separately from the writable build output. The new exact binary passed
 **18/18 baseline NativeRuntime checks**. [Build](build72-observations.json),
 [runtime](runtime-baseline72-observations.json).
-The 21-group native batch and protected format/export/combined checks are not
-admitted by that baseline. Security rebase and release remain open. Older sections
+The fresh 21-group batch has **485/488 passing cases**, with three new orientation
+failures; all 484 existing cases pass. Protected formats, PNG exports, combined
+surfaces, concurrent profiles and Mobile Web have separately scoped positive
+results in the [test matrix](../../../docs/GLINT_TEST_MATRIX.md).
+**001–073 is now selected, not compiled**, correcting main logical-screen exposure
+and the web-test fixture. [Selection](../environment/screen73-selection-observations.json).
+Security rebase and release remain open. Older sections
 below retain their original selection and measurement boundaries.
 
 ## Selection history, before the 001–072 build

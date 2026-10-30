@@ -1,5 +1,24 @@
 # Glint: план проверки и развития
 
+## 001–072 проверен шире; выбрана коррекция 0073, не готовый релиз
+
+- **Native: 485/488**, три сбоя новых orientation-тестов. Старые 20 групп прошли
+  все 484 случая. Main-frame игнорирует logical screen; computed-тест также попадает
+  под принудительный portrait в Blink web-test mode. [Отрицательный результат](../native/drafts/upstream-156/native-batch72-observations.json).
+- **0073 выбран:** logical screen применяется и к main-frame; физические API не меняются.
+  В тестовом fixture включён реальный, не web-test режим; четыре строгих теста сохранены.
+  Два C++ compiler-check прошли, новая сборка и выполнение тестов ещё обязательны.
+  [Выбор исходников](../native/drafts/environment/screen73-selection-observations.json).
+- **Mobile Web: 18/18** после завершения линковки, без увеличения таймаутов.
+  Первый baseline timeout сохранён отдельно, причина не объявлена доказанной.
+  [Повтор](../native/drafts/environment/combined-mobile72-observations.json), [сбой](../native/drafts/environment/combined-mobile72-timeout-observations.json).
+- **Workers: 96/96** форматов Offscreen в classic/module dedicated/shared/service;
+  результаты согласованы с document в каждом профиле. Не включает nested, worker PNG и HDR-качество.
+  [Проверки](../native/drafts/environment/worker-formats72-observations.json).
+- **Python: 4472 passed, 2 failed, 1 skipped**. Оба сбоя — deadline доставки нового
+  профиля в QML; отдельный повтор 2/2 прошёл без правок. Проверка UI под нагрузкой не закрыта.
+  [Сохранённые сбои](../native/drafts/environment/canonical-python72-ui-failures.json).
+
 ## Новый runtime-результат: combined 18/18, Canvas formats 32/32
 
 На собранном 001–072 прошли **18/18 фаз** совместной проверки Canvas/WebGL/AudioMath:
@@ -28,7 +47,7 @@ PNG-экспорт также прошёл: **8/8 вариантов, 12/12 PNG 
 [Runtime](../native/drafts/upstream-156/runtime-baseline72-observations.json).
 Полный Python-повтор после исправления исторических привязок:
 **4464 passed, 1 skipped**; далее ещё добавлены тесты публикации результатов.
-Сейчас обязательны новый 21-групповой native batch и Mobile Web-повтор;
+Теперь обязательны сборка/проверка коррекции 0073 и UI под нагрузкой;
 security rebase и релиз по-прежнему не закрыты.
 
 ## История: выбор пакета 001–072 до его сборки

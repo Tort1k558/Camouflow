@@ -17,14 +17,14 @@ def test_selected_72_preserves_exact_70_prefix_and_binds_both_native_patches():
     first = json.loads((candidate["directory"] / "checkpoints/001-071.json").read_bytes())
     final = (candidate["directory"] / "checkpoints/001-072.json").read_bytes()
     assert record["selected"] and record["preserved_baseline"] == "001-070"
-    assert candidate["manifest_sha256"] == hashlib.sha256(final).hexdigest() == record["selected_manifest_sha256"]
-    assert json.loads(final) == candidate["manifest"]
+    assert hashlib.sha256(final).hexdigest() == record["selected_manifest_sha256"]
+    assert json.loads(final) == {**candidate["manifest"], "patches": candidate["manifest"]["patches"][:72]}
     assert {**candidate["manifest"], "patches": candidate["manifest"]["patches"][:70]} == baseline
     assert {**candidate["manifest"], "patches": candidate["manifest"]["patches"][:71]} == first
-    assert len(candidate["manifest"]["patches"]) == 72
+    assert len(json.loads(final)["patches"]) == 72
     sources = [ENV / "orientation-visibility71.patch", ENV / "canvas-formats-next/canvas-formats-next.patch"]
-    assert [row["file"] for row in candidate["manifest"]["patches"][-2:]] == record["patches"]
-    for row, source in zip(candidate["manifest"]["patches"][-2:], sources, strict=True):
+    assert [row["file"] for row in candidate["manifest"]["patches"][70:72]] == record["patches"]
+    for row, source in zip(candidate["manifest"]["patches"][70:72], sources, strict=True):
         registered = candidate["directory"] / "patches" / row["file"]
         assert registered.read_bytes() == source.read_bytes()
         assert hashlib.sha256(source.read_bytes()).hexdigest() == row["sha256"]
@@ -54,3 +54,27 @@ def test_source_selection_and_syntax_are_not_browser_or_case_execution():
     assert all(row["returncode"] == 0 for row in record["source_preflight"]["checks"])
     assert all(record[name] is False for name in ("compiled_into_browser", "native_tests_executed", "runtime_verified",
                                                 "privacy_admitted", "production_admitted"))
+
+
+def test_selected_73_keeps_verified_72_and_corrects_main_screen_without_weakening_cases():
+    candidate = build.load_candidate('upstream-156')
+    record = json.loads((ENV / 'screen73-selection-observations.json').read_bytes())
+    baseline = (candidate['directory'] / 'checkpoints/001-072.json').read_bytes()
+    assert hashlib.sha256(baseline).hexdigest() == record['base_manifest_sha256']
+    assert candidate['manifest_sha256'] == record['selected_manifest_sha256']
+    assert (candidate['directory'] / 'checkpoints/001-073.json').read_bytes() == (candidate['directory'] / 'manifest.json').read_bytes()
+    assert len(candidate['manifest']['patches']) == 73
+    assert {**candidate['manifest'], 'patches': candidate['manifest']['patches'][:72]} == json.loads(baseline)
+    patch = candidate['directory'] / 'patches' / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    assert candidate['manifest']['patches'][-1] == {'file': record['patch'], 'sha256': record['patch_sha256']}
+    text = patch.read_text(encoding='utf-8')
+    assert '-  if (ForSubframe() && glint_logical_screen_infos_)' in text
+    assert '+  if (glint_logical_screen_infos_)' in text
+    assert text.count('+    ScopedWebTestMode web_test_mode(false);') == 2
+    assert '+    EXPECT_EQ(widget->GlintWebExposedScreenInfos().current().rect,' in text
+    assert len(record['source_paths']) == len(record['source_preflight']['checks']) == 2
+    assert record['source_preflight']['passed'] and record['source_preflight']['source_unchanged']
+    assert all(row['returncode'] == 0 for row in record['source_preflight']['checks'])
+    assert all(record[name] is False for name in ('compiled_into_browser', 'native_tests_executed', 'runtime_verified',
+                                                 'privacy_admitted', 'production_admitted'))

@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": false,
+  "postguards_passed": true,
+  "scope": "Owned Mobile Web Canvas/WebGL/AudioMath experiment; desktop Windows runtime with touch/viewport emulation, not Android/iOS or privacy admission.",
+  "candidate": "upstream-156",
+  "candidate_manifest_sha256": "a281e7b67ae83fb6c9fa81d4b17ec74df640aafc6ec1b37bcbebc3ec296aac18",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "3fa8284bf94254bf7775e9c5a8e42400d268919d3f635aa378ba4e4904e96915",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "62ea7fdb9cd1a4b20c89c72c5082de3daf715ac2f3fde541341d1766eba9f7ca",
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "protected_profile_count": 8,
+  "raw_report_sha256": "f625fb858be5a11358f4cfd27ee97d42a71eae1c43e86fc77c946c49dcaeba93",
+  "date": "2026-10-30",
+  "completed_phases": 0,
+  "failed_profile": "baseline",
+  "failed_phase": "initial",
+  "environment_observed": {
+    "width": 390,
+    "height": 844,
+    "dpr": 3,
+    "touch": 1,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "platform": "Win32"
+  },
+  "navigation_failure": "Page.goto timed out after 30000ms on the owned loopback fixture before any validation.",
+  "cleanup_failure": "The existing eight-second wait for the one-shot SDK stop task timed out; collection aborted.",
+  "measured_protected_policy_failure": false,
+  "owned_process_cleanup_verified": false,
+  "automatic_retry_performed": false,
+  "observation_after_failure": {
+    "cpu_percent": 14,
+    "disk_D_queue_length": 249,
+    "disk_D_read_bytes_per_second": 5754390,
+    "native_linkers_live": 2,
+    "scope": "Single WMI snapshot after failure, not a continuous trace during the timeout."
+  },
+  "diagnosis": "Heavy D: read contention is observed after the failure; timing alone does not prove the timeout cause.",
+  "next_gate": "Keep this failed run. Inspect owned process cleanup and repeat unchanged deadlines only after native linking finishes."
+}

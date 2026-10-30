@@ -1547,6 +1547,10 @@
     {
       "file": "0072-native-canvas-extended-formats.patch",
       "sha256": "b911fef3ba8b5f75b3f55dfc921bf6ddd90251f494a1fbabff602c7089c8c652"
+    },
+    {
+      "file": "0073-native-main-screen-exposure.patch",
+      "sha256": "2e5e5719f11b85cc3dcd5520c4d50ccbb4d5152077d9164800767d2ca2b744b3"
     }
   ],
   "build": {

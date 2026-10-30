@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "selected": true,
+  "base_manifest_sha256": "a281e7b67ae83fb6c9fa81d4b17ec74df640aafc6ec1b37bcbebc3ec296aac18",
+  "selected_manifest_sha256": "b5b34bd0e597594191e42f957ce96710540bc72ab8000c8eba64a510e0295ba6",
+  "patch": "0073-native-main-screen-exposure.patch",
+  "patch_sha256": "2e5e5719f11b85cc3dcd5520c4d50ccbb4d5152077d9164800767d2ca2b744b3",
+  "source_paths": [
+    {
+      "path": "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc",
+      "before_sha256": "8f1df1a4b5e21a21dd224862baa3dbf2bcba71c3b484ec05027f0866c9455c76",
+      "after_sha256": "a564e6398b1177a6c5bcac6e06a4a85167e4ce8c3d04f3780473ae6128674cf1"
+    },
+    {
+      "path": "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc",
+      "before_sha256": "8869d819e47bf1627ab53ac11753f6b9248f1fabaa828b3998fb63d5d550342a",
+      "after_sha256": "ff87371e4236ef5d702b028a0a17db3e0525db16381283f2709e6a072f08a7c1"
+    }
+  ],
+  "jobs": 4,
+  "source_preflight": {
+    "passed": true,
+    "measurement_complete": true,
+    "base_manifest_sha256": "a281e7b67ae83fb6c9fa81d4b17ec74df640aafc6ec1b37bcbebc3ec296aac18",
+    "base_source_sha256": {
+      "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "8f1df1a4b5e21a21dd224862baa3dbf2bcba71c3b484ec05027f0866c9455c76",
+      "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc": "8869d819e47bf1627ab53ac11753f6b9248f1fabaa828b3998fb63d5d550342a"
+    },
+    "prepared_source_sha256": {
+      "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "a564e6398b1177a6c5bcac6e06a4a85167e4ce8c3d04f3780473ae6128674cf1",
+      "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc": "ff87371e4236ef5d702b028a0a17db3e0525db16381283f2709e6a072f08a7c1"
+    },
+    "patch_sha256": "2e5e5719f11b85cc3dcd5520c4d50ccbb4d5152077d9164800767d2ca2b744b3",
+    "patch_file": "0073-native-main-screen-exposure.patch",
+    "checks": [
+      {
+        "source": "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "third_party/blink/renderer/modules/screen_orientation/screen_orientation_controller_test.cc",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "native_tests_executed": false,
+    "compiled_into_browser": false,
+    "privacy_admitted": false,
+    "production_admitted": false,
+    "scope": "Isolated main logical-screen exposure and real-browser orientation fixture correction; not applied to active source.",
+    "source_unchanged": true
+  },
+  "preserved_baseline": "001-072",
+  "native_failure_record": "native/drafts/upstream-156/native-batch72-observations.json",
+  "compiled_into_browser": false,
+  "native_tests_executed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

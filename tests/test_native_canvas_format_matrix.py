@@ -109,10 +109,11 @@ def test_compiled_72_formats_close_the_measured_compatibility_regression(format_
     assert hashlib.sha256(runner.read_text(encoding='utf-8-sig').encode()).hexdigest() == record['public_runner_normalized_utf8_lf_sha256']
 
 
-def test_mobile_patch_reconstructs_the_measured_portable_variant(tmp_path):
+@pytest.mark.parametrize('version', ('70', '72'))
+def test_mobile_patch_reconstructs_the_measured_portable_variant(tmp_path, version):
     root = Path(__file__).resolve().parents[1]
     environment = root / 'native/drafts/environment'
-    record = json.loads((environment / 'combined-mobile70-observations.json').read_bytes())
+    record = json.loads((environment / f'combined-mobile{version}-observations.json').read_bytes())
     relative = Path('scripts/verify_native_combined_math.py')
     assert hashlib.sha256((root / relative).read_bytes()).hexdigest() == record['base_source_sha256']
     target = tmp_path / relative
@@ -130,3 +131,14 @@ def test_mobile_patch_reconstructs_the_measured_portable_variant(tmp_path):
         values = row['environment_observed']
         assert (values['width'], values['height'], values['dpr']) == (390, 844, 3) and values['touch'] >= 1
         assert row['passed'] and row['resources_released'] and row['remaining_observed_processes'] == 0
+
+
+def test_mobile_72_timeout_is_retained_without_calling_it_a_policy_failure():
+    root = Path(__file__).resolve().parents[1]
+    record = json.loads((root / 'native/drafts/environment/combined-mobile72-timeout-observations.json').read_bytes())
+    assert record['passed'] is False and record['measurement_complete'] is False and record['postguards_passed']
+    assert record['completed_phases'] == 0 and record['failed_profile'] == 'baseline'
+    assert record['failed_phase'] == 'initial'
+    assert record['measured_protected_policy_failure'] is record['owned_process_cleanup_verified'] is False
+    assert record['automatic_retry_performed'] is record['production_admitted'] is False
+    assert record['observation_after_failure']['disk_D_queue_length'] == 249

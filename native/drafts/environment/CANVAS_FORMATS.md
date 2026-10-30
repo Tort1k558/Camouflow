@@ -15,7 +15,9 @@ Four source/read sRGB/P3 pairs retain distinct outputs for 32 seeds on the owned
 fixture. The fresh independent PNG gate also passes eight cases / 12 carriers per
 baseline and protected profile, including async snapshot and color metadata.
 [Export evidence](canvas-export72-observations.json).
-Workers and broad HDR quality acceptance remain open.
+Six classic/module dedicated/shared/service workers pass all 96 Offscreen format
+cases and match document output within each profile. [Worker evidence](worker-formats72-observations.json).
+Nested/Blob restart, worker PNG exports and broad HDR quality remain open.
 
 ## Cause of the retained 001–070 failure
 
@@ -73,6 +75,7 @@ $cohort = 'D:\GlintManagerQA\combined-math72-20261030-v1'
 $stage = 'D:\GlintManagerQA\staged-python-js70-20261030-v1'
 & $python native/drafts/environment/first-script/canvas_formats.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\canvas-formats72-recheck
 & $python native/drafts/environment/first-script/canvas_export_runtime.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\canvas-export72-recheck
+& $python native/drafts/environment/first-script/worker_formats_runtime.py --executable $browser --cohort-directory $cohort --driver-stage $stage --candidate upstream-156 --work-dir D:\GlintManagerQA\worker-formats72-recheck
 ```
 
 The export gate compares decoded PNG bytes with pre-mutation pixels and validates
