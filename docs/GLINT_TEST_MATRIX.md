@@ -13,7 +13,10 @@
 | Finite Float16 document / workers | **4 / 12 actual contexts per profile** | Bounded finite samples, alpha/crop/re-put; not broad HDR or nonfinite coverage |
 | Concurrent protected profiles | **6/6 phases**, observed processes released | Not long-run leak/resource admission |
 | New evidence/worker HDR validator tests | **26 passed** | Targeted Python run, not a full-suite replacement |
-| Mobile Web 073 | **Pending live run** | No pass claimed; Windows emulation, not Android/iOS |
+| Mobile Web 073 | [**18/18 phases**](../native/drafts/environment/combined-mobile73-observations.json), both selectors | Windows emulation, not Android/iOS or a verified device cohort |
+| Browser first-script / manager context lifecycle | **6/6 / 12/12 phases**, observed BFCache in desktop/mobile | No raw per-page metrics updates or protected-policy lifecycle admission |
+| Raw per-page CDP metrics stress | **Failed**, postguards passed; BFCache restored | Cross-page screen/DPR and screenshot mismatches retained, not waived |
+| Full Python at `d0de567` | **4546 passed, 1 skipped**, 412s; source/status guards passed | Includes worker HDR; precedes the later screen/mobile evidence tests |
 
 [Build](../native/drafts/upstream-156/build73-observations.json),
 [native batch](../native/drafts/upstream-156/native-batch73-observations.json),
@@ -29,6 +32,8 @@
 All records bind the preserved 001–073 core/receipt and measured collector sources.
 Earlier failures remain historical evidence below, not rewritten passes.
 Privacy, public anti-bot results, security and production admission remain unproven.
+[Screen pass/failure evidence](../native/drafts/environment/screen73-browser-observations.json),
+[full Python](../native/drafts/environment/canonical-python73-runtime-observations.json).
 
 ## Worker PNG, finite Float16 fidelity and Python follow-up — 2026-10-30
 

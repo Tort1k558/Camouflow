@@ -20,11 +20,19 @@
 | Worker Float16 | [12 worker-контекстов на профиль](../native/drafts/environment/worker-hdr73-observations.json) | Согласованность с document; наблюдавшиеся процессы завершены |
 | Два одновременных профиля | [6/6 фаз](../native/drafts/environment/combined-concurrent73-observations.json) | Не длительная ресурсная проверка |
 
-Mobile Web 073 пока не засчитан: прогон ещё выполняется. Полный Python-прогон ниже
-предшествует новым worker HDR-тестам; свежая целевая проверка новых записей и валидатора — 26/26.
-Нативный успех orientation не заменяет проверки first-script/BFCache/hidden/restore в браузере.
+**Mobile Web 073: [18/18 фаз](../native/drafts/environment/combined-mobile73-observations.json)**,
+оба AudioMath selector; это Windows Web Emulation, не Android/iOS.
+Полный Python-повтор на `d0de567`: **4546 passed, 1 skipped**, 6м52с,
+контроль исходников/статуса прошёл. Он включает worker HDR, но предшествует тестам новых screen/mobile-записей.
+[Python](../native/drafts/environment/canonical-python73-runtime-observations.json).
 
-**Далее:** browser lifecycle для логического экрана → worker restart/nesting → WebGPU/readback
+[Экран в браузере](../native/drafts/environment/screen73-browser-observations.json):
+first-script **6/6 фаз**, штатный manager context-options lifecycle **12/12 фаз**,
+включая доказанный BFCache для desktop/mobile. Отдельный raw CDP stress **не прошёл**:
+разные per-page metrics влияют на screen/DPR соседней страницы и размеры screenshot.
+Его отрицательный результат сохранён; общий lifecycle-допуск не выдан.
+
+**Далее:** изоляция raw CDP metrics и защищённый lifecycle → worker restart/nesting → WebGPU/readback
 и согласованные устройства → длительные ресурсы → security rebase → пакет/обновление/откат.
 Production, внешние антибот-тесты и гарантированный обход CAPTCHA этим не подтверждены.
 

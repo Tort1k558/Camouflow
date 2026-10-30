@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "d0de567740fc10ea61972b10e51905775bfbcf8e",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 948,
+  "before_status": " M docs/HUB.md\n",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 412.078,
+  "returncode": 0,
+  "counts": {
+    "tests": 4547,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4546
+  },
+  "changed_tracked_files": [],
+  "after_status": " M docs/HUB.md\n",
+  "postguards_passed": true,
+  "log_sha256": "167148b728b03e8fbd766acc54ad88dd53d55f021f30d73e142be26566ed4612",
+  "junit_sha256": "fd3fd168aee61fff354544c60f86c8d02cb469a39abdecd4a5fa6c6ccee540a3",
+  "raw_report_sha256": "f30ddec31fb5abe16fac63491145e124340c43f9be41d3f3d16a0e178b3cad35",
+  "scope_note": "Full Python suite at d0de567, including worker HDR and compiled73 records; precedes later screen/mobile evidence tests"
+}

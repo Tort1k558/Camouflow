@@ -57,3 +57,39 @@ def test_baseline_runtime_does_not_imply_protected_policy_admission():
     assert record['runtime_core_sha256_measured'] == build['runtime_core_sha256_measured']
     assert record['receipt_sha256'] == build['build_receipt_sha256']
     assert record['fingerprint_patched'] is record['privacy_admitted'] is record['production_admitted'] is False
+
+
+def test_mobile_repeat_covers_eighteen_phases_without_device_cohort_admission():
+    record = json.loads((EVIDENCE / 'combined-mobile73-observations.json').read_bytes())
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['completed_phase_count'] == 18 and record['protected_profile_count'] == 8
+    assert record['both_audio_math_selectors_observed'] and not record['device_cohort_verified']
+    assert 'not Android/iOS' in record['scope']
+
+
+def test_supported_screen_gates_do_not_hide_the_failed_per_page_stress():
+    record = json.loads((EVIDENCE / 'screen73-browser-observations.json').read_bytes())
+    assert record['passed'] is False and record['measurement_complete']
+    first = record['first_script']
+    assert first['passed'] and len(first['phases']) == 6
+    assert all(row['passed'] and not row['errors'] for row in first['phases'])
+    manager = record['manager_context_lifecycle']
+    assert manager['passed'] and len(manager['runs']) == 2
+    for row in manager['runs']:
+        assert row['passed'] and row['bfcache_restored'] and row['browser_connection_closed']
+        assert len(row['phases']) == 6 and all(not phase['errors'] for phase in row['phases'])
+    stress = record['raw_per_page_cdp_stress']
+    assert stress['passed'] is False and stress['postguards_passed'] and stress['bfcache_restored']
+    assert any('other page update changed this screen' in error
+               for stage in stress['stages'] for error in stage['errors'])
+    for gate in (first, manager, stress):
+        for relative, expected in gate['measured_inputs_sha256'].items():
+            assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected
+
+
+def test_full_runtime73_python_regression_covers_the_committed_worker_hdr_tests():
+    record = json.loads((EVIDENCE / 'canonical-python73-runtime-observations.json').read_bytes())
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['git_head'] == 'd0de567740fc10ea61972b10e51905775bfbcf8e'
+    assert record['counts'] == dict(tests=4547, passed=4546, failures=0, errors=0, skipped=1)
+    assert record['native_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False
