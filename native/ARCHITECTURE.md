@@ -33,10 +33,14 @@ and classic/module dedicated, shared and service workers. Integer compute,
 RGBA8 texture copies, padded rows, mapping detachment and invalid API operations
 passed using the default adapter without unsafe flags or a fallback adapter.
 [Measured probe source and evidence](drafts/environment/webgpu-readback76-observations.json).
-This is a standalone owned-fixture prototype, not public CLI integration,
-retained WebGPU resources, native WebGPU readback protection or release admission.
+The original standalone prototype is retained as history. The exact public CLI
+also passed all fourteen cases, with effective argument checks, zero remaining
+owned processes, released runtime resources and no service registrations left.
+[Public CLI evidence](drafts/environment/webgpu-readback76-public-cli-observations.json).
+This does not verify retained WebGPU resources, native WebGPU readback protection
+or release admission.
 
-Next: integrate the WebGPU probe, verify retained resources and frame/worker
+Next: verify retained WebGPU resources and frame/worker
 lifecycle, then design the native pixel-readback path with explicit provenance.
 Do not apply pixel noise to arbitrary mapped buffers: compute/storage results,
 mapping errors, offsets and padding must remain exact. Device cohorts and the

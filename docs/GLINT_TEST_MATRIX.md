@@ -15,6 +15,7 @@
 | Full integrated Python baseline | 4854 passed, 1 skipped; source/status guards passed | At `10230bd`, before evidence-only follow-up; not native/privacy admission |
 | Full worker integration Python | **4886 passed, 1 skipped**, source/status guards passed | At `a05fbc6`, before WebGPU source/evidence publication |
 | WebGPU compatibility prototype | **14/14**: baseline/protected document plus six classic/module worker classes | Compute, RGBA8 readback, padding, mapping and API errors; not native protection or retained resources |
+| WebGPU public CLI | **14/14** again, source/receipt/core guards, runtime/process cleanup and zero remaining service registrations | Exact selected candidate; not retained WebGPU resources, native protection or full device cohorts |
 
 [Exact measured evidence](../native/drafts/environment/screen76-runtime-observations.json).
 [Integrated GPU runtime evidence](../native/drafts/environment/retained-gpu-objects76-observations.json)
@@ -30,7 +31,20 @@ the explicit owned-version restart check. The 4886-test full run includes this e
 uses the default adapter without unsafe flags or a fallback adapter. Its earlier
 protected SharedWorker harness failure remains recorded; the corrected harness
 reuses the existing exact driver storage-partitioning adjustment. The probe source
-is public, but the standalone controller is not yet integrated into the public CLI.
+and its standalone controller are historical preparation. The public CLI was
+subsequently integrated and measured separately:
+[public CLI evidence](../native/drafts/environment/webgpu-readback76-public-cli-observations.json).
+
+```powershell
+python native/drafts/environment/first-script/webgpu_readback_runtime.py `
+  --executable D:/path/to/preserved-runtime/chrome.exe `
+  --work-dir D:/path/to/fresh-webgpu-output `
+  --driver-stage D:/path/to/verified-driver-stage
+```
+
+Use a fresh canonical D: output and the exact selected upstream-156 receipt and
+hash-pinned driver stage. Missing API/adapter is a failed measurement, not a PASS;
+the probe never enables unsafe WebGPU flags or chooses a fallback adapter.
 These results do not admit WebGPU, full profile isolation, privacy guarantees,
 CAPTCHA outcomes or production/release deployment.
 
