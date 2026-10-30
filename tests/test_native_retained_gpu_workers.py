@@ -191,22 +191,26 @@ def test_unsupported_gpu_worker_flag_combinations_fail_before_output(tmp_path, f
     assert not output.exists()
 
 
-def test_selected_worker_archive_is_exact_and_still_has_no_runtime_admission():
+def test_selected_worker_archive_is_exact_and_still_has_no_runtime_admission(sources_before_webgpu):
     directory = ROOT / 'native/drafts/environment'
     record = json.loads((directory / 'retained-gpu-workers-integration-preparation.json').read_bytes())
     assert record['selected'] and record['runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False
     assert hashlib.sha256((directory / record['patch']).read_bytes()).hexdigest() == record['patch_sha256']
     for row in record['sources']:
-        assert hashlib.sha256((ROOT / row['source']).read_bytes()).hexdigest() == row['staged_sha256']
+        actual = sources_before_webgpu['sha256'].get(row['source'],
+            hashlib.sha256((ROOT / row['source']).read_bytes()).hexdigest())
+        assert actual == row['staged_sha256']
 
 
-def test_public_gpu_worker_runtime_binds_sources_restarts_and_backward_modes():
+def test_public_gpu_worker_runtime_binds_sources_restarts_and_backward_modes(sources_before_webgpu):
     record = json.loads((ROOT / 'native/drafts/environment/retained-gpu-workers76-observations.json').read_bytes())
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
     assert record['public_cli_integrated'] and record['verify_retained_gpu_workers']
     assert record['verify_retained_gpu_service_restart'] and record['forced_service_restarts'] == 4
     for relative, expected in record['measured_inputs_sha256'].items():
-        assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected, relative
+        actual = sources_before_webgpu['sha256'].get(relative,
+            hashlib.sha256((ROOT / relative).read_bytes()).hexdigest())
+        assert actual == expected, relative
     assert {row['mode'] for row in record['runs']} == {'manager-desktop', 'manager-mobile-web'}
     for row in record['runs']:
         assert row['passed'] and row['post_restart_document_gpu_verified']

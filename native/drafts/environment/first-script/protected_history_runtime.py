@@ -27,7 +27,7 @@ def main() -> int:
     parser.add_argument('--executable', type=Path, required=True)
     parser.add_argument('--work-dir', type=Path, required=True)
     parser.add_argument('--driver-stage', type=Path, required=True)
-    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents', 'retained-workers', 'retained-gpu-objects'), default='canvas')
+    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents', 'retained-workers', 'retained-gpu-objects', 'retained-webgpu-objects'), default='canvas')
     parser.add_argument('--verify-service-lifecycle', action='store_true',
                         help='Verify owned service-controlled BFCache and explicit per-version stop/restart')
     parser.add_argument('--verify-retained-gpu-workers', action='store_true')
@@ -35,7 +35,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.verify_service_lifecycle and args.probe != 'retained-workers':
         parser.error('--verify-service-lifecycle requires --probe retained-workers')
-    if args.verify_retained_gpu_workers and args.probe != 'retained-gpu-objects':
+    if args.verify_retained_gpu_workers and args.probe not in {'retained-gpu-objects', 'retained-webgpu-objects'}:
         parser.error('--verify-retained-gpu-workers requires --probe retained-gpu-objects')
     if args.verify_retained_gpu_service_restart and not args.verify_retained_gpu_workers:
         parser.error('--verify-retained-gpu-service-restart requires --verify-retained-gpu-workers')
@@ -107,12 +107,15 @@ def main() -> int:
         surface_validator = runpy.run_path(str(FIXTURE / 'protected_surface_history.py'))['validate_runs']
         recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
         surface_read = f"async () => ({{gpu: await ({gpu.READBACK_READ})(), audio: await ({surfaces.AUDIO_READ})(true)}})"
-    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
+    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects', 'retained-webgpu-objects'}:
         import retained_document_surfaces as retained
 
     retained_objects = None
-    if args.probe == 'retained-gpu-objects':
-        import retained_gpu_objects as retained_objects
+    if args.probe in {'retained-gpu-objects', 'retained-webgpu-objects'}:
+        if args.probe == 'retained-webgpu-objects':
+            import retained_webgpu_objects as retained_objects
+        else:
+            import retained_gpu_objects as retained_objects
         surface_read = retained_objects.READ
         surface_validator = None
         recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
@@ -126,13 +129,16 @@ def main() -> int:
 
     gpu_workers = None
     if args.verify_retained_gpu_workers:
-        import retained_gpu_worker_objects as gpu_workers
+        if args.probe == 'retained-webgpu-objects':
+            import retained_webgpu_worker_objects as gpu_workers
+        else:
+            import retained_gpu_worker_objects as gpu_workers
 
     controlled_services = None
     if args.verify_service_lifecycle:
         import controlled_service_workers as controlled_services
 
-    paths = {Path(__file__), MANIFEST, canvas_path, validator_path, *(ROOT / name for name in gpu.probe_inputs()), ROOT / 'app/core/native/runtime.py', ROOT / 'app/core/native/identity.py', *FIXTURE.glob('*.py'), FIXTURE / 'sample.js',
+    paths = {Path(__file__), MANIFEST, canvas_path, validator_path, *(ROOT / name for name in gpu.probe_inputs()), ROOT / 'app/core/native/runtime.py', ROOT / 'app/core/native/identity.py', *FIXTURE.glob('*.py'), *FIXTURE.glob('*.js'),
              STAGE / 'playwright/driver/package/lib/coreBundle.js', STAGE / 'playwright/_impl/_page.py',
              STAGE / 'playwright/driver/node.exe', *(ROOT / name for name in reference['environment'].source_inputs())}
     inputs = {path: sha(path) for path in paths}
@@ -145,7 +151,7 @@ def main() -> int:
         report.update(probe=args.probe, scope='Protected manager BFCache with screen, Canvas formats and top-document recreated GPU/Audio readback continuity; not retained GPU objects, worker lifecycle, WebGPU readback or full policy admission')
 
 
-    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
+    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects', 'retained-webgpu-objects'}:
         report['scope'] = 'Six registered real documents with recreated protected GPU/Audio reads before/after actual BFCache; source/window/origin/nonce/URL/timeOrigin checked; not retained GPU objects, workers, WebGPU readback or full policy admission'
 
     if retained_objects is not None:
@@ -161,6 +167,13 @@ def main() -> int:
 
     if controlled_services is not None:
         report['scope'] += '; additional classic/module service-controlled clients with genuine BFCache and confirmed per-version stop/restart'
+
+    if args.probe == 'retained-webgpu-objects':
+        report['scope'] = ('Original WebGPU device, compute pipeline, bindings, buffers, texture and view across six genuine manager BFCache documents; exact integer compute and RGBA8 copies; not native WebGPU protection, profile isolation or privacy/release admission')
+        if gpu_workers is not None:
+            report['scope'] += '; six actual worker classes, dedicated/shared retention and explicit service restart classification'
+        if args.verify_retained_gpu_service_restart:
+            report['scope'] += '; exact owned per-version service stop/restart, new worker/GPU globals and post-restart document/screen checks'
 
     def save():
         (OUT / 'report.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
@@ -227,7 +240,7 @@ def main() -> int:
                             if worker_fixture is not None:
                                 worker_token = await worker_fixture.install(pages[1])
                                 row['worker_lifecycle_before'] = await worker_fixture.collect(session, worker_token, persisted=False)
-                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
+                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects', 'retained-webgpu-objects'}:
                                 registration = await retained.install(pages[1], before, surface_read)
                                 row['retained_documents_before'] = await retained.collect(session, registration, persisted=False)
                         if gpu_workers is not None:
@@ -248,7 +261,7 @@ def main() -> int:
                         row['canvas_after'] = canvas_after
                         if surface_read is not None:
                             row['surfaces_after'] = await read_restored_surfaces(session, surface_read)
-                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
+                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects', 'retained-webgpu-objects'}:
                                 row['retained_documents_after'] = await retained.collect(session, registration, persisted=True)
                                 if retained_objects is not None:
                                     row['retained_gpu_object_validation'] = retained_objects.validate_pair(row['retained_documents_before'], row['retained_documents_after'])

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "selected": true,
+  "sources": [
+    {
+      "source": "native/drafts/environment/first-script/retained_webgpu_objects.js",
+      "before_sha256": null,
+      "staged_sha256": "7627b396c636c52c7470a5445edd2afa3b35691f1af5331468b97fc61caeeef8"
+    },
+    {
+      "source": "native/drafts/environment/first-script/retained_webgpu_objects.py",
+      "before_sha256": null,
+      "staged_sha256": "dc29e2a5186723889bcee6fc6fb83bc4cdc8b5ff51273b000eecb338c7a352de"
+    },
+    {
+      "source": "native/drafts/environment/first-script/retained_gpu_worker_objects.py",
+      "before_sha256": "d9683a9498fd0674df2cf5d3f1fc4260dabcb85d2f0ca9680eb839359c17bac6",
+      "staged_sha256": "be533b4e93b5eb65e0eb3b083a80553356851e2f0ecc82546cda51d8690c9696"
+    },
+    {
+      "source": "native/drafts/environment/first-script/retained_webgpu_worker_objects.py",
+      "before_sha256": null,
+      "staged_sha256": "287e9fb7fadbeb8096413906bab6f40df39c844149ffbc40872bd684da5bae73"
+    },
+    {
+      "source": "native/drafts/environment/first-script/protected_history_runtime.py",
+      "before_sha256": "7b71fd85e969220b2e8e6dfe1d4ebd239d0ea40d0550d7e86403896c2b93c021",
+      "staged_sha256": "a4b8b43fb203979af93d153b0a4b419ec8936407f2e30b7f0c341a4c7e91acdb"
+    }
+  ],
+  "patch_sha256": "cf98b4de0ab14b8f8570b756198012349be5106e081fb3bcf00ff2ca5e66e9ea",
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "patch": "retained-webgpu-integration.patch",
+  "scope": "Exact public WebGPU resource lifecycle integration source selection; actual public runtime evidence is separate, no native protection admission"
+}

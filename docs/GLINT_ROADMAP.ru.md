@@ -40,7 +40,18 @@ workers в базовом и защищённом режимах. Провере
 WebGPU-защита и не сохранение ресурсов через BFCache. Публичный CLI затем отдельно
 прошёл **14/14** с контролем исходников, бинарника, завершения процессов и удаления
 service-регистраций. [Результат CLI](../native/drafts/environment/webgpu-readback76-public-cli-observations.json).
-Далее: lifecycle ресурсов, затем нативный путь пикселей с
+Lifecycle затем интегрирован: `--probe retained-webgpu-objects`, шесть документов
+через настоящий BFCache, шесть типов workers и четыре точечных service restart
+прошли в Desktop/Mobile Web. [Результат](../native/drafts/environment/retained-webgpu76-observations.json).
+Общий worker-механизм сохраняет старый WebGL API; его реальный прогон тоже прошёл.
+Полный Python до этого пакета: **4925 passed, 1 skipped** на `26082fe`.
+[Полный результат](../native/drafts/environment/canonical-python76-webgpu-cli-observations.json).
+
+**Открыто:** PNG WebGPU canvas в защищённом режиме отличается от прямого GPU-readback
+в 403 каналах на 1 единицу; в базовом режиме различий нет. Повторные PNG стабильны,
+прямой GPU-readback соответствует эталону. Это не согласованная WebGPU-защита.
+[Негативный результат и исходник](../native/drafts/environment/webgpu-canvas-export76-observations.json).
+Далее: исправление нативного пути пикселей с
 контролем происхождения данных; произвольные compute/storage-буферы менять нельзя.
 Успех этих проверок не означает гарантированного обхода CAPTCHA или детекторов.
 

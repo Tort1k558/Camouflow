@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Known integer-color WebGPU canvas draw compared with direct RGBA8 GPU copy and decoded PNG; inconsistency observation, not detector or privacy admission",
+  "canvas_gpu_export_consistent": false,
+  "public_cli_integrated": false,
+  "source": "native/drafts/environment/first-script/webgpu_canvas_export.js",
+  "source_sha256": "a61d254e29cd7efb583d78c7205966bd453a6f01af10eaec6d7dcdafe92cf93c",
+  "raw_report_sha256": "38285c6b80c6a3bc5cdd1adf5dae0c0183eef433c7a05e40679c4f5ae094993b",
+  "pixel_comparison_sha256": "391e1524f0b4af44d1c435fff076999b5f12e1c436897413a81206e39436a1bb",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "03b34a8d3786d9c313b89afc1609c032091656678f936ee7087d62fca40e1d00",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "ca69cc734d4829bcb2357012d77fdda0fb72130fe91f5cf48da3f67acb17d7b3",
+  "rows": [
+    {
+      "mode": "baseline",
+      "measured": true,
+      "direct_gpu_reference_matched": true,
+      "png_export_stable": true,
+      "changed_channels": 0,
+      "maximum_delta": 0
+    },
+    {
+      "mode": "ready",
+      "measured": true,
+      "direct_gpu_reference_matched": true,
+      "png_export_stable": true,
+      "changed_channels": 403,
+      "maximum_delta": 1
+    }
+  ],
+  "native_webgpu_readback_protection": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

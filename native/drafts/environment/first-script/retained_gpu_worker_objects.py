@@ -8,7 +8,9 @@ import retained_gpu_objects as gpu
 import retained_worker_lifecycle as lifecycle
 
 
-def worker_read():
+def worker_read(*, backend=gpu):
+    if backend is not gpu:
+        return backend.READ
     text = gpu.READ
     replacements = {
         "Object.hasOwn(window, key)": "Object.hasOwn(globalThis, key)",
@@ -34,7 +36,7 @@ def worker_read():
     return text
 
 
-def validate_phase(phase):
+def validate_phase(phase, *, backend=gpu):
     if not isinstance(phase, dict) or set(phase) != {'rootTimeOrigin', 'persisted', 'workers'}:
         raise ValueError('Worker GPU phase lacks actual document lifecycle evidence')
     epoch = phase['rootTimeOrigin']
@@ -48,7 +50,7 @@ def validate_phase(phase):
     instances, tokens, gpu_instances, ports = set(), set(), set(), set()
     for kind, record in workers.items():
         instance, token = lifecycle.validate_record(kind, record)
-        gpu.validate_record(record['observed'])
+        backend.validate_record(record['observed'])
         if record['observed']['timeOrigin'] != record['timeOrigin']:
             raise ValueError('Worker GPU epoch differs from its own worker global')
         instances.add(instance)
@@ -61,30 +63,30 @@ def validate_phase(phase):
         raise ValueError('Worker GPU records mixed fixture server registrations')
 
 
-def validate_pair(before, after):
-    validate_phase(before)
-    validate_phase(after)
+def validate_pair(before, after, *, backend=gpu):
+    validate_phase(before, backend=backend)
+    validate_phase(after, backend=backend)
     if (before['persisted'] is not False or after['persisted'] is not True
             or before['rootTimeOrigin'] != after['rootTimeOrigin']):
         raise ValueError('Worker GPU requires a genuinely restored owning document')
-    return _compare_workers(before, after)
+    return _compare_workers(before, after, backend=backend)
 
 
-def validate_restart_pair(before, after, *, kind):
-    validate_phase(before)
-    validate_phase(after)
+def validate_restart_pair(before, after, *, kind, backend=gpu):
+    validate_phase(before, backend=backend)
+    validate_phase(after, backend=backend)
     if (not isinstance(kind, str) or kind not in {'service-classic', 'service-module'}
             or before['persisted'] is not True or after['persisted'] is not True
             or before['rootTimeOrigin'] != after['rootTimeOrigin']):
         raise ValueError('GPU restart requires the same genuinely retained owner')
-    result = _compare_workers(before, after)
+    result = _compare_workers(before, after, backend=backend)
     target = next(row for row in result['workers'] if row['kind'] == kind)
     if target['service_restarted'] is not True:
         raise ValueError('Requested service worker did not obtain a new GPU global')
     return result
 
 
-def _compare_workers(before, after):
+def _compare_workers(before, after, *, backend=gpu):
     rows = []
     previous_workers = {row['instanceId'] for row in before['workers'].values()}
     previous_gpu = {row['observed']['id'] for row in before['workers'].values()}
@@ -105,18 +107,18 @@ def _compare_workers(before, after):
                     or b['id'] in previous_gpu
                     or second['timeOrigin'] <= first['timeOrigin'] or second['sequence'] != 1 or b['read'] != 1):
                 raise ValueError('Worker restart is not an explicit new service global: ' + kind)
-        if a['apis'] != b['apis']:
+        if {key: value for key, value in a.items() if key not in {'id', 'timeOrigin', 'read'}} != {key: value for key, value in b.items() if key not in {'id', 'timeOrigin', 'read'}}:
             raise ValueError('Worker GPU readback/PNG changed: ' + kind)
         rows.append(dict(kind=kind, retained_gpu_objects=same_worker,
                          service_restarted=not same_worker, policy_observations_stable=True))
     return dict(passed=True, workers=rows, dedicated_shared_retained=True,
         service_retention_guaranteed=False, forced_service_restart_verified=False,
-        worker_audio_verified=False, webgpu_readback_verified=False,
+        worker_audio_verified=False, webgpu_readback_verified=(backend is not gpu),
         cross_profile_isolation_verified=False, privacy_admitted=False, production_admitted=False)
 
 
-def validate_runs(runs):
-    gpu.validate_runs(runs)
+def validate_runs(runs, *, backend=gpu):
+    backend.validate_runs(runs)
     forced_modes = ['retained_gpu_service_restart_cases' in row for row in runs]
     if any(forced_modes) and not all(forced_modes):
         raise ValueError('GPU service restart coverage differs between manager modes')
@@ -124,11 +126,11 @@ def validate_runs(runs):
     tokens = set()
     for row in runs:
         before, after = row.get('retained_gpu_workers_before'), row.get('retained_gpu_workers_after')
-        validate_phase(before)
-        validate_phase(after)
+        validate_phase(before, backend=backend)
+        validate_phase(after, backend=backend)
         if before['rootTimeOrigin'] != row['retained_documents_before']['main']['timeOrigin']:
             raise ValueError('GPU worker owner differs from the actual retained main document')
-        value = validate_pair(before, after)
+        value = validate_pair(before, after, backend=backend)
         if row.get('retained_gpu_worker_validation') != value or row.get('retained_gpu_worker_cleanup') != {'closed': True}:
             raise ValueError('GPU worker validation or owned registration cleanup failed')
         token = next(iter(before['workers'].values()))['token']
@@ -137,7 +139,7 @@ def validate_runs(runs):
         tokens.add(token)
         if 'retained_gpu_service_restart_cases' in row:
             forced = validate_forced_cases(row['retained_gpu_service_restart_cases'],
-                row['retained_documents_before'], row.get('retained_gpu_documents_after_restart'), before['rootTimeOrigin'])
+                row['retained_documents_before'], row.get('retained_gpu_documents_after_restart'), before['rootTimeOrigin'], backend=backend)
             if row.get('retained_gpu_service_restart_validation') != forced:
                 raise ValueError('Stored GPU restart validation differs')
             value = dict(value, forced_restart_validation=forced)
@@ -145,13 +147,13 @@ def validate_runs(runs):
     return dict(passed=True, runs=results, service_retention_guaranteed=False,
         forced_service_restart_verified=all(forced_modes), forced_service_restarts=4 if all(forced_modes) else 0,
         worker_audio_verified=False,
-        webgpu_readback_verified=False, cross_profile_isolation_verified=False,
+        webgpu_readback_verified=(backend is not gpu), cross_profile_isolation_verified=False,
         privacy_admitted=False, production_admitted=False)
 
 
-async def force_service_restarts(session, versions, token, before):
+async def force_service_restarts(session, versions, token, before, *, backend=gpu):
     cases = []
-    validate_phase(before)
+    validate_phase(before, backend=backend)
     if before['persisted'] is not True:
         raise ValueError('GPU service restart requires the restored owner')
     if not isinstance(token, str) or any(row['token'] != token for row in before['workers'].values()):
@@ -176,7 +178,7 @@ async def force_service_restarts(session, versions, token, before):
         await service.wait_until(lambda: bool(stopped()), 'Explicit owned GPU service stopped event')
         stop_index, stop_event = stopped()[0]
         after = await lifecycle.collect(session, token, persisted=True)
-        comparison = validate_restart_pair(before, after, kind=kind)
+        comparison = validate_restart_pair(before, after, kind=kind, backend=backend)
         running = lambda: [(index, value) for index, value in enumerate(versions['events'][stop_index + 1:], stop_index + 1)
                            if value.get('versionId') == version_id and value.get('scriptURL') == url
                            and value.get('runningStatus') == 'running']
@@ -189,19 +191,19 @@ async def force_service_restarts(session, versions, token, before):
     return cases
 
 
-def validate_forced_cases(cases, document_before, document_after, owner_epoch):
+def validate_forced_cases(cases, document_before, document_after, owner_epoch, *, backend=gpu):
     if (not isinstance(cases, list) or len(cases) != 2
             or any(not isinstance(case, dict) or not isinstance(case.get('kind'), str) for case in cases)
             or {case.get('kind') for case in cases} != {'service-classic', 'service-module'}):
         raise ValueError('Both owned GPU service restart cases are required')
-    gpu.validate_pair(document_before, document_after)
+    backend.validate_pair(document_before, document_after)
     if type(owner_epoch) not in (int, float) or owner_epoch != document_before['main']['timeOrigin']:
         raise ValueError('GPU restart owner differs from the retained main document')
     result = []
     for case in cases:
         kind = case['kind']
         before, after = case.get('before'), case.get('after')
-        comparison = validate_restart_pair(before, after, kind=kind)
+        comparison = validate_restart_pair(before, after, kind=kind, backend=backend)
         if case.get('passed') is not True or case.get('comparison') != comparison:
             raise ValueError('GPU restart comparison differs from the raw phases')
         if before['rootTimeOrigin'] != owner_epoch:

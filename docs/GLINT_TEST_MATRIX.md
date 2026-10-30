@@ -16,6 +16,9 @@
 | Full worker integration Python | **4886 passed, 1 skipped**, source/status guards passed | At `a05fbc6`, before WebGPU source/evidence publication |
 | WebGPU compatibility prototype | **14/14**: baseline/protected document plus six classic/module worker classes | Compute, RGBA8 readback, padding, mapping and API errors; not native protection or retained resources |
 | WebGPU public CLI | **14/14** again, source/receipt/core guards, runtime/process cleanup and zero remaining service registrations | Exact selected candidate; not retained WebGPU resources, native protection or full device cohorts |
+| Full WebGPU CLI Python | **4925 passed, 1 skipped**, source/status guards passed | At `26082fe`, before retained-resource integration |
+| Retained WebGPU public CLI | Six actual BFCache document roles, six worker classes, both manager modes, four exact service restarts | Original resources and known compute/texture references; no native protection/privacy admission |
+| WebGPU canvas export consistency | **OPEN:** baseline zero changed channels; protected PNG differs from direct GPU copy in 403 channels, max delta 1 | Stable export and exact GPU reference; not a PASS or external detector result |
 
 [Exact measured evidence](../native/drafts/environment/screen76-runtime-observations.json).
 [Integrated GPU runtime evidence](../native/drafts/environment/retained-gpu-objects76-observations.json)
@@ -45,6 +48,14 @@ python native/drafts/environment/first-script/webgpu_readback_runtime.py `
 Use a fresh canonical D: output and the exact selected upstream-156 receipt and
 hash-pinned driver stage. Missing API/adapter is a failed measurement, not a PASS;
 the probe never enables unsafe WebGPU flags or chooses a fallback adapter.
+
+[Original WebGPU resources](../native/drafts/environment/retained-webgpu76-observations.json)
+are opt-in with `--probe retained-webgpu-objects` on `protected_history_runtime.py`.
+Add `--verify-retained-gpu-workers` and optionally
+`--verify-retained-gpu-service-restart`; the existing flag names cover the selected
+WebGL or WebGPU backend. The prior WebGL forced-restart, new WebGPU documents-only
+and workers-only, and default Canvas modes were all repeated successfully.
+[Open WebGPU PNG/direct-copy mismatch](../native/drafts/environment/webgpu-canvas-export76-observations.json).
 These results do not admit WebGPU, full profile isolation, privacy guarantees,
 CAPTCHA outcomes or production/release deployment.
 

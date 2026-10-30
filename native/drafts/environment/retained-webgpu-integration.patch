@@ -1,0 +1,457 @@
+diff --git a/native/drafts/environment/first-script/protected_history_runtime.py b/native/drafts/environment/first-script/protected_history_runtime.py
+index 0e23a41..5b5e38d 100644
+--- a/native/drafts/environment/first-script/protected_history_runtime.py
++++ b/native/drafts/environment/first-script/protected_history_runtime.py
+@@ -27,7 +27,7 @@ def main() -> int:
+     parser.add_argument('--executable', type=Path, required=True)
+     parser.add_argument('--work-dir', type=Path, required=True)
+     parser.add_argument('--driver-stage', type=Path, required=True)
+-    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents', 'retained-workers', 'retained-gpu-objects'), default='canvas')
++    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents', 'retained-workers', 'retained-gpu-objects', 'retained-webgpu-objects'), default='canvas')
+     parser.add_argument('--verify-service-lifecycle', action='store_true',
+                         help='Verify owned service-controlled BFCache and explicit per-version stop/restart')
+     parser.add_argument('--verify-retained-gpu-workers', action='store_true')
+@@ -35,7 +35,7 @@ def main() -> int:
+     args = parser.parse_args()
+     if args.verify_service_lifecycle and args.probe != 'retained-workers':
+         parser.error('--verify-service-lifecycle requires --probe retained-workers')
+-    if args.verify_retained_gpu_workers and args.probe != 'retained-gpu-objects':
++    if args.verify_retained_gpu_workers and args.probe not in {'retained-gpu-objects', 'retained-webgpu-objects'}:
+         parser.error('--verify-retained-gpu-workers requires --probe retained-gpu-objects')
+     if args.verify_retained_gpu_service_restart and not args.verify_retained_gpu_workers:
+         parser.error('--verify-retained-gpu-service-restart requires --verify-retained-gpu-workers')
+@@ -107,12 +107,15 @@ def main() -> int:
+         surface_validator = runpy.run_path(str(FIXTURE / 'protected_surface_history.py'))['validate_runs']
+         recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
+         surface_read = f"async () => ({{gpu: await ({gpu.READBACK_READ})(), audio: await ({surfaces.AUDIO_READ})(true)}})"
+-    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
++    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects', 'retained-webgpu-objects'}:
+         import retained_document_surfaces as retained
+ 
+     retained_objects = None
+-    if args.probe == 'retained-gpu-objects':
+-        import retained_gpu_objects as retained_objects
++    if args.probe in {'retained-gpu-objects', 'retained-webgpu-objects'}:
++        if args.probe == 'retained-webgpu-objects':
++            import retained_webgpu_objects as retained_objects
++        else:
++            import retained_gpu_objects as retained_objects
+         surface_read = retained_objects.READ
+         surface_validator = None
+         recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
+@@ -126,13 +129,16 @@ def main() -> int:
+ 
+     gpu_workers = None
+     if args.verify_retained_gpu_workers:
+-        import retained_gpu_worker_objects as gpu_workers
++        if args.probe == 'retained-webgpu-objects':
++            import retained_webgpu_worker_objects as gpu_workers
++        else:
++            import retained_gpu_worker_objects as gpu_workers
+ 
+     controlled_services = None
+     if args.verify_service_lifecycle:
+         import controlled_service_workers as controlled_services
+ 
+-    paths = {Path(__file__), MANIFEST, canvas_path, validator_path, *(ROOT / name for name in gpu.probe_inputs()), ROOT / 'app/core/native/runtime.py', ROOT / 'app/core/native/identity.py', *FIXTURE.glob('*.py'), FIXTURE / 'sample.js',
++    paths = {Path(__file__), MANIFEST, canvas_path, validator_path, *(ROOT / name for name in gpu.probe_inputs()), ROOT / 'app/core/native/runtime.py', ROOT / 'app/core/native/identity.py', *FIXTURE.glob('*.py'), *FIXTURE.glob('*.js'),
+              STAGE / 'playwright/driver/package/lib/coreBundle.js', STAGE / 'playwright/_impl/_page.py',
+              STAGE / 'playwright/driver/node.exe', *(ROOT / name for name in reference['environment'].source_inputs())}
+     inputs = {path: sha(path) for path in paths}
+@@ -145,7 +151,7 @@ def main() -> int:
+         report.update(probe=args.probe, scope='Protected manager BFCache with screen, Canvas formats and top-document recreated GPU/Audio readback continuity; not retained GPU objects, worker lifecycle, WebGPU readback or full policy admission')
+ 
+ 
+-    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
++    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects', 'retained-webgpu-objects'}:
+         report['scope'] = 'Six registered real documents with recreated protected GPU/Audio reads before/after actual BFCache; source/window/origin/nonce/URL/timeOrigin checked; not retained GPU objects, workers, WebGPU readback or full policy admission'
+ 
+     if retained_objects is not None:
+@@ -162,6 +168,13 @@ def main() -> int:
+     if controlled_services is not None:
+         report['scope'] += '; additional classic/module service-controlled clients with genuine BFCache and confirmed per-version stop/restart'
+ 
++    if args.probe == 'retained-webgpu-objects':
++        report['scope'] = ('Original WebGPU device, compute pipeline, bindings, buffers, texture and view across six genuine manager BFCache documents; exact integer compute and RGBA8 copies; not native WebGPU protection, profile isolation or privacy/release admission')
++        if gpu_workers is not None:
++            report['scope'] += '; six actual worker classes, dedicated/shared retention and explicit service restart classification'
++        if args.verify_retained_gpu_service_restart:
++            report['scope'] += '; exact owned per-version service stop/restart, new worker/GPU globals and post-restart document/screen checks'
++
+     def save():
+         (OUT / 'report.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+ 
+@@ -227,7 +240,7 @@ def main() -> int:
+                             if worker_fixture is not None:
+                                 worker_token = await worker_fixture.install(pages[1])
+                                 row['worker_lifecycle_before'] = await worker_fixture.collect(session, worker_token, persisted=False)
+-                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
++                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects', 'retained-webgpu-objects'}:
+                                 registration = await retained.install(pages[1], before, surface_read)
+                                 row['retained_documents_before'] = await retained.collect(session, registration, persisted=False)
+                         if gpu_workers is not None:
+@@ -248,7 +261,7 @@ def main() -> int:
+                         row['canvas_after'] = canvas_after
+                         if surface_read is not None:
+                             row['surfaces_after'] = await read_restored_surfaces(session, surface_read)
+-                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
++                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects', 'retained-webgpu-objects'}:
+                                 row['retained_documents_after'] = await retained.collect(session, registration, persisted=True)
+                                 if retained_objects is not None:
+                                     row['retained_gpu_object_validation'] = retained_objects.validate_pair(row['retained_documents_before'], row['retained_documents_after'])
+diff --git a/native/drafts/environment/first-script/retained_gpu_worker_objects.py b/native/drafts/environment/first-script/retained_gpu_worker_objects.py
+index 3ec181e..e1af64b 100644
+--- a/native/drafts/environment/first-script/retained_gpu_worker_objects.py
++++ b/native/drafts/environment/first-script/retained_gpu_worker_objects.py
+@@ -8,7 +8,9 @@ import retained_gpu_objects as gpu
+ import retained_worker_lifecycle as lifecycle
+ 
+ 
+-def worker_read():
++def worker_read(*, backend=gpu):
++    if backend is not gpu:
++        return backend.READ
+     text = gpu.READ
+     replacements = {
+         "Object.hasOwn(window, key)": "Object.hasOwn(globalThis, key)",
+@@ -34,7 +36,7 @@ def worker_read():
+     return text
+ 
+ 
+-def validate_phase(phase):
++def validate_phase(phase, *, backend=gpu):
+     if not isinstance(phase, dict) or set(phase) != {'rootTimeOrigin', 'persisted', 'workers'}:
+         raise ValueError('Worker GPU phase lacks actual document lifecycle evidence')
+     epoch = phase['rootTimeOrigin']
+@@ -48,7 +50,7 @@ def validate_phase(phase):
+     instances, tokens, gpu_instances, ports = set(), set(), set(), set()
+     for kind, record in workers.items():
+         instance, token = lifecycle.validate_record(kind, record)
+-        gpu.validate_record(record['observed'])
++        backend.validate_record(record['observed'])
+         if record['observed']['timeOrigin'] != record['timeOrigin']:
+             raise ValueError('Worker GPU epoch differs from its own worker global')
+         instances.add(instance)
+@@ -61,30 +63,30 @@ def validate_phase(phase):
+         raise ValueError('Worker GPU records mixed fixture server registrations')
+ 
+ 
+-def validate_pair(before, after):
+-    validate_phase(before)
+-    validate_phase(after)
++def validate_pair(before, after, *, backend=gpu):
++    validate_phase(before, backend=backend)
++    validate_phase(after, backend=backend)
+     if (before['persisted'] is not False or after['persisted'] is not True
+             or before['rootTimeOrigin'] != after['rootTimeOrigin']):
+         raise ValueError('Worker GPU requires a genuinely restored owning document')
+-    return _compare_workers(before, after)
++    return _compare_workers(before, after, backend=backend)
+ 
+ 
+-def validate_restart_pair(before, after, *, kind):
+-    validate_phase(before)
+-    validate_phase(after)
++def validate_restart_pair(before, after, *, kind, backend=gpu):
++    validate_phase(before, backend=backend)
++    validate_phase(after, backend=backend)
+     if (not isinstance(kind, str) or kind not in {'service-classic', 'service-module'}
+             or before['persisted'] is not True or after['persisted'] is not True
+             or before['rootTimeOrigin'] != after['rootTimeOrigin']):
+         raise ValueError('GPU restart requires the same genuinely retained owner')
+-    result = _compare_workers(before, after)
++    result = _compare_workers(before, after, backend=backend)
+     target = next(row for row in result['workers'] if row['kind'] == kind)
+     if target['service_restarted'] is not True:
+         raise ValueError('Requested service worker did not obtain a new GPU global')
+     return result
+ 
+ 
+-def _compare_workers(before, after):
++def _compare_workers(before, after, *, backend=gpu):
+     rows = []
+     previous_workers = {row['instanceId'] for row in before['workers'].values()}
+     previous_gpu = {row['observed']['id'] for row in before['workers'].values()}
+@@ -105,18 +107,18 @@ def _compare_workers(before, after):
+                     or b['id'] in previous_gpu
+                     or second['timeOrigin'] <= first['timeOrigin'] or second['sequence'] != 1 or b['read'] != 1):
+                 raise ValueError('Worker restart is not an explicit new service global: ' + kind)
+-        if a['apis'] != b['apis']:
++        if {key: value for key, value in a.items() if key not in {'id', 'timeOrigin', 'read'}} != {key: value for key, value in b.items() if key not in {'id', 'timeOrigin', 'read'}}:
+             raise ValueError('Worker GPU readback/PNG changed: ' + kind)
+         rows.append(dict(kind=kind, retained_gpu_objects=same_worker,
+                          service_restarted=not same_worker, policy_observations_stable=True))
+     return dict(passed=True, workers=rows, dedicated_shared_retained=True,
+         service_retention_guaranteed=False, forced_service_restart_verified=False,
+-        worker_audio_verified=False, webgpu_readback_verified=False,
++        worker_audio_verified=False, webgpu_readback_verified=(backend is not gpu),
+         cross_profile_isolation_verified=False, privacy_admitted=False, production_admitted=False)
+ 
+ 
+-def validate_runs(runs):
+-    gpu.validate_runs(runs)
++def validate_runs(runs, *, backend=gpu):
++    backend.validate_runs(runs)
+     forced_modes = ['retained_gpu_service_restart_cases' in row for row in runs]
+     if any(forced_modes) and not all(forced_modes):
+         raise ValueError('GPU service restart coverage differs between manager modes')
+@@ -124,11 +126,11 @@ def validate_runs(runs):
+     tokens = set()
+     for row in runs:
+         before, after = row.get('retained_gpu_workers_before'), row.get('retained_gpu_workers_after')
+-        validate_phase(before)
+-        validate_phase(after)
++        validate_phase(before, backend=backend)
++        validate_phase(after, backend=backend)
+         if before['rootTimeOrigin'] != row['retained_documents_before']['main']['timeOrigin']:
+             raise ValueError('GPU worker owner differs from the actual retained main document')
+-        value = validate_pair(before, after)
++        value = validate_pair(before, after, backend=backend)
+         if row.get('retained_gpu_worker_validation') != value or row.get('retained_gpu_worker_cleanup') != {'closed': True}:
+             raise ValueError('GPU worker validation or owned registration cleanup failed')
+         token = next(iter(before['workers'].values()))['token']
+@@ -137,7 +139,7 @@ def validate_runs(runs):
+         tokens.add(token)
+         if 'retained_gpu_service_restart_cases' in row:
+             forced = validate_forced_cases(row['retained_gpu_service_restart_cases'],
+-                row['retained_documents_before'], row.get('retained_gpu_documents_after_restart'), before['rootTimeOrigin'])
++                row['retained_documents_before'], row.get('retained_gpu_documents_after_restart'), before['rootTimeOrigin'], backend=backend)
+             if row.get('retained_gpu_service_restart_validation') != forced:
+                 raise ValueError('Stored GPU restart validation differs')
+             value = dict(value, forced_restart_validation=forced)
+@@ -145,13 +147,13 @@ def validate_runs(runs):
+     return dict(passed=True, runs=results, service_retention_guaranteed=False,
+         forced_service_restart_verified=all(forced_modes), forced_service_restarts=4 if all(forced_modes) else 0,
+         worker_audio_verified=False,
+-        webgpu_readback_verified=False, cross_profile_isolation_verified=False,
++        webgpu_readback_verified=(backend is not gpu), cross_profile_isolation_verified=False,
+         privacy_admitted=False, production_admitted=False)
+ 
+ 
+-async def force_service_restarts(session, versions, token, before):
++async def force_service_restarts(session, versions, token, before, *, backend=gpu):
+     cases = []
+-    validate_phase(before)
++    validate_phase(before, backend=backend)
+     if before['persisted'] is not True:
+         raise ValueError('GPU service restart requires the restored owner')
+     if not isinstance(token, str) or any(row['token'] != token for row in before['workers'].values()):
+@@ -176,7 +178,7 @@ async def force_service_restarts(session, versions, token, before):
+         await service.wait_until(lambda: bool(stopped()), 'Explicit owned GPU service stopped event')
+         stop_index, stop_event = stopped()[0]
+         after = await lifecycle.collect(session, token, persisted=True)
+-        comparison = validate_restart_pair(before, after, kind=kind)
++        comparison = validate_restart_pair(before, after, kind=kind, backend=backend)
+         running = lambda: [(index, value) for index, value in enumerate(versions['events'][stop_index + 1:], stop_index + 1)
+                            if value.get('versionId') == version_id and value.get('scriptURL') == url
+                            and value.get('runningStatus') == 'running']
+@@ -189,19 +191,19 @@ async def force_service_restarts(session, versions, token, before):
+     return cases
+ 
+ 
+-def validate_forced_cases(cases, document_before, document_after, owner_epoch):
++def validate_forced_cases(cases, document_before, document_after, owner_epoch, *, backend=gpu):
+     if (not isinstance(cases, list) or len(cases) != 2
+             or any(not isinstance(case, dict) or not isinstance(case.get('kind'), str) for case in cases)
+             or {case.get('kind') for case in cases} != {'service-classic', 'service-module'}):
+         raise ValueError('Both owned GPU service restart cases are required')
+-    gpu.validate_pair(document_before, document_after)
++    backend.validate_pair(document_before, document_after)
+     if type(owner_epoch) not in (int, float) or owner_epoch != document_before['main']['timeOrigin']:
+         raise ValueError('GPU restart owner differs from the retained main document')
+     result = []
+     for case in cases:
+         kind = case['kind']
+         before, after = case.get('before'), case.get('after')
+-        comparison = validate_restart_pair(before, after, kind=kind)
++        comparison = validate_restart_pair(before, after, kind=kind, backend=backend)
+         if case.get('passed') is not True or case.get('comparison') != comparison:
+             raise ValueError('GPU restart comparison differs from the raw phases')
+         if before['rootTimeOrigin'] != owner_epoch:
+diff --git a/native/drafts/environment/first-script/retained_webgpu_objects.js b/native/drafts/environment/first-script/retained_webgpu_objects.js
+new file mode 100644
+index 0000000..9717a35
+--- /dev/null
++++ b/native/drafts/environment/first-script/retained_webgpu_objects.js
+@@ -0,0 +1,74 @@
++async () => {
++  const key = 'glintOwnedRetainedWebGpu';
++  if (!Object.hasOwn(globalThis, key)) {
++    if (!isSecureContext || !navigator.gpu) throw new Error('WebGPU unavailable; no retained-resource coverage');
++    const adapter = await navigator.gpu.requestAdapter();
++    if (!adapter) throw new Error('No default WebGPU adapter');
++    const device = await adapter.requestDevice();
++    const state = {id: crypto.randomUUID(), timeOrigin: performance.timeOrigin,
++      read: 0, device, resources: [], unexpected: [], lost: false, closed: false};
++    device.addEventListener('uncapturederror', event => state.unexpected.push(event.error.message));
++    device.lost.then(() => {if (!state.closed) state.lost = true;});
++    state.close = () => {state.closed = true; for (const value of state.resources) value.destroy(); device.destroy();};
++    try {
++      device.pushErrorScope('validation');
++      const buffer = (size, usage) => {
++        const value = device.createBuffer({size, usage}); state.resources.push(value); return value;
++      };
++      state.output = buffer(256, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC);
++      state.staging = buffer(256, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
++      state.pixels = buffer(768, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
++      state.shader = device.createShaderModule({code: `
++        @group(0) @binding(0) var<storage, read_write> output: array<u32>;
++        @compute @workgroup_size(8) fn main(@builtin(global_invocation_id) id: vec3<u32>) {
++          output[id.x] = id.x * 17u + 31u;
++        }`});
++      state.pipeline = await device.createComputePipelineAsync({layout: 'auto', compute: {module: state.shader, entryPoint: 'main'}});
++      state.bindings = device.createBindGroup({layout: state.pipeline.getBindGroupLayout(0), entries: [{binding: 0, resource: {buffer: state.output}}]});
++      state.texture = device.createTexture({size: [7, 3], format: 'rgba8unorm',
++        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC});
++      state.resources.push(state.texture);
++      state.view = state.texture.createView();
++      state.refs = [device, state.output, state.staging, state.pixels, state.shader,
++        state.pipeline, state.bindings, state.texture, state.view];
++      const error = await device.popErrorScope();
++      if (error) throw new Error('Retained GPU initialization rejected: ' + error.message);
++      Object.defineProperty(globalThis, key, {value: state});
++    } catch (error) {state.close(); throw error;}
++  }
++  const state = globalThis[key];
++  if (state.closed || state.lost || state.unexpected.length) throw new Error('Retained WebGPU resources lost or closed');
++  const {device, output, staging, pixels, texture, view, shader, pipeline, bindings} = state;
++  const sameReferences = state.refs.map((value, index) => value === [device, output, staging, pixels, shader, pipeline, bindings, texture, view][index]);
++  device.pushErrorScope('validation');
++  const encoder = device.createCommandEncoder();
++  const compute = encoder.beginComputePass();
++  compute.setPipeline(pipeline); compute.setBindGroup(0, bindings); compute.dispatchWorkgroups(8); compute.end();
++  encoder.copyBufferToBuffer(output, 0, staging, 0, 256);
++  const render = encoder.beginRenderPass({colorAttachments: [{view,
++    clearValue: {r: 1, g: 0, b: 1, a: 1}, loadOp: 'clear', storeOp: 'store'}]});
++  render.end();
++  encoder.copyTextureToBuffer({texture}, {buffer: pixels, bytesPerRow: 256, rowsPerImage: 3}, [7, 3]);
++  device.queue.submit([encoder.finish()]);
++  await staging.mapAsync(GPUMapMode.READ);
++  let computeMatched;
++  const computeBuffer = staging.getMappedRange();
++  try {computeMatched = new Uint32Array(computeBuffer).every((value, index) => value === index * 17 + 31);}
++  finally {staging.unmap();}
++  await pixels.mapAsync(GPUMapMode.READ);
++  const pixelBuffer = pixels.getMappedRange();
++  let textureMatched = true, paddingZero = true;
++  try {
++    const bytes = new Uint8Array(pixelBuffer);
++    for (let row = 0; row < 3; row++) {
++      for (let column = 0; column < 28; column++) textureMatched &&= bytes[row * 256 + column] === [255, 0, 255, 255][column % 4];
++      for (let column = 28; column < 256; column++) paddingZero &&= bytes[row * 256 + column] === 0;
++    }
++  } finally {pixels.unmap();}
++  const validation = await device.popErrorScope();
++  if (validation || !computeMatched || !textureMatched || !paddingZero || state.lost || state.unexpected.length) throw new Error('Retained WebGPU readback failed');
++  return {id: state.id, timeOrigin: state.timeOrigin, read: ++state.read,
++    sameReferences, computeMatched, textureMatched, paddingZero,
++    detached: computeBuffer.byteLength === 0 && pixelBuffer.byteLength === 0,
++    deviceLost: state.lost, unexpected: [...state.unexpected]};
++}
+diff --git a/native/drafts/environment/first-script/retained_webgpu_objects.py b/native/drafts/environment/first-script/retained_webgpu_objects.py
+new file mode 100644
+index 0000000..dc32cdb
+--- /dev/null
++++ b/native/drafts/environment/first-script/retained_webgpu_objects.py
+@@ -0,0 +1,80 @@
++"""Original owned WebGPU resources across real document BFCache; no native protection."""
++import math
++from pathlib import Path
++import re
++from urllib.parse import urlsplit
++
++READ = Path(__file__).with_suffix('.js').read_text(encoding='utf-8-sig')
++
++
++def validate_record(value):
++    if (not isinstance(value, dict) or not isinstance(value.get('id'), str)
++            or re.fullmatch('[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', value['id']) is None
++            or type(value.get('timeOrigin')) not in (int, float) or not math.isfinite(value['timeOrigin'])
++            or value['timeOrigin'] <= 0 or type(value.get('read')) is not int or value['read'] <= 0
++            or not isinstance(value.get('sameReferences'), list) or len(value['sameReferences']) != 9
++            or any(item is not True for item in value['sameReferences'])
++            or any(value.get(key) is not True for key in ('computeMatched', 'textureMatched', 'paddingZero', 'detached'))
++            or value.get('deviceLost') is not False or value.get('unexpected') != []):
++        raise ValueError('Retained WebGPU resource/readback observation invalid')
++
++
++def validate_pair(before, after):
++    roles = {'main', 'same', 'cross', 'about-blank', 'srcdoc', 'nested-return'}
++    if not isinstance(before, dict) or not isinstance(after, dict) or set(before) != roles or set(after) != roles:
++        raise ValueError('Six exact document roles required')
++    instances, ports = set(), set()
++    for role in roles:
++        a, b = before[role], after[role]
++        if (not isinstance(a, dict) or not isinstance(b, dict)
++                or set(a) != {'nonce', 'origin', 'location', 'persisted', 'timeOrigin', 'observed'}
++                or set(b) != set(a)
++                or a.get('persisted') is not False or b.get('persisted') is not True
++                or any(a.get(key) != b.get(key) for key in ('nonce', 'origin', 'location', 'timeOrigin'))):
++            raise ValueError('Retained WebGPU document lifecycle changed')
++        if not isinstance(a.get('nonce'), str) or re.fullmatch('[0-9a-f]{48}', a['nonce']) is None:
++            raise ValueError('Missing owned document nonce')
++        if not isinstance(a.get('origin'), str) or not isinstance(a.get('location'), str) or not a['location']:
++            raise ValueError('Owned document origin/location missing')
++        origin = urlsplit(a['origin'])
++        if origin.scheme != 'http' or origin.hostname not in {'127.0.0.1', 'localhost'} or origin.port is None:
++            raise ValueError('Only owned loopback documents allowed')
++        ports.add(origin.port)
++        x, y = a.get('observed'), b.get('observed')
++        validate_record(x)
++        validate_record(y)
++        if x['id'] != y['id'] or y['read'] <= x['read'] or x['id'] in instances or x['timeOrigin'] != a['timeOrigin'] or y['timeOrigin'] != b['timeOrigin']:
++            raise ValueError('Retained WebGPU objects replaced or stale')
++        instances.add(x['id'])
++    if len(ports) != 1:
++        raise ValueError('Document registrations mixed fixture servers')
++    return dict(passed=True, document_contexts=6, original_webgpu_objects_verified=True,
++        native_webgpu_readback_protection=False, workers_verified=False,
++        privacy_admitted=False, production_admitted=False)
++
++
++def validate_runs(runs):
++    if (not isinstance(runs, list) or len(runs) != 2
++            or any(not isinstance(row, dict) or not isinstance(row.get('mode'), str) for row in runs)
++            or {row['mode'] for row in runs} != {'manager-desktop', 'manager-mobile-web'}):
++        raise ValueError('Two actual manager mode runs required')
++    instances = set()
++    for row in runs:
++        if any(row.get(key) is not True for key in ('passed', 'bfcache_restored', 'protected_arguments_verified',
++                'post_surfaces_screen_verified', 'runtime_resources_released', 'browser_connection_closed')):
++            raise ValueError('WebGPU runtime/lifecycle cleanup failed')
++        if (not isinstance(row.get('history_navigation'), dict)
++                or row['history_navigation'].get('type') != 'BackForwardCacheRestore'
++                or type(row.get('observed_processes')) is not int or row['observed_processes'] <= 1
++                or type(row.get('remaining_observed_processes')) is not int or row['remaining_observed_processes'] != 0):
++            raise ValueError('Real BFCache restoration and owned process cleanup required')
++        result = validate_pair(row.get('retained_documents_before'), row.get('retained_documents_after'))
++        if row.get('retained_gpu_object_validation') != result:
++            raise ValueError('Stored WebGPU validation differs from actual observations')
++        current = {value['observed']['id'] for value in row['retained_documents_before'].values()}
++        if instances.intersection(current):
++            raise ValueError('Manager modes reused WebGPU resource instances')
++        instances.update(current)
++    return dict(passed=True, original_webgpu_objects_verified=True,
++        native_webgpu_readback_protection=False, workers_verified=False,
++        privacy_admitted=False, production_admitted=False)
+diff --git a/native/drafts/environment/first-script/retained_webgpu_worker_objects.py b/native/drafts/environment/first-script/retained_webgpu_worker_objects.py
+new file mode 100644
+index 0000000..ea34b00
+--- /dev/null
++++ b/native/drafts/environment/first-script/retained_webgpu_worker_objects.py
+@@ -0,0 +1,15 @@
++"""Explicit WebGPU backend for the shared owned GPU worker lifecycle checks."""
++from functools import partial
++
++import retained_gpu_worker_objects as common
++import retained_webgpu_objects as backend
++
++lifecycle = common.lifecycle
++service = common.service
++worker_read = partial(common.worker_read, backend=backend)
++validate_phase = partial(common.validate_phase, backend=backend)
++validate_pair = partial(common.validate_pair, backend=backend)
++validate_restart_pair = partial(common.validate_restart_pair, backend=backend)
++validate_runs = partial(common.validate_runs, backend=backend)
++force_service_restarts = partial(common.force_service_restarts, backend=backend)
++validate_forced_cases = partial(common.validate_forced_cases, backend=backend)

@@ -1,0 +1,425 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Original WebGPU device, pipeline, shader, bindings, buffers, texture and view through six real BFCache documents and six worker classes; four owned service restarts; controlled fixtures only, no native protection or full profile/release admission",
+  "public_cli_integrated": true,
+  "probe": "retained-webgpu-objects",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "03b34a8d3786d9c313b89afc1609c032091656678f936ee7087d62fca40e1d00",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "ca69cc734d4829bcb2357012d77fdda0fb72130fe91f5cf48da3f67acb17d7b3",
+  "raw_report_sha256": "6d27c764d533cefe554e4dba80b99443d8175cae8ec81a8c645bb711b1d745a5",
+  "runs": [
+    {
+      "mode": "manager-desktop",
+      "passed": true,
+      "bfcache_restored": true,
+      "document_contexts": [
+        {
+          "role": "main",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        },
+        {
+          "role": "same",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        },
+        {
+          "role": "cross",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        },
+        {
+          "role": "about-blank",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        },
+        {
+          "role": "nested-return",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        },
+        {
+          "role": "srcdoc",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        }
+      ],
+      "workers": [
+        {
+          "kind": "dedicated-classic",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        },
+        {
+          "kind": "dedicated-module",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        },
+        {
+          "kind": "shared-classic",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        },
+        {
+          "kind": "shared-module",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        },
+        {
+          "kind": "service-classic",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        },
+        {
+          "kind": "service-module",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        }
+      ],
+      "forced_restarts": [
+        {
+          "kind": "service-classic",
+          "passed": true,
+          "version_state_chain": [
+            "running",
+            "stopped",
+            "running"
+          ],
+          "new_worker_instance": true,
+          "new_gpu_instances": true,
+          "worker_sequence": 1,
+          "gpu_read_sequence": 1,
+          "policy_observations_stable": true,
+          "owning_document_unchanged": true
+        },
+        {
+          "kind": "service-module",
+          "passed": true,
+          "version_state_chain": [
+            "running",
+            "stopped",
+            "running"
+          ],
+          "new_worker_instance": true,
+          "new_gpu_instances": true,
+          "worker_sequence": 1,
+          "gpu_read_sequence": 1,
+          "policy_observations_stable": true,
+          "owning_document_unchanged": true
+        }
+      ],
+      "post_restart_document_gpu_verified": true,
+      "all_six_retained_screens_verified": true,
+      "owned_worker_cleanup_verified": true,
+      "runtime_resources_released": true,
+      "browser_connection_closed": true,
+      "remaining_observed_processes": 0
+    },
+    {
+      "mode": "manager-mobile-web",
+      "passed": true,
+      "bfcache_restored": true,
+      "document_contexts": [
+        {
+          "role": "main",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        },
+        {
+          "role": "cross",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        },
+        {
+          "role": "same",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        },
+        {
+          "role": "srcdoc",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        },
+        {
+          "role": "about-blank",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        },
+        {
+          "role": "nested-return",
+          "original_resources_retained": true,
+          "reference_count": 9,
+          "compute_and_texture_reference_matched": true,
+          "padding_zero": true,
+          "mappings_detached": true,
+          "device_lost": false
+        }
+      ],
+      "workers": [
+        {
+          "kind": "dedicated-classic",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        },
+        {
+          "kind": "dedicated-module",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        },
+        {
+          "kind": "shared-classic",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        },
+        {
+          "kind": "shared-module",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        },
+        {
+          "kind": "service-classic",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        },
+        {
+          "kind": "service-module",
+          "same_worker_instance": true,
+          "original_resources_retained": true,
+          "service_restarted": false,
+          "compute_and_texture_reference_matched": true,
+          "reference_count": 9,
+          "device_lost": false
+        }
+      ],
+      "forced_restarts": [
+        {
+          "kind": "service-classic",
+          "passed": true,
+          "version_state_chain": [
+            "running",
+            "stopped",
+            "running"
+          ],
+          "new_worker_instance": true,
+          "new_gpu_instances": true,
+          "worker_sequence": 1,
+          "gpu_read_sequence": 1,
+          "policy_observations_stable": true,
+          "owning_document_unchanged": true
+        },
+        {
+          "kind": "service-module",
+          "passed": true,
+          "version_state_chain": [
+            "running",
+            "stopped",
+            "running"
+          ],
+          "new_worker_instance": true,
+          "new_gpu_instances": true,
+          "worker_sequence": 1,
+          "gpu_read_sequence": 1,
+          "policy_observations_stable": true,
+          "owning_document_unchanged": true
+        }
+      ],
+      "post_restart_document_gpu_verified": true,
+      "all_six_retained_screens_verified": true,
+      "owned_worker_cleanup_verified": true,
+      "runtime_resources_released": true,
+      "browser_connection_closed": true,
+      "remaining_observed_processes": 0
+    }
+  ],
+  "compatibility_repeats": [
+    {
+      "mode": "webgl-forced",
+      "passed": true,
+      "postguards_passed": true,
+      "raw_report_sha256": "4ccf8b183bea126e30343754b4c0ae94bcde32fa2302958393c7bf391db79eed"
+    },
+    {
+      "mode": "webgpu-documents",
+      "passed": true,
+      "postguards_passed": true,
+      "raw_report_sha256": "1c80a5efeb8d43ed3ee53f83cfd5487f34d441f3d26a66a8bb0c7cd4b4f01b8d"
+    },
+    {
+      "mode": "webgpu-workers",
+      "passed": true,
+      "postguards_passed": true,
+      "raw_report_sha256": "d04dcb4906291b873cc3c9d04936a314205b9f3dbe1cf40bad207d36d8cbabfe"
+    },
+    {
+      "mode": "default",
+      "passed": true,
+      "postguards_passed": true,
+      "raw_report_sha256": "3fa1dedda1399d247b4dc835ed615560bed6e6df9ff56d69173887cccd786275"
+    }
+  ],
+  "measured_inputs_sha256": {
+    "scripts/verify_native_canvas.py": "00d8ce1355346ad8a433aecacd9e360541d078109bdfbfe5a0e947e659458a8f",
+    "native/drafts/environment/first-script/server.py": "4db4200ef73f8db684a8e9f3172caf81470973fca0948a5a36eca90f3bfe5048",
+    "native/drafts/environment/first-script/manager.py": "71d0e333e682205beda57e963fa8df1483505bf7bac24f44caaed27a527a3e6d",
+    "native/drafts/environment/first-script/history_interaction.py": "f6c2e8358cc3b5232ac46d5e450c53f4fbea027764ea9dec2a8a34a09b12c971",
+    "app/core/native/runtime.py": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "native/drafts/environment/first-script/canvas_hdr_runtime.py": "0abe98637458acbf16437dcd931b236bb63a2f64e32c421db0259291a1f38fed",
+    "scripts/verify_native_hardware.py": "270740cdcd715a2ae0e8aa2a2adeb51c673eb8cb81e75b76b85914221547761c",
+    "scripts/verify_native_surfaces.py": "5a2d8ed28577a2fa78809d37ccd7e4a1ced1aebb2011a86621d0a9cca2cf3f8a",
+    "native/drafts/environment/first-script/controlled_service_workers.py": "26c93f4d46aae4189307c0963ac2ace57ed8c67f733ff6ef371eb7550a460115",
+    "scripts/verify_native_audio.py": "20ec4aee54e7f10375623bc5a33157009cbacfca7c8b037e2b52a83131492617",
+    "native/drafts/environment/first-script/webgpu_readback.py": "883d1e33a295a802c04d2c25df8de12e12da02e98609066f026a1021cd68aa08",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "native/drafts/environment/first-script/retained_gpu_worker_objects.py": "be533b4e93b5eb65e0eb3b083a80553356851e2f0ecc82546cda51d8690c9696",
+    "scripts/capture_native_environment.py": "532cdf6f137171a293d736b497f078fe18585a53454066c878970867e33b1e63",
+    "scripts/verify_native_identity.py": "370d5d6dbb4400263ba617a5dba14f38b3f8836d0beb93860bc55aa0422c2bfc",
+    "native/drafts/environment/first-script/canvas_export_runtime.py": "578326693d50fa2d234e8b4c543f947b8b66c4c3e6c1626f9563d24fee97bf08",
+    "native/drafts/environment/first-script/sample.js": "694e47cf5715fe80d736b1e72436f6f412455f7a089e7a3edae5e20b36000b1c",
+    "native/drafts/environment/first-script/bfcache_races.py": "4ac147c519b2352cb7b065587198882a09aabc594a51c09371c954ab6ca4317d",
+    "native/drafts/environment/first-script/webgpu_readback_runtime.py": "700100c27545034acf814dcffdfdc7fe82c9a9d8c267bb92d48746df42e52c12",
+    "native/drafts/environment/first-script/worker_hdr_runtime.py": "02087e0457ff3757da9ca0a78b3361ce67415dfbbbe9f9262af44d93913b419d",
+    "native/drafts/environment/first-script/nested_formats.py": "62f9a8a5f3f2b8ca07d4d72c86824918c5a4558c158b8b34e35575200f334e7e",
+    "native/drafts/environment/first-script/verify.py": "cbca5c0eae844e5b2f014aef1db7c7ce3030e7ac4de601ed1b73e9b47ebf8915",
+    "scripts/verify_native_worker_startup.py": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+    "native/drafts/environment/first-script/nested_formats_runtime.py": "b1f5520de431f4c9149e85249ead3c6e7d74585daadfa4fad3fdb21abbddb187",
+    "native/drafts/environment/first-script/managed_history.py": "86f5d15ac0e71a880fe174182c73f2ea27faca96ef095d75e5b57e2ccaf15691",
+    "native/drafts/environment/first-script/protected_surface_history.py": "0720799654142df31db49bccbbea8a50101c172c858ebe54511b342abd25005a",
+    "native/drafts/environment/first-script/protected_history_runtime.py": "a4b8b43fb203979af93d153b0a4b419ec8936407f2e30b7f0c341a4c7e91acdb",
+    "native/drafts/environment/first-script/canvas_formats.py": "b10ff77277f2d0a030e71ab27585a50969b907cdea5d02fb9a329c1c9b1c38fb",
+    "native/drafts/environment/first-script/retained_gpu_objects.py": "82f5f1bb2dad752e9c8b5007b03dc23c84eaf5012433eaab6bd6a04dcf70ab0a",
+    "native/drafts/environment/first-script/lifecycle.py": "5f870e627f5deea3c8c434d6fb0c833045e83f2afd86777beea069ce6c9380ec",
+    "native/drafts/environment/first-script/retained_webgpu_objects.js": "7627b396c636c52c7470a5445edd2afa3b35691f1af5331468b97fc61caeeef8",
+    "app/core/native/privacy.py": "dc20c7008de80e1daf4915f84e9dd4b600e8c37c9042981bf29b9151a4ea653b",
+    "scripts/verify_native_nested_canvas.py": "f50d6a50bc567f1390d7212d715dc473b4967c1e0e53e5ed0a2a775a77bb039d",
+    "native/drafts/environment/first-script/combined_concurrent.py": "469a281a9c2126df5e2c3de251034534b103e66aff5e3dc8cd87686b8acc6c9b",
+    "app/core/native/canvas_fidelity.py": "65bbf69c2fbf4060e4e7be77fad893583ad9d5a0fb27124d572026a6264573f0",
+    "native/drafts/environment/first-script/worker_formats.py": "b4cd0773f6a605952671e5264e9bdd8416792d278c153ac882d3eba50bc1cd21",
+    "app/core/native/identity.py": "ade6571746cff6eebb3b049a6725a9260fff1f9cb499080f00af95a6aeb654c9",
+    "native/drafts/environment/first-script/worker_formats_runtime.py": "1d36361217a59a2c5c57bcddd15880eaf0c8d8f26cc6bf69c75fb224e00445e0",
+    "native/drafts/environment/first-script/protected_history.py": "e38b65a836c34e8bb464aa4aa1c74e100ae02abf553269983fd20f10aa2bfd40",
+    "native/drafts/environment/first-script/legacy_transport.py": "16458da91b61258389ce1e2c4bed7d2ab309b7a65f8fa566903716d70b2abeae",
+    "scripts/verify_native_runtime.py": "09d948d753e5aa84a672cae7a262e96f4762d9919703ee09c72fa86dfe6671aa",
+    "scripts/verify_native_gpu.py": "32018a5fd71efa0a51074095857a59de83ce1dd6777df160621293efc0a885aa",
+    "native/drafts/environment/first-script/canvas_hdr.py": "9b4806f748aaa29d6b7a9738a76972e66a3b9341375e4ab8d1fe5d577b98698a",
+    "native/drafts/environment/first-script/retained_document_surfaces.py": "ce0604fe9181d666f9c11db212f3d2c822f51a8a288faf35ab7e8891da441a3d",
+    "native/drafts/environment/first-script/nested_hdr.py": "78f2c7bbfdf3e2ec3e7853a13c7674fe75e76744426cb20847f4d849ff2e4713",
+    "native/drafts/environment/first-script/runtime.py": "e387b5107340754af303b56b404ab86cea3195410b0b9ca4ea99c66516df4e1a",
+    "native/drafts/environment/first-script/binding_outcome_model.py": "a0bbb7f4ca45f64f02e1dabb8be35b3b2633eea91110b1965fdb698f00be4ae8",
+    "native/drafts/environment/first-script/bfcache_stress.py": "c34470e059b2fe5de627f87cddd3e3bc13dc44dc68766dff51d8a940a0dfffd7",
+    "scripts/verify_native_gpu_readback.py": "d9174f360beb373c6176c6cd9d97be849fde9e236358487ad7dc4795f5375b3e",
+    "native/drafts/environment/first-script/canvas_export.py": "20d54e6b2da2fed7f4995bfb8edbc5817e0dbd3f8ef4fe6842fdee9d41b16817",
+    "scripts/verify_native_audio_quality.py": "f2ee7735ab1c2b1b46adf17e661da749729201624baec39cf9019afe40ead39b",
+    "native/drafts/environment/first-script/retained_worker_lifecycle.py": "3be27437cc17e64dd48c6d8783a2ef673f8c1193cc4a9d548ae9234ca53ff0f3",
+    "native/drafts/environment/first-script/webgpu_readback.js": "f6a396b03e3896af68b24d25b2cecf35db580405376aa0a8cd0b0063c9f509e3",
+    "native/drafts/environment/playwright-driver-stage-binding-close.json": "6d18cf727cfe1b4533b611edbd560f4ac031e4c02aa69aff2e037d110df352c5",
+    "native/drafts/environment/first-script/worker_exports.py": "5d032dbd97379fa12f9356dd15e0c56a882aff2e880a4960efc7a6cda9ac9571",
+    "native/drafts/environment/first-script/worker_exports_runtime.py": "e08a0dfd3eb68c2a6f5d54e0c71c92bbfade3cfb6db86378fde1e2454d0d85d6",
+    "native/drafts/environment/first-script/worker_hdr.py": "0fe4ee4ff122069b650afd877e347dda0bede6bbd5d192222e48e46a1a19d2e0",
+    "native/drafts/upstream-156/stock-control-observations.json": "938e26368f6cb83a4ff250d83cec0e72163a6737c05d9615ff339465fbd8e036",
+    "app/core/native/diagnostics.py": "edf6dc235bed90ad93314aef6891c3f49c4a3e6c3bbb985b1888fdc6587805d7",
+    "native/drafts/environment/first-script/retained_webgpu_objects.py": "dc29e2a5186723889bcee6fc6fb83bc4cdc8b5ff51273b000eecb338c7a352de",
+    "native/drafts/environment/first-script/retained_webgpu_worker_objects.py": "287e9fb7fadbeb8096413906bab6f40df39c844149ffbc40872bd684da5bae73",
+    "native/drafts/environment/first-script/owner_process.py": "d86f90e386925d0d2940e06046eca85b4ca2e94b901abc751cafc494f9b4468b",
+    "native/drafts/environment/first-script/recorder_replay.py": "fe85d6528c8e3843fc581418b7bdc761a744b2041d8eb60141ee36389dcc4908"
+  },
+  "forced_service_restarts": 4,
+  "native_webgpu_readback_protection": false,
+  "service_retention_guaranteed": false,
+  "cross_profile_isolation_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

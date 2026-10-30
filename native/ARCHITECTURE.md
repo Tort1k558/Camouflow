@@ -40,8 +40,23 @@ owned processes, released runtime resources and no service registrations left.
 This does not verify retained WebGPU resources, native WebGPU readback protection
 or release admission.
 
-Next: verify retained WebGPU resources and frame/worker
-lifecycle, then design the native pixel-readback path with explicit provenance.
+The `--probe retained-webgpu-objects` mode now verifies original resources across
+six genuine BFCache documents in desktop/Mobile Web. With the existing worker
+and service-restart flags it also passed all six worker classes and four exact
+owned service restarts. Dedicated/shared resources persist; restarted service
+workers get new device/resource instances. The shared worker validator keeps
+the WebGL default API, whose real forced-restart repeat also passed.
+[Public resource lifecycle evidence](drafts/environment/retained-webgpu76-observations.json).
+Full Python at `26082fe`, before this resource packet: **4925 passed, 1 skipped**.
+[Full result](drafts/environment/canonical-python76-webgpu-cli-observations.json).
+
+A controlled WebGPU canvas draw exposed an open inconsistency: direct GPU copies
+match the exact reference, but protected PNG export differs in 403 channels by
+one unit; baseline differs in zero channels. PNG repeats are stable. Existing
+Canvas export protection must not be mistaken for coherent WebGPU protection.
+[Retained mismatch and probe source](drafts/environment/webgpu-canvas-export76-observations.json).
+
+Next: fix the native WebGPU pixel-readback/export path with explicit provenance.
 Do not apply pixel noise to arbitrary mapped buffers: compute/storage results,
 mapping errors, offsets and padding must remain exact. Device cohorts and the
 remaining combined/release gates stay open.
