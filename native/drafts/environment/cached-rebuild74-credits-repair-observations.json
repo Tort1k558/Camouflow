@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "scope": "Retained cached preflight failures and exact credits-only repair, no 074 compilation/runtime admission",
+  "retained_failures": [
+    {
+      "report": "D:\\GlintManagerQA\\incremental74-rebuild-20261030-v3\\report.json",
+      "sha256": "7ca3c5ba4fab2e067a728672d86dbe708246a55e1f1e4b3b93f0b3168f2e8757",
+      "error": "Baseline cache has unrelated pending work; full build policy required",
+      "baseline_planned_steps": 3,
+      "compilation_started": false
+    },
+    {
+      "report": "D:\\GlintManagerQA\\incremental74-rebuild-20261030-v4\\report.json",
+      "sha256": "5a86eb62b1938108af0f487dc14e33cb12381051ac4ad361d4dcc956ec482f0f",
+      "error": "Siso plan did not provide one successful work summary",
+      "baseline_planned_steps": null,
+      "compilation_started": false
+    }
+  ],
+  "siso_timing_log": "Ninja query removed its incompatible optional timing log; Siso dependency/state files remain authoritative. No fake log was created.",
+  "credits_repair": {
+    "report": "D:\\GlintManagerQA\\owned-credits74-repair-v1\\report.json",
+    "sha256": "4646d700504089f28f4ab0179a6ffa36e2b59efcbb97b34b6124666c77830f8e",
+    "passed": true,
+    "postguards_passed": true,
+    "before_sha256": "cfc9299ae72b05323e552021a70ea1372ff824a3f2d9fcd9b58ab631dff4a67f",
+    "after_sha256": "cfc9299ae72b05323e552021a70ea1372ff824a3f2d9fcd9b58ab631dff4a67f",
+    "runtime_core_sha256_measured": {
+      "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+      "chrome.dll": "af79d5053ac9d54f37682af19b2d3e7c32d854dfb2511f5b0606fecdab596ded",
+      "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+    },
+    "receipt_sha256": "16d736c33b3a76625d3b4c081f4b2a503613caf786f997c7e26ff08fb6d47164",
+    "actual_steps": 1,
+    "local_jobs": 1,
+    "compiler_invoked": false
+  },
+  "related_python_tests_passed": 177,
+  "full_python_rerun": false,
+  "next_report": "D:/GlintManagerQA/incremental74-rebuild-20261030-v5/report.json",
+  "build_completed": false,
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
