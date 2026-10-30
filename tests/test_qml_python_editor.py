@@ -172,6 +172,14 @@ try:
     if REFRESH_DELAY_MS:
         apply_accounts = ui.profiles._refresh_task._apply
         ui.profiles._refresh_task._apply = lambda value: QTimer.singleShot(REFRESH_DELAY_MS, lambda: apply_accounts(value))
+    profile_events = []
+    profile_started = time.monotonic()
+    ui.profiles.busyChanged.connect(lambda: profile_events.append(
+        ('busy', round(time.monotonic() - profile_started, 3), ui.profiles.busy)))
+    ui.profiles.modelChanged.connect(lambda: profile_events.append(
+        ('model', round(time.monotonic() - profile_started, 3), len(ui.profiles._accounts_cache))))
+    ui.profiles.message.connect(lambda _: profile_events.append(
+        ('message', round(time.monotonic() - profile_started, 3))))
     QMetaObject.invokeMethod(find(root, 'text', 'New Profile'), 'clicked')
     deadline = time.monotonic() + 3
     while True:
@@ -179,7 +187,12 @@ try:
         rows = db.db_get_accounts()
         if len(rows) == 1 and ui.profiles.getProfile(rows[0]['name'], '').get('engine') == 'native':
             break
-        assert time.monotonic() < deadline, 'Created Glint profile was not delivered to the UI model'
+        assert time.monotonic() < deadline, ('Created Glint profile was not delivered to the UI model', {
+            'db_count': len(rows), 'db_engines': [row.get('_browser_engine') for row in rows],
+            'cache_count': len(ui.profiles._accounts_cache),
+            'cache_engines': [row.get('_browser_engine') for row in ui.profiles._accounts_cache],
+            'busy': ui.profiles.busy, 'refresh_busy': ui.profiles._refresh_task.busy,
+            'events': profile_events})
     assert rows[0]['_browser_engine'] == 'native'
     defaults = db.db_get_native_defaults()
     profile = rows[0]['name']
