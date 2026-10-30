@@ -1,6 +1,17 @@
 # Chromium 156 rebase candidate
 
-## Current 001–072 browser: build and baseline passed, protected gates pending
+## Current: selected 001–075, compiled 074 with a retained native fixture crash
+
+074 compiled with j4 (53 steps / 14m35s), then completed 491 native cases.
+Its last group crashed on an empty ScreenInfos fixture; two cases were not run.
+Postguards passed and browser queues stopped. [Failure](native-batch74-observations.json).
+075 changes only the three fixtures' initialization using existing TestView data,
+keeps all assertions and 494 required cases, and passed isolated Clang syntax.
+It is selected, not applied/compiled. [Selection](../environment/screen75-selection-observations.json).
+The preserved 074 copy is diagnostic-only; 073 remains the qualified runtime and
+the older 148 package is retained. No release/security or full-policy admission.
+
+## Historical 001–072 browser: build and baseline passed, protected gates pending
 
 The linked package compiled with **j4: 64 actions / 15m14s**, and 269 assets are
 preserved separately from the writable build output. The new exact binary passed

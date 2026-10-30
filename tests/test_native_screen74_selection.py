@@ -17,11 +17,12 @@ def test_selected_74_preserves_compiled_73_and_binds_all_five_changes():
     record = json.loads((ENV / 'screen74-selection-observations.json').read_bytes())
     before = (candidate['directory'] / 'checkpoints/001-073.json').read_bytes()
     assert hashlib.sha256(before).hexdigest() == record['base_manifest_sha256']
-    assert candidate['manifest_sha256'] == record['selected_manifest_sha256']
-    assert (candidate['directory'] / 'checkpoints/001-074.json').read_bytes() == (candidate['directory'] / 'manifest.json').read_bytes()
-    assert len(candidate['manifest']['patches']) == 74
-    assert candidate['manifest']['patches'][:73] == json.loads(before)['patches']
-    assert candidate['manifest']['patches'][-1] == dict(file=record['patch'], sha256=record['patch_sha256'])
+    historical = (candidate['directory'] / 'checkpoints/001-074.json').read_bytes()
+    assert hashlib.sha256(historical).hexdigest() == record['selected_manifest_sha256']
+    patches = json.loads(historical)['patches']
+    assert len(patches) == 74 and patches[:73] == json.loads(before)['patches']
+    assert candidate['manifest']['patches'][:74] == patches
+    assert patches[-1] == dict(file=record['patch'], sha256=record['patch_sha256'])
     assert len(record['source_paths']) == 5 and record['jobs'] == 4
     assert all(row['before_sha256'] != row['after_sha256'] for row in record['source_paths'])
     assert record['source_preflight']['passed'] and record['source_preflight']['source_unchanged']

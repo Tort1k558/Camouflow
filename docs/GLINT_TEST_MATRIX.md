@@ -1,6 +1,18 @@
 # Glint browser test matrix
 
-## Built 001–074; full native/runtime qualification pending
+## Selected 001–075; compiled 074 has a retained native fixture crash
+
+074 completed 491 cases with postguards intact. The final `screen-dispatch` group
+crashed on its first test's empty `ScreenInfos`; its other two cases did not run.
+Browser queues stopped without launch. [Native failure](../native/drafts/upstream-156/native-batch74-observations.json).
+
+075 changes only test initialization using the existing TestView screen, retains
+every assertion and all 494 required cases, and passed isolated Clang syntax.
+It is selected, not applied/compiled. [Selection](../native/drafts/environment/screen75-selection-observations.json).
+The preserved 074 diagnostic copy has verified 269-asset integrity, not native or
+runtime admission; 073 remains the qualified baseline.
+
+## Historical 001–074 build stage, before native completion
 
 The browser build completed in 53 steps / 14m35s with j4 and a new measured
 core-bound receipt. The 494-case native batch is running; preserved/qualified

@@ -1555,6 +1555,10 @@
     {
       "file": "0074-native-live-screen-updates.patch",
       "sha256": "7f9c2bb3e08e72c55db981e6a18b58cdbc10e408ca25746a93fd0b20b09bbc05"
+    },
+    {
+      "file": "0075-native-logical-screen-fixture.patch",
+      "sha256": "ead7637b703ad40c8b20f36646f6842a5d7a84eea6679caa695ad30e07be06ef"
     }
   ],
   "build": {

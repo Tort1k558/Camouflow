@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "qualification": "unqualified-diagnostic-copy",
+  "native_batch_passed": false,
+  "tests_passed": 491,
+  "native_cases_required": 494,
+  "failed_native_group": "screen-dispatch",
+  "candidate_manifest_sha256": "71b15700678f928a5997938e5c5c69a3c5380935ee6bfb445983a4107370f2e6",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "f09657095bcde2331e504508ccad2017b8054c2777a4228615834bdba498b030",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "raw_batch_sha256": "ab6d7f861a0594fb3486564e6e4d4c006e1b7a2af8dcee83d9ac8e9c5ad5138c",
+  "browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Exact 269-asset diagnostic copy of compiled 074; failed native gate retained, not qualified runtime or release admission",
+  "copy_integrity_passed": true,
+  "postguards_passed": true,
+  "assets": 269,
+  "raw_preservation_sha256": "d6e60e479987aa5e509d0c3feb7aea880437e8c909525d4bde69c8bbf81fc53c"
+}
