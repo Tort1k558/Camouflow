@@ -144,6 +144,12 @@ def test_existing_cache_is_not_replaced_or_cleaned(cache):
     assert incremental.eligible_cache(output, ['chrome'], receipt) == (output / 'args.gn').read_bytes()
 
 
+def test_siso_dependency_cache_does_not_depend_on_ninja_timing_log(cache):
+    output, receipt, _ = cache
+    (output / '.ninja_log').unlink()
+    assert incremental.eligible_cache(output, ['chrome'], receipt) == (output / 'args.gn').read_bytes()
+
+
 @pytest.mark.parametrize('fault', ['missing-deps', 'args-changed', 'debug', 'symbols', 'mixed-cache', 'remote'])
 def test_incomplete_or_changed_cache_requires_full_policy(cache, fault):
     output, receipt, repository = cache

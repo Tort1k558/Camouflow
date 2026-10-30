@@ -181,7 +181,7 @@ def regular(path: Path) -> Path:
 
 
 def eligible_cache(output: Path, targets: list[str], receipt: dict) -> bytes:
-    for name in ('.ninja_log', '.siso_deps', '.siso_fs_state', '.siso_config', 'build.ninja'):
+    for name in ('.siso_deps', '.siso_fs_state', '.siso_config', 'build.ninja'):
         if not regular(output / name).stat().st_size:
             raise ValueError('The initialized Siso cache is incomplete')
     properties = read_record(output / '.siso_config').get('properties', {})
