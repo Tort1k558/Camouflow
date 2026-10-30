@@ -1,0 +1,325 @@
+{
+  "scope": "Owned main-document PNG/capture coherence probe, not privacy admission.",
+  "passed": true,
+  "measurement_complete": true,
+  "source_sha256": "87aca87145ab2689fa0fc64e598f6e381a36e30749b50f162c09beaf89a9b04d",
+  "rows": [
+    {
+      "kind": "html",
+      "colorSpace": "srgb",
+      "colorType": "unorm8",
+      "attributes": {
+        "alpha": true,
+        "colorSpace": "srgb",
+        "colorType": "unorm8",
+        "desynchronized": false,
+        "toneMapping": {
+          "mode": "standard"
+        },
+        "willReadFrequently": true
+      },
+      "error": null,
+      "exports": {
+        "dataURL": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": false,
+            "description": "",
+            "primaries": "Custom",
+            "transfer": "Custom"
+          },
+          "color_space_matches_request": true,
+          "sha256": "d86c6b8470bd40f5b32065d414611406bc7819ef4159508aacd1b8698c4608eb"
+        },
+        "asyncSnapshot": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": false,
+            "description": "",
+            "primaries": "Custom",
+            "transfer": "Custom"
+          },
+          "color_space_matches_request": true,
+          "sha256": "d86c6b8470bd40f5b32065d414611406bc7819ef4159508aacd1b8698c4608eb"
+        }
+      },
+      "passed": true,
+      "mutation_changed_source": true
+    },
+    {
+      "kind": "html",
+      "colorSpace": "srgb",
+      "colorType": "float16",
+      "attributes": {
+        "alpha": true,
+        "colorSpace": "srgb",
+        "colorType": "float16",
+        "desynchronized": false,
+        "toneMapping": {
+          "mode": "standard"
+        },
+        "willReadFrequently": true
+      },
+      "error": null,
+      "exports": {
+        "dataURL": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": false,
+            "description": "",
+            "primaries": "Custom",
+            "transfer": "Custom"
+          },
+          "color_space_matches_request": true,
+          "sha256": "6e439f4cc6aa3763ae74d3c1164870688d5e143c00412c4ee177784caa2139ad"
+        },
+        "asyncSnapshot": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": false,
+            "description": "",
+            "primaries": "Custom",
+            "transfer": "Custom"
+          },
+          "color_space_matches_request": true,
+          "sha256": "6e439f4cc6aa3763ae74d3c1164870688d5e143c00412c4ee177784caa2139ad"
+        }
+      },
+      "passed": true,
+      "mutation_changed_source": true
+    },
+    {
+      "kind": "html",
+      "colorSpace": "display-p3",
+      "colorType": "unorm8",
+      "attributes": {
+        "alpha": true,
+        "colorSpace": "display-p3",
+        "colorType": "unorm8",
+        "desynchronized": false,
+        "toneMapping": {
+          "mode": "standard"
+        },
+        "willReadFrequently": true
+      },
+      "error": null,
+      "exports": {
+        "dataURL": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": true,
+            "description": "Display P3 Gamut with sRGB Transfer",
+            "primaries": "DciP3D65",
+            "transfer": "SRgb"
+          },
+          "color_space_matches_request": true,
+          "sha256": "6a359472e60ee7f9d03698f7682661a2b9c3632e0b8d3f5f8f8d4ad3bef990f4"
+        },
+        "asyncSnapshot": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": true,
+            "description": "Display P3 Gamut with sRGB Transfer",
+            "primaries": "DciP3D65",
+            "transfer": "SRgb"
+          },
+          "color_space_matches_request": true,
+          "sha256": "6a359472e60ee7f9d03698f7682661a2b9c3632e0b8d3f5f8f8d4ad3bef990f4"
+        }
+      },
+      "passed": true,
+      "mutation_changed_source": true
+    },
+    {
+      "kind": "html",
+      "colorSpace": "display-p3",
+      "colorType": "float16",
+      "attributes": {
+        "alpha": true,
+        "colorSpace": "display-p3",
+        "colorType": "float16",
+        "desynchronized": false,
+        "toneMapping": {
+          "mode": "standard"
+        },
+        "willReadFrequently": true
+      },
+      "error": null,
+      "exports": {
+        "dataURL": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": true,
+            "description": "Display P3 Gamut with sRGB Transfer",
+            "primaries": "DciP3D65",
+            "transfer": "SRgb"
+          },
+          "color_space_matches_request": true,
+          "sha256": "aff8e0e37bf1b7db8a2197334232a529b5cf183b4381d728df2c768d8886d781"
+        },
+        "asyncSnapshot": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": true,
+            "description": "Display P3 Gamut with sRGB Transfer",
+            "primaries": "DciP3D65",
+            "transfer": "SRgb"
+          },
+          "color_space_matches_request": true,
+          "sha256": "aff8e0e37bf1b7db8a2197334232a529b5cf183b4381d728df2c768d8886d781"
+        }
+      },
+      "passed": true,
+      "mutation_changed_source": true
+    },
+    {
+      "kind": "offscreen",
+      "colorSpace": "srgb",
+      "colorType": "unorm8",
+      "attributes": {
+        "alpha": true,
+        "colorSpace": "srgb",
+        "colorType": "unorm8",
+        "desynchronized": false,
+        "toneMapping": {
+          "mode": "standard"
+        },
+        "willReadFrequently": true
+      },
+      "error": null,
+      "exports": {
+        "asyncSnapshot": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": false,
+            "description": "",
+            "primaries": "Custom",
+            "transfer": "Custom"
+          },
+          "color_space_matches_request": true,
+          "sha256": "d86c6b8470bd40f5b32065d414611406bc7819ef4159508aacd1b8698c4608eb"
+        }
+      },
+      "passed": true,
+      "mutation_changed_source": true
+    },
+    {
+      "kind": "offscreen",
+      "colorSpace": "srgb",
+      "colorType": "float16",
+      "attributes": {
+        "alpha": true,
+        "colorSpace": "srgb",
+        "colorType": "float16",
+        "desynchronized": false,
+        "toneMapping": {
+          "mode": "standard"
+        },
+        "willReadFrequently": true
+      },
+      "error": null,
+      "exports": {
+        "asyncSnapshot": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": false,
+            "description": "",
+            "primaries": "Custom",
+            "transfer": "Custom"
+          },
+          "color_space_matches_request": true,
+          "sha256": "6e439f4cc6aa3763ae74d3c1164870688d5e143c00412c4ee177784caa2139ad"
+        }
+      },
+      "passed": true,
+      "mutation_changed_source": true
+    },
+    {
+      "kind": "offscreen",
+      "colorSpace": "display-p3",
+      "colorType": "unorm8",
+      "attributes": {
+        "alpha": true,
+        "colorSpace": "display-p3",
+        "colorType": "unorm8",
+        "desynchronized": false,
+        "toneMapping": {
+          "mode": "standard"
+        },
+        "willReadFrequently": true
+      },
+      "error": null,
+      "exports": {
+        "asyncSnapshot": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": true,
+            "description": "Display P3 Gamut with sRGB Transfer",
+            "primaries": "DciP3D65",
+            "transfer": "SRgb"
+          },
+          "color_space_matches_request": true,
+          "sha256": "6a359472e60ee7f9d03698f7682661a2b9c3632e0b8d3f5f8f8d4ad3bef990f4"
+        }
+      },
+      "passed": true,
+      "mutation_changed_source": true
+    },
+    {
+      "kind": "offscreen",
+      "colorSpace": "display-p3",
+      "colorType": "float16",
+      "attributes": {
+        "alpha": true,
+        "colorSpace": "display-p3",
+        "colorType": "float16",
+        "desynchronized": false,
+        "toneMapping": {
+          "mode": "standard"
+        },
+        "willReadFrequently": true
+      },
+      "error": null,
+      "exports": {
+        "asyncSnapshot": {
+          "matches_pre_mutation_pixels": true,
+          "different_bytes": 0,
+          "decoded_color_space": {
+            "valid": true,
+            "description": "Display P3 Gamut with sRGB Transfer",
+            "primaries": "DciP3D65",
+            "transfer": "SRgb"
+          },
+          "color_space_matches_request": true,
+          "sha256": "aff8e0e37bf1b7db8a2197334232a529b5cf183b4381d728df2c768d8886d781"
+        }
+      },
+      "passed": true,
+      "mutation_changed_source": true
+    }
+  ],
+  "privacy_admitted": false,
+  "protected_policy_verified": false,
+  "production_admitted": false,
+  "public_probe": "native/drafts/environment/first-script/canvas_export.py",
+  "public_probe_sha256": "20d54e6b2da2fed7f4995bfb8edbc5817e0dbd3f8ef4fe6842fdee9d41b16817",
+  "public_probe_normalized_utf8_lf_sha256": "20d54e6b2da2fed7f4995bfb8edbc5817e0dbd3f8ef4fe6842fdee9d41b16817",
+  "core_unchanged": true,
+  "raw_report_sha256": "d875d3bb6418fcd6cbe3699dd1263bbedfe3ecd5e69d26acf2ff6dfeed9aa27a",
+  "date": "2026-10-30",
+  "limitations": [
+    "Unprotected preserved 001-070, main document only; not protected 001-072, workers, HDR perceptual quality or privacy admission.",
+    "Exact raw RGBA8/PNG equality uses the existing Qt decoder without decoding via another protected browser Canvas."
+  ]
+}

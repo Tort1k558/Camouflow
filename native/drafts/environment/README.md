@@ -1,5 +1,16 @@
 # Measured reference environments
 
+## PNG export/capture reference for the selected 001–072 batch
+
+The [public page probe and validator](first-script/canvas_export.py) passed
+[eight unprotected 001–070 cases / 12 PNG carriers](canvas-export-baseline70-observations.json).
+HTML and Offscreen, sRGB/P3 and unorm8/F16 exports match raw RGBA8 before a
+deliberate source mutation; async capture and P3 metadata are checked. The Qt
+decoder reads PNG pixels outside the browser, avoiding accidental re-protection.
+Call `await page.evaluate(READ)` on an owned page, then `validate_exports(rows)`;
+profile/runtime lifecycle remains the caller's responsibility.
+This is a main-document **baseline**, not protected 001–072 or worker/HDR admission.
+
 ## Canvas format blocker and combined lifecycle extension
 
 [The differential format gate](canvas-formats70-observations.json) **fails**:

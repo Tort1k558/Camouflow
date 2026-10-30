@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "passed": false,
+  "measurement_complete": true,
+  "git_head": "bdd277940b86e9b753a24548b376f3dd0a758efd",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 896,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 523.765,
+  "returncode": 1,
+  "counts": {
+    "tests": 4451,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4448
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "122f1d32f5448d8de61ce22d17d717be89b5a1c0ad06a772fbe6714525e92afd",
+  "junit_sha256": "302ad6786a374cd9c6a6cc868480f172e8e0564da1cc3672894b142e9ae5d0d6",
+  "raw_report_sha256": "9512f8402d498debeb89b1519dd4ed2d57132d6b949cd6e4712cb98e1706d3fa",
+  "failed_tests": [
+    "tests/test_native_client_hello.py::test_owned_tls_runtime_evidence_is_negotiation_not_general_trust_or_impersonation",
+    "tests/test_native_gpu.py::test_large_attachment_runtime_evidence_keeps_loaded_timings_and_memory_scope_explicit"
+  ],
+  "followup": {
+    "targeted_tests_passed": 392,
+    "full_repeat_after_followup_verified": false,
+    "reason": "Two historical records still compared the mutable current manifest instead of their exact 001-070 checkpoint; evidence data was not rewritten."
+  }
+}

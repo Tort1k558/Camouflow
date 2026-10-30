@@ -40,6 +40,17 @@ def release_tools_before_72_sha256(tmp_path):
 
 
 @pytest.fixture
+def native70_historical_source_hashes(native_units_before_orientation, recorder_before_document_open_sha256):
+    root = Path(__file__).resolve().parents[1]
+    return {
+        "native/drafts/upstream-156/manifest.json": hashlib.sha256(
+            (root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest(),
+        "scripts/verify_native_privacy_units.py": native_units_before_orientation["source_sha256"],
+        "app/services/scenario_recorder.py": recorder_before_document_open_sha256,
+    }
+
+
+@pytest.fixture
 def recorder_before_document_open_sha256(tmp_path):
     """Reconstruct the measured historical source, without rewriting old evidence."""
     root = Path(__file__).resolve().parents[1]

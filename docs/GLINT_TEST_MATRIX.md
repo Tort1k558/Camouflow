@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## Export capture reference and selection follow-up — 2026-10-30
+
+The **unprotected preserved 001–070** passes eight HTML/Offscreen × sRGB/P3 ×
+unorm8/F16 cases: all 12 PNG carriers match pre-mutation RGBA8 pixels, including
+the async snapshot after changing the source canvas. Display-P3 profile metadata
+is retained. Pixels are decoded with the existing Qt decoder, not another Canvas
+that could apply protection a second time.
+[Baseline](../native/drafts/environment/canvas-export-baseline70-observations.json),
+[reusable page probe/validator](../native/drafts/environment/first-script/canvas_export.py).
+Protected 001–072, workers and broad HDR quality are **not verified** by this baseline.
+
+Full Python after source selection: **4448 passed, 2 failed, 1 skipped**. Both
+failures were historical manifest bindings, not newly measured TLS/GPU failures;
+the records stay unchanged and their tests now use the exact 001–070 checkpoint.
+The targeted follow-up passed **392 tests**, not a full repeat.
+[Retained failures](../native/drafts/environment/canonical-python72-selection-failures.json).
+
 ## Linked 001–072 source selection — 2026-10-30
 
 | Gate | Evidence | Not yet proven |
