@@ -9,6 +9,8 @@
 | Согласованность | Экраны шести документов, PNG/DPR и настоящий BFCache прошли |
 | Стресс | 12 фаз: очередь, параллельные targets, смена метрик, detach, full-page, навигация, неверный запрос |
 | Сохранённые GPU-объекты | Публичный opt-in CLI прошёл Desktop/Mobile Web, шесть документов, WebGL1/2 |
+| GPU workers | Шесть classic/module-классов прошли; dedicated/shared сохраняют исходные объекты |
+| GPU service restart | Четыре точные остановки/перезапуска: новые globals, стабильный readback и сохранённые GPU-объекты документов |
 
 [Точные результаты](../native/drafts/environment/screen76-runtime-observations.json).
 Старый отрицательный результат 001–075 сохранён. Новый 001–076 скопирован отдельно,
@@ -18,9 +20,16 @@
 GPU-probe интегрирован; повторены стандартный `canvas` и старый worker/service
 сценарий, включая четыре принудительных restart. [Публичный прогон](../native/drafts/environment/retained-gpu-objects76-observations.json).
 
-**Далее:** GPU-объекты workers, затем WebGPU. Полный профиль/совместимость и
-production-допуск остаются открытыми. Полный Python после интеграции: **4854 passed,
-1 skipped**, контроль исходников/статуса пройден на `10230bd`.
+GPU-workers подключены флагом `--verify-retained-gpu-workers`; принудительный
+restart — дополнительным `--verify-retained-gpu-service-restart`. Оба требуют
+`--probe retained-gpu-objects`. Останавливаются только собственные точные versionId,
+не все workers. Жизнь service worker и сохранение его объектов после restart не гарантируются:
+проверяется новый global со стабильными результатами. [Результаты](../native/drafts/environment/retained-gpu-workers76-observations.json).
+
+**Далее:** WebGPU readback и согласованные device cohorts. Полный профиль,
+совместимость, ресурсы/восстановление и production-допуск остаются открытыми.
+Последний полный Python: **4854 passed, 1 skipped** на `10230bd`, до расширения GPU-workers;
+новый полный повтор ещё требуется.
 [Полный результат](../native/drafts/environment/canonical-python76-retained-gpu-observations.json).
 Успех этих проверок не означает гарантированного обхода CAPTCHA или детекторов.
 

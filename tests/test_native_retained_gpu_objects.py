@@ -45,13 +45,16 @@ def runs():
     return result
 
 
-def test_integrated_archive_binds_exact_current_sources():
+def test_integrated_archive_binds_exact_current_sources(sources_before_gpu_workers):
     directory = ROOT / 'native/drafts/environment'
     record = json.loads((directory / 'retained-gpu-objects-integration-preparation.json').read_bytes())
     assert record['selected'] and record['runtime_verified'] is False
     assert hashlib.sha256((directory / record['patch']).read_bytes()).hexdigest() == record['patch_sha256']
     for row in record['sources']:
-        assert hashlib.sha256((ROOT / row['source']).read_bytes()).hexdigest() == row['staged_sha256']
+        relative = row['source']
+        actual = (sources_before_gpu_workers['sha256'][relative] if relative in sources_before_gpu_workers['sha256']
+                  else hashlib.sha256((ROOT / relative).read_bytes()).hexdigest())
+        assert actual == row['staged_sha256']
 
 
 def test_retained_objects_require_actual_document_and_resource_continuity():
@@ -130,13 +133,15 @@ def test_aggregate_revalidates_raw_observations_and_rejects_reused_instances():
         GPU['validate_runs'](values)
 
 
-def test_exact_public_gpu_runtime_binds_sources_and_keeps_default_and_workers():
+def test_exact_public_gpu_runtime_binds_sources_and_keeps_default_and_workers(sources_before_gpu_workers):
     record = json.loads((ROOT / 'native/drafts/environment/retained-gpu-objects76-observations.json').read_bytes())
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
     assert record['public_cli_integrated'] and record['runtime_verified']
     assert record['selected_probe'] == 'retained-gpu-objects'
     for relative, expected in record['measured_inputs_sha256'].items():
-        assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected, relative
+        actual = (sources_before_gpu_workers['sha256'][relative] if relative in sources_before_gpu_workers['sha256']
+                  else hashlib.sha256((ROOT / relative).read_bytes()).hexdigest())
+        assert actual == expected, relative
     assert {row['mode'] for row in record['runs']} == {'manager-desktop', 'manager-mobile-web'}
     for row in record['runs']:
         assert row['passed'] and row['history_navigation_type'] == 'BackForwardCacheRestore'

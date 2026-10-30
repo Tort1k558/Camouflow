@@ -18,7 +18,14 @@ retention, WebGPU, complete profile isolation or privacy/release capabilities.
 The integration baseline at `10230bd` passed **4854 Python tests, 1 skipped**,
 with source/status guards. [Full result](drafts/environment/canonical-python76-retained-gpu-observations.json).
 [Measured evidence](drafts/environment/screen76-runtime-observations.json).
-Next: retained worker GPU resources, then WebGPU readback and combined admission.
+Worker GPU retention is now opt-in via `--verify-retained-gpu-workers`. The public
+CLI passed six classic/module classes in desktop/Mobile Web. The additional
+`--verify-retained-gpu-service-restart` passed four exact-version stops/restarts:
+new service/GPU globals, stable reads and intact document GPU resources/screens.
+Dedicated/shared retain original objects; service lifetime is not guaranteed.
+Default, document-only and legacy worker/service modes also passed again.
+[Worker GPU evidence](drafts/environment/retained-gpu-workers76-observations.json).
+Next: WebGPU readback, device cohorts and the remaining combined/release gates.
 
 ## Historical source selection 001–076
 

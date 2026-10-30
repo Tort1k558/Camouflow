@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "selected": true,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "patch": "retained-gpu-workers-integration.patch",
+  "patch_sha256": "9ab5c7523d3eed5beafac6e7775a7609ff5d281b571c47cb3e455ccc347759d1",
+  "sources": [
+    {
+      "source": "native/drafts/environment/first-script/retained_gpu_worker_objects.py",
+      "before_sha256": null,
+      "staged_sha256": "d9683a9498fd0674df2cf5d3f1fc4260dabcb85d2f0ca9680eb839359c17bac6"
+    },
+    {
+      "source": "native/drafts/environment/first-script/protected_history_runtime.py",
+      "before_sha256": "aa169685e6e40b8103c1571e9c57a47e774f58d9d02510721d5b4acdc5e6c020",
+      "staged_sha256": "7b71fd85e969220b2e8e6dfe1d4ebd239d0ea40d0550d7e86403896c2b93c021"
+    }
+  ],
+  "scope": "Selected opt-in original worker GPU resources and explicit per-version service restart; exact public runtime pending"
+}

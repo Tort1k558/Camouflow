@@ -30,9 +30,15 @@ def main() -> int:
     parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents', 'retained-workers', 'retained-gpu-objects'), default='canvas')
     parser.add_argument('--verify-service-lifecycle', action='store_true',
                         help='Verify owned service-controlled BFCache and explicit per-version stop/restart')
+    parser.add_argument('--verify-retained-gpu-workers', action='store_true')
+    parser.add_argument('--verify-retained-gpu-service-restart', action='store_true')
     args = parser.parse_args()
     if args.verify_service_lifecycle and args.probe != 'retained-workers':
         parser.error('--verify-service-lifecycle requires --probe retained-workers')
+    if args.verify_retained_gpu_workers and args.probe != 'retained-gpu-objects':
+        parser.error('--verify-retained-gpu-workers requires --probe retained-gpu-objects')
+    if args.verify_retained_gpu_service_restart and not args.verify_retained_gpu_workers:
+        parser.error('--verify-retained-gpu-service-restart requires --verify-retained-gpu-workers')
     OUT, STAGE, EXE = args.work_dir, args.driver_stage, args.executable
     MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
     for path in (OUT, STAGE, EXE):
@@ -118,6 +124,10 @@ def main() -> int:
         worker_canvas_read = runpy.run_path(str(FIXTURE / 'worker_formats.py'))['worker_read'](canvas_read)
         worker_read = f"async () => ({{canvas: await ({worker_canvas_read})(), gpu: await ({gpu.READBACK_READ})(), audio: await ({surfaces.AUDIO_READ})(true)}})"
 
+    gpu_workers = None
+    if args.verify_retained_gpu_workers:
+        import retained_gpu_worker_objects as gpu_workers
+
     controlled_services = None
     if args.verify_service_lifecycle:
         import controlled_service_workers as controlled_services
@@ -140,6 +150,11 @@ def main() -> int:
 
     if retained_objects is not None:
         report['scope'] = 'Original WebGL1/2 resources, known textured draw, framebuffer/default reads and PNG across six genuine BFCache documents; not recreated Audio/GPU full coverage, workers, WebGPU, profile isolation or privacy/release admission'
+
+    if gpu_workers is not None:
+        report['scope'] = 'Original GPU resources across real document BFCache and six worker classes; dedicated/shared retention, explicit service restart classification; not Audio, WebGPU, profile isolation or privacy/release admission'
+        if args.verify_retained_gpu_service_restart:
+            report['scope'] += '; explicit owned per-version service stops/restarts, new GPU globals and post-restart document GPU/screen checks'
 
     if worker_fixture is not None:
         report['scope'] += '; six actual classic/module worker policy observations around document BFCache; dedicated/shared instance retention, service restart classification; service does not control the primary restored document, no retained GPU objects or WebGPU readback admission'
@@ -198,6 +213,8 @@ def main() -> int:
                     session = await context.new_cdp_session(pages[1])
                     try:
                         await session.send('Page.enable')
+                        if args.verify_retained_gpu_service_restart:
+                            gpu_versions = await gpu_workers.service.subscribe(session)
                         if controlled_services is not None:
                             service_versions = await controlled_services.subscribe(session)
                         before = await probe['capture_page'](pages[1])
@@ -213,6 +230,9 @@ def main() -> int:
                             if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
                                 registration = await retained.install(pages[1], before, surface_read)
                                 row['retained_documents_before'] = await retained.collect(session, registration, persisted=False)
+                        if gpu_workers is not None:
+                            gpu_worker_token = await gpu_workers.lifecycle.install(pages[1])
+                            row['retained_gpu_workers_before'] = await gpu_workers.lifecycle.collect(session, gpu_worker_token, persisted=False)
                         state = await probe['restore_history'](pages[1], session, before, row)
                         observed = probe['restored_observations'](state)
                         restored = await session.send('Runtime.evaluate', {'expression': '(' + canvas_read + ')()',
@@ -240,6 +260,14 @@ def main() -> int:
                                     if controlled_services is not None:
                                         row['controlled_service_validation'] = await controlled_services.capture(context, session, service_versions, row, probe, recapture_surfaces_history, initial[1])
                                     row['worker_lifecycle_cleanup'] = await read_restored_surfaces(session, 'async () => await window.glintRetainedWorkers.close()')
+                            if gpu_workers is not None:
+                                row['retained_gpu_workers_after'] = await gpu_workers.lifecycle.collect(session, gpu_worker_token, persisted=True)
+                                row['retained_gpu_worker_validation'] = gpu_workers.validate_pair(row['retained_gpu_workers_before'], row['retained_gpu_workers_after'])
+                                if args.verify_retained_gpu_service_restart:
+                                    row['retained_gpu_service_restart_cases'] = await gpu_workers.force_service_restarts(session, gpu_versions, gpu_worker_token, row['retained_gpu_workers_after'])
+                                    row['retained_gpu_documents_after_restart'] = await retained.collect(session, registration, persisted=True)
+                                    row['retained_gpu_service_restart_validation'] = gpu_workers.validate_forced_cases(row['retained_gpu_service_restart_cases'], row['retained_documents_before'], row['retained_gpu_documents_after_restart'], row['retained_gpu_workers_before']['rootTimeOrigin'])
+                                row['retained_gpu_worker_cleanup'] = await read_restored_surfaces(session, 'async () => await window.glintRetainedWorkers.close()')
                             post_surfaces = await recapture_surfaces_history(session, state)
                             observed = probe['restored_observations'](post_surfaces)
                             row['post_surfaces_history'] = post_surfaces
@@ -280,6 +308,12 @@ def main() -> int:
             if args.probe in {'retained-documents', 'retained-workers'}:
                 report['retained_document_coverage'] = all(row['retained_document_validation']['passed'] for row in report['runs'])
                 report['passed'] = report['passed'] and report['retained_document_coverage']
+            if gpu_workers is not None:
+                report['retained_gpu_worker_validation'] = gpu_workers.validate_runs(report['runs'])
+                if (args.verify_retained_gpu_service_restart and
+                        report['retained_gpu_worker_validation']['forced_service_restart_verified'] is not True):
+                    raise ValueError('Requested GPU service restart coverage is incomplete')
+                report['passed'] = report['passed'] and report['retained_gpu_worker_validation']['passed']
             if surface_validator is not None:
                 report['surface_validation'] = surface_validator(report['runs'])
                 report['passed'] = report['passed'] and report['surface_validation']['passed']
@@ -291,9 +325,12 @@ def main() -> int:
                 report['passed'] = report['passed'] and report['controlled_service_validation']['passed']
 
 
-    server = (probe['create_server']() if worker_fixture is None else
-              probe['ThreadingHTTPServer'](('127.0.0.1', 0), (worker_fixture.server_type(probe['CacheableHandler'], worker_read) if controlled_services is None else
-               controlled_services.server_type(worker_fixture.server_type(probe['CacheableHandler'], worker_read)))))
+    if gpu_workers is not None:
+        server = probe['ThreadingHTTPServer'](('127.0.0.1', 0), gpu_workers.lifecycle.server_type(probe['CacheableHandler'], gpu_workers.worker_read()))
+    else:
+        server = (probe['create_server']() if worker_fixture is None else
+                  probe['ThreadingHTTPServer'](('127.0.0.1', 0), (worker_fixture.server_type(probe['CacheableHandler'], worker_read) if controlled_services is None else
+                   controlled_services.server_type(worker_fixture.server_type(probe['CacheableHandler'], worker_read)))))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     save()

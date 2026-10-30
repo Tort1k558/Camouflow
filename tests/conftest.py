@@ -236,7 +236,35 @@ def historical_surface_source_sha256(surface_sources_before_retained):
 
 
 @pytest.fixture
-def sources_before_retained_gpu(tmp_path):
+def sources_before_gpu_workers(tmp_path):
+    """Reconstruct the measured document-only GPU CLI before worker expansion."""
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'retained-gpu-workers-integration-preparation.json').read_bytes())
+    base = tmp_path / 'before-retained-gpu-workers'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text((root / row['source']).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=30)
+    result = {'sha256': {}, 'sources': {}}
+    for row in record['sources']:
+        target = base / row['source']
+        if row['before_sha256'] is None:
+            assert not target.exists()
+        else:
+            value = hashlib.sha256(target.read_bytes()).hexdigest()
+            assert value == row['before_sha256'], row['source']
+            result['sha256'][row['source']] = value
+            result['sources'][row['source']] = target.read_text(encoding='utf-8')
+    return result
+
+
+@pytest.fixture
+def sources_before_retained_gpu(tmp_path, sources_before_gpu_workers):
     """Reverse the GPU opt-in before verifying earlier measured source bindings."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -245,7 +273,10 @@ def sources_before_retained_gpu(tmp_path):
     for row in record['sources']:
         target = base / row['source']
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text((root / row['source']).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+        source = (sources_before_gpu_workers['sources'][row['source']]
+                  if row['source'] in sources_before_gpu_workers['sources']
+                  else (root / row['source']).read_text(encoding='utf-8-sig'))
+        target.write_text(source, encoding='utf-8', newline='\n')
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],

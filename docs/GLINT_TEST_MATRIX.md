@@ -9,6 +9,8 @@
 | Screen/PNG/DPR/BFCache | Six actual document roles retained | Not arbitrary sites or complete device cohorts |
 | Transaction stress | Twelve phases passed, including observed cancellations and invalid-request recovery | Exact race timing not guaranteed; BFCache measured separately |
 | Retained GPU public CLI | Original WebGL1/2 resources passed in six BFCache documents, desktop/Mobile Web | Not worker GPU retention, WebGPU or cross-profile isolation |
+| Worker GPU opt-in | Six classic/module classes passed in both modes; dedicated/shared retain original objects | Service globals may restart; no lifetime guarantee |
+| Forced GPU service restart | Four exact-version running/stopped/running chains; new globals, stable reads and retained document GPU/screens | Not stop-all, worker Audio, WebGPU or full profile isolation |
 | Preservation | Independent 076 runtime, 269 assets verified | 075 rollback baseline retained |
 | Full integrated Python baseline | 4854 passed, 1 skipped; source/status guards passed | At `10230bd`, before evidence-only follow-up; not native/privacy admission |
 
@@ -17,6 +19,10 @@
 also retains passing default `canvas` and worker/service repeats, including four
 version-specific service restarts. The new mode is explicit: `--probe retained-gpu-objects`.
 [Full Python result](../native/drafts/environment/canonical-python76-retained-gpu-observations.json).
+[Public worker GPU evidence](../native/drafts/environment/retained-gpu-workers76-observations.json)
+includes four backward-mode repeats. Use `--verify-retained-gpu-workers` with
+`--probe retained-gpu-objects`; add `--verify-retained-gpu-service-restart` for
+the explicit owned-version restart check. Full Python above predates this expansion.
 These results do not admit WebGPU, full profile isolation, privacy guarantees,
 CAPTCHA outcomes or production/release deployment.
 
