@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Screenshot transaction preparation — not runtime admission
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Exact five-file patch replay | Passed against selected 001–075 sources | Canonical checkout untouched |
+| Production syntax | EmulationHandler and PageHandler passed | No linking/runtime proof |
+| Native unit fixture syntax | Twelve real-session cases compiled in syntax-only mode | **Cases not executed** |
+| Navigation safety | Document tokens and pre-commit cancellation implemented in draft | BFCache/runtime checks pending |
+| Full integrated worker/service Python baseline | 4801 passed, 1 skipped at `2953274`; guards passed | Before this native draft, not a release gate |
+
+[Native preparation](../native/drafts/environment/screenshot-transaction76-preparation.json),
+[full Python result](../native/drafts/environment/canonical-python75-worker-service-observations.json).
+Cross-session screenshot failures remain unresolved until the new binary passes
+the original no-clip/clip, PNG/DPR, navigation and cleanup matrix.
+
 ## Integrated worker and controlled-service lifecycle — 2026-10-31
 
 | Gate | Measured Windows 001–075 result | Boundary |

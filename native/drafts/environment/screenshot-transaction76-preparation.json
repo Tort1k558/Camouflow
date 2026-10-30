@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "selected": false,
+  "runtime_verified": false,
+  "native_tests_executed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Unselected five-file target-owned screenshot transaction draft; exact replay and pinned syntax only",
+  "patch": "screenshot-transaction-next.patch",
+  "patch_sha256": "d0b58b5756d4b0aaf25bc11ebced11c91eb3ef262ce4611849d06b18f3e0a501",
+  "sources": [
+    {
+      "source": "content/browser/devtools/devtools_agent_host_impl_unittest.cc",
+      "before_sha256": "e312e7b3d0d5b8da47bdfba6f732a6dd4f2be44a8c55708e7836f084f8c103cd",
+      "staged_sha256": "97a9619be5b978a2dd305f80c6a2cb88f6a910ea30d47e61798440487ca34684"
+    },
+    {
+      "source": "content/browser/devtools/protocol/emulation_handler.cc",
+      "before_sha256": "ebc935bf3a6b6fecb4284736810563b53c4f3363fba44fc4770dc59533cb5ef5",
+      "staged_sha256": "ad26b07cc76216f512fd05cedc9ced1b89ffd2508dd3bec323cb5f28391afbba"
+    },
+    {
+      "source": "content/browser/devtools/protocol/emulation_handler.h",
+      "before_sha256": "4e088d40f5d1035f04884a00db2d722f0d4f5a0bd1cb218caca4443ee4204664",
+      "staged_sha256": "e22693c3d6257bb8dacd32dd15d239c2782b0bab4f952e4347c0ea53953c44cc"
+    },
+    {
+      "source": "content/browser/devtools/protocol/page_handler.cc",
+      "before_sha256": "008a11651f5048ea8630f4a2d0f710904d1595c890287b55aa1a0517d8fd4dab",
+      "staged_sha256": "4053352892369874b53c2876e31630305e4ec42e868596e6b2e919b70f5c88a3"
+    },
+    {
+      "source": "content/browser/devtools/protocol/page_handler.h",
+      "before_sha256": "28dc66d929b5357157e12278751fe910d3c7e05d9740ffd5f0d2687d411af222",
+      "staged_sha256": "fcaff21f2c7b008919273d8b02b72063a27e77b3d63ecdc72c785230523fc3f7"
+    }
+  ],
+  "base_checkpoint_sha256": "edf97d81da753d2980c91a383baab346f7bf5e21cc393a75540c669aa5ab14c1",
+  "exact_replay_passed": true,
+  "canonical_source_unchanged": true,
+  "build_outputs_unchanged": true,
+  "native_test_cases_prepared": 12,
+  "compiler_syntax_checks": [
+    {
+      "source": "content/browser/devtools/protocol/emulation_handler.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "d9b2818ff40329f3abc48962bb28491ff3ec415a6621f459efbd12005f0d331d"
+    },
+    {
+      "source": "content/browser/devtools/protocol/page_handler.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "129e2042dd709f2155541932300f07b752b65e65e538761f780d7b644cc514cc"
+    },
+    {
+      "source": "content/browser/devtools/devtools_agent_host_impl_unittest.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_sha256": "581369faa2740556d85ead3d5f8f438c7df47775069b0002633ace8089d0ba9c"
+    }
+  ],
+  "syntax_report_sha256": "cb1116ad6818d46e9992c3f4c502aa8a5fea877dfe96a3967108d7f97e1cedf4",
+  "pending": [
+    "Native unit execution",
+    "Bounded incremental build eligibility",
+    "Cross-session screenshot and PNG/DPR runtime matrix",
+    "Navigation and BFCache with in-flight capture",
+    "Compatibility and release admission"
+  ]
+}

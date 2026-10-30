@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "git_head": "2953274c1cc96406676509bf392d128fa74fae35",
+  "counts": {
+    "tests": 4802,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4801
+  },
+  "duration_seconds": 454.438,
+  "log_sha256": "d82b6c38cdf15557adbdf87646a1ab696bc68cf2647950173b33b409302e9ade",
+  "junit_sha256": "3df8502a635a8b2e1e7efc6c87316eb7ca9eef4775b94b2a7e5410c445ed0196",
+  "schema": 1,
+  "raw_report_sha256": "12301d9c9a6382517eca4e4b02df6f60bd721f2222ba5bddf8c5c23ae2a758ca",
+  "scope": "Full canonical Python regression after worker/service diagnostic integration at 2953274; before unselected native screenshot transaction draft",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "previous_full_result": "canonical-python75-historical-binding-repair-observations.json"
+}

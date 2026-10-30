@@ -1,5 +1,22 @@
 # Glint architecture
 
+## Document-bound screenshot transaction draft
+
+The unselected five-file native package shares effective emulation ownership and
+FIFO screenshot leases across sessions of the same target. Leases bind both the
+frame and document token; cross-document navigation cancels pending work before
+commit, and late callbacks cannot restore state into a replacement document.
+Only capture-owned view/preference changes are restored. Twelve real-session
+native unit cases are prepared. Both production translation units and the unit
+fixture passed pinned syntax checks; exact patch replay and source/build guards
+passed. **The tests have not executed and the draft is not selected or linked.**
+[Preparation](drafts/environment/screenshot-transaction76-preparation.json).
+
+The integrated worker/service Python baseline at `2953274` passed **4801 tests,
+1 skipped**, with source/status guards. This is not native screenshot runtime
+proof or release admission.
+[Full regression](drafts/environment/canonical-python75-worker-service-observations.json).
+
 ## Integrated worker and service-controlled lifecycle
 
 `retained-workers` adds six actual classic/module worker classes to the protected
