@@ -28,6 +28,7 @@
       "main",
       "srcdoc"
     ],
+    "history_navigation_type": "BackForwardCacheRestore",
     "missing_roles": [
       "nested-return",
       "same"

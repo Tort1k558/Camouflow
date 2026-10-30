@@ -260,6 +260,7 @@ def test_root_only_driver_prototype_does_not_admit_missing_cross_process_frames(
     assert positive["passed"] and positive["postguards_passed"]
     assert positive["phases"] == 4 and positive["recorded_clicks_per_phase"] == 2
     assert negative["passed"] is False and negative["measurement_complete"] is False and negative["postguards_passed"]
+    assert negative["history_navigation_type"] == "BackForwardCacheRestore"
     assert negative["observed_roles"] == ["about-blank", "cross", "main", "srcdoc"]
     assert negative["missing_roles"] == ["nested-return", "same"]
     assert set(negative["observed_roles"]) | set(negative["missing_roles"]) == {
