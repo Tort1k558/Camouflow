@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "bd82e73e23972a89160ed08bca8b9d3f1910ec3a",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 866,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 394.016,
+  "returncode": 0,
+  "counts": {
+    "tests": 4406,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4405
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "9eadd5e03181462d8d935bea63dde7c15e983e7e8f04362f68eca0e9802205b2",
+  "junit_sha256": "392e9d041a1eacd12fc0e2eaff2ba15b4c8377508a0524fc6eeb92829b2daa7b",
+  "raw_report_sha256": "30be8d858a8ca38a33d342b1e2da99d2226ed8dc0c50a531ae285ade74c22309",
+  "note": "Full repeat at bd82e73 including the combined eight-profile collector; precedes the concurrent/mobile/format diagnostics."
+}

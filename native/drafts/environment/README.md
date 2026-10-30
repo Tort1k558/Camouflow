@@ -1,5 +1,38 @@
 # Measured reference environments
 
+## Canvas format blocker and combined lifecycle extension
+
+[The differential format gate](canvas-formats70-observations.json) **fails**:
+baseline reads all 32 HTML/Offscreen × context/read color space × unorm8/float16
+combinations; protected reads only the two default sRGB/RGBA8 cases. The other 30
+throw `NotReadableError`. This is a compatibility bug, not an accepted privacy
+result. [Native fix contract](CANVAS_FORMATS.md); no native fix is compiled.
+
+[Concurrent protected desktop profiles](combined-concurrent70-observations.json)
+passed six controls, including closing either peer and restarting each profile.
+[Combined Mobile Web](combined-mobile70-observations.json) passed 18 phases with
+eight protected profiles and both AudioMath selectors: Windows runtime with
+390×844/DPR 3/touch, **not Android/iOS**. These gates use default Canvas formats;
+they do not supersede the extended-format failure.
+
+The public [concurrent collector](first-script/combined_concurrent.py) and
+[format collector](first-script/canvas_formats.py) require a completed owned desktop
+cohort from the combined collector below. Use explicit compiled runtime/stage paths
+and a new output directory on D; the format command currently exits **1** as expected:
+
+```powershell
+.\.venv\Scripts\python.exe native/drafts/environment/first-script/combined_concurrent.py --executable D:\GlintQA\runtime\chrome.exe --cohort-directory D:\GlintQA\completed-combined --work-dir D:\GlintQA\fresh-concurrent --driver-stage D:\GlintDriverStage-new --candidate upstream-156
+.\.venv\Scripts\python.exe native/drafts/environment/first-script/canvas_formats.py --executable D:\GlintQA\runtime\chrome.exe --cohort-directory D:\GlintQA\completed-combined --work-dir D:\GlintQA\fresh-formats --driver-stage D:\GlintDriverStage-new --candidate upstream-156
+```
+
+[The Mobile variant](combined-mobile70.patch) applies to
+`scripts/verify_native_combined_math.py` **only in a disposable full-layout repository
+copy on D**. Do not patch the active collector or a running measurement. The compact
+record binds the base, prepared portable and actual measured source hashes.
+[Full Python at `bd82e73`](canonical-python70-combined-math-observations.json):
+**4405 passed, 1 skipped**, before the new lifecycle/format diagnostics.
+Default selection and production admission remain unchanged. Historical gates follow.
+
 ## Native combined surface / AudioMath gate
 
 [Measured cohort](combined-math70-observations.json): baseline plus eight protected

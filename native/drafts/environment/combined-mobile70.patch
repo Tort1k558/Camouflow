@@ -1,0 +1,34 @@
+diff --git a/scripts/verify_native_combined_math.py b/scripts/verify_native_combined_math.py
+--- a/scripts/verify_native_combined_math.py
++++ b/scripts/verify_native_combined_math.py
+@@ -1,4 +1,4 @@
+-"""Combined native Canvas/WebGL/AudioMath compatibility collector; no privacy admission."""
++"""Owned Mobile Web Canvas/WebGL/AudioMath experiment; desktop Windows runtime with touch/viewport emulation, not Android/iOS or privacy admission."""
+ 
+ import argparse
+ import asyncio
+@@ -184,7 +184,8 @@
+         identities = {}
+         for name in profile_names:
+             configuration = CombinedConfiguration(probe_mode='baseline' if name == 'baseline' else 'ready',
+-                derivation_mode='profile-identity', disabled_features_argument=replacement, ignored_driver_argument=original)
++                derivation_mode='profile-identity', disabled_features_argument=replacement, ignored_driver_argument=original,
++                environment='mobile_web', width=390, height=844, device_scale_factor=3)
+             runtime = NativeRuntime(PROFILE_ROOT / name, EXE, configuration)
+             for phase in ('initial', 'restart'):
+                 row = {'profile': name, 'phase': phase, 'passed': False, 'validations': {}}
+@@ -200,6 +201,14 @@
+                             or workers.partitioning_argument(effective) != replacement):
+                         raise ValueError('Effective arguments do not request the combined policies and partitioning')
+                     row['effective_features'] = [value for value in effective if value.startswith('--enable-features=')]
++                    page = context.pages[0]
++                    await page.goto('about:blank')
++                    row['environment_observed'] = await page.evaluate('''() => ({width: screen.width, height: screen.height,
++                        dpr: devicePixelRatio, touch: navigator.maxTouchPoints, userAgent: navigator.userAgent,
++                        platform: navigator.platform})''')
++                    if (row['environment_observed']['width'] != 390 or row['environment_observed']['height'] != 844
++                            or row['environment_observed']['dpr'] != 3 or row['environment_observed']['touch'] < 1):
++                        raise ValueError('Actual Mobile Web metrics differ from the requested environment')
+                     digest = sha(runtime.profile_dir / IDENTITY_FILE)
+                     if name in identities:
+                         if identities[name] != digest:

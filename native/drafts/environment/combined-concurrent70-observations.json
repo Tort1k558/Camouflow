@@ -1,0 +1,288 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "scope": "Concurrent protected profiles from a completed owned cohort; no privacy admission.",
+  "checks": [
+    {
+      "selector": 0,
+      "phase": "both-running",
+      "passed": true,
+      "document_contexts": [
+        "about_blank_frame",
+        "cross_origin_frame",
+        "document",
+        "same_origin_frame",
+        "srcdoc_frame"
+      ],
+      "context_count": 8,
+      "canvas_gpu_audio_match_prior_cohort": true,
+      "compressor_effect": {
+        "document": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "same_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "cross_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "about_blank_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "srcdoc_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        }
+      }
+    },
+    {
+      "selector": 1,
+      "phase": "both-running",
+      "passed": true,
+      "document_contexts": [
+        "about_blank_frame",
+        "cross_origin_frame",
+        "document",
+        "same_origin_frame",
+        "srcdoc_frame"
+      ],
+      "context_count": 8,
+      "canvas_gpu_audio_match_prior_cohort": true,
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        }
+      }
+    },
+    {
+      "selector": 1,
+      "phase": "peer-closed-0",
+      "passed": true,
+      "document_contexts": [
+        "about_blank_frame",
+        "cross_origin_frame",
+        "document",
+        "same_origin_frame",
+        "srcdoc_frame"
+      ],
+      "context_count": 8,
+      "canvas_gpu_audio_match_prior_cohort": true,
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        }
+      }
+    },
+    {
+      "selector": 0,
+      "phase": "same-profile-restarted-0",
+      "passed": true,
+      "document_contexts": [
+        "about_blank_frame",
+        "cross_origin_frame",
+        "document",
+        "same_origin_frame",
+        "srcdoc_frame"
+      ],
+      "context_count": 8,
+      "canvas_gpu_audio_match_prior_cohort": true,
+      "compressor_effect": {
+        "document": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "same_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "cross_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "about_blank_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "srcdoc_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        }
+      }
+    },
+    {
+      "selector": 0,
+      "phase": "peer-closed-1",
+      "passed": true,
+      "document_contexts": [
+        "about_blank_frame",
+        "cross_origin_frame",
+        "document",
+        "same_origin_frame",
+        "srcdoc_frame"
+      ],
+      "context_count": 8,
+      "canvas_gpu_audio_match_prior_cohort": true,
+      "compressor_effect": {
+        "document": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "same_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "cross_origin_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "about_blank_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "srcdoc_frame": {
+          "sha256": "479793613095440a581f7010e0f5a576e5e05784b9650de1d0b462d178e2a732",
+          "bytes": 65536,
+          "matches_baseline": null
+        }
+      }
+    },
+    {
+      "selector": 1,
+      "phase": "same-profile-restarted-1",
+      "passed": true,
+      "document_contexts": [
+        "about_blank_frame",
+        "cross_origin_frame",
+        "document",
+        "same_origin_frame",
+        "srcdoc_frame"
+      ],
+      "context_count": 8,
+      "canvas_gpu_audio_match_prior_cohort": true,
+      "compressor_effect": {
+        "document": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "same_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "cross_origin_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "about_blank_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        },
+        "srcdoc_frame": {
+          "sha256": "8f9657744e64ae13949d3260b0a5ff9fe8e553280231d1b3c397349772f8d00c",
+          "bytes": 65536,
+          "matches_baseline": null
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "asyncio_errors": [],
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "088e4b1bdce37ddb05e422819a826fb352e16f68759eeebfcbb657ab5a5d0652",
+  "cohort_sha256": "956091287b3a89817cda7694d9c7968499d62ac74aa4fd15ec95b4e84830c8b6",
+  "chosen_profiles": {
+    "0": "profile-00",
+    "1": "profile-01"
+  },
+  "both_profiles_running": true,
+  "remaining_observed_processes": 0,
+  "observed_processes": 56,
+  "resources_released": true,
+  "postguards_passed": true,
+  "raw_report_sha256": "b59fae6436690d3b905cfac9c1992ebaacc9bdf08e73a276b0456d760e090d79",
+  "selected": false,
+  "concurrent_protected_profiles_verified": true,
+  "mobile_web_verified": false,
+  "resource_limits_verified": false,
+  "date": "2026-10-30",
+  "public_runner": "native/drafts/environment/first-script/combined_concurrent.py",
+  "public_runner_sha256": "469a281a9c2126df5e2c3de251034534b103e66aff5e3dc8cd87686b8acc6c9b",
+  "public_runner_normalized_utf8_lf_sha256": "469a281a9c2126df5e2c3de251034534b103e66aff5e3dc8cd87686b8acc6c9b",
+  "limitations": [
+    "Same-host Windows desktop profile-identity cohort, not Mobile Web, BFCache or other operating systems.",
+    "Two live profiles and observed-process cleanup are not a peak-memory/long-run leak or resource-limit gate.",
+    "No Display-P3/Float16 Canvas support or production/security/release admission follows."
+  ]
+}

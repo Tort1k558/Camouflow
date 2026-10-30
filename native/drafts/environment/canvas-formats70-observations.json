@@ -1,0 +1,1939 @@
+{
+  "schema": 1,
+  "measurement_complete": true,
+  "scope": "Differential Canvas sRGB/Display-P3/unorm8/float16 compatibility and effect gate.",
+  "runs": [
+    {
+      "profile": "baseline",
+      "observed": {
+        "float16Available": true,
+        "rows": [
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "cc4b4c47f188ece271e081496df45643ed1d37e674ea841629bfd9953cebed4b",
+              "repeat": "cc4b4c47f188ece271e081496df45643ed1d37e674ea841629bfd9953cebed4b",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "a7bc5eb443c41e6dacafefeba43f4cf3ceb5ed220d88ac830b3667f4be4da9b4",
+              "repeat": "a7bc5eb443c41e6dacafefeba43f4cf3ceb5ed220d88ac830b3667f4be4da9b4",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "repeat": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "34086d75f14ad95ad922cfb444d9d8e266d9e5c07bf31dabcd998f066f892fb7",
+              "repeat": "34086d75f14ad95ad922cfb444d9d8e266d9e5c07bf31dabcd998f066f892fb7",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "cc4b4c47f188ece271e081496df45643ed1d37e674ea841629bfd9953cebed4b",
+              "repeat": "cc4b4c47f188ece271e081496df45643ed1d37e674ea841629bfd9953cebed4b",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "d6b1ef289dda6ac71ae98c1efe705b0d0e56da094499e6fef319d0971934afb4",
+              "repeat": "d6b1ef289dda6ac71ae98c1efe705b0d0e56da094499e6fef319d0971934afb4",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "968762a4831f8d73e035d4ae83901b5e5cf41c7ec5b1d23a59cfd982e396005f",
+              "repeat": "968762a4831f8d73e035d4ae83901b5e5cf41c7ec5b1d23a59cfd982e396005f",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "bc54f01da82df19a224812891872806a2661c09e971fd03bb385e8793061d973",
+              "repeat": "bc54f01da82df19a224812891872806a2661c09e971fd03bb385e8793061d973",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "38953407270ecf36a2498ec98daa8f3185acb5b8fee5c66618215dd83f4fe7a9",
+              "repeat": "38953407270ecf36a2498ec98daa8f3185acb5b8fee5c66618215dd83f4fe7a9",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "22845fe7acd4623a3e853d049f2b9d68e3c14d8fc032577f5726ec827edc4ffb",
+              "repeat": "22845fe7acd4623a3e853d049f2b9d68e3c14d8fc032577f5726ec827edc4ffb",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "repeat": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "81d01bd4047273aecee5aae3219e13c1278b4faeb027cf0beead9d0eab650d63",
+              "repeat": "81d01bd4047273aecee5aae3219e13c1278b4faeb027cf0beead9d0eab650d63",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "fc80737eb8ebbdec6fd7a012b9f96ca1b2a8f39e1bea3547075d9a1d81a2fc41",
+              "repeat": "fc80737eb8ebbdec6fd7a012b9f96ca1b2a8f39e1bea3547075d9a1d81a2fc41",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "3fd749c3719c2cc50f89978babbf61edc642ff4f0aa0eb3d828f0cce624fc899",
+              "repeat": "3fd749c3719c2cc50f89978babbf61edc642ff4f0aa0eb3d828f0cce624fc899",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "repeat": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "4cc314d7b5bb2040bef64df989b7a6bad5ca43b59bcedb6948593ff43ec59024",
+              "repeat": "4cc314d7b5bb2040bef64df989b7a6bad5ca43b59bcedb6948593ff43ec59024",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "cc4b4c47f188ece271e081496df45643ed1d37e674ea841629bfd9953cebed4b",
+              "repeat": "cc4b4c47f188ece271e081496df45643ed1d37e674ea841629bfd9953cebed4b",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "a7bc5eb443c41e6dacafefeba43f4cf3ceb5ed220d88ac830b3667f4be4da9b4",
+              "repeat": "a7bc5eb443c41e6dacafefeba43f4cf3ceb5ed220d88ac830b3667f4be4da9b4",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "repeat": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "34086d75f14ad95ad922cfb444d9d8e266d9e5c07bf31dabcd998f066f892fb7",
+              "repeat": "34086d75f14ad95ad922cfb444d9d8e266d9e5c07bf31dabcd998f066f892fb7",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "cc4b4c47f188ece271e081496df45643ed1d37e674ea841629bfd9953cebed4b",
+              "repeat": "cc4b4c47f188ece271e081496df45643ed1d37e674ea841629bfd9953cebed4b",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "d6b1ef289dda6ac71ae98c1efe705b0d0e56da094499e6fef319d0971934afb4",
+              "repeat": "d6b1ef289dda6ac71ae98c1efe705b0d0e56da094499e6fef319d0971934afb4",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "968762a4831f8d73e035d4ae83901b5e5cf41c7ec5b1d23a59cfd982e396005f",
+              "repeat": "968762a4831f8d73e035d4ae83901b5e5cf41c7ec5b1d23a59cfd982e396005f",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "bc54f01da82df19a224812891872806a2661c09e971fd03bb385e8793061d973",
+              "repeat": "bc54f01da82df19a224812891872806a2661c09e971fd03bb385e8793061d973",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "38953407270ecf36a2498ec98daa8f3185acb5b8fee5c66618215dd83f4fe7a9",
+              "repeat": "38953407270ecf36a2498ec98daa8f3185acb5b8fee5c66618215dd83f4fe7a9",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "22845fe7acd4623a3e853d049f2b9d68e3c14d8fc032577f5726ec827edc4ffb",
+              "repeat": "22845fe7acd4623a3e853d049f2b9d68e3c14d8fc032577f5726ec827edc4ffb",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "repeat": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "81d01bd4047273aecee5aae3219e13c1278b4faeb027cf0beead9d0eab650d63",
+              "repeat": "81d01bd4047273aecee5aae3219e13c1278b4faeb027cf0beead9d0eab650d63",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "fc80737eb8ebbdec6fd7a012b9f96ca1b2a8f39e1bea3547075d9a1d81a2fc41",
+              "repeat": "fc80737eb8ebbdec6fd7a012b9f96ca1b2a8f39e1bea3547075d9a1d81a2fc41",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "3fd749c3719c2cc50f89978babbf61edc642ff4f0aa0eb3d828f0cce624fc899",
+              "repeat": "3fd749c3719c2cc50f89978babbf61edc642ff4f0aa0eb3d828f0cce624fc899",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "repeat": "4829de07afae499712d0b11f304637a10fe54ef25e14cccd06a88427def6c20e",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "observed": {
+              "arrayType": "Float16Array",
+              "colorSpace": "display-p3",
+              "pixelFormat": "rgba-float16",
+              "length": 1024,
+              "bytes": 2048,
+              "hash": "4cc314d7b5bb2040bef64df989b7a6bad5ca43b59bcedb6948593ff43ec59024",
+              "repeat": "4cc314d7b5bb2040bef64df989b7a6bad5ca43b59bcedb6948593ff43ec59024",
+              "finite": true
+            }
+          }
+        ]
+      },
+      "resources_released": true
+    },
+    {
+      "profile": "protected",
+      "observed": {
+        "float16Available": true,
+        "rows": [
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "d2f90c125642937bfb5f1b0d845cd132fc54c93e5ff9cacb29984e4b9df58206",
+              "repeat": "d2f90c125642937bfb5f1b0d845cd132fc54c93e5ff9cacb29984e4b9df58206",
+              "finite": true
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "html",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "observed": {
+              "arrayType": "Uint8ClampedArray",
+              "colorSpace": "srgb",
+              "pixelFormat": "rgba-unorm8",
+              "length": 1024,
+              "bytes": 1024,
+              "hash": "d2f90c125642937bfb5f1b0d845cd132fc54c93e5ff9cacb29984e4b9df58206",
+              "repeat": "d2f90c125642937bfb5f1b0d845cd132fc54c93e5ff9cacb29984e4b9df58206",
+              "finite": true
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "srgb",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "srgb",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "unorm8",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "unorm8",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "srgb",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-unorm8",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          },
+          {
+            "kind": "offscreen",
+            "colorSpace": "display-p3",
+            "colorType": "float16",
+            "attributes": {
+              "alpha": true,
+              "colorSpace": "display-p3",
+              "colorType": "float16",
+              "desynchronized": false,
+              "toneMapping": {
+                "mode": "standard"
+              },
+              "willReadFrequently": false
+            },
+            "readColorSpace": "display-p3",
+            "pixelFormat": "rgba-float16",
+            "error": {
+              "name": "NotReadableError",
+              "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+            }
+          }
+        ]
+      },
+      "resources_released": true
+    }
+  ],
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "passed": false,
+  "errors": [],
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "a05fd35e0d1ff1d975343217b732740fa9f99e1aad7b80aa641c1bc5987b8789",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "088e4b1bdce37ddb05e422819a826fb352e16f68759eeebfcbb657ab5a5d0652",
+  "comparison": {
+    "cases": 32,
+    "baseline_supported": 32,
+    "protected_supported": 2,
+    "compatibility_regressions": [
+      {
+        "kind": "html",
+        "colorSpace": "display-p3",
+        "colorType": "float16",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "display-p3",
+        "colorType": "float16",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "display-p3",
+        "colorType": "float16",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "display-p3",
+        "colorType": "float16",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "display-p3",
+        "colorType": "unorm8",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "display-p3",
+        "colorType": "unorm8",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "display-p3",
+        "colorType": "unorm8",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "display-p3",
+        "colorType": "unorm8",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "srgb",
+        "colorType": "float16",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "srgb",
+        "colorType": "float16",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "srgb",
+        "colorType": "float16",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "srgb",
+        "colorType": "float16",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "srgb",
+        "colorType": "unorm8",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "srgb",
+        "colorType": "unorm8",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "html",
+        "colorSpace": "srgb",
+        "colorType": "unorm8",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'CanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "display-p3",
+        "colorType": "float16",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "display-p3",
+        "colorType": "float16",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "display-p3",
+        "colorType": "float16",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "display-p3",
+        "colorType": "float16",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "display-p3",
+        "colorType": "unorm8",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "display-p3",
+        "colorType": "unorm8",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "display-p3",
+        "colorType": "unorm8",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "display-p3",
+        "colorType": "unorm8",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "srgb",
+        "colorType": "float16",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "srgb",
+        "colorType": "float16",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "srgb",
+        "colorType": "float16",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "srgb",
+        "colorType": "float16",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate readback could not be completed."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "srgb",
+        "colorType": "unorm8",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "srgb",
+        "colorType": "unorm8",
+        "readColorSpace": "display-p3",
+        "pixelFormat": "rgba-unorm8",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      },
+      {
+        "kind": "offscreen",
+        "colorSpace": "srgb",
+        "colorType": "unorm8",
+        "readColorSpace": "srgb",
+        "pixelFormat": "rgba-float16",
+        "error": {
+          "name": "NotReadableError",
+          "message": "Failed to execute 'getImageData' on 'OffscreenCanvasRenderingContext2D': Glint Canvas candidate does not support this ImageData format."
+        }
+      }
+    ],
+    "baseline_unavailable": [],
+    "no_effect": [],
+    "compatibility_passed": false,
+    "protection_effect_observed": false
+  },
+  "postguards_passed": true,
+  "raw_report_sha256": "32b33d84a2cb3b176d2887b919f2e514a2f7e916e463b28bf65a486c85b92489",
+  "selected": false,
+  "date": "2026-10-30",
+  "public_runner": "native/drafts/environment/first-script/canvas_formats.py",
+  "public_runner_sha256": "b10ff77277f2d0a030e71ab27585a50969b907cdea5d02fb9a329c1c9b1c38fb",
+  "public_runner_normalized_utf8_lf_sha256": "b10ff77277f2d0a030e71ab27585a50969b907cdea5d02fb9a329c1c9b1c38fb",
+  "source_api": "https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData",
+  "diagnosis": "Current protected Canvas accepts the default sRGB 8-bit path but rejects other valid baseline-supported ImageData/color/backing formats with NotReadableError. Fail-closed incompatibility, not raw-result fallback.",
+  "native_fix_implemented": false,
+  "native_fix_compiled": false,
+  "limitations": [
+    "One owned document with HTML/Offscreen variants; not every worker, taint/export or HDR quality case.",
+    "Preserve this negative result; do not remove exceptions, disable APIs, zero-fill or silently reduce HDR to 8-bit."
+  ]
+}

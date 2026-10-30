@@ -1,5 +1,31 @@
 # Glint: план проверки и развития
 
+## Актуальный блокер: Canvas Display-P3 / Float16
+
+Расширенный дифференциальный прогон обнаружил **30 ошибок из 32 сочетаний**:
+без защиты Chromium читает все форматы; с защитой работает только обычный
+sRGB/RGBA8 для HTML/Offscreen Canvas. Остальные возвращают `NotReadableError`.
+Это **дефект совместимости**, а не успешная защита и не утечка исходных пикселей.
+[Отрицательный результат](../native/drafts/environment/canvas-formats70-observations.json).
+
+| Новый прогон | Подтверждено | Ограничение |
+| --- | --- | --- |
+| Два защищённых профиля одновременно | **6/6** контрольных фаз: оба открыты, закрытие соседа, перезапуск каждого; Canvas/WebGL/Audio стабильны | Windows desktop; не длительный ресурсный тест |
+| Mobile Web с тремя модулями | **18/18** фаз, baseline + 8 профилей, оба AudioMath selector; 390×844, DPR 3, touch | Windows с веб-эмуляцией, **не Android/iOS**; обычный sRGB/RGBA8 |
+| Полный Python-повтор `bd82e73` | **4405 passed, 1 skipped**, source/status guards прошли | До новых concurrent/mobile/format diagnostics; не нативная пересборка |
+
+[Конкурентный запуск](../native/drafts/environment/combined-concurrent70-observations.json),
+[Mobile Web](../native/drafts/environment/combined-mobile70-observations.json),
+[Python](../native/drafts/environment/canonical-python70-combined-math-observations.json).
+
+Следующий связанный нативный пакет: формат-сохраняющая обработка P3/F16,
+согласованность readback/crop/export и подготовленная коррекция orientation/visibility.
+[Контракт исправления](../native/drafts/environment/CANVAS_FORMATS.md).
+Исправление Canvas ещё **не реализовано и не собрано**. Затем — совместный BFCache,
+WebGPU, качество Audio, ресурсы, security rebase и доставка/откат.
+Основные настройки, допуск production и проверенный бинарник не менялись.
+Разделы ниже сохраняют исторические границы прежних прогонов.
+
 ## Совместный Canvas / WebGL / AudioMath: первый Windows gate прошёл
 
 | Проверка | Подтверждено | Граница |

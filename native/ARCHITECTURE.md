@@ -2,12 +2,28 @@
 
 ## Current implementation boundary
 
+**Current compatibility blocker:** protected Canvas fails 30 of 32 tested
+HTML/Offscreen sRGB/Display-P3/unorm8/float16 combinations, while the same binary
+without the policy supports all 32. Only default sRGB/RGBA8 succeeds. The error is
+fail-closed, but still a compatibility regression, not a passing privacy gate.
+[Measured failure](drafts/environment/canvas-formats70-observations.json),
+[format-preserving fix contract](drafts/environment/CANVAS_FORMATS.md).
+No P3/F16 native fix has been implemented or compiled.
+
+The subsequent [concurrent desktop gate](drafts/environment/combined-concurrent70-observations.json)
+passed six controls across two protected profiles and peer closure/restart.
+[Mobile Web](drafts/environment/combined-mobile70-observations.json) passed 18
+combined-surface phases with eight profiles and both AudioMath selectors, using
+Windows touch/viewport emulation, not Android/iOS. These positive results cover
+default Canvas formats only, not the failure above. The full Python repeat at
+`bd82e73` passed **4405 tests, 1 skipped**, before these new diagnostics.
+
 The current preserved Windows candidate is **Chromium 156 / 001–070**, compiled
 and checked with **484 native cases in 20 groups**. Logical-screen desktop/mobile
 and profile-restart checks passed. The first [combined surface gate](drafts/environment/combined-math70-observations.json)
 also passed: Canvas/WebGL readback/AudioMath, eight protected Windows profiles and
 baseline, 18 initial/restart phases. Both AudioMath pipelines were exercised, not
-eight real-device Audio identities. Concurrency/mobile/BFCache combinations, full
+eight real-device Audio identities. Combined BFCache, mobile concurrency, full
 WebGPU/quality/resources and release admission remain open.
 [Native results](drafts/upstream-156/native-batch70-observations.json).
 

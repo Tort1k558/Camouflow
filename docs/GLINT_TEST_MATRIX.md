@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## Expanded format and lifecycle gates — 2026-10-30
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Canvas HTML/Offscreen × context/read color spaces × unorm8/float16 | **FAIL: 30/32 compatibility regressions**; baseline supports 32, protected supports 2 | Only default sRGB/RGBA8 passes; `NotReadableError` is not successful protection |
+| Two protected desktop profiles concurrently | **6/6** phases: both open, peer closure and each profile restart; Canvas/WebGL/Audio match prior captures | Opposite AudioMath selectors, not resource limits or Mobile Web concurrency |
+| Combined Mobile Web | **18/18** initial/restart phases, baseline + eight profiles, both AudioMath selectors | Windows runtime, 390×844/DPR 3/touch; not Android/iOS or advanced Canvas format support |
+| Full Python at `bd82e73` | **4405 passed, 1 skipped**, final source/status guards passed | Precedes these three new diagnostics; not native compilation |
+
+[Retained Canvas FAIL](../native/drafts/environment/canvas-formats70-observations.json),
+[concurrency](../native/drafts/environment/combined-concurrent70-observations.json),
+[Mobile Web](../native/drafts/environment/combined-mobile70-observations.json),
+[full Python](../native/drafts/environment/canonical-python70-combined-math-observations.json).
+The P3/F16 native fix is not implemented/compiled. Combined BFCache, full WebGPU,
+quality/resources, security rebase and release/update/rollback gates remain open.
+Earlier tables below describe their original, narrower measurements.
+
 ## Simultaneous native Canvas / WebGL readback / AudioMath — 2026-10-30
 
 | Gate | Observed result | Boundary |
