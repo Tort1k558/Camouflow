@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "selected": false,
+  "exact_replay_passed": true,
+  "sources": [
+    {
+      "source": "native/drafts/environment/first-script/retained_gpu_objects.py",
+      "before_sha256": null,
+      "staged_sha256": "d9e94ed25906faba74cd837498a593d182403c198345602199f446f9ef5b8040"
+    },
+    {
+      "source": "native/drafts/environment/first-script/protected_history_runtime.py",
+      "before_sha256": "20fbbc8503e060dfff0edb17144e6bd773c432ac5964036127c5cd7087c8cf00",
+      "staged_sha256": "aa169685e6e40b8103c1571e9c57a47e774f58d9d02510721d5b4acdc5e6c020"
+    }
+  ],
+  "patch_sha256": "c8839d16ecc90640b2a36abdaf0f6972c025fd60c8252137c8f7b2946664d0ea",
+  "runtime_executed": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Prepared opt-in retained-gpu-objects CLI package; no existing probe/default contract replaced",
+  "patch": "retained-gpu-objects-next.patch",
+  "runtime_verified": false,
+  "native_tests_executed": false,
+  "browser_executed": false,
+  "existing_modes_replaced": false,
+  "default_probe": "canvas",
+  "synthetic_validator": {
+    "passed": true,
+    "cases": 36,
+    "document_pair_cases": 22,
+    "aggregate_cases": 14,
+    "rejected_faults": [
+      "missing-role",
+      "extra-role",
+      "not-restored",
+      "replacement-document",
+      "replacement-resource-instance",
+      "read-not-advanced",
+      "boolean-read",
+      "missing-observed",
+      "unavailable-webgl2",
+      "invalid-original-buffer",
+      "truthy-not-native-validity",
+      "context-lost",
+      "context-restored-not-retained",
+      "nondeterministic-read",
+      "incorrect-size",
+      "incorrect-reference",
+      "changed-png",
+      "missing-registration-nonce",
+      "foreign-origin",
+      "foreign-fixture-port",
+      "duplicate-instance",
+      "passed",
+      "bfcache_restored",
+      "protected_arguments_verified",
+      "post_surfaces_screen_verified",
+      "runtime_resources_released",
+      "browser_connection_closed",
+      "missing-mode",
+      "duplicate-mode",
+      "remaining-process",
+      "boolean-process-count",
+      "wrong-navigation",
+      "forged-validation",
+      "same-actual-instances-in-both-modes"
+    ],
+    "validator_sha256": "d9e94ed25906faba74cd837498a593d182403c198345602199f446f9ef5b8040",
+    "raw_report_sha256": "6a5ede4314ffce340fe2267a3056ab670ba7462e387e8b770a02bc7f7ba11912"
+  },
+  "pending": [
+    "Actual staged browser probe",
+    "Exact public CLI integration/runtime",
+    "Retained GPU worker resources",
+    "WebGPU readback",
+    "Privacy/release admission"
+  ]
+}

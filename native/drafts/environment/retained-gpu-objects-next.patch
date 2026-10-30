@@ -1,0 +1,286 @@
+diff --git a/native/drafts/environment/first-script/retained_gpu_objects.py b/native/drafts/environment/first-script/retained_gpu_objects.py
+new file mode 100644
+--- /dev/null
++++ b/native/drafts/environment/first-script/retained_gpu_objects.py
+@@ -0,0 +1,205 @@
++"""Owned original-resource continuity validator, not full GPU admission."""
++import math
++import re
++from urllib.parse import urlsplit
++
++
++READ = r'''async () => {
++  const key = 'glintOwnedRetainedGpuObjects';
++  if (!Object.hasOwn(window, key)) {
++    const state = {id: crypto.randomUUID(), timeOrigin: performance.timeOrigin, reads: 0, records: []};
++    Object.defineProperty(window, key, {value: state});
++    for (const api of ['webgl', 'webgl2']) {
++      const canvas = document.createElement('canvas');
++      canvas.width = canvas.height = 16;
++      const gl = canvas.getContext(api, {alpha: true, antialias: false, preserveDrawingBuffer: true});
++      if (!gl) throw new Error(api + ' unavailable; no retained-object coverage');
++      const record = {api, canvas, gl, lost: 0, restored: 0};
++      canvas.addEventListener('webglcontextlost', event => {event.preventDefault(); record.lost++;});
++      canvas.addEventListener('webglcontextrestored', () => record.restored++);
++      const shader = (type, source) => {
++        const value = gl.createShader(type);
++        if (!value) throw new Error(api + ' shader allocation failed');
++        gl.shaderSource(value, source); gl.compileShader(value);
++        if (!gl.getShaderParameter(value, gl.COMPILE_STATUS)) throw new Error(api + ' shader compile failed');
++        return value;
++      };
++      const modern = api === 'webgl2';
++      record.vertexShader = shader(gl.VERTEX_SHADER, modern
++        ? '#version 300 es\nin vec2 position;out vec2 uv;void main(){uv=(position+1.0)*0.5;gl_Position=vec4(position,0.0,1.0);}'
++        : 'attribute vec2 position;varying vec2 uv;void main(){uv=(position+1.0)*0.5;gl_Position=vec4(position,0.0,1.0);}');
++      record.fragmentShader = shader(gl.FRAGMENT_SHADER, modern
++        ? '#version 300 es\nprecision highp float;in vec2 uv;uniform sampler2D source;out vec4 outputColor;void main(){outputColor=texture(source,uv);}'
++        : 'precision highp float;varying vec2 uv;uniform sampler2D source;void main(){gl_FragColor=texture2D(source,uv);}');
++      record.program = gl.createProgram();
++      if (!record.program) throw new Error(api + ' program allocation failed');
++      gl.attachShader(record.program, record.vertexShader); gl.attachShader(record.program, record.fragmentShader);
++      gl.linkProgram(record.program);
++      if (!gl.getProgramParameter(record.program, gl.LINK_STATUS)) throw new Error(api + ' program link failed');
++      record.buffer = gl.createBuffer();
++      gl.bindBuffer(gl.ARRAY_BUFFER, record.buffer);
++      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
++      record.attribute = gl.getAttribLocation(record.program, 'position');
++      record.uniform = gl.getUniformLocation(record.program, 'source');
++      if (record.attribute < 0 || record.uniform === null) throw new Error(api + ' shader bindings missing');
++      record.expected = new Uint8Array(16 * 16 * 4);
++      for (let pixel = 0; pixel < 256; pixel++) {
++        record.expected.set([(pixel * 17) % 256, (pixel * 29 + 31) % 256, (pixel * 43 + 11) % 256, 255], pixel * 4);
++      }
++      const texture = data => {
++        const value = gl.createTexture();
++        if (!value) throw new Error(api + ' texture allocation failed');
++        gl.bindTexture(gl.TEXTURE_2D, value);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
++        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
++        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 16, 16, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
++        return value;
++      };
++      record.source = texture(record.expected);
++      record.destination = texture(null);
++      record.framebuffer = gl.createFramebuffer();
++      gl.bindFramebuffer(gl.FRAMEBUFFER, record.framebuffer);
++      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, record.destination, 0);
++      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error(api + ' incomplete framebuffer');
++      if (gl.getError() !== gl.NO_ERROR) throw new Error(api + ' initial GL error');
++      state.records.push(record);
++    }
++  }
++  const state = window[key];
++  const hash = async bytes => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)))
++    .map(value => value.toString(16).padStart(2, '0')).join('');
++  const result = {id: state.id, timeOrigin: state.timeOrigin, read: ++state.reads, apis: []};
++  for (const item of state.records) {
++    const {gl} = item;
++    const valid = {
++      context: !gl.isContextLost(), program: gl.isProgram(item.program),
++      vertexShader: gl.isShader(item.vertexShader), fragmentShader: gl.isShader(item.fragmentShader),
++      buffer: gl.isBuffer(item.buffer), sourceTexture: gl.isTexture(item.source),
++      destinationTexture: gl.isTexture(item.destination), framebuffer: gl.isFramebuffer(item.framebuffer)
++    };
++    if (Object.values(valid).some(value => value !== true) || item.lost || item.restored) {
++      throw new Error(item.api + ' original GPU resources lost or replaced');
++    }
++    gl.useProgram(item.program); gl.bindBuffer(gl.ARRAY_BUFFER, item.buffer);
++    gl.vertexAttribPointer(item.attribute, 2, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(item.attribute);
++    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, item.source); gl.uniform1i(item.uniform, 0);
++    gl.viewport(0, 0, 16, 16); gl.disable(gl.BLEND); gl.disable(gl.DITHER); gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
++    const reads = [];
++    for (const framebuffer of [item.framebuffer, null]) {
++      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
++      const first = new Uint8Array(1024), second = new Uint8Array(1024);
++      gl.readPixels(0, 0, 16, 16, gl.RGBA, gl.UNSIGNED_BYTE, first);
++      gl.readPixels(0, 0, 16, 16, gl.RGBA, gl.UNSIGNED_BYTE, second);
++      if (gl.getError() !== gl.NO_ERROR) throw new Error(item.api + ' retained draw/read error');
++      if (first.some((value, index) => value !== second[index])) throw new Error(item.api + ' repeated read differs');
++      const maximumDelta = first.reduce((maximum, value, index) => Math.max(maximum, Math.abs(value - item.expected[index])), 0);
++      if (maximumDelta > 2) throw new Error(item.api + ' texture draw differs from known reference');
++      reads.push({target: framebuffer === null ? 'default' : 'framebuffer',
++        hash: await hash(first), repeat: await hash(second), maximumDelta, bytes: first.length});
++    }
++    const png = item.canvas.toDataURL('image/png');
++    if (!png.startsWith('data:image/png;base64,')) throw new Error(item.api + ' PNG export failed');
++    result.apis.push({api: item.api, resources: valid, contextLostEvents: item.lost,
++      contextRestoredEvents: item.restored, reads, pngHash: await hash(new TextEncoder().encode(png))});
++  }
++  return result;
++}
++'''
++ROLES = {'main', 'same', 'cross', 'nested-return', 'srcdoc', 'about-blank'}
++RESOURCES = {'context', 'program', 'vertexShader', 'fragmentShader', 'buffer',
++             'sourceTexture', 'destinationTexture', 'framebuffer'}
++
++
++def validate_record(row):
++    if not isinstance(row, dict) or not isinstance(row.get('id'), str) or not row['id']:
++        raise ValueError('Retained GPU instance marker missing')
++    if (type(row.get('timeOrigin')) not in (int, float) or not math.isfinite(row['timeOrigin'])
++            or row['timeOrigin'] <= 0 or type(row.get('read')) is not int or row['read'] <= 0):
++        raise ValueError('Retained GPU epoch/read sequence malformed')
++    if not isinstance(row.get('apis'), list) or len(row['apis']) != 2:
++        raise ValueError('Both real WebGL API contexts are required')
++    if [item.get('api') for item in row['apis']] != ['webgl', 'webgl2']:
++        raise ValueError('Retained GPU APIs missing, duplicated or reordered')
++    for item in row['apis']:
++        resources = item.get('resources')
++        if not isinstance(resources, dict) or set(resources) != RESOURCES or not all(value is True for value in resources.values()):
++            raise ValueError('Original retained GPU resource is invalid')
++        for key in ('contextLostEvents', 'contextRestoredEvents'):
++            if type(item.get(key)) is not int or item[key] != 0:
++                raise ValueError('Context loss/restoration is not original-object retention')
++        reads = item.get('reads')
++        if not isinstance(reads, list) or len(reads) != 2 or [entry.get('target') for entry in reads] != ['framebuffer', 'default']:
++            raise ValueError('Both retained framebuffer and default read paths are required')
++        for entry in reads:
++            if (type(entry.get('bytes')) is not int or entry['bytes'] != 1024
++                    or type(entry.get('maximumDelta')) is not int or not 0 <= entry['maximumDelta'] <= 2
++                    or not isinstance(entry.get('hash'), str) or re.fullmatch('[0-9a-f]{64}', entry['hash']) is None
++                    or entry.get('repeat') != entry['hash']):
++                raise ValueError('Retained read bounds/reference/repeat check failed')
++        if not isinstance(item.get('pngHash'), str) or re.fullmatch('[0-9a-f]{64}', item['pngHash']) is None:
++            raise ValueError('Retained canvas PNG observation missing')
++
++
++def validate_pair(before, after):
++    if not isinstance(before, dict) or not isinstance(after, dict) or set(before) != ROLES or set(after) != ROLES:
++        raise ValueError('Six actual document roles are required')
++    instance_ids = set()
++    ports = set()
++    for role in sorted(ROLES):
++        first, second = before[role], after[role]
++        if not isinstance(first, dict) or not isinstance(second, dict):
++            raise ValueError('Malformed retained document record')
++        if (not isinstance(first.get('nonce'), str) or re.fullmatch('[0-9a-f]{48}', first['nonce']) is None
++                or not isinstance(first.get('origin'), str)
++                or not isinstance(first.get('location'), str) or not first['location']):
++            raise ValueError('Retained document registration fields missing')
++        origin = urlsplit(first['origin'])
++        if origin.scheme != 'http' or origin.hostname not in {'127.0.0.1', 'localhost'} or origin.port is None:
++            raise ValueError('Retained prototype requires the owned loopback fixture')
++        ports.add(origin.port)
++        if (first.get('persisted') is not False or second.get('persisted') is not True
++                or any(first.get(key) != second.get(key) for key in ('nonce', 'origin', 'location', 'timeOrigin'))):
++            raise ValueError('Retained GPU document identity/lifecycle differs: ' + role)
++        a, b = first.get('observed'), second.get('observed')
++        validate_record(a)
++        validate_record(b)
++        if (a['id'] != b['id'] or a['timeOrigin'] != b['timeOrigin'] or b['read'] <= a['read']
++                or a['apis'] != b['apis'] or a['id'] in instance_ids
++                or a['timeOrigin'] != first['timeOrigin']):
++            raise ValueError('GPU resources/readback were replaced or changed: ' + role)
++        instance_ids.add(a['id'])
++    if len(ports) != 1:
++        raise ValueError('Retained documents came from different fixture servers')
++    return dict(passed=True, document_contexts=6, webgl_apis=2,
++        retained_gpu_objects_verified=True, known_reference_maximum_delta=2,
++        webgpu_readback_verified=False, workers_verified=False,
++        privacy_admitted=False, production_admitted=False)
++
++
++def validate_runs(runs):
++    if not isinstance(runs, list) or len(runs) != 2 or {row.get('mode') for row in runs} != {'manager-desktop', 'manager-mobile-web'}:
++        raise ValueError('Two actual manager-mode runs are required')
++    results = []
++    instances = set()
++    for row in runs:
++        for key in ('passed', 'bfcache_restored', 'protected_arguments_verified',
++                    'post_surfaces_screen_verified', 'runtime_resources_released', 'browser_connection_closed'):
++            if row.get(key) is not True:
++                raise ValueError('Retained GPU lifecycle/resources failed: ' + key)
++        if (row.get('history_navigation', {}).get('type') != 'BackForwardCacheRestore'
++                or type(row.get('observed_processes')) is not int or row['observed_processes'] <= 1
++                or type(row.get('remaining_observed_processes')) is not int or row['remaining_observed_processes'] != 0):
++            raise ValueError('Retained GPU browser restoration/process evidence missing')
++        value = validate_pair(row['retained_documents_before'], row['retained_documents_after'])
++        if row.get('retained_gpu_object_validation') != value:
++            raise ValueError('Stored retained GPU validation differs from actual observations')
++        current = {item['observed']['id'] for item in row['retained_documents_before'].values()}
++        if instances.intersection(current):
++            raise ValueError('Manager runs reused the same document/resource instances')
++        instances.update(current)
++        results.append(dict(mode=row['mode'], **value))
++    return dict(passed=True, runs=results, retained_gpu_objects_verified=True,
++                webgpu_readback_verified=False, workers_verified=False,
++                cross_profile_isolation_verified=False, privacy_admitted=False, production_admitted=False)
+diff --git a/native/drafts/environment/first-script/protected_history_runtime.py b/native/drafts/environment/first-script/protected_history_runtime.py
+--- a/native/drafts/environment/first-script/protected_history_runtime.py
++++ b/native/drafts/environment/first-script/protected_history_runtime.py
+@@ -27,7 +27,7 @@
+     parser.add_argument('--executable', type=Path, required=True)
+     parser.add_argument('--work-dir', type=Path, required=True)
+     parser.add_argument('--driver-stage', type=Path, required=True)
+-    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents', 'retained-workers'), default='canvas')
++    parser.add_argument('--probe', choices=('canvas', 'combined', 'retained-documents', 'retained-workers', 'retained-gpu-objects'), default='canvas')
+     parser.add_argument('--verify-service-lifecycle', action='store_true',
+                         help='Verify owned service-controlled BFCache and explicit per-version stop/restart')
+     args = parser.parse_args()
+@@ -101,8 +101,15 @@
+         surface_validator = runpy.run_path(str(FIXTURE / 'protected_surface_history.py'))['validate_runs']
+         recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
+         surface_read = f"async () => ({{gpu: await ({gpu.READBACK_READ})(), audio: await ({surfaces.AUDIO_READ})(true)}})"
+-    if args.probe in {'retained-documents', 'retained-workers'}:
++    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
+         import retained_document_surfaces as retained
++
++    retained_objects = None
++    if args.probe == 'retained-gpu-objects':
++        import retained_gpu_objects as retained_objects
++        surface_read = retained_objects.READ
++        surface_validator = None
++        recapture_surfaces_history = runpy.run_path(str(FIXTURE / 'managed_history.py'))['recapture_retained_history']
+ 
+     worker_fixture = None
+     worker_read = None
+@@ -128,8 +135,11 @@
+         report.update(probe=args.probe, scope='Protected manager BFCache with screen, Canvas formats and top-document recreated GPU/Audio readback continuity; not retained GPU objects, worker lifecycle, WebGPU readback or full policy admission')
+ 
+ 
+-    if args.probe in {'retained-documents', 'retained-workers'}:
++    if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
+         report['scope'] = 'Six registered real documents with recreated protected GPU/Audio reads before/after actual BFCache; source/window/origin/nonce/URL/timeOrigin checked; not retained GPU objects, workers, WebGPU readback or full policy admission'
++
++    if retained_objects is not None:
++        report['scope'] = 'Original WebGL1/2 resources, known textured draw, framebuffer/default reads and PNG across six genuine BFCache documents; not recreated Audio/GPU full coverage, workers, WebGPU, profile isolation or privacy/release admission'
+ 
+     if worker_fixture is not None:
+         report['scope'] += '; six actual classic/module worker policy observations around document BFCache; dedicated/shared instance retention, service restart classification; service does not control the primary restored document, no retained GPU objects or WebGPU readback admission'
+@@ -200,7 +210,7 @@
+                             if worker_fixture is not None:
+                                 worker_token = await worker_fixture.install(pages[1])
+                                 row['worker_lifecycle_before'] = await worker_fixture.collect(session, worker_token, persisted=False)
+-                            if args.probe in {'retained-documents', 'retained-workers'}:
++                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
+                                 registration = await retained.install(pages[1], before, surface_read)
+                                 row['retained_documents_before'] = await retained.collect(session, registration, persisted=False)
+                         state = await probe['restore_history'](pages[1], session, before, row)
+@@ -218,9 +228,12 @@
+                         row['canvas_after'] = canvas_after
+                         if surface_read is not None:
+                             row['surfaces_after'] = await read_restored_surfaces(session, surface_read)
+-                            if args.probe in {'retained-documents', 'retained-workers'}:
++                            if args.probe in {'retained-documents', 'retained-workers', 'retained-gpu-objects'}:
+                                 row['retained_documents_after'] = await retained.collect(session, registration, persisted=True)
+-                                row['retained_document_validation'] = retained.validate_pair(row['retained_documents_before'], row['retained_documents_after'])
++                                if retained_objects is not None:
++                                    row['retained_gpu_object_validation'] = retained_objects.validate_pair(row['retained_documents_before'], row['retained_documents_after'])
++                                else:
++                                    row['retained_document_validation'] = retained.validate_pair(row['retained_documents_before'], row['retained_documents_after'])
+                                 if worker_fixture is not None:
+                                     row['worker_lifecycle_after'] = await worker_fixture.collect(session, worker_token, persisted=True)
+                                     row['worker_lifecycle_validation'] = worker_fixture.validate_pair(row['worker_lifecycle_before'], row['worker_lifecycle_after'], canvas_document=canvas_before, document_gpu=row['surfaces_before']['gpu'])
+@@ -261,6 +274,9 @@
+             report['measurement_complete'] = True
+             report['validation'] = validator(report['runs'], probe['validate_page'], canvas_fixture['compare_formats'])
+             report['passed'] = report['validation']['passed']
++            if retained_objects is not None:
++                report['retained_gpu_object_validation'] = retained_objects.validate_runs(report['runs'])
++                report['passed'] = report['passed'] and report['retained_gpu_object_validation']['passed']
+             if args.probe in {'retained-documents', 'retained-workers'}:
+                 report['retained_document_coverage'] = all(row['retained_document_validation']['passed'] for row in report['runs'])
+                 report['passed'] = report['passed'] and report['retained_document_coverage']

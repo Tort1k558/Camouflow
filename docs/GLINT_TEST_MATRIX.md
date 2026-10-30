@@ -12,6 +12,11 @@
 [Source selection](../native/drafts/environment/screenshot76-selection-observations.json).
 Preserved 001–075 remains the measured browser baseline and rollback source.
 
+Next `retained-gpu-objects` package: exact replay and 36 synthetic validator cases
+passed; not selected or browser-tested. It rejects context loss/recreated objects
+instead of treating them as retention, without replacing existing GPU/Audio modes.
+[Preparation](../native/drafts/environment/retained-gpu-objects76-preparation.json).
+
 ## Screenshot transaction preparation — not runtime admission
 
 | Gate | Result | Boundary |

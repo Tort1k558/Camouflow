@@ -13,6 +13,12 @@ Selection/package/controller tests passed **1215, with 1 skipped**. Compilation,
 native execution and the six-factorial browser repeat are still pending.
 [Selection](drafts/environment/screenshot76-selection-observations.json).
 
+The next unselected diagnostic package adds opt-in `retained-gpu-objects`, with
+original WebGL1/2 resources and reads across six BFCache documents. Exact replay
+and 36 synthetic validator cases passed; **no browser execution is claimed**.
+Existing modes/defaults are unchanged; unavailable/lost/recreated resources fail.
+[Preparation](drafts/environment/retained-gpu-objects76-preparation.json).
+
 ## Document-bound screenshot transaction draft
 
 The unselected five-file native package shares effective emulation ownership and
