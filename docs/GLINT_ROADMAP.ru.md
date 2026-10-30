@@ -2,6 +2,26 @@
 
 ## Текущий результат 001–073 — 30 октября 2026
 
+### Новый защищённый BFCache-прогон
+
+[Публичный collector](../native/drafts/environment/first-script/protected_history_runtime.py)
+прошёл desktop и Mobile Web: **12 экранных фаз**, по **32 Canvas-варианта до/после BFCache**
+в каждом окружении. Включены флаги Canvas/WebGL/AudioMath, но после восстановления
+проверялись именно Canvas и экран — это не допуск GPU/Audio во всём lifecycle.
+Проверены реальные запрошенные размеры, DPR, шесть документов, сохранённый BFCache,
+отсутствие подмены восстановления обычной перезагрузкой. Все 14/13 наблюдавшихся процессов
+desktop/Mobile Web завершились; runtime-ресурсы освобождены.
+[Результат](../native/drafts/environment/protected-history73-observations.json).
+
+Запуск из корня проекта, без новой сборки:
+
+```powershell
+.\.venv\Scripts\python.exe native/drafts/environment/first-script/protected_history_runtime.py --executable D:/Glint156Candidate/preserved-runtime73-20261030-v1/runtime/chrome.exe --work-dir D:/GlintManagerQA/protected-history-new-run --driver-stage D:/GlintManagerQA/staged-python-js70-20261030-v1
+```
+
+Выходной каталог должен быть новым. Диагностический staged driver обязателен;
+установленный SDK не меняется, production-допуск не выдаётся.
+
 **Пакет собран, 488/488 нативных тестов прошли**, включая четыре строгих orientation-теста.
 Инкрементальная сборка: j4, 51 шаг, 43м55с Ninja; полный resume-controller — 59м24с.
 269 runtime-файлов сохранены отдельно; объекты не очищались, sync повторно не запускался.

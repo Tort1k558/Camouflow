@@ -2,6 +2,15 @@
 
 ## Current compiled 001–073 — 2026-10-30
 
+Protected manager BFCache follow-up: **12 screen phases** and **32 top-document Canvas
+format cases before/after restoration per desktop/Mobile Web mode** passed. All combined
+feature flags were effective, but restored GPU/Audio output was not measured. Requested
+screen/DPR values, six documents and actual BFCache navigation are required, not merely
+self-consistency with an arbitrary baseline. Desktop/Mobile Web released all 14/13 observed processes.
+[Evidence](../native/drafts/environment/protected-history73-observations.json),
+[reproducible collector](../native/drafts/environment/first-script/protected_history_runtime.py).
+Raw per-page CDP stress failures below remain unresolved and are not superseded by this pass.
+
 | Gate | Result | Boundary |
 | --- | --- | --- |
 | Windows incremental build | **51 steps, j4, 43m55s Ninja**, 269 preserved assets | No clean/resync; controller 59m24s; not release admission |
