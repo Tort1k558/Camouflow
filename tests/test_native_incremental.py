@@ -84,6 +84,7 @@ def test_capacity_alone_never_authorizes_execution_or_changes_full_build_reserve
 
 
 @pytest.mark.parametrize('text,expected', [('ninja: no work to do.\n5m44.79s Build Succeeded: 0 steps - 0.00/s\n', 0),
+    ('ninja: no work to do.\n 7.18s Build Succeeded: 0 steps - 0.00/s\n', 0),
     ('compile a\ncompile b\n17.63s Build Succeeded: 2 steps - 0.45/s\n', 2)])
 def test_siso_plan_requires_its_actual_success_summary(text, expected):
     assert incremental.siso_steps(text) == expected

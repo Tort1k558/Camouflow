@@ -109,7 +109,7 @@ def digest(path: Path) -> str:
 
 
 def siso_steps(output: str) -> int:
-    summaries = re.findall(r'^\d+(?:\.\d+)?(?:ms|s|m[\d.]+s|h[\dm.s]+) Build Succeeded: (\d+) steps - [\d.]+/s\s*$',
+    summaries = re.findall(r'^[ \t]*\d+(?:\.\d+)?(?:ms|s|m[\d.]+s|h[\dm.s]+) Build Succeeded: (\d+) steps - [\d.]+/s\s*$',
                            output, re.MULTILINE)
     if len(summaries) != 1 or 'Build Failed' in output:
         raise ValueError('Siso plan did not provide one successful work summary')
