@@ -9,11 +9,14 @@ throw `NotReadableError`. This is a compatibility bug, not an accepted privacy
 result. [Native fix contract](CANVAS_FORMATS.md); no native fix is compiled.
 
 [An isolated format extension](canvas-formats-next/README.md) is now prepared and
-source-bound: four syntax checks and 12 linked binary16-transform controls pass.
-It is **not compiled into Chrome** and does not establish lower-precision output
-protection or runtime/HDR/export compatibility. The preserved browser failure
-remains open. [Full repeat at `ed64d93`](canonical-python70-lifecycle-formats-observations.json):
-**4441 passed, 1 skipped**, before this C++ draft.
+source-bound: compiler checks, 12 binary16-transform controls and 283 actual Skia
+copy/projection controls pass. The adaptive replacement preserves distinct RGBA8
+results for 32 seeds across four measured sRGB/P3 source/read pairs; the former
+single-LSB projection failure is retained. This is **not compiled into Chrome**,
+not 32 real browser profiles, and not broad HDR/export/runtime admission. The
+preserved browser failure remains open.
+[Full repeat at `4400f45`](canonical-python70-canvas-draft-observations.json):
+**4446 passed, 1 skipped**, before the adaptive extension.
 
 [Concurrent protected desktop profiles](combined-concurrent70-observations.json)
 passed six controls, including closing either peer and restarting each profile.

@@ -9,10 +9,12 @@ fail-closed, but still a compatibility regression, not a passing privacy gate.
 [Measured failure](drafts/environment/canvas-formats70-observations.json),
 [format-preserving fix contract](drafts/environment/CANVAS_FORMATS.md).
 A source-format extension is now an [isolated native draft](drafts/environment/canvas-formats-next/README.md),
-with four syntax checks and 12 linked transform controls. It is not compiled into
-the browser and does not yet establish lower-precision effects, copy/HDR fidelity,
-export or runtime compatibility. The full repeat at `ed64d93` passed **4441 tests,
-1 skipped**, before the new C++ draft.
+with compiler checks and 12 transform controls including 65,536 half encodings.
+The adaptive replacement for the single-LSB variant also passes 283 linked Skia
+copy/projection controls: four source/read color-space pairs and distinct F16/RGBA8
+outputs for 32 native seeds on the owned fixture. It is not compiled into the
+browser; broad HDR quality, export/workers and runtime compatibility remain open.
+The full repeat at `4400f45` passed **4446 tests, 1 skipped**, before that extension.
 
 The subsequent [concurrent desktop gate](drafts/environment/combined-concurrent70-observations.json)
 passed six controls across two protected profiles and peer closure/restart.

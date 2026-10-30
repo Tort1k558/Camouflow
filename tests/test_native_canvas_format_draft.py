@@ -41,7 +41,8 @@ def test_isolated_native_evidence_does_not_admit_a_browser_fix():
                   "privacy_admitted", "production_admitted"):
         assert record[field] is False
     assert record["source_unchanged"] and record["existing_rgba8_transform_unchanged"]
-    for filename, field in (("canvas-formats-next.patch", "patch_sha256"), ("half_diagnostic.cc", "fixture_sha256")):
+    for filename, field in (("canvas-formats-next.patch", "patch_sha256"), ("half_diagnostic.cc", "fixture_sha256"),
+                            ("copy_diagnostic.cc", "copy_fixture_sha256")):
         assert hashlib.sha256((DRAFT / filename).read_bytes()).hexdigest() == record[field]
     assert record["syntax"]["passed"] and len(record["syntax"]["checks"]) == 3
     assert record["canvas2d_integration_syntax"]["passed"]
@@ -51,19 +52,41 @@ def test_isolated_native_evidence_does_not_admit_a_browser_fix():
     assert all(row["returncode"] == 0 for row in half["steps"])
     assert half["observed"] == {"controls": 12, "failed": 0, "half_encodings": 65536,
                                  "changed_normal_channels": 92160, "runtime_verified": False}
-    assert any("lower-precision" in text for text in record["limitations"])
+    copy = record["copy_diagnostic"]
+    assert copy["passed"] and copy["native_browser_runtime_verified"] is False
+    assert copy["observed"]["controls"] == 283 and copy["observed"]["failed"] == 0
+    assert copy["observed"]["lower_precision_effect_passed"]
+    rows = copy["observed"]["projection"]
+    assert {(row["color_space"], row["read_color_space"]) for row in rows} == {
+        (source, read) for source in ("srgb", "display-p3") for read in ("srgb", "display-p3")}
+    assert all(row["seed_controls"] == row["unique_f16"] == row["unique_rgba8"] == row["rgba8_affected"] == 32 for row in rows)
+    assert any("not all possible images" in text for text in record["limitations"])
 
 
 def test_actual_public_runner_repeat_is_bound_to_current_inputs():
     record = json.loads((DRAFT / "reproduction.json").read_text(encoding="utf-8"))
     assert record["passed"] and record["measurement_complete"] and record["postguards_passed"]
-    assert record["changed_inputs"] == [] and len(record["steps"]) == 9
+    assert record["changed_inputs"] == [] and len(record["steps"]) == 21
     assert all(step["returncode"] == 0 for step in record["steps"])
     assert record["native_browser_runtime_verified"] is record["privacy_admitted"] is record["production_admitted"] is False
-    for filename, field in (("verify_draft.py", "runner_sha256"), ("half_diagnostic.cc", "fixture_sha256")):
+    for filename, field in (("verify_draft.py", "runner_sha256"), ("half_diagnostic.cc", "fixture_sha256"),
+                            ("copy_diagnostic.cc", "copy_fixture_sha256")):
         assert hashlib.sha256((DRAFT / filename).read_bytes()).hexdigest() == record[field]
     normalized = (DRAFT / "observations.json").read_text(encoding="utf-8-sig").encode("utf-8")
     assert hashlib.sha256(normalized).hexdigest() == record["observations_normalized_utf8_lf_sha256"]
+    assert record["copy_observed"]["lower_precision_effect_passed"]
+
+
+def test_legacy_f16_projection_failure_is_not_relabelled_as_browser_success():
+    record = json.loads((DRAFT / "mantissa-lsb-failure.json").read_text(encoding="utf-8"))
+    observed = record["observed"]
+    assert observed["controls"] == 146 and observed["failed"] == 0
+    assert observed["lower_precision_effect_passed"] is False
+    assert record["native_browser_runtime_verified"] is record["privacy_admitted"] is False
+    assert len(observed["projection"]) == 2
+    for row in observed["projection"]:
+        assert row["seed_controls"] == row["unique_f16"] == 32
+        assert row["unique_rgba8"] == 1 and row["rgba8_affected"] == 0
 
 
 def test_helper_patch_reconstructs_measured_sources_without_native_checkout(tmp_path):

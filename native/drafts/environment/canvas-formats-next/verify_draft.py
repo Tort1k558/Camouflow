@@ -48,7 +48,9 @@ def run(source, build, output):
     manifest = json.loads((HERE / 'observations.json').read_text(encoding='utf-8'))
     patch = HERE / 'canvas-formats-next.patch'
     fixture = HERE / 'half_diagnostic.cc'
-    if digest(patch) != manifest['patch_sha256'] or digest(fixture) != manifest['fixture_sha256']:
+    copy_fixture = HERE / 'copy_diagnostic.cc'
+    if (digest(patch) != manifest['patch_sha256'] or digest(fixture) != manifest['fixture_sha256']
+            or digest(copy_fixture) != manifest['copy_fixture_sha256']):
         raise ValueError('Public patch or fixture hash differs from the measured draft.')
     inputs = {source / name: value for name, value in manifest['base_source_sha256'].items()}
     for path, value in inputs.items():
@@ -57,12 +59,13 @@ def run(source, build, output):
     core_ninja = build / 'obj/third_party/blink/renderer/core/core.ninja'
     canvas_ninja = build / 'obj/third_party/blink/renderer/modules/canvas/canvas.ninja'
     toolchain = build / 'toolchain.ninja'
+    production_ninja = build / 'obj/chrome/chrome_dll.ninja'
     compiler = source / 'third_party/llvm-build/Release+Asserts/bin/clang-cl.exe'
     linker = compiler.with_name('lld-link.exe')
     libraries = [build / 'obj/third_party/boringssl/boringssl.lib',
                  build / 'obj/third_party/boringssl/boringssl_asm.lib',
                  build / 'obj/buildtools/third_party/libc++/libc++/verbose_abort.obj']
-    for path in [core_ninja, canvas_ninja, toolchain, compiler, linker, patch, fixture,
+    for path in [core_ninja, canvas_ninja, toolchain, production_ninja, compiler, linker, patch, fixture, copy_fixture,
                  HERE / 'verify_draft.py', HERE / 'observations.json', *libraries]:
         inputs[path] = digest(path)
     match = re.search(r'/winsysroot:([^\s"]+)', toolchain.read_text(encoding='utf-8'))
@@ -74,7 +77,7 @@ def run(source, build, output):
     output.mkdir(parents=True, exist_ok=False)
     overlay = output / 'source'
     report = {'schema': 1, 'passed': False, 'measurement_complete': False, 'steps': [],
-              'scope': 'Isolated C++ syntax and linked half-transform diagnostic, not a browser build.',
+              'scope': 'Isolated C++ syntax and linked transform/copy/projection diagnostics, not a browser build.',
               'native_browser_runtime_verified': False, 'privacy_admitted': False,
               'production_admitted': False, 'inputs': {str(p): h for p, h in inputs.items()},
               'limitations': ['Existing generated modules and transitive thin-archive objects are not a full hermetic build.']}
@@ -127,6 +130,58 @@ def run(source, build, output):
             raise ValueError('Linked fixture output differs from the measured diagnostic.')
         report['observed'] = observed
         report['executable_sha256'] = digest(executable)
+
+        # Borrow the production link closure, not incomplete/unbuilt test targets.
+        # Source-set objects are archived lazily; original output files stay read-only.
+        lines = production_ninja.read_text(encoding='utf-8').splitlines()
+        edge = next(line for line in lines if line.startswith('build ./chrome.dll '))
+        linked_inputs = edge.split(': solink ', 1)[1].split(' | ', 1)[0].split()
+        variables = dict(line.strip().split(' = ', 1) for line in lines if line.startswith('  ') and ' = ' in line)
+        objects = [build / path for path in linked_inputs if path.endswith('.obj')]
+        groups = {name: [path for path in objects if path.parent == build / 'obj/skia' / name]
+                  for name in ('skia_core_and_effects', 'skia_opts_ml3', 'skia_opts_ml4',
+                               'skcms_TransformBaseline_and_public', 'skcms_TransformHsw', 'skcms_TransformSkx')}
+        groups['libcpp'] = [path for path in objects
+                            if path.parent == build / 'obj/buildtools/third_party/libc++/libc++']
+        prefixes = ('obj/base/', 'obj/third_party/perfetto/', 'obj/third_party/abseil-cpp/',
+                    'obj/third_party/zlib/', 'obj/skia/rust')
+        groups['raster-support'] = [path for path in objects if path.relative_to(build).as_posix().startswith(prefixes)]
+        if any(not paths for paths in groups.values()):
+            raise ValueError('Pinned production source-set closure is incomplete.')
+        for paths in groups.values():
+            for path in paths:
+                inputs[path] = digest(path)
+        compile_source(overlay / (PREFIX + 'canvas_readback_copy.cc'), 'canvas-copy', core_flags, False)
+        compile_source(copy_fixture, 'copy-diagnostic', core_flags, False)
+        private_libraries = []
+        for name, paths in groups.items():
+            archive = output / (name + '.lib')
+            rsp = output / (name + '-archive.rsp')
+            rsp.write_text('\n'.join('"' + str(path) + '"' for path in paths), encoding='utf-8')
+            command([str(linker), '/lib', '/llvmlibthin', '/nologo', '/out:' + str(archive), '@' + str(rsp)], name + '-archive')
+            private_libraries.append(archive)
+        production_libraries = [build / path for path in linked_inputs if path.endswith('.lib')]
+        for path in production_libraries:
+            inputs[path] = digest(path)
+        borrowed_flags = ' '.join(variables[name] for name in ('libs', 'rlibs')).replace('$:', ':')
+        for token in variables['rlibs'].split():
+            if token.endswith('.rlib'):
+                path = build / token
+                inputs[path] = digest(path)
+        copy_executable = output / 'copy-diagnostic.exe'
+        copy_link_args = [arg for arg in link_args if not arg.startswith('/out:') and not arg.endswith('half-diagnostic.obj')]
+        copy_link_args += ['/out:' + str(copy_executable), str(output / 'canvas-copy.obj'),
+                           str(output / 'copy-diagnostic.obj'), *map(str, private_libraries), *map(str, production_libraries)]
+        rsp = output / 'copy-diagnostic-link.rsp'
+        rsp.write_text('\n'.join('"' + arg + '"' for arg in copy_link_args) + '\n' + borrowed_flags, encoding='utf-8')
+        command([str(linker), '@' + str(rsp)], 'copy-diagnostic-link')
+        command([str(copy_executable)], 'copy-diagnostic-run')
+        copy_observed = json.loads((output / 'copy-diagnostic-run.log').read_text(encoding='utf-8'))
+        if copy_observed != manifest['copy_diagnostic']['observed']:
+            raise ValueError('Native copy/projection output differs from the measured fixture.')
+        report['copy_observed'] = copy_observed
+        report['copy_executable_sha256'] = digest(copy_executable)
+        report['borrowed_source_set_objects'] = sum(map(len, groups.values()))
         report['passed'] = True
     except Exception as error:
         report['error'] = {'type': type(error).__name__, 'message': str(error)}
@@ -135,6 +190,7 @@ def run(source, build, output):
         report['postguards_passed'] = not report['changed_inputs']
         report['passed'] &= report['postguards_passed']
         report['measurement_complete'] = True
+        report['inputs'] = {str(path): value for path, value in inputs.items()}
         (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     return report
 

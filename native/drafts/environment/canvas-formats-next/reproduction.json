@@ -47,9 +47,69 @@
       "name": "half-diagnostic-run",
       "returncode": 0,
       "log_sha256": "6ca6af01b95f553ac9ce6655e38bf344060f3815b8a53ae0b5c977f6ee8f3603"
+    },
+    {
+      "name": "canvas-copy",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "copy-diagnostic",
+      "returncode": 0,
+      "log_sha256": "d64c85b1831fcf0ac0680498d7da80518138adf49f55f0626f85a7803322f251"
+    },
+    {
+      "name": "skia_core_and_effects-archive",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "skia_opts_ml3-archive",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "skia_opts_ml4-archive",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "skcms_TransformBaseline_and_public-archive",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "skcms_TransformHsw-archive",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "skcms_TransformSkx-archive",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "libcpp-archive",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "raster-support-archive",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "copy-diagnostic-link",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "copy-diagnostic-run",
+      "returncode": 0,
+      "log_sha256": "a528168cbc71579376e8e01f00f314163a711efb6f4556e2f4fa589fa0779b47"
     }
   ],
-  "scope": "Isolated C++ syntax and linked half-transform diagnostic, not a browser build.",
+  "scope": "Isolated C++ syntax and linked transform/copy/projection diagnostics, not a browser build.",
   "native_browser_runtime_verified": false,
   "privacy_admitted": false,
   "production_admitted": false,
@@ -63,13 +123,56 @@
     "changed_normal_channels": 92160,
     "runtime_verified": false
   },
-  "executable_sha256": "79468286bd09ae7d43e922c1eeab3fe3026374f9dceb96a2b29edc84327da064",
+  "copy_observed": {
+    "projection": [
+      {
+        "color_space": "srgb",
+        "read_color_space": "srgb",
+        "seed_controls": 32,
+        "unique_f16": 32,
+        "unique_rgba8": 32,
+        "rgba8_affected": 32
+      },
+      {
+        "color_space": "srgb",
+        "read_color_space": "display-p3",
+        "seed_controls": 32,
+        "unique_f16": 32,
+        "unique_rgba8": 32,
+        "rgba8_affected": 32
+      },
+      {
+        "color_space": "display-p3",
+        "read_color_space": "srgb",
+        "seed_controls": 32,
+        "unique_f16": 32,
+        "unique_rgba8": 32,
+        "rgba8_affected": 32
+      },
+      {
+        "color_space": "display-p3",
+        "read_color_space": "display-p3",
+        "seed_controls": 32,
+        "unique_f16": 32,
+        "unique_rgba8": 32,
+        "rgba8_affected": 32
+      }
+    ],
+    "controls": 283,
+    "failed": 0,
+    "lower_precision_effect_passed": true,
+    "browser_runtime_verified": false
+  },
+  "executable_sha256": "85d33c7d07f679c1e2e83f8adf878887d02ce679cad1fc362b6cbd83d998e5ff",
+  "copy_executable_sha256": "ddaa3f43d93fb58a74bd18c21222397c9152fd23b05ae12c9b4046fa69e180cd",
+  "borrowed_source_set_objects": 816,
   "changed_inputs": [],
   "postguards_passed": true,
-  "raw_report_sha256": "457bb85320fa7d9c34cd6e7554d855c11d8d8ca1fa2c039eefa2ad3f05c4eb33",
-  "runner_sha256": "526f3faa51f3e293e65d6ad86a0dca5de8113d032614f84ce0bd047b5b64f059",
-  "observations_sha256": "d630ae584ee87fa8ce230a3296fdcd5f9e96fc7da8260394720da47ec5ca4749",
-  "fixture_sha256": "4edd589f3adb122b10c8a3a1cfd770eed67f8330b25920121fe7f962516407e2",
-  "note": "Actual public runner repeat; isolated compilation/link only, no Chrome rebuild or runtime fix. observations_sha256 binds measured raw bytes; normalized UTF-8/LF hash supports Git checkout line endings.",
-  "observations_normalized_utf8_lf_sha256": "eb676b5e001ab37653dfdba0f7d8484735eab4ce0272bc53cf895d5be01e653c"
+  "raw_report_sha256": "1409f2ecfe0368d354c0020e86efc8bc55a75ff33c25ff7f47aff8b050076383",
+  "runner_sha256": "ef5de7aeff9e45454a59e26ded501ecec418df2510a9c302f2bc83ece4caac42",
+  "observations_sha256": "122fb08fea520994ef9525538a79e7c1f41e442a6c40a17f26c8b5eee5156b9a",
+  "observations_normalized_utf8_lf_sha256": "122fb08fea520994ef9525538a79e7c1f41e442a6c40a17f26c8b5eee5156b9a",
+  "fixture_sha256": "32190cfe9408516834d15345181338954530db617a02c42ca6c47b8b55154d34",
+  "copy_fixture_sha256": "1bc209b9b01659aa27e71738fb4122561de1664d72ed3e2cf38e6f1ffc33e092",
+  "note": "Actual formatted public-runner repeat: adaptive F16 transform and real Skia copy/projection; no Chrome rebuild or browser admission."
 }

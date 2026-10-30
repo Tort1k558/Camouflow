@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "date": "2026-10-30",
-  "status": "unselected isolated native draft",
+  "status": "unselected isolated native draft; adaptive F16 quantum v2",
   "scope": "Source-format extension and linked binary16 transform diagnostic, not a compiled browser fix.",
-  "patch_sha256": "c4d917998a94f623e3db15d105aa0531ce3d8eabc87882bb5dc937699195a3f9",
-  "fixture_sha256": "4edd589f3adb122b10c8a3a1cfd770eed67f8330b25920121fe7f962516407e2",
+  "patch_sha256": "b911fef3ba8b5f75b3f55dfc921bf6ddd90251f494a1fbabff602c7089c8c652",
+  "fixture_sha256": "32190cfe9408516834d15345181338954530db617a02c42ca6c47b8b55154d34",
   "base_source_sha256": {
     "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h": "50aab897ea6798aa949e7f7deb9448d210e8c3301a183b46afdf969418482986",
     "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc": "52a56da36b9c6631a87e36826fcceeb90c93f2c619a23b0f86b85cf68e636858",
@@ -16,7 +16,7 @@
   },
   "prepared_source_sha256": {
     "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h": "07de0456fb75723e36b59e58ff649e0b382b48289e908186461f1ef32598d091",
-    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc": "7a55967d673cefe80670be5394e4ab3a12842c02cdb3e93ff6cab14e09c592df",
+    "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5",
     "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.h": "bceb10b936d1c9235e8da9bff221be88ae3f932ec18c9acb5a229898b88b0609",
     "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc": "3df7f71effe0a5b22fd780501551a9fd48bbf3fc987bafc9fbbbf1cc24da8b00",
     "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_image.cc": "a7433fa8a680aab29dc15f297a4165cd94228647c4eabe6249727b30de1594a0",
@@ -26,12 +26,12 @@
   "existing_rgba8_transform_unchanged": true,
   "syntax": {
     "schema": 1,
-    "scope": "isolated source syntax, not link or runtime",
+    "scope": "Compiler checks: candidate additionally object-compiled; other unchanged translation units retain prior syntax evidence.",
     "checks": [
       {
         "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc",
         "returncode": 0,
-        "source_sha256": "7a55967d673cefe80670be5394e4ab3a12842c02cdb3e93ff6cab14e09c592df",
+        "source_sha256": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5",
         "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
@@ -60,8 +60,14 @@
     "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "half_diagnostic": {
-    "schema": 1,
     "passed": true,
+    "observed": {
+      "controls": 12,
+      "failed": 0,
+      "half_encodings": 65536,
+      "changed_normal_channels": 92160,
+      "runtime_verified": false
+    },
     "steps": [
       {
         "name": "half-transform-compile",
@@ -80,16 +86,8 @@
         "returncode": 0
       }
     ],
-    "observed": {
-      "controls": 12,
-      "failed": 0,
-      "half_encodings": 65536,
-      "changed_normal_channels": 92160,
-      "runtime_verified": false
-    },
-    "executable_sha256": "5e54b903243692c7cf00c6e3365cab8f9d85b636c585801f9aa780a3890c5243",
-    "native_browser_runtime_verified": false,
-    "privacy_admitted": false
+    "executable_sha256": "bbefa5e45223c3a257a496d55a168d816b1342e8cb7e9c3caf551221a805d43d",
+    "native_browser_runtime_verified": false
   },
   "registered": false,
   "applied_to_active_checkout": false,
@@ -99,9 +97,74 @@
   "privacy_admitted": false,
   "production_admitted": false,
   "limitations": [
-    "F16 mantissa-LSB effects can disappear after lower-precision conversion; this draft does not establish protected RGBA8 output from F16 storage.",
-    "No runtime export/crop/worker/HDR quality or combined-policy results apply to this draft.",
-    "Existing generated modules and transitive thin-archive objects were not a complete hermetic build.",
-    "Preserved 001-070 browser and registered candidate manifest remain unchanged."
-  ]
+    "Projection effects are measured on one finite rich fixture, four source/read color-space pairs and 32 native seed controls, not all possible images or real BrowserContexts.",
+    "Known-answer HDR/crop/alpha checks and numerical half-encoding bounds do not establish broad editor/HDR/perceptual quality or browser export/worker compatibility.",
+    "No full hermetic dependency rebuild, Chromium build, privacy/security or release admission.",
+    "Preserved 001-070 browser still has the measured 30/32 format failure."
+  ],
+  "copy_fixture_sha256": "1bc209b9b01659aa27e71738fb4122561de1664d72ed3e2cf38e6f1ffc33e092",
+  "legacy_lower_precision_failure": "mantissa-lsb-failure.json",
+  "copy_diagnostic": {
+    "passed": true,
+    "observed": {
+      "projection": [
+        {
+          "color_space": "srgb",
+          "read_color_space": "srgb",
+          "seed_controls": 32,
+          "unique_f16": 32,
+          "unique_rgba8": 32,
+          "rgba8_affected": 32
+        },
+        {
+          "color_space": "srgb",
+          "read_color_space": "display-p3",
+          "seed_controls": 32,
+          "unique_f16": 32,
+          "unique_rgba8": 32,
+          "rgba8_affected": 32
+        },
+        {
+          "color_space": "display-p3",
+          "read_color_space": "srgb",
+          "seed_controls": 32,
+          "unique_f16": 32,
+          "unique_rgba8": 32,
+          "rgba8_affected": 32
+        },
+        {
+          "color_space": "display-p3",
+          "read_color_space": "display-p3",
+          "seed_controls": 32,
+          "unique_f16": 32,
+          "unique_rgba8": 32,
+          "rgba8_affected": 32
+        }
+      ],
+      "controls": 283,
+      "failed": 0,
+      "lower_precision_effect_passed": true,
+      "browser_runtime_verified": false
+    },
+    "steps": [
+      {
+        "name": "canvas-copy-compile",
+        "returncode": 0
+      },
+      {
+        "name": "copy-diagnostic-compile",
+        "returncode": 0
+      },
+      {
+        "name": "copy-diagnostic-link",
+        "returncode": 0
+      },
+      {
+        "name": "copy-diagnostic-run",
+        "returncode": 0
+      }
+    ],
+    "executable_sha256": "1c0b15fe471136ca50aac1dad30769605a5a3b44c0dde0a808fbb232d85724a9",
+    "native_browser_runtime_verified": false
+  }
 }

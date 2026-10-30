@@ -14,11 +14,13 @@
 [Mobile Web](../native/drafts/environment/combined-mobile70-observations.json),
 [full Python](../native/drafts/environment/canonical-python70-combined-math-observations.json).
 An [isolated P3/F16 draft](../native/drafts/environment/canvas-formats-next/README.md)
-passes four C++ syntax checks and 12 linked transform controls, including 65,536
-half encodings. It is not compiled into the browser; F16 LSB effects may disappear
-after lower-precision conversion. Copy/HDR/export/runtime checks remain open.
-[Full repeat at `ed64d93`](../native/drafts/environment/canonical-python70-lifecycle-formats-observations.json):
-**4441 passed, 1 skipped**, before that C++ draft. Combined BFCache, full WebGPU,
+passes compiler checks and 12 linked transform controls including 65,536 half
+encodings. Its adaptive variant also passes **283 native Skia copy/projection
+controls**: four source/read color-space pairs retain 32 distinct F16/RGBA8 seed
+outputs on the owned fixture. The prior LSB-only projection FAIL is retained.
+It is not compiled into the browser; export/workers/runtime and broad HDR quality
+checks remain open. [Full repeat at `4400f45`](../native/drafts/environment/canonical-python70-canvas-draft-observations.json):
+**4446 passed, 1 skipped**, before the adaptive variant. Combined BFCache, full WebGPU,
 quality/resources, security rebase and release/update/rollback gates remain open.
 Earlier tables below describe their original, narrower measurements.
 

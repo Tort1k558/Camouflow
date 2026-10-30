@@ -18,16 +18,33 @@ diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_c
 diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc
 --- a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc
 +++ b/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc
-@@ -187,4 +187,117 @@
+@@ -187,4 +187,126 @@
    return TransformReadback(rgba, width, height, 0, 0, width, height,
                             partition_seed, Strategy::kEdgeColour);
  }
 +namespace {
-+constexpr char kHalfDomain[] = "glint.canvas.edge.rgba16f.candidate.v1";
++constexpr char kHalfDomain[] = "glint.canvas.edge.rgba16f.candidate.v2";
 +
 +bool IsNormalHalf(uint16_t value) {
 +  const uint16_t exponent = value & 0x7c00;
 +  return exponent != 0 && exponent != 0x7c00;
++}
++
++uint16_t HalfProtectionMask(uint16_t value) {
++  if (!IsNormalHalf(value)) {
++    return 0;
++  }
++  const int exponent = (value & 0x7c00) >> 10;
++  // Target an absolute quantum <= 1/256 for normal SDR samples. At large HDR
++  // magnitudes the smallest representable step is already larger: use one ULP.
++  // Only one mantissa bit changes; sign, exponent and all other bits survive.
++  const int shift = std::clamp(17 - exponent, 0, 9);
++  return static_cast<uint16_t>(1u << shift);
++}
++
++uint16_t StableHalfColour(uint16_t value) {
++  const uint16_t result = value & ~HalfProtectionMask(value);
++  return (result & 0x7fff) == 0 ? 0 : result;
 +}
 +
 +bool IsFiniteOpaqueHalfPixel(std::span<const uint16_t> rgba, size_t offset) {
@@ -49,16 +66,10 @@ diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_c
 +    return false;
 +  }
 +  for (size_t channel = 0; channel < 3; ++channel) {
-+    // Clearing only the mantissa LSB makes classification idempotent. Normalize
-+    // signed zero for comparison without changing its stored representation.
-+    uint16_t first = rgba[offset + channel] & 0xfffe;
-+    uint16_t second = rgba[neighbour + channel] & 0xfffe;
-+    if ((first & 0x7fff) == 0) {
-+      first = 0;
-+    }
-+    if ((second & 0x7fff) == 0) {
-+      second = 0;
-+    }
++    // The selected bit is not part of classification or key derivation.
++    // Its position depends only on the invariant exponent, so reads are stable.
++    const uint16_t first = StableHalfColour(rgba[offset + channel]);
++    const uint16_t second = StableHalfColour(rgba[neighbour + channel]);
 +    if (first != second) {
 +      return true;
 +    }
@@ -103,10 +114,7 @@ diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_c
 +      }
 +      uint64_t colour = 0;
 +      for (size_t channel = 0; channel < 3; ++channel) {
-+        uint16_t value = rgba[offset + channel] & 0xfffe;
-+        if ((value & 0x7fff) == 0) {
-+          value = 0;
-+        }
++        const uint16_t value = StableHalfColour(rgba[offset + channel]);
 +        colour = (colour << 16) | value;
 +        const size_t index = sizeof(kHalfDomain) - 1 + channel * 2;
 +        message[index] = static_cast<uint8_t>(value >> 8);
@@ -127,8 +135,9 @@ diff --git a/third_party/blink/renderer/core/html/canvas/glint/canvas_readback_c
 +      for (size_t channel = 0; channel < 3; ++channel) {
 +        const uint16_t value = rgba[offset + channel];
 +        if (IsNormalHalf(value)) {
-+          rgba[offset + channel] =
-+              (value & 0xfffe) | ((entry.bits >> channel) & 1);
++          const uint16_t mask = HalfProtectionMask(value);
++          rgba[offset + channel] = static_cast<uint16_t>(
++              (value & ~mask) | (((entry.bits >> channel) & 1) * mask));
 +        }
 +      }
 +    }

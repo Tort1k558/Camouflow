@@ -1,12 +1,15 @@
 // Copyright 2026 CamouFlow contributors.
 // SPDX-License-Identifier: MIT
-#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h"
-
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <limits>
 #include <span>
+
+#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h"
+#include "third_party/fp16/src/include/fp16.h"
 
 namespace {
 using PixelPair = std::array<uint16_t, 8>;
@@ -14,10 +17,12 @@ constexpr std::array<uint8_t, 32> kSeed{};
 constexpr PixelPair kFixture{0x3555, 0xb955, 0x4055, 0x3c00,
                              0x3aab, 0x2abc, 0xc800, 0x3c00};
 
-bool Transform(std::span<uint16_t> pixels, uint32_t width, uint32_t height,
+bool Transform(std::span<uint16_t> pixels,
+               uint32_t width,
+               uint32_t height,
                const std::array<uint8_t, 32>& seed = kSeed) {
   return glint::candidate::TransformEdgeCoherentCanvasF16(pixels, width, height,
-                                                         seed);
+                                                          seed);
 }
 }  // namespace
 
@@ -33,19 +38,19 @@ int main() {
   };
   auto pixels = kFixture;
   check(Transform(pixels, 2, 1), "known-answer transform succeeds");
-  const PixelPair expected{0x3554, 0xb954, 0x4054, 0x3c00,
-                           0x3aaa, 0x2abc, 0xc801, 0x3c00};
+  const PixelPair expected{0x3545, 0xb95d, 0x4055, 0x3c00,
+                           0x3aab, 0x2abc, 0xc800, 0x3c00};
   check(pixels == expected, "HMAC-SHA256 known answer");
   check(Transform(pixels, 2, 1) && pixels == expected, "idempotence");
   pixels = kFixture;
-  check(Transform(pixels, 1, 2) && pixels == expected, "vertical edge coherence");
+  check(Transform(pixels, 1, 2) && pixels == expected,
+        "vertical edge coherence");
   pixels = kFixture;
   auto other_seed = kSeed;
   other_seed[0] = 1;
   check(Transform(pixels, 2, 1, other_seed) && pixels != expected,
         "different seed changes fixture");
-  pixels = {0x3555, 0xb955, 0x4055, 0x3c00,
-            0x3555, 0xb955, 0x4055, 0x3c00};
+  pixels = {0x3555, 0xb955, 0x4055, 0x3c00, 0x3555, 0xb955, 0x4055, 0x3c00};
   const auto uniform = pixels;
   check(Transform(pixels, 2, 1) && pixels == uniform, "uniform fill exact");
   pixels = kFixture;
@@ -59,7 +64,8 @@ int main() {
   check(!Transform(std::span(pixels).first<7>(), 2, 1) && pixels == kFixture,
         "incomplete buffer rejected");
   check(!Transform(pixels, std::numeric_limits<uint32_t>::max(),
-                   std::numeric_limits<uint32_t>::max()) && pixels == kFixture,
+                   std::numeric_limits<uint32_t>::max()) &&
+            pixels == kFixture,
         "dimension overflow rejected");
   unsigned changed_normal = 0;
   bool exhaustive = true;
@@ -76,7 +82,15 @@ int main() {
       if (exponent == 0 || exponent == 0x7c00) {
         exhaustive &= pixels[channel] == value;
       } else {
-        exhaustive &= (pixels[channel] & 0xfffe) == (value & 0xfffe);
+        exhaustive &= (pixels[channel] & 0xfc00) == (value & 0xfc00);
+        const uint16_t difference = pixels[channel] ^ value;
+        exhaustive &= difference == 0 || (difference & (difference - 1)) == 0;
+        const float before = fp16_ieee_to_fp32_value(value);
+        const float after = fp16_ieee_to_fp32_value(pixels[channel]);
+        const float one_ulp =
+            std::fabs(fp16_ieee_to_fp32_value(value ^ 1) - before);
+        exhaustive &=
+            std::fabs(after - before) <= std::max(1.0f / 256.0f, one_ulp);
         changed_normal += pixels[channel] != value;
       }
     }
@@ -90,9 +104,11 @@ int main() {
     exhaustive &= Transform(pixels, 2, 1) && pixels == once;
   }
   check(exhaustive && changed_normal > 0,
-        "all 65536 half encodings preserve sign exponent special values alpha and idempotence");
-  std::printf("{\"controls\":%u,\"failed\":%u,\"half_encodings\":65536,"
-              "\"changed_normal_channels\":%u,\"runtime_verified\":false}\n",
-              controls, failed, changed_normal);
+        "all 65536 half encodings preserve sign exponent special values alpha "
+        "and idempotence");
+  std::printf(
+      "{\"controls\":%u,\"failed\":%u,\"half_encodings\":65536,"
+      "\"changed_normal_channels\":%u,\"runtime_verified\":false}\n",
+      controls, failed, changed_normal);
   return failed ? 1 : 0;
 }

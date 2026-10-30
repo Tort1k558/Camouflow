@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "scope": "Native Skia conversion erases the legacy F16 LSB effect on the owned rich fixture.",
+  "baseline_draft_git_head": "4400f455e28b0ce756b7730c4ae28b5e4459240a",
+  "baseline_patch_sha256": "c4d917998a94f623e3db15d105aa0531ce3d8eabc87882bb5dc937699195a3f9",
+  "observed": {
+    "projection": [
+      {
+        "color_space": "srgb",
+        "seed_controls": 32,
+        "unique_f16": 32,
+        "unique_rgba8": 1,
+        "rgba8_affected": 0
+      },
+      {
+        "color_space": "display-p3",
+        "seed_controls": 32,
+        "unique_f16": 32,
+        "unique_rgba8": 1,
+        "rgba8_affected": 0
+      }
+    ],
+    "controls": 146,
+    "failed": 0,
+    "lower_precision_effect_passed": false,
+    "browser_runtime_verified": false
+  },
+  "baseline_fixture_sha256": "56910687bf246e9df33d4bf82fcd54115378c688d9d03e9315f031d3b2264d17",
+  "baseline_transform_sha256": "7a55967d673cefe80670be5394e4ab3a12842c02cdb3e93ff6cab14e09c592df",
+  "raw_observation_sha256": "717fff78bb8973ee06f9d8756cc93857dc1d2dacaa1e9ba41db6356f86d2a0a0",
+  "native_browser_runtime_verified": false,
+  "privacy_admitted": false,
+  "note": "32 native seed controls are not 32 real browser profiles. Prior source remains in Git history; raw diagnostic fixture/log retained on D."
+}

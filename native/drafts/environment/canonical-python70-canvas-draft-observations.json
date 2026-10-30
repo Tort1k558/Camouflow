@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "git_head": "4400f455e28b0ce756b7730c4ae28b5e4459240a",
+  "scope": "Full canonical Python regression, no native compilation or browser/privacy/release admission",
+  "tracked_file_count": 885,
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "duration_seconds": 372.172,
+  "returncode": 0,
+  "counts": {
+    "tests": 4447,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 4446
+  },
+  "changed_tracked_files": [],
+  "postguards_passed": true,
+  "log_sha256": "fa932567ce6fcd7e98b4c2a2e1d7ee35b625b26e85a2675b3c6b88f07c64d229",
+  "junit_sha256": "4aedac9f8eee9b855fb09fcdb3060cece46fb20ea8a24d4b410418f480b7a606",
+  "raw_report_sha256": "4ce76a3855897ad328aa93a1239a7ce2770fe91ffaf78a85a483c9a258192797",
+  "note": "Full repeat at 4400f45, before the adaptive F16/copy/projection extension."
+}
