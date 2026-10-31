@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "scope": "Exact reversible candidate-selection tooling extension; previous measured tools and evidence remain unchanged",
+  "patch": "webgpu-r2-host-source-upgrade.patch",
+  "patch_sha256": "aae64f355bda0a4c1bf203ddbee1bf286097005a43600b37b6d0131848314ab9",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "49c7e8b59e4835abff826efa03ca9009fc7b69c00b37613364a00252a2c622fa",
+      "after_sha256": "62c46ec853ed07b796995c9574c45a98a63ab9b944e54db1716945858751f021"
+    },
+    {
+      "source": "scripts/verify_native_webgpu_consistency.py",
+      "before_sha256": "aa6da7d6a7488eb83ca257ace6f9e61e0a9ff60efb3f2725640d820b04616475",
+      "after_sha256": "6b95668472ca86567d2c7bb4df722acc0266ab8f75f5aedd951300dbc5722873"
+    }
+  ]
+}

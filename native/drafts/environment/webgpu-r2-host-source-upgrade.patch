@@ -1,0 +1,50 @@
+--- a/scripts/native_build.py
++++ b/scripts/native_build.py
+@@ -17,7 +17,8 @@
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
+ LOCK = json.loads((ROOT / "native/build-lock.json").read_text(encoding="utf-8-sig"))
+-CANDIDATES = ("upstream-156", "upstream-156-webgpu")
++WEBGPU_CANDIDATES = ("upstream-156-webgpu", "upstream-156-webgpu-r2")
++CANDIDATES = ("upstream-156", *WEBGPU_CANDIDATES)
+ WINDOWS_DIA_FILES = ("include/dia2.h", "include/cvconst.h", "include/diacreate.h", "lib/diaguids.lib",
+                      "lib/amd64/diaguids.lib", "bin/msdia140.dll", "bin/amd64/msdia140.dll")
+ 
+@@ -612,7 +613,7 @@
+             raise ValueError("Candidate workspace requires its explicit --candidate selection")
+         return
+     # Variants share the pinned checkout/cache, never manifest-bound stage receipts.
+-    family = "upstream-156" if candidate["name"] == "upstream-156-webgpu" else candidate["name"]
++    family = "upstream-156" if candidate["name"] in WEBGPU_CANDIDATES else candidate["name"]
+     identity = {"schema": 1, "candidate": family,
+                 "chromium_revision": candidate["lock"]["chromium_revision"]}
+     if marker.exists():
+--- a/scripts/verify_native_webgpu_consistency.py
++++ b/scripts/verify_native_webgpu_consistency.py
+@@ -17,7 +17,7 @@
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
+ 
+-from scripts.native_build import CANDIDATES
++from scripts.native_build import CANDIDATES, WEBGPU_CANDIDATES
+ 
+ PROBE = ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js'
+ DRIVER_MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
+@@ -47,7 +47,7 @@
+     if len(selected) > 1 or disabled > 1:
+         raise ValueError('Ambiguous WebGPU feature arguments')
+     result = list(arguments)
+-    if candidate_name == 'upstream-156-webgpu' and mode == 'ready':
++    if candidate_name in WEBGPU_CANDIDATES and mode == 'ready':
+         if selected:
+             result[selected[0]] += ',' + TRANSPORT_FEATURE
+         else:
+@@ -183,7 +183,7 @@
+             enabled = [feature for argument in arguments if argument.startswith('--enable-features=')
+                        for feature in argument.partition('=')[2].split(',')]
+             transport_enabled = TRANSPORT_FEATURE in enabled
+-            if transport_enabled != (report['candidate'] == 'upstream-156-webgpu' and mode == 'ready'):
++            if transport_enabled != (report['candidate'] in WEBGPU_CANDIDATES and mode == 'ready'):
+                 raise ValueError('Requested WebGPU transport feature was not effective')
+             report.setdefault('transport_feature_observations', []).append(
+                 {'mode': mode, 'enabled': transport_enabled})

@@ -16,10 +16,11 @@ def observation():
     return json.loads((MODULE / 'observations.json').read_bytes())
 
 
-def test_gpu_recovery_control_binds_public_sources_and_exact_runtime():
+def test_gpu_recovery_control_binds_public_sources_and_exact_runtime(host_sources_before_webgpu_r2):
     record = observation()
     for name, expected in record['source_sha256'].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        source = host_sources_before_webgpu_r2.get(name, (ROOT / name).read_bytes())
+        assert hashlib.sha256(source).hexdigest() == expected
     earlier = json.loads((ROOT / 'native/drafts/environment/webgpu-diagnostic-variant76-control-observations.json').read_bytes())
     for name in ('runtime_core_sha256_measured', 'candidate_manifest_sha256', 'receipt_sha256'):
         assert record[name] == earlier[name]
@@ -30,10 +31,12 @@ def test_gpu_recovery_control_binds_public_sources_and_exact_runtime():
 
 
 def test_gpu_recovery_complete_input_digest_preserves_measured_newlines(historical_source_newlines,
-                                                                     native_build_before_index_mtime_fix):
+                                                                     native_build_before_index_mtime_fix,
+                                                                     host_sources_before_webgpu_r2):
     from scripts.verify_native_gpu_readback import probe_inputs
 
     sources = probe_inputs(candidate_name='upstream-156')
+    sources.update({name: hashlib.sha256(value).hexdigest() for name, value in host_sources_before_webgpu_r2.items()})
     sources[native_build_before_index_mtime_fix['source']] = native_build_before_index_mtime_fix['before_sha256']
     paths = [MODULE / 'collect.py', MODULE / 'watch.js',
              ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js',
@@ -135,11 +138,13 @@ def test_gpu_recovery_ready_control_keeps_old_policy_inconsistency_failed():
 
 
 def test_gpu_recovery_ready_control_binds_its_staged_source_layout(historical_source_newlines,
-                                                                native_build_before_index_mtime_fix):
+                                                                native_build_before_index_mtime_fix,
+                                                                host_sources_before_webgpu_r2):
     from scripts.verify_native_gpu_readback import probe_inputs
 
     record = json.loads((MODULE / 'ready-mode-observations.json').read_bytes())
     sources = probe_inputs(candidate_name='upstream-156')
+    sources.update({name: hashlib.sha256(value).hexdigest() for name, value in host_sources_before_webgpu_r2.items()})
     for path in [MODULE / 'watch.js', ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js',
                  ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json']:
         sources[path.relative_to(ROOT).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()

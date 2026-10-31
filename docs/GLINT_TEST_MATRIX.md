@@ -1,5 +1,29 @@
 # Glint browser test matrix
 
+## 2026-11-01: measured 001–116 runtime and revision-2 correction
+
+| Gate on the preserved 001–116 browser | Result | Boundary |
+| --- | --- | --- |
+| Core runtime suite | 160 checks passed in eight groups | Includes lifecycle, storage, proxy, permissions, scenarios and Recorder; not third-party bot acceptance |
+| Worker startup | 60 checks passed | Classic/module, shared/service/nested, restart and unavailable-policy controls |
+| Combined surfaces | 12 groups passed | Canvas/OfflineAudio, settled WebGL, simultaneous profiles and nested Canvas; not WebGPU admission |
+| GPU contexts | Four groups passed | Includes required WebGPU availability; availability is not protected-dataflow correctness |
+| Combined math policy | Passed across eight profiles | Both reference selectors observed; no device-cohort certification |
+| Protected WebGPU copy/shader/PNG | **Failed** | Baseline works; protected device reports an incompatible projection SRV descriptor |
+| Audio compatibility | **Failed in legacy mode** | Baseline/math/restarted-math probes pass; legacy fidelity, analyser and worklet consistency fail |
+| Runtime/resource postguards | Passed for all seven gates; no owned processes remain | No feature, privacy or release promotion |
+
+The WebGPU loss was traced to the native descriptor guard: Dawn uses a one-slice
+2D-array SRV for a logical 2D view. The
+[measured correction packet](../native/drafts/webgpu-srv-routing/README.md)
+passed 54 standalone Wire cases plus 12 exact before/after sampled RGBA/BGRA
+controls. These results use normal MSVC STL/no-op raw pointers, not Chromium
+embedding. The [118-patch revision](../native/drafts/upstream-156-webgpu-r2/README.md)
+replays and reverses completely, restoring all 268 upstream files; its two final
+engine sources match the compiled standalone inputs. The revised browser is
+**not built or admitted yet**. The original manifest, failed observations and
+preserved browser are not rewritten as corrected results.
+
 ## 2026-11-01: full 001–116 Windows compilation completed
 
 | Gate | Measured result | Boundary |

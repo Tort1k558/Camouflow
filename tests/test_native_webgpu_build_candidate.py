@@ -184,7 +184,7 @@ def test_webgpu_transport_is_enabled_only_for_the_explicit_protected_variant(can
     assert arguments == before
     enabled = [feature for value in actual if value.startswith('--enable-features=')
                for feature in value.partition('=')[2].split(',')]
-    assert enabled.count(TRANSPORT_FEATURE) == int(candidate == 'upstream-156-webgpu' and mode == 'ready')
+    assert enabled.count(TRANSPORT_FEATURE) == int(candidate in build.WEBGPU_CANDIDATES and mode == 'ready')
     assert '--owned-switch' in actual and '--disable-features=OtherDisabled' in actual
     if existing:
         assert 'OtherEnabled' in enabled
@@ -231,13 +231,15 @@ def test_updated_diagnostic_runtime_control_preserves_the_known_076_failure():
                'browser_consistency_admitted', 'privacy_admitted', 'production_admitted'))
 
 
-def test_updated_diagnostic_runtime_control_binds_its_actual_public_inputs(native_build_before_index_mtime_fix):
+def test_updated_diagnostic_runtime_control_binds_its_actual_public_inputs(native_build_before_index_mtime_fix,
+                                                                        host_sources_before_webgpu_r2):
     record = json.loads((ROOT / 'native/drafts/environment/webgpu-diagnostic-variant76-control-observations.json').read_bytes())
     assert record['measured_input_count'] == 224
     assert len(record['selected_public_source_sha256']) == 12
     for name, digest in record['selected_public_source_sha256'].items():
         source = (native_build_before_index_mtime_fix['before_bytes']
-                  if name == native_build_before_index_mtime_fix['source'] else (ROOT / name).read_bytes())
+                  if name == native_build_before_index_mtime_fix['source']
+                  else host_sources_before_webgpu_r2.get(name, (ROOT / name).read_bytes()))
         assert hashlib.sha256(source).hexdigest() == digest
     manifest = 'native/drafts/environment/playwright-driver-stage-binding-close.json'
     assert record['driver_manifest_sha256'] == record['selected_public_source_sha256'][manifest]

@@ -1,5 +1,16 @@
 # Glint architecture
 
+The first complete 001–116 runtime now has measured browser results: its core
+suite, worker startup, combined surfaces and combined math policy pass, while
+protected WebGPU and legacy Audio compatibility do not. Exact failures and scope
+are recorded in the [test matrix](../docs/GLINT_TEST_MATRIX.md).
+
+The independent [SRV/readonly-indirect correction](drafts/webgpu-srv-routing/README.md)
+has 54 standalone case results and 12 comparative native controls. The explicit
+`upstream-156-webgpu-r2` revision preserves the full 116-patch prefix and adds two
+Dawn patches without rewriting old manifests or receipts. Its 118-patch source
+replay/reverse passes; a corrected Chromium runtime is not yet verified.
+
 The [owned GPU-process recovery control](drafts/environment/gpu-process-recovery/README.md)
 now has three actual runs on preserved 001–076 with policies off. A real
 `Browser.crashGpuProcess` produces one lost-device callback and aborts the old

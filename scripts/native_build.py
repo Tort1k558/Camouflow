@@ -17,7 +17,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 LOCK = json.loads((ROOT / "native/build-lock.json").read_text(encoding="utf-8-sig"))
-CANDIDATES = ("upstream-156", "upstream-156-webgpu")
+WEBGPU_CANDIDATES = ("upstream-156-webgpu", "upstream-156-webgpu-r2")
+CANDIDATES = ("upstream-156", *WEBGPU_CANDIDATES)
 WINDOWS_DIA_FILES = ("include/dia2.h", "include/cvconst.h", "include/diacreate.h", "lib/diaguids.lib",
                      "lib/amd64/diaguids.lib", "bin/msdia140.dll", "bin/amd64/msdia140.dll")
 
@@ -612,7 +613,7 @@ def candidate_workspace(workspace: Path, candidate: dict | None, *, claim: bool 
             raise ValueError("Candidate workspace requires its explicit --candidate selection")
         return
     # Variants share the pinned checkout/cache, never manifest-bound stage receipts.
-    family = "upstream-156" if candidate["name"] == "upstream-156-webgpu" else candidate["name"]
+    family = "upstream-156" if candidate["name"] in WEBGPU_CANDIDATES else candidate["name"]
     identity = {"schema": 1, "candidate": family,
                 "chromium_revision": candidate["lock"]["chromium_revision"]}
     if marker.exists():

@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from scripts.native_build import CANDIDATES
+from scripts.native_build import CANDIDATES, WEBGPU_CANDIDATES
 
 PROBE = ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js'
 DRIVER_MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
@@ -47,7 +47,7 @@ def transport_arguments(arguments: list[str], *, candidate_name: str, mode: str)
     if len(selected) > 1 or disabled > 1:
         raise ValueError('Ambiguous WebGPU feature arguments')
     result = list(arguments)
-    if candidate_name == 'upstream-156-webgpu' and mode == 'ready':
+    if candidate_name in WEBGPU_CANDIDATES and mode == 'ready':
         if selected:
             result[selected[0]] += ',' + TRANSPORT_FEATURE
         else:
@@ -183,7 +183,7 @@ async def observe(executable: Path, owned: Path, server, source: str, report: di
             enabled = [feature for argument in arguments if argument.startswith('--enable-features=')
                        for feature in argument.partition('=')[2].split(',')]
             transport_enabled = TRANSPORT_FEATURE in enabled
-            if transport_enabled != (report['candidate'] == 'upstream-156-webgpu' and mode == 'ready'):
+            if transport_enabled != (report['candidate'] in WEBGPU_CANDIDATES and mode == 'ready'):
                 raise ValueError('Requested WebGPU transport feature was not effective')
             report.setdefault('transport_feature_observations', []).append(
                 {'mode': mode, 'enabled': transport_enabled})

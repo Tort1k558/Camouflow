@@ -295,3 +295,7 @@ scripts/verify_native_storage_paths.py text eol=lf
 scripts/verify_native_webrtc.py text eol=lf
 native/drafts/environment/gpu-process-recovery/* text eol=lf
 native/drafts/environment/native-build-racy-index-source-upgrade.json text eol=lf
+native/drafts/webgpu-srv-routing/* text eol=lf
+native/drafts/upstream-156-webgpu-r2/*.json text eol=lf
+native/drafts/upstream-156-webgpu-r2/patches/*.patch text eol=lf
+native/drafts/environment/webgpu-r2-host-source-upgrade.json text eol=lf

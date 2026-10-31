@@ -1,6 +1,20 @@
 # Glint: план проверки и развития
 
-## Complete component candidate compiled; runtime checks pending
+## Complete component candidate compiled; two compatibility gates remain failed
+
+The preserved 001–116 browser passed the 160-check runtime suite, 60 worker
+startup checks, combined Canvas/Audio/WebGL surfaces and eight-profile combined
+math policy. Protected WebGPU loses its device at the native SRV descriptor guard;
+legacy Audio fails fidelity/analyser/worklet consistency. Baseline and math Audio
+probes pass. No corrected release is installed.
+
+The [revision-2 packet](../native/drafts/webgpu-srv-routing/README.md) fixes exact
+single-slice SRV routing and adds readonly indirect dispatch. Its standalone matrix
+passed 54 cases and 12 before/after controls. All 118 patches replay/reverse and
+restore 268 upstream files. Next: full host regression, a verified source
+transition, Windows compilation and fresh browser diagnostics for
+`upstream-156-webgpu-r2`. Preserve the original 116-patch candidate and all failed
+observations. Legacy Audio remains a separate unresolved compatibility gate.
 
 The explicit [upstream-156-webgpu variant](../native/drafts/upstream-156-webgpu/README.md)
 contains 116 repository-scoped patches: baseline 001–076 plus all 30 component
@@ -16,8 +30,8 @@ supporting CLI commands accept the variant without weakening receipt or resource
 checks; the latest complete local regression passed 5,357 tests with one skip.
 
 The new runtime's 269 assets have been independently preserved and hash-verified;
-the serial browser, worker, GPU, Audio and recovery checks have started.
-A compiled candidate now exists, but runtime validation,
+the first complete serial diagnostic batch has finished with the failures above.
+A compiled candidate exists, but complete capability validation,
 privacy/production admission and release installation remain pending. Evidence,
 receipt/DLL hashes and scope are recorded in the [test matrix](GLINT_TEST_MATRIX.md).
 

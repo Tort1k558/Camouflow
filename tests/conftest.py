@@ -8,14 +8,37 @@ import pytest
 
 
 @pytest.fixture
-def native_build_before_index_mtime_fix(tmp_path):
+def host_sources_before_webgpu_r2(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'webgpu-r2-host-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-webgpu-r2'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((root / row['source']).read_bytes())
+        assert hashlib.sha256(target.read_bytes()).hexdigest() == row['after_sha256']
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    sources = {}
+    for row in record['sources']:
+        value = (base / row['source']).read_bytes()
+        assert hashlib.sha256(value).hexdigest() == row['before_sha256']
+        sources[row['source']] = value
+    return sources
+
+
+@pytest.fixture
+def native_build_before_index_mtime_fix(tmp_path, host_sources_before_webgpu_r2):
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
     record = json.loads((directory / 'native-build-racy-index-source-upgrade.json').read_bytes())
     base = tmp_path / 'before-index-mtime-fix'
     target = base / record['source']
     target.parent.mkdir(parents=True)
-    target.write_bytes((root / record['source']).read_bytes())
+    target.write_bytes(host_sources_before_webgpu_r2[record['source']])
     assert hashlib.sha256(target.read_bytes()).hexdigest() == record['after_sha256']
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
@@ -27,7 +50,7 @@ def native_build_before_index_mtime_fix(tmp_path):
 
 
 @pytest.fixture
-def diagnostic_sources_before_candidate(tmp_path, native_build_before_index_mtime_fix):
+def diagnostic_sources_before_candidate(tmp_path, native_build_before_index_mtime_fix, host_sources_before_webgpu_r2):
     """Recover measured diagnostic sources without updating historical evidence."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -38,7 +61,7 @@ def diagnostic_sources_before_candidate(tmp_path, native_build_before_index_mtim
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(native_build_before_index_mtime_fix['before_bytes']
                            if row['source'] == native_build_before_index_mtime_fix['source']
-                           else (root / row['source']).read_bytes())
+                           else host_sources_before_webgpu_r2.get(row['source'], (root / row['source']).read_bytes()))
         assert hashlib.sha256(target.read_bytes()).hexdigest() == row['after_sha256']
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
