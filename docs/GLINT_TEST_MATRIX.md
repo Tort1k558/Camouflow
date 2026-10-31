@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## 2026-10-31: updated tooling, preserved 001–076 browser control
+
+| Actual owned WebGPU observation | Result | Boundary |
+| --- | --- | --- |
+| Baseline direct/shader/PNG paths | Match the reference | Preserved 001–076 runtime only |
+| Protected direct versus shader | Identical | Does not prove protected WebGPU shader delivery |
+| Protected PNG versus shader/direct | 383 changed channels, maximum delta 1 | Known consistency failure reproduced; collector exits 1 |
+| New transport switch on the older variant | Disabled in both phases | New CLI does not enable the uncompiled module on the old runtime |
+| Preserved assets, driver and cleanup | 269 assets unchanged; no owned processes/profiles remain | Isolated local fixtures, not user sessions or commercial anti-bot sites |
+
+This [control](../native/drafts/environment/webgpu-diagnostic-variant76-control-observations.json)
+passes only as a regression of the diagnostic tooling: **the browser consistency
+gate failed as expected**. No 001–116 binary or privacy/production admission follows.
+
 ## 2026-10-31: explicit full-candidate diagnostics and index isolation
 
 | Gate | Result | Boundary |

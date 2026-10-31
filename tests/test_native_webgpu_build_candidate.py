@@ -201,3 +201,43 @@ def test_webgpu_transport_rejects_ambiguous_or_foreign_fixture_overrides(argumen
 
     with pytest.raises(ValueError):
         transport_arguments(arguments, candidate_name='upstream-156-webgpu', mode='ready')
+
+
+def test_updated_diagnostic_runtime_control_preserves_the_known_076_failure():
+    path = ROOT / 'native/drafts/environment/webgpu-diagnostic-variant76-control-observations.json'
+    raw = path.read_bytes()
+    assert b'\r' not in raw and not raw.startswith(b'\xef\xbb\xbf')
+    record = json.loads(raw)
+    assert record['control_passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['collector_returncode'] == 1 and record['collector_passed'] is False
+    assert record['candidate'] == 'upstream-156'
+    assert record['candidate_manifest_sha256'] == build.load_candidate('upstream-156')['manifest_sha256']
+    assert record['transport_feature_observations'] == [
+        {'mode': 'baseline', 'enabled': False}, {'mode': 'ready', 'enabled': False}]
+    result = record['result']
+    assert result['fixture_validation_passed'] and result['surface_noise_observed']
+    assert result['readback_consistent'] is result['consistency_gate_passed'] is False
+    baseline, ready = result['rows']
+    assert baseline['mode'] == 'baseline' and ready['mode'] == 'ready'
+    assert all(value == {'changed_channels': 0, 'maximum_delta': 0}
+               for value in baseline['deviation_from_reference'].values())
+    assert ready['direct_vs_shader'] == {'changed_channels': 0, 'maximum_delta': 0}
+    assert ready['png_vs_direct'] == ready['png_vs_shader']
+    assert ready['png_vs_shader']['changed_channels'] > 0 and ready['png_vs_shader']['maximum_delta'] == 1
+    assert baseline['shader_rgba_sha256'] == ready['shader_rgba_sha256']
+    assert record['all_269_preserved_assets_unchanged'] and record['driver_assets_unchanged']
+    assert record['owned_profile_directory_removed'] and record['remaining_owned_processes'] == []
+    assert all(record[name] is False for name in ('latest_001_116_candidate_verified',
+               'browser_consistency_admitted', 'privacy_admitted', 'production_admitted'))
+
+
+def test_updated_diagnostic_runtime_control_binds_its_actual_public_inputs():
+    record = json.loads((ROOT / 'native/drafts/environment/webgpu-diagnostic-variant76-control-observations.json').read_bytes())
+    assert record['measured_input_count'] == 224
+    assert len(record['selected_public_source_sha256']) == 12
+    for name, digest in record['selected_public_source_sha256'].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    manifest = 'native/drafts/environment/playwright-driver-stage-binding-close.json'
+    assert record['driver_manifest_sha256'] == record['selected_public_source_sha256'][manifest]
+    for name in ('collector_report_sha256', 'measured_relative_input_snapshot_sha256', 'receipt_sha256'):
+        assert len(record[name]) == 64 and set(record[name]) <= set('0123456789abcdef')

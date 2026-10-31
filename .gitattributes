@@ -211,3 +211,4 @@ scripts/stage_native_windows.py text eol=lf
 scripts/native_windows_toolchain.py text eol=lf
 scripts/audit_native_upstream.py text eol=lf
 scripts/verify_native_suite.py text eol=lf
+native/drafts/environment/webgpu-diagnostic-variant76-control-observations.json text eol=lf

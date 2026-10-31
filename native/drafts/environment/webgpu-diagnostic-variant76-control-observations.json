@@ -1,0 +1,125 @@
+{
+  "schema": 1,
+  "scope": "Updated diagnostic tooling exercised on preserved 001-076 only; known failing WebGPU/PNG control, not 001-116 browser verification",
+  "control_passed": true,
+  "candidate": "upstream-156",
+  "candidate_manifest_sha256": "f5bb6cbae7084df2f539127aa3b2c5f83c737900185aaca5ae3ada16909dc4ea",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "03b34a8d3786d9c313b89afc1609c032091656678f936ee7087d62fca40e1d00",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "ca69cc734d4829bcb2357012d77fdda0fb72130fe91f5cf48da3f67acb17d7b3",
+  "collector_returncode": 1,
+  "collector_passed": false,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "collector_report_sha256": "48ed4aabc905a2b09050fdd3ab61d5ac36bd3a06a44c3b135dc0afead04d325b",
+  "driver_manifest_sha256": "6d18cf727cfe1b4533b611edbd560f4ac031e4c02aa69aff2e037d110df352c5",
+  "transport_feature_observations": [
+    {
+      "mode": "baseline",
+      "enabled": false
+    },
+    {
+      "mode": "ready",
+      "enabled": false
+    }
+  ],
+  "result": {
+    "fixture_validation_passed": true,
+    "surface_noise_observed": true,
+    "readback_consistent": false,
+    "consistency_gate_passed": false,
+    "rows": [
+      {
+        "mode": "baseline",
+        "measured": true,
+        "deviation_from_reference": {
+          "direct": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "shader": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "png": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          }
+        },
+        "direct_vs_shader": {
+          "changed_channels": 0,
+          "maximum_delta": 0
+        },
+        "png_vs_direct": {
+          "changed_channels": 0,
+          "maximum_delta": 0
+        },
+        "png_vs_shader": {
+          "changed_channels": 0,
+          "maximum_delta": 0
+        },
+        "shader_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+      },
+      {
+        "mode": "ready",
+        "measured": true,
+        "deviation_from_reference": {
+          "direct": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "shader": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "png": {
+            "changed_channels": 383,
+            "maximum_delta": 1
+          }
+        },
+        "direct_vs_shader": {
+          "changed_channels": 0,
+          "maximum_delta": 0
+        },
+        "png_vs_direct": {
+          "changed_channels": 383,
+          "maximum_delta": 1
+        },
+        "png_vs_shader": {
+          "changed_channels": 383,
+          "maximum_delta": 1
+        },
+        "shader_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+      }
+    ],
+    "privacy_admitted": false,
+    "production_admitted": false
+  },
+  "measured_input_count": 224,
+  "measured_relative_input_snapshot_sha256": "7d65ce4e72d22fe8cb67b0864980a7de67af5ece5fc596e95973927c2d31be1a",
+  "selected_public_source_sha256": {
+    "scripts/verify_native_webgpu_consistency.py": "aa6da7d6a7488eb83ca257ace6f9e61e0a9ff60efb3f2725640d820b04616475",
+    "scripts/native_driver_stage.py": "b5e12a27bd0a5bc19b0e26c5f945e16914bc0034e5dde5fa5a14e67932acbfca",
+    "scripts/verify_native_gpu_readback.py": "f7566c8c829496345a6a616e1b13a524e9258fba0fb69b7f1dee00b68c7dbac9",
+    "scripts/verify_native_gpu.py": "c1db5bcd7991c7d538a4cbbdf613a436a55f08cbf5aade246a64e5ba0bc2c270",
+    "scripts/verify_native_surfaces.py": "91dc10511736985631609c63555f20557d410d63c7958b52060d081a450a19b0",
+    "scripts/verify_native_worker_startup.py": "94a35e70e1760e69f78c8e23eaf5ad7da15cb3569e7309dce440b238267579ec",
+    "scripts/native_build.py": "e4a96d9ec6d7229b031369e876bd3c3ec950540251dbbc949cca302c168fed7b",
+    "app/core/native/runtime.py": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "app/core/native/configuration.py": "11e3df39d2e4d90665b670e5e92f6c5a4f60a2200fed1579ee7615a98b8392f9",
+    "native/drafts/upstream-156/manifest.json": "f5bb6cbae7084df2f539127aa3b2c5f83c737900185aaca5ae3ada16909dc4ea",
+    "native/drafts/environment/first-script/webgpu_shader_dataflow.js": "5500fc6ec1ef2c9f2bf42b6e73686bd0609189adf7ab881356b405e9a3dcf785",
+    "native/drafts/environment/playwright-driver-stage-binding-close.json": "6d18cf727cfe1b4533b611edbd560f4ac031e4c02aa69aff2e037d110df352c5"
+  },
+  "all_269_preserved_assets_unchanged": true,
+  "driver_assets_unchanged": true,
+  "owned_profile_directory_removed": true,
+  "remaining_owned_processes": [],
+  "latest_001_116_candidate_verified": false,
+  "browser_consistency_admitted": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
