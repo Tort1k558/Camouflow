@@ -2358,6 +2358,20 @@ writable ranges и prepare/commit. Полная защита raster outputs не
 bundles или Wire server; attachment/depth/blend dependencies, полный набор форматов
 и browser consistency остаются следующими обязательными воротами.
 
+## Logical execution inputs и attachment readiness
+
+Следующий [execution-input пакет](../native/drafts/webgpu-execution-inputs/README.md)
+сохраняет исходные indirect/count buffers до frontend-подмены на scratch и учитывает
+оба набора диапазонов. Для depth/stencil явно проверяются активные aspects,
+load/read-only и очистка текущим проходом; PLS и неизвестные загруженные данные
+не получают готовность защищённого вывода. Это не реализация их проекции.
+
+Шестнадцать патчей / 81 путь применены и полностью обращены в отдельном каталоге.
+Тринадцать native syntax units прошли. В normal/ASan выполнено 2 391 CPU-проверка,
+включая 720 синтетических attachment-состояний; 49 допустимы по предикату, а не
+являются проверенными браузерными режимами. Реальные frontend encoding,
+depth/stencil/PLS, Dawn/Wire и browser consistency ещё не проверены.
+
 ## Как использовать внешние реализации
 
 Статьи отражают версии и условия их авторов. Перед переносом идеи проверить

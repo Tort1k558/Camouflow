@@ -1,0 +1,336 @@
+--- a/third_party/dawn/src/dawn/native/Commands.h
++++ b/third_party/dawn/src/dawn/native/Commands.h
+@@ -268,7 +268,17 @@
+     uint32_t z = 0;
+ };
+ 
++// Logical API inputs survive validation/scratch-buffer rewrites for Glint dependency tracking.
++struct GlintIndirectInputs {
++    Ref<BufferBase> buffer;
++    uint64_t offset = 0;
++    Ref<BufferBase> countBuffer;
++    uint64_t countOffset = 0;
++    uint32_t maxCount = 1;
++};
++
+ struct DispatchIndirectCmd {
++    GlintIndirectInputs glintInputs;
+     DispatchIndirectCmd();
+     ~DispatchIndirectCmd();
+ 
+@@ -292,6 +302,7 @@
+ };
+ 
+ struct DrawIndirectCmd {
++    GlintIndirectInputs glintInputs;
+     DrawIndirectCmd();
+     ~DrawIndirectCmd();
+ 
+@@ -302,6 +313,7 @@
+ struct DrawIndexedIndirectCmd : DrawIndirectCmd {};
+ 
+ struct MultiDrawIndirectCmd {
++    GlintIndirectInputs glintInputs;
+     MultiDrawIndirectCmd();
+     ~MultiDrawIndirectCmd();
+ 
+--- a/third_party/dawn/src/dawn/native/ComputePassEncoder.cpp
++++ b/third_party/dawn/src/dawn/native/ComputePassEncoder.cpp
+@@ -442,6 +442,10 @@
+             SyncScopeUsageTracker scope;
+             mUsageTracker.AddReferencedBuffer(indirectBuffer);
+             Ref<BufferBase> indirectBufferRef = indirectBuffer;
++            GlintIndirectInputs glintInputs;
++            if (GetDevice()->GetGlintReadbackObserver()) {
++                glintInputs = {indirectBuffer, indirectOffset, {}, 0, 1};
++            }
+ 
+             if (NeedsIndirectGPUValidation()) {
+                 // Get applied indirect buffer with necessary changes on the original indirect
+@@ -485,6 +489,7 @@
+ 
+             DispatchIndirectCmd* dispatch =
+                 allocator->Allocate<DispatchIndirectCmd>(Command::DispatchIndirect);
++            dispatch->glintInputs = std::move(glintInputs);
+             dispatch->indirectBuffer = std::move(indirectBufferRef);
+             dispatch->indirectOffset = indirectOffset;
+             return {};
+--- a/third_party/dawn/src/dawn/native/RenderEncoderBase.cpp
++++ b/third_party/dawn/src/dawn/native/RenderEncoderBase.cpp
+@@ -223,6 +223,9 @@
+             }
+ 
+             DrawIndirectCmd* cmd = allocator->Allocate<DrawIndirectCmd>(Command::DrawIndirect);
++            if (GetDevice()->GetGlintReadbackObserver()) {
++                cmd->glintInputs = {indirectBuffer, indirectOffset, {}, 0, 1};
++            }
+ 
+             bool duplicateBaseVertexInstance =
+                 GetDevice()->ShouldDuplicateParametersForDrawIndirect(
+@@ -284,6 +287,9 @@
+ 
+             DrawIndexedIndirectCmd* cmd =
+                 allocator->Allocate<DrawIndexedIndirectCmd>(Command::DrawIndexedIndirect);
++            if (GetDevice()->GetGlintReadbackObserver()) {
++                cmd->glintInputs = {indirectBuffer, indirectOffset, {}, 0, 1};
++            }
+ 
+             bool duplicateBaseVertexInstance =
+                 GetDevice()->ShouldDuplicateParametersForDrawIndirect(
+@@ -388,6 +394,10 @@
+ 
+             MultiDrawIndirectCmd* cmd =
+                 allocator->Allocate<MultiDrawIndirectCmd>(Command::MultiDrawIndirect);
++            if (GetDevice()->GetGlintReadbackObserver()) {
++                cmd->glintInputs = {indirectBuffer, indirectOffset, drawCountBuffer,
++                                    drawCountBufferOffset, maxDrawCount};
++            }
+ 
+             cmd->indirectBuffer = indirectBuffer;
+             cmd->indirectOffset = indirectOffset;
+@@ -495,6 +505,10 @@
+ 
+             MultiDrawIndexedIndirectCmd* cmd =
+                 allocator->Allocate<MultiDrawIndexedIndirectCmd>(Command::MultiDrawIndexedIndirect);
++            if (GetDevice()->GetGlintReadbackObserver()) {
++                cmd->glintInputs = {indirectBuffer, indirectOffset, drawCountBuffer,
++                                    drawCountBufferOffset, maxDrawCount};
++            }
+ 
+             cmd->indirectBuffer = indirectBuffer;
+             cmd->indirectOffset = indirectOffset;
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -28,6 +28,7 @@
+ #include "src/dawn/native/d3d12/CommandBufferD3D12.h"
+ 
+ #include <algorithm>
++#include <limits>
+ #include <map>
+ #include <optional>
+ #include <utility>
+@@ -482,6 +483,53 @@
+     uint64_t size = 0;
+ };
+ 
++namespace {
++bool AppendGlintOriginalIndirectUses(std::vector<GlintNativeBufferUse>* uses,
++                                     const GlintIndirectInputs& inputs,
++                                     uint64_t argumentBytes) {
++    if (!uses || !inputs.buffer || !argumentBytes || !inputs.maxCount ||
++        argumentBytes > std::numeric_limits<uint64_t>::max() / inputs.maxCount) {
++        return false;
++    }
++    const uint64_t size = argumentBytes * inputs.maxCount;
++    const size_t count = inputs.countBuffer ? 2 : 1;
++    if (uses->size() > kGlintShaderBufferUseLimit - count ||
++        inputs.offset > inputs.buffer->GetSize() ||
++        size > inputs.buffer->GetSize() - inputs.offset ||
++        (inputs.countBuffer &&
++         (inputs.countOffset > inputs.countBuffer->GetSize() ||
++          sizeof(uint32_t) > inputs.countBuffer->GetSize() - inputs.countOffset))) {
++        return false;
++    }
++    uses->push_back({inputs.buffer, inputs.offset, size});
++    if (inputs.countBuffer) {
++        uses->push_back({inputs.countBuffer, inputs.countOffset, sizeof(uint32_t)});
++    }
++    return true;
++}
++
++bool HasGlintUnprojectedAttachmentInputs(const BeginRenderPassCmd& pass) {
++    const auto& depthStencil = pass.depthStencilAttachment;
++    if (depthStencil.view) {
++        const auto aspects = depthStencil.view->GetAspects();
++        if (((aspects & Aspect::Depth) &&
++             (depthStencil.depthReadOnly || depthStencil.depthLoadOp != wgpu::LoadOp::Clear)) ||
++            ((aspects & Aspect::Stencil) &&
++             (depthStencil.stencilReadOnly || depthStencil.stencilLoadOp != wgpu::LoadOp::Clear))) {
++            return true;
++        }
++    }
++    // Pixel-local storage can feed shader values independently of sampled bindings.
++    for (const auto& attachment : pass.storageAttachments) {
++        if (attachment.storage) {
++            return true;
++        }
++    }
++    return false;
++}
++
++}  // namespace
++
+ template <typename PipelineType>
+ class BindGroupStateTracker : public BindGroupTrackerBase<false> {
+     using Base = BindGroupTrackerBase<false>;
+@@ -707,7 +755,7 @@
+ 
+     MaybeError CaptureGlintRenderScope(CommandRecordingContext* context) {
+         static_assert(std::is_same_v<PipelineType, RenderPipeline>);
+-        const bool projected = mGlintRenderProjectedReady;
++        const bool projected = mGlintRenderProjectedReady && !mGlintRenderUnprojectedInputs;
+         mGlintRenderProjectedReady = false;
+         auto bound = std::move(mGlintRenderScope);
+         mGlintRenderScope = {};
+@@ -745,13 +793,18 @@
+     }
+ 
+     MaybeError PrepareGlintRenderProjection(CommandRecordingContext* context,
+-                                               const RenderPassResourceUsage& scope) {
++                                            const RenderPassResourceUsage& scope,
++                                            const BeginRenderPassCmd* renderPass) {
+         static_assert(std::is_same_v<PipelineType, RenderPipeline>);
+         mGlintRenderProjectedReady = false;
+         mGlintRenderScope = {};
+         ResetGlintViewOverrides();
+         mGlintRenderTextures.clear();
++        mGlintRenderUnprojectedInputs = false;
+         if (!mDevice->GetGlintReadbackObserver()) return {};
++        DAWN_INTERNAL_ERROR_IF(!renderPass, "Missing Glint render-pass attachment scope.");
++        mGlintRenderUnprojectedInputs = HasGlintUnprojectedAttachmentInputs(*renderPass);
++        mGlintRenderScope.textureInputs = mGlintRenderUnprojectedInputs;
+         DAWN_INTERNAL_ERROR_IF(scope.resourceTable || scope.usesFramebufferFetch ||
+                                !scope.externalTextures.empty() ||
+                                scope.textures.size() != scope.textureSyncInfos.size(),
+@@ -789,7 +842,8 @@
+ 
+     MaybeError CaptureGlintComputeScope(CommandRecordingContext* context,
+                                         BufferBase* indirectBuffer = nullptr,
+-                                        uint64_t indirectOffset = 0) {
++                                        uint64_t indirectOffset = 0,
++                                        const GlintIndirectInputs* originalInputs = nullptr) {
+         static_assert(std::is_same_v<PipelineType, ComputePipeline>);
+         auto observer = mDevice->GetGlintReadbackObserver();
+         if (!observer) {
+@@ -800,8 +854,12 @@
+             DAWN_INTERNAL_ERROR_IF(!ToBackend(indirectBuffer)->HasPrivateGlintReadbackBacking(),
+                                    "Glint compute capture requires private indirect-buffer backing.");
+ 
+-            const std::array uses{
++            std::vector uses{
+                 GlintNativeBufferUse{indirectBuffer, indirectOffset, 3 * sizeof(uint32_t)}};
++            DAWN_INTERNAL_ERROR_IF(
++                !originalInputs ||
++                    !AppendGlintOriginalIndirectUses(&uses, *originalInputs, 3 * sizeof(uint32_t)),
++                "Missing or invalid original Glint dispatch inputs.");
+             bound = BuildGlintBindingScope(wgpu::ShaderStage::Compute, uses);
+         } else {
+             bound = BuildGlintBindingScope(wgpu::ShaderStage::Compute);
+@@ -1284,6 +1342,7 @@
+     bool mGlintStateInvalidated = false;
+     bool mGlintComputeProjectedReady = false;
+     bool mGlintRenderProjectedReady = false;
++    bool mGlintRenderUnprojectedInputs = false;
+     GlintBoundScope mGlintRenderScope;
+     PerBindGroup<std::vector<GlintTextureViewOverride>> mGlintViews;
+     PerBindGroup<GPUDescriptorHeapAllocation> mGlintViewAllocations;
+@@ -1536,8 +1595,10 @@
+ 
+                 DAWN_TRY(EnsureResolveTargetInitialized(commandContext, beginRenderPassCmd));
+ 
+-                DAWN_TRY(descriptorHeapState.GetGraphicsBindingTracker()->PrepareGlintRenderProjection(
+-                    commandContext, GetResourceUsages().renderPasses[nextRenderPassNumber]));
++                DAWN_TRY(
++                    descriptorHeapState.GetGraphicsBindingTracker()->PrepareGlintRenderProjection(
++                        commandContext, GetResourceUsages().renderPasses[nextRenderPassNumber],
++                        beginRenderPassCmd));
+                 bool passHasUAV;
+                 DAWN_TRY(TransitionAndClearForSyncScope(
+                     commandContext, GetResourceUsages().renderPasses[nextRenderPassNumber],
+@@ -2060,7 +2121,8 @@
+                     ToBackend(dispatch->indirectBuffer.Get())->GetD3D12Resource(),
+                     dispatch->indirectOffset, nullptr, 0);
+                 DAWN_TRY(bindingTracker->CaptureGlintComputeScope(
+-                    commandContext, dispatch->indirectBuffer.Get(), dispatch->indirectOffset));
++                    commandContext, dispatch->indirectBuffer.Get(), dispatch->indirectOffset,
++                    &dispatch->glintInputs));
+                 break;
+             }
+ 
+@@ -2470,8 +2532,13 @@
+                     lastPipeline->GetDrawIndirectCommandSignature();
+                 commandList->ExecuteIndirect(signature.Get(), 1, indirectBuffer->GetD3D12Resource(),
+                                              validatedDraw.indirectOffset, nullptr, 0);
+-                const std::array controls{controlUse(indirectBuffer, validatedDraw.indirectOffset,
+-                                                     indirectStride(false))};
++                std::vector controls{controlUse(indirectBuffer, validatedDraw.indirectOffset,
++                                                indirectStride(false))};
++                if (device->GetGlintReadbackObserver()) {
++                    DAWN_INTERNAL_ERROR_IF(!AppendGlintOriginalIndirectUses(
++                                               &controls, draw->glintInputs, 4 * sizeof(uint32_t)),
++                                           "Missing or invalid original Glint draw inputs.");
++                }
+                 DAWN_TRY(notifyDraw(false, controls));
+                 break;
+             }
+@@ -2493,8 +2560,13 @@
+                     lastPipeline->GetDrawIndexedIndirectCommandSignature();
+                 commandList->ExecuteIndirect(signature.Get(), 1, indirectBuffer->GetD3D12Resource(),
+                                              validatedDraw.indirectOffset, nullptr, 0);
+-                const std::array controls{controlUse(indirectBuffer, validatedDraw.indirectOffset,
+-                                                     indirectStride(true))};
++                std::vector controls{
++                    controlUse(indirectBuffer, validatedDraw.indirectOffset, indirectStride(true))};
++                if (device->GetGlintReadbackObserver()) {
++                    DAWN_INTERNAL_ERROR_IF(!AppendGlintOriginalIndirectUses(
++                                               &controls, draw->glintInputs, 5 * sizeof(uint32_t)),
++                                           "Missing or invalid original Glint draw inputs.");
++                }
+                 DAWN_TRY(notifyDraw(true, controls));
+                 break;
+             }
+@@ -2522,13 +2594,20 @@
+                     countBuffer != nullptr ? countBuffer->GetD3D12Resource() : nullptr,
+                     countBuffer != nullptr ? draw->drawCountOffset : 0);
+                 if (draw->maxDrawCount != 0) {
+-                    std::array controls{
+-                        controlUse(indirectBuffer, draw->indirectOffset,
+-                                   static_cast<uint64_t>(draw->maxDrawCount) * indirectStride(false)),
+-                        controlUse(countBuffer, draw->drawCountOffset, sizeof(uint32_t))};
+-                    DAWN_TRY(
+-                        notifyDraw(false, std::span<const GlintNativeBufferUse>(controls).first(
+-                                              countBuffer ? 2 : 1)));
++                    std::vector controls{controlUse(
++                        indirectBuffer, draw->indirectOffset,
++                        static_cast<uint64_t>(draw->maxDrawCount) * indirectStride(false))};
++                    if (countBuffer) {
++                        controls.push_back(
++                            controlUse(countBuffer, draw->drawCountOffset, sizeof(uint32_t)));
++                    }
++                    if (device->GetGlintReadbackObserver()) {
++                        DAWN_INTERNAL_ERROR_IF(
++                            !AppendGlintOriginalIndirectUses(&controls, draw->glintInputs,
++                                                             4 * sizeof(uint32_t)),
++                            "Missing or invalid original Glint multi-draw inputs.");
++                    }
++                    DAWN_TRY(notifyDraw(false, controls));
+                 }
+ 
+                 break;
+@@ -2558,12 +2637,20 @@
+                     countBuffer != nullptr ? countBuffer->GetD3D12Resource() : nullptr,
+                     countBuffer != nullptr ? draw->drawCountOffset : 0);
+                 if (draw->maxDrawCount != 0) {
+-                    std::array controls{
+-                        controlUse(indirectBuffer, draw->indirectOffset,
+-                                   static_cast<uint64_t>(draw->maxDrawCount) * indirectStride(true)),
+-                        controlUse(countBuffer, draw->drawCountOffset, sizeof(uint32_t))};
+-                    DAWN_TRY(notifyDraw(true, std::span<const GlintNativeBufferUse>(controls).first(
+-                                                  countBuffer ? 2 : 1)));
++                    std::vector controls{controlUse(
++                        indirectBuffer, draw->indirectOffset,
++                        static_cast<uint64_t>(draw->maxDrawCount) * indirectStride(true))};
++                    if (countBuffer) {
++                        controls.push_back(
++                            controlUse(countBuffer, draw->drawCountOffset, sizeof(uint32_t)));
++                    }
++                    if (device->GetGlintReadbackObserver()) {
++                        DAWN_INTERNAL_ERROR_IF(
++                            !AppendGlintOriginalIndirectUses(&controls, draw->glintInputs,
++                                                             5 * sizeof(uint32_t)),
++                            "Missing or invalid original Glint multi-draw inputs.");
++                    }
++                    DAWN_TRY(notifyDraw(true, controls));
+                 }
+                 break;
+             }

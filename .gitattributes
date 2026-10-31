@@ -168,3 +168,5 @@ native/drafts/webgpu-raster-byte-capture/*.cc text eol=lf
 native/drafts/webgpu-raster-byte-capture/*.h text eol=lf
 native/drafts/webgpu-raster-byte-capture/*.hlsl text eol=lf
 native/drafts/webgpu-raster-byte-capture/*.patch text eol=lf
+native/drafts/webgpu-execution-inputs/*.py text eol=lf
+native/drafts/webgpu-execution-inputs/*.cc text eol=lf

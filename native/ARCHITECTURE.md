@@ -1085,6 +1085,15 @@ There is no signed online update catalog. Development bundles are unsigned.
 
 ## Known boundaries
 
+The [execution-input draft](drafts/webgpu-execution-inputs/README.md) retains logical
+indirect/count inputs before frontend validation rewrites, alongside the actually
+executed buffer ranges. Native references survive scratch substitution. Depth and
+stencil aspects require current-pass clears and non-read-only access for input
+eligibility; unresolved loaded aspects and PLS remain texture dependencies and
+cannot authorize protected output. This is readiness accounting, not loaded-depth
+or PLS projection. Thirteen native syntax units and extracted CPU contracts passed;
+actual frontend/depth/queue/Wire/browser execution remains unverified.
+
 The [raster shader-byte capture draft](drafts/webgpu-raster-byte-capture/README.md)
 accumulates per-draw/bundle dependencies and retained native control owners across
 the pass, then reuses compute's byte-capture transaction after `EndRenderPass`.

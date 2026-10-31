@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Logical execution inputs and attachment readiness
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Source | Sixteen packets / 81 paths replayed and reversed exactly | Four-file unselected extension |
+| Logical inputs | Five frontend allocation sites retain original indirect/count arguments before scratch rewrites | Actual frontend encoding/lifetime not executed |
+| CPU normal / ASan | 2,391 assertions each, including logical argument/count provenance, ranges, overflow and owners | Extracted native helpers, synthetic backend objects |
+| Attachment predicate | 720 synthetic states, 49 eligible by the predicate; unresolved inputs withhold protected-output authorization | No actual native depth/stencil or PLS execution/projection |
+| Native syntax | Thirteen target-flag units passed, including commands/compute/render encoders | No component link or browser admission |
+
+[Public command and exact boundaries](../native/drafts/webgpu-execution-inputs/README.md).
+Loaded/read-only depth/stencil, PLS and GPU buffer-input projection remain unfinished.
+Earlier standalone GPU cases are not evidence for these new contracts.
+
 ## Raster shader-byte capture: prepared native pass integration
 
 | Gate | Result | Boundary |
