@@ -261,9 +261,11 @@ def qml_before_delivery_diagnostics_sha256(tmp_path):
 @pytest.fixture
 def native70_historical_source_hashes(native_units_before_orientation, recorder_before_document_open_sha256,
                                      storage_before_read_lock_sha256, surface_sources_before_retained,
-                                     native_tooling_before_dawn, diagnostic_sources_before_candidate):
+                                     native_tooling_before_dawn, diagnostic_sources_before_candidate,
+                                     historical_source_newlines):
     root = Path(__file__).resolve().parents[1]
     return {
+        **{name: row['measured_sha256'] for name, row in historical_source_newlines.items()},
         **{name: hashlib.sha256(data).hexdigest() for name, data in diagnostic_sources_before_candidate.items()},
         "native/drafts/upstream-156/manifest.json": hashlib.sha256(
             (root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest(),
@@ -394,7 +396,34 @@ def surface_sources_before_retained(tmp_path, worker_sources_before_integration,
 
 
 @pytest.fixture
-def historical_surface_source_sha256(surface_sources_before_retained, native_tooling_before_dawn, diagnostic_sources_before_candidate):
+def historical_source_newlines():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / 'native/drafts/environment/historical-source-newlines.json').read_bytes())
+    assert manifest['schema'] == 1
+    result = {}
+    for record in manifest['sources']:
+        name = record['source']
+        assert name not in result and name in manifest['lf_checkout_sources']
+        source = (root / name).read_text(encoding='utf-8-sig').encode('utf-8')
+        assert hashlib.sha256(source).hexdigest() == record['canonical_lf_sha256'], name
+        lines = source.splitlines(keepends=True)
+        alternate = set(record['alternate_eol_lines'])
+        assert len(lines) == record['line_count'] and len(alternate) == len(record['alternate_eol_lines'])
+        assert alternate and min(alternate) > 0 and max(alternate) <= len(lines)
+        assert record['default_eol'] in {'LF', 'CRLF'}
+        assert all(lines[index - 1].endswith(b'\n') for index in alternate)
+        measured = b''.join(
+            line[:-1] + b'\r\n' if line.endswith(b'\n') and
+            ((record['default_eol'] == 'CRLF') != (index in alternate)) else line
+            for index, line in enumerate(lines, 1))
+        assert hashlib.sha256(measured).hexdigest() == record['measured_sha256'], name
+        result[name] = {**record, 'measured_bytes': measured}
+    return result
+
+
+@pytest.fixture
+def historical_surface_source_sha256(surface_sources_before_retained, native_tooling_before_dawn,
+                                    diagnostic_sources_before_candidate, historical_source_newlines):
     """Hash reconstructed Audio/GPU and tooling sources used by older runtime records."""
     root = Path(__file__).resolve().parents[1]
     names = {'scripts/verify_native_audio.py', 'scripts/verify_native_gpu.py',
@@ -417,6 +446,8 @@ def historical_surface_source_sha256(surface_sources_before_retained, native_too
             if normalized:
                 value = value.decode('utf-8-sig').replace('\r\n', '\n').encode('utf-8')
             return hashlib.sha256(value).hexdigest()
+        if name in historical_source_newlines:
+            return historical_source_newlines[name]['canonical_lf_sha256' if normalized else 'measured_sha256']
         path = root / name
         source = path.read_text(encoding='utf-8-sig').encode('utf-8') if normalized else path.read_bytes()
         return hashlib.sha256(source).hexdigest()
