@@ -17,6 +17,17 @@ Next: finish compilation and test the full Chromium runtime. No new browser bina
 or privacy/production admission is claimed yet. Evidence and scope are recorded
 in the [test matrix](GLINT_TEST_MATRIX.md).
 
+Windows checkout reproducibility is now locally verified: 5,340 Python tests passed
+with one skip at `c146e47`; a fresh clean autocrlf checkout passed all 34 original
+failure/newline/Wire checks at `982342c`. Historical measured source bytes are
+reconstructed without rewriting observations or changing active engine inputs.
+Remote CI still needs its own completed run.
+
+Independent uniform/dynamic-binding and device-lifetime Wire source variants are
+now [reproducible drafts](../native/drafts/webgpu-capture-retention/README.md).
+They remain uncompiled; serial hardware checks are queued after browser QA, not
+run concurrently with the j4 Chromium build. No new runtime result follows yet.
+
 ## Actual direct and bundled native render inputs
 
 The [public Wire fixture](../native/drafts/webgpu-capture-retention/README.md)

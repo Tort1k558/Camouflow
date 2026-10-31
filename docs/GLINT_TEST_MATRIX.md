@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-10-31: Windows source-byte reproducibility
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Complete Windows Python suite at `c146e47` | 5,340 passed, 1 skipped; 578.188 seconds | Local regression, not GitHub CI or browser runtime admission |
+| Fresh clean `core.autocrlf=true` checkout at `982342c` | All 80 bound files materialize as LF; ordinary test files retain CRLF | Explicit repository attributes, no global Git setting changes |
+| Original 22 CI failures plus newline/Wire cases on that fresh checkout | 34 passed; worktree remains clean | Targeted final-source verification, not a second full-suite run |
+| Historical mixed-newline source recovery | Six exact source hashes reconstructed over verified LF bodies | Old measured observations remain unchanged |
+| Queued browser diagnostic inputs | All 262 unchanged before and after the full regression | Active Chromium source/build and existing profiles were not edited |
+
+The [newline archive](../native/drafts/environment/historical-source-newlines.json)
+records layouts, not replacement browser results. A fresh remote CI run remains
+required. Neither this checkout fix nor the standalone draft replay admits new
+fingerprint features or a production release.
+
 ## 2026-10-31: pending uniform and device-lifetime Wire variants
 
 | Gate | Measured result | Boundary |
