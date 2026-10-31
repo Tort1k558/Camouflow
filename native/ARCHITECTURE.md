@@ -1,5 +1,25 @@
 # Glint architecture
 
+## Projected texel-buffer alias gap: guarded, not implemented
+
+The [unselected alias guard](drafts/webgpu-texel-alias-guard/README.md) rejects
+visible typed texel views of buffers with projected shadows. The scope collector
+already accounts for texel bindings, but current descriptor overrides only replace
+ordinary CBV/raw-SRV/raw-UAV views. Allowing the original typed view would make an
+exact-scope input receipt attest data the shader did not actually consume.
+The pinned Dawn D3D12 backend itself marks texel descriptor creation unsupported
+with `DAWN_UNREACHABLE`; this is a defensive future-family invariant, not evidence
+of a reachable texel leak in the selected Windows runtime.
+
+The guard runs before compute alias installation and before render group-cache
+reuse. Unprojected and nonvisible texel bindings retain their existing behavior.
+Twenty-eight packets replay/reverse over 87 paths; 15 native syntax units passed.
+Extracted lookup/guard normal and ASan checks passed 3,840 cases / 11,584 assertions
+each; eight changed-input controls refused before compilation. Backend objects
+are mocked. This does not implement typed SRV/UAV projection, native dispatch,
+queue/Wire execution, component linking or browser consistency. The selected
+runtime and privacy/production gates are unchanged.
+
 ## Integrated compute shader-capture source batch
 
 The [shader-capture batch](drafts/webgpu-shader-capture/README.md) adds direct/indirect

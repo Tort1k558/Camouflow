@@ -1,0 +1,43 @@
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -826,6 +826,7 @@
+         }
+         for (BindGroupIndex groupIndex : mask) {
+             auto* group = mBindGroups[groupIndex];
++            DAWN_TRY(ValidateGlintProjectedTexelBindings(group, wgpu::ShaderStage::Compute));
+             const auto* layout = group->GetLayout();
+             for (BindingIndex index : layout->GetBufferIndices()) {
+                 if (!(layout->GetBindingInfo(index).visibility & wgpu::ShaderStage::Compute)) continue;
+@@ -1201,6 +1202,7 @@
+         for (BindGroupIndex groupIndex : mPipeline->GetLayout()->GetBindGroupLayoutsMask()) {
+             auto* group = mBindGroups[groupIndex];
+             DAWN_TRY(ValidateGlintInputGroup(group, stages));
++            DAWN_TRY(ValidateGlintProjectedTexelBindings(group, stages));
+             if (mGlintGroupSources[groupIndex].Get() == group) continue;
+             mGlintViews[groupIndex].clear();
+             mGlintViewAllocations[groupIndex] = {};
+@@ -1234,6 +1236,24 @@
+                 return value.source.Get() == buffer;
+             });
+         return found == mGlintComputeBuffers->buffers.end() ? nullptr : &*found;
++    }
++
++    MaybeError ValidateGlintProjectedTexelBindings(BindGroupBase* group,
++                                                   wgpu::ShaderStage stages) {
++        DAWN_INTERNAL_ERROR_IF(!group || group->GetDevice() != mDevice,
++                              "Invalid Glint projected texel-buffer bind-group owner.");
++        const auto* layout = group->GetLayout();
++        for (BindingIndex index : layout->GetTexelBufferIndices()) {
++            if (!(layout->GetBindingInfo(index).visibility & stages)) continue;
++            auto* view = group->GetBindingAsTexelBufferView(index);
++            auto* buffer = view ? view->GetBuffer() : nullptr;
++            // Current private buffer overrides build raw CBV/SRV/UAV views only.
++            // A typed texel view must not keep reading the original pixel buffer
++            // while an exact-scope receipt attests projected inputs for that scope.
++            DAWN_INTERNAL_ERROR_IF(!buffer || FindGlintProjectedBuffer(buffer),
++                "Glint projected texel-buffer views are not yet supported.");
++        }
++        return {};
+     }
+ 
+     ResultOrError<bool> PopulateGlintViews(BindGroupIndex index,

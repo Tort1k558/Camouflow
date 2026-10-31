@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## 2026-10-31: projected texel-buffer alias guard (unselected)
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Source replay/reverse | 28 packets / 87 paths | Selected 001–076 runtime unchanged |
+| Native target-flag syntax | 15 units passed | No component link |
+| Extracted lookup/guard normal/ASan | 3,840 cases / 11,584 assertions each | Backend binding/layout objects mocked |
+| Changed inputs | 8 refusals before compilation | Not native runtime attestation |
+
+Visible projected texel aliases are rejected before compute binding installation
+and render cache reuse, rather than silently using the original typed view.
+Unprojected/nonvisible bindings keep their existing path. Typed SRV/UAV projection
+is not implemented. The pinned D3D12 backend marks texel-buffer descriptors
+unsupported; this defensive guard does not demonstrate a reachable leak in the
+selected browser. Actual native tracker dispatch, queue/Wire, device loss,
+browser consistency and privacy/production admission remain unverified or closed.
+
 ## 2026-10-31: combined writable storage-UAV and extracted copyback
 
 | Gate | Result | Boundary |

@@ -1,5 +1,27 @@
 # Glint: план проверки и развития
 
+## Projected texel aliases: close the receipt gap before native admission
+
+The [28-packet source composition](../native/drafts/webgpu-texel-alias-guard/README.md)
+now rejects a visible typed texel view when its logical buffer has a projected
+shadow. Otherwise the shader could retain an original raw input while a receipt
+claimed that the exact input scope was projected. Ordinary unprojected texel
+bindings retain their previous path. The pinned D3D12 backend itself does not
+support texel-buffer descriptors (`DAWN_UNREACHABLE`); this guard is defensive,
+not a demonstrated reachable leak or a new supported WebGPU feature.
+
+Measured: 15 native target-flag syntax units, 3,840 predicate cases / 11,584
+assertions per normal/ASan run and eight pre-compilation refusal controls.
+Native backend objects remain mocked and the packet remains unselected.
+
+Next: connect supported render/bundle and indirect input families without
+weakening exact-scope receipts; then execute actual Dawn producer/tracker/queue,
+Wire, cancellation/device-loss and full browser consistency checks. Source checks
+and standalone hardware fixtures must not replace those runtime gates.
+Typed SRV/UAV projection requires its own format/range/read/copyback proof if
+texel-buffer support is enabled upstream; it is not a reason to enable an
+unsupported backend feature now.
+
 ## Integrated shader capture: source and standalone dataflow verified
 
 [One shader-capture source batch](../native/drafts/webgpu-shader-capture/README.md)
