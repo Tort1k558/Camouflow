@@ -9,7 +9,10 @@ The independent [SRV/readonly-indirect correction](drafts/webgpu-srv-routing/REA
 has 54 standalone case results and 12 comparative native controls. The explicit
 `upstream-156-webgpu-r2` revision preserves the full 116-patch prefix and adds two
 Dawn patches without rewriting old manifests or receipts. Its 118-patch source
-replay/reverse passes; a corrected Chromium runtime is not yet verified.
+replay/reverse passes. Its Windows build now succeeds: 52 incremental Siso
+steps in 15m59.29s, with successful command postguards. All 269 new runtime assets
+are independently preserved; real browser diagnostics are running. A corrected
+Chromium runtime is not yet verified or admitted.
 
 The [owned GPU-process recovery control](drafts/environment/gpu-process-recovery/README.md)
 now has three actual runs on preserved 001–076 with policies off. A real

@@ -11,9 +11,13 @@ probes pass. No corrected release is installed.
 The [revision-2 packet](../native/drafts/webgpu-srv-routing/README.md) fixes exact
 single-slice SRV routing and adds readonly indirect dispatch. Its standalone matrix
 passed 54 cases and 12 before/after controls. All 118 patches replay/reverse and
-restore 268 upstream files. Next: full host regression, a verified source
-transition, Windows compilation and fresh browser diagnostics for
-`upstream-156-webgpu-r2`. Preserve the original 116-patch candidate and all failed
+restore 268 upstream files. Full host regression now passes 5,369 tests with
+one skip; the verified source transition and Windows compilation have completed.
+The revision-2 incremental build executed 52 Siso steps in 15m59.29s, maximum
+four jobs; its complete command and postguards exited 0. All 269 new QA assets
+are preserved and hash-verified. Next: finish fresh browser diagnostics for
+`upstream-156-webgpu-r2`, then investigate every failed gate before admission.
+Preserve the original 116-patch candidate and all failed
 observations. Legacy Audio remains a separate unresolved compatibility gate.
 
 The explicit [upstream-156-webgpu variant](../native/drafts/upstream-156-webgpu/README.md)

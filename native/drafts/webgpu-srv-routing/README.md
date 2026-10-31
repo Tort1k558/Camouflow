@@ -14,7 +14,7 @@ The device reports the exact descriptor error; its hardware removal reason is
 | Corrected standalone matrix | 54/54 | Real Dawn client/server Wire and D3D12; includes no-filter and denied-map controls |
 | Readonly indirect | Direct arguments, 16-byte offset, zero-work output preservation | Projected argument/count controls and writable inputs remain denied |
 | Budget and cleanup | 64 MiB limit; capture bytes drain to zero | Not physical GPU memory accounting or quota recovery |
-| Chromium with these corrections | Not yet built/tested | No privacy, production or CAPTCHA admission |
+| Chromium with these corrections | 118-patch Windows build completed; browser diagnostics running | No runtime, privacy, production or CAPTCHA admission yet |
 
 `srv-routing.patch` retains logical-2D, exact single-layer/mip/plane, native owner,
 format and extent checks. It reuses Dawn's original descriptor rather than

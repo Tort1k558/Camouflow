@@ -1,5 +1,31 @@
 # Glint browser test matrix
 
+## 2026-11-01: revision-2 Windows build completed; browser diagnostics running
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Full local Python regression | 5,369 passed, one skipped at `7dfef03` | Host regression, not browser capability admission |
+| Exact candidate | `upstream-156-webgpu-r2`, 118 patches | Original 116-patch runtime and failed observations preserved |
+| Windows compilation/linking | Siso success: 52 executed steps, 15m59.29s, maximum jobs 4 | Incremental build; not a clean-build time estimate |
+| Build command with validation | Exit 0 in 1,278.414 seconds | Sync, hooks and patch stages also exited 0 |
+| Source timestamp preservation | 371 hash-identical source files retain original timestamps; two changed files retain new timestamps | No build-output timestamps changed |
+| Independent runtime | All 269 assets copied and hash-verified | Separate QA runtime, not an installed release |
+| Browser diagnostics | Started on the new runtime | No new WebGPU, Audio, recovery or third-party acceptance result yet |
+
+Revision-2 identity:
+
+- Manifest: `70e6cd468876ab91fa59a1068ed92cc3117d91dc8b3cf0929526f4da98f5e4e7`.
+- Build receipt: `39aa5450ec8b9c8af8b1ffe7e134ae449b2c50a11e618658398463b4eb9498b6`.
+- `chrome.dll`: `136f64b721edf0f46de51c61d7cfb2c750aaab28ba9708b26cf7a90b2e878aa5`.
+- Build report: `a570c768d969a359d739a439ac1a0e21b42ae63a0dc0b3af56a67a88799e564a`.
+
+The completed controller report is
+`D:\GlintManagerQA\webgpu-r2-candidate-build-20261101-v2\report.json`;
+new browser evidence is collected separately under
+`D:\GlintManagerQA\full-r2-runtime-qa-20261101-v2`.
+Compilation is confirmed; runtime, privacy and production admission remain false.
+The sections below retain the earlier candidate's measurements and failures.
+
 ## 2026-11-01: measured 001–116 runtime and revision-2 correction
 
 | Gate on the preserved 001–116 browser | Result | Boundary |
@@ -21,7 +47,7 @@ controls. These results use normal MSVC STL/no-op raw pointers, not Chromium
 embedding. The [118-patch revision](../native/drafts/upstream-156-webgpu-r2/README.md)
 replays and reverses completely, restoring all 268 upstream files; its two final
 engine sources match the compiled standalone inputs. The revised browser is
-**not built or admitted yet**. The original manifest, failed observations and
+**now compiled, but not runtime-verified or admitted**. The original manifest, failed observations and
 preserved browser are not rewritten as corrected results.
 
 ## 2026-11-01: full 001–116 Windows compilation completed
