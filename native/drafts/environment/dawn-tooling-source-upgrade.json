@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "scope": "Reversible tooling history, not new TLS/runtime measurements",
+  "patch": "dawn-tooling-source-upgrade.patch",
+  "patch_sha256": "53553474c753c80657b1c357cef52c0aab36396730b4e1dcf11cca2b91b3c995",
+  "before_commit": "55522f2",
+  "after_commit": "89aa0c9",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "61c37dc4b0df73912e1054065db8b4f545381ea9c29a320d6b9e588c07b59c38",
+      "after_sha256": "042e253b60601c7326a572ae82d66b9a2abacf47f8cac38cd4e1cc47cfe58b62"
+    },
+    {
+      "source": "scripts/package_native_windows.py",
+      "before_sha256": "a5841ebf6d299f54a0ec0429d6fbef5401beec3a0776d786843e37f930e038c1",
+      "after_sha256": "700315d0484ff5393721b7f725363f48e64f8a77b88300f4736a9ecb34bfb3f4"
+    },
+    {
+      "source": "scripts/verify_native_font_rendering.py",
+      "before_sha256": "82666e681c9737bd157206d95d581c49e0fa800a0b32cf0e888b8a820d7f9123",
+      "after_sha256": "4b1e4bbc5c608215b2e5419577b18927dcd8ab3f250110d6fd3ed79178e6f293"
+    },
+    {
+      "source": "scripts/verify_native_rebase_draft.py",
+      "before_sha256": "47b09c56bf62af52b68ae95391ffa98d3d35a3cb0c0719938c540f66be40cac2",
+      "after_sha256": "ad076cd399376814b77a0219ef63a9b63a9bce6612d789f4316cb3e819842d76"
+    },
+    {
+      "source": "scripts/fetch_native_rebase_sources.py",
+      "before_sha256": "75cfdf83902973d577adf34158df779c6a14ac37450f2cfa9f8a01f512c53f91",
+      "after_sha256": "245d3766440f10e788fb861ca84a0f3fbc88fb194946709f9c434324b464086b"
+    },
+    {
+      "source": "tests/test_release_tools.py",
+      "before_sha256": "8ca0ad0d80b9b320e65e03e564ff55a6a9b1a64575f7c3e5e2418652aed74a9c",
+      "after_sha256": "1dfb7b6f641ee630fc12a02f31c7ae9fa83239e6e1507a06c2ed2f34d251c9aa"
+    }
+  ],
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "exact_roundtrip_verified": true,
+  "historical_tls_sources_matched": 4,
+  "historical_observation_sha256": "61f454f23ac1e0587956e25557fc0f8898e7fcab73317713f9b68ea302ff747e"
+}

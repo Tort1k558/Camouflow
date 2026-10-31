@@ -123,3 +123,9 @@ native/drafts/network/negotiation68-observations.json text eol=lf
 # Canonical QML regression evidence binds this test's exact bytes.
 tests/test_qml_python_editor.py text eol=lf
 tests/test_release_tools.py text eol=lf
+# Reversible tooling history binds canonical source bytes.
+scripts/native_build.py text eol=lf
+scripts/package_native_windows.py text eol=lf
+scripts/verify_native_font_rendering.py text eol=lf
+scripts/verify_native_rebase_draft.py text eol=lf
+scripts/fetch_native_rebase_sources.py text eol=lf

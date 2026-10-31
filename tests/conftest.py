@@ -8,6 +8,33 @@ import pytest
 
 
 @pytest.fixture
+def native_tooling_before_dawn(tmp_path):
+    """Recover exact tooling/test bytes used by historical runtime records."""
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'dawn-tooling-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-dawn-tooling'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text((root / row['source']).read_text(encoding='utf-8-sig'),
+                          encoding='utf-8', newline='\n')
+        assert hashlib.sha256(target.read_bytes()).hexdigest() == row['after_sha256']
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    result = {'sources': {}, 'sha256': {}}
+    for row in record['sources']:
+        value = (base / row['source']).read_bytes()
+        digest = hashlib.sha256(value).hexdigest()
+        assert digest == row['before_sha256'], row['source']
+        result['sources'][row['source']] = value
+        result['sha256'][row['source']] = digest
+    return result
+
+
+@pytest.fixture
 def native_components_before_capture_lifecycle(tmp_path):
     """Recover exact measured synchronous component sources from the upgrade delta."""
     root = Path(__file__).resolve().parents[1]
@@ -79,12 +106,12 @@ def native_units_before_orientation(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def release_tools_before_72_sha256(tmp_path):
+def release_tools_before_72_sha256(tmp_path, native_tooling_before_dawn):
     root = Path(__file__).resolve().parents[1]
     relative = Path("tests/test_release_tools.py")
     path = tmp_path / relative
     path.parent.mkdir(parents=True)
-    path.write_text((root / relative).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
+    path.write_bytes(native_tooling_before_dawn["sources"][relative.as_posix()])
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
                     str(root / "native/drafts/environment/screenshot76-test-contract.patch")],
                    cwd=tmp_path, check=True, capture_output=True)
@@ -112,12 +139,14 @@ def qml_before_delivery_diagnostics_sha256(tmp_path):
 
 @pytest.fixture
 def native70_historical_source_hashes(native_units_before_orientation, recorder_before_document_open_sha256,
-                                     storage_before_read_lock_sha256, surface_sources_before_retained):
+                                     storage_before_read_lock_sha256, surface_sources_before_retained,
+                                     native_tooling_before_dawn):
     root = Path(__file__).resolve().parents[1]
     return {
         "native/drafts/upstream-156/manifest.json": hashlib.sha256(
             (root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest(),
         **surface_sources_before_retained['sha256'],
+        **native_tooling_before_dawn['sha256'],
         "scripts/verify_native_privacy_units.py": native_units_before_orientation["source_sha256"],
         "app/services/scenario_recorder.py": recorder_before_document_open_sha256,
         "app/storage/db.py": storage_before_read_lock_sha256,
@@ -243,14 +272,19 @@ def surface_sources_before_retained(tmp_path, worker_sources_before_integration)
 
 
 @pytest.fixture
-def historical_surface_source_sha256(surface_sources_before_retained):
-    """Hash the exact reconstructed Audio/GPU sources used by older runtime records."""
+def historical_surface_source_sha256(surface_sources_before_retained, native_tooling_before_dawn):
+    """Hash reconstructed Audio/GPU and tooling sources used by older runtime records."""
     root = Path(__file__).resolve().parents[1]
     names = {'scripts/verify_native_audio.py', 'scripts/verify_native_gpu.py',
              'scripts/verify_native_gpu_readback.py'}
 
     def source_sha256(relative, *, normalized=False):
         name = Path(relative).as_posix()
+        if name in native_tooling_before_dawn['sources']:
+            value = native_tooling_before_dawn['sources'][name]
+            if normalized:
+                value = value.decode('utf-8-sig').encode('utf-8')
+            return hashlib.sha256(value).hexdigest()
         if name in names:
             if normalized:
                 source = surface_sources_before_retained['sources'][name].encode('utf-8')

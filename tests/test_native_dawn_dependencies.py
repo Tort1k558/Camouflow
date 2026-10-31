@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -135,3 +136,28 @@ def test_capture_python_baseline_predates_dawn_tooling_changes():
     assert record['git_head'].startswith('55522f2')
     assert record['counts'] == dict(tests=4977, passed=4976, skipped=1, failures=0, errors=0)
     assert record['native_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False
+
+
+def test_tooling_history_recovers_measured_tls_sources_and_round_trips(native_tooling_before_dawn, tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'dawn-tooling-source-upgrade.json').read_bytes())
+    old_tls = root / 'native/drafts/network/negotiation68-observations.json'
+    assert hashlib.sha256(old_tls.read_bytes()).hexdigest() == record['historical_observation_sha256']
+    tls = json.loads(old_tls.read_bytes())
+    assert len(record['sources']) == 6 and record['historical_tls_sources_matched'] == 4
+    assert record['exact_roundtrip_verified'] and record['runtime_verified'] is False
+    assert record['privacy_admitted'] is record['production_admitted'] is False
+    base = tmp_path / 'history-roundtrip'
+    for relative, content in native_tooling_before_dawn['sources'].items():
+        target = base / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+        if relative in tls['source_sha256']:
+            assert hashlib.sha256(content).hexdigest() == tls['source_sha256'][relative]
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error',
+                    str(directory / record['patch'])], cwd=base, check=True, capture_output=True, timeout=15)
+    for row in record['sources']:
+        current = (root / row['source']).read_text(encoding='utf-8-sig').encode('utf-8')
+        assert (base / row['source']).read_bytes() == current
+        assert hashlib.sha256(current).hexdigest() == row['after_sha256']

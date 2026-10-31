@@ -1,0 +1,346 @@
+diff --git a/scripts/fetch_native_rebase_sources.py b/scripts/fetch_native_rebase_sources.py
+index b56e15d6e7b38cf3f8571805dd1d2a449bd6ca1c..9d0360e381567171757df01b893061ff2e57f028 100644
+--- a/scripts/fetch_native_rebase_sources.py
++++ b/scripts/fetch_native_rebase_sources.py
+@@ -55,6 +55,7 @@ def source_plan(manifest: dict) -> list[dict]:
+         if total > MAX_TOTAL_BYTES:
+             raise ValueError("Sparse source byte budget exceeded")
+         revision, repository, upstream_name = manifest["target_revision"], "chromium/src", name
++        host = "https://chromium.googlesource.com/"
+         if name.startswith("v8/"):
+             v8 = dependencies.get("v8")
+             if (not isinstance(v8, dict) or not isinstance(v8.get("revision"), str)
+@@ -62,7 +63,15 @@ def source_plan(manifest: dict) -> list[dict]:
+                     or v8.get("repository") != "https://chromium.googlesource.com/v8/v8.git"):
+                 raise ValueError("V8 source URLs require the pinned dependency")
+             revision, repository, upstream_name = v8["revision"], "v8/v8", name[3:]
+-        expected = ("https://chromium.googlesource.com/" + repository + "/+/" + revision + "/"
++        elif name.startswith("third_party/dawn/"):
++            dawn = dependencies.get("dawn")
++            if (not isinstance(dawn, dict) or not isinstance(dawn.get("revision"), str)
++                    or not re.fullmatch(r"[0-9a-f]{40}", dawn["revision"])
++                    or dawn.get("repository") != "https://dawn.googlesource.com/dawn"):
++                raise ValueError("Dawn source URLs require the pinned dependency")
++            revision, repository, upstream_name = dawn["revision"], "dawn", name[len("third_party/dawn/"):]
++            host = "https://dawn.googlesource.com/"
++        expected = (host + repository + "/+/" + revision + "/"
+                     + urllib.parse.quote(upstream_name, safe="/") + "?format=TEXT")
+         if row.get("url") != expected:
+             raise ValueError("Source URL does not match its immutable official revision and path")
+diff --git a/scripts/native_build.py b/scripts/native_build.py
+index 227c8df30442019b2b532ed115c35e2b903485ad..901b6d86ef0c143a723a193e6d55d78203de50b0 100644
+--- a/scripts/native_build.py
++++ b/scripts/native_build.py
+@@ -526,6 +526,13 @@ def load_candidate(name: str) -> dict:
+             or not isinstance(dependency.get("revision"), str)
+             or not re.fullmatch(r"[0-9a-f]{40}", dependency.get("revision", ""))):
+         raise ValueError("Candidate must pin the V8 repository and revision")
++    dawn = dependencies.get("dawn")
++    if "dawn" in dependencies and (not isinstance(dawn, dict)
++            or dawn.get("repository") != "https://dawn.googlesource.com/dawn"
++            or not isinstance(dawn.get("revision"), str)
++            or not re.fullmatch(r"[0-9a-f]{40}", dawn["revision"])):
++        raise ValueError("Candidate must pin the Dawn repository and revision")
++    allowed_repositories = {".", "v8"} | ({"third_party/dawn"} if dawn is not None else set())
+     patches = manifest.get("patches", [])
+     if not isinstance(patches, list) or not patches:
+         raise ValueError("Candidate patch chain is empty")
+@@ -534,7 +541,7 @@ def load_candidate(name: str) -> dict:
+             raise ValueError("Candidate patch entries must be objects")
+         name = row.get("file", "")
+         if (not isinstance(name, str) or not re.fullmatch(rf"{number:04d}-[a-z0-9-]+\.patch", name)
+-                or row.get("directory", ".") not in {".", "v8"}):
++                or row.get("directory", ".") not in allowed_repositories):
+             raise ValueError("Candidate patch sequence or repository is invalid")
+         path = directory / "patches" / name
+         if path != path.resolve() or hashlib.sha256(path.read_bytes()).hexdigest() != row.get("sha256"):
+@@ -545,6 +552,24 @@ def load_candidate(name: str) -> dict:
+             "manifest_sha256": hashlib.sha256(raw).hexdigest(), "lock": lock}
+ 
+ 
++def expected_candidate_patches(manifest: dict) -> list[dict]:
++    """Expected receipt rows, not proof of applied or compiled source changes."""
++    directories = (".", "v8") + (("third_party/dawn",) if "dawn" in manifest.get("dependencies", {}) else ())
++    records = []
++    for directory in directories:
++        for row in manifest["patches"]:
++            if row.get("directory", ".") != directory:
++                continue
++            record = {"name": row["file"], "sha256": row["sha256"]}
++            if directory != ".":
++                key = "dawn" if directory == "third_party/dawn" else "v8"
++                record.update(repository=directory, revision=manifest["dependencies"][key]["revision"])
++            records.append(record)
++    if len(records) != len(manifest["patches"]):
++        raise ValueError("Candidate receipt contains an unsupported patch repository")
++    return records
++
++
+ def candidate_workspace(workspace: Path, candidate: dict | None, *, claim: bool = False) -> None:
+     marker = workspace / "glint-build-candidate.json"
+     if marker != marker.resolve():
+@@ -576,14 +601,22 @@ def candidate_source_patches(source: Path, env: dict[str, str], candidate: dict)
+     v8 = source / "v8"
+     if v8 != v8.resolve() or run(["git", "rev-parse", "HEAD"], v8, env, capture=True) != dependency["revision"]:
+         raise ValueError("Candidate V8 checkout revision differs")
++    dawn = manifest["dependencies"].get("dawn")
++    if dawn is not None:
++        repository = source / "third_party/dawn"
++        if (repository != repository.resolve()
++                or run(["git", "rev-parse", "HEAD"], repository, env, capture=True) != dawn["revision"]):
++            raise ValueError("Candidate Dawn checkout revision differs")
+     patches = []
+-    for directory in (".", "v8"):
++    directories = (".", "v8") + (("third_party/dawn",) if dawn is not None else ())
++    for directory in directories:
+         names = tuple(row["file"] for row in manifest["patches"] if row.get("directory", ".") == directory)
+         measured = _source_patches(source / directory, env, names, index_dir=source.parent,
+                                    patch_directory=candidate["directory"] / "patches")
+         if [item["name"] for item in measured] != list(names):
+             raise ValueError("The complete candidate patch chain must already be applied")
+-        patches.extend({**item, **({"repository": "v8", "revision": dependency["revision"]} if directory == "v8" else {})}
++        revision = dawn["revision"] if directory == "third_party/dawn" else dependency["revision"]
++        patches.extend({**item, **({"repository": directory, "revision": revision} if directory != "." else {})}
+                        for item in measured)
+     return patches
+ 
+@@ -593,9 +626,11 @@ def apply_candidate_patches(source: Path, env: dict[str, str], candidate: dict)
+         raise ValueError("Candidate source must be a canonical checkout")
+     manifest = candidate["manifest"]
+     groups = []
+-    for directory in (".", "v8"):
++    directories = (".", "v8") + (("third_party/dawn",) if "dawn" in manifest["dependencies"] else ())
++    for directory in directories:
+         repository = source / directory
+-        revision = manifest["target_revision"] if directory == "." else manifest["dependencies"]["v8"]["revision"]
++        key = "dawn" if directory == "third_party/dawn" else "v8"
++        revision = manifest["target_revision"] if directory == "." else manifest["dependencies"][key]["revision"]
+         if (repository != repository.resolve()
+                 or run(["git", "rev-parse", "HEAD"], repository, env, capture=True) != revision):
+             raise ValueError("Candidate patch checkout revision differs")
+@@ -612,6 +647,8 @@ def apply_candidate_patches(source: Path, env: dict[str, str], candidate: dict)
+     applied = []
+     try:
+         for number, (repository, names) in enumerate(groups):
++            if not names:
++                continue
+             index_env = {**env, "GIT_INDEX_FILE": str(evidence / f"index-{number}")}
+             run(["git", "read-tree", "HEAD"], repository, index_env)
+             for name in names:
+diff --git a/scripts/package_native_windows.py b/scripts/package_native_windows.py
+index acff4f0e1c1a7a679b677fef9fd0bac5ba48bdf0..d5eda917e523e4410c61aaabf9eb61b5d6a0c8cb 100644
+--- a/scripts/package_native_windows.py
++++ b/scripts/package_native_windows.py
+@@ -19,7 +19,7 @@ from app.core.native.distribution import (  # noqa: E402
+     MAX_ARCHIVE_BYTES, MAX_FILES, MAX_UNPACKED_BYTES, checked_archive_name,
+     host_architecture, sha256_file,
+ )
+-from scripts.native_build import LOCK, load_candidate  # noqa: E402
++from scripts.native_build import LOCK, expected_candidate_patches, load_candidate  # noqa: E402
+ from scripts.verify_native_runtime import measure_runtime_core  # noqa: E402
+ 
+ RELEASE_VOLUME = "D:"
+@@ -60,13 +60,7 @@ def validate_build_receipt(receipt: dict, lock: dict, *, candidate: dict | None
+             raise ValueError("Native build receipt differs from the pinned build: " + key)
+     if candidate is not None:
+         manifest = candidate["manifest"]
+-        expected_patches = []
+-        for repository in (".", "v8"):
+-            for row in manifest["patches"]:
+-                if row.get("directory", ".") == repository:
+-                    expected_patches.append({"name": row["file"], "sha256": row["sha256"],
+-                        **({"repository": "v8", "revision": manifest["dependencies"]["v8"]["revision"]}
+-                           if repository == "v8" else {})})
++        expected_patches = expected_candidate_patches(manifest)
+         if (receipt.get("candidate_manifest_sha256") != candidate["manifest_sha256"]
+                 or receipt.get("patches") != expected_patches):
+             raise ValueError("Native candidate receipt must bind the complete manifest and patch chain")
+diff --git a/scripts/verify_native_font_rendering.py b/scripts/verify_native_font_rendering.py
+index a7240a6c166a3e16a1154eb6e23056418ff6a08e..62feb769e7f9108e67ddedc3cf8b570dfe8fc15b 100644
+--- a/scripts/verify_native_font_rendering.py
++++ b/scripts/verify_native_font_rendering.py
+@@ -264,11 +264,7 @@ async def verify(executable: Path, destination: Path, *, series: str = "rasteriz
+             raise ValueError("Candidate rendering verification requires explicit --candidate selection")
+     else:
+         manifest = candidate["manifest"]
+-        expected_patches = [
+-            {"name": row["file"], "sha256": row["sha256"],
+-             **({"repository": "v8", "revision": manifest["dependencies"]["v8"]["revision"]}
+-                if directory == "v8" else {})}
+-            for directory in (".", "v8") for row in manifest["patches"] if row.get("directory", ".") == directory]
++        expected_patches = native_build.expected_candidate_patches(manifest)
+         if (record.get("candidate_manifest_sha256") != candidate["manifest_sha256"]
+                 or record.get("chromium_revision") != candidate["lock"]["chromium_revision"]
+                 or record.get("depot_tools_revision") != candidate["lock"]["depot_tools_revision"]
+diff --git a/scripts/verify_native_rebase_draft.py b/scripts/verify_native_rebase_draft.py
+index 2fa90e91f0729da4e122508a15a1a3f4e1eceefa..2a5a7602cb13e5177197f9595dec34029f9f231b 100644
+--- a/scripts/verify_native_rebase_draft.py
++++ b/scripts/verify_native_rebase_draft.py
+@@ -124,12 +124,24 @@ def verify(source: Path, output: Path, *, formatter: Path | None = None,
+             raise ValueError("Draft patch checksum differs: " + row["file"])
+         if b"\r" in content or content.startswith(b"\xef\xbb\xbf"):
+             raise ValueError("Draft patches require UTF-8 without BOM and LF line endings")
+-        if not isinstance(row.get("directory", "."), str) or row.get("directory", ".") not in {".", "v8"}:
++        if not isinstance(row.get("directory", "."), str) or row.get("directory", ".") not in {".", "v8", "third_party/dawn"}:
+             raise ValueError("Unsupported draft repository directory")
+         patches.append(path)
+     dependencies = manifest.get("dependencies", {})
+     if not isinstance(dependencies, dict):
+         raise ValueError("Invalid draft dependency map")
++    dawn = dependencies.get("dawn")
++    if "dawn" in dependencies:
++        if (not isinstance(dawn, dict) or not isinstance(dawn.get("revision"), str)
++                or not re.fullmatch(r"[0-9a-f]{40}", dawn["revision"])
++                or dawn.get("repository") != "https://dawn.googlesource.com/dawn"):
++            raise ValueError("Invalid pinned Dawn dependency")
++        deps_text = inputs.get("DEPS", b"").decode("utf-8-sig")
++        dawn_revisions = re.findall(r"'dawn_revision':\s*'([0-9a-f]{40})'", deps_text)
++        if dawn_revisions != [dawn["revision"]]:
++            raise ValueError("Draft Dawn revision does not match Chromium DEPS")
++    if any(row.get("directory") == "third_party/dawn" for row in manifest["patches"]) and dawn is None:
++        raise ValueError("Dawn drafts require a pinned Chromium DEPS dependency")
+     v8 = dependencies.get("v8")
+     if v8 is not None:
+         if not isinstance(v8, dict) or not isinstance(v8.get("revision"), str) or not re.fullmatch(r"[0-9a-f]{40}", v8["revision"]):
+diff --git a/tests/test_release_tools.py b/tests/test_release_tools.py
+index 162cb2636d3ac02cf5fb74dc83872605b94d2b90..1edb2a33ef2c738b837b36d5a021fd296111d62f 100644
+--- a/tests/test_release_tools.py
++++ b/tests/test_release_tools.py
+@@ -3901,7 +3901,8 @@ def test_upstream_source_invariants_reject_abi_and_resource_drift(tmp_path, fail
+             "gpu_commands": {"preserved": 1, "appended": 577}, "grit_structure_preserved": True}
+ 
+ 
+-@pytest.mark.parametrize("failure", [None, "patch", "revision", "jobs", "space", "settings", "v8", "sequence"])
++@pytest.mark.parametrize("failure", [None, "patch", "revision", "jobs", "space", "settings", "v8", "sequence",
++                                     "dawn", "dawn-null", "dawn-repository", "dawn-revision", "dawn-unpinned"])
+ def test_native_candidate_selection_pins_inputs_without_mutating_default_lock(tmp_path, monkeypatch, failure):
+     import copy
+     import hashlib
+@@ -3932,9 +3933,20 @@ def test_native_candidate_selection_pins_inputs_without_mutating_default_lock(tm
+         manifest["dependencies"]["v8"]["revision"] = "HEAD"
+     elif failure == "sequence":
+         manifest["patches"][0]["file"] = "../0001-owned.patch"
++    elif failure and failure.startswith("dawn"):
++        manifest["patches"][0]["directory"] = "third_party/dawn"
++        manifest["dependencies"]["dawn"] = {"repository": "https://dawn.googlesource.com/dawn", "revision": "d" * 40}
++        if failure == "dawn-null":
++            manifest["dependencies"]["dawn"] = None
++        elif failure == "dawn-repository":
++            manifest["dependencies"]["dawn"]["repository"] = "https://untrusted.invalid/dawn"
++        elif failure == "dawn-revision":
++            manifest["dependencies"]["dawn"]["revision"] = "HEAD"
++        elif failure == "dawn-unpinned":
++            del manifest["dependencies"]["dawn"]
+     (directory / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+     monkeypatch.setattr(build, "ROOT", tmp_path)
+-    if failure:
++    if failure not in (None, "dawn"):
+         with pytest.raises(ValueError):
+             build.load_candidate("upstream-156")
+     else:
+@@ -3948,7 +3960,8 @@ def test_native_candidate_selection_pins_inputs_without_mutating_default_lock(tm
+ 
+ 
+ @pytest.mark.parametrize("failure", [None, "prepare", "apply", "dirty", "concurrent-edit"])
+-def test_native_candidate_batch_application_prepares_both_repositories_and_preserves_edits(tmp_path, monkeypatch, failure):
++@pytest.mark.parametrize("with_dawn", [False, True])
++def test_native_candidate_batch_application_prepares_both_repositories_and_preserves_edits(tmp_path, monkeypatch, failure, with_dawn):
+     import hashlib
+     import json
+     import os
+@@ -3959,18 +3972,21 @@ def test_native_candidate_batch_application_prepares_both_repositories_and_prese
+     source.mkdir()
+     candidate_directory = tmp_path / "draft"
+     (candidate_directory / "patches").mkdir(parents=True)
+-    environment = dict(os.environ)
++    environment = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
++                   "GIT_TERMINAL_PROMPT": "0"}
+     revisions = []
+     rows = []
+     original = bytes(range(256))
+-    for number, directory in enumerate((".", "v8"), 1):
++    directories = (".", "v8") + (("third_party/dawn",) if with_dawn else ())
++    repositories = [source / directory for directory in directories]
++    for number, directory in enumerate(directories, 1):
+         repository = source / directory
+-        repository.mkdir(exist_ok=True)
++        repository.mkdir(parents=True, exist_ok=True)
+         def git(*args):
+             return subprocess.check_output(["git", *args], cwd=repository, env=environment)
+         git("init", "--quiet")
+         git("config", "core.autocrlf", "false")
+-        (repository / ".gitignore").write_text("v8/\n", encoding="utf-8")
++        (repository / ".gitignore").write_text("v8/\nthird_party/\n", encoding="utf-8")
+         (repository / "value.bin").write_bytes(original)
+         git("add", ".")
+         git("-c", "user.name=Glint fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "-m", "owned baseline")
+@@ -3979,20 +3995,23 @@ def test_native_candidate_batch_application_prepares_both_repositories_and_prese
+         content = git("diff", "--binary", "HEAD")
+         content += b"diff --git a/added.txt b/added.txt\nnew file mode 100644\n--- /dev/null\n+++ b/added.txt\n@@ -0,0 +1 @@\n+owned new file\n"
+         (repository / "value.bin").write_bytes(original)
+-        if failure == "prepare" and directory == "v8":
++        if failure == "prepare" and directory == directories[-1]:
+             content = b"invalid patch\n"
+         name = f"{number:04d}-owned.patch"
+         (candidate_directory / "patches" / name).write_bytes(content)
+         rows.append({"file": name, "directory": directory, "sha256": hashlib.sha256(content).hexdigest()})
+     candidate = {"name": "upstream-156", "directory": candidate_directory, "manifest_sha256": "a" * 64,
+                  "manifest": {"target_revision": revisions[0], "dependencies": {"v8": {"revision": revisions[1]}}, "patches": rows}}
++    if with_dawn:
++        candidate["manifest"]["dependencies"]["dawn"] = {
++            "repository": "https://dawn.googlesource.com/dawn", "revision": revisions[2]}
+     monkeypatch.setattr(build, "load_candidate", lambda name: candidate)
+     if failure == "dirty":
+         (source / "user-file").write_bytes(b"preserve")
+     run = build.run
+     def wrapped(command, cwd, env, **kwargs):
+         actual_apply = command[:2] == ["git", "apply"] and "--check" not in command and "--reverse" not in command
+-        if actual_apply and cwd == source / "v8" and failure in {"apply", "concurrent-edit"}:
++        if actual_apply and cwd == repositories[-1] and failure in {"apply", "concurrent-edit"}:
+             if failure == "concurrent-edit":
+                 (source / "user-file").write_bytes(b"preserve concurrent edit")
+             raise subprocess.CalledProcessError(1, command)
+@@ -4004,10 +4023,13 @@ def test_native_candidate_batch_application_prepares_both_repositories_and_prese
+         if failure == "concurrent-edit":
+             assert (source / "user-file").read_bytes() == b"preserve concurrent edit"
+             assert (source / "value.bin").read_bytes() == original[::-1]
++            for repository in repositories[1:]:
++                assert (repository / "value.bin").read_bytes() == original
++                assert not (repository / "added.txt").exists()
+             report = json.loads(next(tmp_path.glob("glint-candidate-patches-*/report.json")).read_bytes())
+             assert report["rollback_errors"] and report["passed"] is False
+         else:
+-            for repository in (source, source / "v8"):
++            for repository in repositories:
+                 assert (repository / "value.bin").read_bytes() == original
+                 assert not (repository / "added.txt").exists()
+             if failure == "dirty":
+@@ -4015,16 +4037,24 @@ def test_native_candidate_batch_application_prepares_both_repositories_and_prese
+             else:
+                 report = json.loads(next(tmp_path.glob("glint-candidate-patches-*/report.json")).read_bytes())
+                 assert report["passed"] is False
+-                assert report["rolled_back"] == (["."] if failure == "apply" else [])
++                assert report["rolled_back"] == (list(reversed(directories[:-1])) if failure == "apply" else [])
+     else:
+         patches = build.apply_candidate_patches(source, environment, candidate)
+-        assert len(patches) == 2
+-        for repository in (source, source / "v8"):
++        assert len(patches) == len(directories)
++        if with_dawn:
++            assert patches[-1]["repository"] == "third_party/dawn" and patches[-1]["revision"] == revisions[2]
++        for repository in repositories:
+             assert (repository / "value.bin").read_bytes() == original[::-1]
+             assert (repository / "added.txt").read_bytes() == b"owned new file\n"
+         assert build.apply_candidate_patches(source, environment, candidate) == patches
+-        for repository in (source, source / "v8"):
++        for repository in repositories:
+             assert subprocess.check_output(["git", "diff", "--cached", "--name-only"], cwd=repository) == b""
++        if with_dawn:
++            foreign = repositories[-1] / "foreign.txt"
++            foreign.write_bytes(b"preserve foreign Dawn edit")
++            with pytest.raises(ValueError, match="Unrecognized"):
++                build.candidate_source_patches(source, environment, candidate)
++            assert foreign.read_bytes() == b"preserve foreign Dawn edit"
+ 
+ 
+ def test_native_workspace_lock_rejects_concurrent_operations_and_releases_after_error(tmp_path):
