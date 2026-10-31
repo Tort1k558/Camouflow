@@ -134,3 +134,5 @@ native/drafts/shared-readback-core/*.cc text eol=lf
 native/drafts/shared-readback-core/*.py text eol=lf
 native/drafts/webgpu-readback-controller/*.cc text eol=lf
 native/drafts/webgpu-readback-controller/*.py text eol=lf
+native/drafts/webgpu-service-readback/*.cc text eol=lf
+native/drafts/webgpu-service-readback/*.py text eol=lf

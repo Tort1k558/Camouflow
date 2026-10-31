@@ -1,0 +1,805 @@
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -115,6 +115,9 @@
+ 
+ // Trusted embedder API, installed once before exposing a device to script.
+ // Only D3D12 is supported by this experiment. No pixel protection is installed here.
++DAWN_NATIVE_EXPORT std::shared_ptr<GlintReadbackObserver> GetGlintReadbackObserver(
++    WGPUDevice device);
++
+ DAWN_NATIVE_EXPORT bool InstallGlintReadbackObserver(
+     WGPUDevice device,
+     std::shared_ptr<GlintReadbackObserver> observer);
+--- a/third_party/dawn/src/dawn/native/DawnNative.cpp
++++ b/third_party/dawn/src/dawn/native/DawnNative.cpp
+@@ -44,6 +44,15 @@
+ 
+ namespace dawn::native {
+ 
++std::shared_ptr<GlintReadbackObserver> GetGlintReadbackObserver(WGPUDevice device) {
++    if (!device) {
++        return nullptr;
++    }
++    auto* nativeDevice = FromAPI(device);
++    auto guard = nativeDevice->GetGuard();
++    return nativeDevice->GetGlintReadbackObserver();
++}
++
+ bool InstallGlintReadbackObserver(WGPUDevice device,
+                                   std::shared_ptr<GlintReadbackObserver> observer) {
+     if (!device || !observer) {
+--- a/third_party/dawn/include/dawn/wire/WireServer.h
++++ b/third_party/dawn/include/dawn/wire/WireServer.h
+@@ -44,11 +44,41 @@
+ class MemoryTransferService;
+ }  // namespace server
+ 
++enum class BufferReadbackDisposition { Denied, Passthrough, Protected };
++struct FilteredBufferReadback {
++    BufferReadbackDisposition disposition = BufferReadbackDisposition::Denied;
++    std::unique_ptr<uint8_t[]> bytes;
++    size_t size = 0;
++};
++
++// Optional embedder policy. Implementations must synchronize spontaneous callbacks.
++// Non-null filters require private native backing before any GPU copy is recorded.
++class DAWN_WIRE_EXPORT BufferReadbackFilter {
++  public:
++    virtual ~BufferReadbackFilter() = default;
++    virtual BufferReadbackDisposition Classify(WGPUBuffer buffer,
++                                               uint64_t bufferSize,
++                                               uint64_t offset,
++                                               uint64_t size) = 0;
++    virtual FilteredBufferReadback Prepare(WGPUBuffer buffer,
++                                           uint64_t bufferSize,
++                                           uint64_t offset,
++                                           std::span<const std::byte> bytes) = 0;
++};
++class DAWN_WIRE_EXPORT BufferReadbackFilterFactory {
++  public:
++    virtual ~BufferReadbackFilterFactory() = default;
++    // Null means explicitly unprotected. A failed protected device must return a
++    // denying filter, never null. Install policy before exposing a device.
++    virtual std::shared_ptr<BufferReadbackFilter> ForDevice(WGPUDevice device) = 0;
++};
++
+ struct DAWN_WIRE_EXPORT WireServerDescriptor {
+     const DawnProcTable* procs = nullptr;
+     CommandSerializer* serializer = nullptr;
+     server::MemoryTransferService* memoryTransferService = nullptr;
+     bool useSpontaneousCallbacks = false;
++    std::shared_ptr<BufferReadbackFilterFactory> bufferReadbackFilterFactory;
+ };
+ 
+ class DAWN_WIRE_EXPORT WireServer : public CommandHandler {
+--- a/third_party/dawn/src/dawn/wire/WireServer.cpp
++++ b/third_party/dawn/src/dawn/wire/WireServer.cpp
+@@ -35,7 +35,8 @@
+     : mImpl(server::Server::Create(*descriptor.procs,
+                                    descriptor.serializer,
+                                    descriptor.memoryTransferService,
+-                                   descriptor.useSpontaneousCallbacks)) {}
++                                   descriptor.useSpontaneousCallbacks,
++                                   descriptor.bufferReadbackFilterFactory)) {}
+ 
+ WireServer::~WireServer() {
+     mImpl.reset();
+--- a/third_party/dawn/src/dawn/wire/server/Server.h
++++ b/third_party/dawn/src/dawn/wire/server/Server.h
+@@ -191,10 +191,12 @@
+ 
+ class Server : public ServerBase {
+   public:
+-    static std::shared_ptr<Server> Create(const DawnProcTable& procs,
+-                                          CommandSerializer* serializer,
+-                                          MemoryTransferService* memoryTransferService,
+-                                          bool useSpontaneousCallbacks);
++    static std::shared_ptr<Server> Create(
++        const DawnProcTable& procs,
++        CommandSerializer* serializer,
++        MemoryTransferService* memoryTransferService,
++        bool useSpontaneousCallbacks,
++        std::shared_ptr<BufferReadbackFilterFactory> bufferReadbackFilterFactory = nullptr);
+     ~Server() override;
+ 
+     // ChunkedCommandHandler implementation
+@@ -233,7 +235,8 @@
+     Server(const DawnProcTable& procs,
+            CommandSerializer* serializer,
+            MemoryTransferService* memoryTransferService,
+-           bool useSpontaneousCallbacks);
++           bool useSpontaneousCallbacks,
++           std::shared_ptr<BufferReadbackFilterFactory> bufferReadbackFilterFactory = nullptr);
+ 
+     template <typename Cmd>
+     void SerializeCommand(Cmd&& cmd) {
+@@ -320,6 +323,7 @@
+     MutexProtected<ChunkedCommandSerializer> mSerializer;
+     std::unique_ptr<MemoryTransferService> mOwnedMemoryTransferService = nullptr;
+     raw_ptr<MemoryTransferService> mMemoryTransferService = nullptr;
++    std::shared_ptr<BufferReadbackFilterFactory> mBufferReadbackFilterFactory;
+     bool mUseSpontaneousCallbacks = false;
+ 
+     // Weak pointer to self to facilitate creation of userdata.
+--- a/third_party/dawn/src/dawn/wire/server/Server.cpp
++++ b/third_party/dawn/src/dawn/wire/server/Server.cpp
+@@ -37,12 +37,15 @@
+     : server(server), procs(procs) {}
+ 
+ // static
+-std::shared_ptr<Server> Server::Create(const DawnProcTable& procs,
+-                                       CommandSerializer* serializer,
+-                                       MemoryTransferService* memoryTransferService,
+-                                       bool useSpontaneousCallbacks) {
+-    auto server = std::shared_ptr<Server>(
+-        new Server(procs, serializer, memoryTransferService, useSpontaneousCallbacks));
++std::shared_ptr<Server> Server::Create(
++    const DawnProcTable& procs,
++    CommandSerializer* serializer,
++    MemoryTransferService* memoryTransferService,
++    bool useSpontaneousCallbacks,
++    std::shared_ptr<BufferReadbackFilterFactory> bufferReadbackFilterFactory) {
++    auto server = std::shared_ptr<Server>(new Server(procs, serializer, memoryTransferService,
++                                                     useSpontaneousCallbacks,
++                                                     std::move(bufferReadbackFilterFactory)));
+     server->mSelf = server;
+     return server;
+ }
+@@ -50,10 +53,12 @@
+ Server::Server(const DawnProcTable& procs,
+                CommandSerializer* serializer,
+                MemoryTransferService* memoryTransferService,
+-               bool useSpontaneousCallbacks)
++               bool useSpontaneousCallbacks,
++               std::shared_ptr<BufferReadbackFilterFactory> bufferReadbackFilterFactory)
+     : ServerBase(procs),
+       mSerializer(serializer),
+       mMemoryTransferService(memoryTransferService),
++      mBufferReadbackFilterFactory(std::move(bufferReadbackFilterFactory)),
+       mUseSpontaneousCallbacks(useSpontaneousCallbacks) {
+     if (mMemoryTransferService == nullptr) {
+         // If a MemoryTransferService is not provided, fallback to inline memory.
+@@ -85,6 +90,12 @@
+     WIRE_TRY(Allocate(&data, handle));
+ 
+     data->handle = buffer;
++    if (mBufferReadbackFilterFactory) {
++        data->readbackFilter = mBufferReadbackFilterFactory->ForDevice(device->handle);
++        if (data->readbackFilter) {
++            data->readbackBufferSize = mProcs->bufferGetSize(buffer);
++        }
++    }
+     data->generation = handle.generation;
+     data->state = AllocationState::Allocated;
+ 
+--- a/third_party/dawn/src/dawn/wire/server/ServerBuffer.cpp
++++ b/third_party/dawn/src/dawn/wire/server/ServerBuffer.cpp
+@@ -70,6 +70,8 @@
+     // Destroying a buffer does an implicit unmapping.
+     Known<WGPUBuffer> buffer;
+     WIRE_TRY(Get(cmd.selfId, &buffer));
++
++    buffer->readbackDestroyed = true;
+ 
+     // The buffer was destroyed. Clear the MemoryHandle.
+     buffer->mapState.Use([](auto mapState) { mapState->memoryHandle = nullptr; });
+@@ -117,6 +119,10 @@
+     Reserved<WGPUBuffer> buffer;
+     WIRE_TRY(Allocate(&buffer, bufferHandle));
+     buffer->usage = ToAPI(descriptor->usage);
++    if (mBufferReadbackFilterFactory) {
++        buffer->readbackFilter = mBufferReadbackFilterFactory->ForDevice(device->handle);
++        buffer->readbackBufferSize = descriptor->size;
++    }
+     buffer->mappedAtCreation = descriptor->mappedAtCreation;
+ 
+     bool isMappable =
+@@ -144,7 +150,10 @@
+     // - When a valid buffer is returned, `beginAccess()` must have been called on it.
+     // - Index/indirect buffers are not supported to prevent the TOCTOU issue with races between
+     //   GPU-side validation and the client modifying the buffer.
+-    if (!(descriptor->usage & (wgpu::BufferUsage::Indirect | wgpu::BufferUsage::Index))) {
++    // A future texture copy must not write raw native pixels directly into
++    // renderer-visible memory. Keep shared-memory transfer, not shared backing.
++    if (!buffer->readbackFilter &&
++        !(descriptor->usage & (wgpu::BufferUsage::Indirect | wgpu::BufferUsage::Index))) {
+         buffer->handle =
+             memoryHandle->TryWrapInBuffer(mProcs.get(), device->handle, ToAPI(descriptor));
+     }
+@@ -246,6 +255,27 @@
+         case wgpu::MapMode::Read: {
+             DAWN_ASSERT(data->size != WGPU_WHOLE_MAP_SIZE);  // Validated in DoBufferMapAsync.
+ 
++            auto denyReadback = [&] {
++                mProcs->bufferUnmap(buffer->handle);
++                cmd.status = wgpu::MapAsyncStatus::Error;
++                cmd.message = ToOutputStringView("Readback policy rejected mapped data");
++                SerializeCommand(std::move(cmd));
++            };
++            const auto filter = buffer->readbackFilter;
++            if (filter && buffer->readbackDestroyed) {
++                denyReadback();
++                break;
++            }
++            const auto disposition =
++                filter ? filter->Classify(buffer->handle, buffer->readbackBufferSize, data->offset,
++                                          data->size)
++                       : BufferReadbackDisposition::Passthrough;
++            if (disposition == BufferReadbackDisposition::Denied ||
++                (filter && buffer->backedWithSharedMemory)) {
++                denyReadback();
++                break;
++            }
++
+             // Buffers backed with shared memory are directly shared with client; no deserialization
+             // needed.
+             if (buffer->backedWithSharedMemory) {
+@@ -257,9 +287,33 @@
+                 const std::byte* mappedData = static_cast<const std::byte*>(
+                     mProcs->bufferGetConstMappedRange(buffer->handle, data->offset, data->size));
+ 
++                // A queued success may race native destruction. Never treat a
++                // missing native mapping as untracked/raw data.
++                if (filter && ((!mappedData && data->size != 0) || !mapState->memoryHandle)) {
++                    denyReadback();
++                    return;
++                }
++
+                 // SAFETY: If GetConstMappedRange with size != WGPU_WHOLE_MAP_SIZE returns non-null,
+                 // it points to at least `size` valid bytes.
+                 Span<const std::byte> DAWN_UNSAFE_BUFFERS(mappedRange{mappedData, data->size});
++
++                FilteredBufferReadback protectedReadback;
++                if (disposition == BufferReadbackDisposition::Protected) {
++                    protectedReadback = filter->Prepare(buffer->handle, buffer->readbackBufferSize,
++                                                        data->offset, mappedRange);
++                    if (protectedReadback.disposition != BufferReadbackDisposition::Protected ||
++                        protectedReadback.size != data->size ||
++                        (!protectedReadback.bytes && data->size != 0)) {
++                        denyReadback();
++                        return;
++                    }
++                    // The serializer copies synchronously; keep the owned shadow
++                    // alive through SerializeDataUpdate, never expose native pixels.
++                    mappedRange = Span<const std::byte>(
++                        reinterpret_cast<const std::byte*>(protectedReadback.bytes.get()),
++                        protectedReadback.size);
++                }
+ 
+                 size_t dataUpdateInfoLength =
+                     mapState->memoryHandle->GetSerializeDataUpdateSize(data->offset, data->size);
+--- a/third_party/dawn/src/dawn/wire/server/ObjectStorage.h
++++ b/third_party/dawn/src/dawn/wire/server/ObjectStorage.h
+@@ -75,6 +75,9 @@
+     // Indicate if memoryHandle needs to be destroyed on unmap
+     bool mappedAtCreation = false;
+     bool backedWithSharedMemory = false;
++    bool readbackDestroyed = false;
++    uint64_t readbackBufferSize = 0;
++    std::shared_ptr<BufferReadbackFilter> readbackFilter;
+ };
+ 
+ struct DeviceInfo {
+--- /dev/null
++++ b/gpu/command_buffer/service/glint_webgpu_wire_filter.h
+@@ -0,0 +1,14 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GPU_COMMAND_BUFFER_SERVICE_GLINT_WEBGPU_WIRE_FILTER_H_
++#define GPU_COMMAND_BUFFER_SERVICE_GLINT_WEBGPU_WIRE_FILTER_H_
++
++#include <memory>
++
++#include "dawn/wire/WireServer.h"
++
++namespace gpu::webgpu {
++std::shared_ptr<dawn::wire::BufferReadbackFilterFactory>
++CreateGlintWebGPUReadbackFilterFactory();
++}
++#endif
+--- /dev/null
++++ b/gpu/command_buffer/service/glint_webgpu_wire_filter.cc
+@@ -0,0 +1,74 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "gpu/command_buffer/service/glint_webgpu_wire_filter.h"
++
++#include "base/compiler_specific.h"
++#include "dawn/native/DawnNative.h"
++
++namespace gpu::webgpu {
++namespace {
++using dawn::wire::BufferReadbackDisposition;
++
++BufferReadbackDisposition Disposition(
++    dawn::native::GlintReadbackMapStatus status) {
++  switch (status) {
++    case dawn::native::GlintReadbackMapStatus::Unrelated:
++      return BufferReadbackDisposition::Passthrough;
++    case dawn::native::GlintReadbackMapStatus::Protected:
++      return BufferReadbackDisposition::Protected;
++    default:
++      return BufferReadbackDisposition::Denied;
++  }
++}
++
++class NativeReadbackFilter final : public dawn::wire::BufferReadbackFilter {
++ public:
++  explicit NativeReadbackFilter(
++      std::shared_ptr<dawn::native::GlintReadbackObserver> observer)
++      : observer_(std::move(observer)) {}
++  BufferReadbackDisposition Classify(WGPUBuffer buffer,
++                                     uint64_t size,
++                                     uint64_t offset,
++                                     uint64_t count) override {
++    return Disposition(
++        observer_->ClassifyReadMap({buffer, size}, offset, count));
++  }
++  dawn::wire::FilteredBufferReadback Prepare(
++      WGPUBuffer buffer,
++      uint64_t size,
++      uint64_t offset,
++      std::span<const std::byte> bytes) override {
++    // SAFETY: Byte-sized alias of the complete caller-owned span; no size
++    // change.
++    const auto original = UNSAFE_BUFFERS(std::span<const uint8_t>(
++        reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size()));
++    auto mapped = observer_->PrepareReadMap({buffer, size}, offset, original);
++    return {Disposition(mapped.status), std::move(mapped.bytes), mapped.size};
++  }
++
++ private:
++  const std::shared_ptr<dawn::native::GlintReadbackObserver> observer_;
++};
++
++class NativeReadbackFilterFactory final
++    : public dawn::wire::BufferReadbackFilterFactory {
++ public:
++  std::shared_ptr<dawn::wire::BufferReadbackFilter> ForDevice(
++      WGPUDevice device) override {
++    // Query the alive device itself: a raw-handle registry would need
++    // generation tracking and could select a stale policy after device-address
++    // reuse.
++    auto observer = dawn::native::GetGlintReadbackObserver(device);
++    if (!observer) {
++      return nullptr;
++    }
++    return std::make_shared<NativeReadbackFilter>(std::move(observer));
++  }
++};
++}  // namespace
++
++std::shared_ptr<dawn::wire::BufferReadbackFilterFactory>
++CreateGlintWebGPUReadbackFilterFactory() {
++  return std::make_shared<NativeReadbackFilterFactory>();
++}
++}  // namespace gpu::webgpu
+--- a/gpu/command_buffer/service/dawn_wire_server.h
++++ b/gpu/command_buffer/service/dawn_wire_server.h
+@@ -17,7 +17,9 @@
+   static std::unique_ptr<DawnWireServer> Create(
+       dawn::wire::CommandSerializer* serializer,
+       dawn::wire::server::MemoryTransferService* memory_transfer_service,
+-      const DawnProcTable& procs);
++      const DawnProcTable& procs,
++      std::shared_ptr<dawn::wire::BufferReadbackFilterFactory>
++          readback_filter_factory = nullptr);
+ 
+   bool HandleCommands(base::span<const volatile uint8_t> commands);
+ 
+--- a/gpu/command_buffer/service/dawn_wire_server.cc
++++ b/gpu/command_buffer/service/dawn_wire_server.cc
+@@ -16,12 +16,15 @@
+ std::unique_ptr<DawnWireServer> DawnWireServer::Create(
+     dawn::wire::CommandSerializer* serializer,
+     dawn::wire::server::MemoryTransferService* memory_transfer_service,
+-    const DawnProcTable& procs) {
++    const DawnProcTable& procs,
++    std::shared_ptr<dawn::wire::BufferReadbackFilterFactory>
++        readback_filter_factory) {
+   dawn::wire::WireServerDescriptor descriptor = {};
+   descriptor.procs = &procs;
+   descriptor.serializer = serializer;
+   descriptor.memoryTransferService = memory_transfer_service;
+   descriptor.useSpontaneousCallbacks = true;
++  descriptor.bufferReadbackFilterFactory = std::move(readback_filter_factory);
+ 
+   return base::WrapUnique(new DawnWireServer(descriptor));
+ }
+--- a/gpu/command_buffer/service/webgpu_decoder_impl.cc
++++ b/gpu/command_buffer/service/webgpu_decoder_impl.cc
+@@ -6,6 +6,8 @@
+ 
+ #include <algorithm>
+ #include <array>
++#include <atomic>
++#include <limits>
+ #include <memory>
+ #include <optional>
+ #include <string_view>
+@@ -29,6 +31,7 @@
+ #include "base/trace_event/trace_event.h"
+ #include "base/unguessable_token.h"
+ #include "build/build_config.h"
++#include "gpu/command_buffer/common/glint/webgpu_readback_features.h"
+ #include "gpu/command_buffer/common/glint_webgpu_device_policy.h"
+ #include "gpu/command_buffer/common/mailbox.h"
+ #include "gpu/command_buffer/common/shared_image_usage.h"
+@@ -41,6 +44,8 @@
+ #include "gpu/command_buffer/service/dawn_service_serializer.h"
+ #include "gpu/command_buffer/service/dawn_wire_server.h"
+ #include "gpu/command_buffer/service/decoder_client.h"
++#include "gpu/command_buffer/service/glint_webgpu_readback_observer.h"
++#include "gpu/command_buffer/service/glint_webgpu_wire_filter.h"
+ #include "gpu/command_buffer/service/graphite_utils.h"
+ #include "gpu/command_buffer/service/isolation_key_provider.h"
+ #include "gpu/command_buffer/service/shared_context_state.h"
+@@ -432,6 +437,7 @@
+   std::optional<std::string> isolation_key_;
+ 
+   std::unique_ptr<DawnWireServer> wire_server_;
++  bool glint_readback_filter_enabled_ = false;
+   std::unique_ptr<DawnServiceSerializer> wire_serializer_;
+ 
+   // Raw pointer to the isolation key provider because the provider must outlive
+@@ -1009,6 +1015,7 @@
+     wgpu::AdapterType adapterType;
+     wgpu::BackendType backendType;
+     std::shared_ptr<const GlintWebGPUDevicePolicy> glint_policy = nullptr;
++    std::shared_ptr<GlintWebGPUReadbackObserver> glint_readback_observer;
+   };
+   struct DeviceHash {
+     size_t operator()(const wgpu::Device& device) const {
+@@ -1181,8 +1188,12 @@
+         std::forward<decltype(args)>(args)...);
+   };
+ 
++  glint_readback_filter_enabled_ =
++      base::FeatureList::IsEnabled(kGlintWebGPUPolicyTransportCandidate);
+   wire_server_ = DawnWireServer::Create(
+-      wire_serializer_.get(), memory_transfer_service_.get(), wire_procs);
++      wire_serializer_.get(), memory_transfer_service_.get(), wire_procs,
++      glint_readback_filter_enabled_ ? CreateGlintWebGPUReadbackFilterFactory()
++                                     : nullptr);
+ 
+   wire_server_->InjectInstance(dawn_instance_->Get(), {1, 0});
+ 
+@@ -1964,6 +1975,9 @@
+ error::Error WebGPUDecoderImpl::HandleSetGlintDevicePolicy(
+     uint32_t /*immediate_data_size*/,
+     const volatile void* cmd_data) {
++  if (!glint_readback_filter_enabled_) {
++    return error::kInvalidArguments;
++  }
+   const auto& command =
+       *static_cast<const volatile webgpu::cmds::SetGlintDevicePolicy*>(
+           cmd_data);
+@@ -1995,10 +2009,32 @@
+   // not.
+   auto& current = metadata->second.glint_policy;
+   if (current) {
+-    return current->Matches(*policy) ? error::kNoError
+-                                     : error::kInvalidArguments;
+-  }
+-  current = std::make_shared<const GlintWebGPUDevicePolicy>(std::move(*policy));
++    return current->Matches(*policy) &&
++                   metadata->second.glint_readback_observer &&
++                   metadata->second.glint_readback_observer->IsHealthy()
++               ? error::kNoError
++               : error::kInvalidArguments;
++  }
++  // Saturate rather than wrap the native lifetime domain.
++  static std::atomic<uint64_t> next_epoch{1};
++  uint64_t epoch = next_epoch.load(std::memory_order_relaxed);
++  while (epoch != std::numeric_limits<uint64_t>::max() &&
++         !next_epoch.compare_exchange_weak(epoch, epoch + 1,
++                                           std::memory_order_relaxed)) {
++  }
++  if (epoch == std::numeric_limits<uint64_t>::max()) {
++    return error::kInvalidArguments;
++  }
++  auto owned_policy =
++      std::make_shared<const GlintWebGPUDevicePolicy>(std::move(*policy));
++  auto observer = std::make_shared<GlintWebGPUReadbackObserver>(
++      owned_policy, epoch, GlintReadbackLimits{});
++  if (!observer->IsHealthy() ||
++      !dawn::native::InstallGlintReadbackObserver(device.Get(), observer)) {
++    return error::kInvalidArguments;
++  }
++  metadata->second.glint_readback_observer = std::move(observer);
++  current = std::move(owned_policy);
+   return error::kNoError;
+ }
+ 
+--- a/gpu/command_buffer/service/BUILD.gn
++++ b/gpu/command_buffer/service/BUILD.gn
+@@ -351,6 +351,8 @@
+       "shared_image/dawn_image_backing.h",
+       "shared_image/dawn_image_backing_factory.cc",
+       "shared_image/dawn_image_backing_factory.h",
++      "glint_webgpu_wire_filter.cc",
++      "glint_webgpu_wire_filter.h",
+       "glint_webgpu_readback_observer.cc",
+       "glint_webgpu_readback_observer.h",
+       "webgpu_decoder_impl.cc",
+--- a/third_party/dawn/src/dawn/tests/unittests/wire/WireTest.h
++++ b/third_party/dawn/src/dawn/tests/unittests/wire/WireTest.h
+@@ -130,6 +130,7 @@
+ class CommandSerializer;
+ class WireClient;
+ class WireServer;
++class BufferReadbackFilterFactory;
+ namespace client {
+ class MemoryTransferService;
+ }  // namespace client
+@@ -193,6 +194,7 @@
+   private:
+     virtual wire::client::MemoryTransferService* GetClientMemoryTransferService();
+     virtual wire::server::MemoryTransferService* GetServerMemoryTransferService();
++    virtual std::shared_ptr<wire::BufferReadbackFilterFactory> GetBufferReadbackFilterFactory();
+ 
+     // Devices created on the server MUST call Device.Destroy at least once. This map is used to
+     // ensure that this invariant holds true for any devices returned.
+--- a/third_party/dawn/src/dawn/tests/unittests/wire/WireTest.cpp
++++ b/third_party/dawn/src/dawn/tests/unittests/wire/WireTest.cpp
+@@ -76,6 +76,10 @@
+     return nullptr;
+ }
+ 
++std::shared_ptr<wire::BufferReadbackFilterFactory> WireTest::GetBufferReadbackFilterFactory() {
++    return nullptr;
++}
++
+ utils::TerribleCommandBuffer* WireTest::GetC2SCommandBuffer() {
+     return mC2sBuf.get();
+ }
+@@ -91,6 +95,7 @@
+     serverDesc.procs = &mockProcs;
+     serverDesc.serializer = mS2cBuf.get();
+     serverDesc.memoryTransferService = GetServerMemoryTransferService();
++    serverDesc.bufferReadbackFilterFactory = GetBufferReadbackFilterFactory();
+ 
+     mWireServer.reset(new wire::WireServer(serverDesc));
+     mC2sBuf->SetHandler(mWireServer.get());
+--- a/third_party/dawn/src/dawn/tests/unittests/wire/WireBufferMappingTests.cpp
++++ b/third_party/dawn/src/dawn/tests/unittests/wire/WireBufferMappingTests.cpp
+@@ -25,10 +25,13 @@
+ // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
++#include <algorithm>
++#include <array>
+ #include <limits>
+ #include <memory>
+ 
+ #include "dawn/wire/WireClient.h"
++#include "dawn/wire/WireServer.h"
+ #include "src/dawn/common/StringViewUtils.h"
+ #include "src/dawn/tests/StringViewMatchers.h"
+ #include "src/dawn/tests/unittests/wire/WireFutureTest.h"
+@@ -1026,5 +1029,225 @@
+     }
+ }
+ 
++class TestReadbackFilter final : public BufferReadbackFilter,
++                                 public BufferReadbackFilterFactory,
++                                 public std::enable_shared_from_this<TestReadbackFilter> {
++  public:
++    bool enabled = true;
++    bool wrongSize = false;
++    BufferReadbackDisposition disposition = BufferReadbackDisposition::Protected;
++    size_t classifyCalls = 0;
++    size_t prepareCalls = 0;
++    uint64_t lastOffset = 0;
++    uint64_t lastSize = 0;
++    std::shared_ptr<BufferReadbackFilter> ForDevice(WGPUDevice) override {
++        return enabled ? shared_from_this() : nullptr;
++    }
++    BufferReadbackDisposition Classify(WGPUBuffer,
++                                       uint64_t bufferSize,
++                                       uint64_t offset,
++                                       uint64_t size) override {
++        ++classifyCalls;
++        EXPECT_EQ(bufferSize, 16u);
++        lastOffset = offset;
++        lastSize = size;
++        return disposition;
++    }
++    FilteredBufferReadback Prepare(WGPUBuffer,
++                                   uint64_t,
++                                   uint64_t,
++                                   std::span<const std::byte> original) override {
++        ++prepareCalls;
++        FilteredBufferReadback result;
++        result.disposition = disposition;
++        result.size = original.size() + (wrongSize ? 1 : 0);
++        result.bytes = std::make_unique<uint8_t[]>(result.size);
++        std::fill_n(result.bytes.get(), result.size, 0xe3);
++        return result;
++    }
++};
++
++class WireFilteredReadbackTests : public WireTest {
++  protected:
++    std::shared_ptr<BufferReadbackFilterFactory> GetBufferReadbackFilterFactory() override {
++        return filter;
++    }
++    void SetUp() override {
++        WireTest::SetUp();
++        apiBuffer = api.GetNewBuffer();
++        raw.fill(0x23);
++    }
++    void TearDown() override {
++        buffer = nullptr;
++        WireTest::TearDown();
++    }
++    void CreateReadBuffer() {
++        wgpu::BufferDescriptor descriptor = {};
++        descriptor.size = raw.size();
++        descriptor.usage = wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst;
++        buffer = device.CreateBuffer(&descriptor);
++        EXPECT_CALL(api, DeviceCreateBuffer(apiDevice, _)).WillOnce(Return(apiBuffer));
++        FlushClient();
++    }
++    void Read(size_t offset,
++              size_t size,
++              wgpu::MapAsyncStatus expected,
++              bool mappedRange,
++              WGPUMapAsyncStatus nativeStatus = WGPUMapAsyncStatus_Success) {
++        size_t callbacks = 0;
++        buffer.MapAsync(wgpu::MapMode::Read, offset, size, wgpu::CallbackMode::AllowSpontaneous,
++                        [&](wgpu::MapAsyncStatus status, wgpu::StringView) {
++                            EXPECT_EQ(status, expected);
++                            ++callbacks;
++                        });
++        EXPECT_CALL(api, OnBufferMapAsync(apiBuffer, WGPUMapMode_Read, offset, size, _, _))
++            .WillOnce(WithArg<5>([&](WGPUFuture future) {
++                api.CallBufferMapAsyncCallback(apiBuffer, nativeStatus, kEmptyOutputStringView,
++                                               future);
++            }));
++        if (mappedRange) {
++            EXPECT_CALL(api, BufferGetConstMappedRange(apiBuffer, offset, size))
++                .WillOnce(Return(raw.data() + offset));
++        } else {
++            EXPECT_CALL(api, BufferGetConstMappedRange(apiBuffer, _, _)).Times(0);
++        }
++        if (expected != wgpu::MapAsyncStatus::Success &&
++            nativeStatus == WGPUMapAsyncStatus_Success) {
++            EXPECT_CALL(api, BufferUnmap(apiBuffer)).Times(1);
++        }
++        FlushClient();
++        // The protected temporary has already been destroyed before client deserialization.
++        FlushServer();
++        EXPECT_EQ(callbacks, 1u);
++    }
++    std::shared_ptr<TestReadbackFilter> filter = std::make_shared<TestReadbackFilter>();
++    wgpu::Buffer buffer;
++    WGPUBuffer apiBuffer = nullptr;
++    std::array<uint8_t, 16> raw{};
++};
++
++TEST_F(WireFilteredReadbackTests, ProtectedBytesAreSerializedWithoutModifyingNativeInput) {
++    CreateReadBuffer();
++    Read(0, 16, wgpu::MapAsyncStatus::Success, true);
++    const auto* bytes = static_cast<const uint8_t*>(buffer.GetConstMappedRange());
++    ASSERT_NE(bytes, nullptr);
++    EXPECT_TRUE(std::all_of(bytes, bytes + 16, [](uint8_t v) { return v == 0xe3; }));
++    EXPECT_TRUE(std::all_of(raw.begin(), raw.end(), [](uint8_t v) { return v == 0x23; }));
++    EXPECT_EQ(filter->prepareCalls, 1u);
++}
++
++TEST_F(WireFilteredReadbackTests, ProtectedPartialMapPreservesAbsoluteOffset) {
++    CreateReadBuffer();
++    Read(8, 8, wgpu::MapAsyncStatus::Success, true);
++    const auto* bytes = static_cast<const uint8_t*>(buffer.GetConstMappedRange(8, 8));
++    ASSERT_NE(bytes, nullptr);
++    EXPECT_TRUE(std::all_of(bytes, bytes + 8, [](uint8_t v) { return v == 0xe3; }));
++    EXPECT_EQ(filter->lastOffset, 8u);
++    EXPECT_EQ(filter->lastSize, 8u);
++}
++
++TEST_F(WireFilteredReadbackTests, DenialDoesNotReadOrSerializeNativeBytes) {
++    filter->disposition = BufferReadbackDisposition::Denied;
++    CreateReadBuffer();
++    Read(0, 16, wgpu::MapAsyncStatus::Error, false);
++    EXPECT_EQ(filter->prepareCalls, 0u);
++    EXPECT_EQ(buffer.GetMapState(), wgpu::BufferMapState::Unmapped);
++}
++
++TEST_F(WireFilteredReadbackTests, WrongShadowSizeFailsClosed) {
++    filter->wrongSize = true;
++    CreateReadBuffer();
++    Read(0, 16, wgpu::MapAsyncStatus::Error, true);
++    EXPECT_EQ(filter->prepareCalls, 1u);
++    EXPECT_EQ(buffer.GetMapState(), wgpu::BufferMapState::Unmapped);
++}
++
++TEST_F(WireFilteredReadbackTests, UnprotectedDeviceRetainsExistingReadBehavior) {
++    filter->enabled = false;
++    CreateReadBuffer();
++    Read(0, 16, wgpu::MapAsyncStatus::Success, true);
++    const auto* bytes = static_cast<const uint8_t*>(buffer.GetConstMappedRange());
++    ASSERT_NE(bytes, nullptr);
++    EXPECT_TRUE(std::equal(raw.begin(), raw.end(), bytes));
++    EXPECT_EQ(filter->classifyCalls, 0u);
++    EXPECT_EQ(filter->prepareCalls, 0u);
++}
++
++TEST_F(WireFilteredReadbackTests, NativeMapFailureDoesNotInvokeFilter) {
++    CreateReadBuffer();
++    Read(0, 16, wgpu::MapAsyncStatus::Error, false, WGPUMapAsyncStatus_Error);
++    EXPECT_EQ(filter->classifyCalls, 0u);
++    EXPECT_EQ(filter->prepareCalls, 0u);
++}
++
++class ProbeBackingTransferService final : public server::MemoryTransferService {
++  public:
++    size_t wrapCalls = 0;
++    WGPUBuffer wrappedBuffer = nullptr;
++    class Handle final : public MemoryHandle {
++      public:
++        explicit Handle(ProbeBackingTransferService& owner) : owner_(owner) {}
++        WGPUBuffer TryWrapInBuffer(const DawnProcTable*,
++                                   WGPUDevice,
++                                   const WGPUBufferDescriptor*) override {
++            ++owner_.wrapCalls;
++            return owner_.wrappedBuffer;
++        }
++        size_t GetSerializeDataUpdateSize(size_t, size_t) const override {
++            ADD_FAILURE() << "Creation-only probe must not serialize mapped data";
++            return 0;
++        }
++        void SerializeDataUpdate(std::span<volatile std::byte>,
++                                 size_t,
++                                 size_t,
++                                 std::span<const std::byte>) const override {
++            ADD_FAILURE() << "Creation-only probe must not serialize mapped data";
++        }
++        bool DeserializeDataUpdate(std::span<const std::byte>,
++                                   size_t,
++                                   size_t,
++                                   std::span<std::byte>) override {
++            ADD_FAILURE() << "Creation-only probe must not update mapped data";
++            return false;
++        }
++
++      private:
++        ProbeBackingTransferService& owner_;
++    };
++    std::unique_ptr<MemoryHandle> DeserializeMemoryHandle(std::span<const std::byte>) override {
++        return std::make_unique<Handle>(*this);
++    }
++};
++
++class WireFilteredBackingTests : public WireFilteredReadbackTests {
++  protected:
++    server::MemoryTransferService* GetServerMemoryTransferService() override { return &transfer; }
++    void CreateProbeBuffer(bool expectPrivate) {
++        transfer.wrappedBuffer = apiBuffer;
++        wgpu::BufferDescriptor descriptor = {};
++        descriptor.size = raw.size();
++        descriptor.usage = wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst;
++        buffer = device.CreateBuffer(&descriptor);
++        if (expectPrivate) {
++            EXPECT_CALL(api, DeviceCreateBuffer(apiDevice, _)).WillOnce(Return(apiBuffer));
++        } else {
++            EXPECT_CALL(api, DeviceCreateBuffer(apiDevice, _)).Times(0);
++        }
++        FlushClient();
++    }
++    ProbeBackingTransferService transfer;
++};
++
++TEST_F(WireFilteredBackingTests, ProtectedDeviceNeverAttemptsDirectSharedBacking) {
++    CreateProbeBuffer(true);
++    EXPECT_EQ(transfer.wrapCalls, 0u);
++}
++
++TEST_F(WireFilteredBackingTests, UnprotectedDeviceRetainsDirectBackingOptimization) {
++    filter->enabled = false;
++    CreateProbeBuffer(false);
++    EXPECT_EQ(transfer.wrapCalls, 1u);
++}
++
+ }  // anonymous namespace
+ }  // namespace dawn::wire

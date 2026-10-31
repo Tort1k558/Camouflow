@@ -1,5 +1,18 @@
 # Glint: план проверки и развития
 
+## Service / Wire readback: complete source chain, runtime still open
+
+[Source and scoped checks](../native/drafts/webgpu-service-readback/README.md):
+the new batch prepares native registration, policy retries, read-map filtering and
+private GPU backing for protected devices. Normal/ASan CPU adapter tests passed
+36 assertions and 800 preparations each with mocked native lookup. Nine translation
+units passed syntax checks; all 69 paths passed static/component GN generation and
+eleven target header checks each, then exact source/index/output rollback.
+Next: link and execute eight prepared Wire tests, real ordinary/shared-memory
+transfers, mapped-at-creation/write mappings, cancellation, injected buffers,
+device loss/address reuse and default-disabled compatibility. Shader-derived data
+and Canvas/GPU export consistency remain open. No new selected runtime or admission.
+
 ## Readback controller: bounded CPU consumer prepared
 
 [Controller source and limits](../native/drafts/webgpu-readback-controller/README.md):

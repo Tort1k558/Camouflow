@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## Unselected native / GPU-service / Wire readback
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| CPU normal / ASan adapter | 36 assertions and 800 concurrent preparations each | Native lookup mocked, not real Wire serialization |
+| Implementation syntax | Seven translation units, no diagnostics | No component linking or native runtime |
+| Real Wire test source | Eight cases; two translation units syntax-checked | Not executed: protected/partial/denied/invalid-size/native-error/unprotected reads and backing selection |
+| Combined GN | 69 paths; static/component generation and eleven target header checks each | All sources/indexes/old outputs restored; no compilation/linking by GN probe |
+| Default feature | Source gates both factory and policy command | Default-disabled compatibility still requires browser tests |
+| Runtime / privacy | Not admitted | Actual shared-memory transfer, lifecycle, shader flow and export mismatch remain open |
+
+[Source, isolated check and remaining gates](../native/drafts/webgpu-service-readback/README.md).
+
 ## Unselected policy-owned readback controller
 
 | Gate | Result | Boundary |

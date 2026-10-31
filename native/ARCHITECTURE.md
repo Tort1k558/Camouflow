@@ -1,5 +1,19 @@
 # Glint architecture
 
+## Unselected GPU-service / Wire readback chain
+
+The [17-path service delta](drafts/webgpu-service-readback/README.md) prepares
+policy-owned native registration and generic Wire filtering without a Wire-to-Native
+dependency. Protected devices avoid direct renderer-visible GPU backing; ordinary
+memory-transfer serialization uses owned shadows. The shared disabled feature
+gates both factory creation and policy commands. CPU normal/ASan tests passed 36
+assertions and 800 concurrent preparations each, with native lookup explicitly
+mocked. Seven implementation and two real-Wire-test translation units passed
+syntax checks. All 69 composed paths passed static/component GN generation and
+eleven target header checks per mode, with exact rollback. Eight real Wire tests
+are prepared but unexecuted; actual registration, serialization, backing/lifecycle,
+component linking and browser privacy remain unverified. Shader flow is still open.
+
 ## Unselected readback provenance controller
 
 The [controller delta](drafts/webgpu-readback-controller/README.md) connects native
