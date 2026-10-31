@@ -1,0 +1,11 @@
+--- a/texture_capture.h
++++ b/texture_capture.h
+@@ -24,6 +24,8 @@
+   private:
+     friend class TextureCapture;
+     friend class CaptureRetirement;
++    friend class ProjectedTexture;
++    friend class ProjectedTextureRetirement;
+     bool Reserve(uint64_t bytes);
+     void Release(uint64_t bytes);
+     const uint64_t limit_bytes_;

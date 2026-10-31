@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Standalone hardware shadow-texture dataflow
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Hardware normal / ASan | Eight cases, 19,206 assertions each | RGBA/BGRA UNORM/TYPELESS storage, standalone typed compute consumer |
+| Dataflow | Texture → GPU projection → shadow → shader storage matches CPU; original unchanged | No Dawn/WGSL routing or raster test |
+| Lifetime | Four CPU owners cancelled before submit; queued handles retain resources and quota | No real device-loss injection |
+| Readiness / preflight | Withheld markers stay pending after fences; stale/invalid fences, unsupported views and quota rejected | Open DIRECT list/trusted pipeline are caller preconditions |
+| Shared budget | Eight cases exhaust the same capture budget; ownership releases its charge | Resource allocations plus fixed descriptor allowance, not all driver VRAM |
+| Native syntax | Helper and staged capture units passed native flags | No native/component linking or state-tracker restoration |
+| Full Python baseline | 5131 passed, 1 skipped at `04a22bd` | Before this helper |
+
+[Source, API contract and remaining gates](../native/drafts/webgpu-shadow-texture/README.md).
+Physical D3D12-device compatibility is not logical Dawn/profile ownership.
+
 ## Isolated hardware GPU edge projection
 
 | Gate | Result | Boundary |

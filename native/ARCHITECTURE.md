@@ -1,5 +1,22 @@
 # Glint architecture
 
+## Standalone GPU shadow-texture helper
+
+The [projected texture helper](drafts/webgpu-shadow-texture/README.md) records
+texture-to-buffer projection and buffer-to-shadow-texture copies entirely on GPU.
+A typed compute consumer matches the CPU result while the original is retained
+unchanged. Eight hardware cases passed normal/ASan, including CPU-owner deletion
+before submission, withheld submission markers and quota sharing with capture.
+Resource/descriptor/root/pipeline references and quota stay together in a queued
+IUnknown retirement owner. The borrowed texture must not outlive that owner.
+
+Native target-flag syntax passed for the helper and staged capture unit. This is
+not Dawn descriptor routing or native component linking. Caller must validate
+logical ownership, supply a trusted pipeline, restore state tracking and manage
+retirement. Physical-device checks and a resource-allocation charge are not profile
+isolation or a complete driver-VRAM budget. Raster, device loss and the actual
+browser consistency gate remain unverified.
+
 ## Isolated GPU edge projection, not browser routing
 
 The [edge compute prototype](drafts/webgpu-edge-compute/README.md) implements the

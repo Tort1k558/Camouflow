@@ -1,5 +1,16 @@
 # Glint: план проверки и развития
 
+## GPU shadow-texture helper: hardware dataflow verified
+
+[Native resource helper and public check](../native/drafts/webgpu-shadow-texture/README.md)
+now project a GPU texture into a separate typed shadow consumed by a compute shader,
+without changing the original. Eight cases passed normal/ASan, including queued
+retirement after CPU-owner cancellation, marker/fence readiness and a shared capture
+budget. Two actual native-target syntax units passed. This does not install Dawn
+descriptor routing, logical profile validation or state restoration; device loss,
+raster paths and browser consistency remain open. Full Python baseline: 5131 passed,
+1 skipped at `04a22bd`.
+
 ## GPU edge projection: isolated hardware verified, routing missing
 
 [HLSL prototype and reproducible hardware check](../native/drafts/webgpu-edge-compute/README.md)

@@ -1,0 +1,152 @@
+{
+  "capture_base_sha256": {
+    "texture_capture.h": "4a2894b22c65d4749fdc828f7f5aef9e776bf170b960de1950919dfd001e6c9f",
+    "texture_capture.cc": "1005d2432dd2937cb0025857d04b2e9a6a5f3de9ebc26f67427de65211dd2bc9"
+  },
+  "budget_patch_sha256": "f1a016538fe302fa283b444706e899d69a741639df5b6bf41926bd6c2bb60eff",
+  "staged_capture_header_sha256": "5c8293d66a453a1b2f9883fd91ef71f0699b5a92f9fad27c0e4db4087aa2e461",
+  "edge_shader_sha256": "8df3080e76a56beff08ded188db011143924bdaec4c84c0dec520647aa02913a",
+  "budget_patch_roundtrip_verified": true,
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Isolated D3D12 projected-texture resource helper and typed compute consumer; NOT Dawn/browser routing",
+  "sources_sha256": {
+    "projected_texture.h": "ec0285ad3d71672de267c2c5363cfaedaa0ea0c113183a5508409603825a8eb3",
+    "projected_texture.cc": "5695adb11713870de3922435342f2785bce413cb1359b4a42cc4e30a1df15520",
+    "shadow_test.cc": "a180075e09ce3299ffa5af106c049239f1c743cbcc12ed8c6dee6ff7dea40e07",
+    "texture_consumer.hlsl": "638e1ae5186bac218b0d3776db17172b24d585cb96034e5ac75ff26004d37a44",
+    "check.py": "5ebb3641a232df949f47b0da999981da2b10ddbe1a2402fa018d68effcfc27f8"
+  },
+  "hardware_runs": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 8,
+        "assertions": 19206,
+        "shared_quota_cases": 8,
+        "typed_texture_consumer_verified": true,
+        "original_unchanged": true,
+        "browser_integrated": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 8,
+        "assertions": 19206,
+        "shared_quota_cases": 8,
+        "typed_texture_consumer_verified": true,
+        "original_unchanged": true,
+        "browser_integrated": false
+      }
+    }
+  ],
+  "hardware_report_sha256": "7244d86986d49d3310d23c04d246ddd2e7f84b2e247ae86b5dfd8514603149fd",
+  "shared_capture_budget_used": true,
+  "descriptor_fixed_charge_bytes": 65536,
+  "charge_is_total_driver_vram_measurement": false,
+  "gpu_only_projection_to_typed_texture_verified": true,
+  "original_texture_unchanged": true,
+  "cpu_owner_cancel_before_submit_cases": 4,
+  "withheld_marker_after_completion_cases": 4,
+  "same_physical_device_validation": true,
+  "logical_dawn_device_ownership_validated": false,
+  "native_shader_input_routing_installed": false,
+  "browser_integrated": false,
+  "native_state_tracker_restoration_verified": false,
+  "raster_consumer_verified": false,
+  "actual_device_loss_injected": false,
+  "unsupported_formats_supported": false,
+  "canvas_gpu_shader_consistency_resolved": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "full_python_baseline": {
+    "passed": true,
+    "postguards_passed": true,
+    "git_head": "04a22bd63d60d6602e86817676123ba9784b618a",
+    "counts": {
+      "tests": 5132,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 5131
+    },
+    "duration_seconds": 490.734,
+    "native_runtime_verified": false,
+    "privacy_admitted": false,
+    "production_admitted": false
+  },
+  "native_target_syntax_verified": true,
+  "native_component_link_verified": false,
+  "native_syntax_checks": [
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/projected_texture.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "native_syntax_report_sha256": "56e420827e261dc813e7ca4c55d3d8fdd06137aab7118750a735f73ea6530953",
+  "public_checker_observation": {
+    "passed": true,
+    "postguards_passed": true,
+    "runs": [
+      {
+        "sanitizer": "none",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "hardware_adapter": true,
+          "cases": 8,
+          "assertions": 19206,
+          "shared_quota_cases": 8,
+          "typed_texture_consumer_verified": true,
+          "original_unchanged": true,
+          "browser_integrated": false
+        }
+      },
+      {
+        "sanitizer": "address",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "hardware_adapter": true,
+          "cases": 8,
+          "assertions": 19206,
+          "shared_quota_cases": 8,
+          "typed_texture_consumer_verified": true,
+          "original_unchanged": true,
+          "browser_integrated": false
+        }
+      }
+    ],
+    "hardware_execution_verified": true,
+    "browser_integrated": false,
+    "native_shader_input_routing_installed": false,
+    "privacy_admitted": false,
+    "production_admitted": false
+  },
+  "public_checker_report_sha256": "4dbc08751e235fc8a9b84e7bc19c12cac0f061cd7440a71c84031e856e7b034b",
+  "native_syntax_sources_sha256": {
+    "projected_texture.h": "ec0285ad3d71672de267c2c5363cfaedaa0ea0c113183a5508409603825a8eb3",
+    "projected_texture.cc": "5695adb11713870de3922435342f2785bce413cb1359b4a42cc4e30a1df15520",
+    "texture_capture.h": "5c8293d66a453a1b2f9883fd91ef71f0699b5a92f9fad27c0e4db4087aa2e461",
+    "texture_capture.cc": "1005d2432dd2937cb0025857d04b2e9a6a5f3de9ebc26f67427de65211dd2bc9"
+  }
+}
