@@ -2343,6 +2343,21 @@ component link и runtime не проверены. GN static/component прош�
 предшествующих 13 патчей. Следующий допуск — реальные Dawn/Wire и комбинированный
 browser consistency, не процент успешных синтетических тестов.
 
+## Raster shader-byte capture
+
+Новый [raster shader-byte пакет](../native/drafts/webgpu-raster-byte-capture/README.md)
+накапливает зависимости draw/bundle за весь проход, удерживает владельцев vertex,
+index и indirect/count buffers и записывает storage-buffer snapshots после
+`EndRenderPass`. Compute и raster используют общий механизм проверки владельцев,
+writable ranges и prepare/commit. Полная защита raster outputs не заявляется.
+
+Проверены source replay/reverse 15 патчей / 78 путей, десять syntax units,
+191 422 CPU-проверки в normal/ASan и 256 controller-транзакций. Отдельный D3D12
+эксперимент: восемь случаев / 58 791 проверка в каждом режиме, 16 fragment-UAV draws,
+четыре native render passes и четыре OM cases. Это не выполнение Dawn recorder,
+bundles или Wire server; attachment/depth/blend dependencies, полный набор форматов
+и browser consistency остаются следующими обязательными воротами.
+
 ## Как использовать внешние реализации
 
 Статьи отражают версии и условия их авторов. Перед переносом идеи проверить

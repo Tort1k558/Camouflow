@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Raster shader-byte capture: prepared native pass integration
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Source | Fifteen packets / 78 paths replayed and reversed exactly | Unselected command-recorder changes |
+| Accumulator normal / ASan | 191,422 assertions each; 1,000 oracle passes, 16,000 draws, 8,192 duplicate draws | Synthetic native owners, extracted real merge method |
+| CPU controller | 256 aggregated pass transactions with owned-map/tamper checks | Not native Dawn recording |
+| D3D12 hardware normal / ASan | Eight cases / 58,791 assertions each; 16 fragment-UAV draws, four valid native render passes and four OM cases | Synthetic Dawn handles/allocator; no actual Dawn/Wire execution |
+| Native syntax | Ten target-flag units passed | No component link or browser admission |
+
+[Public CPU command, GPU experiment assets and limitations](../native/drafts/webgpu-raster-byte-capture/README.md).
+Storage-buffer snapshots are source-prepared after pass end. Complete raster-output
+protection, buffer-input projection, formats/attachment dependencies and actual
+Dawn/bundle/Wire/browser gates remain unfinished. The selected runtime is unchanged.
+
 ## Private buffer backing: source and synthetic predicates
 
 | Gate | Result | Boundary |

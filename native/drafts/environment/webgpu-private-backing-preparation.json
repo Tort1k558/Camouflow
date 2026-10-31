@@ -468,7 +468,7 @@
       "after_sha256": "b5893e5d2dc9bf40f0c11ecbde610b056637802252776a4e81ca6947c320cdf9"
     }
   ],
-  "checker_sha256": "9d621e292deba8c90252c00a0c77a31fb6d90714971d056d4ed3afccd6c09c1c",
+  "checker_sha256": "4b607c2e4841fd0b678e4faac30a17d7e1aa2f4047d013effb48ea2337b06584",
   "template_sha256": "ed9d466436082896d3c5c729ba3cac48aaad926e7ee1a75731eea1bbbc7ced33",
   "generated_fixture_sha256": "47f77099bf341b12fafd4116982382e4fe77168b296468ab1cd6a14379cdc7c4",
   "extracted_predicates_sha256": {
@@ -579,44 +579,6 @@
   "default_feature_enabled": false,
   "privacy_admitted": false,
   "production_admitted": false,
-  "public_checker_observation": {
-    "passed": true,
-    "measurement_complete": true,
-    "runs": [
-      {
-        "sanitizer": "none",
-        "compile_returncode": 0,
-        "test_returncode": 0,
-        "result": {
-          "passed": true,
-          "assertions": 216,
-          "source_extracted_predicates_only": true,
-          "origin_combinations": 16,
-          "actual_shared_or_host_mapped_import_executed": false
-        }
-      },
-      {
-        "sanitizer": "address",
-        "compile_returncode": 0,
-        "test_returncode": 0,
-        "result": {
-          "passed": true,
-          "assertions": 216,
-          "source_extracted_predicates_only": true,
-          "origin_combinations": 16,
-          "actual_shared_or_host_mapped_import_executed": false
-        }
-      }
-    ],
-    "source_extracted_predicates_only": true,
-    "backend_mocked": true,
-    "actual_shared_or_host_mapped_import_executed": false,
-    "actual_native_device_queue_executed": false,
-    "runtime_verified": false,
-    "privacy_admitted": false,
-    "production_admitted": false,
-    "postguards_passed": true
-  },
   "changed_input_refusal": {
     "passed": true,
     "cases": [
@@ -651,5 +613,45 @@
         "postguards_passed": true
       }
     ]
+  },
+  "public_checker_observation": {
+    "passed": true,
+    "measurement_complete": true,
+    "runs": [
+      {
+        "sanitizer": "none",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "assertions": 216,
+          "source_extracted_predicates_only": true,
+          "origin_combinations": 16,
+          "actual_shared_or_host_mapped_import_executed": false
+        }
+      },
+      {
+        "sanitizer": "address",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "assertions": 216,
+          "source_extracted_predicates_only": true,
+          "origin_combinations": 16,
+          "actual_shared_or_host_mapped_import_executed": false
+        }
+      }
+    ],
+    "source_extracted_predicates_only": true,
+    "backend_mocked": true,
+    "source_extracted_control_flow_only": true,
+    "cpu_controller_executed": false,
+    "actual_shared_or_host_mapped_import_executed": false,
+    "actual_native_device_queue_executed": false,
+    "runtime_verified": false,
+    "privacy_admitted": false,
+    "production_admitted": false,
+    "postguards_passed": true
   }
 }

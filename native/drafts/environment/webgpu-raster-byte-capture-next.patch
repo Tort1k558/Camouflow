@@ -1,0 +1,346 @@
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -475,6 +475,13 @@
+ 
+ class DescriptorHeapState;
+ 
++// Control inputs retain their logical native owners through end-of-pass capture.
++struct GlintNativeBufferUse {
++    Ref<BufferBase> owner;
++    uint64_t offset = 0;
++    uint64_t size = 0;
++};
++
+ template <typename PipelineType>
+ class BindGroupStateTracker : public BindGroupTrackerBase<false> {
+     using Base = BindGroupTrackerBase<false>;
+@@ -489,12 +496,12 @@
+     struct GlintBoundScope {
+         std::vector<GlintShaderBufferUse> uses;
+         std::vector<Ref<BufferBase>> owners;
+-        bool textureInputs;
++        bool textureInputs = false;
+     };
+ 
+     std::optional<GlintBoundScope> BuildGlintBindingScope(
+         wgpu::ShaderStage stages,
+-        std::span<const GlintShaderBufferUse> extraUses = {},
++        std::span<const GlintNativeBufferUse> extraUses = {},
+         bool framebufferFetch = false) {
+         std::vector<GlintShaderBufferUse> uses;
+         std::vector<Ref<BufferBase>> owners;
+@@ -612,28 +619,99 @@
+             }
+         }
+         for (const auto& use : extraUses) {
++            if (!append(use.owner.Get(), use.offset, use.size, false)) {
++                return std::nullopt;
++            }
++        }
++        return GlintBoundScope{std::move(uses), std::move(owners), textureInputs};
++    }
++
++    static bool MergeGlintBoundScope(GlintBoundScope* target, GlintBoundScope incoming) {
++        if (!target || incoming.uses.size() > kGlintShaderBufferUseLimit ||
++            incoming.owners.size() > kGlintShaderBufferUseLimit) {
++            return false;
++        }
++        for (const auto& use : incoming.uses) {
+             if (!use.rangeKnown || !use.buffer.handle || use.offset > use.buffer.size ||
+-                use.size > use.buffer.size - use.offset || uses.size() == kGlintShaderBufferUseLimit) {
+-                return std::nullopt;
+-            }
+-            uses.push_back(use);
+-        }
+-        return GlintBoundScope{std::move(uses), std::move(owners), textureInputs};
+-    }
+-
+-    void NotifyGlintBindingScope(wgpu::ShaderStage stages,
+-                                 std::span<const GlintShaderBufferUse> extraUses = {},
+-                                 bool framebufferFetch = false) {
+-        auto observer = mDevice->GetGlintReadbackObserver();
+-        if (!observer) {
+-            return;
+-        }
+-        auto scope = BuildGlintBindingScope(stages, extraUses, framebufferFetch);
+-        if (!scope) {
+-            observer->OnShaderScope({});
+-            return;
+-        }
+-        observer->OnShaderScope({scope->uses, scope->textureInputs, true});
++                use.size > use.buffer.size - use.offset) {
++                return false;
++            }
++            const auto owner = std::find_if(
++                incoming.owners.begin(), incoming.owners.end(), [&](const Ref<BufferBase>& value) {
++                    return value && ToAPI(value.Get()) == use.buffer.handle &&
++                           value->GetSize() == use.buffer.size;
++                });
++            if (owner == incoming.owners.end()) {
++                return false;
++            }
++            auto combined = use;
++            for (auto it = target->uses.begin(); it != target->uses.end();) {
++                if (it->buffer.handle != combined.buffer.handle) {
++                    ++it;
++                    continue;
++                }
++                if (it->buffer.size != combined.buffer.size) {
++                    return false;
++                }
++                if (it->readable != combined.readable || it->writable != combined.writable ||
++                    it->offset > combined.offset + combined.size ||
++                    combined.offset > it->offset + it->size) {
++                    ++it;
++                    continue;
++                }
++                const uint64_t end =
++                    std::max(it->offset + it->size, combined.offset + combined.size);
++                combined.offset = std::min(it->offset, combined.offset);
++                combined.size = end - combined.offset;
++                target->uses.erase(it);
++                // A bridge interval can connect entries visited before this merge.
++                it = target->uses.begin();
++            }
++            if (target->uses.size() == kGlintShaderBufferUseLimit) {
++                return false;
++            }
++            target->uses.push_back(combined);
++        }
++        for (auto& owner : incoming.owners) {
++            if (!owner) {
++                return false;
++            }
++            const auto found = std::find_if(
++                target->owners.begin(), target->owners.end(),
++                [&](const Ref<BufferBase>& value) { return value.Get() == owner.Get(); });
++            if (found == target->owners.end()) {
++                if (target->owners.size() == kGlintShaderBufferUseLimit) {
++                    return false;
++                }
++                target->owners.push_back(std::move(owner));
++            }
++        }
++        target->textureInputs |= incoming.textureInputs;
++        return true;
++    }
++
++    MaybeError AccumulateGlintRenderScope(std::span<const GlintNativeBufferUse> controls,
++                                          bool framebufferFetch) {
++        static_assert(std::is_same_v<PipelineType, RenderPipeline>);
++        if (!mDevice->GetGlintReadbackObserver()) {
++            return {};
++        }
++        DAWN_INTERNAL_ERROR_IF(!mGlintRenderProjectedReady, "Glint render scope was not prepared.");
++        auto scope = BuildGlintBindingScope(wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment,
++                                            controls, framebufferFetch);
++        DAWN_INTERNAL_ERROR_IF(
++            !scope || !MergeGlintBoundScope(&mGlintRenderScope, std::move(*scope)),
++            "Incomplete or oversized Glint render-pass scope.");
++        return {};
++    }
++
++    MaybeError CaptureGlintRenderScope(CommandRecordingContext* context) {
++        static_assert(std::is_same_v<PipelineType, RenderPipeline>);
++        const bool projected = mGlintRenderProjectedReady;
++        mGlintRenderProjectedReady = false;
++        auto bound = std::move(mGlintRenderScope);
++        mGlintRenderScope = {};
++        return CaptureGlintBoundScope(context, std::move(bound), projected);
+     }
+ 
+     MaybeError PrepareGlintComputeProjection(CommandRecordingContext* context) {
+@@ -669,6 +747,8 @@
+     MaybeError PrepareGlintRenderProjection(CommandRecordingContext* context,
+                                                const RenderPassResourceUsage& scope) {
+         static_assert(std::is_same_v<PipelineType, RenderPipeline>);
++        mGlintRenderProjectedReady = false;
++        mGlintRenderScope = {};
+         ResetGlintViewOverrides();
+         mGlintRenderTextures.clear();
+         if (!mDevice->GetGlintReadbackObserver()) return {};
+@@ -703,6 +783,7 @@
+             mGlintRenderTextures.emplace(texture, std::move(projected));
+         }
+         if (!mGlintRenderTextures.empty()) RestoreAfterGlintProjection(context->GetCommandList());
++        mGlintRenderProjectedReady = true;
+         return {};
+     }
+ 
+@@ -720,19 +801,25 @@
+                                    "Glint compute capture requires private indirect-buffer backing.");
+ 
+             const std::array uses{
+-                GlintShaderBufferUse{{ToAPI(indirectBuffer), indirectBuffer->GetSize()},
+-                                     true,
+-                                     false,
+-                                     indirectOffset,
+-                                     3 * sizeof(uint32_t),
+-                                     true}};
++                GlintNativeBufferUse{indirectBuffer, indirectOffset, 3 * sizeof(uint32_t)}};
+             bound = BuildGlintBindingScope(wgpu::ShaderStage::Compute, uses);
+         } else {
+             bound = BuildGlintBindingScope(wgpu::ShaderStage::Compute);
+         }
+         DAWN_INTERNAL_ERROR_IF(!bound, "Invalid Glint compute capture binding scope.");
++        return CaptureGlintBoundScope(context, std::move(bound), mGlintComputeProjectedReady);
++    }
++
++    MaybeError CaptureGlintBoundScope(CommandRecordingContext* context,
++                                      std::optional<GlintBoundScope> bound,
++                                      bool inputsProjected) {
++        auto observer = mDevice->GetGlintReadbackObserver();
++        if (!observer) {
++            return {};
++        }
++        DAWN_INTERNAL_ERROR_IF(!bound, "Invalid Glint capture binding scope.");
+         const GlintShaderScope scope{bound->uses, bound->textureInputs, true};
+-        const auto plan = observer->BeginShaderByteScope(scope, mGlintComputeProjectedReady);
++        const auto plan = observer->BeginShaderByteScope(scope, inputsProjected);
+         DAWN_INTERNAL_ERROR_IF(plan.failed, "Glint shader capture controller failed.");
+         if (!plan.ticket) {
+             observer->OnShaderScope(scope);
+@@ -1196,6 +1283,8 @@
+     PerBindGroup<D3D12_GPU_DESCRIPTOR_HANDLE> mBoundRootSamplerTables = {};
+     bool mGlintStateInvalidated = false;
+     bool mGlintComputeProjectedReady = false;
++    bool mGlintRenderProjectedReady = false;
++    GlintBoundScope mGlintRenderScope;
+     PerBindGroup<std::vector<GlintTextureViewOverride>> mGlintViews;
+     PerBindGroup<GPUDescriptorHeapAllocation> mGlintViewAllocations;
+     PerBindGroup<Ref<BindGroup>> mGlintGroupSources;
+@@ -1272,8 +1361,7 @@
+         mStartSlot = std::min(mStartSlot, slot);
+         mEndSlot = std::max(mEndSlot, slot.PlusOne());
+ 
+-        mGlintBufferUses[slot] = {{ToAPI(buffer), buffer->GetSize()}, true, false,
+-                                 offset, size, true};
++        mGlintBufferUses[slot] = {buffer, offset, size};
+         auto* d3d12BufferView = &mD3D12BufferViews[slot];
+         d3d12BufferView->BufferLocation = buffer->GetVA() + offset;
+         d3d12BufferView->SizeInBytes = static_cast<uint32_t>(size);
+@@ -1281,7 +1369,7 @@
+     }
+ 
+     void AppendGlintUses(const RenderPipeline* pipeline,
+-                         std::vector<GlintShaderBufferUse>* uses) const {
++                         std::vector<GlintNativeBufferUse>* uses) const {
+         for (VertexBufferSlot slot : pipeline->GetVertexBuffersUsed()) {
+             uses->push_back(mGlintBufferUses[slot]);
+         }
+@@ -1332,7 +1420,7 @@
+     VertexBufferSlot mStartSlot{kMaxVertexBuffers};
+     VertexBufferSlot mEndSlot{};
+     PerVertexBuffer<D3D12_VERTEX_BUFFER_VIEW> mD3D12BufferViews = {};
+-    PerVertexBuffer<GlintShaderBufferUse> mGlintBufferUses = {};
++    PerVertexBuffer<GlintNativeBufferUse> mGlintBufferUses = {};
+ };
+ 
+ MaybeError EnsureResolveTargetInitialized(CommandRecordingContext* commandContext,
+@@ -2303,27 +2391,26 @@
+     VertexBufferTracker vertexBufferTracker = {};
+     ImmediateTracker<RenderImmediatesTracker> immediates = {};
+ 
+-    GlintShaderBufferUse glintIndexUse;
++    GlintNativeBufferUse glintIndexUse;
+     auto controlUse = [](BufferBase* buffer, uint64_t offset, uint64_t size) {
+         if (!buffer) {
+-            return GlintShaderBufferUse{};
+-        }
+-        return GlintShaderBufferUse{{ToAPI(buffer), buffer->GetSize()}, true, false,
+-                                   offset, size, true};
++            return GlintNativeBufferUse{};
++        }
++        return GlintNativeBufferUse{buffer, offset, size};
+     };
+-    auto notifyDraw = [&](bool indexed, std::span<const GlintShaderBufferUse> controls = {}) {
++    auto notifyDraw = [&](bool indexed,
++                          std::span<const GlintNativeBufferUse> controls = {}) -> MaybeError {
+         if (!device->GetGlintReadbackObserver()) {
+-            return;
+-        }
+-        std::vector<GlintShaderBufferUse> uses;
++            return {};
++        }
++        std::vector<GlintNativeBufferUse> uses;
+         vertexBufferTracker.AppendGlintUses(lastPipeline, &uses);
+         if (indexed) {
+             uses.push_back(glintIndexUse);
+         }
+         uses.insert(uses.end(), controls.begin(), controls.end());
+-        bindingTracker->NotifyGlintBindingScope(
+-            wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment,
+-            uses, lastPipeline->UsesFramebufferFetch());
++        return bindingTracker->AccumulateGlintRenderScope(uses,
++                                                          lastPipeline->UsesFramebufferFetch());
+     };
+     auto indirectStride = [&](bool indexed) -> uint64_t {
+         const uint64_t arguments = indexed ? 5 : 4;
+@@ -2344,7 +2431,7 @@
+                 commandList->DrawInstanced(draw->vertexCount, draw->instanceCount,
+                                            draw->firstVertex, draw->firstInstance);
+                 if (draw->vertexCount != 0 && draw->instanceCount != 0) {
+-                    notifyDraw(false);
++                    DAWN_TRY(notifyDraw(false));
+                 }
+                 break;
+             }
+@@ -2361,7 +2448,7 @@
+                                                   draw->firstIndex, draw->baseVertex,
+                                                   draw->firstInstance);
+                 if (draw->indexCount != 0 && draw->instanceCount != 0) {
+-                    notifyDraw(true);
++                    DAWN_TRY(notifyDraw(true));
+                 }
+                 break;
+             }
+@@ -2385,7 +2472,7 @@
+                                              validatedDraw.indirectOffset, nullptr, 0);
+                 const std::array controls{controlUse(indirectBuffer, validatedDraw.indirectOffset,
+                                                      indirectStride(false))};
+-                notifyDraw(false, controls);
++                DAWN_TRY(notifyDraw(false, controls));
+                 break;
+             }
+ 
+@@ -2408,7 +2495,7 @@
+                                              validatedDraw.indirectOffset, nullptr, 0);
+                 const std::array controls{controlUse(indirectBuffer, validatedDraw.indirectOffset,
+                                                      indirectStride(true))};
+-                notifyDraw(true, controls);
++                DAWN_TRY(notifyDraw(true, controls));
+                 break;
+             }
+ 
+@@ -2439,8 +2526,9 @@
+                         controlUse(indirectBuffer, draw->indirectOffset,
+                                    static_cast<uint64_t>(draw->maxDrawCount) * indirectStride(false)),
+                         controlUse(countBuffer, draw->drawCountOffset, sizeof(uint32_t))};
+-                    notifyDraw(false, std::span<const GlintShaderBufferUse>(controls).first(
+-                        countBuffer ? 2 : 1));
++                    DAWN_TRY(
++                        notifyDraw(false, std::span<const GlintNativeBufferUse>(controls).first(
++                                              countBuffer ? 2 : 1)));
+                 }
+ 
+                 break;
+@@ -2474,8 +2562,8 @@
+                         controlUse(indirectBuffer, draw->indirectOffset,
+                                    static_cast<uint64_t>(draw->maxDrawCount) * indirectStride(true)),
+                         controlUse(countBuffer, draw->drawCountOffset, sizeof(uint32_t))};
+-                    notifyDraw(true, std::span<const GlintShaderBufferUse>(controls).first(
+-                        countBuffer ? 2 : 1));
++                    DAWN_TRY(notifyDraw(true, std::span<const GlintNativeBufferUse>(controls).first(
++                                                  countBuffer ? 2 : 1)));
+                 }
+                 break;
+             }
+@@ -2618,6 +2706,8 @@
+                 } else if (renderPass->attachmentState->GetSampleCount() > 1) {
+                     ResolveMultisampledRenderPass(commandContext, renderPass);
+                 }
++                // Buffer copies/transitions are forbidden inside a native render pass.
++                DAWN_TRY(bindingTracker->CaptureGlintRenderScope(commandContext));
+                 return {};
+             }
+ 

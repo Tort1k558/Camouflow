@@ -1,0 +1,132 @@
+--- a/shadow_test.cc
++++ b/shadow_test.cc
+@@ -30,6 +30,7 @@
+ #define Ok(x) OkImpl((x), __LINE__)
+ #include "descriptor_fixture.h"
+ #include "bridge_extracts.h"
++#include "raster_scope_extract.h"
+ ComPtr<ID3D12Resource> Buffer(ID3D12Device* device, size_t bytes, D3D12_HEAP_TYPE type,
+                              D3D12_RESOURCE_STATES state, bool uav = false) {
+     D3D12_RESOURCE_DESC desc{};
+@@ -69,7 +70,7 @@
+ }
+ struct Fixture {
+     ComPtr<ID3D12Device> device;
+-    ComPtr<ID3D12RootSignature> root;
++    ComPtr<ID3D12RootSignature> root, raster_root;
+     ComPtr<ID3D12PipelineState> projection, consumer, raster;
+     Fixture(const char* edge_file, const char* consumer_file) {
+         const auto edge = Compile(edge_file, "edge_main");
+@@ -111,7 +112,11 @@
+         const auto vertex = Compile("raster_consumer.hlsl", "vertex_main", "vs_5_0");
+         const auto pixel = Compile("raster_consumer.hlsl", "pixel_main", "ps_5_0");
+         D3D12_GRAPHICS_PIPELINE_STATE_DESC graphics{};
+-        graphics.pRootSignature = root.Get();
++        ranges[1].BaseShaderRegister = 1;
++        serialized.Reset(); errors.Reset();
++        Ok(D3D12SerializeRootSignature(&desc,D3D_ROOT_SIGNATURE_VERSION_1,&serialized,&errors));
++        Ok(device->CreateRootSignature(0,serialized->GetBufferPointer(),serialized->GetBufferSize(),IID_PPV_ARGS(&raster_root)));
++        graphics.pRootSignature = raster_root.Get();
+         graphics.VS = {vertex->GetBufferPointer(), vertex->GetBufferSize()};
+         graphics.PS = {pixel->GetBufferPointer(), pixel->GetBufferSize()};
+         graphics.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+@@ -401,6 +406,13 @@
+     Ok(device->CreateDescriptorHeap(&rtv_desc, IID_PPV_ARGS(&rtv_heap)));
+     const auto rtv = rtv_heap->GetCPUDescriptorHandleForHeapStart();
+     device->CreateRenderTargetView(render_target.Get(), nullptr, rtv);
++    Transition(cmd.Get(),output.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
++    const auto raster_owner=std::make_shared<RasterBuffer>(RasterBuffer{pixel_bytes});
++    GlintBoundScope raster_scope;
++    auto raster_draw_scope=[&](uint64_t offset,uint64_t length) {
++        GlintBoundScope next{{{{ToAPI(raster_owner.get()),pixel_bytes},true,true,offset,length,true}},{{raster_owner}},true};
++        CHECK(MergeGlintBoundScope(&raster_scope,std::move(next)));
++    };
+     ComPtr<ID3D12GraphicsCommandList4> command4;
+     if (cancel_cpu_owner) {
+         Ok(cmd.As(&command4));
+@@ -408,21 +420,51 @@
+         target.cpuDescriptor = rtv;
+         target.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+         target.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+-        command4->BeginRenderPass(1, &target, nullptr, D3D12_RENDER_PASS_FLAG_NONE);
++        command4->BeginRenderPass(1, &target, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
+         ++native_pass_cases;
+     } else {
+         cmd->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
+     }
+     cmd->SetPipelineState(fixture.raster.Get());
+-    cmd->SetGraphicsRootSignature(fixture.root.Get());
++    cmd->SetGraphicsRootSignature(fixture.raster_root.Get());
+     heaps[0] = views.heaps[1].Get(); cmd->SetDescriptorHeaps(1, heaps);
+     cmd->SetGraphicsRootDescriptorTable(0, retry.base);
++    auto raster_uav=retry.base; raster_uav.ptr+=increment;
++    cmd->SetGraphicsRootDescriptorTable(1,raster_uav);
++    cmd->SetGraphicsRoot32BitConstants(2,16,params.data(),0);
+     D3D12_VIEWPORT viewport{0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f};
+     D3D12_RECT scissor{0, 0, static_cast<LONG>(width), static_cast<LONG>(height)};
+     cmd->RSSetViewports(1, &viewport); cmd->RSSetScissorRects(1, &scissor);
+     cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+-    cmd->DrawInstanced(3, 1, 0, 0);
++    const uint32_t middle=height/2;
++    scissor.bottom=static_cast<LONG>(middle); cmd->RSSetScissorRects(1,&scissor);
++    cmd->DrawInstanced(3,1,0,0); raster_draw_scope(0,static_cast<uint64_t>(middle)*width*4);
++    scissor.top=static_cast<LONG>(middle); scissor.bottom=static_cast<LONG>(height);
++    cmd->RSSetScissorRects(1,&scissor);
++    cmd->DrawInstanced(3,1,0,0); raster_draw_scope(static_cast<uint64_t>(middle)*width*4,
++        static_cast<uint64_t>(height-middle)*width*4);
+     if (cancel_cpu_owner) command4->EndRenderPass();
++    // The native source uses this same ordering: end the pass before buffer transitions/copies.
++    Transition(cmd.Get(),output.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);
++    auto raster_observer=std::make_shared<gpu::webgpu::GlintWebGPUReadbackObserver>(
++        policy,19,gpu::webgpu::GlintReadbackLimits{});
++    auto raster_filter=gpu::webgpu::ExtractedFilter(raster_observer);
++    const auto raster_identity=dawn::native::GlintBufferIdentity{ToAPI(raster_owner.get()),pixel_bytes};
++    CHECK(raster_scope.uses.size()==1 && raster_scope.owners.size()==1);
++    const auto raster_plan=raster_observer->BeginShaderByteScope(
++        {raster_scope.uses,raster_scope.textureInputs,true},true);
++    CHECK(raster_plan.ticket && !raster_plan.failed && raster_plan.requests.size()==1);
++    CHECK(raster_plan.requests[0].offset==0 && raster_plan.requests[0].size==pixel_bytes);
++    auto raster_budget=std::make_shared<CaptureMemoryBudget>(65536);
++    std::unique_ptr<TextureCapture> raster_snapshot;
++    Ok(capture_bytes(0,pixel_bytes,true,1,raster_budget,&raster_snapshot));
++    auto raster_marker=raster_snapshot->submission_marker();
++    std::vector<dawn::native::GlintShaderByteResult> raster_results;
++    raster_results.push_back({raster_plan.requests[0].requestId,
++        dawn::native::d3d12::WrapActualCapture(std::move(raster_snapshot),pixel_bytes)});
++    CHECK(raster_observer->CommitShaderByteScope(raster_plan.ticket,std::move(raster_results)));
++    auto raster_buffer_readback=Buffer(device,pixel_bytes,D3D12_HEAP_TYPE_READBACK,D3D12_RESOURCE_STATE_COPY_DEST);
++    cmd->CopyBufferRegion(raster_buffer_readback.Get(),0,output.Get(),0,pixel_bytes);
+     Transition(cmd.Get(), render_target.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+     D3D12_PLACED_SUBRESOURCE_FOOTPRINT rt_footprint{};
+     device->GetCopyableFootprints(&rt_desc, 0, 1, 0, &rt_footprint, nullptr, nullptr, nullptr);
+@@ -515,6 +557,22 @@
+             CHECK(result[y * rt_footprint.Footprint.RowPitch + x] == expected[y * width * 4 + x]);
+     }
+     raster_readback->Unmap(0, &no_read);
++    Ok(raster_buffer_readback->Map(0,&bridge_range,&bridge_mapped));
++    const std::span<const std::byte> raster_input(static_cast<const std::byte*>(bridge_mapped),pixel_bytes);
++    CHECK(raster_filter->Prepare(raster_identity.handle,pixel_bytes,0,raster_input).disposition==
++        dawn::wire::BufferReadbackDisposition::Denied);
++    raster_marker->store(true,std::memory_order_release);
++    auto raster_protected=raster_filter->Prepare(raster_identity.handle,pixel_bytes,0,raster_input);
++    CHECK(raster_protected.disposition==dawn::wire::BufferReadbackDisposition::Protected && raster_protected.size==pixel_bytes);
++    for(size_t index=0;index<pixel_bytes;++index) CHECK(raster_protected.bytes[index]==expected[index]);
++    raster_buffer_readback->Unmap(0,&no_read);
++    auto tampered=expected;tampered[0]^=1;
++    CHECK(raster_filter->Prepare(raster_identity.handle,pixel_bytes,0,
++        {reinterpret_cast<const std::byte*>(tampered.data()),tampered.size()}).disposition==
++        dawn::wire::BufferReadbackDisposition::Denied);
++    for(size_t index=0;index<pixel_bytes;++index) CHECK(raster_protected.bytes[index]==expected[index]);
++    raster_observer->OnBufferDestroyed(raster_identity.handle);
++    CHECK(raster_budget->used_bytes()==0);
+     ++raster_cases;
+ 
+ 
+@@ -529,5 +587,5 @@
+     }
+     std::printf("{\"passed\":true,\"hardware_adapter\":true,\"cases\":%zu,\"assertions\":%zu,"
+                 "\"shared_quota_cases\":%zu,\"typed_texture_consumer_verified\":true,"
+-                "\"original_unchanged\":true,\"browser_integrated\":false,\"native_dawn_types_mocked\":true,\"source_extracted_descriptor_method\":true,\"raster_cases\":%zu,\"native_render_pass_cases\":%zu,\"exact_buffer_snapshot_verified\":true,\"gpu_controller_filter_prepare_verified\":true,\"actual_wire_server_roundtrip_executed\":false,\"actual_native_device_queue_executed\":false}\n", cases, assertions, quota_cases, raster_cases, native_pass_cases);
+-}
++                "\"original_unchanged\":true,\"browser_integrated\":false,\"native_dawn_types_mocked\":true,\"source_extracted_descriptor_method\":true,\"raster_cases\":%zu,\"native_render_pass_cases\":%zu,\"raster_shader_byte_capture_verified\":true,\"raster_scope_draws\":16,\"actual_native_render_pass_executed\":false,\"exact_buffer_snapshot_verified\":true,\"gpu_controller_filter_prepare_verified\":true,\"actual_wire_server_roundtrip_executed\":false,\"actual_native_device_queue_executed\":false}\n", cases, assertions, quota_cases, raster_cases, native_pass_cases);
++}

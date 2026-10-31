@@ -1085,6 +1085,16 @@ There is no signed online update catalog. Development bundles are unsigned.
 
 ## Known boundaries
 
+The [raster shader-byte capture draft](drafts/webgpu-raster-byte-capture/README.md)
+accumulates per-draw/bundle dependencies and retained native control owners across
+the pass, then reuses compute's byte-capture transaction after `EndRenderPass`.
+Intervals merge only within the same access class, preserving gaps and exact
+writable coverage. Fifteen packets replay/reverse across 78 paths; ten syntax
+units passed. Extracted CPU control flow and real standalone fragment-UAV output
+checks do not prove actual Dawn recording/bundles, attachment/depth/blend
+dependencies, Wire roundtrips or browser consistency. This is not complete
+raster-output protection and remains disabled/unselected.
+
 The [private-backing policy draft](drafts/webgpu-private-backing/README.md) adds one
 native predicate for compute binding scopes, indirect arguments and byte-capture
 sources. Shared/imported/host-mapped buffers may mutate outside tracked writes and

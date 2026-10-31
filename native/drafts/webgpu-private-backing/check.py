@@ -38,7 +38,8 @@ def extract_predicates(staging):
     return {'getter': getter, 'binding': binding, 'indirect': clauses[0], 'capture': clauses[1]}
 
 
-def main():
+def main(*, module=MODULE, record_name='webgpu-private-backing-preparation.json',
+         extractor=extract_predicates, expected_result=None, controller=False):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('chromium-root', 'sdk-root', 'work-dir'):
         parser.add_argument('--' + name, type=Path, required=True)
@@ -48,15 +49,18 @@ def main():
             or p.is_symlink() or p.is_junction() or p.drive.upper() != 'D:'
             for p in (chromium, sdk, out)) or not chromium.is_dir() or not sdk.is_dir()
             or out.exists() or not out.parent.is_dir()
-            or any(out.is_relative_to(p) or p.is_relative_to(out) for p in (MODULE, chromium, sdk))):
+            or any(out.is_relative_to(p) or p.is_relative_to(out) for p in (module, MODULE, chromium, sdk))):
         parser.error('Use canonical D: checkout/SDK and a fresh external D: output')
     if shutil.disk_usage(out.parent).free < 1024**3:
         parser.error('At least 1 GiB free on D: is required')
-    record_path = ENV / 'webgpu-private-backing-preparation.json'
+    record_path = ENV / record_name
     record = json.loads(record_path.read_bytes())
-    template_path = MODULE / 'predicates-template.cc'
-    for path, expected in ((Path(__file__), record['checker_sha256']),
-                           (template_path, record['template_sha256'])):
+    template_path = module / 'predicates-template.cc'
+    checked_tools = [(module / 'check.py', record['checker_sha256']),
+                     (template_path, record['template_sha256'])]
+    if module != MODULE:
+        checked_tools.append((Path(__file__), record['shared_checker_sha256']))
+    for path, expected in checked_tools:
         if digest(path) != expected:
             parser.error('Measured predicate checker/template differs')
     packets = [*(ENV / row['patch'] for row in record['prerequisites']), ENV / record['patch']]
@@ -67,7 +71,7 @@ def main():
     compiler = tools / 'bin/clang-cl.exe'
     asan = tools / 'lib/clang/24/lib/windows/clang_rt.asan_dynamic-x86_64.dll'
     linker = tools / 'bin/lld-link.exe'
-    guards = {p: digest(p) for p in (Path(__file__), record_path, template_path, compiler,
+    guards = {p: digest(p) for p in (Path(__file__), module / 'check.py', record_path, template_path, compiler,
                                     linker, asan, *packets)}
     missing = []
     out.mkdir(exist_ok=False)
@@ -75,7 +79,8 @@ def main():
     staging.mkdir()
     report = {
         'passed': False, 'measurement_complete': False, 'runs': [],
-        'source_extracted_predicates_only': True, 'backend_mocked': True,
+        'source_extracted_predicates_only': module == MODULE, 'backend_mocked': True,
+        'source_extracted_control_flow_only': True, 'cpu_controller_executed': controller,
         'actual_shared_or_host_mapped_import_executed': False,
         'actual_native_device_queue_executed': False, 'runtime_verified': False,
         'privacy_admitted': False, 'production_admitted': False,
@@ -105,7 +110,7 @@ def main():
             if path.is_file():
                 guards[path] = actual
         fixture = template_path.read_text(encoding='utf-8-sig')
-        for name, text in extract_predicates(staging).items():
+        for name, text in extractor(staging).items():
             marker = '/* GLINT_' + name.upper() + ' */'
             if (fixture.count(marker) != 1 or hashlib.sha256(text.encode()).hexdigest()
                     != record['extracted_predicates_sha256'][name]):
@@ -127,11 +132,31 @@ def main():
         flags += ['/I' + str(p) for p in (staging / 'third_party/dawn/include',
                   chromium / 'third_party/dawn/include',
                   chromium / 'out/CamouFlowNative/gen/third_party/dawn/include')]
+        sources = [test]
+        link = ['-fuse-ld=lld']
+        if controller:
+            flags += ['/DNOMINMAX', '/DWIN32_LEAN_AND_MEAN']
+            flags += ['/I' + str(p) for p in (staging, chromium, chromium / 'out/CamouFlowNative/gen',
+                                             chromium / 'third_party/boringssl/src/include')]
+            sources += [staging / 'gpu/command_buffer/common/glint' / (name + '.cc') for name in (
+                'canvas_readback_candidate', 'webgpu_readback_layout',
+                'webgpu_readback_provenance', 'webgpu_readback_snapshot')]
+            sources += [staging / p for p in ('gpu/command_buffer/common/glint_webgpu_device_policy.cc',
+                                             'gpu/command_buffer/service/glint_webgpu_readback_observer.cc')]
+            libraries = [chromium / 'out/CamouFlowNative/obj/third_party/boringssl' / name
+                         for name in ('boringssl.lib', 'boringssl_asm.lib')]
+            libraries.append(chromium / 'out/CamouFlowNative/obj/buildtools/third_party/libc++/libc++/verbose_abort.obj')
+            guards.update({p: digest(p) for p in (*sources, *libraries)})
+            link += ['/link', *('/LIBPATH:' + str(p) for p in (
+                sdk / 'VC/Tools/MSVC/14.51.36231/lib/x64',
+                sdk / 'Windows Kits/10/Lib/10.0.28000.0/ucrt/x64',
+                sdk / 'Windows Kits/10/Lib/10.0.28000.0/um/x64')),
+                *(str(p) for p in libraries), 'bcrypt.lib', 'advapi32.lib']
         for mode in ('none', 'address'):
             directory = out / mode
             directory.mkdir()
             command = [*flags, *(['/fsanitize=address'] if mode == 'address' else []),
-                       str(test), '/Fe' + str(directory / 'check.exe'), '-fuse-ld=lld']
+                       *(str(p) for p in sources), '/Fe' + str(directory / 'check.exe'), *link]
             with (directory / 'compile.log').open('xb') as log:
                 result = subprocess.run(command, cwd=directory, env=environment,
                                         stdout=log, stderr=subprocess.STDOUT, timeout=180, check=False)
@@ -148,10 +173,12 @@ def main():
             if result.returncode:
                 raise RuntimeError('Predicate execution failed')
             value = row['result'] = json.loads(result.stdout)
-            if not (value.get('passed') is True and value.get('assertions') == 216
-                    and value.get('origin_combinations') == 16
-                    and value.get('source_extracted_predicates_only') is True
-                    and value.get('actual_shared_or_host_mapped_import_executed') is False):
+            expected = expected_result if expected_result is not None else {
+                'passed': True, 'assertions': 216, 'origin_combinations': 16,
+                'source_extracted_predicates_only': True,
+                'actual_shared_or_host_mapped_import_executed': False,
+            }
+            if any(value.get(name) != field for name, field in expected.items()):
                 raise ValueError('Missing explicit synthetic predicate scope')
             print(mode, result.stdout.strip(), flush=True)
         report.update(passed=True, measurement_complete=True)
