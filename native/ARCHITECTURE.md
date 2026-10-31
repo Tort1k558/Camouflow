@@ -1,5 +1,18 @@
 # Glint architecture
 
+## Unselected opaque byte-range provenance
+
+The [ranged extension](drafts/webgpu-ranged-provenance/README.md) distinguishes
+snapshot-backed pixel regions from opaque shader-derived intervals. Copies retain
+clipped dependency intervals; trusted literal writes clear only overwritten bytes.
+Existing opaque intervals coalesce without unnecessary splitting at table capacity.
+Mixed plans retain pixel snapshot references but cannot produce a protected shadow
+while any opaque interval intersects the map. Overflow remains fail-closed.
+New CPU/controller tests passed 4,900,091 assertions per normal/ASan mode, all five
+existing isolated DLL suites passed both modes, and three target-flag syntax checks
+passed. Shader callbacks still supply whole buffers. This does not implement exact
+binding ranges, shader transformation or native/runtime admission; GN was not rerun.
+
 ## Unselected shader dependency barrier, not compatible protection
 
 The [four-path scope extension](drafts/webgpu-shader-scope/README.md) tracks

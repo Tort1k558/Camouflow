@@ -1,0 +1,266 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "CPU bounded opaque shader-derived intervals, literal overwrite recovery and copy propagation; NOT compatible shader transformation",
+  "patch": "webgpu-ranged-provenance-next.patch",
+  "patch_sha256": "ca9db119c39a37e25cdc03339efcc61f5308ad438c70afd51563cc822fe5317e",
+  "sources": [
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.h",
+      "before_sha256": "2e48c71d04fc5b2a2b70e8e64892086905638602ea7672972c4dd3f61d876eab",
+      "staged_sha256": "7d0edb9fdd8f7ac114753b39d03624875f4131bb02c19e1886c4a291dfce7018"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc",
+      "before_sha256": "895651b283623cb62b3daf0d0d72993c64c00675ffe597d82f5f486b263f1d6f",
+      "staged_sha256": "fe0c6b02d850a54b1b4dbe9a3b4801095fe787196a1897f2d521cfbf8669f7ad"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc",
+      "before_sha256": "b1cd5898e70f76547db09fc65acabb938f641169d4bb492a388c6396615e7176",
+      "staged_sha256": "b69750e1f256f981e11df1245f8aeac65b7fe6be66b4b648bc13d413f42da553"
+    },
+    {
+      "source": "gpu/command_buffer/service/glint_webgpu_readback_observer.cc",
+      "before_sha256": "ae1961e43af188bce695a77fcbad2276d4d8b47d927e02c2f2716c7ee1303dc5",
+      "staged_sha256": "e53b401ace865414aa988f29d59219f5e5e07792303851dca24f53ff3dc27884"
+    }
+  ],
+  "prerequisites": [
+    {
+      "patch": "shared-gpu-readback-core-next.patch",
+      "sha256": "86ebd83b852f55568cfcc77b3db5e4f9fd3b04c89cc2b2f76e921265e3778cb3"
+    },
+    {
+      "patch": "webgpu-renderer-policy-transport-next.patch",
+      "sha256": "4c9ffafa14f333dbaf61b82200b1148f00df7cbd8734f53194e8124b66d086f9"
+    },
+    {
+      "patch": "webgpu-export-seed-next.patch",
+      "sha256": "1845ecbfc2135f6e87b1571ea128722cc55852635df1c1cc4a138a24d78a0bf1"
+    },
+    {
+      "patch": "webgpu-native-copy-hook-next.patch",
+      "sha256": "0310438ca888b82b015dd1a8bc9bc55f61fd774d465a06c9739c6220ff68eceb"
+    },
+    {
+      "patch": "webgpu-readback-controller-next.patch",
+      "sha256": "dc4678ac4273ebec93fa5fc7b4326b4532bfb15da457c04623d55cc075d1bdba"
+    },
+    {
+      "patch": "webgpu-service-readback-next.patch",
+      "sha256": "6befcf99841194a0ac856c619a87be194960b090522a307e639715a53b86df74"
+    },
+    {
+      "patch": "webgpu-shader-scope-next.patch",
+      "sha256": "3c68ff61d845a42f7aa9f1661ac83280c2a5a22a8af2d54cdac4cbc05d7d5cea"
+    }
+  ],
+  "exact_patch_roundtrip_verified": true,
+  "test_sha256": "3284bb3007cae347f6f446e0e8a1c618eeac5c064bde683c8d721a7dfb7d1478",
+  "cpu_runs": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "assertions": 4900091,
+        "oracle_operations": 4000,
+        "shader_transformation_implemented": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "assertions": 4900091,
+        "oracle_operations": 4000,
+        "shader_transformation_implemented": false
+      }
+    }
+  ],
+  "isolated_component_runs": [
+    {
+      "name": "layout",
+      "sanitizer": "none",
+      "result": {
+        "passed": true,
+        "property_iterations": 1024,
+        "assertions": 525936,
+        "browser_integrated": false
+      },
+      "dll_sha256": "59aacf449dfd1695b1869ef138bab280bca05051c199319b669df0b9ef25e1a7",
+      "executable_sha256": "3647550f7167e09c0f5dc1cdd1d89210d865d205955a886b9320d11cbf1a3bd3"
+    },
+    {
+      "name": "provenance",
+      "sanitizer": "none",
+      "result": {
+        "passed": true,
+        "named_cases": 18,
+        "property_iterations": 256,
+        "assertions": 1232777,
+        "browser_integrated": false
+      },
+      "dll_sha256": "59aacf449dfd1695b1869ef138bab280bca05051c199319b669df0b9ef25e1a7",
+      "executable_sha256": "1bf55483da2d5558d192ad3b095c82bbfa1040cde9908cbd7d075900e2eab7a3"
+    },
+    {
+      "name": "snapshot",
+      "sanitizer": "none",
+      "result": {
+        "passed": true,
+        "named_cases": 26,
+        "formats": 2,
+        "property_iterations": 64,
+        "assertions": 748,
+        "browser_integrated": false
+      },
+      "dll_sha256": "59aacf449dfd1695b1869ef138bab280bca05051c199319b669df0b9ef25e1a7",
+      "executable_sha256": "499f71f2b4e4793db0b8863b3497947079f660de178a47dd2a174bfa597b4461"
+    },
+    {
+      "name": "callback",
+      "sanitizer": "none",
+      "result": {
+        "passed": true,
+        "named_cases": 10,
+        "completion_orders": 6,
+        "assertions": 201,
+        "browser_integrated": false
+      },
+      "dll_sha256": "59aacf449dfd1695b1869ef138bab280bca05051c199319b669df0b9ef25e1a7",
+      "executable_sha256": "aa7c195c4ffba16946ba61e16ee9d19fb7ef8c0682d833840337178871e6674c"
+    },
+    {
+      "name": "uncertain",
+      "sanitizer": "none",
+      "result": {
+        "passed": true,
+        "range_cases": 31974,
+        "assertions": 191874,
+        "browser_integrated": false
+      },
+      "dll_sha256": "59aacf449dfd1695b1869ef138bab280bca05051c199319b669df0b9ef25e1a7",
+      "executable_sha256": "eb5f92e20df6f32ddfc831e32d3306f40bd1aa2d5366541161f28eaa255b8aa5"
+    },
+    {
+      "name": "layout",
+      "sanitizer": "address",
+      "result": {
+        "passed": true,
+        "property_iterations": 1024,
+        "assertions": 525936,
+        "browser_integrated": false
+      },
+      "dll_sha256": "68426673bb13b0d99ee5221d95ecd2c13633e9e059a328dd77b4ff2efbe49a83",
+      "executable_sha256": "c8bdd7561cf1ef99c3cbd7ec8d54ad629f399b58a248bc5f81c189d09cd7433f"
+    },
+    {
+      "name": "provenance",
+      "sanitizer": "address",
+      "result": {
+        "passed": true,
+        "named_cases": 18,
+        "property_iterations": 256,
+        "assertions": 1232777,
+        "browser_integrated": false
+      },
+      "dll_sha256": "68426673bb13b0d99ee5221d95ecd2c13633e9e059a328dd77b4ff2efbe49a83",
+      "executable_sha256": "11dc14aeacc6c2e736402468e2e6c83d3322418727c139f7b1c794da783562fa"
+    },
+    {
+      "name": "snapshot",
+      "sanitizer": "address",
+      "result": {
+        "passed": true,
+        "named_cases": 26,
+        "formats": 2,
+        "property_iterations": 64,
+        "assertions": 748,
+        "browser_integrated": false
+      },
+      "dll_sha256": "68426673bb13b0d99ee5221d95ecd2c13633e9e059a328dd77b4ff2efbe49a83",
+      "executable_sha256": "681e06559983c16b278012c1acab536f2ebc6417d94d02629c772788164217dc"
+    },
+    {
+      "name": "callback",
+      "sanitizer": "address",
+      "result": {
+        "passed": true,
+        "named_cases": 10,
+        "completion_orders": 6,
+        "assertions": 201,
+        "browser_integrated": false
+      },
+      "dll_sha256": "68426673bb13b0d99ee5221d95ecd2c13633e9e059a328dd77b4ff2efbe49a83",
+      "executable_sha256": "44ba3dfcf28c9b1786e6959cf2e7536a91da16464f63a2817f814aca7f5b3c9b"
+    },
+    {
+      "name": "uncertain",
+      "sanitizer": "address",
+      "result": {
+        "passed": true,
+        "range_cases": 31974,
+        "assertions": 191874,
+        "browser_integrated": false
+      },
+      "dll_sha256": "68426673bb13b0d99ee5221d95ecd2c13633e9e059a328dd77b4ff2efbe49a83",
+      "executable_sha256": "408592054ce4f013750fc4b73f6616b6a1b414ab34bef2d73eaea41f1fd45b9d"
+    }
+  ],
+  "syntax_checks": [
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/service/glint_webgpu_readback_observer.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_diagnostic_bytes": 0,
+  "region_limit": 16,
+  "shader_scope_still_whole_buffer": true,
+  "evidence_report_sha256": {
+    "webgpu-ranged-provenance-check-v3": "ba1bc9c8de064d9fe0e8911d2ef49d2e4f6a8f53bf7f4b357d5bf39511e548f7",
+    "webgpu-ranged-legacy-suites-v5": "ea84d82b1e339b4423ef737778a7c9270cedc5d7a81b3e3cbe793ad81ddffe79",
+    "webgpu-ranged-provenance-compile-v1": "a1177c9ec06bba9ff8b4e88810e4ddc57d94281fe6af3061b9614c903e2a71db",
+    "canonical-regression-20261031-v53": "e4c896bedd47d79494244bd2005309b64e6e2549184a8dee6a9b98e84900152f"
+  },
+  "full_python_baseline": {
+    "git_head": "cca22d8",
+    "counts": {
+      "tests": 5103,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 5102
+    },
+    "duration_seconds": 489.703,
+    "postguards_passed": true
+  },
+  "default_feature_enabled": false,
+  "selected": false,
+  "gn_rechecked": false,
+  "chromium_component_link_verified": false,
+  "native_shader_callbacks_executed": false,
+  "exact_binding_ranges_implemented": false,
+  "shader_transformation_implemented": false,
+  "canvas_gpu_shader_consistency_resolved": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

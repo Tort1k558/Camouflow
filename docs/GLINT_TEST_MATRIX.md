@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Unselected ranged shader provenance
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| CPU normal / ASan | 4,900,091 assertions and 4,000 oracle operations each | Includes controller partial-overwrite recovery and copied opaque intervals |
+| Existing DLL regression | Five suites in both modes passed | Exports/imports only, not Chromium component linking |
+| Chromium-flag syntax | Three translation units; zero diagnostics | No native callback or GPU execution |
+| Source packet | Four-file delta, forward/reverse hashes verified | Native scope remains whole-buffer; GN not repeated |
+| Python baseline | 5102 passed, 1 skipped at `cca22d8` | Before this extension |
+
+[Source, boundaries and remaining gates](../native/drafts/webgpu-ranged-provenance/README.md).
+Opaque data remains refused; compatible shader transformation and the actual
+copy/shader/PNG consistency failure are not resolved.
+
 ## Unselected shader dependency scopes
 
 | Gate | Result | Boundary |

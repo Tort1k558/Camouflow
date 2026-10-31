@@ -1,5 +1,16 @@
 # Glint: план проверки и развития
 
+## Ranged provenance: source foundation, not shader compatibility
+
+[Byte-range source extension](../native/drafts/webgpu-ranged-provenance/README.md)
+adds opaque dependency intervals, copy propagation and recovery after exact trusted
+literal overwrites. New normal/ASan CPU/controller tests passed 4,900,091 assertions
+each, five existing DLL suites passed both modes, and three syntax units passed.
+Native shader scope remains whole-buffer; exact binding ranges, compatible shader
+transformation and actual Dawn/Wire/runtime checks remain next. This extension is
+unselected and does not resolve the public copy/shader/PNG consistency failure.
+Full Python baseline before this extension: 5102 passed, 1 skipped at `cca22d8`.
+
 ## Shader scopes: dependency foundation, compatibility not implemented
 
 [Source and explicit limitations](../native/drafts/webgpu-shader-scope/README.md):

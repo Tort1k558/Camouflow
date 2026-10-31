@@ -1,0 +1,224 @@
+--- a/gpu/command_buffer/common/glint/webgpu_readback_provenance.h
++++ b/gpu/command_buffer/common/glint/webgpu_readback_provenance.h
+@@ -27,6 +27,8 @@
+   uint32_t full_height = 0;
+ };
+ 
++enum class WebGpuReadbackRegionKind { kPixels, kShaderDerived };
++
+ struct WebGpuReadbackRegion {
+   uint64_t buffer_offset = 0;
+   uint64_t size = 0;
+@@ -34,11 +36,13 @@
+   WebGpuReadbackLayout snapshot_layout;
+   WebGpuSnapshotToken snapshot;
+   WebGpuSourceRect source_rect;
++  WebGpuReadbackRegionKind kind = WebGpuReadbackRegionKind::kPixels;
+ };
+ 
+ enum class WebGpuMapProvenance {
+   kUnrelated,
+   kReadback,
++  kShaderDerived,
+   kUnreliable,
+   kDestroyed
+ };
+@@ -78,13 +82,16 @@
+   // assumption: intersecting tracked pixels makes this buffer fail closed.
+   // Shader input/output taint propagation remains the native caller's duty.
+   bool RecordUncertainWrite(uint64_t sequence, uint64_t offset, uint64_t size);
++  // Shader-dependent bytes are opaque: they cannot use a pixel snapshot.
++  // Trusted complete literal writes/copies may replace this precise interval.
++  bool RecordDerivedWrite(uint64_t sequence, uint64_t offset, uint64_t size);
+   WebGpuReadbackPlan PlanMap(uint64_t offset, uint64_t size) const;
+   void Destroy();
+ 
+  private:
+   bool Advance(uint64_t sequence);
+   bool Poison();
+-  bool Erase(uint64_t offset, uint64_t size);
++  bool Erase(uint64_t offset, uint64_t size, bool preserve_derived = false);
+   bool Append(const WebGpuReadbackRegion& region);
+   bool Fits(uint64_t offset, uint64_t size) const;
+ 
+--- a/gpu/command_buffer/common/glint/webgpu_readback_provenance.cc
++++ b/gpu/command_buffer/common/glint/webgpu_readback_provenance.cc
+@@ -13,11 +13,16 @@
+   auto result = region;
+   result.buffer_offset = begin;
+   result.size = end - begin;
+-  result.snapshot_offset += begin - region.buffer_offset;
++  if (region.kind == WebGpuReadbackRegionKind::kPixels) {
++    result.snapshot_offset += begin - region.buffer_offset;
++  }
+   return result;
+ }
+ 
+-bool ContainsPixels(const WebGpuReadbackRegion& region) {
++bool ContainsTrackedData(const WebGpuReadbackRegion& region) {
++  if (region.kind == WebGpuReadbackRegionKind::kShaderDerived) {
++    return region.size != 0;
++  }
+   const auto end = WebGpuReadbackEnd(region.snapshot_layout,
+                                      std::numeric_limits<size_t>::max());
+   if (!end || region.size == 0 ||
+@@ -70,7 +75,39 @@
+ }
+ 
+ bool WebGpuReadbackProvenance::Append(const WebGpuReadbackRegion& region) {
+-  if (!ContainsPixels(region)) {
++  if (region.kind != WebGpuReadbackRegionKind::kPixels &&
++      region.kind != WebGpuReadbackRegionKind::kShaderDerived) {
++    return Poison();
++  }
++  if (!ContainsTrackedData(region)) {
++    return true;
++  }
++  if (region.kind == WebGpuReadbackRegionKind::kShaderDerived) {
++    auto merged = region;
++    // Opaque neighboring intervals carry no snapshot identity and may coalesce.
++    for (size_t index = 0; index < count_;) {
++      const auto& existing = regions_[index];
++      if (existing.kind == WebGpuReadbackRegionKind::kShaderDerived &&
++          existing.buffer_offset <= merged.buffer_offset + merged.size &&
++          merged.buffer_offset <= existing.buffer_offset + existing.size) {
++        const uint64_t end = std::max(existing.buffer_offset + existing.size,
++                                      merged.buffer_offset + merged.size);
++        merged.buffer_offset =
++            std::min(existing.buffer_offset, merged.buffer_offset);
++        merged.size = end - merged.buffer_offset;
++        for (size_t next = index + 1; next < count_; ++next) {
++          regions_[next - 1] = regions_[next];
++        }
++        --count_;
++        index = 0;
++      } else {
++        ++index;
++      }
++    }
++    if (count_ == regions_.size()) {
++      return Poison();
++    }
++    regions_[count_++] = merged;
+     return true;
+   }
+   if (count_ == regions_.size()) {
+@@ -80,7 +117,9 @@
+   return true;
+ }
+ 
+-bool WebGpuReadbackProvenance::Erase(uint64_t offset, uint64_t size) {
++bool WebGpuReadbackProvenance::Erase(uint64_t offset,
++                                    uint64_t size,
++                                    bool preserve_derived) {
+   if (size == 0) {
+     return true;
+   }
+@@ -91,7 +130,9 @@
+   for (size_t i = 0; i < previous_count; ++i) {
+     const auto& region = old[i];
+     const uint64_t region_end = region.buffer_offset + region.size;
+-    if (offset >= region_end || end <= region.buffer_offset) {
++    if ((preserve_derived &&
++         region.kind == WebGpuReadbackRegionKind::kShaderDerived) ||
++        offset >= region_end || end <= region.buffer_offset) {
+       if (!Append(region)) {
+         return false;
+       }
+@@ -222,11 +263,35 @@
+     const uint64_t begin = std::max(offset, region.buffer_offset);
+     const uint64_t end =
+         std::min(offset + size, region.buffer_offset + region.size);
+-    if (begin < end && ContainsPixels(Clip(region, begin, end))) {
++    if (begin < end && ContainsTrackedData(Clip(region, begin, end))) {
+       return Poison();
+     }
+   }
+   return true;
++}
++
++bool WebGpuReadbackProvenance::RecordDerivedWrite(uint64_t sequence,
++                                                  uint64_t offset,
++                                                  uint64_t size) {
++  if (!Advance(sequence)) {
++    return false;
++  }
++  if (!Fits(offset, size)) {
++    return Poison();
++  }
++  if (size == 0) {
++    return true;
++  }
++  // Existing opaque intervals remain opaque and coalesce with this write.
++  // Splitting them first could exhaust the bounded table unnecessarily.
++  if (!Erase(offset, size, true)) {
++    return false;
++  }
++  WebGpuReadbackRegion region;
++  region.buffer_offset = offset;
++  region.size = size;
++  region.kind = WebGpuReadbackRegionKind::kShaderDerived;
++  return Append(region);
+ }
+ 
+ WebGpuReadbackPlan WebGpuReadbackProvenance::PlanMap(uint64_t offset,
+@@ -246,13 +311,20 @@
+           std::min(offset + size, region.buffer_offset + region.size);
+       if (begin < end) {
+         auto clipped = Clip(region, begin, end);
+-        if (ContainsPixels(clipped)) {
++        if (ContainsTrackedData(clipped)) {
+           plan.regions[plan.count++] = clipped;
+         }
+       }
+     }
+     if (plan.count != 0) {
+       plan.status = WebGpuMapProvenance::kReadback;
++      for (size_t index = 0; index < plan.count; ++index) {
++        if (plan.regions[index].kind ==
++            WebGpuReadbackRegionKind::kShaderDerived) {
++          plan.status = WebGpuMapProvenance::kShaderDerived;
++          break;
++        }
++      }
+     }
+   }
+   return plan;
+@@ -266,7 +338,8 @@
+ 
+ std::optional<size_t> WebGpuCanonicalByte(const WebGpuReadbackRegion& region,
+                                           uint64_t buffer_offset) {
+-  if (buffer_offset < region.buffer_offset ||
++  if (region.kind != WebGpuReadbackRegionKind::kPixels ||
++      buffer_offset < region.buffer_offset ||
+       buffer_offset - region.buffer_offset >= region.size ||
+       region.snapshot_offset > std::numeric_limits<uint64_t>::max() -
+                                    (buffer_offset - region.buffer_offset)) {
+--- a/gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc
++++ b/gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc
+@@ -167,6 +167,9 @@
+   bool observed_pixel = false;
+   for (size_t index = 0; index < plan.count; ++index) {
+     const auto& region = plan.regions[index];
++    if (region.kind != WebGpuReadbackRegionKind::kPixels) {
++      return std::nullopt;
++    }
+     const auto* snapshot = Find(region.snapshot);
+     const auto source_end = WebGpuReadbackEnd(
+         region.snapshot_layout, std::numeric_limits<size_t>::max());
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -287,8 +287,11 @@
+     if (!output) {
+       return;
+     }
+-    if (derived || !output->provenance.RecordUncertainWrite(sequence, 0,
+-                                                            use.buffer.size)) {
++    const bool valid = derived ? output->provenance.RecordDerivedWrite(
++                                     sequence, 0, use.buffer.size)
++                               : output->provenance.RecordUncertainWrite(
++                                     sequence, 0, use.buffer.size);
++    if (!valid) {
+       output->unsafe = true;
+     }
+   }
