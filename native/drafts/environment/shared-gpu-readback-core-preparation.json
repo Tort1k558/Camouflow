@@ -1,0 +1,283 @@
+{
+  "schema": 1,
+  "sources": [
+    {
+      "source": "gpu/command_buffer/common/BUILD.gn",
+      "before_sha256": "23c9049eeec9a675d12b898a6255c79d7f19d4a1f68a9315f559dc18c3a4aae8",
+      "after_sha256": "c2c03ac24f766f2387cf27d2173d46b5e3524b19fd1907d45bd8723102eff88b"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/canvas_readback_candidate.cc",
+      "before_sha256": null,
+      "after_sha256": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/canvas_readback_candidate.h",
+      "before_sha256": null,
+      "after_sha256": "e0d18ac35699bc32dd8df469b56ddb3e0bdfcbe7d45269bc3b04adeab7f5f0a4"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_layout.cc",
+      "before_sha256": null,
+      "after_sha256": "9e7fc4b7b4da071339e0946655300f755dc3f445f6337f42df006176660ec8c5"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_layout.h",
+      "before_sha256": null,
+      "after_sha256": "4793cf73301c1bd3c27aca15ad1ad68455859f2ba1a3dff89129f3640de7c495"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc",
+      "before_sha256": null,
+      "after_sha256": "895651b283623cb62b3daf0d0d72993c64c00675ffe597d82f5f486b263f1d6f"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.h",
+      "before_sha256": null,
+      "after_sha256": "2e48c71d04fc5b2a2b70e8e64892086905638602ea7672972c4dd3f61d876eab"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc",
+      "before_sha256": null,
+      "after_sha256": "b1cd5898e70f76547db09fc65acabb938f641169d4bb492a388c6396615e7176"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_snapshot.h",
+      "before_sha256": null,
+      "after_sha256": "c32c0c8330610f3ebc51ffffbab9858f287eccc1d8640bc66dfce5d908d2a417"
+    },
+    {
+      "source": "third_party/blink/renderer/core/BUILD.gn",
+      "before_sha256": "7723517814ab0b9b0efb6c31cfa1b509390f1cd4035986f9559bfdde96e77e53",
+      "after_sha256": "37d65747e26a7ceb5d5d08beee98dec2dfc29649c42cd7109ad177fd5e933edd"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/build.gni",
+      "before_sha256": "1b97d2b5dcc7d7074f63ce8db2b3a3b6054fcd92f67d0c3b6773b9ecde27263d",
+      "after_sha256": "bd123e9a7cd8718b69a85f46fd8286d7a4de2ed37cb3b25fac1ba0f1b4c15025"
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.cc",
+      "before_sha256": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5",
+      "after_sha256": null
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h",
+      "before_sha256": "07de0456fb75723e36b59e58ff649e0b382b48289e908186461f1ef32598d091",
+      "after_sha256": "4e406df66a73f8b0a30dc9e20a6bc5277c78cb4caadf26f395b94e7b48838b9f"
+    }
+  ],
+  "passed": true,
+  "patch_sha256": "86ebd83b852f55568cfcc77b3db5e4f9fd3b04c89cc2b2f76e921265e3778cb3",
+  "algorithm_implementation_unchanged": true,
+  "postguards_passed": true,
+  "browser_integrated": false,
+  "native_queue_hooks_installed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "gn_generated": false,
+  "candidate_net_path_support_required": true,
+  "scope": "Shared GPU-common core source preparation only; no GN/link/browser admission",
+  "patch": "shared-gpu-readback-core-next.patch",
+  "selected": false,
+  "sparse_patch_roundtrip_verified": true,
+  "syntax_checks": [
+    {
+      "source": "gpu/command_buffer/common/glint/canvas_readback_candidate.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "diagnostic_bytes": 0
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_layout.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "diagnostic_bytes": 0
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "diagnostic_bytes": 0
+    },
+    {
+      "source": "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "diagnostic_bytes": 0
+    },
+    {
+      "source": "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_copy.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "diagnostic_bytes": 0
+    }
+  ],
+  "syntax_report_sha256": "34dee55520a44f60be655fc96d627e12ad8cb07c28926c4e77b89f4680d63d47",
+  "isolated_component_checks": [
+    {
+      "name": "layout",
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "compile_seconds": 1.859,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "property_iterations": 1024,
+        "assertions": 525936,
+        "browser_integrated": false
+      },
+      "executable_sha256": "e021b9eb29fffeb14a9be89c0618e1640bfe9ba7256b9ce540a01abab89c28ab"
+    },
+    {
+      "name": "provenance",
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "compile_seconds": 2.266,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "named_cases": 18,
+        "property_iterations": 256,
+        "assertions": 1232777,
+        "browser_integrated": false
+      },
+      "executable_sha256": "247b17f043c4305250efd8a0f9f08f19b9fc17f864c22cf16e05f6f4613a5f4b"
+    },
+    {
+      "name": "snapshot",
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "compile_seconds": 3.485,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "named_cases": 26,
+        "formats": 2,
+        "property_iterations": 64,
+        "assertions": 748,
+        "browser_integrated": false
+      },
+      "executable_sha256": "54ac6bbcfa75b54666fb0498252f50088cb55cb4171d7ddbec5af3022dc9c008"
+    },
+    {
+      "name": "callback",
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "compile_seconds": 3.485,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "named_cases": 10,
+        "completion_orders": 6,
+        "assertions": 201,
+        "browser_integrated": false
+      },
+      "executable_sha256": "634411fa5f700ee0605ac444755b5f802cfe335d036a4a2359968acdb7c07d1f"
+    },
+    {
+      "name": "uncertain",
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "compile_seconds": 2.203,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "range_cases": 31974,
+        "assertions": 191874,
+        "browser_integrated": false
+      },
+      "executable_sha256": "3eaf7d12a889f518f9a664b3480189457d3829ef5f33bd113808efc1ef8bd669"
+    },
+    {
+      "name": "layout",
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "compile_seconds": 1.859,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "property_iterations": 1024,
+        "assertions": 525936,
+        "browser_integrated": false
+      },
+      "executable_sha256": "157de0c7786a6d88bf075fedd28c2c235a7fe95d02346e2fe03a8f38a8a8854c"
+    },
+    {
+      "name": "provenance",
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "compile_seconds": 2.25,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "named_cases": 18,
+        "property_iterations": 256,
+        "assertions": 1232777,
+        "browser_integrated": false
+      },
+      "executable_sha256": "e3be58d44a80e8201c7ebb562d341c9eaa7f9336d3b677e438ebb013a85b2479"
+    },
+    {
+      "name": "snapshot",
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "compile_seconds": 3.688,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "named_cases": 26,
+        "formats": 2,
+        "property_iterations": 64,
+        "assertions": 748,
+        "browser_integrated": false
+      },
+      "executable_sha256": "48bcbd2e47c629f3225631106dad06217565ca1982f837754bc8ceb14fc9cce2"
+    },
+    {
+      "name": "callback",
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "compile_seconds": 3.609,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "named_cases": 10,
+        "completion_orders": 6,
+        "assertions": 201,
+        "browser_integrated": false
+      },
+      "executable_sha256": "2bd609124651334e5ad0df8fe713c880326ad4942f5181a957516ec869bfd1b9"
+    },
+    {
+      "name": "uncertain",
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "compile_seconds": 2.14,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "range_cases": 31974,
+        "assertions": 191874,
+        "browser_integrated": false
+      },
+      "executable_sha256": "059a563f59debc353087f81423a19e2fa8e6acc0102d1f4df61ee4f2452318d2"
+    }
+  ],
+  "isolated_report_sha256": "a7b071427d0be048e42bb4cac78683aaee7c62953459a3c0c8d05f0d31e7b5bb",
+  "isolated_address_sanitizer_verified": true,
+  "native_webgpu_readback_protection": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "linked": false,
+  "source_policy_classification_verified": true,
+  "source_policy_scope": "Pinned plugin flags with absolute VFS source/include/policy paths; no skipped-path warnings",
+  "uncertain_write_behavior": "Conservative sticky unreliable state on overlapping pixel writes; no shader taint propagation",
+  "measured_test_sources_sha256": {
+    "native/drafts/webgpu-readback-layout/layout_test.cc": "869119ac8a7fea99f4293cd7e4bab6e7245b3cfd17135972117b7b86fa5a8409",
+    "native/drafts/webgpu-readback-layout/provenance_test.cc": "05614b3d6b9bba93c6e610aaab56bf274ec459522b91dc1281ef5da09b81e691",
+    "native/drafts/webgpu-readback-layout/snapshot_test.cc": "05ea29931d86cb373da6df8d8ad8a7f2650e07320a5b26a03b14cac107f4e0ec",
+    "native/drafts/webgpu-readback-layout/callback_test.cc": "7c043d9e52cd4fdd20e2415298c55eb0916800c790efaa1a0cfa3e9917c49b88",
+    "native/drafts/shared-readback-core/uncertain_test.cc": "1ee8fb5c59b2164157a5c1a750641a0e28725dcb180dea6eb38c361e1830cbd2"
+  }
+}

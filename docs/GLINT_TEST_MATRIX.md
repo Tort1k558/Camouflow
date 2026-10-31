@@ -1,5 +1,17 @@
 # Glint browser test matrix
 
+## Shared Canvas / GPU core, not selected
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Source packet | 13 paths round-tripped; math unchanged | Not applied to active checkout |
+| Chromium syntax | Five units, no diagnostics | No GN generation or component link |
+| Isolated CPU / ASan | Five suites each passed | No native queue/map hooks or shader taint |
+| Full Python baseline | 5014 passed, 1 skipped at `9539fc2` | Before shared-core packet |
+
+[Exact packet scope](../native/drafts/shared-readback-core/README.md).
+Canvas/WebGPU mismatch and browser admission remain open.
+
 ## Dawn dependency tooling
 
 Pinned Dawn source fetch/replay, independent checkout identity and complete

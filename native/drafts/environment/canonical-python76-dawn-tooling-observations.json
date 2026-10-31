@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "git_head": "9539fc2bb29e856e45d99cf5ad9be4dc93430d9f",
+  "counts": {
+    "tests": 5015,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 5014
+  },
+  "duration_seconds": 473.734,
+  "log_sha256": "db544e9949dddf037ade6328752e4814c8a89c4cff7c5cd8972b59f4d341d05d",
+  "junit_sha256": "832ec7f1f4f4d5f65174c5c808cde446bca534e56159cf89a7209f56efadda70",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Full canonical Python regression at 9539fc2 before shared GPU readback core preparation",
+  "raw_report_sha256": "18aac6c52307472485a4edb823f147a4cdc6f41f42ad4cc06faa145a3bc7d8bc"
+}

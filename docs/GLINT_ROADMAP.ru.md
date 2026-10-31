@@ -1,5 +1,14 @@
 # Glint: план проверки и развития
 
+## Shared Canvas / GPU core: unselected integration prerequisite
+
+[Packet and measurements](../native/drafts/shared-readback-core/README.md): one
+unchanged math implementation in GPU common, a Blink forwarding header, five
+syntax checks and ten normal/ASan executables passed. No new browser binary.
+Next: net-path candidate validation, GN/link checks, trusted copy/map hooks,
+shader taint and GPU fence-retirement accounting, then combined browser tests.
+The Canvas/WebGPU export mismatch is still open.
+
 ## Tooling для отдельного checkout Dawn
 
 Добавлена поддержка pinned Dawn: официальный Gitiles URL, сверка с Chromium DEPS,

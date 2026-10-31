@@ -1,5 +1,14 @@
 # Glint architecture
 
+## Unselected shared Canvas / GPU implementation
+
+The [shared-core packet](drafts/shared-readback-core/README.md) moves unchanged
+Canvas math into GPU common, removing the Blink implementation and avoiding a
+GPU-to-Blink dependency. Five translation units passed pinned syntax checks;
+five CPU suites passed normally and under ASan. The packet also retains uncertain
+pixel-write provenance conservatively. GN/link, native hooks, shader taint and
+browser protection remain unverified; the selected chain is still 001-076.
+
 ## Unselected D3D12 full-surface producer
 
 The [hardware capture draft](drafts/webgpu-d3d12-capture/README.md) passed eight
