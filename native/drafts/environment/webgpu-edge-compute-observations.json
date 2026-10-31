@@ -1,0 +1,165 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Isolated hardware D3D12 raw-buffer edge projection matching the shared CPU edge/HMAC algorithm; NOT browser shader routing",
+  "sources_sha256": {
+    "compute_test.cc": "17f17dc057d240a5f210f8525a90448b8e767647de822aa35933f0f0802d9051",
+    "edge_compute.hlsl": "8df3080e76a56beff08ded188db011143924bdaec4c84c0dec520647aa02913a",
+    "check.py": "57bac69811291969f32b092ce8bebd91f002a1e400a0c01ba775e96d0287adf8"
+  },
+  "shared_cpu_packet": {
+    "patch": "shared-gpu-readback-core-next.patch",
+    "sha256": "86ebd83b852f55568cfcc77b3db5e4f9fd3b04c89cc2b2f76e921265e3778cb3"
+  },
+  "hardware_runs": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "hmac_cases": 6,
+        "image_cases": 32,
+        "assertions": 173282,
+        "changed_channels": 4548,
+        "browser_integrated": false,
+        "shader_input_routing_implemented": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "hmac_cases": 6,
+        "image_cases": 32,
+        "assertions": 173282,
+        "changed_channels": 4548,
+        "browser_integrated": false,
+        "shader_input_routing_implemented": false
+      }
+    }
+  ],
+  "hardware_report_sha256": "3efebbbe78d8e4633eae6389cb8c2f66126f3fec299b77252ac7f2052531cb34",
+  "hmac_key_bytes": 32,
+  "max_hmac_test_message_bytes": 55,
+  "typed_texture_views_tested": false,
+  "raw_buffer_projection_verified": true,
+  "rgba8_bgra8_cpu_equivalence_verified": true,
+  "repeated_projection_verified": true,
+  "projection_idempotence_verified": true,
+  "same_input_different_keys_cases": 2,
+  "alpha_and_padding_preserved": true,
+  "uniform_and_nonopaque_fixtures_preserved": true,
+  "shader_compile_warnings_as_errors": true,
+  "software_adapter_fallback": false,
+  "browser_integrated": false,
+  "native_shader_input_routing_installed": false,
+  "canvas_gpu_shader_consistency_resolved": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "full_python_baseline": {
+    "passed": true,
+    "postguards_passed": true,
+    "git_head": "dfe2648e250daa17aac54b05a7ecaeaf892b7a4c",
+    "counts": {
+      "tests": 5125,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 5124
+    },
+    "duration_seconds": 550.157,
+    "native_runtime_verified": false,
+    "privacy_admitted": false,
+    "production_admitted": false
+  },
+  "references": [
+    "https://datatracker.ietf.org/doc/html/rfc4231#section-4.2",
+    "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf",
+    "https://learn.microsoft.com/en-us/windows/win32/api/d3dcompiler/nf-d3dcompiler-d3dcompile"
+  ],
+  "earlier_failed_prototype": {
+    "passed": false,
+    "error": "DXGI_ERROR_DEVICE_HUNG (0x887A0006)",
+    "root_cause_proven": false,
+    "report_sha256": "f2e5942c333e0f89aa1042063efbc3b322b387f0ffd83d0b418d918903b07169",
+    "later_changes": "Bounded SRV/UAV views, separate entry points and rolling SHA workspace; no global driver/security settings changed"
+  },
+  "public_checker_observation": {
+    "passed": true,
+    "postguards_passed": true,
+    "hardware_execution_verified": true,
+    "compile_only": false,
+    "runs": [
+      {
+        "sanitizer": "none",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "hardware_adapter": true,
+          "hmac_cases": 6,
+          "image_cases": 32,
+          "assertions": 173282,
+          "changed_channels": 4548,
+          "browser_integrated": false,
+          "shader_input_routing_implemented": false
+        }
+      },
+      {
+        "sanitizer": "address",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "hardware_adapter": true,
+          "hmac_cases": 6,
+          "image_cases": 32,
+          "assertions": 173282,
+          "changed_channels": 4548,
+          "browser_integrated": false,
+          "shader_input_routing_implemented": false
+        }
+      }
+    ],
+    "browser_integrated": false,
+    "privacy_admitted": false,
+    "production_admitted": false
+  },
+  "public_checker_report_sha256": "b30ddeeefa71e544babfa28f604d0b3a28fd6fcffdc64226b03540dbf5b6a974",
+  "compile_only_observation": {
+    "passed": true,
+    "postguards_passed": true,
+    "hardware_execution_verified": false,
+    "compile_only": true,
+    "runs": [
+      {
+        "sanitizer": "none",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "hardware_adapter": false,
+          "compile_only": true
+        }
+      },
+      {
+        "sanitizer": "address",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "hardware_adapter": false,
+          "compile_only": true
+        }
+      }
+    ]
+  },
+  "compile_only_report_sha256": "f04605b201c3d01da574946cccde592e1cc260c003c38d9de09cc53c053dbfb8"
+}

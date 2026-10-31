@@ -1,5 +1,17 @@
 # Glint architecture
 
+## Isolated GPU edge projection, not browser routing
+
+The [edge compute prototype](drafts/webgpu-edge-compute/README.md) implements the
+shared CPU edge/HMAC algorithm in HLSL over bounded RGBA/BGRA byte-address views.
+Separate entry points and a rolling SHA workspace are used. Hardware normal/ASan
+checks matched the CPU reference across 32 images, six HMAC cases, repeat/idempotence
+and two same-image/different-key cases; alpha, padding and guard bytes were retained.
+This proves only standalone raw-buffer projection on the tested adapter. Dawn typed
+texture conversion, protected shader-input routing, lifetime/budgets, queue failures
+and browser consistency remain open. An earlier prototype's DEVICE_HUNG is retained
+in the observations without attributing its cause conclusively.
+
 ## Queue control-flow unit evidence, not native failure injection
 
 The [optional queue-controlflow suite](drafts/webgpu-render-ranges/README.md)

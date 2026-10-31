@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Isolated hardware GPU edge projection
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Hardware normal / ASan | 173,282 assertions each | Standalone D3D12 raw buffers, one hardware adapter, no software fallback |
+| HMAC | Six cases against BoringSSL, including RFC 4231 known answers | Fixed 32-byte key; messages up to 55 bytes |
+| Pixel equivalence | 32 RGBA/BGRA fixtures match the shared CPU edge projection | No Dawn typed textures or shader-input routing |
+| Compatibility | Repeated/idempotent output, preserved alpha/padding/guards; uniform/non-opaque fixtures unchanged | Tested fixture sizes only; no performance claim |
+| Keys | Two same-image/different-key cases differ and match their CPU references | Not browser profile/restart/worker isolation |
+| Failure history | First prototype returned DEVICE_HUNG; later bounded/split/rolling version passes | Original cause not isolated conclusively |
+| Full Python baseline | 5124 passed, 1 skipped at `dfe2648` | Before this standalone module |
+
+[Source, command and remaining gates](../native/drafts/webgpu-edge-compute/README.md).
+Native routing, resource lifecycle and the actual browser consistency gate remain open.
+
 ## Source-extracted queue control-flow unit check
 
 | Gate | Result | Boundary |

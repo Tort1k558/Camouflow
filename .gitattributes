@@ -143,3 +143,6 @@ native/drafts/webgpu-binding-ranges/*.cc text eol=lf
 native/drafts/webgpu-binding-ranges/*.py text eol=lf
 native/drafts/webgpu-render-ranges/*.cc text eol=lf
 native/drafts/webgpu-render-ranges/*.py text eol=lf
+native/drafts/webgpu-edge-compute/*.cc text eol=lf
+native/drafts/webgpu-edge-compute/*.hlsl text eol=lf
+native/drafts/webgpu-edge-compute/*.py text eol=lf

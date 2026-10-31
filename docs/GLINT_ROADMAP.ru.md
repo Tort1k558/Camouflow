@@ -1,5 +1,15 @@
 # Glint: план проверки и развития
 
+## GPU edge projection: isolated hardware verified, routing missing
+
+[HLSL prototype and reproducible hardware check](../native/drafts/webgpu-edge-compute/README.md)
+match the shared CPU edge/HMAC algorithm: 32 RGBA/BGRA raw-buffer fixtures and six
+HMAC cases passed in normal/ASan on hardware. Repeat, idempotence, alpha/padding
+preservation and two same-image/different-key cases passed. This is not Dawn texture
+or browser execution. Next: typed texture/shadow routing, ownership/budgets, failure
+paths and the actual copy/shader/PNG gate. Full Python baseline: 5124 passed,
+1 skipped at `dfe2648`. The first failed GPU prototype remains explicitly recorded.
+
 ## Queue failure control flow: CPU unit verified, backend mocked
 
 [Public optional check](../native/drafts/webgpu-render-ranges/README.md) passed
