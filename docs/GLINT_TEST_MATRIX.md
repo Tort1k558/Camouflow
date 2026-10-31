@@ -1,5 +1,25 @@
 # Glint browser test matrix
 
+## 2026-10-31: direct compute routing and exact-scope receipts (unselected)
+
+| Gate | Measured result | Scope limit |
+| --- | --- | --- |
+| Source replay/reverse | 27 packets / 87 paths | No selected runtime change |
+| Native syntax | 15 units passed | No component link |
+| Receipt controller normal/ASan | 896 cases / 15,735 assertions each, including 12,802 prior-plan checks | Actual CPU controller; native issuer/getter surroundings mocked |
+| Legacy controller | Another 10,154 checks per mode | Not native GPU execution |
+| Extracted copyback normal/ASan | 24 cases / 21,534 assertions each | Real D3D12, not full Dawn tracker dispatch |
+| Changed-input refusals | 12 before compilation | Includes imported checker/fixture dependencies |
+
+Private CommandBuffer receipts match the committed plan, unchanged epoch/generation/
+sequence and exact owned binding scope, and are consumed once. Native source has
+transient buffer aliases/dynamic roots and writable-range copyback; no full actual
+Dawn producer/dispatch/retirement run is claimed. Recording receipts do not waive
+output submission/fence checks. Indirect projected buffer inputs remain denied;
+render/bundles, padding clears, Wire, device loss and browser consistency remain open.
+No anti-bot-site PASS, runtime selection, privacy admission or release is claimed.
+
+
 ## 2026-10-31: native buffer producer API (unselected)
 
 | Gate | Measured result | Scope limit |

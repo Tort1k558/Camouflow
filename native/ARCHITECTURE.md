@@ -1293,3 +1293,33 @@ Eight changed-input checks refused compilation. Binding installation, shader-use
 states, writable copyback, exact-scope receipts, actual native allocation/queue
 retirement, Wire/indirect/render-pass routing and browser consistency remain open.
 Selected runtime, privacy and production admission are unchanged.
+
+## Direct compute buffer routing and exact-scope receipts (unselected)
+
+The [receipt/routing draft](drafts/webgpu-buffer-receipt/README.md) connects native
+buffer shadow production to compute-visible CBV/SRV/UAV aliases and dynamic uniform
+roots, preserving Tint dynamic-storage offsets/lengths. It retains the exact owned
+scope, transitions writable shadows to UAV, and copies back only merged writable
+intervals before capture; no observer write callback erases input metadata early.
+
+Only the named native CommandBuffer can construct an input receipt, after binding
+application, actual direct-dispatch recording and copyback. The CPU controller
+checks the exact committed plan object, epoch/generation/sequence and all original
+binding-use fields, then consumes eligibility once. Invalid/stale/foreign/replayed
+receipts fail closed, never retrying legacy eligibility. Missing proof retains the
+old ByteEligible restrictions; legacy native observers remain source-compatible
+and deny unsupported receipts. A matching component rebuild is still required.
+
+Twenty-seven packets replay/reverse across 87 paths; fifteen native syntax units
+passed. CPU normal/ASan passed 896 receipt cases / 15,735 assertions each, including
+12,802 prior-plan checks; another 10,154 legacy controller checks remain. Native
+issuance and getter surroundings are mocked. Extracted copyback ran on real D3D12
+resources in 24 cases / 21,534 assertions per mode, not a full native Dawn dispatch.
+Twelve changed-input checks refused compilation, including imported dependencies.
+
+A receipt witnesses recording, not GPU completion: native output snapshots still
+require submission markers and fences. Full producer/binding/dispatch/copyback/
+capture execution on Dawn, allocator retirement/cancellation/device loss, native
+padding clears, Wire and browser consistency remain unverified. Projected buffer
+inputs on indirect dispatch remain denied; pass-wide render/bundle routing is open.
+Runtime selection and privacy/production admission are unchanged.

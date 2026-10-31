@@ -1,0 +1,315 @@
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -57,6 +57,7 @@
+ enum class GlintReadbackFormat { Unsupported, Rgba8Unorm, Bgra8Unorm };
+ 
+ namespace d3d12 {
++class CommandBuffer;
+ class GlintTextureProjector;
+ class GlintGpuPixelSnapshot;
+ }  // namespace d3d12
+@@ -141,6 +142,21 @@
+     uint64_t policyGeneration = 0;
+     uint64_t sequence = 0;
+     std::vector<GlintGpuInputRegion> regions;
++};
++
++// Native command-recording receipt, not proof of GPU completion. Output snapshots
++// still require their existing submission/fence checks before CPU bytes are exposed.
++class DAWN_NATIVE_EXPORT GlintGpuInputReceipt final {
++  public:
++    GlintGpuInputReceipt(const GlintGpuInputReceipt&) = delete;
++    GlintGpuInputReceipt& operator=(const GlintGpuInputReceipt&) = delete;
++    const std::shared_ptr<const GlintGpuInputPlan>& GetPlan() const { return mPlan; }
++
++  private:
++    friend class d3d12::CommandBuffer;
++    explicit GlintGpuInputReceipt(std::shared_ptr<const GlintGpuInputPlan> plan)
++        : mPlan(std::move(plan)) {}
++    const std::shared_ptr<const GlintGpuInputPlan> mPlan;
+ };
+ 
+ class DAWN_NATIVE_EXPORT GlintByteReadbackSnapshot {
+@@ -217,6 +233,11 @@
+     // Projection readiness is backend-owned, never supplied by renderer commands.
+     virtual GlintShaderBytePlan BeginShaderByteScope(const GlintShaderScope& scope,
+                                                      bool sampledInputsProjected) = 0;
++    // Unsupported/invalid receipts are denied, never retried through legacy eligibility.
++    // Existing native observers need not implement this new optional capability.
++    virtual GlintShaderBytePlan BeginShaderByteScopeWithGpuInputs(
++        const GlintShaderScope&, bool,
++        const std::shared_ptr<const GlintGpuInputReceipt>&) { return {0, {}, true}; }
+     virtual bool CommitShaderByteScope(uint64_t ticket,
+                                        std::vector<GlintShaderByteResult> results) = 0;
+     virtual GlintReadbackMapStatus ClassifyReadMap(GlintBufferIdentity buffer,
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -891,6 +891,16 @@
+         return {};
+     }
+ 
++    ResultOrError<std::shared_ptr<const GlintGpuInputPlan>> GetGlintGpuInputPlanForCapture() {
++        static_assert(std::is_same_v<PipelineType, ComputePipeline>);
++        if (!mDevice->GetGlintReadbackObserver()) return std::shared_ptr<const GlintGpuInputPlan>{};
++        DAWN_INTERNAL_ERROR_IF(!mGlintComputeScope || !mGlintComputeProjectedReady ||
++            !mGlintComputeBindingsApplied || !mGlintComputeCopiedBack || !mGlintComputeBuffers,
++            "Glint GPU input receipt precedes binding installation or copyback.");
++        if (mGlintComputeBuffers->buffers.empty()) return std::shared_ptr<const GlintGpuInputPlan>{};
++        return mGlintComputeBuffers->plan;
++    }
++
+     MaybeError CopyBackGlintComputeBuffers(CommandRecordingContext* context) {
+         static_assert(std::is_same_v<PipelineType, ComputePipeline>);
+         DAWN_INTERNAL_ERROR_IF(mGlintComputeCopiedBack,
+@@ -927,6 +937,7 @@
+     }
+ 
+     MaybeError CaptureGlintComputeScope(CommandRecordingContext* context,
++                                        std::shared_ptr<const GlintGpuInputReceipt> receipt = nullptr,
+                                         BufferBase* indirectBuffer = nullptr,
+                                         uint64_t indirectOffset = 0,
+                                         const GlintIndirectInputs* originalInputs = nullptr) {
+@@ -943,19 +954,22 @@
+         (void)originalInputs;
+         auto bound = std::move(mGlintComputeScope);
+         mGlintComputeScope.reset();
+-        return CaptureGlintBoundScope(context, std::move(bound), mGlintComputeProjectedReady);
++        return CaptureGlintBoundScope(context, std::move(bound), mGlintComputeProjectedReady, receipt);
+     }
+ 
+     MaybeError CaptureGlintBoundScope(CommandRecordingContext* context,
+                                       std::optional<GlintBoundScope> bound,
+-                                      bool inputsProjected) {
++                                      bool inputsProjected,
++                                      const std::shared_ptr<const GlintGpuInputReceipt>& receipt = nullptr) {
+         auto observer = mDevice->GetGlintReadbackObserver();
+         if (!observer) {
+             return {};
+         }
+         DAWN_INTERNAL_ERROR_IF(!bound, "Invalid Glint capture binding scope.");
+         const GlintShaderScope scope{bound->uses, bound->textureInputs, true};
+-        const auto plan = observer->BeginShaderByteScope(scope, inputsProjected);
++        const auto plan = receipt
++            ? observer->BeginShaderByteScopeWithGpuInputs(scope, inputsProjected, receipt)
++            : observer->BeginShaderByteScope(scope, inputsProjected);
+         DAWN_INTERNAL_ERROR_IF(plan.failed, "Glint shader capture controller failed.");
+         if (!plan.ticket) {
+             observer->OnShaderScope(scope);
+@@ -1117,6 +1131,9 @@
+         }
+ 
+         AfterApply();
++        if constexpr (kIsComputePipeline) {
++            if (mGlintComputeBuffers) mGlintComputeBindingsApplied = true;
++        }
+ 
+         return {};
+     }
+@@ -1156,6 +1173,7 @@
+         mGlintComputeScope.reset();
+         mGlintComputeBuffers.reset();
+         mGlintComputeCopiedBack = false;
++        mGlintComputeBindingsApplied = false;
+     }
+ 
+     MaybeError ValidateGlintInputGroup(BindGroupBase* group, wgpu::ShaderStage stages) {
+@@ -1445,6 +1463,7 @@
+     std::optional<GlintBoundScope> mGlintComputeScope;
+     std::unique_ptr<GlintBufferProjectionBatch> mGlintComputeBuffers;
+     bool mGlintComputeCopiedBack = false;
++    bool mGlintComputeBindingsApplied = false;
+     PerBindGroup<std::vector<GlintBufferViewOverride>> mGlintBufferViews;
+     PerBindGroup<std::vector<GlintTextureViewOverride>> mGlintViews;
+     PerBindGroup<GPUDescriptorHeapAllocation> mGlintViewAllocations;
+@@ -2203,7 +2222,14 @@
+ 
+                 commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
+                 DAWN_TRY(bindingTracker->CopyBackGlintComputeBuffers(commandContext));
+-                DAWN_TRY(bindingTracker->CaptureGlintComputeScope(commandContext));
++                std::shared_ptr<const GlintGpuInputPlan> inputPlan;
++                DAWN_TRY_ASSIGN(inputPlan, bindingTracker->GetGlintGpuInputPlanForCapture());
++                std::shared_ptr<const GlintGpuInputReceipt> receipt;
++                if (inputPlan) {
++                    receipt = std::shared_ptr<const GlintGpuInputReceipt>(
++                        new GlintGpuInputReceipt(std::move(inputPlan)));
++                }
++                DAWN_TRY(bindingTracker->CaptureGlintComputeScope(commandContext, std::move(receipt)));
+                 break;
+             }
+ 
+@@ -2228,7 +2254,7 @@
+                     dispatch->indirectOffset, nullptr, 0);
+                 DAWN_TRY(bindingTracker->CopyBackGlintComputeBuffers(commandContext));
+                 DAWN_TRY(bindingTracker->CaptureGlintComputeScope(
+-                    commandContext, dispatch->indirectBuffer.Get(), dispatch->indirectOffset,
++                    commandContext, nullptr, dispatch->indirectBuffer.Get(), dispatch->indirectOffset,
+                     &dispatch->glintInputs));
+                 break;
+             }
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.h
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -51,6 +51,10 @@
+   dawn::native::GlintShaderBytePlan BeginShaderByteScope(
+       const dawn::native::GlintShaderScope& scope,
+       bool sampled_inputs_projected) override;
++  dawn::native::GlintShaderBytePlan BeginShaderByteScopeWithGpuInputs(
++      const dawn::native::GlintShaderScope& scope,
++      bool sampled_inputs_projected,
++      const std::shared_ptr<const dawn::native::GlintGpuInputReceipt>& receipt) override;
+   bool CommitShaderByteScope(
+       uint64_t ticket,
+       std::vector<dawn::native::GlintShaderByteResult> results) override;
+@@ -87,6 +91,13 @@
+   bool ByteEligible(const BufferState& buffer,
+                     uint64_t offset,
+                     uint64_t size) const;
++  void InvalidateGpuInputPlans();
++  bool ValidateGpuInputReceipt(
++      const dawn::native::GlintShaderScope& scope,
++      const std::shared_ptr<const dawn::native::GlintGpuInputReceipt>& receipt) const;
++  std::weak_ptr<const dawn::native::GlintGpuInputPlan> committed_gpu_input_plan_;
++  std::vector<dawn::native::GlintShaderBufferUse> gpu_input_scope_;
++  bool gpu_input_texture_scope_ = false;
+   std::weak_ptr<const dawn::native::GlintGpuInputPlan> gpu_input_plan_;
+   uint64_t scope_id_ = 0;
+   uint64_t active_scope_ = 0;
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -77,7 +77,7 @@
+   capture.complete = false;
+ }
+ void GlintWebGPUReadbackObserver::Fail() {
+-  gpu_input_plan_.reset();
++  InvalidateGpuInputPlans();
+   failed_ = true;
+   active_scope_ = 0;
+   scoped_outputs_.clear();
+@@ -92,7 +92,7 @@
+     Fail();
+     return 0;
+   }
+-  gpu_input_plan_.reset();
++  InvalidateGpuInputPlans();
+   return ++sequence_;
+ }
+ GlintWebGPUReadbackObserver::BufferState*
+@@ -301,7 +301,7 @@
+ GlintWebGPUReadbackObserver::PrepareGpuInputPlan(
+     const dawn::native::GlintShaderScope& scope) {
+   std::lock_guard lock(mutex_);
+-  gpu_input_plan_.reset();
++  InvalidateGpuInputPlans();
+   if (failed_ || active_scope_ || !ValidateShaderScope(scope)) return nullptr;
+   std::vector<dawn::native::GlintShaderBufferUse> ranges;
+   for (const auto& use : scope.buffers) {
+@@ -376,18 +376,54 @@
+           region.source_rect.x, region.source_rect.y, gpu->GetFormat(), std::move(gpu), *mapping});
+     }
+   }
++  gpu_input_scope_.assign(scope.buffers.begin(), scope.buffers.end());
++  gpu_input_texture_scope_ = scope.hasTextureInputs;
+   gpu_input_plan_ = result;
+   return result;
+ }
+ 
++void GlintWebGPUReadbackObserver::InvalidateGpuInputPlans() {
++  gpu_input_plan_.reset();
++  committed_gpu_input_plan_.reset();
++  gpu_input_scope_.clear();
++  gpu_input_texture_scope_ = false;
++}
++
+ bool GlintWebGPUReadbackObserver::CommitGpuInputPlan(
+     std::shared_ptr<const dawn::native::GlintGpuInputPlan> plan) {
+   std::lock_guard lock(mutex_);
+   const auto active = gpu_input_plan_.lock();
+   gpu_input_plan_.reset();
+-  return !failed_ && !active_scope_ && plan && active == plan &&
+-      plan->deviceEpoch == epoch_ && plan->policyGeneration == policy_->generation() &&
+-      plan->sequence == sequence_;
++  committed_gpu_input_plan_.reset();
++  if (failed_ || active_scope_ || !plan || active != plan ||
++      plan->deviceEpoch != epoch_ || plan->policyGeneration != policy_->generation() ||
++      plan->sequence != sequence_) {
++    InvalidateGpuInputPlans();
++    return false;
++  }
++  committed_gpu_input_plan_ = plan;
++  return true;
++}
++
++bool GlintWebGPUReadbackObserver::ValidateGpuInputReceipt(
++    const dawn::native::GlintShaderScope& scope,
++    const std::shared_ptr<const dawn::native::GlintGpuInputReceipt>& receipt) const {
++  const auto committed = committed_gpu_input_plan_.lock();
++  if (!receipt || !committed || receipt->GetPlan() != committed ||
++      committed->regions.empty() || committed->deviceEpoch != epoch_ ||
++      committed->policyGeneration != policy_->generation() ||
++      committed->sequence != sequence_ || !scope.complete ||
++      scope.hasTextureInputs != gpu_input_texture_scope_ ||
++      scope.buffers.size() != gpu_input_scope_.size()) return false;
++  for (size_t index = 0; index < gpu_input_scope_.size(); ++index) {
++    const auto& expected = gpu_input_scope_[index];
++    const auto& actual = scope.buffers[index];
++    if (expected.buffer.handle != actual.buffer.handle ||
++        expected.buffer.size != actual.buffer.size || expected.readable != actual.readable ||
++        expected.writable != actual.writable || expected.offset != actual.offset ||
++        expected.size != actual.size || expected.rangeKnown != actual.rangeKnown) return false;
++  }
++  return true;
+ }
+ 
+ bool GlintWebGPUReadbackObserver::ByteEligible(const BufferState& buffer,
+@@ -418,8 +454,21 @@
+ GlintWebGPUReadbackObserver::BeginShaderByteScope(
+     const dawn::native::GlintShaderScope& scope,
+     bool sampled_inputs_projected) {
+-  std::lock_guard lock(mutex_);
+-  gpu_input_plan_.reset();
++  return BeginShaderByteScopeWithGpuInputs(scope, sampled_inputs_projected, nullptr);
++}
++
++dawn::native::GlintShaderBytePlan
++GlintWebGPUReadbackObserver::BeginShaderByteScopeWithGpuInputs(
++    const dawn::native::GlintShaderScope& scope,
++    bool sampled_inputs_projected,
++    const std::shared_ptr<const dawn::native::GlintGpuInputReceipt>& receipt) {
++  std::lock_guard lock(mutex_);
++  const bool projected_inputs = receipt && ValidateGpuInputReceipt(scope, receipt);
++  InvalidateGpuInputPlans();
++  if (receipt && !projected_inputs) {
++    Fail();
++    return {0, {}, true};
++  }
+   if (failed_) {
+     return {0, {}, true};
+   }
+@@ -436,7 +485,9 @@
+     const auto found = buffers_.find(use.buffer.handle);
+     if (found != buffers_.end() && use.size != 0 &&
+         (use.readable || use.writable)) {
+-      if (!ByteEligible(found->second, use.offset, use.size)) {
++      // The native receipt covers the complete unchanged validated input plan and
++      // exact binding scope; it cannot authorize another buffer/scope or be replayed.
++      if (!ByteEligible(found->second, use.offset, use.size) && !projected_inputs) {
+         return {};
+       }
+       derived |=
+@@ -570,7 +621,7 @@
+     const dawn::native::GlintShaderScope& scope) {
+   const auto uses = scope.buffers;
+   std::lock_guard lock(mutex_);
+-  gpu_input_plan_.reset();
++  InvalidateGpuInputPlans();
+   if (failed_) {
+     return;
+   }
+@@ -623,7 +674,7 @@
+     Fail();
+     return;
+   }
+-  gpu_input_plan_.reset();
++  InvalidateGpuInputPlans();
+   buffers_.erase(buffer);
+   Collect();
+ }

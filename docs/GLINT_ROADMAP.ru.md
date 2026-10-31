@@ -2560,3 +2560,35 @@ queue/Wire/DXC и browser consistency. Выбранный runtime не меня�
 выходных данных. Настоящие padding clears, queue/cancellation/device loss,
 Wire, indirect ancestry и pass-wide render routing требуют следующих проверок.
 Согласованность браузера и privacy/production admission не подтверждены.
+
+## 31 октября — compute routing и exact-scope input receipts
+
+В [не выбранных пакетах 26–27](../native/drafts/webgpu-buffer-receipt/README.md)
+producer подключён к compute CBV/SRV/UAV aliases и dynamic uniform roots.
+Сохраняется исходный owned scope; writable shadow переходит в UAV, а перед capture
+обратно копируются только объединённые writable-диапазоны. Tint dynamic storage
+offsets/lengths и обычные cached descriptor tables не подменяются произвольно.
+
+Private receipt создаёт только native CommandBuffer после Apply, записи direct
+Dispatch и copyback. CPU controller проверяет тот же plan object, epoch,
+generation, sequence и все поля исходных bindings; подтверждение одноразовое.
+Чужой/устаревший/повторный receipt не разрешает старый raw-путь. Без receipt
+сохраняются прежние ByteEligible-ограничения. Старые observer-реализации сохраняют
+source compatibility и явно отказывают в новой неподдерживаемой операции;
+совместимость ABI без пересборки не обещается.
+
+| Проверка | Результат | Ограничение |
+| --- | --- | --- |
+| Replay / reverse | 27 пакетов / 87 путей | Не выбранный runtime |
+| Native syntax | 15 units прошли | Не линковка компонентов |
+| Receipt CPU normal / ASan | 896 случаев / 15 735 проверок каждый | Включает прежние 12 802; native issuer/getter surroundings — mock |
+| Legacy controller | Ещё 10 154 проверки каждый режим | Не GPU runtime |
+| Copyback normal / ASan | 24 случая / 21 534 проверки каждый | Реальный D3D12, но извлечённый метод и mock Dawn buffer/tracker |
+| Изменённые входы | 12 отказов до компиляции | Включая импортируемые checker/fixture dependencies |
+
+**Receipt подтверждает запись команд, не завершение GPU.** Submission/fence gates
+выходных snapshots остаются обязательными. Полный Dawn producer → bindings →
+dispatch → copyback → capture, allocator retirement/cancellation/device loss,
+настоящие padding clears, Wire и согласованность браузера ещё не проверены.
+Projected buffer inputs для indirect dispatch пока явно запрещены; render/bundles
+нуждаются в pass-wide routing. Новый runtime и production не допущены.

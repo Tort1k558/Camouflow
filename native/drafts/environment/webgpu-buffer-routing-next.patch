@@ -1,0 +1,291 @@
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -762,13 +762,28 @@
+         return CaptureGlintBoundScope(context, std::move(bound), projected);
+     }
+ 
+-    MaybeError PrepareGlintComputeProjection(CommandRecordingContext* context) {
++    MaybeError PrepareGlintComputeProjection(CommandRecordingContext* context,
++                                             BufferBase* indirectBuffer = nullptr,
++                                             uint64_t indirectOffset = 0,
++                                             const GlintIndirectInputs* originalInputs = nullptr) {
+         static_assert(std::is_same_v<PipelineType, ComputePipeline>);
+         mGlintComputeProjectedReady = false;
+         ResetGlintViewOverrides();
+         if (!mDevice->GetGlintReadbackObserver()) return {};
+         DAWN_INTERNAL_ERROR_IF(!mPipeline || mPipeline->GetLayout()->UsesResourceTable(),
+                                "Glint compute projection does not yet support resource tables.");
++        if (indirectBuffer) {
++            std::vector uses{
++                GlintNativeBufferUse{indirectBuffer, indirectOffset, 3 * sizeof(uint32_t)}};
++            DAWN_INTERNAL_ERROR_IF(!originalInputs ||
++                !AppendGlintOriginalIndirectUses(&uses, *originalInputs, 3 * sizeof(uint32_t)),
++                "Missing original Glint indirect projection scope.");
++            mGlintComputeScope = BuildGlintBindingScope(wgpu::ShaderStage::Compute, uses);
++        } else {
++            mGlintComputeScope = BuildGlintBindingScope(wgpu::ShaderStage::Compute);
++        }
++        DAWN_INTERNAL_ERROR_IF(!mGlintComputeScope,
++                              "Invalid Glint native compute projection binding scope.");
+         const auto mask = mPipeline->GetLayout()->GetBindGroupLayoutsMask();
+         bool recorded = false;
+         for (BindGroupIndex groupIndex : mask) {
+@@ -787,7 +802,43 @@
+                 recorded = true;
+             }
+         }
+-        if (recorded) RestoreAfterGlintProjection(context->GetCommandList());
++        GlintTextureProjector* projector;
++        DAWN_TRY_ASSIGN(projector, mDevice->GetGlintTextureProjector());
++        const GlintShaderScope inputScope{mGlintComputeScope->uses,
++                                         mGlintComputeScope->textureInputs, true};
++        DAWN_TRY_ASSIGN(mGlintComputeBuffers, projector->RecordBuffers(
++            context, inputScope, mGlintComputeScope->owners));
++        // Validated indirect scratch/original ancestry requires its own routing proof.
++        DAWN_INTERNAL_ERROR_IF(indirectBuffer && !mGlintComputeBuffers->buffers.empty(),
++            "Glint projected buffer inputs for indirect dispatch are not yet admitted.");
++        auto* commands = context->GetCommandList();
++        for (const auto& projected : mGlintComputeBuffers->buffers) {
++            if (!projected.writableRanges.empty()) {
++                D3D12_RESOURCE_BARRIER barrier{};
++                barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
++                barrier.Transition.pResource = projected.projection->buffer();
++                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
++                barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
++                barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
++                commands->ResourceBarrier(1, &barrier);
++            }
++            recorded = true;
++        }
++        for (BindGroupIndex groupIndex : mask) {
++            auto* group = mBindGroups[groupIndex];
++            const auto* layout = group->GetLayout();
++            for (BindingIndex index : layout->GetBufferIndices()) {
++                if (!(layout->GetBindingInfo(index).visibility & wgpu::ShaderStage::Compute)) continue;
++                const auto binding = group->GetBindingAsBufferBinding(index);
++                auto* projected = FindGlintProjectedBuffer(binding.buffer);
++                if (!projected) continue;
++                mGlintBufferViews[groupIndex].push_back({index,
++                    projected->projection->retirement_handle(), projected->projection->buffer()});
++                mDirtyBindGroups.set(groupIndex);
++                mDirtyBindGroupsObjectChangedOrIsDynamic.set(groupIndex);
++            }
++        }
++        if (recorded) RestoreAfterGlintProjection(commands);
+         mGlintComputeProjectedReady = true;
+         return {};
+     }
+@@ -840,6 +891,41 @@
+         return {};
+     }
+ 
++    MaybeError CopyBackGlintComputeBuffers(CommandRecordingContext* context) {
++        static_assert(std::is_same_v<PipelineType, ComputePipeline>);
++        DAWN_INTERNAL_ERROR_IF(mGlintComputeCopiedBack,
++                              "Glint native shadow copyback was already recorded.");
++        if (mGlintComputeBuffers) {
++            auto* commands = context->GetCommandList();
++            for (const auto& projected : mGlintComputeBuffers->buffers) {
++                if (projected.writableRanges.empty()) continue;
++                auto* original = ToBackend(projected.source.Get());
++                DAWN_INTERNAL_ERROR_IF(!original->HasAccess() ||
++                    !original->HasPrivateGlintReadbackBacking(),
++                    "Glint native copyback destination lost its private backing.");
++                original->TrackUsageAndTransitionNow(context, wgpu::BufferUsage::CopyDst);
++                D3D12_RESOURCE_BARRIER barrier{};
++                barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
++                barrier.Transition.pResource = projected.projection->buffer();
++                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
++                barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
++                barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
++                commands->ResourceBarrier(1, &barrier);
++                for (const auto& range : projected.writableRanges) {
++                    DAWN_INTERNAL_ERROR_IF(!range.size || range.offset > original->GetSize() ||
++                        range.size > original->GetSize() - range.offset,
++                        "Glint native copyback exceeds its writable binding range.");
++                    commands->CopyBufferRegion(original->GetD3D12Resource(), range.offset,
++                        projected.projection->buffer(), range.offset, range.size);
++                }
++                // Metadata still describes pre-dispatch inputs until output capture below.
++                // Do not issue an observer write callback before its eligibility decision.
++            }
++        }
++        mGlintComputeCopiedBack = true;
++        return {};
++    }
++
+     MaybeError CaptureGlintComputeScope(CommandRecordingContext* context,
+                                         BufferBase* indirectBuffer = nullptr,
+                                         uint64_t indirectOffset = 0,
+@@ -849,22 +935,14 @@
+         if (!observer) {
+             return {};
+         }
+-        std::optional<GlintBoundScope> bound;
+-        if (indirectBuffer) {
+-            DAWN_INTERNAL_ERROR_IF(!ToBackend(indirectBuffer)->HasPrivateGlintReadbackBacking(),
+-                                   "Glint compute capture requires private indirect-buffer backing.");
+-
+-            std::vector uses{
+-                GlintNativeBufferUse{indirectBuffer, indirectOffset, 3 * sizeof(uint32_t)}};
+-            DAWN_INTERNAL_ERROR_IF(
+-                !originalInputs ||
+-                    !AppendGlintOriginalIndirectUses(&uses, *originalInputs, 3 * sizeof(uint32_t)),
+-                "Missing or invalid original Glint dispatch inputs.");
+-            bound = BuildGlintBindingScope(wgpu::ShaderStage::Compute, uses);
+-        } else {
+-            bound = BuildGlintBindingScope(wgpu::ShaderStage::Compute);
+-        }
+-        DAWN_INTERNAL_ERROR_IF(!bound, "Invalid Glint compute capture binding scope.");
++        DAWN_INTERNAL_ERROR_IF(!mGlintComputeCopiedBack || !mGlintComputeScope,
++                              "Glint compute capture precedes its exact-scope copyback.");
++        // These arguments are already included in the stored preparation scope.
++        (void)indirectBuffer;
++        (void)indirectOffset;
++        (void)originalInputs;
++        auto bound = std::move(mGlintComputeScope);
++        mGlintComputeScope.reset();
+         return CaptureGlintBoundScope(context, std::move(bound), mGlintComputeProjectedReady);
+     }
+ 
+@@ -1028,8 +1106,8 @@
+ 
+         for (BindGroupIndex index : mDirtyBindGroupsObjectChangedOrIsDynamic) {
+             BindGroup* group = ToBackend(mBindGroups[index]);
+-            ApplyBindGroup(commandList, immediates, pipelineLayout, index, group,
+-                           GetDynamicOffsets(index));
++            DAWN_TRY(ApplyBindGroup(commandList, immediates, pipelineLayout, index, group,
++                                    GetDynamicOffsets(index)));
+         }
+ 
+         if (usesResourceTable) {
+@@ -1066,14 +1144,18 @@
+   private:
+     void ResetGlintViewOverrides() {
+         for (BindGroupIndex index{0u}; index < kMaxBindGroupsTyped; ++index) {
+-            if (!mGlintViews[index].empty()) {
++            if (!mGlintViews[index].empty() || !mGlintBufferViews[index].empty()) {
+                 mDirtyBindGroups.set(index);
+                 mDirtyBindGroupsObjectChangedOrIsDynamic.set(index);
+             }
+             mGlintViews[index].clear();
++            mGlintBufferViews[index].clear();
+             mGlintViewAllocations[index] = {};
+         }
+         mGlintGroupSources = {};
++        mGlintComputeScope.reset();
++        mGlintComputeBuffers.reset();
++        mGlintComputeCopiedBack = false;
+     }
+ 
+     MaybeError ValidateGlintInputGroup(BindGroupBase* group, wgpu::ShaderStage stages) {
+@@ -1127,12 +1209,23 @@
+         return {};
+     }
+ 
++    GlintProjectedBuffer* FindGlintProjectedBuffer(BufferBase* buffer) {
++        if (!mGlintComputeBuffers) return nullptr;
++        auto found = std::find_if(mGlintComputeBuffers->buffers.begin(),
++            mGlintComputeBuffers->buffers.end(), [&](const auto& value) {
++                return value.source.Get() == buffer;
++            });
++        return found == mGlintComputeBuffers->buffers.end() ? nullptr : &*found;
++    }
++
+     ResultOrError<bool> PopulateGlintViews(BindGroupIndex index,
+                                            ShaderVisibleDescriptorAllocator* allocator) {
+         auto* group = ToBackend(mBindGroups[index]);
+-        if (mGlintViews[index].empty()) return group->PopulateViews(allocator);
++        if (mGlintViews[index].empty() && mGlintBufferViews[index].empty())
++            return group->PopulateViews(allocator);
+         if (allocator->IsAllocationStillValid(mGlintViewAllocations[index])) return true;
+-        return group->PopulateGlintViews(allocator, mGlintViews[index], &mGlintViewAllocations[index]);
++        return group->PopulateGlintViews(allocator, mGlintViews[index], mGlintBufferViews[index],
++                                         &mGlintViewAllocations[index]);
+     }
+ 
+     enum class RootBufferViewType { CBV, SRV, UAV };
+@@ -1236,7 +1329,7 @@
+         }
+     }
+ 
+-    void ApplyBindGroup(ID3D12GraphicsCommandList* commandList,
++    MaybeError ApplyBindGroup(ID3D12GraphicsCommandList* commandList,
+                         ImmediateTrackerType* immediates,
+                         const PipelineLayout* pipelineLayout,
+                         BindGroupIndex index,
+@@ -1277,6 +1370,10 @@
+                 uint64_t offset = binding.offset + dynamicOffset;
+                 D3D12_GPU_VIRTUAL_ADDRESS bufferLocation =
+                     ToBackend(binding.buffer)->GetVA() + offset;
++                if (FindGlintProjectedBuffer(binding.buffer)) {
++                    DAWN_TRY_ASSIGN(bufferLocation, group->ResolveGlintRootBufferAddress(
++                        bindingIndex, static_cast<uint32_t>(dynamicOffset), mGlintBufferViews[index]));
++                }
+ 
+                 SetRootBufferView(commandList,
+                                   std::get<BufferBindingInfo>(bindingInfo.bindingLayout).type,
+@@ -1294,7 +1391,7 @@
+ 
+         // It's not necessary to update descriptor tables if only the dynamic offset changed.
+         if (!mDirtyBindGroups[index]) {
+-            return;
++            return {};
+         }
+ 
+         const uint32_t cbvUavSrvCount =
+@@ -1303,7 +1400,7 @@
+ 
+         if (cbvUavSrvCount > 0) {
+             uint32_t parameterIndex = pipelineLayout->GetCbvUavSrvRootParameterIndex(index);
+-            const D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor = mGlintViews[index].empty()
++            const D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor = (mGlintViews[index].empty() && mGlintBufferViews[index].empty())
+                 ? group->GetBaseViewDescriptor() : mGlintViewAllocations[index].GetBaseDescriptor();
+             SetRootDescriptorTable(commandList, parameterIndex, baseDescriptor);
+         }
+@@ -1328,6 +1425,7 @@
+             immediates->SetDynamicStorageBufferLength(
+                 firstImmediateIndex * kImmediateElementByteSize, dynamicStorageBufferLengths);
+         }
++        return {};
+     }
+ 
+     raw_ptr<Device> mDevice;
+@@ -1344,6 +1442,10 @@
+     bool mGlintRenderProjectedReady = false;
+     bool mGlintRenderUnprojectedInputs = false;
+     GlintBoundScope mGlintRenderScope;
++    std::optional<GlintBoundScope> mGlintComputeScope;
++    std::unique_ptr<GlintBufferProjectionBatch> mGlintComputeBuffers;
++    bool mGlintComputeCopiedBack = false;
++    PerBindGroup<std::vector<GlintBufferViewOverride>> mGlintBufferViews;
+     PerBindGroup<std::vector<GlintTextureViewOverride>> mGlintViews;
+     PerBindGroup<GPUDescriptorHeapAllocation> mGlintViewAllocations;
+     PerBindGroup<Ref<BindGroup>> mGlintGroupSources;
+@@ -2100,6 +2202,7 @@
+                 immediates.Apply(commandContext);
+ 
+                 commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
++                DAWN_TRY(bindingTracker->CopyBackGlintComputeBuffers(commandContext));
+                 DAWN_TRY(bindingTracker->CaptureGlintComputeScope(commandContext));
+                 break;
+             }
+@@ -2110,7 +2213,9 @@
+                 const SyncScopeResourceUsage& scope =
+                     resourceUsages.dispatchUsages[currentDispatch++];
+ 
+-                DAWN_TRY(bindingTracker->PrepareGlintComputeProjection(commandContext));
++                DAWN_TRY(bindingTracker->PrepareGlintComputeProjection(
++                    commandContext, dispatch->indirectBuffer.Get(), dispatch->indirectOffset,
++                    &dispatch->glintInputs));
+                 DAWN_TRY(TransitionAndClearForSyncScope(commandContext, scope));
+                 DAWN_TRY(bindingTracker->Apply(commandContext, &immediates));
+                 immediates.Apply(commandContext);
+@@ -2121,6 +2226,7 @@
+                     signature.Get(), 1,
+                     ToBackend(dispatch->indirectBuffer.Get())->GetD3D12Resource(),
+                     dispatch->indirectOffset, nullptr, 0);
++                DAWN_TRY(bindingTracker->CopyBackGlintComputeBuffers(commandContext));
+                 DAWN_TRY(bindingTracker->CaptureGlintComputeScope(
+                     commandContext, dispatch->indirectBuffer.Get(), dispatch->indirectOffset,
+                     &dispatch->glintInputs));
