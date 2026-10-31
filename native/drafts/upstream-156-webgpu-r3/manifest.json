@@ -2218,12 +2218,12 @@
     {
       "file": "0119-webgpu-texture-scratch-reuse.patch",
       "directory": "third_party/dawn",
-      "sha256": "eb5eb57bd1796285c156908bc8a04c67d2453ed9a362261fa14cd688eb7f208e"
+      "sha256": "de931041168c5f4b8c06bc4aaa1e89bb212ef48d763851520b7fe88c9cddc828"
     },
     {
       "file": "0120-webgpu-weak-projection-cache.patch",
       "directory": "third_party/dawn",
-      "sha256": "0c58380edc0bb9b74b39bfe14e073652fe958bb879a1317dccc60f485c97077d"
+      "sha256": "105c671012c89984ac5c1be04c8dd92ea6df150444caaa8d979eb367d3bc40ab"
     }
   ],
   "build": {

@@ -1,6 +1,10 @@
 import hashlib
 import json
+import os
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from scripts import native_build as build
 
@@ -37,7 +41,10 @@ def test_resource_candidate_binds_both_measured_source_packets():
         assert hashlib.sha256(packet.read_bytes()).hexdigest() == row['packet_sha256']
         assert len(row['patches']) == 1
         selected = candidate['directory'] / 'patches' / row['patches'][0]
-        assert selected.read_bytes() == (packet.parent / 'next.patch').read_bytes()
+        packaged = selected.read_bytes()
+        assert b'diff --git ' in packaged
+        assert b''.join(line for line in packaged.splitlines(keepends=True)
+                        if not line.startswith(b'diff --git ')) == (packet.parent / 'next.patch').read_bytes()
 
 
 def test_resource_candidate_source_preparation_is_not_runtime_admission():
@@ -47,6 +54,8 @@ def test_resource_candidate_source_preparation_is_not_runtime_admission():
     assert proof['forward_patches'] == proof['reverse_patches'] == 120
     assert proof['upstream_files_restored'] == 270
     assert proof['standalone_engine_sources_matched'] == 7
+    assert proof['canonical_source_detector_passed'] and proof['canonical_source_detector_patches'] == 120
+    assert proof['unwrapped_patch_control_rejected']
     for record in (proof, candidate['manifest']):
         for key in ('compiled', 'runtime_verified', 'production_admitted'):
             assert record[key] is False
@@ -67,3 +76,49 @@ def test_prior_host_tooling_is_reconstructed_without_rewriting_receipts(host_sou
     assert hashlib.sha256(host_sources_before_webgpu_r3['scripts/native_build.py']).hexdigest() == (
         '62c46ec853ed07b796995c9574c45a98a63ab9b944e54db1716945858751f021'
     )
+
+
+def test_resource_candidate_git_headers_cover_every_changed_file():
+    candidate = build.load_candidate('upstream-156-webgpu-r3')
+    for row, count in zip(candidate['manifest']['patches'][118:], (2, 5), strict=True):
+        lines = (candidate['directory'] / 'patches' / row['file']).read_text(encoding='utf-8').splitlines()
+        detected = [line.split(' b/', 1)[1] for line in lines if line.startswith('diff --git ')]
+        unified = [line[6:] for line in lines if line.startswith('+++ b/')]
+        assert detected == unified and len(detected) == count
+
+
+def test_actual_source_detector_rejects_unwrapped_new_paths_and_accepts_git_headers(tmp_path):
+    source = tmp_path / 'source'
+    patches = tmp_path / 'patches'
+    source.mkdir()
+    patches.mkdir()
+    env = {**os.environ, 'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1',
+           'GIT_OPTIONAL_LOCKS': '0', 'GIT_TERMINAL_PROMPT': '0'}
+    env.pop('GIT_INDEX_FILE', None)
+
+    def git(*args):
+        return subprocess.check_output(['git', *args], cwd=source, env=env)
+
+    git('init', '--quiet')
+    git('config', 'core.autocrlf', 'false')
+    (source / 'old.txt').write_bytes(b'before\n')
+    (source / 'extra.txt').write_bytes(b'before\n')
+    git('add', '--all')
+    git('-c', 'commit.gpgsign=false', '-c', 'user.name=Glint fixture',
+        '-c', 'user.email=fixture@example.invalid', 'commit', '--quiet', '-m', 'owned baseline')
+    first = patches / '0001-existing.patch'
+    second = patches / '0002-new-path.patch'
+    first.write_bytes(b'diff --git a/old.txt b/old.txt\n--- a/old.txt\n+++ b/old.txt\n@@ -1 +1 @@\n-before\n+after\n')
+    plain = b'--- a/extra.txt\n+++ b/extra.txt\n@@ -1 +1 @@\n-before\n+after\n'
+    second.write_bytes(plain)
+    (source / 'old.txt').write_bytes(b'after\n')
+    (source / 'extra.txt').write_bytes(b'after\n')
+    names = (first.name, second.name)
+    with pytest.raises(ValueError, match='Unrecognized Chromium source changes'):
+        build._source_patches(source, env, names, index_dir=tmp_path,
+                              patch_directory=patches, complete_chain=True)
+    second.write_bytes(b'diff --git a/extra.txt b/extra.txt\n' + plain)
+    measured = build._source_patches(source, env, names, index_dir=tmp_path,
+                                     patch_directory=patches, complete_chain=True)
+    assert measured == [{'name': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+                        for path in (first, second)]

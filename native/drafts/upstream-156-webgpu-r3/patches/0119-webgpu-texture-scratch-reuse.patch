@@ -1,3 +1,4 @@
+diff --git a/src/dawn/native/d3d12/glint/projected_texture.cc b/src/dawn/native/d3d12/glint/projected_texture.cc
 --- a/src/dawn/native/d3d12/glint/projected_texture.cc
 +++ b/src/dawn/native/d3d12/glint/projected_texture.cc
 @@ -154,10 +154,13 @@
@@ -116,6 +117,7 @@
      *result = std::move(projected);
      return S_OK;
  }
+diff --git a/src/dawn/native/d3d12/GlintEdgeProjectionShader.h b/src/dawn/native/d3d12/GlintEdgeProjectionShader.h
 --- a/src/dawn/native/d3d12/GlintEdgeProjectionShader.h
 +++ b/src/dawn/native/d3d12/GlintEdgeProjectionShader.h
 @@ -5,7 +5,7 @@

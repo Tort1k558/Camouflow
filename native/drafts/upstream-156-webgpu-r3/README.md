@@ -15,6 +15,7 @@ Their standalone evidence is not a Chromium runtime result.
 | Forward/reverse replay | All 120 patches | No selected checkout changes |
 | Upstream restoration | 270 files | Includes two newly required pinned Dawn texture files |
 | Final standalone source match | Seven files | Same code used in native prototype measurements |
+| Canonical content/path detector | All 120 patches | Isolated sparse repositories; not pinned-workspace or runtime admission |
 | Chromium compilation/runtime | Pending | No installed release or capability promotion |
 
 Select `--candidate upstream-156-webgpu-r3` explicitly. Chromium/V8/Dawn pins,
@@ -25,6 +26,12 @@ Candidate-specific sync/hooks/build receipts cannot be relabeled from revision 2
 An existing patched checkout requires an exact, backed-up source transition
 before sync/patch/build. Do not reset or clean a user worktree to switch variants.
 See the [build guide](../../README.md) for the normal Windows toolchain workflow.
+
+Selected patches 119/120 include Git file headers required by the build helper's
+path detector. Removing only those headers reproduces a rejected build source
+set; ordinary apply/reverse replay alone did not catch that packaging defect.
+The measured standalone source patches remain byte-identical after stripping
+the packaging-only headers. No native algorithm or old receipt was changed.
 
 Legacy Audio compatibility remains failed. Retained-budget exhaustion still
 loses the GPU device. External/shared texture caching, broad browser/worker

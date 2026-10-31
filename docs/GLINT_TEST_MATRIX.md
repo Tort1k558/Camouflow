@@ -75,9 +75,12 @@ now composes both resource corrections after the exact 118-patch prefix.
 All 120 patches replay/reverse, all 270 upstream inputs restore, and seven final
 source files match the measured native prototype. It is selectable for research
 builds only: no Chromium compilation or new runtime receipt follows from this
-preparation. Limits remain 180 GiB and maximum jobs 4. The preceding full host
-regression passed 5,380 tests with one skip at `b6dfe64`; the new candidate/helper
-extension requires its own regression before an engine transition.
+preparation. Limits remain 180 GiB and maximum jobs 4. Full host regression at
+`8a21748` passed 5,392 tests with one skip and unchanged source/runtime guards.
+The final Git-header packaging correction also passes the actual build-helper
+content/path detector for all 120 patches, rejecting the previous unwrapped
+control. Only packaging metadata changed; the native source stayed identical.
+This correction requires its own final regression before the engine transition.
 
 ## 2026-11-01: measured 001–116 runtime and revision-2 correction
 
