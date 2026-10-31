@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Paired native copy snapshot — source/extracted logic, not queue execution
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Replay / reverse | 19 packets, 84 paths | Unselected external staging |
+| Native target-flag syntax | 14 units passed | No component link or native copy execution |
+| Factory normal / ASan | 6,149 cases, 52,232 assertions each | Actual extracted logic; mocked backend/resources |
+| Ownership / failure | Paired raw CPU + GPU ticket lifetime; owner/access/format and allocation-stage failures | Not actual native queue cancellation/device loss |
+| Changed-input checks | 6 refusals before compilation | Not a runtime security audit |
+
+[Implementation and reproduction](../native/drafts/webgpu-copy-pixel-snapshot/README.md).
+GPU input-lease export and plan/commit association remain unimplemented; real
+bindings/Wire/DXC/browser consistency are not admitted. Selected runtime unchanged.
+
 ## Immutable projected pixel snapshot — standalone native helpers
 
 | Gate | Measured result | Boundary |

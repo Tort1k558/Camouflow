@@ -2433,3 +2433,24 @@ typeless storage, padded/aligned rows, изменение original и завис
 Далее — native registry с device/policy/epoch/generation/copy identity и реальные
 bindings/aliases/writeback. Это не внедрение в браузер: Dawn/Wire, DXC и browser
 consistency остаются открыты; выбранные 001–076 не менялись.
+
+## Парный snapshot в нативной texture → buffer команде — пакет 19
+
+Фабрика нативного readback теперь записывает GPU projection до raw texture copy
+и удерживает его в том же CPU snapshot ticket. Существующие observer token,
+provenance и сборщик продолжают владеть ticket; второй независимый реестр не добавлен.
+Прямой `RecordCopy` проверяет texture owner/access/format и переиспользует seed/queue
+путь projector. CPU Read остаётся raw, без повторного применения политики.
+После успешной записи восстанавливаются Dawn descriptor heaps и сбрасывается
+кэш обоих binding trackers через существующий helper восстановления.
+
+19 пакетов / 84 файла replay/reverse; 14 native syntax units прошли. Извлечённые
+factory/class/validation функции: 6 149 синтетических случаев / 52 232 проверки
+в normal и ASan. Это не исполнение native copy/queue: backend в fixture подменён.
+[Исходники и воспроизведение](../native/drafts/webgpu-copy-pixel-snapshot/README.md).
+
+Следующий этап — экспорт backend-owned snapshot lease из существующего ticket,
+проверенный input plan/commit и связь с device/policy/epoch. Реальные bindings,
+writeback, Dawn/Wire, DXC и browser consistency ещё не подтверждены. Ресурсы GPU
+делят текущую device quota; её исчерпание возвращает ошибку, не raw fallback.
+Выбранный браузер 001–076 не менялся.

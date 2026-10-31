@@ -1167,3 +1167,22 @@ per normal/ASan run: typed texture, packed plane and dependent buffer agree afte
 the original texture is overwritten, and dependent retirement retains upstream
 quota. This is not an installed native snapshot registry, policy/epoch admission,
 Dawn/Wire binding routing, DXC or browser consistency evidence.
+
+## Paired execution-position CPU/GPU copy snapshot (unselected)
+
+The [paired-copy extension](drafts/webgpu-copy-pixel-snapshot/README.md) records a
+projected GPU snapshot in `RecordGlintNativeTextureSnapshot`, already called before
+native texture-to-buffer copy execution. The existing owned CPU snapshot ticket
+retains that projected object; observer token/provenance/collection ownership is
+unchanged. `RecordCopy` validates the native texture and shares the view projector's
+private seed/queue recording path without creating a frontend view or reentering
+Dawn from observer callbacks. CPU `Read()` remains raw to avoid double transformation.
+The copy command restores descriptor heaps and invalidates both binding trackers
+through the existing projection restoration helper after capture succeeds.
+
+Nineteen packets replay/reverse across 84 paths; fourteen native syntax units passed.
+Extracted factory/class/copy-validation code passed 6,149 synthetic cases / 52,232
+assertions per normal/ASan run. Native device/queue recording was mocked, not executed.
+The retained snapshot has no validated GPU input-lease export yet. Plan/commit
+association, real binding/writeback, Dawn/Wire/DXC and browser consistency remain
+unimplemented or unverified. This packet does not select or admit a new runtime.
