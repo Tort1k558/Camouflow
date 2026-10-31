@@ -2372,6 +2372,20 @@ load/read-only и очистка текущим проходом; PLS и неи�
 являются проверенными браузерными режимами. Реальные frontend encoding,
 depth/stencil/PLS, Dawn/Wire и browser consistency ещё не проверены.
 
+## GPU buffer scatter — примитив, не готовая интеграция
+
+Реализован [GPU-примитив](../native/drafts/webgpu-buffer-scatter/README.md):
+GPU edge/HMAC → подстановка только отслеживаемых пиксельных байтов в private buffer
+→ чтение результата другим shader. Padding, несвязанные байты и исходный защищённый
+GPU-буфер проверяются отдельно. RGBA/BGRA, частичные каналы, большие lineage offsets
+и row-pitch carry сопоставляются с существующим `WebGpuCanonicalByte`.
+
+58 аппаратных случаев / 176 704 проверки прошли в каждом из normal/ASan; проверены
+только разделённые фрагменты, повторная запись и двухмерный dispatch. Это не новая
+выбранная engine-сборка: остаются immutable GPU snapshot registry, бюджетные shadows,
+native binding/alias/writeback и доказательство ancestry для validated controls.
+Actual Dawn/Wire, DXC и browser consistency ещё не подтверждены.
+
 ## Как использовать внешние реализации
 
 Статьи отражают версии и условия их авторов. Перед переносом идеи проверить

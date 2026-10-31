@@ -1,0 +1,258 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Run GPU projection -> tagged-byte scatter -> shader consumer; no native binding/browser admission.",
+  "checker_sha256": "b095af70d1b6bd39a852992226b00970e67ea7263d2e5c50a602260853c4dc96",
+  "sources_sha256": {
+    "buffer_scatter.h": "27ea12a1b44e01c9a2babf42b7316cbf25e979dfa9e8a0ef4764b5eb8ff185e6",
+    "buffer_scatter.hlsl": "8b9cde56215ad5427f28e4bf763b4ab1730cb3ac14596d9b17ec1f1629129008",
+    "compute_test.cc": "9d3ba46593518b041c556f054c7fdba72314a2bfb68222be4b376ba54438451a"
+  },
+  "source_gate_checker_sha256": "fbfe97a0f3c53369b5aea21a5ae372bb85e55a6d5baf1ad435aa67140b14153d",
+  "source_gate_record_sha256": "7c34d1d619e3d80ed4c921f07fc1b0a8d92044ac17171f6cfa5ed81452f42afe",
+  "edge_shader_sha256": "8df3080e76a56beff08ded188db011143924bdaec4c84c0dec520647aa02913a",
+  "selected": false,
+  "default_feature_enabled": false,
+  "gpu_buffer_input_projection_integrated": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "measurement_complete": true,
+  "runs": [
+    {
+      "sanitizer": "none",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 58,
+        "assertions": 176704,
+        "changed_channels": 21501,
+        "rejected_parameters": 696,
+        "gpu_projection_scatter_consumer_verified": true,
+        "split_only_scatter_verified": true,
+        "duplicate_scatter_verified": true,
+        "protected_source_unchanged": true,
+        "native_binding_routing_installed": false,
+        "browser_integrated": false
+      }
+    },
+    {
+      "sanitizer": "address",
+      "compile_returncode": 0,
+      "test_returncode": 0,
+      "result": {
+        "passed": true,
+        "hardware_adapter": true,
+        "cases": 58,
+        "assertions": 176704,
+        "changed_channels": 21501,
+        "rejected_parameters": 696,
+        "gpu_projection_scatter_consumer_verified": true,
+        "split_only_scatter_verified": true,
+        "duplicate_scatter_verified": true,
+        "protected_source_unchanged": true,
+        "native_binding_routing_installed": false,
+        "browser_integrated": false
+      }
+    }
+  ],
+  "hardware_execution_verified": true,
+  "native_binding_routing_installed": false,
+  "native_immutable_gpu_snapshot_registry_implemented": false,
+  "native_budgeted_shadow_buffer_allocator_implemented": false,
+  "actual_native_device_queue_executed": false,
+  "actual_wire_server_roundtrip_executed": false,
+  "dxc_execution_verified": false,
+  "browser_integrated": false,
+  "source_gate": {
+    "passed": true,
+    "measurement_complete": true,
+    "postguards_passed": true,
+    "runs": [
+      {
+        "sanitizer": "none",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "assertions": 2391,
+          "attachment_cases": 720,
+          "accepted_attachment_cases": 49,
+          "denied_logical_control_cases": 2,
+          "source_extracted_input_contracts_only": true,
+          "backend_mocked": true,
+          "actual_frontend_encoding_executed": false,
+          "actual_native_device_queue_executed": false
+        }
+      },
+      {
+        "sanitizer": "address",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "assertions": 2391,
+          "attachment_cases": 720,
+          "accepted_attachment_cases": 49,
+          "denied_logical_control_cases": 2,
+          "source_extracted_input_contracts_only": true,
+          "backend_mocked": true,
+          "actual_frontend_encoding_executed": false,
+          "actual_native_device_queue_executed": false
+        }
+      }
+    ]
+  },
+  "postguards_passed": true,
+  "public_checker_observation": {
+    "schema": 1,
+    "passed": true,
+    "measurement_complete": true,
+    "runs": [
+      {
+        "sanitizer": "none",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "hardware_adapter": true,
+          "cases": 58,
+          "assertions": 176704,
+          "changed_channels": 21501,
+          "rejected_parameters": 696,
+          "gpu_projection_scatter_consumer_verified": true,
+          "split_only_scatter_verified": true,
+          "duplicate_scatter_verified": true,
+          "protected_source_unchanged": true,
+          "native_binding_routing_installed": false,
+          "browser_integrated": false
+        }
+      },
+      {
+        "sanitizer": "address",
+        "compile_returncode": 0,
+        "test_returncode": 0,
+        "result": {
+          "passed": true,
+          "hardware_adapter": true,
+          "cases": 58,
+          "assertions": 176704,
+          "changed_channels": 21501,
+          "rejected_parameters": 696,
+          "gpu_projection_scatter_consumer_verified": true,
+          "split_only_scatter_verified": true,
+          "duplicate_scatter_verified": true,
+          "protected_source_unchanged": true,
+          "native_binding_routing_installed": false,
+          "browser_integrated": false
+        }
+      }
+    ],
+    "scope": "Run GPU projection -> tagged-byte scatter -> shader consumer; no native binding/browser admission.",
+    "hardware_execution_verified": true,
+    "native_binding_routing_installed": false,
+    "native_immutable_gpu_snapshot_registry_implemented": false,
+    "native_budgeted_shadow_buffer_allocator_implemented": false,
+    "actual_native_device_queue_executed": false,
+    "actual_wire_server_roundtrip_executed": false,
+    "dxc_execution_verified": false,
+    "browser_integrated": false,
+    "privacy_admitted": false,
+    "production_admitted": false,
+    "source_gate": {
+      "passed": true,
+      "measurement_complete": true,
+      "postguards_passed": true,
+      "runs": [
+        {
+          "sanitizer": "none",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "assertions": 2391,
+            "attachment_cases": 720,
+            "accepted_attachment_cases": 49,
+            "denied_logical_control_cases": 2,
+            "source_extracted_input_contracts_only": true,
+            "backend_mocked": true,
+            "actual_frontend_encoding_executed": false,
+            "actual_native_device_queue_executed": false
+          }
+        },
+        {
+          "sanitizer": "address",
+          "compile_returncode": 0,
+          "test_returncode": 0,
+          "result": {
+            "passed": true,
+            "assertions": 2391,
+            "attachment_cases": 720,
+            "accepted_attachment_cases": 49,
+            "denied_logical_control_cases": 2,
+            "source_extracted_input_contracts_only": true,
+            "backend_mocked": true,
+            "actual_frontend_encoding_executed": false,
+            "actual_native_device_queue_executed": false
+          }
+        }
+      ]
+    },
+    "postguards_passed": true
+  },
+  "changed_input_refusal": {
+    "passed": true,
+    "cases": [
+      {
+        "case": "shader",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_compilation": true,
+        "passed": true
+      },
+      {
+        "case": "builder",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_compilation": true,
+        "passed": true
+      },
+      {
+        "case": "fixture",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_compilation": true,
+        "passed": true
+      },
+      {
+        "case": "checker",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_compilation": true,
+        "passed": true
+      },
+      {
+        "case": "edge-shader",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_compilation": true,
+        "passed": true
+      },
+      {
+        "case": "source-gate",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_compilation": true,
+        "passed": true
+      },
+      {
+        "case": "source-record",
+        "returncode": 2,
+        "expected_error_observed": true,
+        "refused_before_compilation": true,
+        "passed": true
+      }
+    ]
+  }
+}

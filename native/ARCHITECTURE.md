@@ -1085,6 +1085,15 @@ There is no signed online update catalog. Development bundles are unsigned.
 
 ## Known boundaries
 
+The [buffer scatter primitive](drafts/webgpu-buffer-scatter/README.md) normalizes
+tagged-byte geometry and performs real GPU projection → split-only scatter →
+shader consumption without changing unrelated bytes or the protected source.
+Per-byte atomic masks handle shared DWORDs; UAV barriers order repeated dispatches.
+Fifty-eight hardware cases passed normal/ASan, but the primitive is not installed
+in native bindings. Immutable canonical GPU snapshot registration, budgeted
+per-buffer shadows, alias-preserving routing/writeback and validated-control
+ancestry remain necessary. It does not resolve the browser consistency gate.
+
 The [execution-input draft](drafts/webgpu-execution-inputs/README.md) retains logical
 indirect/count inputs before frontend validation rewrites, alongside the actually
 executed buffer ranges. Native references survive scratch substitution. Depth and

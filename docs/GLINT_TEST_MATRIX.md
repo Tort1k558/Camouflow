@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## Tagged-byte GPU scatter primitive — not native binding integration
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Source prerequisite | Existing sixteen-packet / 81-path source/CPU gate passed | No new selected engine patch |
+| Hardware normal / ASan | 58 cases, 176,704 assertions each; 21,501 changed channels | One local hardware adapter, FXC |
+| Dataflow | GPU edge/HMAC → split-only byte scatter → actual shader consumer | Not Dawn/WGSL binding routing or immutable-snapshot registry |
+| Mapping | RGBA/BGRA, clipped channels, padding/guards, large lineage offsets, row-pitch carry and 2D dispatch | Constructed source metadata; no huge Dawn buffer allocation |
+| Repeat/source data | Duplicate dispatches preserve output; protected source data unchanged | No native quota/cancellation/device-loss result |
+| Invalid inputs | 696 structural parameter rejections each mode | Not policy/epoch/ownership authorization |
+
+[Public command, sources and remaining integration](../native/drafts/webgpu-buffer-scatter/README.md).
+This is a required GPU primitive, not completion of GPU buffer-input projection or
+the selected browser's consistency gate. Native routing, allocator, registry and
+actual Dawn/Wire execution remain unfinished.
+
 ## Logical execution inputs and attachment readiness
 
 | Gate | Result | Boundary |
