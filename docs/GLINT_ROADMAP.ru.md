@@ -1,5 +1,15 @@
 # Glint: план проверки и развития
 
+## Trusted native copy hook: source packet ready for consumer integration
+
+[Native observer source and boundaries](../native/drafts/webgpu-native-copy-hook/README.md):
+full snapshots originate at native D3D12 copy recording, not renderer encoding.
+Adjacent copy/write/clear/unmap/destroy events are prepared; write-unmap is uncertain,
+not proof of a complete byte overwrite. Nine syntax checks and exact 16-file replay
+passed. Next: GPU-service policy/observer registration, provenance transactions,
+protected ordinary/shared-memory map serialization, shader flow and real lifecycle
+tests. Current runtime remains 001-076; no export-mismatch or privacy admission.
+
 ## D3D12 capture budget: prepared native owner
 
 [Quota source and evidence](../native/drafts/webgpu-d3d12-capture/README.md): actual

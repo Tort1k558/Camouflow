@@ -1,5 +1,19 @@
 # Glint browser test matrix
 
+## Unselected native observer / trusted copy notifications
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Native copy origin | Snapshot recorded before ROI; delivered after successful native ROI recording | Source preparation, not callback execution |
+| Adjacent events | Buffer-copy, known writes/clear, uncertain write-unmap, destruction | Shader and remaining failure paths incomplete |
+| Native syntax | Nine translation units, no diagnostics | No link, GPU-service registration or protected map |
+| Static/component GN | Native source and both API header targets passed | Sources/indexes restored; no native linking |
+| Packet identity | 16 paths round-tripped; capture/quota core unchanged | Replaces budgeted native packet, does not stack on it |
+| Full Python baseline | 5047 passed, 1 skipped at `975bb87` | Predates observer source packet |
+
+[Source, ownership rules and remaining gates](../native/drafts/webgpu-native-copy-hook/README.md).
+Observer callbacks, protected mappings and browser privacy remain unverified.
+
 ## Unselected aggregate D3D12 capture budgeting
 
 | Gate | Result | Boundary |

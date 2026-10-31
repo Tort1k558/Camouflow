@@ -1,0 +1,172 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "GN generation plus native sources/API header checks for the 16-file observer packet; no native compile/link or callback execution",
+  "patch": "webgpu-native-copy-hook-next.patch",
+  "patch_sha256": "0310438ca888b82b015dd1a8bc9bc55f61fd774d465a06c9739c6220ff68eceb",
+  "sources": [
+    {
+      "source": "third_party/dawn/include/dawn/native/DawnNative.h",
+      "before_sha256": "ff5cc6f2d253d09756b98ce78e99730a0f7a9363ef1609953a065de5938b06cc",
+      "staged_sha256": "22d35e56a302ec8ef645c3ecffbb921c0df215aa17f13439f250cfae8985b9bc"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/Buffer.cpp",
+      "before_sha256": "8cc7291ed3c590417bcac248b35c366819db2d7b645566e92ad73c60e7a4d050",
+      "staged_sha256": "4a9fa3732e892f5a0926ce9212189cd18337ea4b83bec551ef24a0a97c920877"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/BUILD.gn",
+      "before_sha256": "97285402706cc76ba93e91e788fc7c27e1e58fb1cb86ab7594f4d9bc28e2e7fc",
+      "staged_sha256": "bc22c6d70520d3da8ccb255688a9663d2f9b6d5d9ea27e326c13d0dcb25b5252"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp",
+      "before_sha256": "f22f30d18f4e813db3a57c303573e8d59801b7565a5c44dd7041d4f68b99348b",
+      "staged_sha256": "d4c7903071c8b03ea51c767d82532437aa3b113c3abef05c0d07817be6f3a2c0"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.cpp",
+      "before_sha256": "d109d1fec5ca6f7d14396773571762fc74229f7f9148c4c69e49e86cdd90b672",
+      "staged_sha256": "865e9865a802fb0cfce34994186f32bb4c405834852661027c7d4c4b83b296b2"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.h",
+      "before_sha256": "166777e891ad2bfe96343d58d3a45dde21a29c19610e23b9b5db0f2452451fc0",
+      "staged_sha256": "6e71497339036094c6b56a62dcefdb54fa8f5cd12af929da1375cf42008bd393"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.cpp",
+      "before_sha256": "aa61e79714d33d245480c7aaf11cf3bc6ce286a0fe443f22ac0ffb7747ff96c4",
+      "staged_sha256": "e80d1207a5816f6c4115f62f49209ee52444c900f2482bb3e037dd832e92aec0"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.h",
+      "before_sha256": "1d37efccaf1ffa468c96627d7265e485e07e6fc4193e3ac7bb814a966158ca66",
+      "staged_sha256": "8968182820eede92d31d9d48dd51a5e7650eb5b1d6449583fa11bcd303d07bb4"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc",
+      "before_sha256": null,
+      "staged_sha256": "1005d2432dd2937cb0025857d04b2e9a6a5f3de9ebc26f67427de65211dd2bc9"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h",
+      "before_sha256": null,
+      "staged_sha256": "4a2894b22c65d4749fdc828f7f5aef9e776bf170b960de1950919dfd001e6c9f"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp",
+      "before_sha256": null,
+      "staged_sha256": "01c3fa1db7614d1ce311d0eea76a65d9cdff7e0dbc76782f722da6f41b190501"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h",
+      "before_sha256": null,
+      "staged_sha256": "82c8b11a6312a468d0a2158ee91edcba4f6ae931624b2aaaf849da2f46853054"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/DawnNative.cpp",
+      "before_sha256": "ae5447a3e6cc03eb8852c09325c1e001a1ce5ee90bcd97e5d88ad0a1b057a947",
+      "staged_sha256": "8ee8301b5ce655cee4384fca43d5d8d68dc7a50dec296844b7c68e660edaef32"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/Device.cpp",
+      "before_sha256": "7e163695adbd7a2ef9902374332fd670c20eab7ea711b505c7418d872c69d567",
+      "staged_sha256": "f59dc9779326758a901f0211454772a8f6635eb082c9f7bb2987730537e11bdd"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/Device.h",
+      "before_sha256": "589b20776a1189ec8140d0e731ad0eb7a4b3c922ee75ef234f2babf89dff3013",
+      "staged_sha256": "3665381df5c974880a6f0e9492cabc880b6ab24216fb3938e866a2fca2dde494"
+    },
+    {
+      "source": "third_party/dawn/src/dawn/native/Queue.cpp",
+      "before_sha256": "0105de88a29895792a9d443f0f16e036fe48dab546d4a895be6d94c329e395cb",
+      "staged_sha256": "58d738c73671d21c206fb502436881d6531da12d2af1cc6bda0535c9032f198e"
+    }
+  ],
+  "graphs": [
+    {
+      "mode": "static",
+      "targets": 36185,
+      "build_files": 5063,
+      "generate_milliseconds": 41118,
+      "checks": [
+        {
+          "name": "static-gen",
+          "returncode": 0,
+          "log_sha256": "2da8c2a540c286b293c67aae628fd985c486bd8610b92d616cd417c11f6e3105",
+          "stdout": "Done. Made 36185 targets from 5063 files in 41118ms\n"
+        },
+        {
+          "name": "static-native-sources-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        },
+        {
+          "name": "static-native-api-static-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        },
+        {
+          "name": "static-native-api-shared-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        }
+      ]
+    },
+    {
+      "mode": "component",
+      "targets": 36223,
+      "build_files": 5063,
+      "generate_milliseconds": 20245,
+      "checks": [
+        {
+          "name": "component-gen",
+          "returncode": 0,
+          "log_sha256": "542a25a4717d8d67ff350f02125424c012ad87ebf615a4d1c51aafa0be7e11ce",
+          "stdout": "Done. Made 36223 targets from 5063 files in 20245ms\n"
+        },
+        {
+          "name": "component-native-sources-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        },
+        {
+          "name": "component-native-api-static-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        },
+        {
+          "name": "component-native-api-shared-check",
+          "returncode": 0,
+          "log_sha256": "758efd67ba4374faadfea3be2227cf65809c7c37f9e1e304dda137f152db50ed",
+          "stdout": "Header dependency check OK\n"
+        }
+      ]
+    }
+  ],
+  "source_rollback_verified": true,
+  "original_git_indexes_unchanged": true,
+  "dawn_git_index_unchanged": true,
+  "original_build_outputs_unchanged": true,
+  "raw_report_sha256": "1c39f2cfedd69c9150b62b35d03abed408fcee0d788f91698fc2bbcef132ae84",
+  "selected": false,
+  "native_compilation_started": false,
+  "chromium_component_link_verified": false,
+  "gpu_service_observer_registered": false,
+  "observer_callbacks_runtime_verified": false,
+  "native_map_shadow_installed": false,
+  "native_pixel_transform_installed": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

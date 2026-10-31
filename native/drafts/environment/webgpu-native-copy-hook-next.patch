@@ -1,0 +1,951 @@
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -30,6 +30,9 @@
+ 
+ #include <webgpu/webgpu_cpp.h>
+ 
++#include <cstdint>
++#include <memory>
++#include <span>
+ #include <string>
+ #include <string_view>
+ #include <vector>
+@@ -45,6 +48,58 @@
+ 
+ class InstanceBase;
+ class AdapterBase;
++
++enum class GlintBufferWriteKind { Uncertain, KnownBytes };
++
++enum class GlintReadbackStatus { Pending, Ready, Failed };
++enum class GlintReadbackFormat { Unsupported, Rgba8Unorm, Bgra8Unorm };
++
++class DAWN_NATIVE_EXPORT GlintReadbackSnapshot {
++  public:
++    virtual ~GlintReadbackSnapshot() = default;
++    // Returned bytes are borrowed only while this owned snapshot remains alive.
++    virtual GlintReadbackStatus Read(std::span<const uint8_t>* pixels) const = 0;
++    virtual uint32_t GetWidth() const = 0;
++    virtual uint32_t GetHeight() const = 0;
++    virtual uint32_t GetRowPitch() const = 0;
++    virtual GlintReadbackFormat GetFormat() const = 0;
++};
++
++struct GlintTextureToBufferCopy {
++    WGPUBuffer destination = nullptr;
++    uint64_t destinationOffset = 0;
++    uint64_t destinationRowPitch = 0;
++    uint32_t width = 0;
++    uint32_t height = 0;
++    uint32_t sourceX = 0;
++    uint32_t sourceY = 0;
++    GlintReadbackFormat format = GlintReadbackFormat::Unsupported;
++};
++
++class DAWN_NATIVE_EXPORT GlintReadbackObserver {
++  public:
++    virtual ~GlintReadbackObserver() = default;
++    // Native recording callbacks must not reenter Dawn or retain Dawn device/
++    // buffer references. A null snapshot means uncertain data, never raw-read permission.
++    virtual void OnTextureToBufferCopy(const GlintTextureToBufferCopy& copy,
++                                       std::unique_ptr<GlintReadbackSnapshot> snapshot) = 0;
++    virtual void OnBufferToBufferCopy(WGPUBuffer source,
++                                      uint64_t sourceOffset,
++                                      WGPUBuffer destination,
++                                      uint64_t destinationOffset,
++                                      uint64_t size) = 0;
++    virtual void OnBufferWrite(WGPUBuffer buffer,
++                               uint64_t offset,
++                               uint64_t size,
++                               GlintBufferWriteKind kind) = 0;
++    virtual void OnBufferDestroyed(WGPUBuffer buffer) = 0;
++};
++
++// Trusted embedder API, installed once before exposing a device to script.
++// Only D3D12 is supported by this experiment. No pixel protection is installed here.
++DAWN_NATIVE_EXPORT bool InstallGlintReadbackObserver(
++    WGPUDevice device,
++    std::shared_ptr<GlintReadbackObserver> observer);
+ 
+ // Each toggle is assigned with a TogglesStage, indicating the validation and earliest usage
+ // time of the toggle.
+--- a/third_party/dawn/src/dawn/native/Buffer.cpp
++++ b/third_party/dawn/src/dawn/native/Buffer.cpp
+@@ -37,6 +37,7 @@
+ 
+ #include "absl/container/flat_hash_map.h"
+ #include "absl/strings/str_format.h"
++#include "dawn/native/DawnNative.h"
+ #include "dawn/native/ObjectType_autogen.h"
+ #include "dawn/native/ValidationUtils_autogen.h"
+ #include "dawn/platform/DawnPlatform.h"
+@@ -568,6 +569,9 @@
+         }
+     }
+ 
++    if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
++        observer->OnBufferDestroyed(ToAPI(this));
++    }
+     mTexelBufferViews.Destroy(DestroyReason::EarlyDestroy);
+ }
+ 
+@@ -955,12 +959,23 @@
+ }
+ 
+ MaybeValError BufferBase::Unmap(bool forDestroy) {
++    auto notifyUncertainWrite = [&] {
++        if (!forDestroy && mMapSize != 0) {
++            if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
++                observer->OnBufferWrite(ToAPI(this), mMapOffset, mMapSize,
++                                        GlintBufferWriteKind::Uncertain);
++            }
++        }
++    };
+     switch (mState.load(std::memory_order::acquire)) {
+         case BufferState::Mapped:
+             DAWN_TRY(TransitionState(BufferState::Mapped, BufferState::InUse));
+             mMappedRange = {};
+             UnmapImpl(BufferState::Mapped,
+                       forDestroy ? BufferState::Destroyed : BufferState::Unmapped);
++            if (bool{mMapMode & wgpu::MapMode::Write}) {
++                notifyUncertainWrite();
++            }
+             break;
+         case BufferState::MappedAtCreation:
+             DAWN_TRY(TransitionState(BufferState::MappedAtCreation, BufferState::InUse));
+@@ -980,6 +995,7 @@
+                 UnmapImpl(BufferState::MappedAtCreation,
+                           forDestroy ? BufferState::Destroyed : BufferState::Unmapped);
+             }
++            notifyUncertainWrite();
+             break;
+         case BufferState::InUse:
+             return ConcurrentUseError();
+--- a/third_party/dawn/src/dawn/native/BUILD.gn
++++ b/third_party/dawn/src/dawn/native/BUILD.gn
+@@ -619,6 +619,10 @@
+       "d3d12/D3D12Info.h",
+       "d3d12/DeviceD3D12.cpp",
+       "d3d12/DeviceD3D12.h",
++      "d3d12/GlintTextureReadbackD3D12.cpp",
++      "d3d12/GlintTextureReadbackD3D12.h",
++      "d3d12/glint/texture_capture.cc",
++      "d3d12/glint/texture_capture.h",
+       "d3d12/Forward.h",
+       "d3d12/GPUDescriptorHeapAllocationD3D12.cpp",
+       "d3d12/GPUDescriptorHeapAllocationD3D12.h",
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -46,6 +46,7 @@
+ #include "src/dawn/native/d3d12/BindGroupLayoutD3D12.h"
+ #include "src/dawn/native/d3d12/ComputePipelineD3D12.h"
+ #include "src/dawn/native/d3d12/DeviceD3D12.h"
++#include "src/dawn/native/d3d12/GlintTextureReadbackD3D12.h"
+ #include "src/dawn/native/d3d12/ImmediatesLayoutD3D12.h"
+ #include "src/dawn/native/d3d12/PipelineLayoutD3D12.h"
+ #include "src/dawn/native/d3d12/PlatformFunctionsD3D12.h"
+@@ -1078,6 +1079,11 @@
+                         dstBuffer->GetD3D12Resource(), copy->destinationOffset,
+                         srcBuffer->GetD3D12Resource(), copy->sourceOffset, copy->size);
+                 }
++                if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
++                    observer->OnBufferToBufferCopy(ToAPI(copy->source.Get()), copy->sourceOffset,
++                                                   ToAPI(copy->destination.Get()),
++                                                   copy->destinationOffset, copy->size);
++                }
+                 break;
+             }
+ 
+@@ -1143,15 +1149,59 @@
+                 buffer->TrackUsageAndTransitionNow(commandContext, wgpu::BufferUsage::CopyDst);
+ 
+                 const TypedTexelBlockInfo& blockInfo = GetBlockInfo(copy->source);
++                auto observer = GetDevice()->GetGlintReadbackObserver();
++                std::unique_ptr<GlintReadbackSnapshot> snapshot;
++                GlintTextureToBufferCopy notification;
++                if (observer) {
++                    notification.destination = ToAPI(copy->destination.buffer.Get());
++                    notification.destinationOffset = copy->destination.offset;
++                    notification.destinationRowPitch =
++                        uint64_t{blockInfo.ToBytes(copy->destination.blocksPerRow)};
++                    notification.width = dchecked_cast<uint32_t>(copy->copySize.width);
++                    notification.height = dchecked_cast<uint32_t>(copy->copySize.height);
++                    notification.sourceX = dchecked_cast<uint32_t>(copy->source.origin.x);
++                    notification.sourceY = dchecked_cast<uint32_t>(copy->source.origin.y);
++                    const auto format = texture->GetFormat().format;
++                    const auto resource = texture->GetD3D12Resource()->GetDesc();
++                    const bool capturable =
++                        copy->source.mipLevel == 0 && copy->source.origin.z == TexelCount{0u} &&
++                        copy->copySize.depthOrArrayLayers == TexelCount{1u} &&
++                        resource.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
++                        resource.DepthOrArraySize == 1 && resource.MipLevels == 1 &&
++                        resource.SampleDesc.Count == 1 &&
++                        (format == wgpu::TextureFormat::RGBA8Unorm ||
++                         format == wgpu::TextureFormat::BGRA8Unorm);
++                    if (capturable) {
++                        notification.format = format == wgpu::TextureFormat::BGRA8Unorm
++                                                  ? GlintReadbackFormat::Bgra8Unorm
++                                                  : GlintReadbackFormat::Rgba8Unorm;
++                        auto pending = RecordGlintNativeTextureSnapshot(ToBackend(GetDevice()),
++                                                                        commandContext, texture);
++                        if (pending.IsError()) {
++                            observer->OnTextureToBufferCopy(notification, nullptr);
++                            return pending.AcquireError();
++                        }
++                        snapshot = pending.AcquireSuccess();
++                    }
++                }
+                 if (ShouldCopyUsingTemporaryBuffer(GetDevice(), copy->destination, copy->source)) {
+-                    DAWN_TRY(RecordBufferTextureCopyWithTemporaryBuffer(
++                    auto copied = RecordBufferTextureCopyWithTemporaryBuffer(
+                         commandContext, BufferTextureCopyDirection::T2B, copy->destination,
+-                        copy->source, blockInfo.ToBlock(copy->copySize)));
+-                    break;
+-                }
+-                RecordBufferTextureCopy(BufferTextureCopyDirection::T2B, commandList,
+-                                        copy->destination, copy->source,
+-                                        blockInfo.ToBlock(copy->copySize));
++                        copy->source, blockInfo.ToBlock(copy->copySize));
++                    if (copied.IsError()) {
++                        if (observer) {
++                            observer->OnTextureToBufferCopy(notification, nullptr);
++                        }
++                        return copied.AcquireError();
++                    }
++                } else {
++                    RecordBufferTextureCopy(BufferTextureCopyDirection::T2B, commandList,
++                                            copy->destination, copy->source,
++                                            blockInfo.ToBlock(copy->copySize));
++                }
++                if (observer) {
++                    observer->OnTextureToBufferCopy(notification, std::move(snapshot));
++                }
+ 
+                 break;
+             }
+@@ -1306,6 +1356,10 @@
+                                                        cmd->offset, cmd->size));
+                 }
+ 
++                if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
++                    observer->OnBufferWrite(ToAPI(cmd->buffer.Get()), cmd->offset, cmd->size,
++                                            GlintBufferWriteKind::KnownBytes);
++                }
+                 break;
+             }
+ 
+@@ -1419,6 +1473,10 @@
+                             reservation.offsetInBuffer, data.size());
+                         return {};
+                     }));
++                if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
++                    observer->OnBufferWrite(ToAPI(write->buffer.Get()), offset, data.size(),
++                                            GlintBufferWriteKind::KnownBytes);
++                }
+                 break;
+             }
+ 
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.cpp
+@@ -121,6 +121,11 @@
+ 
+     ID3D12CommandList* d3d12CommandList = GetCommandList();
+     commandQueue->ExecuteCommandLists(1, &d3d12CommandList);
++    // Publish only after the real command list was submitted. Fence completion
++    // is a separate mandatory gate before reading any capture bytes.
++    for (const auto& marker : mGlintReadbackSubmissions) {
++        marker->store(true, std::memory_order_release);
++    }
+ 
+     return {};
+ }
+@@ -151,6 +156,13 @@
+     return mD3d12CommandList4.Get();
+ }
+ 
++void CommandRecordingContext::AddGlintReadbackSubmission(
++    std::shared_ptr<std::atomic<bool>> marker) {
++    DAWN_ASSERT(marker);
++    mGlintReadbackSubmissions.push_back(std::move(marker));
++    SetNeedsSubmit();
++}
++
+ void CommandRecordingContext::Release() {
+     mD3d12CommandList.Reset();
+     mD3d12CommandList1.Reset();
+@@ -162,6 +174,7 @@
+     mSharedTextures.clear();
+     mHeapsPendingUsage.clear();
+     mTempBuffers.clear();
++    mGlintReadbackSubmissions.clear();
+ 
+     ReleaseKeyedMutexes();
+ }
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.h
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandRecordingContext.h
+@@ -27,6 +27,8 @@
+ #ifndef SRC_DAWN_NATIVE_D3D12_COMMANDRECORDINGCONTEXT_H_
+ #define SRC_DAWN_NATIVE_D3D12_COMMANDRECORDINGCONTEXT_H_
+ 
++#include <atomic>
++#include <memory>
+ #include <vector>
+ 
+ #include "absl/container/flat_hash_set.h"
+@@ -59,6 +61,7 @@
+     void TrackHeapUsage(Heap* heap, ExecutionSerial serial);
+ 
+     void AddToTempBuffers(Ref<Buffer> tempBuffer);
++    void AddGlintReadbackSubmission(std::shared_ptr<std::atomic<bool>> marker);
+ 
+     MaybeError AcquireKeyedMutex(Ref<d3d::KeyedMutex> keyedMutex);
+ 
+@@ -74,6 +77,7 @@
+     absl::flat_hash_set<Ref<d3d::KeyedMutex>> mAcquiredKeyedMutexes;
+     std::vector<Heap*> mHeapsPendingUsage;
+     std::vector<Ref<Buffer>> mTempBuffers;
++    std::vector<std::shared_ptr<std::atomic<bool>>> mGlintReadbackSubmissions;
+ };
+ }  // namespace dawn::native::d3d12
+ 
+--- a/third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.cpp
+@@ -64,6 +64,7 @@
+ #include "src/dawn/native/d3d12/StagingDescriptorAllocatorD3D12.h"
+ #include "src/dawn/native/d3d12/SwapChainD3D12.h"
+ #include "src/dawn/native/d3d12/UtilsD3D12.h"
++#include "src/dawn/native/d3d12/glint/texture_capture.h"
+ #include "src/dawn/platform/tracing/TraceEvent.h"
+ #include "src/utils/compiler.h"
+ 
+@@ -77,6 +78,8 @@
+ static constexpr uint64_t kZeroBufferSize = 1024ULL * 1024 * 4;  // 4 Mb
+ 
+ static constexpr uint64_t kMaxDebugMessagesToPrint = 5;
++// Candidate quota per native device, not per individual capture request.
++static constexpr uint64_t kGlintReadbackAllocationBudget = 64ULL * 1024 * 1024;
+ }  // namespace
+ 
+ // static
+@@ -223,7 +226,9 @@
+                const UnpackedPtr<DeviceDescriptor>& descriptor,
+                const TogglesState& deviceToggles,
+                Ref<DeviceBase::DeviceLostEvent>&& lostEvent)
+-    : Base(adapter, descriptor, deviceToggles, std::move(lostEvent)) {}
++    : Base(adapter, descriptor, deviceToggles, std::move(lostEvent)),
++      mGlintReadbackBudget(std::make_shared<glint::candidate::d3d12::CaptureMemoryBudget>(
++          kGlintReadbackAllocationBudget)) {}
+ 
+ Device::~Device() = default;
+ 
+--- a/third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.h
++++ b/third_party/dawn/src/dawn/native/d3d12/DeviceD3D12.h
+@@ -41,6 +41,10 @@
+ #include "src/dawn/native/d3d12/ResourceAllocatorManagerD3D12.h"
+ #include "src/dawn/native/d3d12/TextureD3D12.h"
+ 
++namespace glint::candidate::d3d12 {
++class CaptureMemoryBudget;
++}
++
+ namespace dawn::native::d3d12 {
+ 
+ class PlatformFunctions;
+@@ -92,6 +96,8 @@
+     const D3D12DeviceInfo& GetDeviceInfo() const;
+ 
+     void ReferenceUntilUnused(ComPtr<IUnknown> object);
++    const std::shared_ptr<glint::candidate::d3d12::CaptureMemoryBudget>&
++    GetGlintReadbackBudget() const { return mGlintReadbackBudget; }
+ 
+     MaybeError CopyFromStagingToBuffer(BufferBase* source,
+                                        uint64_t sourceOffset,
+@@ -248,6 +254,7 @@
+     ComPtr<ID3D12CommandSignature> mDrawIndirectSignature;
+     ComPtr<ID3D12CommandSignature> mDrawIndexedIndirectSignature;
+ 
++    std::shared_ptr<glint::candidate::d3d12::CaptureMemoryBudget> mGlintReadbackBudget;
+     MutexProtected<SerialQueue<ExecutionSerial, ComPtr<IUnknown>>> mUsedComObjectRefs;
+ 
+     std::unique_ptr<MutexProtected<ResourceAllocatorManager>> mResourceAllocatorManager;
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.cc
+@@ -0,0 +1,274 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "texture_capture.h"
++
++#include <limits>
++#include <new>
++#include <utility>
++
++namespace glint::candidate::d3d12 {
++bool CaptureMemoryBudget::Reserve(uint64_t bytes) {
++    if (bytes == 0 || bytes > limit_bytes_) {
++        return false;
++    }
++    uint64_t used = used_bytes_.load(std::memory_order_relaxed);
++    do {
++        if (used > limit_bytes_ - bytes) {
++            return false;
++        }
++    } while (!used_bytes_.compare_exchange_weak(used, used + bytes,
++                                               std::memory_order_acq_rel,
++                                               std::memory_order_relaxed));
++    return true;
++}
++
++void CaptureMemoryBudget::Release(uint64_t bytes) {
++    used_bytes_.fetch_sub(bytes, std::memory_order_acq_rel);
++}
++
++// Dawn's ReferenceUntilUnused accepts IUnknown. This object keeps the quota and
++// actual GPU allocation together without adding a dependency on Blink or GPU common.
++class CaptureRetirement final : public IUnknown {
++  public:
++    CaptureRetirement(std::shared_ptr<CaptureMemoryBudget> budget, uint64_t bytes)
++        : budget_(std::move(budget)), bytes_(bytes) {}
++    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** result) override {
++        if (!result) {
++            return E_POINTER;
++        }
++        *result = nullptr;
++        if (iid != __uuidof(IUnknown)) {
++            return E_NOINTERFACE;
++        }
++        *result = static_cast<IUnknown*>(this);
++        AddRef();
++        return S_OK;
++    }
++    ULONG STDMETHODCALLTYPE AddRef() override {
++        return references_.fetch_add(1, std::memory_order_relaxed) + 1;
++    }
++    ULONG STDMETHODCALLTYPE Release() override {
++        const ULONG remaining = references_.fetch_sub(1, std::memory_order_acq_rel) - 1;
++        if (remaining == 0) {
++            delete this;
++        }
++        return remaining;
++    }
++    void SetResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource) {
++        resource_ = std::move(resource);
++    }
++
++  private:
++    ~CaptureRetirement() {
++        resource_.Reset();
++        budget_->Release(bytes_);
++    }
++    std::atomic<ULONG> references_{1};
++    std::shared_ptr<CaptureMemoryBudget> budget_;
++    const uint64_t bytes_;
++    Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
++};
++
++HRESULT TextureCapture::Record(ID3D12Device* device,
++                               ID3D12GraphicsCommandList* commands,
++                               ID3D12Resource* texture,
++                               ID3D12Fence* completion_fence,
++                               uint64_t completion_value,
++                               uint64_t allocation_budget,
++                               std::unique_ptr<TextureCapture>* result) {
++    return RecordImpl(device, commands, texture, completion_fence, completion_value,
++                      allocation_budget, nullptr, result);
++}
++
++HRESULT TextureCapture::RecordBudgeted(
++    ID3D12Device* device,
++    ID3D12GraphicsCommandList* commands,
++    ID3D12Resource* texture,
++    ID3D12Fence* completion_fence,
++    uint64_t completion_value,
++    const std::shared_ptr<CaptureMemoryBudget>& allocation_budget,
++    std::unique_ptr<TextureCapture>* result) {
++    if (!allocation_budget || allocation_budget->limit_bytes() == 0) {
++        return E_INVALIDARG;
++    }
++    return RecordImpl(device, commands, texture, completion_fence, completion_value,
++                      allocation_budget->limit_bytes(), allocation_budget, result);
++}
++
++HRESULT TextureCapture::RecordImpl(ID3D12Device* device,
++                               ID3D12GraphicsCommandList* commands,
++                               ID3D12Resource* texture,
++                               ID3D12Fence* completion_fence,
++                               uint64_t completion_value,
++                               uint64_t allocation_budget,
++                               const std::shared_ptr<CaptureMemoryBudget>& budget,
++                               std::unique_ptr<TextureCapture>* result) {
++    if (!result || *result) {
++        return E_INVALIDARG;
++    }
++    if (!device || !commands || !texture || !completion_fence || completion_value == 0 ||
++        completion_value == std::numeric_limits<uint64_t>::max() || allocation_budget == 0) {
++        return E_INVALIDARG;
++    }
++    auto source = texture->GetDesc();
++    const uint64_t prior_completion = completion_fence->GetCompletedValue();
++    if (prior_completion == std::numeric_limits<uint64_t>::max()) {
++        return DXGI_ERROR_DEVICE_REMOVED;
++    }
++    if (prior_completion >= completion_value) {
++        return E_INVALIDARG;
++    }
++    if (source.Format == DXGI_FORMAT_R8G8B8A8_TYPELESS) {
++        source.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
++    } else if (source.Format == DXGI_FORMAT_B8G8R8A8_TYPELESS) {
++        source.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
++    }
++    if (source.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D || source.Width == 0 ||
++        source.Height == 0 || source.DepthOrArraySize != 1 || source.MipLevels != 1 ||
++        source.SampleDesc.Count != 1 ||
++        (source.Format != DXGI_FORMAT_R8G8B8A8_UNORM &&
++         source.Format != DXGI_FORMAT_B8G8R8A8_UNORM) ||
++        source.Width > std::numeric_limits<uint32_t>::max() / 4) {
++        return E_INVALIDARG;
++    }
++    // A signal from another device must never authorize reading this resource.
++    Microsoft::WRL::ComPtr<ID3D12Device> texture_device, commands_device, fence_device;
++    HRESULT hr = texture->GetDevice(IID_PPV_ARGS(&texture_device));
++    if (FAILED(hr)) {
++        return hr;
++    }
++    hr = commands->GetDevice(IID_PPV_ARGS(&commands_device));
++    if (FAILED(hr)) {
++        return hr;
++    }
++    hr = completion_fence->GetDevice(IID_PPV_ARGS(&fence_device));
++    if (FAILED(hr)) {
++        return hr;
++    }
++    if (texture_device.Get() != device || commands_device.Get() != device ||
++        fence_device.Get() != device) {
++        return E_INVALIDARG;
++    }
++    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
++    UINT rows = 0;
++    UINT64 row_bytes = 0, total_bytes = 0;
++    device->GetCopyableFootprints(&source, 0, 1, 0, &footprint, &rows, &row_bytes, &total_bytes);
++    if (rows != source.Height || row_bytes != source.Width * 4 || footprint.Offset != 0 ||
++        footprint.Footprint.Depth != 1 || footprint.Footprint.RowPitch < row_bytes ||
++        footprint.Footprint.RowPitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT != 0) {
++        return E_INVALIDARG;
++    }
++    const uint64_t mapped_bytes = static_cast<uint64_t>(footprint.Footprint.RowPitch) * rows;
++    if (total_bytes > mapped_bytes || mapped_bytes == 0 ||
++        mapped_bytes > std::numeric_limits<size_t>::max() || mapped_bytes > allocation_budget) {
++        return E_OUTOFMEMORY;
++    }
++    D3D12_RESOURCE_DESC destination{};
++    destination.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
++    destination.Width = mapped_bytes;
++    destination.Height = 1;
++    destination.DepthOrArraySize = 1;
++    destination.MipLevels = 1;
++    destination.SampleDesc.Count = 1;
++    destination.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
++    const auto allocation = device->GetResourceAllocationInfo(0, 1, &destination);
++    if (allocation.SizeInBytes == std::numeric_limits<uint64_t>::max() ||
++        allocation.SizeInBytes == 0 || allocation.SizeInBytes > allocation_budget) {
++        return E_OUTOFMEMORY;
++    }
++    Microsoft::WRL::ComPtr<CaptureRetirement> retirement;
++    if (budget) {
++        if (!budget->Reserve(allocation.SizeInBytes)) {
++            return E_OUTOFMEMORY;
++        }
++        auto* hold = new (std::nothrow) CaptureRetirement(budget, allocation.SizeInBytes);
++        if (!hold) {
++            budget->Release(allocation.SizeInBytes);
++            return E_OUTOFMEMORY;
++        }
++        retirement.Attach(hold);
++    }
++    std::unique_ptr<TextureCapture> capture(new (std::nothrow) TextureCapture());
++    if (!capture) {
++        return E_OUTOFMEMORY;
++    }
++    D3D12_HEAP_PROPERTIES heap{};
++    heap.Type = D3D12_HEAP_TYPE_READBACK;
++    heap.CreationNodeMask = heap.VisibleNodeMask = 1;
++    hr = device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &destination,
++                                         D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
++                                         IID_PPV_ARGS(&capture->resource_));
++    if (FAILED(hr)) {
++        return hr;
++    }
++    if (retirement) {
++        retirement->SetResource(capture->resource_);
++        capture->retirement_ = retirement;
++    }
++    void* mapped = nullptr;
++    D3D12_RANGE read_range{0, static_cast<SIZE_T>(mapped_bytes)};
++    hr = capture->resource_->Map(0, &read_range, &mapped);
++    if (FAILED(hr)) {
++        return hr;
++    }
++    if (!mapped) {
++        capture->resource_->Unmap(0, nullptr);
++        return E_FAIL;
++    }
++    capture->mapped_ = std::span<const uint8_t>(static_cast<const uint8_t*>(mapped),
++                                                static_cast<size_t>(mapped_bytes));
++    capture->submitted_ = std::make_shared<std::atomic<bool>>(false);
++    capture->device_ = device;
++    capture->fence_ = completion_fence;
++    capture->completion_value_ = completion_value;
++    capture->allocation_bytes_ = allocation.SizeInBytes;
++    capture->width_ = static_cast<uint32_t>(source.Width);
++    capture->height_ = source.Height;
++    capture->row_pitch_ = footprint.Footprint.RowPitch;
++    capture->format_ = source.Format;
++    D3D12_TEXTURE_COPY_LOCATION destination_location{};
++    destination_location.pResource = capture->resource_.Get();
++    destination_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
++    destination_location.PlacedFootprint = footprint;
++    D3D12_TEXTURE_COPY_LOCATION source_location{};
++    source_location.pResource = texture;
++    source_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
++    source_location.SubresourceIndex = 0;
++    commands->CopyTextureRegion(&destination_location, 0, 0, 0, &source_location, nullptr);
++    *result = std::move(capture);
++    return S_OK;
++}
++
++TextureCapture::~TextureCapture() {
++    if (resource_ && !mapped_.empty()) {
++        D3D12_RANGE written{0, 0};
++        resource_->Unmap(0, &written);
++    }
++    // Drop the direct resource reference before the final quota-owning handle.
++    resource_.Reset();
++    retirement_.Reset();
++}
++
++HRESULT TextureCapture::ReadCompleted(std::span<const uint8_t>* result) const {
++    if (!result) {
++        return E_INVALIDARG;
++    }
++    *result = {};
++    if (!submitted_->load(std::memory_order_acquire)) {
++        return E_PENDING;
++    }
++    const HRESULT device_status = device_->GetDeviceRemovedReason();
++    if (FAILED(device_status)) {
++        return device_status;
++    }
++    const uint64_t completed = fence_->GetCompletedValue();
++    if (completed == std::numeric_limits<uint64_t>::max()) {
++        return DXGI_ERROR_DEVICE_REMOVED;
++    }
++    if (completed < completion_value_) {
++        return E_PENDING;
++    }
++    *result = mapped_;
++    return S_OK;
++}
++}  // namespace glint::candidate::d3d12
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/glint/texture_capture.h
+@@ -0,0 +1,91 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_D3D12_TEXTURE_CAPTURE_H_
++#define GLINT_D3D12_TEXTURE_CAPTURE_H_
++
++#include <d3d12.h>
++#include <wrl/client.h>
++
++#include <atomic>
++#include <cstddef>
++#include <cstdint>
++#include <memory>
++#include <span>
++
++namespace glint::candidate::d3d12 {
++class CaptureRetirement;
++
++class CaptureMemoryBudget {
++  public:
++    explicit CaptureMemoryBudget(uint64_t limit_bytes) : limit_bytes_(limit_bytes) {}
++    uint64_t limit_bytes() const { return limit_bytes_; }
++    uint64_t used_bytes() const { return used_bytes_.load(std::memory_order_acquire); }
++
++  private:
++    friend class TextureCapture;
++    friend class CaptureRetirement;
++    bool Reserve(uint64_t bytes);
++    void Release(uint64_t bytes);
++    const uint64_t limit_bytes_;
++    std::atomic<uint64_t> used_bytes_{0};
++};
++
++class TextureCapture {
++  public:
++    // Caller owns validation, source initialization and COPY_SOURCE transition.
++    // Mark submission only after ExecuteCommandLists. Retain the returned resource
++    // until that submission retires, even if this CPU capture is cancelled early.
++    static HRESULT Record(ID3D12Device* device,
++                          ID3D12GraphicsCommandList* commands,
++                          ID3D12Resource* texture,
++                          ID3D12Fence* completion_fence,
++                          uint64_t completion_value,
++                          uint64_t allocation_budget,
++                          std::unique_ptr<TextureCapture>* result);
++    // The caller must enqueue retirement_handle(), not just retirement_resource().
++    // Aggregate allocation bytes stay charged while either CPU or GPU owns the handle.
++    static HRESULT RecordBudgeted(ID3D12Device* device,
++                                  ID3D12GraphicsCommandList* commands,
++                                  ID3D12Resource* texture,
++                                  ID3D12Fence* completion_fence,
++                                  uint64_t completion_value,
++                                  const std::shared_ptr<CaptureMemoryBudget>& allocation_budget,
++                                  std::unique_ptr<TextureCapture>* result);
++    ~TextureCapture();
++    TextureCapture(const TextureCapture&) = delete;
++    TextureCapture& operator=(const TextureCapture&) = delete;
++    HRESULT ReadCompleted(std::span<const uint8_t>* result) const;
++    std::shared_ptr<std::atomic<bool>> submission_marker() const { return submitted_; }
++    Microsoft::WRL::ComPtr<ID3D12Resource> retirement_resource() const { return resource_; }
++    Microsoft::WRL::ComPtr<IUnknown> retirement_handle() const { return retirement_; }
++    uint32_t width() const { return width_; }
++    uint32_t height() const { return height_; }
++    uint32_t row_pitch() const { return row_pitch_; }
++    uint64_t allocation_bytes() const { return allocation_bytes_; }
++    DXGI_FORMAT format() const { return format_; }
++
++  private:
++    static HRESULT RecordImpl(ID3D12Device* device,
++                              ID3D12GraphicsCommandList* commands,
++                              ID3D12Resource* texture,
++                              ID3D12Fence* completion_fence,
++                              uint64_t completion_value,
++                              uint64_t allocation_limit,
++                              const std::shared_ptr<CaptureMemoryBudget>& budget,
++                              std::unique_ptr<TextureCapture>* result);
++    TextureCapture() = default;
++    Microsoft::WRL::ComPtr<ID3D12Device> device_;
++    Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
++    Microsoft::WRL::ComPtr<ID3D12Fence> fence_;
++    Microsoft::WRL::ComPtr<IUnknown> retirement_;
++    std::shared_ptr<std::atomic<bool>> submitted_;
++    std::span<const uint8_t> mapped_;
++    uint64_t completion_value_ = 0;
++    uint64_t allocation_bytes_ = 0;
++    uint32_t width_ = 0;
++    uint32_t height_ = 0;
++    uint32_t row_pitch_ = 0;
++    DXGI_FORMAT format_ = DXGI_FORMAT_UNKNOWN;
++};
++}  // namespace glint::candidate::d3d12
++#endif
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.cpp
+@@ -0,0 +1,78 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "src/dawn/native/d3d12/GlintTextureReadbackD3D12.h"
++
++#include "src/dawn/native/d3d/D3DError.h"
++#include "src/dawn/native/d3d12/CommandRecordingContext.h"
++#include "src/dawn/native/d3d12/DeviceD3D12.h"
++#include "src/dawn/native/d3d12/QueueD3D12.h"
++#include "src/dawn/native/d3d12/SharedFenceD3D12.h"
++#include "src/dawn/native/d3d12/TextureD3D12.h"
++namespace dawn::native::d3d12 {
++namespace {
++class NativeGlintReadbackSnapshot final : public GlintReadbackSnapshot {
++  public:
++    explicit NativeGlintReadbackSnapshot(
++        std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture)
++        : mCapture(std::move(capture)) {}
++    GlintReadbackStatus Read(std::span<const uint8_t>* pixels) const override {
++        const HRESULT result = mCapture->ReadCompleted(pixels);
++        if (result == E_PENDING) {
++            return GlintReadbackStatus::Pending;
++        }
++        return SUCCEEDED(result) ? GlintReadbackStatus::Ready : GlintReadbackStatus::Failed;
++    }
++    uint32_t GetWidth() const override { return mCapture->width(); }
++    uint32_t GetHeight() const override { return mCapture->height(); }
++    uint32_t GetRowPitch() const override { return mCapture->row_pitch(); }
++    GlintReadbackFormat GetFormat() const override {
++        return mCapture->format() == DXGI_FORMAT_B8G8R8A8_UNORM ? GlintReadbackFormat::Bgra8Unorm
++                                                                : GlintReadbackFormat::Rgba8Unorm;
++    }
++
++  private:
++    std::unique_ptr<glint::candidate::d3d12::TextureCapture> mCapture;
++};
++}  // namespace
++
++ResultOrError<std::unique_ptr<glint::candidate::d3d12::TextureCapture>>
++RecordGlintTextureReadbackSnapshot(Device* device,
++                                   CommandRecordingContext* context,
++                                   Texture* texture) {
++    DAWN_INTERNAL_ERROR_IF(!device || !context || !texture || texture->GetDevice() != device,
++                           "Invalid Glint texture capture owner.");
++    DAWN_ASSERT(device->IsLockedByCurrentThreadIfNeeded());
++    DAWN_INTERNAL_ERROR_IF(!texture->HasAccess() || !texture->GetD3D12Resource(),
++                           "Glint texture capture has no resource access.");
++    const auto format = texture->GetFormat().format;
++    DAWN_INTERNAL_ERROR_IF(
++        format != wgpu::TextureFormat::RGBA8Unorm && format != wgpu::TextureFormat::BGRA8Unorm,
++        "Unsupported Glint texture capture format.");
++    DAWN_INTERNAL_ERROR_IF(!(texture->GetInternalUsage() & wgpu::TextureUsage::CopySrc),
++                           "Glint texture capture requires native copy access.");
++    const auto range = SubresourceRange::SingleMipAndLayer(0, 0, Aspect::Color);
++    DAWN_TRY(texture->EnsureSubresourceContentInitialized(context, range));
++    texture->TrackUsageAndTransitionNow(context, wgpu::TextureUsage::CopySrc, range);
++    auto* queue = ToBackend(device->GetQueue());
++    std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture;
++    DAWN_TRY(CheckHRESULT(
++        glint::candidate::d3d12::TextureCapture::RecordBudgeted(
++            device->GetD3D12Device(), context->GetCommandList(), texture->GetD3D12Resource(),
++            queue->GetSharedFence()->GetD3DFence(), uint64_t{queue->GetPendingCommandSerial()},
++            device->GetGlintReadbackBudget(), &capture),
++        "Glint full texture capture"));
++    // GPU ownership survives cancellation of the CPU snapshot ticket.
++    device->ReferenceUntilUnused(capture->retirement_handle());
++    context->AddGlintReadbackSubmission(capture->submission_marker());
++    return std::move(capture);
++}
++ResultOrError<std::unique_ptr<GlintReadbackSnapshot>> RecordGlintNativeTextureSnapshot(
++    Device* device,
++    CommandRecordingContext* context,
++    Texture* texture) {
++    std::unique_ptr<glint::candidate::d3d12::TextureCapture> capture;
++    DAWN_TRY_ASSIGN(capture, RecordGlintTextureReadbackSnapshot(device, context, texture));
++    return std::unique_ptr<GlintReadbackSnapshot>(
++        new NativeGlintReadbackSnapshot(std::move(capture)));
++}
++}  // namespace dawn::native::d3d12
+--- /dev/null
++++ b/third_party/dawn/src/dawn/native/d3d12/GlintTextureReadbackD3D12.h
+@@ -0,0 +1,25 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef SRC_DAWN_NATIVE_D3D12_GLINTTEXTUREREADBACKD3D12_H_
++#define SRC_DAWN_NATIVE_D3D12_GLINTTEXTUREREADBACKD3D12_H_
++#include <memory>
++
++#include "dawn/native/DawnNative.h"
++#include "src/dawn/native/Error.h"
++#include "src/dawn/native/d3d12/glint/texture_capture.h"
++namespace dawn::native::d3d12 {
++class Device;
++class Texture;
++class CommandRecordingContext;
++// Native validated recording under the device lock. Device quota is retained
++// through the existing COM retirement queue; caller still registers provenance.
++ResultOrError<std::unique_ptr<glint::candidate::d3d12::TextureCapture>>
++RecordGlintTextureReadbackSnapshot(Device* device,
++                                   CommandRecordingContext* context,
++                                   Texture* texture);
++ResultOrError<std::unique_ptr<GlintReadbackSnapshot>> RecordGlintNativeTextureSnapshot(
++    Device* device,
++    CommandRecordingContext* context,
++    Texture* texture);
++}  // namespace dawn::native::d3d12
++#endif
+--- a/third_party/dawn/src/dawn/native/DawnNative.cpp
++++ b/third_party/dawn/src/dawn/native/DawnNative.cpp
+@@ -44,6 +44,16 @@
+ 
+ namespace dawn::native {
+ 
++bool InstallGlintReadbackObserver(WGPUDevice device,
++                                  std::shared_ptr<GlintReadbackObserver> observer) {
++    if (!device || !observer) {
++        return false;
++    }
++    auto* nativeDevice = FromAPI(device);
++    auto guard = nativeDevice->GetGuard();
++    return nativeDevice->InstallGlintReadbackObserver(std::move(observer));
++}
++
+ const char MemoryDump::kNameSize[] = "size";
+ const char MemoryDump::kNameObjectCount[] = "object_count";
+ const char MemoryDump::kUnitsBytes[] = "bytes";
+--- a/third_party/dawn/src/dawn/native/Device.cpp
++++ b/third_party/dawn/src/dawn/native/Device.cpp
+@@ -97,6 +97,25 @@
+ 
+ namespace dawn::native {
+ 
++bool DeviceBase::InstallGlintReadbackObserver(std::shared_ptr<GlintReadbackObserver> observer) {
++    DAWN_ASSERT(IsLockedByCurrentThreadIfNeeded());
++    if (!observer || IsLost() ||
++        GetPhysicalDevice()->GetBackendType() != wgpu::BackendType::D3D12) {
++        return false;
++    }
++    return mGlintReadbackObserver.Use([&](auto current) {
++        if (*current) {
++            return false;
++        }
++        *current = std::move(observer);
++        return true;
++    });
++}
++
++std::shared_ptr<GlintReadbackObserver> DeviceBase::GetGlintReadbackObserver() const {
++    return mGlintReadbackObserver.Use([](auto current) { return *current; });
++}
++
+ // DeviceBase sub-structures
+ 
+ struct DeviceBase::Caches {
+--- a/third_party/dawn/src/dawn/native/Device.h
++++ b/third_party/dawn/src/dawn/native/Device.h
+@@ -84,6 +84,7 @@
+ class BlobCache;
+ class CallbackTaskManager;
+ class DynamicUploader;
++class GlintReadbackObserver;
+ class ErrorScope;
+ class ErrorScopeStack;
+ class OwnedCompilationMessages;
+@@ -478,6 +479,8 @@
+     Ref<RenderPipelineBase> AddOrGetCachedRenderPipeline(Ref<RenderPipelineBase> renderPipeline);
+ 
+     void DumpMemoryStatistics(dawn::native::MemoryDump* dump) const;
++    bool InstallGlintReadbackObserver(std::shared_ptr<GlintReadbackObserver> observer);
++    std::shared_ptr<GlintReadbackObserver> GetGlintReadbackObserver() const;
+     MemoryUsageInfo ComputeEstimatedMemoryUsage() const;
+     bool ReduceMemoryUsage();
+     void PerformIdleTasks();
+@@ -644,6 +647,8 @@
+     MutexProtected<absl::flat_hash_map<ThreadUniqueId, std::unique_ptr<ErrorScopeStack>>>
+         mErrorScopeStacks;
+ 
++    MutexProtected<std::shared_ptr<GlintReadbackObserver>> mGlintReadbackObserver;
++
+     Ref<AdapterBase> mAdapter;
+ 
+     // The object caches aren't exposed in the header as they would require a lot of
+--- a/third_party/dawn/src/dawn/native/Queue.cpp
++++ b/third_party/dawn/src/dawn/native/Queue.cpp
+@@ -37,6 +37,7 @@
+ #include <vector>
+ 
+ #include "absl/cleanup/cleanup.h"
++#include "dawn/native/DawnNative.h"
+ #include "dawn/native/ObjectType_autogen.h"
+ #include "dawn/platform/DawnPlatform.h"
+ #include "partition_alloc/pointers/raw_ptr.h"
+@@ -332,7 +333,14 @@
+     DAWN_TRY(ValidateWriteBuffer(GetDevice(), buffer, bufferOffset, data.size()));
+     BufferBase::ScopedUseBuffer scopedUseBuffer;
+     DAWN_TRY_ASSIGN(scopedUseBuffer, buffer->ValidateCanUseOnQueueNow());
+-    return WriteBufferImpl(buffer, bufferOffset, data);
++    DAWN_TRY(WriteBufferImpl(buffer, bufferOffset, data));
++    if (!data.empty()) {
++        if (auto observer = GetDevice()->GetGlintReadbackObserver()) {
++            observer->OnBufferWrite(ToAPI(buffer), bufferOffset, data.size(),
++                                    GlintBufferWriteKind::KnownBytes);
++        }
++    }
++    return {};
+ }
+ 
+ MaybeError QueueBase::WriteBufferImpl(BufferBase* buffer,

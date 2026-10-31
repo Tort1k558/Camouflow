@@ -1,5 +1,16 @@
 # Glint architecture
 
+## Unselected trusted native copy / write notifications
+
+The [observer packet](drafts/webgpu-native-copy-hook/README.md) prepares a one-time
+D3D12 embedder registration, a native full-snapshot ticket before ROI recording,
+and post-recording delivery. Buffer-copy, literal writes, clears, uncertain mapped
+writes and destruction supply adjacent provenance events. Snapshot/quota core bytes
+are unchanged from the hardware-tested budget implementation. Nine translation
+units passed syntax checks; the 16-file replacement packet round-tripped exactly.
+No GPU-service observer is registered, map serialization is unprotected and shader
+taint is not implemented. These notifications are not runtime privacy protection.
+
 ## Unselected device-owned capture quota
 
 The [capture quota follow-up](drafts/webgpu-d3d12-capture/README.md) reserves actual

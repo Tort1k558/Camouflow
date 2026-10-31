@@ -24,6 +24,9 @@ each D3D12 `Device` one candidate **64 MiB** quota and reuses its existing
 seven-file capture packet. This is not a GPU-process-wide quota or a shipped limit.
 [Source hashes, hardware results and boundaries](../environment/webgpu-d3d12-budget-preparation.json).
 
+The [native observer follow-up](../webgpu-native-copy-hook/README.md) adds trusted
+copy/write notifications in a replacement packet. It is not registered or activated.
+
 The source-only upgrade is reversible; the original capture measurements below
 remain bound to their reconstructed pre-budget sources, not rewritten as new runs.
 
