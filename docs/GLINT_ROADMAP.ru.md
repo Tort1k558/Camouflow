@@ -38,6 +38,22 @@ receipt and 226 source inputs stayed unchanged; owned profiles/processes were re
 This calibrates the recovery probe only. Protected-policy, worker/iframe and
 001–116 recovery remain separate gates after compilation.
 
+The independent ready-mode extension now retains that separation after an actual
+GPU crash: the old runtime recovers, but its known protected PNG/direct/shader
+inconsistency still fails. The explicit full candidate's ready phase remains pending.
+
+Host source inspection now preserves the cloned Git index timestamp as well as
+its bytes. A newly dated copy could otherwise miss same-size edits under Git's
+racy-stat rules. Six focused regressions cover internal/external indices, optional
+locks and metadata-only concurrent changes; earlier source observations are
+reconstructed through an exact reversible archive, not rewritten.
+
+The complete corrected local suite passed **5,357 tests with one skip** in
+998.532 seconds; all 374 engine sources and 269 preserved runtime assets remained
+unchanged. Browser QA and downstream fixtures now have fresh v2 waiting snapshots,
+plus a separately queued full-candidate baseline/ready GPU-recovery gate. This is
+not a new compiled runtime or a replacement for completed remote CI.
+
 ## Actual direct and bundled native render inputs
 
 The [public Wire fixture](../native/drafts/webgpu-capture-retention/README.md)

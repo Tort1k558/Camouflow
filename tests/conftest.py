@@ -8,7 +8,26 @@ import pytest
 
 
 @pytest.fixture
-def diagnostic_sources_before_candidate(tmp_path):
+def native_build_before_index_mtime_fix(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'native-build-racy-index-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-index-mtime-fix'
+    target = base / record['source']
+    target.parent.mkdir(parents=True)
+    target.write_bytes((root / record['source']).read_bytes())
+    assert hashlib.sha256(target.read_bytes()).hexdigest() == record['after_sha256']
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    before = target.read_bytes()
+    assert hashlib.sha256(before).hexdigest() == record['before_sha256']
+    return {**record, 'before_bytes': before}
+
+
+@pytest.fixture
+def diagnostic_sources_before_candidate(tmp_path, native_build_before_index_mtime_fix):
     """Recover measured diagnostic sources without updating historical evidence."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -17,7 +36,9 @@ def diagnostic_sources_before_candidate(tmp_path):
     for row in record['sources']:
         target = base / row['source']
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes((root / row['source']).read_bytes())
+        target.write_bytes(native_build_before_index_mtime_fix['before_bytes']
+                           if row['source'] == native_build_before_index_mtime_fix['source']
+                           else (root / row['source']).read_bytes())
         assert hashlib.sha256(target.read_bytes()).hexdigest() == row['after_sha256']
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']

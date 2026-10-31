@@ -1,0 +1,164 @@
+--- a/collect.py
++++ b/collect.py
+@@ -1,4 +1,4 @@
+-"""Owned baseline WebGPU recovery after Browser.crashGpuProcess; never protected-policy admission."""
++"""Owned baseline/ready GPU-process recovery diagnostic; no production policy admission."""
+ import argparse
+ import asyncio
+ import base64
+@@ -24,6 +24,7 @@
+     parser.add_argument('--driver-stage', type=Path, required=True)
+     parser.add_argument('--work-dir', type=Path, required=True)
+     parser.add_argument('--candidate', choices=CANDIDATES, required=True)
++    parser.add_argument('--mode', choices=('baseline', 'ready'), required=True)
+     args = parser.parse_args(argv)
+     if not __debug__:
+         parser.error('Run without Python optimization; native diagnostics require assertions')
+@@ -60,6 +61,11 @@
+         bounded_bytes,
+         compare,
+         decode_png,
++        transport_arguments,
++    )
++    from scripts.verify_native_worker_startup import (
++        browser_arguments,
++        partitioning_argument,
+     )
+ 
+ 
+@@ -100,23 +106,57 @@
+         return value if isinstance(value, list) else [value]
+ 
+ 
+-    def validate_baseline(value):
+-        assert all(value.get(name) is True for name in ('measured', 'commandValidationPassed',
+-            'referenceMatched', 'shaderReferenceMatched', 'directShaderMatched', 'exportStable'))
++    def measure_pixels(value):
++        assert all(value.get(name) is True for name in ('measured', 'commandValidationPassed', 'exportStable'))
++        assert isinstance(value.get('rgbaBase64'), str) and len(value['rgbaBase64']) <= 2048
+         raw = base64.b64decode(value['rgbaBase64'], validate=True)
+         shader = bounded_bytes(value['shaderRGBA'], 1024)
+         png = decode_png(value['png'])
+         reference = bytes(channel for y in range(16) for x in range(16)
+                           for channel in ((x * 17) % 256, (y * 29 + 31) % 256,
+                                           (x * 43 + y * 11) % 256, 255))
+-        assert all(compare(data, reference) == {'changed_channels': 0, 'maximum_delta': 0}
+-                   for data in (raw, shader, png))
+-        return {'reference_matched': True, 'rgba_sha256': hashlib.sha256(raw).hexdigest(),
+-                'shader_sha256': hashlib.sha256(shader).hexdigest(), 'png_rgba_sha256': hashlib.sha256(png).hexdigest()}
++        deviations = {name: compare(data, reference) for name, data in
++                      (('direct', raw), ('shader', shader), ('png', png))}
++        if args.mode == 'baseline':
++            assert all(row == {'changed_channels': 0, 'maximum_delta': 0} for row in deviations.values())
++        else:
++            assert all(row['maximum_delta'] <= 1 for row in deviations.values())
++        return {'mode': args.mode, 'deviation_from_reference': deviations,
++                'readback_consistent': raw == shader == png,
++                'surface_noise_observed': deviations['png']['changed_channels'] > 0,
++                'rgba_sha256': hashlib.sha256(raw).hexdigest(),
++                'shader_sha256': hashlib.sha256(shader).hexdigest(),
++                'png_rgba_sha256': hashlib.sha256(png).hexdigest()}
+ 
+ 
+     async def observe(server):
++        discovery = NativeRuntime(owned / 'discovery', EXECUTABLE, ReadbackConfiguration(probe_mode='baseline'))
++        runtimes.append(discovery)
++        try:
++            discovered = await discovery.start(headless=True)
++            disabled = [value for value in await browser_arguments(discovered) if value.startswith('--disable-features=')]
++            assert len(disabled) == 1
++            original = disabled[0]
++            replacement = partitioning_argument([original])
++        finally:
++            await discovery.close()
++
++        class RecoveryConfiguration(ReadbackConfiguration):
++            def launch_arguments(self):
++                return transport_arguments(super().launch_arguments(), candidate_name=args.candidate, mode=args.mode)
++
++        runtime = NativeRuntime(owned / args.mode, EXECUTABLE, RecoveryConfiguration(probe_mode=args.mode,
++            derivation_mode='profile-identity', disabled_features_argument=replacement,
++            ignored_driver_argument=original))
++        runtimes.append(runtime)
+         context = await runtime.start(headless=True)
++        arguments = await browser_arguments(context)
++        assert replacement in arguments and (original == replacement or original not in arguments)
++        enabled = [name for value in arguments if value.startswith('--enable-features=')
++                   for name in value.partition('=')[2].split(',')]
++        transport = 'GlintWebGPUPolicyTransportCandidate' in enabled
++        assert transport == (args.candidate == 'upstream-156-webgpu' and args.mode == 'ready')
++        report['transport_feature_enabled'] = transport
+         page = await context.new_page()
+         crashes = []
+         page.on('crash', lambda *_: crashes.append(True))
+@@ -124,7 +164,7 @@
+         await page.goto(origin, wait_until='load')
+         await page.evaluate('globalThis.__ownedRecoveryMarker = 731921')
+         expression = 'async () => {' + PROBE.read_text(encoding='utf-8-sig') + '; return await probeWebGPU();}'
+-        report['before'] = validate_baseline(await asyncio.wait_for(page.evaluate(expression), 90))
++        report['before'] = measure_pixels(await asyncio.wait_for(page.evaluate(expression), 90))
+         report['armed'] = await page.evaluate('async () => {' + WATCH.read_text(encoding='utf-8-sig') + '; return await armOwnedGPURecovery();}')
+         assert report['armed'] == {'armed': True, 'initialCopyMatched': True, 'deviceLostCallbacks': 0}
+         assert context.browser is not None
+@@ -137,13 +177,16 @@
+                 'reason': 'unknown', 'oldMapRejectedWith': 'AbortError', 'oldMapState': 'unmapped'}
+             assert await page.evaluate('globalThis.__ownedRecoveryMarker') == 731921
+             assert not crashes and not page.is_closed() and page.url == origin
+-            report['after'] = validate_baseline(await asyncio.wait_for(page.evaluate(expression), 90))
++            report['after'] = measure_pixels(await asyncio.wait_for(page.evaluate(expression), 90))
+             report['after_browser_version'] = await session.send('Browser.getVersion')
+             assert report['before_browser_version'] == report['after_browser_version']
+             assert report['before'] == report['after']
+             await page.evaluate('globalThis.__glintOwnedGPURecovery.close()')
+             report.update(page_crashes=len(crashes), same_document_preserved=True,
+-                          actual_gpu_crash_command_completed=True, baseline_recovered=True)
++                          actual_gpu_crash_command_completed=True, document_recovered=True,
++                          policy_coherence_passed=(report['before']['readback_consistent']
++                              and report['after']['readback_consistent']
++                              and (args.mode == 'baseline' or report['after']['surface_noise_observed'])))
+         finally:
+             await session.detach()
+ 
+@@ -152,14 +195,14 @@
+         try:
+             await asyncio.wait_for(observe(server), 240)
+         finally:
+-            await runtime.close()
++            for runtime in reversed(runtimes):
++                await runtime.close()
+ 
+ 
+     report = {'schema': 1, 'passed': False, 'measurement_complete': False,
+-              'scope': __doc__, 'candidate': args.candidate, 'protected_policies_enabled': False,
++              'scope': __doc__, 'candidate': args.candidate, 'protected_policies_enabled': args.mode == 'ready', 'mode': args.mode,
+               'complete_candidate_verified': False, 'protected_policy_recovery_verified': False, 'privacy_admitted': False, 'production_admitted': False}
+-    runtime = NativeRuntime(owned / 'baseline', EXECUTABLE,
+-                            ReadbackConfiguration(probe_mode='baseline'))
++    runtimes = []
+     server = thread = None
+     inputs = assets = {}
+     receipt = driver_receipt = None
+@@ -202,7 +245,7 @@
+         except Exception as error:  # noqa: BLE001 - retain cleanup failure independently
+             report.update(server_cleanup_error=str(error), server_closed=False)
+         try:
+-            assert not runtime.has_resources
++            assert not any(runtime.has_resources for runtime in runtimes)
+             report['remaining_owned_processes'] = owned_processes()
+             assert not report['remaining_owned_processes']
+             report['runtime_resource_free'] = True
+@@ -220,12 +263,12 @@
+                 candidate_name=args.candidate) == receipt
+         except Exception as error:  # noqa: BLE001 - retain failed diagnostic and cleanup evidence
+             report.update(postguard_error=str(error), receipt_unchanged=False)
+-        report['passed'] = all(report.get(name) is True for name in ('measurement_complete', 'baseline_recovered',
++        report['passed'] = all(report.get(name) is True for name in ('measurement_complete', 'document_recovered', 'policy_coherence_passed',
+             'runtime_resource_free', 'owned_profiles_removed', 'input_postguards_passed',
+             'runtime_assets_unchanged', 'driver_unchanged', 'receipt_unchanged', 'server_closed'))
+         report['seconds'] = round(time.monotonic() - started, 3)
+         save()
+-    print(json.dumps({k: report.get(k) for k in ('passed', 'measurement_complete', 'baseline_recovered',
++    print(json.dumps({k: report.get(k) for k in ('passed', 'measurement_complete', 'document_recovered', 'policy_coherence_passed',
+         'runtime_resource_free', 'input_postguards_passed', 'runtime_assets_unchanged', 'error', 'cleanup_error')}))
+     return 0 if report['passed'] else 1
+ 

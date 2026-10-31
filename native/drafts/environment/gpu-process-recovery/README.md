@@ -36,7 +36,31 @@ collector refuses Chromium build-output paths and Python optimization. It uses
 only a fresh profile and an owned loopback page, not user sessions or accounts.
 No global GPU reset, process kill or security setting change is performed.
 
-## Not established
+## Independent ready-mode extension
+
+[`ready-mode.patch`](ready-mode.patch) extends a disposable source checkout, not
+the measured baseline collector. It requires explicit `--mode baseline|ready`,
+uses the existing partitioning/transport helpers and checks effective browser
+arguments. The new transport feature is requested only for the explicit
+`upstream-156-webgpu` ready phase with a matching receipt.
+
+The [extension control](ready-mode-observations.json) ran both modes on preserved
+001–076. Baseline passed. Ready recovered the document and retained the same
+pixels after GPU crash, but PNG still differed from direct/shader output in
+**384 channels by one level** for this profile. That gate correctly **failed**.
+This is not repaired protected WebGPU delivery or latest-candidate admission.
+
+Apply only in an independent source checkout on D:, after verifying its base hash:
+
+```powershell
+git -c core.autocrlf=false apply --directory=native/drafts/environment/gpu-process-recovery native/drafts/environment/gpu-process-recovery/ready-mode.patch
+```
+
+Verify the resulting collector hash before execution. These controls used a fresh
+Windows LF checkout; the three baseline runs above used the original measured
+working-tree layout. Source archives preserve both, without changing observations.
+
+## Remaining boundaries
 
 This is not the 001–116 candidate, protected-policy recovery, worker/iframe
 recovery, a physical GPU reset/TDR, hardware-adapter certification or a general

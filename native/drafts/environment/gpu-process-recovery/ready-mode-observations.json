@@ -1,0 +1,171 @@
+{
+  "schema": 1,
+  "scope": "Independent ready-mode extension calibrated on preserved 001-076 only; old protected consistency failure remains a failure after actual GPU crash",
+  "base_source": "collect.py",
+  "before_sha256": "adaf65818b02444a6c4232f150da5e2d05f6b8f39a893b0a65f3933ae7b9089a",
+  "after_sha256": "ec58274dbdc93c9b977f095a6eea89c33552e7baa8959474d3825f1ac797c8dc",
+  "patch": "ready-mode.patch",
+  "patch_sha256": "d694e92219fbe04522be02bb51b72d1721f015b6084955713c0140ab339d3ef8",
+  "watch_sha256": "822a7652f90c8e9dff658702021983ad2ef27b03114daaeecb19f45a906f501c",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "03b34a8d3786d9c313b89afc1609c032091656678f936ee7087d62fca40e1d00",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "ca69cc734d4829bcb2357012d77fdda0fb72130fe91f5cf48da3f67acb17d7b3",
+  "complete_probe_input_count": 226,
+  "complete_probe_input_snapshot_sha256": "b0c4e9640670afe91158dd8eec642eb3ca3b3e4c5cf69139d2367cee67025c91",
+  "source_snapshot_mixed_file_layout": "canonical LF checkout",
+  "native_build_at_measurement_sha256": "e4a96d9ec6d7229b031369e876bd3c3ec950540251dbbc949cca302c168fed7b",
+  "control_passed": true,
+  "latest_001_116_candidate_verified": false,
+  "protected_policy_recovery_admitted": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "modes": [
+    {
+      "mode": "baseline",
+      "passed": true,
+      "measurement_complete": true,
+      "protected_policies_enabled": false,
+      "transport_feature_enabled": false,
+      "before": {
+        "mode": "baseline",
+        "deviation_from_reference": {
+          "direct": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "shader": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "png": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          }
+        },
+        "readback_consistent": true,
+        "surface_noise_observed": false,
+        "rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "shader_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "png_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+      },
+      "after": {
+        "mode": "baseline",
+        "deviation_from_reference": {
+          "direct": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "shader": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "png": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          }
+        },
+        "readback_consistent": true,
+        "surface_noise_observed": false,
+        "rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "shader_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "png_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+      },
+      "loss": {
+        "initialCopyMatched": true,
+        "deviceLostCallbacks": 1,
+        "reason": "unknown",
+        "oldMapRejectedWith": "AbortError",
+        "oldMapState": "unmapped"
+      },
+      "document_recovered": true,
+      "policy_coherence_passed": true,
+      "runtime_asset_count": 269,
+      "runtime_assets_unchanged": true,
+      "input_postguards_passed": true,
+      "driver_unchanged": true,
+      "receipt_unchanged": true,
+      "server_closed": true,
+      "runtime_resource_free": true,
+      "owned_profiles_removed": true,
+      "remaining_owned_processes": [],
+      "seconds": 22.719,
+      "private_report_sha256": "0da4b2973a9463b338f5b5dff0e4662df4dfe8d70b5dab74ed6b7ca567e4eaaa",
+      "collector_returncode": 0
+    },
+    {
+      "mode": "ready",
+      "passed": false,
+      "measurement_complete": true,
+      "protected_policies_enabled": true,
+      "transport_feature_enabled": false,
+      "before": {
+        "mode": "ready",
+        "deviation_from_reference": {
+          "direct": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "shader": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "png": {
+            "changed_channels": 384,
+            "maximum_delta": 1
+          }
+        },
+        "readback_consistent": false,
+        "surface_noise_observed": true,
+        "rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "shader_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "png_rgba_sha256": "de008467b8c05b7fd159b7822f0c320f8f27b560e0e422e6b47c1b5c3c0cefd0"
+      },
+      "after": {
+        "mode": "ready",
+        "deviation_from_reference": {
+          "direct": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "shader": {
+            "changed_channels": 0,
+            "maximum_delta": 0
+          },
+          "png": {
+            "changed_channels": 384,
+            "maximum_delta": 1
+          }
+        },
+        "readback_consistent": false,
+        "surface_noise_observed": true,
+        "rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "shader_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "png_rgba_sha256": "de008467b8c05b7fd159b7822f0c320f8f27b560e0e422e6b47c1b5c3c0cefd0"
+      },
+      "loss": {
+        "initialCopyMatched": true,
+        "deviceLostCallbacks": 1,
+        "reason": "unknown",
+        "oldMapRejectedWith": "AbortError",
+        "oldMapState": "unmapped"
+      },
+      "document_recovered": true,
+      "policy_coherence_passed": false,
+      "runtime_asset_count": 269,
+      "runtime_assets_unchanged": true,
+      "input_postguards_passed": true,
+      "driver_unchanged": true,
+      "receipt_unchanged": true,
+      "server_closed": true,
+      "runtime_resource_free": true,
+      "owned_profiles_removed": true,
+      "remaining_owned_processes": [],
+      "seconds": 19.328,
+      "private_report_sha256": "9e6e160af4ab48c862c462882e37f6e7d1a13dc9882c1a89a74f933dc9e4f7f5",
+      "collector_returncode": 1
+    }
+  ]
+}

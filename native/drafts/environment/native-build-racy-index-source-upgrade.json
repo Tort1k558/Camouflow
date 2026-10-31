@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "scope": "Exact reversible host-tooling index timestamp correction; preserve prior source-bound observations",
+  "source": "scripts/native_build.py",
+  "before_sha256": "e4a96d9ec6d7229b031369e876bd3c3ec950540251dbbc949cca302c168fed7b",
+  "after_sha256": "49c7e8b59e4835abff826efa03ca9009fc7b69c00b37613364a00252a2c622fa",
+  "patch": "native-build-racy-index-source-upgrade.patch",
+  "patch_sha256": "831662a619af76d244345883f4c24c5be321bdc4e94807e8b565444718c8480d"
+}

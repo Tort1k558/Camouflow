@@ -294,3 +294,4 @@ scripts/verify_native_readback_regions.py text eol=lf
 scripts/verify_native_storage_paths.py text eol=lf
 scripts/verify_native_webrtc.py text eol=lf
 native/drafts/environment/gpu-process-recovery/* text eol=lf
+native/drafts/environment/native-build-racy-index-source-upgrade.json text eol=lf

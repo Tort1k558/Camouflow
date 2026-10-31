@@ -231,12 +231,14 @@ def test_updated_diagnostic_runtime_control_preserves_the_known_076_failure():
                'browser_consistency_admitted', 'privacy_admitted', 'production_admitted'))
 
 
-def test_updated_diagnostic_runtime_control_binds_its_actual_public_inputs():
+def test_updated_diagnostic_runtime_control_binds_its_actual_public_inputs(native_build_before_index_mtime_fix):
     record = json.loads((ROOT / 'native/drafts/environment/webgpu-diagnostic-variant76-control-observations.json').read_bytes())
     assert record['measured_input_count'] == 224
     assert len(record['selected_public_source_sha256']) == 12
     for name, digest in record['selected_public_source_sha256'].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        source = (native_build_before_index_mtime_fix['before_bytes']
+                  if name == native_build_before_index_mtime_fix['source'] else (ROOT / name).read_bytes())
+        assert hashlib.sha256(source).hexdigest() == digest
     manifest = 'native/drafts/environment/playwright-driver-stage-binding-close.json'
     assert record['driver_manifest_sha256'] == record['selected_public_source_sha256'][manifest]
     for name in ('collector_report_sha256', 'measured_relative_input_snapshot_sha256', 'receipt_sha256'):

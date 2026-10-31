@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## 2026-11-01: racy-index checkpoint correction
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Copied-index failure reproduction | Same-size edits missed with optional Git locks both off and on | Isolated owned repositories, not modified Chromium sources |
+| Timestamp-preserving source inspection | Four real/external-index cases detect the edits; two metadata-only concurrent mutations are rejected | Original index bytes and timestamps remain unchanged |
+| Complete local Python regression | 5,357 passed, 1 skipped; 998.532 seconds | Includes archived historical source reconstruction and ready-mode controls |
+| Concurrent build postguards | All 374 engine source paths and 269 preserved runtime assets unchanged | No restart, new browser binary or feature admission |
+
+The correction addresses the reproduced checkpoint failure seen in the older
+[Windows packaging run](https://github.com/Tort1k558/Camouflow/actions/runs/41233513316).
+Its exact [source archive](../native/drafts/environment/native-build-racy-index-source-upgrade.json)
+preserves earlier observations. Waiting diagnostic queues were superseded before
+execution and recreated with fresh input hashes; old records were not promoted
+to runtime evidence. Fresh remote CI is still required.
+
 ## 2026-10-31: actual GPU-process recovery on preserved 001–076
 
 | Gate | Measured result | Boundary |
@@ -12,6 +28,11 @@
 The [public collector and observations](../native/drafts/environment/gpu-process-recovery/README.md)
 reproduce this narrow recovery control. The known protected WebGPU/PNG mismatch
 of the old runtime is unchanged; protected and latest-candidate recovery remain open.
+
+The independent ready-mode extension also completed the GPU-crash sequence on
+001–076: baseline passed; ready retained its pixels across recovery but correctly
+failed coherence because PNG differed from raw direct/shader output in 384 channels
+by one level for that profile. Recovery is not a protected-consistency PASS.
 
 ## 2026-10-31: Windows source-byte reproducibility
 

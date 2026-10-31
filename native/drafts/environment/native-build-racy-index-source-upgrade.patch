@@ -1,0 +1,27 @@
+--- a/scripts/native_build.py
++++ b/scripts/native_build.py
+@@ -304,7 +304,8 @@
+     selected = Path(run(["git", "rev-parse", "--git-path", "index"], source, env, capture=True))
+     if not selected.is_absolute():
+         selected = source / selected
+-    original = selected.read_bytes() if selected.is_file() else None
++    selected_stat = selected.stat() if selected.is_file() else None
++    original = selected.read_bytes() if selected_stat is not None else None
+     with tempfile.TemporaryDirectory(prefix="native-source-index-", dir=source.parent if index_dir is None else index_dir) as owned:
+         index = Path(owned) / "index"
+         index_env = {**env, "GIT_INDEX_FILE": str(index)}
+@@ -312,9 +313,13 @@
+             run(["git", "read-tree", "HEAD"], source, index_env)
+         else:
+             index.write_bytes(original)
++            # A newly dated copy can hide same-size edits through Git racy-stat caching.
++            os.utime(index, ns=(selected_stat.st_atime_ns, selected_stat.st_mtime_ns))
+         changed = set(run(["git", "diff", "HEAD", "--name-only"], source, index_env, capture=True).splitlines())
+         changed.update(run(["git", "ls-files", "--others", "--exclude-standard"], source, index_env, capture=True).splitlines())
+-    if (selected.read_bytes() if selected.is_file() else None) != original:
++    if ((selected.read_bytes() if selected.is_file() else None) != original
++            or (selected.stat().st_mtime_ns if selected.is_file() else None)
++            != (selected_stat.st_mtime_ns if selected_stat is not None else None)):
+         raise ValueError("Git index changed concurrently during source patch inspection")
+     return changed
+ 

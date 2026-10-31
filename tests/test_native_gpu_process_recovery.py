@@ -1,3 +1,4 @@
+import ast
 import hashlib
 import importlib.util
 import json
@@ -28,10 +29,12 @@ def test_gpu_recovery_control_binds_public_sources_and_exact_runtime():
         assert record[name] is False
 
 
-def test_gpu_recovery_complete_input_digest_preserves_measured_newlines(historical_source_newlines):
+def test_gpu_recovery_complete_input_digest_preserves_measured_newlines(historical_source_newlines,
+                                                                     native_build_before_index_mtime_fix):
     from scripts.verify_native_gpu_readback import probe_inputs
 
     sources = probe_inputs(candidate_name='upstream-156')
+    sources[native_build_before_index_mtime_fix['source']] = native_build_before_index_mtime_fix['before_sha256']
     paths = [MODULE / 'collect.py', MODULE / 'watch.js',
              ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js',
              ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json']
@@ -86,3 +89,67 @@ def test_gpu_recovery_cli_rejects_unsafe_execution_before_launch(options, expect
     assert result.returncode == expected
     if optimize:
         assert 'Run without Python optimization' in result.stderr
+
+
+def test_gpu_recovery_ready_extension_replays_without_modifying_measured_baseline(tmp_path):
+    record = json.loads((MODULE / 'ready-mode-observations.json').read_bytes())
+    source = MODULE / record['base_source']
+    original = source.read_bytes()
+    assert hashlib.sha256(original).hexdigest() == record['before_sha256']
+    patch = MODULE / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    target = tmp_path / 'collect.py'
+    target.write_bytes(original)
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--check', str(patch)],
+                   cwd=tmp_path, capture_output=True, check=True, timeout=20)
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', str(patch)],
+                   cwd=tmp_path, capture_output=True, check=True, timeout=20)
+    assert hashlib.sha256(target.read_bytes()).hexdigest() == record['after_sha256']
+    ast.parse(target.read_text(encoding='utf-8-sig'))
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
+                   cwd=tmp_path, capture_output=True, check=True, timeout=20)
+    assert target.read_bytes() == source.read_bytes() == original
+
+
+def test_gpu_recovery_ready_control_keeps_old_policy_inconsistency_failed():
+    record = json.loads((MODULE / 'ready-mode-observations.json').read_bytes())
+    assert record['control_passed']
+    assert record['runtime_core_sha256_measured'] == observation()['runtime_core_sha256_measured']
+    assert record['receipt_sha256'] == observation()['receipt_sha256']
+    assert [row['mode'] for row in record['modes']] == ['baseline', 'ready']
+    for row in record['modes']:
+        assert row['measurement_complete'] and row['document_recovered']
+        assert row['transport_feature_enabled'] is False
+        assert row['passed'] == row['policy_coherence_passed'] == (row['mode'] == 'baseline')
+        assert row['collector_returncode'] == (0 if row['passed'] else 1)
+        assert row['before'] == row['after']
+        assert not row['remaining_owned_processes']
+        assert all(row[key] is True for key in ('runtime_assets_unchanged', 'input_postguards_passed',
+            'driver_unchanged', 'receipt_unchanged', 'server_closed', 'runtime_resource_free', 'owned_profiles_removed'))
+    ready = record['modes'][1]['after']
+    assert ready['surface_noise_observed'] and ready['readback_consistent'] is False
+    assert ready['rgba_sha256'] == ready['shader_sha256'] != ready['png_rgba_sha256']
+    assert ready['deviation_from_reference']['png'] == {'changed_channels': 384, 'maximum_delta': 1}
+    assert all(record[name] is False for name in ('latest_001_116_candidate_verified',
+        'protected_policy_recovery_admitted', 'privacy_admitted', 'production_admitted'))
+
+
+def test_gpu_recovery_ready_control_binds_its_staged_source_layout(historical_source_newlines,
+                                                                native_build_before_index_mtime_fix):
+    from scripts.verify_native_gpu_readback import probe_inputs
+
+    record = json.loads((MODULE / 'ready-mode-observations.json').read_bytes())
+    sources = probe_inputs(candidate_name='upstream-156')
+    for path in [MODULE / 'watch.js', ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js',
+                 ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json']:
+        sources[path.relative_to(ROOT).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    sources[(MODULE / 'collect.py').relative_to(ROOT).as_posix()] = record['after_sha256']
+    assert record['native_build_at_measurement_sha256'] == native_build_before_index_mtime_fix['before_sha256']
+    sources[native_build_before_index_mtime_fix['source']] = native_build_before_index_mtime_fix['before_sha256']
+    for name, row in historical_source_newlines.items():
+        if name in sources:
+            sources[name] = row['canonical_lf_sha256']
+    assert len(sources) == record['complete_probe_input_count'] == 226
+    encoded = json.dumps(sources, sort_keys=True, separators=(',', ':')).encode()
+    assert hashlib.sha256(encoded).hexdigest() == record['complete_probe_input_snapshot_sha256']
+    assert hashlib.sha256((MODULE / 'watch.js').read_bytes()).hexdigest() == record['watch_sha256']
