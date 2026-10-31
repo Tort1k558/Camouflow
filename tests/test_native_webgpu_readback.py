@@ -134,13 +134,15 @@ def test_webgpu_cli_rejects_noncanonical_output_before_creating_it(tmp_path):
     assert not output.exists()
 
 
-def test_public_webgpu_cli_has_measured_source_binding_and_actual_runtime_cleanup(probe):
+def test_public_webgpu_cli_has_measured_source_binding_and_actual_runtime_cleanup(probe, diagnostic_sources_before_candidate):
     record = json.loads((DIRECTORY / 'webgpu-readback76-public-cli-observations.json').read_bytes())
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
     assert record['public_cli_integrated']
     assert record['validation'] == probe['validate_rows'](record['rows'])
     for name, expected in record['measured_inputs_sha256'].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+        source = (diagnostic_sources_before_candidate[name] if name in diagnostic_sources_before_candidate
+                  else (ROOT / name).read_bytes())
+        assert hashlib.sha256(source).hexdigest() == expected, name
     assert {row['mode'] for row in record['runs']} == {'baseline', 'ready'}
     assert len(record['runs']) == 2
     for row in record['runs']:

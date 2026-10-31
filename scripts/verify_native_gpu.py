@@ -18,6 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.native_build import CANDIDATES
+
 from playwright.async_api import async_playwright
 
 from scripts.verify_native_canvas import CONTEXTS, CanvasFixtureHandler, observe
@@ -612,7 +614,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--minimized", action="store_true", help="Also check candidate feature-on semantics")
     parser.add_argument("--windows-library-directory", type=Path)
-    parser.add_argument("--candidate", choices=("upstream-156",))
+    parser.add_argument("--candidate", choices=CANDIDATES)
     parser.add_argument("--workspace", type=Path, help="Required native workspace when checking a candidate")
     parser.add_argument("--require-webgpu", action="store_true",
                         help="Require WebGPU in all eight observed document/worker contexts; no software/unsafe fallback")

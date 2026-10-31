@@ -20,6 +20,8 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.native_build import CANDIDATES
+
 from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime
 from scripts.native_build import load_candidate
@@ -479,7 +481,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--bootstrap-policy", choices=("canvas", "surfaces"), default="canvas")
     parser.add_argument("--include-nested", action="store_true", help="Add 20 classic/module nested dedicated-worker checks")
-    parser.add_argument("--candidate", choices=("upstream-156",),
+    parser.add_argument("--candidate", choices=CANDIDATES,
                         help="Bind owned diagnostics to the exact selected candidate receipt/patches; not admission")
     args = parser.parse_args()
     selection = {} if args.candidate is None else {"candidate_name": args.candidate}

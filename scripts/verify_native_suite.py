@@ -12,6 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.native_build import CANDIDATES
+
 from scripts.package_native_windows import REQUIRED_RUNTIME_CHECKS, read_record, validate_build_receipt
 from scripts import native_build
 from scripts.verify_native_combined import ARGUMENTS, REQUIRED_CHECKS as REQUIRED_COMBINED_CHECKS
@@ -203,7 +205,7 @@ def main() -> int:
                         help="Explicit package-owned DLL directory for a versioned Chrome-bin layout")
     parser.add_argument("--release-store", type=Path, help="Verify every file of an installed immutable Native release")
     parser.add_argument("--release-sha256", default="", help="Expected installed release archive checksum")
-    parser.add_argument("--candidate", choices=("upstream-156",), help="Bind all gates to the explicit candidate receipt and inputs")
+    parser.add_argument("--candidate", choices=CANDIDATES, help="Bind all gates to the explicit candidate receipt and inputs")
     args = parser.parse_args()
     try:
         report = verify(args.executable, args.report_dir, args.gates, library_directory=args.windows_library_directory,

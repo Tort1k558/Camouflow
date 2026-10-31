@@ -15,9 +15,44 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts.native_build import CANDIDATES
+
 PROBE = ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js'
 DRIVER_MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
 PIXEL_BYTES = 16 * 16 * 4
+TRANSPORT_FEATURE = 'GlintWebGPUPolicyTransportCandidate'
+
+
+def transport_arguments(arguments: list[str], *, candidate_name: str, mode: str) -> list[str]:
+    if candidate_name not in CANDIDATES or mode not in {'baseline', 'ready'}:
+        raise ValueError('Select an explicit candidate and WebGPU observation mode')
+    if not isinstance(arguments, list) or any(type(value) is not str for value in arguments):
+        raise ValueError('WebGPU launch arguments must be a list of strings')
+    selected = []
+    disabled = 0
+    for index, value in enumerate(arguments):
+        if value.startswith(('--enable-features=', '--disable-features=')):
+            features = value.partition('=')[2].split(',')
+            if any(not feature for feature in features):
+                raise ValueError('Malformed WebGPU feature arguments')
+            if any(feature.partition('<')[0].partition(':')[0].lstrip('*') == TRANSPORT_FEATURE
+                   for feature in features):
+                raise ValueError('WebGPU transport feature must be selected only by this fixture')
+            if value.startswith('--enable-features='):
+                selected.append(index)
+            else:
+                disabled += 1
+    if len(selected) > 1 or disabled > 1:
+        raise ValueError('Ambiguous WebGPU feature arguments')
+    result = list(arguments)
+    if candidate_name == 'upstream-156-webgpu' and mode == 'ready':
+        if selected:
+            result[selected[0]] += ',' + TRANSPORT_FEATURE
+        else:
+            result.append('--enable-features=' + TRANSPORT_FEATURE)
+    return result
 
 
 def digest(path: Path) -> str:
@@ -118,6 +153,11 @@ async def observe(executable: Path, owned: Path, server, source: str, report: di
         partitioning_argument,
     )
 
+    class WebGPUConfiguration(ReadbackConfiguration):
+        def launch_arguments(self) -> list[str]:
+            return transport_arguments(super().launch_arguments(),
+                                       candidate_name=report['candidate'], mode=self.probe_mode)
+
     discovery = NativeRuntime(owned / 'discovery', executable, ReadbackConfiguration(probe_mode='baseline'))
     runtimes.append(discovery)
     try:
@@ -131,7 +171,7 @@ async def observe(executable: Path, owned: Path, server, source: str, report: di
         await discovery.close()
     report['driver_partitioning'] = {'original': original, 'replacement': replacement}
     for mode in ('baseline', 'ready'):
-        runtime = NativeRuntime(owned / mode, executable, ReadbackConfiguration(probe_mode=mode,
+        runtime = NativeRuntime(owned / mode, executable, WebGPUConfiguration(probe_mode=mode,
             derivation_mode='profile-identity', disabled_features_argument=replacement,
             ignored_driver_argument=original))
         runtimes.append(runtime)
@@ -140,6 +180,13 @@ async def observe(executable: Path, owned: Path, server, source: str, report: di
             arguments = await browser_arguments(context)
             if replacement not in arguments or (original != replacement and original in arguments):
                 raise ValueError('Requested partitioning arguments were not effective')
+            enabled = [feature for argument in arguments if argument.startswith('--enable-features=')
+                       for feature in argument.partition('=')[2].split(',')]
+            transport_enabled = TRANSPORT_FEATURE in enabled
+            if transport_enabled != (report['candidate'] == 'upstream-156-webgpu' and mode == 'ready'):
+                raise ValueError('Requested WebGPU transport feature was not effective')
+            report.setdefault('transport_feature_observations', []).append(
+                {'mode': mode, 'enabled': transport_enabled})
             page = await context.new_page()
             await page.goto(f'http://127.0.0.1:{server.server_port}/', wait_until='load')
             value = await asyncio.wait_for(page.evaluate('async () => {' + source + '; return await probeWebGPU();}'), 90)
@@ -153,6 +200,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--executable', type=Path, required=True)
     parser.add_argument('--driver-stage', type=Path, required=True)
     parser.add_argument('--work-dir', type=Path, required=True)
+    parser.add_argument('--candidate', choices=CANDIDATES, default='upstream-156')
     args = parser.parse_args(argv)
     paths = (args.executable, args.driver_stage, args.work_dir)
     if (sys.platform != 'win32' or any(not p.is_absolute() or p != p.resolve()
@@ -190,12 +238,13 @@ def main(argv: list[str] | None = None) -> int:
         from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
 
         core = measure_runtime_core(args.executable)
-        receipt = validate_receipt(args.executable, core, derivation_mode='profile-identity', candidate_name='upstream-156')
-        probe_snapshot = probe_inputs()
+        receipt = validate_receipt(args.executable, core, derivation_mode='profile-identity', candidate_name=args.candidate)
+        probe_snapshot = probe_inputs(candidate_name=args.candidate)
         inputs = {str(ROOT / path): value for path,value in probe_snapshot.items()}
         inputs.update({str(path): digest(path) for path in (Path(__file__), PROBE, DRIVER_MANIFEST)})
         report.update(runtime_core_sha256_measured=core, receipt_sha256=hashlib.sha256(receipt).hexdigest(),
-                      probe_inputs_sha256=inputs, javascript_sha256=digest(PROBE), candidate='upstream-156')
+                      probe_inputs_sha256=inputs, javascript_sha256=digest(PROBE), candidate=args.candidate,
+                      candidate_manifest_sha256=json.loads(receipt)['candidate_manifest_sha256'])
         server = FixtureServer(('127.0.0.1', 0), FixtureHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
@@ -203,8 +252,8 @@ def main(argv: list[str] | None = None) -> int:
         report['result'] = validate_rows(report['observations'])
         report['measurement_complete'] = True
         report['postguards_passed'] = (measure_runtime_core(args.executable) == core
-            and validate_receipt(args.executable, core, derivation_mode='profile-identity', candidate_name='upstream-156') == receipt
-            and probe_inputs() == probe_snapshot
+            and validate_receipt(args.executable, core, derivation_mode='profile-identity', candidate_name=args.candidate) == receipt
+            and probe_inputs(candidate_name=args.candidate) == probe_snapshot
             and all(digest(Path(path)) == value for path,value in inputs.items()))
         verify(args.driver_stage, DRIVER_MANIFEST)
         report['passed'] = report['postguards_passed'] and report['result']['consistency_gate_passed']

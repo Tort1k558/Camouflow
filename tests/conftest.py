@@ -8,6 +8,47 @@ import pytest
 
 
 @pytest.fixture
+def diagnostic_sources_before_candidate(tmp_path):
+    """Recover measured diagnostic sources without updating historical evidence."""
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'webgpu-diagnostics-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-webgpu-diagnostics'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((root / row['source']).read_bytes())
+        assert hashlib.sha256(target.read_bytes()).hexdigest() == row['after_sha256']
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    sources = {}
+    for row in record['sources']:
+        data = (base / row['source']).read_bytes()
+        assert hashlib.sha256(data).hexdigest() == row['before_normalized_sha256']
+        if row['before_newline'] == 'CRLF':
+            data = data.replace(b'\n', b'\r\n')
+        assert hashlib.sha256(data).hexdigest() == row['before_sha256']
+        sources[row['source']] = data
+    return sources
+
+
+def diagnostic_source_text(root, relative, sources):
+    data = sources[relative] if relative in sources else (root / relative).read_bytes()
+    return data.decode('utf-8-sig').replace('\r\n', '\n')
+
+
+def diagnostic_source_snapshot(sources, inherited=None):
+    result = {'sources': {name: data.decode('utf-8-sig').replace('\r\n', '\n') for name, data in sources.items()},
+              'sha256': {name: hashlib.sha256(data).hexdigest() for name, data in sources.items()}}
+    if inherited is not None:
+        for key in result:
+            result[key].update(inherited[key])
+    return result
+
+
+@pytest.fixture
 def native_d3d12_sources_before_budget(tmp_path):
     """Keep the capture-only measurements bound to their exact pre-budget sources."""
     root = Path(__file__).resolve().parents[1]
@@ -34,7 +75,7 @@ def native_d3d12_sources_before_budget(tmp_path):
 
 
 @pytest.fixture
-def native_tooling_before_webgpu_candidate(tmp_path):
+def native_tooling_before_webgpu_candidate(tmp_path, diagnostic_sources_before_candidate):
     """Recover the exact build tooling measured before the explicit GPU variant."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -43,7 +84,7 @@ def native_tooling_before_webgpu_candidate(tmp_path):
     for row in record['sources']:
         target = base / row['source']
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text((root / row['source']).read_text(encoding='utf-8-sig'),
+        target.write_text(diagnostic_source_text(root, row['source'], diagnostic_sources_before_candidate),
                           encoding='utf-8', newline='\n')
         assert hashlib.sha256(target.read_bytes()).hexdigest() == row['after_sha256']
     patch = directory / record['patch']
@@ -85,7 +126,7 @@ def native_tooling_before_net_paths(tmp_path, native_tooling_before_webgpu_candi
 
 
 @pytest.fixture
-def native_tooling_before_dawn(tmp_path, native_tooling_before_net_paths):
+def native_tooling_before_dawn(tmp_path, native_tooling_before_net_paths, diagnostic_sources_before_candidate):
     """Recover exact tooling/test bytes used by historical runtime records."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -97,7 +138,7 @@ def native_tooling_before_dawn(tmp_path, native_tooling_before_net_paths):
         if row['source'] in native_tooling_before_net_paths['sources']:
             target.write_bytes(native_tooling_before_net_paths['sources'][row['source']])
         else:
-            target.write_text((root / row['source']).read_text(encoding='utf-8-sig'),
+            target.write_text(diagnostic_source_text(root, row['source'], diagnostic_sources_before_candidate),
                               encoding='utf-8', newline='\n')
         assert hashlib.sha256(target.read_bytes()).hexdigest() == row['after_sha256']
     patch = directory / record['patch']
@@ -143,13 +184,13 @@ def native_components_before_capture_lifecycle(tmp_path):
 
 
 @pytest.fixture
-def native_units_before_screenshot(tmp_path, monkeypatch):
+def native_units_before_screenshot(tmp_path, monkeypatch, diagnostic_sources_before_candidate):
     root = Path(__file__).resolve().parents[1]
     relative = 'scripts/verify_native_privacy_units.py'
     directory = tmp_path / 'before-screenshot'
     path = directory / relative
     path.parent.mkdir(parents=True)
-    path.write_text((root / relative).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+    path.write_text(diagnostic_source_text(root, relative, diagnostic_sources_before_candidate), encoding='utf-8', newline='\n')
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error',
                     str(root / 'native/drafts/environment/screenshot76-unit-gate.patch')],
                    cwd=directory, check=True, capture_output=True)
@@ -163,14 +204,14 @@ def native_units_before_screenshot(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def native_units_before_orientation(tmp_path, monkeypatch):
+def native_units_before_orientation(tmp_path, monkeypatch, diagnostic_sources_before_candidate):
     """Reconstruct the measured 001-070 verifier, without rewriting old evidence."""
     root = Path(__file__).resolve().parents[1]
     directory = root / "native/drafts/environment"
     record = json.loads((directory / "screen-orientation71-gate-preparation.json").read_bytes())
     path = tmp_path / record["base_source"]
     path.parent.mkdir(parents=True)
-    path.write_text((root / record["base_source"]).read_text(encoding="utf-8-sig"), encoding="utf-8", newline="\n")
+    path.write_text(diagnostic_source_text(root, record["base_source"], diagnostic_sources_before_candidate), encoding="utf-8", newline="\n")
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
                     str(directory / "screenshot76-unit-gate.patch")], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(["git", "-c", "core.autocrlf=false", "apply", "--reverse", "--whitespace=error",
@@ -220,9 +261,10 @@ def qml_before_delivery_diagnostics_sha256(tmp_path):
 @pytest.fixture
 def native70_historical_source_hashes(native_units_before_orientation, recorder_before_document_open_sha256,
                                      storage_before_read_lock_sha256, surface_sources_before_retained,
-                                     native_tooling_before_dawn):
+                                     native_tooling_before_dawn, diagnostic_sources_before_candidate):
     root = Path(__file__).resolve().parents[1]
     return {
+        **{name: hashlib.sha256(data).hexdigest() for name, data in diagnostic_sources_before_candidate.items()},
         "native/drafts/upstream-156/manifest.json": hashlib.sha256(
             (root / "native/drafts/upstream-156/checkpoints/001-070.json").read_bytes()).hexdigest(),
         **surface_sources_before_retained['sha256'],
@@ -316,7 +358,7 @@ def stage_before_python_overlay_sources(tmp_path):
 
 
 @pytest.fixture
-def surface_sources_before_retained(tmp_path, worker_sources_before_integration):
+def surface_sources_before_retained(tmp_path, worker_sources_before_integration, diagnostic_sources_before_candidate):
     """Reconstruct exact pre-extraction sources; never rewrite historical observations."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -327,14 +369,14 @@ def surface_sources_before_retained(tmp_path, worker_sources_before_integration)
         target.parent.mkdir(parents=True, exist_ok=True)
         source = (worker_sources_before_integration['sources'][row['source']]
                   if row['source'] in worker_sources_before_integration['sources']
-                  else (root / row['source']).read_text(encoding='utf-8-sig'))
+                  else diagnostic_source_text(root, row['source'], diagnostic_sources_before_candidate))
         target.write_text(source,
                           encoding='utf-8', newline='\n')
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
                    cwd=base, check=True, capture_output=True, timeout=30)
-    result = {'sha256': {}, 'sources': {}}
+    result = diagnostic_source_snapshot(diagnostic_sources_before_candidate, worker_sources_before_integration)
     for row in record['sources']:
         target = base / row['source']
         if row['before_sha256'] is None:
@@ -352,7 +394,7 @@ def surface_sources_before_retained(tmp_path, worker_sources_before_integration)
 
 
 @pytest.fixture
-def historical_surface_source_sha256(surface_sources_before_retained, native_tooling_before_dawn):
+def historical_surface_source_sha256(surface_sources_before_retained, native_tooling_before_dawn, diagnostic_sources_before_candidate):
     """Hash reconstructed Audio/GPU and tooling sources used by older runtime records."""
     root = Path(__file__).resolve().parents[1]
     names = {'scripts/verify_native_audio.py', 'scripts/verify_native_gpu.py',
@@ -370,6 +412,11 @@ def historical_surface_source_sha256(surface_sources_before_retained, native_too
                 source = surface_sources_before_retained['sources'][name].encode('utf-8')
                 return hashlib.sha256(source).hexdigest()
             return surface_sources_before_retained['sha256'][name]
+        if name in diagnostic_sources_before_candidate:
+            value = diagnostic_sources_before_candidate[name]
+            if normalized:
+                value = value.decode('utf-8-sig').replace('\r\n', '\n').encode('utf-8')
+            return hashlib.sha256(value).hexdigest()
         path = root / name
         source = path.read_text(encoding='utf-8-sig').encode('utf-8') if normalized else path.read_bytes()
         return hashlib.sha256(source).hexdigest()
@@ -378,7 +425,7 @@ def historical_surface_source_sha256(surface_sources_before_retained, native_too
 
 
 @pytest.fixture
-def sources_before_webgpu(tmp_path):
+def sources_before_webgpu(tmp_path, diagnostic_sources_before_candidate):
     """Reverse the exact WebGPU packet before checking historical GPU evidence."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -387,12 +434,12 @@ def sources_before_webgpu(tmp_path):
     for row in record['sources']:
         target = base / row['source']
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text((root / row['source']).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+        target.write_text(diagnostic_source_text(root, row['source'], diagnostic_sources_before_candidate), encoding='utf-8', newline='\n')
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
                    cwd=base, check=True, capture_output=True, timeout=30)
-    result = {'sha256': {}, 'sources': {}}
+    result = diagnostic_source_snapshot(diagnostic_sources_before_candidate)
     for row in record['sources']:
         target = base / row['source']
         if row['before_sha256'] is None:
@@ -406,7 +453,7 @@ def sources_before_webgpu(tmp_path):
 
 
 @pytest.fixture
-def sources_before_gpu_workers(tmp_path, sources_before_webgpu):
+def sources_before_gpu_workers(tmp_path, sources_before_webgpu, diagnostic_sources_before_candidate):
     """Reconstruct the measured document-only GPU CLI before worker expansion."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -417,13 +464,13 @@ def sources_before_gpu_workers(tmp_path, sources_before_webgpu):
         target.parent.mkdir(parents=True, exist_ok=True)
         text = sources_before_webgpu['sources'].get(row['source'])
         if text is None:
-            text = (root / row['source']).read_text(encoding='utf-8-sig')
+            text = diagnostic_source_text(root, row['source'], diagnostic_sources_before_candidate)
         target.write_text(text, encoding='utf-8', newline='\n')
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
                    cwd=base, check=True, capture_output=True, timeout=30)
-    result = {'sha256': {}, 'sources': {}}
+    result = diagnostic_source_snapshot(diagnostic_sources_before_candidate, sources_before_webgpu)
     for row in record['sources']:
         target = base / row['source']
         if row['before_sha256'] is None:
@@ -437,7 +484,7 @@ def sources_before_gpu_workers(tmp_path, sources_before_webgpu):
 
 
 @pytest.fixture
-def sources_before_retained_gpu(tmp_path, sources_before_gpu_workers):
+def sources_before_retained_gpu(tmp_path, sources_before_gpu_workers, diagnostic_sources_before_candidate):
     """Reverse the GPU opt-in before verifying earlier measured source bindings."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -448,13 +495,13 @@ def sources_before_retained_gpu(tmp_path, sources_before_gpu_workers):
         target.parent.mkdir(parents=True, exist_ok=True)
         source = (sources_before_gpu_workers['sources'][row['source']]
                   if row['source'] in sources_before_gpu_workers['sources']
-                  else (root / row['source']).read_text(encoding='utf-8-sig'))
+                  else diagnostic_source_text(root, row['source'], diagnostic_sources_before_candidate))
         target.write_text(source, encoding='utf-8', newline='\n')
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
                    cwd=base, check=True, capture_output=True, timeout=30)
-    result = {'sha256': {}, 'sources': {}}
+    result = diagnostic_source_snapshot(diagnostic_sources_before_candidate, sources_before_gpu_workers)
     for row in record['sources']:
         target = base / row['source']
         if row['before_sha256'] is None:
@@ -468,7 +515,7 @@ def sources_before_retained_gpu(tmp_path, sources_before_gpu_workers):
 
 
 @pytest.fixture
-def worker_sources_before_integration(tmp_path, sources_before_retained_gpu):
+def worker_sources_before_integration(tmp_path, sources_before_retained_gpu, diagnostic_sources_before_candidate):
     """Reverse the exact worker integration before reconstructing earlier layers."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -479,13 +526,13 @@ def worker_sources_before_integration(tmp_path, sources_before_retained_gpu):
         target.parent.mkdir(parents=True, exist_ok=True)
         source = (sources_before_retained_gpu['sources'][row['source']]
                   if row['source'] in sources_before_retained_gpu['sources']
-                  else (root / row['source']).read_text(encoding='utf-8-sig'))
+                  else diagnostic_source_text(root, row['source'], diagnostic_sources_before_candidate))
         target.write_text(source, encoding='utf-8', newline='\n')
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
                    cwd=base, check=True, capture_output=True, timeout=30)
-    result = {'sha256': {}, 'sources': {}}
+    result = diagnostic_source_snapshot(diagnostic_sources_before_candidate, sources_before_retained_gpu)
     for row in record['sources']:
         target = base / row['source']
         if row['before_sha256'] is None:

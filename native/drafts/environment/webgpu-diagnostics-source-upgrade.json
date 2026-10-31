@@ -1,0 +1,122 @@
+{
+  "schema": 1,
+  "scope": "Reversible diagnostic tooling change; old measured evidence is not rewritten",
+  "patch": "webgpu-diagnostics-source-upgrade.patch",
+  "patch_sha256": "a9fd26f60c524189c4462f07125c1595b3e06d7be7f7bc21b01b1d09bf38b1c2",
+  "sources": [
+    {
+      "source": "scripts/audit_native_upstream.py",
+      "before_sha256": "7b0d2e76a4cdb846e336ff514292f31c7d0e3d7ab7f457d475b3924f2e365fd7",
+      "before_normalized_sha256": "7b0d2e76a4cdb846e336ff514292f31c7d0e3d7ab7f457d475b3924f2e365fd7",
+      "before_newline": "LF",
+      "after_sha256": "0314f692bed72917933b0178548d81cf551c942c1df0bee46bf427a77bb5aacb"
+    },
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "4a8eb0356e8eed795a1eae50c42485b9306b6851e09b7a38f0e7dd243adf00e1",
+      "before_normalized_sha256": "4a8eb0356e8eed795a1eae50c42485b9306b6851e09b7a38f0e7dd243adf00e1",
+      "before_newline": "LF",
+      "after_sha256": "e4a96d9ec6d7229b031369e876bd3c3ec950540251dbbc949cca302c168fed7b"
+    },
+    {
+      "source": "scripts/native_windows_toolchain.py",
+      "before_sha256": "d61db8d323fbc9381f5c2273a27850686e307832646e6ff092d40c5183db68b0",
+      "before_normalized_sha256": "d61db8d323fbc9381f5c2273a27850686e307832646e6ff092d40c5183db68b0",
+      "before_newline": "LF",
+      "after_sha256": "4bfd53d53392630350790be9e92d6b1c09f869115feb0d6182d07b914c434e38"
+    },
+    {
+      "source": "scripts/package_native_windows.py",
+      "before_sha256": "700315d0484ff5393721b7f725363f48e64f8a77b88300f4736a9ecb34bfb3f4",
+      "before_normalized_sha256": "700315d0484ff5393721b7f725363f48e64f8a77b88300f4736a9ecb34bfb3f4",
+      "before_newline": "LF",
+      "after_sha256": "b13e5f510361ea5da7a06364b6c85b14c2361b5629baebad3021d7309a599d9a"
+    },
+    {
+      "source": "scripts/stage_native_windows.py",
+      "before_sha256": "823674dfdb092eb1500803d17d316e55409d2a4b81d81d6f5c578afb9fea9e43",
+      "before_normalized_sha256": "823674dfdb092eb1500803d17d316e55409d2a4b81d81d6f5c578afb9fea9e43",
+      "before_newline": "LF",
+      "after_sha256": "0b8ea09be7e3fa0ccb7186f58f15db09c20f74f823c917f5beb3c071a07243f5"
+    },
+    {
+      "source": "scripts/verify_native_audio_compatibility.py",
+      "before_sha256": "5307f7b06885e782e05f00901ece8984fb2aa79bd57d80ebd7066d3af45488eb",
+      "before_normalized_sha256": "5307f7b06885e782e05f00901ece8984fb2aa79bd57d80ebd7066d3af45488eb",
+      "before_newline": "LF",
+      "after_sha256": "55a5e20100ef4214f10a9f02272382319ae78518e062092fd94bdeff372644a4"
+    },
+    {
+      "source": "scripts/verify_native_combined_math.py",
+      "before_sha256": "9918bc903696e7d759f69dc08f993da9bde6ef72d4be2a7ea55cd11e99caa8a1",
+      "before_normalized_sha256": "9918bc903696e7d759f69dc08f993da9bde6ef72d4be2a7ea55cd11e99caa8a1",
+      "before_newline": "LF",
+      "after_sha256": "592d5b01cbba6a64339e9ec07959b5b51fc6ad72a048caf17dd7b47173f06e6e"
+    },
+    {
+      "source": "scripts/verify_native_font_rendering.py",
+      "before_sha256": "4b1e4bbc5c608215b2e5419577b18927dcd8ab3f250110d6fd3ed79178e6f293",
+      "before_normalized_sha256": "4b1e4bbc5c608215b2e5419577b18927dcd8ab3f250110d6fd3ed79178e6f293",
+      "before_newline": "LF",
+      "after_sha256": "3acf53310e472f712c6c3b1bf9f19a4101efecffbd9b93ccb108e38319c4792d"
+    },
+    {
+      "source": "scripts/verify_native_gpu.py",
+      "before_sha256": "32018a5fd71efa0a51074095857a59de83ce1dd6777df160621293efc0a885aa",
+      "before_normalized_sha256": "32018a5fd71efa0a51074095857a59de83ce1dd6777df160621293efc0a885aa",
+      "before_newline": "LF",
+      "after_sha256": "c1db5bcd7991c7d538a4cbbdf613a436a55f08cbf5aade246a64e5ba0bc2c270"
+    },
+    {
+      "source": "scripts/verify_native_gpu_readback.py",
+      "before_sha256": "d9174f360beb373c6176c6cd9d97be849fde9e236358487ad7dc4795f5375b3e",
+      "before_normalized_sha256": "d9174f360beb373c6176c6cd9d97be849fde9e236358487ad7dc4795f5375b3e",
+      "before_newline": "LF",
+      "after_sha256": "f7566c8c829496345a6a616e1b13a524e9258fba0fb69b7f1dee00b68c7dbac9"
+    },
+    {
+      "source": "scripts/verify_native_privacy_batch.py",
+      "before_sha256": "2a4fb5ac2e02bc513cc8b7aae7a99e9dd9730b674f16e354942cf6580650e918",
+      "before_normalized_sha256": "2a4fb5ac2e02bc513cc8b7aae7a99e9dd9730b674f16e354942cf6580650e918",
+      "before_newline": "LF",
+      "after_sha256": "fbfbdd04200042cda67938a000115b2f9986e1f41481c7d429bf28e5cb1f5419"
+    },
+    {
+      "source": "scripts/verify_native_privacy_units.py",
+      "before_sha256": "dd349a894bac1af7324b0ab7fa7334fe5f7734d31b364f002501f52afc58511c",
+      "before_normalized_sha256": "dd349a894bac1af7324b0ab7fa7334fe5f7734d31b364f002501f52afc58511c",
+      "before_newline": "LF",
+      "after_sha256": "c10847389c99e0a723a0a6bec3bff849705b128e240bebfb8d54c34faddc0dc9"
+    },
+    {
+      "source": "scripts/verify_native_suite.py",
+      "before_sha256": "c8d3d9bfd8b43ee46d0867eb098bbae8c2b56c71aeb76df5cba0c3cf65029e3d",
+      "before_normalized_sha256": "c8d3d9bfd8b43ee46d0867eb098bbae8c2b56c71aeb76df5cba0c3cf65029e3d",
+      "before_newline": "LF",
+      "after_sha256": "afd3ec4f45c75a89db3ae1357700e13bfea67b00f51b85acac6524c48f4ae78b"
+    },
+    {
+      "source": "scripts/verify_native_surfaces.py",
+      "before_sha256": "5a2d8ed28577a2fa78809d37ccd7e4a1ced1aebb2011a86621d0a9cca2cf3f8a",
+      "before_normalized_sha256": "5a2d8ed28577a2fa78809d37ccd7e4a1ced1aebb2011a86621d0a9cca2cf3f8a",
+      "before_newline": "LF",
+      "after_sha256": "91dc10511736985631609c63555f20557d410d63c7958b52060d081a450a19b0"
+    },
+    {
+      "source": "scripts/verify_native_webgpu_consistency.py",
+      "before_sha256": "ce54720310e8de1435d719d50e5bb98b72cb1de4a9dc691ea2d6dd92770c4938",
+      "before_normalized_sha256": "ce54720310e8de1435d719d50e5bb98b72cb1de4a9dc691ea2d6dd92770c4938",
+      "before_newline": "LF",
+      "after_sha256": "aa6da7d6a7488eb83ca257ace6f9e61e0a9ff60efb3f2725640d820b04616475"
+    },
+    {
+      "source": "scripts/verify_native_worker_startup.py",
+      "before_sha256": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+      "before_normalized_sha256": "39ab72c1a5ed60f95aa26ce1a26ee6bd696b9c0b5fe779df2ecd8d18266758a2",
+      "before_newline": "LF",
+      "after_sha256": "94a35e70e1760e69f78c8e23eaf5ad7da15cb3569e7309dce440b238267579ec"
+    }
+  ],
+  "runtime_verified": false,
+  "privacy_admitted": false
+}

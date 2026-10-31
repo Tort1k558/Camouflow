@@ -13,6 +13,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.native_build import CANDIDATES
+
 from scripts import native_build as build
 from scripts.native_windows_sdk import sha256
 
@@ -157,7 +159,7 @@ def main() -> int:
     parser.add_argument("--vs-installation", type=Path, required=True)
     parser.add_argument("--sdk", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--candidate", choices=("upstream-156",), required=True)
+    parser.add_argument("--candidate", choices=CANDIDATES, required=True)
     args = parser.parse_args()
     try:
         prepare(args.workspace, args.vs_installation, args.sdk, args.output, candidate_name=args.candidate)

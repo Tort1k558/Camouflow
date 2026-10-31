@@ -13,6 +13,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.native_build import CANDIDATES
+
 from scripts import native_build as build
 from scripts import verify_native_privacy_units as units
 from scripts.package_native_windows import read_record, validate_build_receipt
@@ -191,7 +193,7 @@ def main() -> int:
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--report-dir", type=Path, required=True)
     parser.add_argument("--targets", choices=units.SUPPORTED_TARGETS, nargs="+", required=True)
-    parser.add_argument("--candidate", choices=("upstream-156",), required=True)
+    parser.add_argument("--candidate", choices=CANDIDATES, required=True)
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
     parser.add_argument("--vs-installation", type=Path)
     parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl")

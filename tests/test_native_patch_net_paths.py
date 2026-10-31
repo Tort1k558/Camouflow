@@ -22,11 +22,13 @@ def patch(path, before, after):
 
 @pytest.mark.parametrize('failure', [None, 'foreign', 'resurrected', 'wrong-bytes', 'partial', 'clean', 'missing-patch'])
 @pytest.mark.parametrize('net_zero', [False, True])
-def test_complete_chain_accounts_for_add_modify_delete_without_touching_real_index(tmp_path, failure, net_zero):
+@pytest.mark.parametrize('optional_locks', ('0', '1'))
+def test_complete_chain_accounts_for_add_modify_delete_without_touching_real_index(tmp_path, failure, net_zero, optional_locks):
     root, patches = tmp_path / 'src', tmp_path / 'patches'
     root.mkdir()
     patches.mkdir()
-    env = {**os.environ, 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': os.devnull}
+    env = {**os.environ, 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': os.devnull,
+           'GIT_OPTIONAL_LOCKS': optional_locks}
 
     def git(*args):
         return subprocess.run(['git', '-c', 'core.autocrlf=false', *args], cwd=root,

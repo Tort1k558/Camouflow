@@ -13,6 +13,9 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+from scripts.native_build import CANDIDATES
+
 SOURCE_URL = "https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Windows&num=20"
 MAX_RESPONSE_BYTES = 1024 * 1024
 
@@ -99,7 +102,7 @@ def audit(output: Path, *, candidate_name: str | None = None) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--candidate", choices=("upstream-156",),
+    parser.add_argument("--candidate", choices=CANDIDATES,
                         help="Audit this explicit candidate without changing the default pin or source checkout")
     args = parser.parse_args()
     try:

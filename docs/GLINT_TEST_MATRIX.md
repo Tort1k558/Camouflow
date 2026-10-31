@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## 2026-10-31: explicit full-candidate diagnostics and index isolation
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Complete canonical Python regression | 5,336 passed, 1 skipped; no failures or errors | 623.578 seconds; new diagnostic/build tooling, not browser admission |
+| Immutable-input postguards during the native build | All 374 engine source paths and 269 preserved runtime assets unchanged | Active build outputs and repository-index metadata are intentionally not frozen |
+| Diagnostic and supporting CLI selection | 15 commands accept `upstream-156-webgpu` | Exact manifest, complete patch chain, resource checks and runtime receipt remain mandatory |
+| Git index preservation | Source-chain cases passed with optional Git locks enabled and disabled | Includes rejected foreign/resurrected files and zero-net-change patch chains |
+| Historical tooling archive | All 16 sources recovered and forward/reverse roundtrip verified | Old browser results remain bound to their original code |
+| Owned WebGPU transport activation | Protected test phase only; ambiguous overrides rejected | Effective browser switch still requires verification on the completed binary |
+
+The normal Windows build continues separately at j4. No new binary, WebGPU runtime
+result, CAPTCHA score or production admission follows from this Python regression.
+See the [candidate diagnostics](../native/drafts/upstream-156-webgpu/README.md).
+
 ## 2026-10-31: full candidate pre-build regression
 
 | Gate | Result | Boundary |

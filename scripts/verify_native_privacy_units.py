@@ -12,6 +12,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.native_build import CANDIDATES
+
 from scripts import native_build as build
 from app.core.native.runtime import NativeRuntimeError
 from scripts.verify_native_runtime import measure_runtime_core
@@ -599,17 +601,17 @@ def verify(workspace: Path, report: Path, *, vs_installation: Path | None = None
            target: str = "keys", candidate_name: str | None = None,
            git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
     required = required_tests(target)
-    if target == "screenshot-transaction" and candidate_name != "upstream-156":
+    if target == "screenshot-transaction" and candidate_name not in CANDIDATES:
         raise ValueError("Screenshot transaction units require the explicit upstream-156 candidate")
-    if target in LIVE_SCREEN_TESTS and candidate_name != "upstream-156":
+    if target in LIVE_SCREEN_TESTS and candidate_name not in CANDIDATES:
         raise ValueError("Live screen unit verification requires the explicit upstream-156 candidate")
-    if target == "audio-math" and candidate_name != "upstream-156":
+    if target == "audio-math" and candidate_name not in CANDIDATES:
         raise ValueError("AudioMath unit verification requires the explicit upstream-156 candidate")
-    if target == "screen-orientation" and candidate_name != "upstream-156":
+    if target == "screen-orientation" and candidate_name not in CANDIDATES:
         raise ValueError("Screen orientation unit verification requires the explicit upstream-156 candidate")
-    if target == "screen-widget" and candidate_name != "upstream-156":
+    if target == "screen-widget" and candidate_name not in CANDIDATES:
         raise ValueError("Screen widget unit verification requires the explicit upstream-156 candidate")
-    if target == "screen-metrics" and candidate_name != "upstream-156":
+    if target == "screen-metrics" and candidate_name not in CANDIDATES:
         raise ValueError("Screen metrics unit verification requires the explicit upstream-156 candidate")
     if sys.platform != "win32":
         raise ValueError("The owned-profile key loader verification currently supports Windows only")
@@ -757,7 +759,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--vs-installation", type=Path)
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
-    parser.add_argument("--candidate", choices=("upstream-156",), help="Explicit candidate source/manifest; not runtime admission")
+    parser.add_argument("--candidate", choices=CANDIDATES, help="Explicit candidate source/manifest; not runtime admission")
     parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl")
     parser.add_argument("--local-windows-toolchain", action="store_true")
     parser.add_argument("--target", choices=SUPPORTED_TARGETS, default="keys")

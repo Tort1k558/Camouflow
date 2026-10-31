@@ -334,7 +334,7 @@ def test_toolchain_preparation_cli_works_from_an_external_directory(tmp_path):
     result = subprocess.run([sys.executable, "-I", str(prep.ROOT / "scripts/native_windows_toolchain.py"), "--help"],
                             cwd=tmp_path, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stderr
-    assert "--candidate {upstream-156}" in result.stdout
+    assert "--candidate {upstream-156,upstream-156-webgpu}" in result.stdout
     assert not list(tmp_path.iterdir())
 
 

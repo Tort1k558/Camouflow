@@ -21,6 +21,8 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.native_build import CANDIDATES
+
 from playwright.async_api import async_playwright
 
 from app.core.native.runtime import NativeRuntime
@@ -406,7 +408,7 @@ def validate_first_script(result: dict, document: dict, counts: dict) -> None:
             raise ValueError("Audio policy changed between the first script and settled document: " + context)
 
 
-def probe_inputs(*, include_gpu_readback: bool = False) -> dict[str, str]:
+def probe_inputs(*, include_gpu_readback: bool = False, candidate_name: str | None = None) -> dict[str, str]:
     names = ("scripts/verify_native_surfaces.py", "scripts/verify_native_canvas.py",
              "scripts/verify_native_audio.py", "scripts/verify_native_worker_startup.py",
              "scripts/verify_native_audio_quality.py",
@@ -415,7 +417,12 @@ def probe_inputs(*, include_gpu_readback: bool = False) -> dict[str, str]:
              "app/core/native/configuration.py", "app/core/native/identity.py")
     if include_gpu_readback:
         names += ("scripts/verify_native_gpu_readback.py", "scripts/verify_native_gpu.py", "scripts/verify_native_hardware.py")
-    return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in names}
+    paths = {ROOT / name for name in names}
+    if candidate_name is not None:
+        from scripts.verify_native_privacy_batch import source_inputs
+
+        paths |= source_inputs(load_candidate(candidate_name))
+    return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
 
 
 CONCURRENT_PHASES = (
@@ -606,7 +613,7 @@ def main() -> int:
                         help="Also check two live profiles and symmetric close/restart isolation")
     parser.add_argument("--include-gpu-readback", action="store_true",
                         help="Measure actual Canvas, Audio and WebGL readback in the same contexts and profiles")
-    parser.add_argument("--candidate", choices=("upstream-156",),
+    parser.add_argument("--candidate", choices=CANDIDATES,
                         help="Bind owned diagnostics to the exact selected candidate receipt/patches; not admission")
     args = parser.parse_args()
     selection = {} if args.candidate is None else {"candidate_name": args.candidate}
@@ -638,7 +645,7 @@ def main() -> int:
         if args.candidate is not None:
             report.update(candidate=args.candidate,
                           candidate_manifest_sha256=load_candidate(args.candidate)["manifest_sha256"])
-        inputs = probe_inputs(include_gpu_readback=args.include_gpu_readback)
+        inputs = probe_inputs(include_gpu_readback=args.include_gpu_readback, candidate_name=args.candidate)
         report.update(runtime_core_sha256_measured=core, probe_inputs_sha256=inputs,
                       receipt_sha256=hashlib.sha256(receipt).hexdigest(),
                       javascript_sha256=hashlib.sha256(combined_read(args.include_gpu_readback).encode("utf-8")).hexdigest())
@@ -653,7 +660,7 @@ def main() -> int:
                            include_nested_canvas=args.include_nested_canvas, derivation_mode=args.derivation_mode,
                            include_concurrent_profiles=args.include_concurrent_profiles, include_gpu_readback=args.include_gpu_readback))
         if (measure_runtime_core(executable) != core or receipt_validator(executable, core, derivation_mode=args.derivation_mode, **selection) != receipt
-                or probe_inputs(include_gpu_readback=args.include_gpu_readback) != inputs):
+                or probe_inputs(include_gpu_readback=args.include_gpu_readback, candidate_name=args.candidate) != inputs):
             raise ValueError("Surface runtime, receipt or probe code changed during verification")
         expected = {f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b")
                     for phase in ("initial", "restart")}

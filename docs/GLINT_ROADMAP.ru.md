@@ -8,9 +8,14 @@ draft packets. All 116 apply/reverse, 268 upstream files restore, and all 88 fin
 component paths match the measured standalone source. Official immutable source
 URLs validate. Normal 180 GiB / j4 restrictions remain unchanged.
 
-Next: preserve the exact baseline source/stage state, perform a clean verified
-transition with real dependency stages, then build and test the full Chromium
-runtime. No new browser binary or privacy/production admission is claimed yet.
+Completed: exact baseline preservation, clean source transition, real sync/hooks
+and application of all 116 patches. The Windows j4 build is running. Diagnostic
+and supporting CLI commands now accept the variant without weakening receipt or
+resource checks; the Python regression passed 5,336 tests with one skip.
+
+Next: finish compilation and test the full Chromium runtime. No new browser binary
+or privacy/production admission is claimed yet. Evidence and scope are recorded
+in the [test matrix](GLINT_TEST_MATRIX.md).
 
 ## Actual direct and bundled native render inputs
 

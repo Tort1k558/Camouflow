@@ -110,15 +110,16 @@ def test_compiled_72_formats_close_the_measured_compatibility_regression(format_
 
 
 @pytest.mark.parametrize('version', ('70', '72'))
-def test_mobile_patch_reconstructs_the_measured_portable_variant(tmp_path, version):
+def test_mobile_patch_reconstructs_the_measured_portable_variant(tmp_path, version, diagnostic_sources_before_candidate):
     root = Path(__file__).resolve().parents[1]
     environment = root / 'native/drafts/environment'
     record = json.loads((environment / f'combined-mobile{version}-observations.json').read_bytes())
     relative = Path('scripts/verify_native_combined_math.py')
-    assert hashlib.sha256((root / relative).read_bytes()).hexdigest() == record['base_source_sha256']
+    source = diagnostic_sources_before_candidate[relative.as_posix()]
+    assert hashlib.sha256(source).hexdigest() == record['base_source_sha256']
     target = tmp_path / relative
     target.parent.mkdir(parents=True)
-    target.write_bytes((root / relative).read_bytes())
+    target.write_bytes(source)
     patch = environment / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error', str(patch)],

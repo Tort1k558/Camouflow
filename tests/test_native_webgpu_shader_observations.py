@@ -6,14 +6,16 @@ ROOT = Path(__file__).resolve().parents[1]
 ENV = ROOT / 'native/drafts/environment'
 
 
-def test_actual_shader_gate_source_and_negative_result_are_bound():
+def test_actual_shader_gate_source_and_negative_result_are_bound(diagnostic_sources_before_candidate):
     record = json.loads((ENV / 'webgpu-shader-dataflow76-observations.json').read_bytes())
     assert record['measurement_complete'] and record['postguards_passed']
     assert record['fixture_validation_passed'] and record['surface_noise_observed']
     assert record['passed'] is record['readback_consistent'] is record['consistency_gate_passed'] is False
     assert record['public_cli_integrated'] and record['public_cli_returncode'] == 1
     for path, key in ((record['source'], 'source_sha256'), (record['cli'], 'cli_sha256')):
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == record[key]
+        source = (diagnostic_sources_before_candidate[path] if path in diagnostic_sources_before_candidate
+                  else (ROOT / path).read_bytes())
+        assert hashlib.sha256(source).hexdigest() == record[key]
     assert record['owned_profiles_removed']
     assert record['native_webgpu_shader_readback_protected'] is False
     assert record['unselected_service_packet_runtime_verified'] is False

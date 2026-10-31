@@ -113,10 +113,11 @@ def measured_combination(request):
     return json.loads(path.read_bytes())
 
 
-def test_combined_measurement_binds_the_runner_without_admitting_a_release(measured_combination):
+def test_combined_measurement_binds_the_runner_without_admitting_a_release(measured_combination,
+                                                                        diagnostic_sources_before_candidate):
     record = measured_combination
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
-    source = (combined.ROOT / record['public_runner']).read_text(encoding='utf-8-sig')
+    source = diagnostic_sources_before_candidate[record['public_runner']].decode('utf-8-sig').replace('\r\n', '\n')
     assert hashlib.sha256(source.encode('utf-8')).hexdigest() == record['public_runner_normalized_utf8_lf_sha256']
     for name in ('selected', 'privacy_admitted', 'production_admitted', 'device_cohort_verified',
                  'concurrent_profiles_verified', 'mobile_web_verified', 'webgpu_readback_admitted'):

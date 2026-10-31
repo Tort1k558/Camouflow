@@ -1,0 +1,558 @@
+diff --git a/scripts/audit_native_upstream.py b/scripts/audit_native_upstream.py
+--- a/scripts/audit_native_upstream.py
++++ b/scripts/audit_native_upstream.py
+@@ -13,6 +13,9 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
++
+ SOURCE_URL = "https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Windows&num=20"
+ MAX_RESPONSE_BYTES = 1024 * 1024
+ 
+@@ -99,7 +102,7 @@
+ def main() -> int:
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--output", type=Path, required=True)
+-    parser.add_argument("--candidate", choices=("upstream-156",),
++    parser.add_argument("--candidate", choices=CANDIDATES,
+                         help="Audit this explicit candidate without changing the default pin or source checkout")
+     args = parser.parse_args()
+     try:
+diff --git a/scripts/native_build.py b/scripts/native_build.py
+--- a/scripts/native_build.py
++++ b/scripts/native_build.py
+@@ -300,12 +300,30 @@
+     run([sys.executable, "-c", script, str(workspace / "depot_tools/bootstrap/bootstrap.py")], workspace, env)
+ 
+ 
++def _source_patch_changes(source: Path, env: dict[str, str], *, index_dir: Path | None = None) -> set[str]:
++    selected = Path(run(["git", "rev-parse", "--git-path", "index"], source, env, capture=True))
++    if not selected.is_absolute():
++        selected = source / selected
++    original = selected.read_bytes() if selected.is_file() else None
++    with tempfile.TemporaryDirectory(prefix="native-source-index-", dir=source.parent if index_dir is None else index_dir) as owned:
++        index = Path(owned) / "index"
++        index_env = {**env, "GIT_INDEX_FILE": str(index)}
++        if original is None:
++            run(["git", "read-tree", "HEAD"], source, index_env)
++        else:
++            index.write_bytes(original)
++        changed = set(run(["git", "diff", "HEAD", "--name-only"], source, index_env, capture=True).splitlines())
++        changed.update(run(["git", "ls-files", "--others", "--exclude-standard"], source, index_env, capture=True).splitlines())
++    if (selected.read_bytes() if selected.is_file() else None) != original:
++        raise ValueError("Git index changed concurrently during source patch inspection")
++    return changed
++
++
+ def _source_patches(source: Path, env: dict[str, str], names: tuple[str, ...],
+                     *, index_dir: Path | None = None, patch_directory: Path | None = None,
+                     complete_chain: bool = False) -> list[dict[str, str]]:
+     env = {**env, "GIT_OPTIONAL_LOCKS": "0"}
+-    changed = set(run(["git", "diff", "HEAD", "--name-only"], source, env, capture=True).splitlines())
+-    changed.update(run(["git", "ls-files", "--others", "--exclude-standard"], source, env, capture=True).splitlines())
++    changed = _source_patch_changes(source, env, index_dir=index_dir)
+     if not changed and not complete_chain:
+         return []
+     patches = []
+diff --git a/scripts/native_windows_toolchain.py b/scripts/native_windows_toolchain.py
+--- a/scripts/native_windows_toolchain.py
++++ b/scripts/native_windows_toolchain.py
+@@ -12,6 +12,8 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
+ 
+ from scripts import native_build as build
+ from scripts.native_windows_sdk import sha256
+@@ -157,7 +159,7 @@
+     parser.add_argument("--vs-installation", type=Path, required=True)
+     parser.add_argument("--sdk", type=Path, required=True)
+     parser.add_argument("--output", type=Path, required=True)
+-    parser.add_argument("--candidate", choices=("upstream-156",), required=True)
++    parser.add_argument("--candidate", choices=CANDIDATES, required=True)
+     args = parser.parse_args()
+     try:
+         prepare(args.workspace, args.vs_installation, args.sdk, args.output, candidate_name=args.candidate)
+diff --git a/scripts/package_native_windows.py b/scripts/package_native_windows.py
+--- a/scripts/package_native_windows.py
++++ b/scripts/package_native_windows.py
+@@ -19,7 +19,7 @@
+     MAX_ARCHIVE_BYTES, MAX_FILES, MAX_UNPACKED_BYTES, checked_archive_name,
+     host_architecture, sha256_file,
+ )
+-from scripts.native_build import LOCK, expected_candidate_patches, load_candidate  # noqa: E402
++from scripts.native_build import CANDIDATES, LOCK, expected_candidate_patches, load_candidate  # noqa: E402
+ from scripts.verify_native_runtime import measure_runtime_core  # noqa: E402
+ 
+ RELEASE_VOLUME = "D:"
+@@ -200,7 +200,7 @@
+     parser.add_argument("--staged", required=True, type=Path, help="Official mini-installer staged Chrome-bin directory")
+     parser.add_argument("--runtime-report", required=True, type=Path)
+     parser.add_argument("--archive", required=True, type=Path)
+-    parser.add_argument("--candidate", choices=("upstream-156",))
++    parser.add_argument("--candidate", choices=CANDIDATES)
+     args = parser.parse_args()
+     try:
+         result = package(args.build_output, args.staged, args.runtime_report, args.archive, candidate_name=args.candidate)
+diff --git a/scripts/stage_native_windows.py b/scripts/stage_native_windows.py
+--- a/scripts/stage_native_windows.py
++++ b/scripts/stage_native_windows.py
+@@ -11,6 +11,8 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
+ 
+ from scripts import native_build as build
+ from scripts.package_native_windows import read_record
+@@ -142,7 +144,7 @@
+     parser.add_argument("--report", type=Path, required=True)
+     parser.add_argument("--vs-installation", type=Path)
+     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
+-    parser.add_argument("--candidate", choices=("upstream-156",))
++    parser.add_argument("--candidate", choices=CANDIDATES)
+     parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl")
+     parser.add_argument("--local-windows-toolchain", action="store_true")
+     args = parser.parse_args()
+diff --git a/scripts/verify_native_audio_compatibility.py b/scripts/verify_native_audio_compatibility.py
+--- a/scripts/verify_native_audio_compatibility.py
++++ b/scripts/verify_native_audio_compatibility.py
+@@ -16,6 +16,7 @@
+ import threading
+ 
+ from scripts import native_build as build
++from scripts.native_build import CANDIDATES
+ from scripts.verify_native_surfaces import SurfaceConfiguration, validate_receipt
+ from scripts.verify_native_worker_startup import browser_arguments, partitioning_argument
+ 
+@@ -396,8 +397,8 @@
+         raise ValueError("Audio profile count must be between 1 and 16")
+     if profile_count > 1 and not {"baseline", "math"}.issubset(modes):
+         raise ValueError("Audio profile matrix requires explicit baseline and math modes")
+-    if sys.platform != "win32" or candidate_name != "upstream-156":
+-        raise ValueError("Audio compatibility requires the explicit Windows upstream-156 candidate")
++    if sys.platform != "win32" or candidate_name not in CANDIDATES:
++        raise ValueError("Audio compatibility requires an explicit Windows Chromium 156 candidate")
+     if (not owned.is_absolute() or owned.drive.upper() != "D:" or owned != owned.resolve()
+             or not owned.parent.is_dir() or owned.exists() or owned.is_relative_to(ROOT)
+             or owned.is_relative_to(workspace / "chromium/src")):
+@@ -471,7 +472,7 @@
+     parser.add_argument("--workspace", type=Path, required=True)
+     parser.add_argument("--executable", type=Path, required=True)
+     parser.add_argument("--work-dir", type=Path, required=True)
+-    parser.add_argument("--candidate", choices=("upstream-156",), required=True)
++    parser.add_argument("--candidate", choices=CANDIDATES, required=True)
+     parser.add_argument("--mode", choices=MODES, action="append", required=True)
+     parser.add_argument("--profiles", type=int, default=1,
+                         help="Fixed cohort size (1..16); >1 requires baseline/math and includes a math restart")
+diff --git a/scripts/verify_native_combined_math.py b/scripts/verify_native_combined_math.py
+--- a/scripts/verify_native_combined_math.py
++++ b/scripts/verify_native_combined_math.py
+@@ -19,6 +19,10 @@
+ 
+ 
+ ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
++
+ DOCUMENT_CONTEXTS = frozenset({'document', 'same_origin_frame', 'cross_origin_frame', 'about_blank_frame', 'srcdoc_frame'})
+ 
+ 
+@@ -67,7 +71,7 @@
+     parser.add_argument('--work-dir', type=Path, required=True)
+     parser.add_argument('--driver-stage', type=Path, required=True)
+     parser.add_argument('--driver-manifest', type=Path, default=ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json')
+-    parser.add_argument('--candidate', choices=('upstream-156',), required=True)
++    parser.add_argument('--candidate', choices=CANDIDATES, required=True)
+     parser.add_argument('--profiles', type=int, default=2, help='Protected profile cohort size (2..16), each with a persistent restart')
+     args = parser.parse_args()
+     if not 2 <= args.profiles <= 16:
+diff --git a/scripts/verify_native_font_rendering.py b/scripts/verify_native_font_rendering.py
+--- a/scripts/verify_native_font_rendering.py
++++ b/scripts/verify_native_font_rendering.py
+@@ -13,6 +13,8 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
+ 
+ from app.core.native.configuration import NativeConfiguration
+ from app.core.native.runtime import NativeRuntime
+@@ -355,7 +357,7 @@
+     parser.add_argument("--executable", type=Path, required=True)
+     parser.add_argument("--output", type=Path, required=True)
+     parser.add_argument("--series", choices=("rasterization", "text-tuning"), default="rasterization")
+-    parser.add_argument("--candidate", choices=("upstream-156",), help="Bind the complete candidate build receipt; not capability admission")
++    parser.add_argument("--candidate", choices=CANDIDATES, help="Bind the complete candidate build receipt; not capability admission")
+     parser.add_argument("--workload-font", type=Path, help="Explicit real TTF/OTF for editing, web-font and export workloads")
+     parser.add_argument("--profile-concurrency", type=int, choices=(1, 2), default=1,
+                         help="Explicit maximum simultaneously live private profiles; default sequential")
+diff --git a/scripts/verify_native_gpu.py b/scripts/verify_native_gpu.py
+--- a/scripts/verify_native_gpu.py
++++ b/scripts/verify_native_gpu.py
+@@ -17,6 +17,8 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
+ 
+ from playwright.async_api import async_playwright
+ 
+@@ -612,7 +614,7 @@
+     parser.add_argument("--report", type=Path, required=True)
+     parser.add_argument("--minimized", action="store_true", help="Also check candidate feature-on semantics")
+     parser.add_argument("--windows-library-directory", type=Path)
+-    parser.add_argument("--candidate", choices=("upstream-156",))
++    parser.add_argument("--candidate", choices=CANDIDATES)
+     parser.add_argument("--workspace", type=Path, help="Required native workspace when checking a candidate")
+     parser.add_argument("--require-webgpu", action="store_true",
+                         help="Require WebGPU in all eight observed document/worker contexts; no software/unsafe fallback")
+diff --git a/scripts/verify_native_gpu_readback.py b/scripts/verify_native_gpu_readback.py
+--- a/scripts/verify_native_gpu_readback.py
++++ b/scripts/verify_native_gpu_readback.py
+@@ -18,6 +18,8 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
+ 
+ from PyQt6.QtGui import QImage
+ 
+@@ -522,10 +524,10 @@
+         raise ValueError("Lost-context read changed destination or error semantics")
+ 
+ 
+-def probe_inputs() -> dict[str, str]:
++def probe_inputs(*, candidate_name: str | None = None) -> dict[str, str]:
+     from scripts.verify_native_gpu import probe_inputs as gpu_inputs
+     from scripts.verify_native_surfaces import probe_inputs as surface_inputs
+-    return {**gpu_inputs(), **surface_inputs(),
++    return {**gpu_inputs(candidate_name=candidate_name), **surface_inputs(candidate_name=candidate_name),
+             "scripts/verify_native_gpu_readback.py": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+ 
+ 
+@@ -595,7 +597,7 @@
+     parser.add_argument("--work-dir", type=Path, required=True)
+     parser.add_argument("--report", type=Path, required=True)
+     parser.add_argument("--derivation-mode", choices=DERIVATION_MODES, default="partitioned-privacy")
+-    parser.add_argument("--candidate", choices=("upstream-156",),
++    parser.add_argument("--candidate", choices=CANDIDATES,
+                         help="Bind owned diagnostics to the exact selected candidate receipt/patches; not admission")
+     args = parser.parse_args()
+     selection = {} if args.candidate is None else {"candidate_name": args.candidate}
+@@ -612,7 +614,7 @@
+         if args.candidate is not None:
+             report.update(candidate=args.candidate,
+                           candidate_manifest_sha256=load_candidate(args.candidate)["manifest_sha256"])
+-        inputs = probe_inputs()
++        inputs = probe_inputs(candidate_name=args.candidate)
+         report.update(runtime_core_sha256_measured=core, probe_inputs_sha256=inputs,
+                       receipt_sha256=hashlib.sha256(receipt).hexdigest(),
+                       javascript_sha256=hashlib.sha256(READBACK_READ.encode("utf-8")).hexdigest())
+@@ -625,7 +627,7 @@
+         owned = Path(tempfile.mkdtemp(prefix="glint-gpu-readback-", dir=args.work_dir.resolve()))
+         asyncio.run(verify(executable, owned, server, report, runtimes, derivation_mode=args.derivation_mode))
+         if (measure_runtime_core(executable) != core or validate_receipt(executable, core, derivation_mode=args.derivation_mode, **selection) != receipt
+-                or probe_inputs() != inputs):
++                or probe_inputs(candidate_name=args.candidate) != inputs):
+             raise ValueError("GPU runtime, receipt or probe changed during verification")
+         expected = {f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b")
+                     for phase in ("initial", "restart")}
+diff --git a/scripts/verify_native_privacy_batch.py b/scripts/verify_native_privacy_batch.py
+--- a/scripts/verify_native_privacy_batch.py
++++ b/scripts/verify_native_privacy_batch.py
+@@ -12,6 +12,8 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
+ 
+ from scripts import native_build as build
+ from scripts import verify_native_privacy_units as units
+@@ -191,7 +193,7 @@
+     parser.add_argument("--workspace", type=Path, required=True)
+     parser.add_argument("--report-dir", type=Path, required=True)
+     parser.add_argument("--targets", choices=units.SUPPORTED_TARGETS, nargs="+", required=True)
+-    parser.add_argument("--candidate", choices=("upstream-156",), required=True)
++    parser.add_argument("--candidate", choices=CANDIDATES, required=True)
+     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
+     parser.add_argument("--vs-installation", type=Path)
+     parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl")
+diff --git a/scripts/verify_native_privacy_units.py b/scripts/verify_native_privacy_units.py
+--- a/scripts/verify_native_privacy_units.py
++++ b/scripts/verify_native_privacy_units.py
+@@ -11,6 +11,8 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
+ 
+ from scripts import native_build as build
+ from app.core.native.runtime import NativeRuntimeError
+@@ -599,17 +601,17 @@
+            target: str = "keys", candidate_name: str | None = None,
+            git_ssl_backend: str = "openssl", local_toolchain: bool = False) -> dict:
+     required = required_tests(target)
+-    if target == "screenshot-transaction" and candidate_name != "upstream-156":
++    if target == "screenshot-transaction" and candidate_name not in CANDIDATES:
+         raise ValueError("Screenshot transaction units require the explicit upstream-156 candidate")
+-    if target in LIVE_SCREEN_TESTS and candidate_name != "upstream-156":
++    if target in LIVE_SCREEN_TESTS and candidate_name not in CANDIDATES:
+         raise ValueError("Live screen unit verification requires the explicit upstream-156 candidate")
+-    if target == "audio-math" and candidate_name != "upstream-156":
++    if target == "audio-math" and candidate_name not in CANDIDATES:
+         raise ValueError("AudioMath unit verification requires the explicit upstream-156 candidate")
+-    if target == "screen-orientation" and candidate_name != "upstream-156":
++    if target == "screen-orientation" and candidate_name not in CANDIDATES:
+         raise ValueError("Screen orientation unit verification requires the explicit upstream-156 candidate")
+-    if target == "screen-widget" and candidate_name != "upstream-156":
++    if target == "screen-widget" and candidate_name not in CANDIDATES:
+         raise ValueError("Screen widget unit verification requires the explicit upstream-156 candidate")
+-    if target == "screen-metrics" and candidate_name != "upstream-156":
++    if target == "screen-metrics" and candidate_name not in CANDIDATES:
+         raise ValueError("Screen metrics unit verification requires the explicit upstream-156 candidate")
+     if sys.platform != "win32":
+         raise ValueError("The owned-profile key loader verification currently supports Windows only")
+@@ -757,7 +759,7 @@
+     parser.add_argument("--report", type=Path, required=True)
+     parser.add_argument("--vs-installation", type=Path)
+     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=4)
+-    parser.add_argument("--candidate", choices=("upstream-156",), help="Explicit candidate source/manifest; not runtime admission")
++    parser.add_argument("--candidate", choices=CANDIDATES, help="Explicit candidate source/manifest; not runtime admission")
+     parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl")
+     parser.add_argument("--local-windows-toolchain", action="store_true")
+     parser.add_argument("--target", choices=SUPPORTED_TARGETS, default="keys")
+diff --git a/scripts/verify_native_suite.py b/scripts/verify_native_suite.py
+--- a/scripts/verify_native_suite.py
++++ b/scripts/verify_native_suite.py
+@@ -11,6 +11,8 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
+ 
+ from scripts.package_native_windows import REQUIRED_RUNTIME_CHECKS, read_record, validate_build_receipt
+ from scripts import native_build
+@@ -203,7 +205,7 @@
+                         help="Explicit package-owned DLL directory for a versioned Chrome-bin layout")
+     parser.add_argument("--release-store", type=Path, help="Verify every file of an installed immutable Native release")
+     parser.add_argument("--release-sha256", default="", help="Expected installed release archive checksum")
+-    parser.add_argument("--candidate", choices=("upstream-156",), help="Bind all gates to the explicit candidate receipt and inputs")
++    parser.add_argument("--candidate", choices=CANDIDATES, help="Bind all gates to the explicit candidate receipt and inputs")
+     args = parser.parse_args()
+     try:
+         report = verify(args.executable, args.report_dir, args.gates, library_directory=args.windows_library_directory,
+diff --git a/scripts/verify_native_surfaces.py b/scripts/verify_native_surfaces.py
+--- a/scripts/verify_native_surfaces.py
++++ b/scripts/verify_native_surfaces.py
+@@ -20,6 +20,8 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
+ 
+ from playwright.async_api import async_playwright
+ 
+@@ -406,7 +408,7 @@
+             raise ValueError("Audio policy changed between the first script and settled document: " + context)
+ 
+ 
+-def probe_inputs(*, include_gpu_readback: bool = False) -> dict[str, str]:
++def probe_inputs(*, include_gpu_readback: bool = False, candidate_name: str | None = None) -> dict[str, str]:
+     names = ("scripts/verify_native_surfaces.py", "scripts/verify_native_canvas.py",
+              "scripts/verify_native_audio.py", "scripts/verify_native_worker_startup.py",
+              "scripts/verify_native_audio_quality.py",
+@@ -415,7 +417,12 @@
+              "app/core/native/configuration.py", "app/core/native/identity.py")
+     if include_gpu_readback:
+         names += ("scripts/verify_native_gpu_readback.py", "scripts/verify_native_gpu.py", "scripts/verify_native_hardware.py")
+-    return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in names}
++    paths = {ROOT / name for name in names}
++    if candidate_name is not None:
++        from scripts.verify_native_privacy_batch import source_inputs
++
++        paths |= source_inputs(load_candidate(candidate_name))
++    return {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
+ 
+ 
+ CONCURRENT_PHASES = (
+@@ -606,7 +613,7 @@
+                         help="Also check two live profiles and symmetric close/restart isolation")
+     parser.add_argument("--include-gpu-readback", action="store_true",
+                         help="Measure actual Canvas, Audio and WebGL readback in the same contexts and profiles")
+-    parser.add_argument("--candidate", choices=("upstream-156",),
++    parser.add_argument("--candidate", choices=CANDIDATES,
+                         help="Bind owned diagnostics to the exact selected candidate receipt/patches; not admission")
+     args = parser.parse_args()
+     selection = {} if args.candidate is None else {"candidate_name": args.candidate}
+@@ -638,7 +645,7 @@
+         if args.candidate is not None:
+             report.update(candidate=args.candidate,
+                           candidate_manifest_sha256=load_candidate(args.candidate)["manifest_sha256"])
+-        inputs = probe_inputs(include_gpu_readback=args.include_gpu_readback)
++        inputs = probe_inputs(include_gpu_readback=args.include_gpu_readback, candidate_name=args.candidate)
+         report.update(runtime_core_sha256_measured=core, probe_inputs_sha256=inputs,
+                       receipt_sha256=hashlib.sha256(receipt).hexdigest(),
+                       javascript_sha256=hashlib.sha256(combined_read(args.include_gpu_readback).encode("utf-8")).hexdigest())
+@@ -653,7 +660,7 @@
+                            include_nested_canvas=args.include_nested_canvas, derivation_mode=args.derivation_mode,
+                            include_concurrent_profiles=args.include_concurrent_profiles, include_gpu_readback=args.include_gpu_readback))
+         if (measure_runtime_core(executable) != core or receipt_validator(executable, core, derivation_mode=args.derivation_mode, **selection) != receipt
+-                or probe_inputs(include_gpu_readback=args.include_gpu_readback) != inputs):
++                or probe_inputs(include_gpu_readback=args.include_gpu_readback, candidate_name=args.candidate) != inputs):
+             raise ValueError("Surface runtime, receipt or probe code changed during verification")
+         expected = {f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b")
+                     for phase in ("initial", "restart")}
+diff --git a/scripts/verify_native_webgpu_consistency.py b/scripts/verify_native_webgpu_consistency.py
+--- a/scripts/verify_native_webgpu_consistency.py
++++ b/scripts/verify_native_webgpu_consistency.py
+@@ -15,9 +15,44 @@
+ from pathlib import Path
+ 
+ ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
++
+ PROBE = ROOT / 'native/drafts/environment/first-script/webgpu_shader_dataflow.js'
+ DRIVER_MANIFEST = ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json'
+ PIXEL_BYTES = 16 * 16 * 4
++TRANSPORT_FEATURE = 'GlintWebGPUPolicyTransportCandidate'
++
++
++def transport_arguments(arguments: list[str], *, candidate_name: str, mode: str) -> list[str]:
++    if candidate_name not in CANDIDATES or mode not in {'baseline', 'ready'}:
++        raise ValueError('Select an explicit candidate and WebGPU observation mode')
++    if not isinstance(arguments, list) or any(type(value) is not str for value in arguments):
++        raise ValueError('WebGPU launch arguments must be a list of strings')
++    selected = []
++    disabled = 0
++    for index, value in enumerate(arguments):
++        if value.startswith(('--enable-features=', '--disable-features=')):
++            features = value.partition('=')[2].split(',')
++            if any(not feature for feature in features):
++                raise ValueError('Malformed WebGPU feature arguments')
++            if any(feature.partition('<')[0].partition(':')[0].lstrip('*') == TRANSPORT_FEATURE
++                   for feature in features):
++                raise ValueError('WebGPU transport feature must be selected only by this fixture')
++            if value.startswith('--enable-features='):
++                selected.append(index)
++            else:
++                disabled += 1
++    if len(selected) > 1 or disabled > 1:
++        raise ValueError('Ambiguous WebGPU feature arguments')
++    result = list(arguments)
++    if candidate_name == 'upstream-156-webgpu' and mode == 'ready':
++        if selected:
++            result[selected[0]] += ',' + TRANSPORT_FEATURE
++        else:
++            result.append('--enable-features=' + TRANSPORT_FEATURE)
++    return result
+ 
+ 
+ def digest(path: Path) -> str:
+@@ -118,6 +153,11 @@
+         partitioning_argument,
+     )
+ 
++    class WebGPUConfiguration(ReadbackConfiguration):
++        def launch_arguments(self) -> list[str]:
++            return transport_arguments(super().launch_arguments(),
++                                       candidate_name=report['candidate'], mode=self.probe_mode)
++
+     discovery = NativeRuntime(owned / 'discovery', executable, ReadbackConfiguration(probe_mode='baseline'))
+     runtimes.append(discovery)
+     try:
+@@ -131,7 +171,7 @@
+         await discovery.close()
+     report['driver_partitioning'] = {'original': original, 'replacement': replacement}
+     for mode in ('baseline', 'ready'):
+-        runtime = NativeRuntime(owned / mode, executable, ReadbackConfiguration(probe_mode=mode,
++        runtime = NativeRuntime(owned / mode, executable, WebGPUConfiguration(probe_mode=mode,
+             derivation_mode='profile-identity', disabled_features_argument=replacement,
+             ignored_driver_argument=original))
+         runtimes.append(runtime)
+@@ -140,6 +180,13 @@
+             arguments = await browser_arguments(context)
+             if replacement not in arguments or (original != replacement and original in arguments):
+                 raise ValueError('Requested partitioning arguments were not effective')
++            enabled = [feature for argument in arguments if argument.startswith('--enable-features=')
++                       for feature in argument.partition('=')[2].split(',')]
++            transport_enabled = TRANSPORT_FEATURE in enabled
++            if transport_enabled != (report['candidate'] == 'upstream-156-webgpu' and mode == 'ready'):
++                raise ValueError('Requested WebGPU transport feature was not effective')
++            report.setdefault('transport_feature_observations', []).append(
++                {'mode': mode, 'enabled': transport_enabled})
+             page = await context.new_page()
+             await page.goto(f'http://127.0.0.1:{server.server_port}/', wait_until='load')
+             value = await asyncio.wait_for(page.evaluate('async () => {' + source + '; return await probeWebGPU();}'), 90)
+@@ -153,6 +200,7 @@
+     parser.add_argument('--executable', type=Path, required=True)
+     parser.add_argument('--driver-stage', type=Path, required=True)
+     parser.add_argument('--work-dir', type=Path, required=True)
++    parser.add_argument('--candidate', choices=CANDIDATES, default='upstream-156')
+     args = parser.parse_args(argv)
+     paths = (args.executable, args.driver_stage, args.work_dir)
+     if (sys.platform != 'win32' or any(not p.is_absolute() or p != p.resolve()
+@@ -190,12 +238,13 @@
+         from scripts.verify_native_runtime import FixtureServer, measure_runtime_core
+ 
+         core = measure_runtime_core(args.executable)
+-        receipt = validate_receipt(args.executable, core, derivation_mode='profile-identity', candidate_name='upstream-156')
+-        probe_snapshot = probe_inputs()
++        receipt = validate_receipt(args.executable, core, derivation_mode='profile-identity', candidate_name=args.candidate)
++        probe_snapshot = probe_inputs(candidate_name=args.candidate)
+         inputs = {str(ROOT / path): value for path,value in probe_snapshot.items()}
+         inputs.update({str(path): digest(path) for path in (Path(__file__), PROBE, DRIVER_MANIFEST)})
+         report.update(runtime_core_sha256_measured=core, receipt_sha256=hashlib.sha256(receipt).hexdigest(),
+-                      probe_inputs_sha256=inputs, javascript_sha256=digest(PROBE), candidate='upstream-156')
++                      probe_inputs_sha256=inputs, javascript_sha256=digest(PROBE), candidate=args.candidate,
++                      candidate_manifest_sha256=json.loads(receipt)['candidate_manifest_sha256'])
+         server = FixtureServer(('127.0.0.1', 0), FixtureHandler)
+         thread = threading.Thread(target=server.serve_forever, daemon=True)
+         thread.start()
+@@ -203,8 +252,8 @@
+         report['result'] = validate_rows(report['observations'])
+         report['measurement_complete'] = True
+         report['postguards_passed'] = (measure_runtime_core(args.executable) == core
+-            and validate_receipt(args.executable, core, derivation_mode='profile-identity', candidate_name='upstream-156') == receipt
+-            and probe_inputs() == probe_snapshot
++            and validate_receipt(args.executable, core, derivation_mode='profile-identity', candidate_name=args.candidate) == receipt
++            and probe_inputs(candidate_name=args.candidate) == probe_snapshot
+             and all(digest(Path(path)) == value for path,value in inputs.items()))
+         verify(args.driver_stage, DRIVER_MANIFEST)
+         report['passed'] = report['postguards_passed'] and report['result']['consistency_gate_passed']
+diff --git a/scripts/verify_native_worker_startup.py b/scripts/verify_native_worker_startup.py
+--- a/scripts/verify_native_worker_startup.py
++++ b/scripts/verify_native_worker_startup.py
+@@ -19,6 +19,8 @@
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
++
++from scripts.native_build import CANDIDATES
+ 
+ from app.core.native.configuration import NativeConfiguration
+ from app.core.native.runtime import NativeRuntime
+@@ -479,7 +481,7 @@
+     parser.add_argument("--report", type=Path, required=True)
+     parser.add_argument("--bootstrap-policy", choices=("canvas", "surfaces"), default="canvas")
+     parser.add_argument("--include-nested", action="store_true", help="Add 20 classic/module nested dedicated-worker checks")
+-    parser.add_argument("--candidate", choices=("upstream-156",),
++    parser.add_argument("--candidate", choices=CANDIDATES,
+                         help="Bind owned diagnostics to the exact selected candidate receipt/patches; not admission")
+     args = parser.parse_args()
+     selection = {} if args.candidate is None else {"candidate_name": args.candidate}

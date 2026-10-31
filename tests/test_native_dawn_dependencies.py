@@ -139,7 +139,7 @@ def test_capture_python_baseline_predates_dawn_tooling_changes():
 
 
 def test_tooling_history_recovers_measured_tls_sources_and_round_trips(
-        native_tooling_before_dawn, native_tooling_before_net_paths, tmp_path):
+        native_tooling_before_dawn, native_tooling_before_net_paths, diagnostic_sources_before_candidate, tmp_path):
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
     record = json.loads((directory / 'dawn-tooling-source-upgrade.json').read_bytes())
@@ -161,6 +161,8 @@ def test_tooling_history_recovers_measured_tls_sources_and_round_trips(
     for row in record['sources']:
         if row['source'] in native_tooling_before_net_paths['sources']:
             current = native_tooling_before_net_paths['sources'][row['source']]
+        elif row['source'] in diagnostic_sources_before_candidate:
+            current = diagnostic_sources_before_candidate[row['source']].decode('utf-8-sig').replace('\r\n', '\n').encode('utf-8')
         else:
             current = (root / row['source']).read_text(encoding='utf-8-sig').encode('utf-8')
         assert (base / row['source']).read_bytes() == current

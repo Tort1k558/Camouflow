@@ -35,3 +35,31 @@ to bypass these checks. Do not run a browser from the writable build directory.
 No runtime selection, policy readiness, packaging or production admission is
 granted by this source preparation. Preserve the independent 001–076 runtime and
 the separately retained Chromium 148 rollback package before building.
+
+## Diagnose the completed binary
+
+The runtime suite, worker/surface/GPU/audio/font diagnostics, unit batches,
+Windows staging/packaging and upstream audit accept this explicit variant. They
+still require its exact manifest, complete Chromium/V8/Dawn patch chain and measured
+runtime receipt. A 001–076 receipt is not interchangeable with a 001–116 receipt.
+Source inspection uses a disposable copy of the selected Git index, preserving
+the real staged metadata even when a patched file returns to its original bytes.
+
+After compilation, use an independently preserved runtime and fresh evidence
+directories. For the owned WebGPU copy/shader/PNG consistency gate:
+
+```powershell
+.venv\Scripts\python.exe -m scripts.verify_native_webgpu_consistency --candidate upstream-156-webgpu --executable D:\Glint116QA\runtime\chrome.exe --driver-stage D:\Glint116QA\driver --work-dir D:\Glint116QA\consistency-run-1
+```
+
+The driver directory must already be prepared with the collector's pinned driver
+manifest. This gate enables `GlintWebGPUPolicyTransportCandidate` **only** in the
+new variant's protected test phase and checks the effective browser arguments.
+The baseline phase and the older variant do not enable it. No production launch
+configuration or readiness flag is changed by this diagnostic opt-in.
+
+Historical source-bound observations retain their original hashes; the reversible
+[tooling archive](../environment/webgpu-diagnostics-source-upgrade.json) reconstructs
+their measured sources. New diagnostic code is not retroactively treated as having
+passed those older browser runs. The narrow incremental builder remains restricted
+to its original baseline; use the normal 180 GiB / j4 build path for this variant.

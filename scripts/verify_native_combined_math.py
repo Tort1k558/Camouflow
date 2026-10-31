@@ -19,6 +19,10 @@ import uuid
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts.native_build import CANDIDATES
+
 DOCUMENT_CONTEXTS = frozenset({'document', 'same_origin_frame', 'cross_origin_frame', 'about_blank_frame', 'srcdoc_frame'})
 
 
@@ -67,7 +71,7 @@ def main() -> int:
     parser.add_argument('--work-dir', type=Path, required=True)
     parser.add_argument('--driver-stage', type=Path, required=True)
     parser.add_argument('--driver-manifest', type=Path, default=ROOT / 'native/drafts/environment/playwright-driver-stage-binding-close.json')
-    parser.add_argument('--candidate', choices=('upstream-156',), required=True)
+    parser.add_argument('--candidate', choices=CANDIDATES, required=True)
     parser.add_argument('--profiles', type=int, default=2, help='Protected profile cohort size (2..16), each with a persistent restart')
     args = parser.parse_args()
     if not 2 <= args.profiles <= 16:

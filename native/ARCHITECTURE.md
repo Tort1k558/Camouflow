@@ -14,7 +14,8 @@ writable-fragment input paths: 24 hardware runs passed. Writable cases verify fu
 executes actual render/bundle decoding and GPU routing, rather than only modeled
 traversal. Scope remains normal standalone Dawn/no-op raw_ptr, not Chromium
 allocator/ASan or renderer integration; uniform/indirect/heap and broader range
-coverage remain open. The source batch is still unselected.
+coverage remain open. The complete batch is selected only for the explicit
+001–116 build; installed/verified runtime and capability admission are unchanged.
 
 ## Standalone Wire delivery now executes the actual filter
 

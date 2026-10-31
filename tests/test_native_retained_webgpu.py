@@ -172,13 +172,15 @@ def test_selected_webgpu_packet_binds_exact_sources_without_claiming_runtime_adm
             assert sources_before_webgpu['sha256'][row['source']] == row['before_sha256']
 
 
-def test_public_webgpu_lifecycle_binds_actual_sources_cleanup_and_four_service_restarts():
+def test_public_webgpu_lifecycle_binds_actual_sources_cleanup_and_four_service_restarts(diagnostic_sources_before_candidate):
     record = json.loads((ROOT / 'native/drafts/environment/retained-webgpu76-observations.json').read_bytes())
     assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
     assert record['public_cli_integrated'] and record['probe'] == 'retained-webgpu-objects'
     assert record['forced_service_restarts'] == 4
     for relative, expected in record['measured_inputs_sha256'].items():
-        assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected, relative
+        source = (diagnostic_sources_before_candidate[relative] if relative in diagnostic_sources_before_candidate
+                  else (ROOT / relative).read_bytes())
+        assert hashlib.sha256(source).hexdigest() == expected, relative
     assert len(record['runs']) == 2
     assert {row['mode'] for row in record['runs']} == {'manager-desktop', 'manager-mobile-web'}
     for row in record['runs']:

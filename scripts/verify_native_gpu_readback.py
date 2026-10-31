@@ -19,6 +19,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.native_build import CANDIDATES
+
 from PyQt6.QtGui import QImage
 
 from app.core.native.runtime import NativeRuntime
@@ -522,10 +524,10 @@ def validate_errors(observed: dict, api: str, first_pixel: list[int], lost: dict
         raise ValueError("Lost-context read changed destination or error semantics")
 
 
-def probe_inputs() -> dict[str, str]:
+def probe_inputs(*, candidate_name: str | None = None) -> dict[str, str]:
     from scripts.verify_native_gpu import probe_inputs as gpu_inputs
     from scripts.verify_native_surfaces import probe_inputs as surface_inputs
-    return {**gpu_inputs(), **surface_inputs(),
+    return {**gpu_inputs(candidate_name=candidate_name), **surface_inputs(candidate_name=candidate_name),
             "scripts/verify_native_gpu_readback.py": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
 
 
@@ -595,7 +597,7 @@ def main() -> int:
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--derivation-mode", choices=DERIVATION_MODES, default="partitioned-privacy")
-    parser.add_argument("--candidate", choices=("upstream-156",),
+    parser.add_argument("--candidate", choices=CANDIDATES,
                         help="Bind owned diagnostics to the exact selected candidate receipt/patches; not admission")
     args = parser.parse_args()
     selection = {} if args.candidate is None else {"candidate_name": args.candidate}
@@ -612,7 +614,7 @@ def main() -> int:
         if args.candidate is not None:
             report.update(candidate=args.candidate,
                           candidate_manifest_sha256=load_candidate(args.candidate)["manifest_sha256"])
-        inputs = probe_inputs()
+        inputs = probe_inputs(candidate_name=args.candidate)
         report.update(runtime_core_sha256_measured=core, probe_inputs_sha256=inputs,
                       receipt_sha256=hashlib.sha256(receipt).hexdigest(),
                       javascript_sha256=hashlib.sha256(READBACK_READ.encode("utf-8")).hexdigest())
@@ -625,7 +627,7 @@ def main() -> int:
         owned = Path(tempfile.mkdtemp(prefix="glint-gpu-readback-", dir=args.work_dir.resolve()))
         asyncio.run(verify(executable, owned, server, report, runtimes, derivation_mode=args.derivation_mode))
         if (measure_runtime_core(executable) != core or validate_receipt(executable, core, derivation_mode=args.derivation_mode, **selection) != receipt
-                or probe_inputs() != inputs):
+                or probe_inputs(candidate_name=args.candidate) != inputs):
             raise ValueError("GPU runtime, receipt or probe changed during verification")
         expected = {f"{name}-{phase}" for name in ("baseline", "profile-a", "profile-b")
                     for phase in ("initial", "restart")}

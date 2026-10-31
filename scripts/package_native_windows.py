@@ -19,7 +19,7 @@ from app.core.native.distribution import (  # noqa: E402
     MAX_ARCHIVE_BYTES, MAX_FILES, MAX_UNPACKED_BYTES, checked_archive_name,
     host_architecture, sha256_file,
 )
-from scripts.native_build import LOCK, expected_candidate_patches, load_candidate  # noqa: E402
+from scripts.native_build import CANDIDATES, LOCK, expected_candidate_patches, load_candidate  # noqa: E402
 from scripts.verify_native_runtime import measure_runtime_core  # noqa: E402
 
 RELEASE_VOLUME = "D:"
@@ -200,7 +200,7 @@ def main() -> int:
     parser.add_argument("--staged", required=True, type=Path, help="Official mini-installer staged Chrome-bin directory")
     parser.add_argument("--runtime-report", required=True, type=Path)
     parser.add_argument("--archive", required=True, type=Path)
-    parser.add_argument("--candidate", choices=("upstream-156",))
+    parser.add_argument("--candidate", choices=CANDIDATES)
     args = parser.parse_args()
     try:
         result = package(args.build_output, args.staged, args.runtime_report, args.archive, candidate_name=args.candidate)

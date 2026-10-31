@@ -188,7 +188,7 @@ def test_cancelled_measurement_removes_owned_route_without_running_later_probes(
     context.unroute.assert_awaited_once()
 
 
-def test_stock_calibration_binds_actual_sources_without_glint_admission():
+def test_stock_calibration_binds_actual_sources_without_glint_admission(diagnostic_sources_before_candidate):
     raw = (audio.FIXTURES / "stock156-observations.json").read_bytes()
     assert b"\r" not in raw and not raw.startswith(b"\xef\xbb\xbf")
     record = json.loads(raw)
@@ -201,7 +201,8 @@ def test_stock_calibration_binds_actual_sources_without_glint_admission():
     assert {name: row["cases"] for name, row in record["probe_coverage"].items()} == {
         "fidelity": 54, "analyser": 12, "worklet": 12, "realtime": 1}
     for name, digest in record["source_sha256"].items():
-        source = (audio.ROOT / name).read_bytes()
+        source = (diagnostic_sources_before_candidate[name] if name in diagnostic_sources_before_candidate
+                  else (audio.ROOT / name).read_bytes())
         assert hashlib.sha256(source).hexdigest() == digest
         assert b"\r" not in source and not source.startswith(b"\xef\xbb\xbf")
     assert len(record["negative_javascript_controls"]["analyser"]["rejected"]) == 4

@@ -14,6 +14,8 @@ import threading
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.native_build import CANDIDATES
+
 from app.core.native.configuration import NativeConfiguration
 from app.core.native.runtime import NativeRuntime
 from app.core.native.privacy import FONT_RASTERIZATION_MODES, TEXT_TUNING_ARGUMENTS
@@ -355,7 +357,7 @@ def main() -> int:
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--series", choices=("rasterization", "text-tuning"), default="rasterization")
-    parser.add_argument("--candidate", choices=("upstream-156",), help="Bind the complete candidate build receipt; not capability admission")
+    parser.add_argument("--candidate", choices=CANDIDATES, help="Bind the complete candidate build receipt; not capability admission")
     parser.add_argument("--workload-font", type=Path, help="Explicit real TTF/OTF for editing, web-font and export workloads")
     parser.add_argument("--profile-concurrency", type=int, choices=(1, 2), default=1,
                         help="Explicit maximum simultaneously live private profiles; default sequential")

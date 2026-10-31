@@ -300,12 +300,30 @@ def bootstrap_windows_git(workspace: Path, env: dict[str, str]) -> None:
     run([sys.executable, "-c", script, str(workspace / "depot_tools/bootstrap/bootstrap.py")], workspace, env)
 
 
+def _source_patch_changes(source: Path, env: dict[str, str], *, index_dir: Path | None = None) -> set[str]:
+    selected = Path(run(["git", "rev-parse", "--git-path", "index"], source, env, capture=True))
+    if not selected.is_absolute():
+        selected = source / selected
+    original = selected.read_bytes() if selected.is_file() else None
+    with tempfile.TemporaryDirectory(prefix="native-source-index-", dir=source.parent if index_dir is None else index_dir) as owned:
+        index = Path(owned) / "index"
+        index_env = {**env, "GIT_INDEX_FILE": str(index)}
+        if original is None:
+            run(["git", "read-tree", "HEAD"], source, index_env)
+        else:
+            index.write_bytes(original)
+        changed = set(run(["git", "diff", "HEAD", "--name-only"], source, index_env, capture=True).splitlines())
+        changed.update(run(["git", "ls-files", "--others", "--exclude-standard"], source, index_env, capture=True).splitlines())
+    if (selected.read_bytes() if selected.is_file() else None) != original:
+        raise ValueError("Git index changed concurrently during source patch inspection")
+    return changed
+
+
 def _source_patches(source: Path, env: dict[str, str], names: tuple[str, ...],
                     *, index_dir: Path | None = None, patch_directory: Path | None = None,
                     complete_chain: bool = False) -> list[dict[str, str]]:
     env = {**env, "GIT_OPTIONAL_LOCKS": "0"}
-    changed = set(run(["git", "diff", "HEAD", "--name-only"], source, env, capture=True).splitlines())
-    changed.update(run(["git", "ls-files", "--others", "--exclude-standard"], source, env, capture=True).splitlines())
+    changed = _source_patch_changes(source, env, index_dir=index_dir)
     if not changed and not complete_chain:
         return []
     patches = []

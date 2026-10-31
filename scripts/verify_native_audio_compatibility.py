@@ -16,6 +16,7 @@ import sys
 import threading
 
 from scripts import native_build as build
+from scripts.native_build import CANDIDATES
 from scripts.verify_native_surfaces import SurfaceConfiguration, validate_receipt
 from scripts.verify_native_worker_startup import browser_arguments, partitioning_argument
 
@@ -396,8 +397,8 @@ def verify(workspace: Path, executable: Path, owned: Path, *, candidate_name: st
         raise ValueError("Audio profile count must be between 1 and 16")
     if profile_count > 1 and not {"baseline", "math"}.issubset(modes):
         raise ValueError("Audio profile matrix requires explicit baseline and math modes")
-    if sys.platform != "win32" or candidate_name != "upstream-156":
-        raise ValueError("Audio compatibility requires the explicit Windows upstream-156 candidate")
+    if sys.platform != "win32" or candidate_name not in CANDIDATES:
+        raise ValueError("Audio compatibility requires an explicit Windows Chromium 156 candidate")
     if (not owned.is_absolute() or owned.drive.upper() != "D:" or owned != owned.resolve()
             or not owned.parent.is_dir() or owned.exists() or owned.is_relative_to(ROOT)
             or owned.is_relative_to(workspace / "chromium/src")):
@@ -471,7 +472,7 @@ def main() -> int:
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
-    parser.add_argument("--candidate", choices=("upstream-156",), required=True)
+    parser.add_argument("--candidate", choices=CANDIDATES, required=True)
     parser.add_argument("--mode", choices=MODES, action="append", required=True)
     parser.add_argument("--profiles", type=int, default=1,
                         help="Fixed cohort size (1..16); >1 requires baseline/math and includes a math restart")
