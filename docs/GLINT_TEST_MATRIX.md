@@ -1,5 +1,22 @@
 # Glint browser test matrix
 
+## 2026-10-31: render/bundle buffer projection source batch (unselected)
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Replay/reverse | 29 packets / 88 paths | Selected 001–076 runtime unchanged |
+| Native target-flag syntax | 16 units passed | No component link |
+| Extracted cursor/scope normal/ASan | 125 cursor paths / 1,536 scope paths each | Command storage/traversal/backend modeled |
+| Changed inputs | 8 refusals before compilation | Not runtime attestation |
+
+The source uses a pre-pass with an independent tracker and the existing inline/
+bundle decoder, one logical-buffer shadow map for descriptors and vertex/index
+addresses, post-pass writable copyback and exact prepared/executed-scope receipts.
+Actual native command storage, descriptor heaps, render/bundle GPU consumption,
+copyback, queue/cancellation/device loss, Wire and browser consistency remain
+unverified. Projected indirect buffers are still denied. No new runtime selection,
+anti-bot-site PASS, privacy admission or production release is claimed.
+
 ## 2026-10-31: projected texel-buffer alias guard (unselected)
 
 | Gate | Result | Boundary |

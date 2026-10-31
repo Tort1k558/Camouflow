@@ -199,3 +199,5 @@ native/drafts/webgpu-buffer-chain/*.cc text eol=lf
 native/drafts/webgpu-buffer-chain/*.hlsl text eol=lf
 native/drafts/webgpu-texel-alias-guard/*.py text eol=lf
 native/drafts/webgpu-texel-alias-guard/*.cc text eol=lf
+native/drafts/webgpu-render-buffer-routing/*.py text eol=lf
+native/drafts/webgpu-render-buffer-routing/*.cc text eol=lf

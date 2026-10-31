@@ -1,5 +1,23 @@
 # Glint: план проверки и развития
 
+## Direct render/bundle buffers: connected in source, execution pending
+
+The [render buffer batch](../native/drafts/webgpu-render-buffer-routing/README.md)
+adds metadata preview before pass entry, shader and vertex/index shadow addresses,
+pass-wide writable-range copyback after exit and exact replay-scope receipts.
+The existing decoder is reused with separate preview state; command storage is
+not copied or transferred. Indirect projected buffers remain explicitly denied.
+
+Measured: 29-packet / 88-path replay/reverse, 16 target-flag native syntax units,
+125 extracted cursor paths and 1,536 scope paths per normal/ASan run. Storage and
+backend objects are modeled; actual native render/bundle execution is not proved.
+
+Next: execute real Dawn command-iterator/pool early-error and bundle cases, then
+combined native state/descriptor/vertex/index/UAV/copyback checks, heap rollover,
+queue cancellation/device loss and Wire. Implement validated indirect scratch/
+original/count projection without reintroducing raw inputs. Complete component
+build and browser consistency before enabling this unselected batch.
+
 ## Projected texel aliases: close the receipt gap before native admission
 
 The [28-packet source composition](../native/drafts/webgpu-texel-alias-guard/README.md)

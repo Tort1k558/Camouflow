@@ -1,0 +1,898 @@
+--- a/third_party/dawn/src/dawn/native/CommandAllocator.h
++++ b/third_party/dawn/src/dawn/native/CommandAllocator.h
+@@ -144,6 +144,28 @@
+     // Sets iterator to the beginning of the commands without emptying the list. This method can
+     // be used if iteration was stopped early and the iterator needs to be restarted.
+     void Reset();
++
++    // Metadata-only visitors may read/reset the cursor, but must not transfer or
++    // destroy command storage. Restore even on an early error return.
++    template <typename Visitor>
++    auto ReadWithoutAdvancing(Visitor&& visitor) {
++        struct RestoreCursor {
++            CommandIterator* iterator;
++            BlockDef* blocks;
++            size_t count;
++            size_t index;
++            Span<std::byte> current;
++            MemoryBlockAllocator* pool;
++
++            ~RestoreCursor() {
++                DAWN_CHECK(iterator->mBlocks.data() == blocks &&
++                           iterator->mBlocks.size() == count && iterator->mPool == pool);
++                iterator->mCurrentBlockIndex = index;
++                iterator->mCurrentBlock = current;
++            }
++        } restore{this, mBlocks.data(), mBlocks.size(), mCurrentBlockIndex, mCurrentBlock, mPool};
++        return visitor(this);
++    }
+ 
+     // This method must to be called after commands have been deleted. This indicates that the
+     // commands have been submitted and they are no longer valid.
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -753,13 +753,110 @@
+         return {};
+     }
+ 
+-    MaybeError CaptureGlintRenderScope(CommandRecordingContext* context) {
++    void BeginGlintRenderScopePreview(bool attachmentInputs) {
++        static_assert(std::is_same_v<PipelineType, RenderPipeline>);
++        mGlintRenderProjectedReady = true;
++        mGlintRenderScope = {};
++        mGlintRenderScope.textureInputs = attachmentInputs;
++    }
++
++    GlintBoundScope TakeGlintRenderScopePreview() {
++        static_assert(std::is_same_v<PipelineType, RenderPipeline>);
++        return std::move(mGlintRenderScope);
++    }
++
++    bool HasGlintUnprojectedRenderInputs() const { return mGlintRenderUnprojectedInputs; }
++
++    MaybeError PrepareGlintRenderBuffers(CommandRecordingContext* context,
++                                         GlintBoundScope scope,
++                                         bool indirect) {
++        static_assert(std::is_same_v<PipelineType, RenderPipeline>);
++        if (!mDevice->GetGlintReadbackObserver()) {
++            return {};
++        }
++        DAWN_INTERNAL_ERROR_IF(!mGlintRenderProjectedReady || mGlintRenderPreparedScope,
++                               "Glint render buffer scope is not fresh.");
++        mGlintRenderPreparedScope = std::move(scope);
++        GlintTextureProjector* projector;
++        DAWN_TRY_ASSIGN(projector, mDevice->GetGlintTextureProjector());
++        const GlintShaderScope inputs{mGlintRenderPreparedScope->uses,
++                                      mGlintRenderPreparedScope->textureInputs, true};
++        DAWN_TRY_ASSIGN(
++            mGlintProjectedBuffers,
++            projector->RecordBuffers(context, inputs, mGlintRenderPreparedScope->owners));
++        DAWN_INTERNAL_ERROR_IF(
++            indirect && !mGlintProjectedBuffers->buffers.empty(),
++            "Glint projected buffers for indirect render require validated scratch routing.");
++        for (const auto& projected : mGlintProjectedBuffers->buffers) {
++            if (projected.writableRanges.empty()) {
++                continue;
++            }
++            D3D12_RESOURCE_BARRIER barrier{};
++            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
++            barrier.Transition.pResource = projected.projection->buffer();
++            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
++            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
++            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
++            context->GetCommandList()->ResourceBarrier(1, &barrier);
++        }
++        if (!mGlintProjectedBuffers->buffers.empty()) {
++            RestoreAfterGlintProjection(context->GetCommandList());
++        }
++        return {};
++    }
++
++    ResultOrError<D3D12_GPU_VIRTUAL_ADDRESS> ResolveGlintVertexIndexAddress(
++        BufferBase* buffer,
++        uint64_t offset,
++        uint64_t size,
++        D3D12_GPU_VIRTUAL_ADDRESS original) {
++        auto* projected = FindGlintProjectedBuffer(buffer);
++        if (!projected) {
++            return original;
++        }
++        DAWN_INTERNAL_ERROR_IF(!buffer || offset > buffer->GetSize() ||
++                                   size > buffer->GetSize() - offset ||
++                                   !projected->writableRanges.empty(),
++                               "Invalid Glint projected vertex/index range or writable alias.");
++        auto* resource = projected->projection->buffer();
++        DAWN_INTERNAL_ERROR_IF(!resource || resource->GetDesc().Width < buffer->GetSize(),
++                               "Incomplete Glint projected vertex/index backing.");
++        return resource->GetGPUVirtualAddress() + offset;
++    }
++
++    static bool SameGlintRenderScope(const GlintBoundScope& expected,
++                                     const GlintBoundScope& actual) {
++        if (expected.textureInputs != actual.textureInputs ||
++            expected.uses.size() != actual.uses.size() ||
++            expected.owners.size() != actual.owners.size()) {
++            return false;
++        }
++        for (size_t i = 0; i < expected.owners.size(); ++i) {
++            if (expected.owners[i].Get() != actual.owners[i].Get()) {
++                return false;
++            }
++        }
++        for (size_t i = 0; i < expected.uses.size(); ++i) {
++            const auto& a = expected.uses[i];
++            const auto& b = actual.uses[i];
++            if (a.buffer.handle != b.buffer.handle || a.buffer.size != b.buffer.size ||
++                a.readable != b.readable || a.writable != b.writable || a.offset != b.offset ||
++                a.size != b.size || a.rangeKnown != b.rangeKnown) {
++                return false;
++            }
++        }
++        return true;
++    }
++
++    MaybeError CaptureGlintRenderScope(
++        CommandRecordingContext* context,
++        const std::shared_ptr<const GlintGpuInputReceipt>& receipt = nullptr) {
+         static_assert(std::is_same_v<PipelineType, RenderPipeline>);
+         const bool projected = mGlintRenderProjectedReady && !mGlintRenderUnprojectedInputs;
+         mGlintRenderProjectedReady = false;
+         auto bound = std::move(mGlintRenderScope);
+         mGlintRenderScope = {};
+-        return CaptureGlintBoundScope(context, std::move(bound), projected);
++        return CaptureGlintBoundScope(context, std::move(bound), projected, receipt);
+     }
+ 
+     MaybeError PrepareGlintComputeProjection(CommandRecordingContext* context,
+@@ -806,13 +903,14 @@
+         DAWN_TRY_ASSIGN(projector, mDevice->GetGlintTextureProjector());
+         const GlintShaderScope inputScope{mGlintComputeScope->uses,
+                                          mGlintComputeScope->textureInputs, true};
+-        DAWN_TRY_ASSIGN(mGlintComputeBuffers, projector->RecordBuffers(
+-            context, inputScope, mGlintComputeScope->owners));
++        DAWN_TRY_ASSIGN(mGlintProjectedBuffers,
++                        projector->RecordBuffers(context, inputScope, mGlintComputeScope->owners));
+         // Validated indirect scratch/original ancestry requires its own routing proof.
+-        DAWN_INTERNAL_ERROR_IF(indirectBuffer && !mGlintComputeBuffers->buffers.empty(),
++        DAWN_INTERNAL_ERROR_IF(
++            indirectBuffer && !mGlintProjectedBuffers->buffers.empty(),
+             "Glint projected buffer inputs for indirect dispatch are not yet admitted.");
+         auto* commands = context->GetCommandList();
+-        for (const auto& projected : mGlintComputeBuffers->buffers) {
++        for (const auto& projected : mGlintProjectedBuffers->buffers) {
+             if (!projected.writableRanges.empty()) {
+                 D3D12_RESOURCE_BARRIER barrier{};
+                 barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+@@ -893,22 +991,34 @@
+     }
+ 
+     ResultOrError<std::shared_ptr<const GlintGpuInputPlan>> GetGlintGpuInputPlanForCapture() {
+-        static_assert(std::is_same_v<PipelineType, ComputePipeline>);
+-        if (!mDevice->GetGlintReadbackObserver()) return std::shared_ptr<const GlintGpuInputPlan>{};
+-        DAWN_INTERNAL_ERROR_IF(!mGlintComputeScope || !mGlintComputeProjectedReady ||
+-            !mGlintComputeBindingsApplied || !mGlintComputeCopiedBack || !mGlintComputeBuffers,
+-            "Glint GPU input receipt precedes binding installation or copyback.");
+-        if (mGlintComputeBuffers->buffers.empty()) return std::shared_ptr<const GlintGpuInputPlan>{};
+-        return mGlintComputeBuffers->plan;
+-    }
+-
+-    MaybeError CopyBackGlintComputeBuffers(CommandRecordingContext* context) {
+-        static_assert(std::is_same_v<PipelineType, ComputePipeline>);
+-        DAWN_INTERNAL_ERROR_IF(mGlintComputeCopiedBack,
+-                              "Glint native shadow copyback was already recorded.");
+-        if (mGlintComputeBuffers) {
++        if (!mDevice->GetGlintReadbackObserver()) {
++            return std::shared_ptr<const GlintGpuInputPlan>{};
++        }
++        if constexpr (std::is_same_v<PipelineType, RenderPipeline>) {
++            DAWN_INTERNAL_ERROR_IF(
++                !mGlintRenderPreparedScope || !mGlintRenderProjectedReady ||
++                    !SameGlintRenderScope(*mGlintRenderPreparedScope, mGlintRenderScope),
++                "Glint render replay differs from its prepared input scope.");
++        } else {
++            DAWN_INTERNAL_ERROR_IF(!mGlintComputeScope || !mGlintComputeProjectedReady,
++                                   "Glint compute scope was not prepared.");
++        }
++        DAWN_INTERNAL_ERROR_IF(!mGlintBuffersCopiedBack || !mGlintProjectedBuffers,
++                               "Glint GPU input receipt precedes copyback.");
++        if (mGlintProjectedBuffers->buffers.empty()) {
++            return std::shared_ptr<const GlintGpuInputPlan>{};
++        }
++        DAWN_INTERNAL_ERROR_IF(!mGlintBindingsApplied,
++                               "Glint GPU input receipt precedes binding installation.");
++        return mGlintProjectedBuffers->plan;
++    }
++
++    MaybeError CopyBackGlintBuffers(CommandRecordingContext* context) {
++        DAWN_INTERNAL_ERROR_IF(mGlintBuffersCopiedBack,
++                               "Glint native shadow copyback was already recorded.");
++        if (mGlintProjectedBuffers) {
+             auto* commands = context->GetCommandList();
+-            for (const auto& projected : mGlintComputeBuffers->buffers) {
++            for (const auto& projected : mGlintProjectedBuffers->buffers) {
+                 if (projected.writableRanges.empty()) continue;
+                 auto* original = ToBackend(projected.source.Get());
+                 DAWN_INTERNAL_ERROR_IF(!original->HasAccess() ||
+@@ -933,7 +1043,7 @@
+                 // Do not issue an observer write callback before its eligibility decision.
+             }
+         }
+-        mGlintComputeCopiedBack = true;
++        mGlintBuffersCopiedBack = true;
+         return {};
+     }
+ 
+@@ -947,8 +1057,8 @@
+         if (!observer) {
+             return {};
+         }
+-        DAWN_INTERNAL_ERROR_IF(!mGlintComputeCopiedBack || !mGlintComputeScope,
+-                              "Glint compute capture precedes its exact-scope copyback.");
++        DAWN_INTERNAL_ERROR_IF(!mGlintBuffersCopiedBack || !mGlintComputeScope,
++                               "Glint compute capture precedes its exact-scope copyback.");
+         // These arguments are already included in the stored preparation scope.
+         (void)indirectBuffer;
+         (void)indirectOffset;
+@@ -1132,8 +1242,8 @@
+         }
+ 
+         AfterApply();
+-        if constexpr (kIsComputePipeline) {
+-            if (mGlintComputeBuffers) mGlintComputeBindingsApplied = true;
++        if (mGlintProjectedBuffers) {
++            mGlintBindingsApplied = true;
+         }
+ 
+         return {};
+@@ -1172,9 +1282,10 @@
+         }
+         mGlintGroupSources = {};
+         mGlintComputeScope.reset();
+-        mGlintComputeBuffers.reset();
+-        mGlintComputeCopiedBack = false;
+-        mGlintComputeBindingsApplied = false;
++        mGlintRenderPreparedScope.reset();
++        mGlintProjectedBuffers.reset();
++        mGlintBuffersCopiedBack = false;
++        mGlintBindingsApplied = false;
+     }
+ 
+     MaybeError ValidateGlintInputGroup(BindGroupBase* group, wgpu::ShaderStage stages) {
+@@ -1205,6 +1316,7 @@
+             DAWN_TRY(ValidateGlintProjectedTexelBindings(group, stages));
+             if (mGlintGroupSources[groupIndex].Get() == group) continue;
+             mGlintViews[groupIndex].clear();
++            mGlintBufferViews[groupIndex].clear();
+             mGlintViewAllocations[groupIndex] = {};
+             const auto* layout = group->GetLayout();
+             for (BindingIndex index : layout->GetSampledTextureIndices()) {
+@@ -1222,6 +1334,19 @@
+                 mGlintViews[groupIndex].push_back(
+                     {index, projected->retirement_handle(), projected->texture()});
+             }
++            for (BindingIndex index : layout->GetBufferIndices()) {
++                if (!(layout->GetBindingInfo(index).visibility & stages)) {
++                    continue;
++                }
++                const auto binding = group->GetBindingAsBufferBinding(index);
++                auto* projected = FindGlintProjectedBuffer(binding.buffer);
++                if (!projected) {
++                    continue;
++                }
++                mGlintBufferViews[groupIndex].push_back({index,
++                                                         projected->projection->retirement_handle(),
++                                                         projected->projection->buffer()});
++            }
+             mGlintGroupSources[groupIndex] = ToBackend(group);
+             mDirtyBindGroups.set(groupIndex);
+             mDirtyBindGroupsObjectChangedOrIsDynamic.set(groupIndex);
+@@ -1230,12 +1355,13 @@
+     }
+ 
+     GlintProjectedBuffer* FindGlintProjectedBuffer(BufferBase* buffer) {
+-        if (!mGlintComputeBuffers) return nullptr;
+-        auto found = std::find_if(mGlintComputeBuffers->buffers.begin(),
+-            mGlintComputeBuffers->buffers.end(), [&](const auto& value) {
+-                return value.source.Get() == buffer;
+-            });
+-        return found == mGlintComputeBuffers->buffers.end() ? nullptr : &*found;
++        if (!mGlintProjectedBuffers) {
++            return nullptr;
++        }
++        auto found = std::find_if(mGlintProjectedBuffers->buffers.begin(),
++                                  mGlintProjectedBuffers->buffers.end(),
++                                  [&](const auto& value) { return value.source.Get() == buffer; });
++        return found == mGlintProjectedBuffers->buffers.end() ? nullptr : &*found;
+     }
+ 
+     MaybeError ValidateGlintProjectedTexelBindings(BindGroupBase* group,
+@@ -1480,10 +1606,11 @@
+     bool mGlintRenderProjectedReady = false;
+     bool mGlintRenderUnprojectedInputs = false;
+     GlintBoundScope mGlintRenderScope;
++    std::optional<GlintBoundScope> mGlintRenderPreparedScope;
+     std::optional<GlintBoundScope> mGlintComputeScope;
+-    std::unique_ptr<GlintBufferProjectionBatch> mGlintComputeBuffers;
+-    bool mGlintComputeCopiedBack = false;
+-    bool mGlintComputeBindingsApplied = false;
++    std::unique_ptr<GlintBufferProjectionBatch> mGlintProjectedBuffers;
++    bool mGlintBuffersCopiedBack = false;
++    bool mGlintBindingsApplied = false;
+     PerBindGroup<std::vector<GlintBufferViewOverride>> mGlintBufferViews;
+     PerBindGroup<std::vector<GlintTextureViewOverride>> mGlintViews;
+     PerBindGroup<GPUDescriptorHeapAllocation> mGlintViewAllocations;
+@@ -1575,7 +1702,9 @@
+         }
+     }
+ 
+-    void Apply(ID3D12GraphicsCommandList* commandList, const RenderPipeline* renderPipeline) {
++    MaybeError Apply(ID3D12GraphicsCommandList* commandList,
++                     const RenderPipeline* renderPipeline,
++                     BindGroupStateTracker<RenderPipeline>* bindings) {
+         DAWN_ASSERT(renderPipeline != nullptr);
+ 
+         VertexBufferSlot startSlot = mStartSlot;
+@@ -1596,19 +1725,27 @@
+         }
+ 
+         if (endSlot <= startSlot) {
+-            return;
++            return {};
+         }
+ 
+         // mD3D12BufferViews is kept up to date with the most recent data passed
+         // to SetVertexBuffer. This makes it correct to only track the start
+         // and end of the dirty range. When Apply is called,
+         // we will at worst set non-dirty vertex buffers in duplicate.
++        auto views = mD3D12BufferViews;
++        for (VertexBufferSlot slot : renderPipeline->GetVertexBuffersUsed()) {
++            const auto& use = mGlintBufferUses[slot];
++            DAWN_TRY_ASSIGN(views[slot].BufferLocation,
++                            bindings->ResolveGlintVertexIndexAddress(
++                                use.owner.Get(), use.offset, use.size, views[slot].BufferLocation));
++        }
+         commandList->IASetVertexBuffers(static_cast<uint8_t>(startSlot),
+                                         static_cast<uint8_t>(endSlot - startSlot),
+-                                        &mD3D12BufferViews[startSlot]);
++                                        &views[startSlot]);
+ 
+         mStartSlot = kMaxVertexBuffersTyped;
+         mEndSlot = {};
++        return {};
+     }
+ 
+   private:
+@@ -2241,7 +2378,7 @@
+                 immediates.Apply(commandContext);
+ 
+                 commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
+-                DAWN_TRY(bindingTracker->CopyBackGlintComputeBuffers(commandContext));
++                DAWN_TRY(bindingTracker->CopyBackGlintBuffers(commandContext));
+                 std::shared_ptr<const GlintGpuInputPlan> inputPlan;
+                 DAWN_TRY_ASSIGN(inputPlan, bindingTracker->GetGlintGpuInputPlanForCapture());
+                 std::shared_ptr<const GlintGpuInputReceipt> receipt;
+@@ -2272,7 +2409,7 @@
+                     signature.Get(), 1,
+                     ToBackend(dispatch->indirectBuffer.Get())->GetD3D12Resource(),
+                     dispatch->indirectOffset, nullptr, 0);
+-                DAWN_TRY(bindingTracker->CopyBackGlintComputeBuffers(commandContext));
++                DAWN_TRY(bindingTracker->CopyBackGlintBuffers(commandContext));
+                 DAWN_TRY(bindingTracker->CaptureGlintComputeScope(
+                     commandContext, nullptr, dispatch->indirectBuffer.Get(), dispatch->indirectOffset,
+                     &dispatch->glintInputs));
+@@ -2557,56 +2694,33 @@
+     const IndirectDrawMetadata& metadata = GetIndirectDrawMetadata()[renderPassIndex];
+     IndirectDrawIndex indirectDrawIndex{0u};
+ 
+-    // renderPassBuilder must be scoped to RecordRenderPass because any underlying
+-    // D3D12_RENDER_PASS_ENDING_ACCESS_RESOLVE_SUBRESOURCE_PARAMETERS structs must remain
+-    // valid until after EndRenderPass() has been called.
+-    RenderPassBuilder renderPassBuilder(passHasUAV);
+-
+-    DAWN_TRY(SetupRenderPass(commandContext, renderPass, &renderPassBuilder));
+-
+-    // Use D3D12's native render pass API if it's available, otherwise emulate the
+-    // beginning and ending access operations.
+-    if (useRenderPass) {
+-        commandContext->GetCommandList4()->BeginRenderPass(
+-            static_cast<uint8_t>(renderPassBuilder.GetHighestColorAttachmentIndexPlusOne()),
+-            renderPassBuilder.GetRenderPassRenderTargetDescriptors().data(),
+-            renderPassBuilder.HasDepthOrStencil()
+-                ? renderPassBuilder.GetRenderPassDepthStencilDescriptor()
+-                : nullptr,
+-            renderPassBuilder.GetRenderPassFlags());
+-    } else {
+-        EmulateBeginRenderPass(commandContext, &renderPassBuilder);
+-    }
+-
+     ID3D12GraphicsCommandList* commandList = commandContext->GetCommandList();
+-
+-    // Write timestamp at the beginning of render pass if it's set.
+-    if (renderPass->timestampWrites.beginningOfPassWriteIndex != kQuerySetIndexUndefinedTyped) {
+-        RecordWriteTimestampCmd(commandList, renderPass->timestampWrites.querySet.Get(),
+-                                renderPass->timestampWrites.beginningOfPassWriteIndex);
+-    }
+-
+-    // Set up default dynamic state
+-    {
+-        uint32_t width = renderPass->width;
+-        uint32_t height = renderPass->height;
+-        D3D12_VIEWPORT viewport = {0.f, 0.f, static_cast<float>(width), static_cast<float>(height),
+-                                   0.f, 1.f};
+-        D3D12_RECT scissorRect = {0, 0, static_cast<int32_t>(width), static_cast<int32_t>(height)};
+-        commandList->RSSetViewports(1, &viewport);
+-        commandList->RSSetScissorRects(1, &scissorRect);
+-
+-        static constexpr std::array<float, 4> defaultBlendFactor = {0, 0, 0, 0};
+-        commandList->OMSetBlendFactor(&defaultBlendFactor[0]);
+-
+-        commandList->OMSetStencilRef(0);
+-    }
+ 
+     RenderPipeline* lastPipeline = nullptr;
+     VertexBufferTracker vertexBufferTracker = {};
+     ImmediateTracker<RenderImmediatesTracker> immediates = {};
+ 
++    BindGroupStateTracker<RenderPipeline> previewBindings(device, nullptr);
++    VertexBufferTracker previewVertices;
++    auto* activeBindings = bindingTracker;
++    auto* activeVertices = &vertexBufferTracker;
++    bool collectOnly = false;
++    bool previewHasIndirect = false;
+     GlintNativeBufferUse glintIndexUse;
++    D3D12_INDEX_BUFFER_VIEW pendingIndexView{};
++    bool indexViewDirty = false;
++    auto applyIndexView = [&]() -> MaybeError {
++        if (!indexViewDirty) {
++            return {};
++        }
++        auto view = pendingIndexView;
++        DAWN_TRY_ASSIGN(view.BufferLocation, bindingTracker->ResolveGlintVertexIndexAddress(
++                                                 glintIndexUse.owner.Get(), glintIndexUse.offset,
++                                                 glintIndexUse.size, view.BufferLocation));
++        commandList->IASetIndexBuffer(&view);
++        indexViewDirty = false;
++        return {};
++    };
+     auto controlUse = [](BufferBase* buffer, uint64_t offset, uint64_t size) {
+         if (!buffer) {
+             return GlintNativeBufferUse{};
+@@ -2619,12 +2733,12 @@
+             return {};
+         }
+         std::vector<GlintNativeBufferUse> uses;
+-        vertexBufferTracker.AppendGlintUses(lastPipeline, &uses);
++        activeVertices->AppendGlintUses(lastPipeline, &uses);
+         if (indexed) {
+             uses.push_back(glintIndexUse);
+         }
+         uses.insert(uses.end(), controls.begin(), controls.end());
+-        return bindingTracker->AccumulateGlintRenderScope(uses,
++        return activeBindings->AccumulateGlintRenderScope(uses,
+                                                           lastPipeline->UsesFramebufferFetch());
+     };
+     auto indirectStride = [&](bool indexed) -> uint64_t {
+@@ -2638,9 +2752,18 @@
+         switch (type) {
+             case Command::Draw: {
+                 DrawCmd* draw = iter->NextCommand<DrawCmd>();
+-
+-                DAWN_TRY(bindingTracker->Apply(commandContext, &immediates));
+-                vertexBufferTracker.Apply(commandList, lastPipeline);
++                if (device->GetGlintReadbackObserver() && (draw->vertexCount == 0 || draw->instanceCount == 0)) {
++                    break;
++                }
++                if (collectOnly) {
++                    if (draw->vertexCount != 0 && draw->instanceCount != 0) {
++                        DAWN_TRY(notifyDraw(false));
++                    }
++                    break;
++                }
++
++                DAWN_TRY(activeBindings->Apply(commandContext, &immediates));
++                DAWN_TRY(activeVertices->Apply(commandList, lastPipeline, activeBindings));
+                 immediates.SetFirstVertexAndInstanceIndex(draw->firstVertex, draw->firstInstance);
+                 immediates.Apply(commandContext);
+                 commandList->DrawInstanced(draw->vertexCount, draw->instanceCount,
+@@ -2653,9 +2776,19 @@
+ 
+             case Command::DrawIndexed: {
+                 DrawIndexedCmd* draw = iter->NextCommand<DrawIndexedCmd>();
+-
+-                DAWN_TRY(bindingTracker->Apply(commandContext, &immediates));
+-                vertexBufferTracker.Apply(commandList, lastPipeline);
++                if (device->GetGlintReadbackObserver() && (draw->indexCount == 0 || draw->instanceCount == 0)) {
++                    break;
++                }
++                if (collectOnly) {
++                    if (draw->indexCount != 0 && draw->instanceCount != 0) {
++                        DAWN_TRY(notifyDraw(true));
++                    }
++                    break;
++                }
++
++                DAWN_TRY(applyIndexView());
++                DAWN_TRY(activeBindings->Apply(commandContext, &immediates));
++                DAWN_TRY(activeVertices->Apply(commandList, lastPipeline, activeBindings));
+                 immediates.SetFirstVertexAndInstanceIndex(static_cast<uint32_t>(draw->baseVertex),
+                                                           draw->firstInstance);
+                 immediates.Apply(commandContext);
+@@ -2671,9 +2804,13 @@
+             case Command::DrawIndirect: {
+                 DrawIndirectCmd* draw = iter->NextCommand<DrawIndirectCmd>();
+ 
+-                DAWN_TRY(bindingTracker->Apply(commandContext, &immediates));
+-                vertexBufferTracker.Apply(commandList, lastPipeline);
+-                immediates.Apply(commandContext);
++                if (!collectOnly) {
++                    DAWN_TRY(activeBindings->Apply(commandContext, &immediates));
++                    DAWN_TRY(activeVertices->Apply(commandList, lastPipeline, activeBindings));
++                    immediates.Apply(commandContext);
++                } else {
++                    previewHasIndirect = true;
++                }
+ 
+                 IndirectDrawMetadata::ValidatedIndirectDraw validatedDraw =
+                     metadata.GetValidatedIndirectDraw(draw, indirectDrawIndex++);
+@@ -2683,8 +2820,11 @@
+ 
+                 ComPtr<ID3D12CommandSignature> signature =
+                     lastPipeline->GetDrawIndirectCommandSignature();
+-                commandList->ExecuteIndirect(signature.Get(), 1, indirectBuffer->GetD3D12Resource(),
+-                                             validatedDraw.indirectOffset, nullptr, 0);
++                if (!collectOnly) {
++                    commandList->ExecuteIndirect(signature.Get(), 1,
++                                                 indirectBuffer->GetD3D12Resource(),
++                                                 validatedDraw.indirectOffset, nullptr, 0);
++                }
+                 std::vector controls{controlUse(indirectBuffer, validatedDraw.indirectOffset,
+                                                 indirectStride(false))};
+                 if (device->GetGlintReadbackObserver()) {
+@@ -2699,9 +2839,14 @@
+             case Command::DrawIndexedIndirect: {
+                 DrawIndexedIndirectCmd* draw = iter->NextCommand<DrawIndexedIndirectCmd>();
+ 
+-                DAWN_TRY(bindingTracker->Apply(commandContext, &immediates));
+-                vertexBufferTracker.Apply(commandList, lastPipeline);
+-                immediates.Apply(commandContext);
++                if (!collectOnly) {
++                    DAWN_TRY(applyIndexView());
++                    DAWN_TRY(activeBindings->Apply(commandContext, &immediates));
++                    DAWN_TRY(activeVertices->Apply(commandList, lastPipeline, activeBindings));
++                    immediates.Apply(commandContext);
++                } else {
++                    previewHasIndirect = true;
++                }
+ 
+                 IndirectDrawMetadata::ValidatedIndirectDraw validatedDraw =
+                     metadata.GetValidatedIndirectDraw(draw, indirectDrawIndex++);
+@@ -2711,8 +2856,11 @@
+ 
+                 ComPtr<ID3D12CommandSignature> signature =
+                     lastPipeline->GetDrawIndexedIndirectCommandSignature();
+-                commandList->ExecuteIndirect(signature.Get(), 1, indirectBuffer->GetD3D12Resource(),
+-                                             validatedDraw.indirectOffset, nullptr, 0);
++                if (!collectOnly) {
++                    commandList->ExecuteIndirect(signature.Get(), 1,
++                                                 indirectBuffer->GetD3D12Resource(),
++                                                 validatedDraw.indirectOffset, nullptr, 0);
++                }
+                 std::vector controls{
+                     controlUse(indirectBuffer, validatedDraw.indirectOffset, indirectStride(true))};
+                 if (device->GetGlintReadbackObserver()) {
+@@ -2727,9 +2875,16 @@
+             case Command::MultiDrawIndirect: {
+                 MultiDrawIndirectCmd* draw = iter->NextCommand<MultiDrawIndirectCmd>();
+ 
+-                DAWN_TRY(bindingTracker->Apply(commandContext, &immediates));
+-                vertexBufferTracker.Apply(commandList, lastPipeline);
+-                immediates.Apply(commandContext);
++                if (device->GetGlintReadbackObserver() && draw->maxDrawCount == 0) {
++                    break;
++                }
++                if (!collectOnly) {
++                    DAWN_TRY(activeBindings->Apply(commandContext, &immediates));
++                    DAWN_TRY(activeVertices->Apply(commandList, lastPipeline, activeBindings));
++                    immediates.Apply(commandContext);
++                } else {
++                    previewHasIndirect = true;
++                }
+ 
+                 Buffer* indirectBuffer = ToBackend(draw->indirectBuffer.Get());
+                 DAWN_ASSERT(indirectBuffer != nullptr);
+@@ -2741,11 +2896,13 @@
+                 ComPtr<ID3D12CommandSignature> signature =
+                     lastPipeline->GetDrawIndirectCommandSignature();
+ 
+-                commandList->ExecuteIndirect(
+-                    signature.Get(), draw->maxDrawCount, indirectBuffer->GetD3D12Resource(),
+-                    draw->indirectOffset,
+-                    countBuffer != nullptr ? countBuffer->GetD3D12Resource() : nullptr,
+-                    countBuffer != nullptr ? draw->drawCountOffset : 0);
++                if (!collectOnly) {
++                    commandList->ExecuteIndirect(
++                        signature.Get(), draw->maxDrawCount, indirectBuffer->GetD3D12Resource(),
++                        draw->indirectOffset,
++                        countBuffer != nullptr ? countBuffer->GetD3D12Resource() : nullptr,
++                        countBuffer != nullptr ? draw->drawCountOffset : 0);
++                }
+                 if (draw->maxDrawCount != 0) {
+                     std::vector controls{controlUse(
+                         indirectBuffer, draw->indirectOffset,
+@@ -2770,9 +2927,17 @@
+                 MultiDrawIndexedIndirectCmd* draw =
+                     iter->NextCommand<MultiDrawIndexedIndirectCmd>();
+ 
+-                DAWN_TRY(bindingTracker->Apply(commandContext, &immediates));
+-                vertexBufferTracker.Apply(commandList, lastPipeline);
+-                immediates.Apply(commandContext);
++                if (device->GetGlintReadbackObserver() && draw->maxDrawCount == 0) {
++                    break;
++                }
++                if (!collectOnly) {
++                    DAWN_TRY(applyIndexView());
++                    DAWN_TRY(activeBindings->Apply(commandContext, &immediates));
++                    DAWN_TRY(activeVertices->Apply(commandList, lastPipeline, activeBindings));
++                    immediates.Apply(commandContext);
++                } else {
++                    previewHasIndirect = true;
++                }
+ 
+                 Buffer* indirectBuffer = ToBackend(draw->indirectBuffer.Get());
+                 DAWN_ASSERT(indirectBuffer != nullptr);
+@@ -2784,11 +2949,13 @@
+                 ComPtr<ID3D12CommandSignature> signature =
+                     lastPipeline->GetDrawIndexedIndirectCommandSignature();
+ 
+-                commandList->ExecuteIndirect(
+-                    signature.Get(), draw->maxDrawCount, indirectBuffer->GetD3D12Resource(),
+-                    draw->indirectOffset,
+-                    countBuffer != nullptr ? countBuffer->GetD3D12Resource() : nullptr,
+-                    countBuffer != nullptr ? draw->drawCountOffset : 0);
++                if (!collectOnly) {
++                    commandList->ExecuteIndirect(
++                        signature.Get(), draw->maxDrawCount, indirectBuffer->GetD3D12Resource(),
++                        draw->indirectOffset,
++                        countBuffer != nullptr ? countBuffer->GetD3D12Resource() : nullptr,
++                        countBuffer != nullptr ? draw->drawCountOffset : 0);
++                }
+                 if (draw->maxDrawCount != 0) {
+                     std::vector controls{controlUse(
+                         indirectBuffer, draw->indirectOffset,
+@@ -2812,7 +2979,8 @@
+                 InsertDebugMarkerCmd* cmd = iter->NextCommand<InsertDebugMarkerCmd>();
+                 std::string_view label = NextNullTerminatedString(iter, cmd->length);
+ 
+-                if (ToBackend(GetDevice())->GetFunctions()->IsPIXEventRuntimeLoaded()) {
++                if (!collectOnly &&
++                    ToBackend(GetDevice())->GetFunctions()->IsPIXEventRuntimeLoaded()) {
+                     // PIX color is 1 byte per channel in ARGB format
+                     // TODO(https://crbug.com/526533386): Prevent format string injection in PIX.
+                     constexpr uint64_t kPIXBlackColor = 0xff000000;
+@@ -2826,7 +2994,8 @@
+             case Command::PopDebugGroup: {
+                 iter->NextCommand<PopDebugGroupCmd>();
+ 
+-                if (ToBackend(GetDevice())->GetFunctions()->IsPIXEventRuntimeLoaded()) {
++                if (!collectOnly &&
++                    ToBackend(GetDevice())->GetFunctions()->IsPIXEventRuntimeLoaded()) {
+                     ToBackend(GetDevice())->GetFunctions()->pixEndEventOnCommandList(commandList);
+                 }
+                 break;
+@@ -2836,7 +3005,8 @@
+                 PushDebugGroupCmd* cmd = iter->NextCommand<PushDebugGroupCmd>();
+                 std::string_view label = NextNullTerminatedString(iter, cmd->length);
+ 
+-                if (ToBackend(GetDevice())->GetFunctions()->IsPIXEventRuntimeLoaded()) {
++                if (!collectOnly &&
++                    ToBackend(GetDevice())->GetFunctions()->IsPIXEventRuntimeLoaded()) {
+                     // PIX color is 1 byte per channel in ARGB format
+                     // TODO(https://crbug.com/526533386): Prevent format string injection in PIX.
+                     constexpr uint64_t kPIXBlackColor = 0xff000000;
+@@ -2851,11 +3021,15 @@
+                 SetRenderPipelineCmd* cmd = iter->NextCommand<SetRenderPipelineCmd>();
+                 RenderPipeline* pipeline = ToBackend(cmd->pipeline.Get());
+ 
+-                commandList->SetPipelineState(pipeline->GetPipelineState());
+-                commandList->IASetPrimitiveTopology(pipeline->GetD3D12PrimitiveTopology());
+-
+-                bindingTracker->OnSetPipeline(pipeline);
+-                immediates.OnSetPipeline(pipeline);
++                if (!collectOnly) {
++                    commandList->SetPipelineState(pipeline->GetPipelineState());
++                    commandList->IASetPrimitiveTopology(pipeline->GetD3D12PrimitiveTopology());
++                }
++
++                activeBindings->OnSetPipeline(pipeline);
++                if (!collectOnly) {
++                    immediates.OnSetPipeline(pipeline);
++                }
+ 
+                 lastPipeline = pipeline;
+                 break;
+@@ -2869,7 +3043,7 @@
+                     dynamicOffsets = iter->NextData<uint32_t>(cmd->dynamicOffsetCount);
+                 }
+ 
+-                bindingTracker->OnSetBindGroup(cmd->index, group, dynamicOffsets);
++                activeBindings->OnSetBindGroup(cmd->index, group, dynamicOffsets);
+                 break;
+             }
+ 
+@@ -2877,7 +3051,9 @@
+                 SetImmediatesCmd* cmd = iter->NextCommand<SetImmediatesCmd>();
+                 DAWN_ASSERT(cmd->size > 0);
+                 Span<const std::byte> data = iter->NextData<std::byte>(cmd->size);
+-                immediates.SetImmediates(cmd->offset, data);
++                if (!collectOnly) {
++                    immediates.SetImmediates(cmd->offset, data);
++                }
+                 break;
+             }
+ 
+@@ -2889,7 +3065,10 @@
+                 bufferView.BufferLocation = ToBackend(cmd->buffer.Get())->GetVA() + cmd->offset;
+                 bufferView.SizeInBytes = static_cast<uint32_t>(cmd->size);
+ 
+-                commandList->IASetIndexBuffer(&bufferView);
++                if (!collectOnly) {
++                    pendingIndexView = bufferView;
++                    indexViewDirty = true;
++                }
+                 glintIndexUse = controlUse(cmd->buffer.Get(), cmd->offset, cmd->size);
+                 break;
+             }
+@@ -2897,14 +3076,14 @@
+             case Command::SetVertexBuffer: {
+                 SetVertexBufferCmd* cmd = iter->NextCommand<SetVertexBufferCmd>();
+ 
+-                vertexBufferTracker.OnSetVertexBuffer(cmd->slot, ToBackend(cmd->buffer.Get()),
+-                                                      cmd->offset, cmd->size);
++                activeVertices->OnSetVertexBuffer(cmd->slot, ToBackend(cmd->buffer.Get()),
++                                                  cmd->offset, cmd->size);
+                 break;
+             }
+ 
+             case Command::SetResourceTable: {
+                 SetResourceTableCmd* cmd = iter->NextCommand<SetResourceTableCmd>();
+-                bindingTracker->SetResourceTable(ToBackend(cmd->table.Get()));
++                activeBindings->SetResourceTable(ToBackend(cmd->table.Get()));
+                 break;
+             }
+ 
+@@ -2914,6 +3093,116 @@
+         }
+         return {};
+     };
++
++    if (device->GetGlintReadbackObserver()) {
++        previewBindings.BeginGlintRenderScopePreview(
++            bindingTracker->HasGlintUnprojectedRenderInputs());
++        activeBindings = &previewBindings;
++        activeVertices = &previewVertices;
++        collectOnly = true;
++        DAWN_TRY(mCommands.ReadWithoutAdvancing([&](CommandIterator* iter) -> MaybeError {
++            Command command;
++            while (iter->NextCommandId(&command)) {
++                switch (command) {
++                    case Command::EndRenderPass:
++                        iter->NextCommand<EndRenderPassCmd>();
++                        return {};
++                    case Command::SetStencilReference:
++                        iter->NextCommand<SetStencilReferenceCmd>();
++                        break;
++                    case Command::SetViewport:
++                        iter->NextCommand<SetViewportCmd>();
++                        break;
++                    case Command::SetScissorRect:
++                        iter->NextCommand<SetScissorRectCmd>();
++                        break;
++                    case Command::SetBlendConstant:
++                        iter->NextCommand<SetBlendConstantCmd>();
++                        break;
++                    case Command::BeginOcclusionQuery:
++                        iter->NextCommand<BeginOcclusionQueryCmd>();
++                        break;
++                    case Command::EndOcclusionQuery:
++                        iter->NextCommand<EndOcclusionQueryCmd>();
++                        break;
++                    case Command::WriteTimestamp:
++                        iter->NextCommand<WriteTimestampCmd>();
++                        break;
++                    case Command::ExecuteBundles: {
++                        auto* cmd = iter->NextCommand<ExecuteBundlesCmd>();
++                        auto bundles = iter->NextData<Ref<RenderBundleBase>>(cmd->count);
++                        for (const auto& bundle : bundles) {
++                            DAWN_TRY(bundle->GetCommands()->ReadWithoutAdvancing(
++                                [&](CommandIterator* commands) -> MaybeError {
++                                    commands->Reset();
++                                    Command type;
++                                    while (commands->NextCommandId(&type)) {
++                                        DAWN_TRY(EncodeRenderBundleCommand(commands, type));
++                                    }
++                                    return {};
++                                }));
++                        }
++                        break;
++                    }
++                    default:
++                        DAWN_TRY(EncodeRenderBundleCommand(iter, command));
++                        break;
++                }
++            }
++            return DAWN_INTERNAL_ERROR("Glint render preview did not reach EndRenderPass.");
++        }));
++        collectOnly = false;
++        activeBindings = bindingTracker;
++        activeVertices = &vertexBufferTracker;
++        lastPipeline = nullptr;
++        glintIndexUse = {};
++        indirectDrawIndex = IndirectDrawIndex{0u};
++        DAWN_TRY(bindingTracker->PrepareGlintRenderBuffers(
++            commandContext, previewBindings.TakeGlintRenderScopePreview(), previewHasIndirect));
++    }
++
++    // renderPassBuilder must be scoped to RecordRenderPass because any underlying
++    // D3D12_RENDER_PASS_ENDING_ACCESS_RESOLVE_SUBRESOURCE_PARAMETERS structs must remain
++    // valid until after EndRenderPass() has been called.
++    RenderPassBuilder renderPassBuilder(passHasUAV);
++
++    DAWN_TRY(SetupRenderPass(commandContext, renderPass, &renderPassBuilder));
++
++    // Use D3D12's native render pass API if it's available, otherwise emulate the
++    // beginning and ending access operations.
++    if (useRenderPass) {
++        commandContext->GetCommandList4()->BeginRenderPass(
++            static_cast<uint8_t>(renderPassBuilder.GetHighestColorAttachmentIndexPlusOne()),
++            renderPassBuilder.GetRenderPassRenderTargetDescriptors().data(),
++            renderPassBuilder.HasDepthOrStencil()
++                ? renderPassBuilder.GetRenderPassDepthStencilDescriptor()
++                : nullptr,
++            renderPassBuilder.GetRenderPassFlags());
++    } else {
++        EmulateBeginRenderPass(commandContext, &renderPassBuilder);
++    }
++
++    // Write timestamp at the beginning of render pass if it's set.
++    if (renderPass->timestampWrites.beginningOfPassWriteIndex != kQuerySetIndexUndefinedTyped) {
++        RecordWriteTimestampCmd(commandList, renderPass->timestampWrites.querySet.Get(),
++                                renderPass->timestampWrites.beginningOfPassWriteIndex);
++    }
++
++    // Set up default dynamic state
++    {
++        uint32_t width = renderPass->width;
++        uint32_t height = renderPass->height;
++        D3D12_VIEWPORT viewport = {0.f, 0.f, static_cast<float>(width), static_cast<float>(height),
++                                   0.f, 1.f};
++        D3D12_RECT scissorRect = {0, 0, static_cast<int32_t>(width), static_cast<int32_t>(height)};
++        commandList->RSSetViewports(1, &viewport);
++        commandList->RSSetScissorRects(1, &scissorRect);
++
++        static constexpr std::array<float, 4> defaultBlendFactor = {0, 0, 0, 0};
++        commandList->OMSetBlendFactor(&defaultBlendFactor[0]);
++
++        commandList->OMSetStencilRef(0);
++    }
+ 
+     Command type;
+     while (mCommands.NextCommandId(&type)) {
+@@ -2947,7 +3236,17 @@
+                     ResolveMultisampledRenderPass(commandContext, renderPass);
+                 }
+                 // Buffer copies/transitions are forbidden inside a native render pass.
+-                DAWN_TRY(bindingTracker->CaptureGlintRenderScope(commandContext));
++                if (device->GetGlintReadbackObserver()) {
++                    DAWN_TRY(bindingTracker->CopyBackGlintBuffers(commandContext));
++                    std::shared_ptr<const GlintGpuInputPlan> inputPlan;
++                    DAWN_TRY_ASSIGN(inputPlan, bindingTracker->GetGlintGpuInputPlanForCapture());
++                    std::shared_ptr<const GlintGpuInputReceipt> receipt;
++                    if (inputPlan) {
++                        receipt = std::shared_ptr<const GlintGpuInputReceipt>(
++                            new GlintGpuInputReceipt(std::move(inputPlan)));
++                    }
++                    DAWN_TRY(bindingTracker->CaptureGlintRenderScope(commandContext, receipt));
++                }
+                 return {};
+             }
+ 

@@ -1,5 +1,24 @@
 # Glint architecture
 
+## Render/bundle buffer projection source batch
+
+The [29-packet render batch](drafts/webgpu-render-buffer-routing/README.md) prepares
+an exact pass-wide buffer scope before render-pass entry by reusing the existing
+decoder with independent preview trackers and scoped cursor restoration. Shader
+descriptors and vertex/index addresses use the same projected logical-buffer map.
+Shared writable-range copyback runs after pass exit; receipts require an exact
+match between prepared and executed owners/ranges/access flags. Unused index
+bindings do not trigger projection validation. Projected indirect inputs remain
+denied until validated scratch/original/count routing is implemented and tested.
+
+Sixteen native target-flag syntax units passed; 29 packets replay/reverse over
+88 paths. Extracted checkpoint/scope normal/ASan checks passed 125 cursor paths
+and 1,536 scope paths each, using modeled storage/traversal/backend objects.
+These checks do not execute actual Dawn command storage, the complete decoder,
+GPU state/descriptor allocation, render/bundle reads or copyback. Native queue,
+Wire, cancellation/device loss, linking and browser consistency remain open.
+This source batch is unselected and is not a runtime/privacy/production release.
+
 ## Projected texel-buffer alias gap: guarded, not implemented
 
 The [unselected alias guard](drafts/webgpu-texel-alias-guard/README.md) rejects
