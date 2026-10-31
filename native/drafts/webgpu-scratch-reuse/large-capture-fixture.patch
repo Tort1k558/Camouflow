@@ -1,0 +1,48 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -172,7 +172,7 @@
+         gpu::webgpu::GlintReadbackLimits{});
+     Check(dawn::native::InstallGlintReadbackObserver(nativeDevice, observer));
+     if (byteBudget) {
+-        constexpr uint32_t side = 1024;
++        constexpr uint32_t side = 2048;
+         constexpr uint64_t bufferBytes = uint64_t{side} * side * 4;
+         Check(budget->limit_bytes() == 64 * 1024 * 1024);
+         auto queue = device.GetQueue();
+@@ -233,6 +233,27 @@
+         complete();
+         const uint64_t charge = budget->used_bytes();
+         Check(charge >= bufferBytes && charge <= budget->limit_bytes());
++        std::atomic_bool firstMapDone = false;
++        std::atomic_uint firstMapCallbacks = 0;
++        retained.front().MapAsync(wgpu::MapMode::Read, 0, bufferBytes,
++            wgpu::CallbackMode::AllowSpontaneous,
++            [&](wgpu::MapAsyncStatus status, wgpu::StringView) {
++                Check(firstMapCallbacks.fetch_add(1) == 0);
++                Check(status == wgpu::MapAsyncStatus::Success);
++                firstMapDone = true;
++            });
++        wait(firstMapDone);
++        Check(firstMapCallbacks.load() == 1 && !deviceLostDone.load());
++        const auto* pixels = static_cast<const uint8_t*>(retained.front().GetConstMappedRange(0, bufferBytes));
++        Check(pixels != nullptr);
++        for (uint64_t offset = 0; offset < bufferBytes; offset += 4) {
++            Check(pixels[offset] == 64 && pixels[offset + 1] == 128 &&
++                  pixels[offset + 2] == 191 && pixels[offset + 3] == 255);
++        }
++        retained.front().Unmap();
++        pump();
++        Check(!deviceLostDone.load() && budget->used_bytes() == charge);
++
+         while (budget->limit_bytes() - budget->used_bytes() >= charge) {
+             Check(retained.size() < 8);
+             const auto before = budget->used_bytes();
+@@ -271,7 +292,7 @@
+         Check(deviceLostCallbacks.load() == 1 && mapCallbacks.load() == 1);
+         Check(lossValidation.errors.load() >= 1 && lossValidation.errors.load() <= 16);
+         std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+-                    "\"hardware_adapter_selected\":true,\"capture_budget_limit_bytes\":%llu,"
++                    "\"hardware_adapter_selected\":true,\"large_surface_pixels_verified\":true,\"capture_budget_limit_bytes\":%llu,"
+                     "\"capture_bytes_before_fault\":%llu,\"per_capture_charge_bytes\":%llu,"
+                     "\"retained_captures_before_fault\":%zu,\"device_lost_under_capture_budget_pressure\":true,"
+                     "\"owned_capture_out_of_memory_observed\":true,\"map_status\":\"aborted\","

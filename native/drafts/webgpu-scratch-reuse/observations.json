@@ -1,0 +1,474 @@
+{
+  "schema": 1,
+  "scope": "Unselected standalone Dawn/Wire D3D12 texture-scratch reuse; normal MSVC STL/no-op raw_ptr, not Chromium embedding",
+  "compiled": true,
+  "source_replay_reverse_passed": true,
+  "browser_runtime_verified": false,
+  "quota_recovery_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "public_inputs_sha256": {
+    "next.patch": "eb5eb57bd1796285c156908bc8a04c67d2453ed9a362261fa14cd688eb7f208e",
+    "large-capture-fixture.patch": "29314f6965546523e453bcc76b9807e3509039aadecb43b40d124a724178d341"
+  },
+  "engine_sources": [
+    {
+      "file": "src/dawn/native/d3d12/glint/projected_texture.cc",
+      "before_sha256": "1553822851d43c94d63f308b0334cb63733382aa9eba37c5524d99978dad9854",
+      "after_sha256": "17e5226a00b5336dad71b397b6c532a6cdf3a8eb87fffaba4159b1ff0964c101"
+    },
+    {
+      "file": "src/dawn/native/d3d12/GlintEdgeProjectionShader.h",
+      "before_sha256": "7a8b02af5118e0a03f24d052d2f0b01c94ec1310e382cd5edaf8a312517aef02",
+      "after_sha256": "97663186ee9e057b8502abbc17e410adf09027ea90e50d7d036f868f1317e1e6"
+    }
+  ],
+  "matrix": {
+    "passed": true,
+    "case_count": 54,
+    "report_sha256": "cf86c1e9537c3cd29f686a94ae9e686caf5381ab3693ce4a3d765dd374d141e6",
+    "executable_sha256": "7ff591f675b75ba3ab19a212440bae94bd31ffa57ab8ed47e53a33dbb94124d6",
+    "cases": [
+      {
+        "mode": "baseline",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "baseline",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "baseline",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--sampled-rgba",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--sampled-rgba",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--sampled-rgba",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--sampled-bgra",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--sampled-bgra",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--sampled-bgra",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--indirect-readonly",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--indirect-readonly",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--indirect-readonly",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--indirect-zero",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--indirect-zero",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--indirect-zero",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--indirect-offset",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--indirect-offset",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--indirect-offset",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-direct",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-direct",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-direct",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-bundle",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-bundle",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-bundle",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--vertex-direct",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--vertex-direct",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--vertex-direct",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--vertex-bundle",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--vertex-bundle",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--vertex-bundle",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--index-direct",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--index-direct",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--index-direct",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--index-bundle",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--index-bundle",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--index-bundle",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-writable-direct",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-writable-direct",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-writable-direct",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-writable-bundle",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-writable-bundle",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--render-writable-bundle",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--unsupported-format",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--unsupported-format",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--unsupported-format",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--cancel-map",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--cancel-map",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--cancel-map",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--snapshot-quota",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--snapshot-quota",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--snapshot-quota",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true
+      },
+      {
+        "mode": "--without-filter",
+        "attempt": 1,
+        "returncode": 1,
+        "passed": true
+      },
+      {
+        "mode": "--without-filter",
+        "attempt": 2,
+        "returncode": 1,
+        "passed": true
+      },
+      {
+        "mode": "--without-filter",
+        "attempt": 3,
+        "returncode": 1,
+        "passed": true
+      }
+    ]
+  },
+  "large_capture": {
+    "passed": true,
+    "report_sha256": "3d8705ea995aa5e554fb3501d3198ba06f09a2fa6830389e01300fc8b49e4c1c",
+    "base_fixture_sha256": "6d2352d09f68a366fbb0dac6a167c032da64d1a3864cc79cd3c17ea18f5f4cb4",
+    "fixture_sha256": "ae84ca72bbdcacbe65b064ec88b077a9efc9c21beb4933cc08adb1f4e4609fba",
+    "width": 2048,
+    "height": 2048,
+    "full_rgba_bytes_verified": 16777216,
+    "runs": [
+      {
+        "variant": "before",
+        "attempt": 1,
+        "returncode": 1,
+        "passed": true
+      },
+      {
+        "variant": "before",
+        "attempt": 2,
+        "returncode": 1,
+        "passed": true
+      },
+      {
+        "variant": "before",
+        "attempt": 3,
+        "returncode": 1,
+        "passed": true
+      },
+      {
+        "variant": "after",
+        "attempt": 1,
+        "returncode": 0,
+        "passed": true,
+        "observation": {
+          "passed": true,
+          "actual_wire_client_server_executed": true,
+          "hardware_adapter_selected": true,
+          "large_surface_pixels_verified": true,
+          "capture_budget_limit_bytes": 67108864,
+          "capture_bytes_before_fault": 50397184,
+          "per_capture_charge_bytes": 50397184,
+          "retained_captures_before_fault": 1,
+          "device_lost_under_capture_budget_pressure": true,
+          "owned_capture_out_of_memory_observed": true,
+          "map_status": "aborted",
+          "map_callback_count": 1,
+          "device_lost_callback_count": 1,
+          "map_state": "unmapped",
+          "cpu_texture_upload_used": false,
+          "capture_bytes_after_destroy": 0,
+          "physical_memory_exhaustion_attempted": false,
+          "hardware_tdr_tested": false,
+          "browser_integrated": false
+        }
+      },
+      {
+        "variant": "after",
+        "attempt": 2,
+        "returncode": 0,
+        "passed": true,
+        "observation": {
+          "passed": true,
+          "actual_wire_client_server_executed": true,
+          "hardware_adapter_selected": true,
+          "large_surface_pixels_verified": true,
+          "capture_budget_limit_bytes": 67108864,
+          "capture_bytes_before_fault": 50397184,
+          "per_capture_charge_bytes": 50397184,
+          "retained_captures_before_fault": 1,
+          "device_lost_under_capture_budget_pressure": true,
+          "owned_capture_out_of_memory_observed": true,
+          "map_status": "aborted",
+          "map_callback_count": 1,
+          "device_lost_callback_count": 1,
+          "map_state": "unmapped",
+          "cpu_texture_upload_used": false,
+          "capture_bytes_after_destroy": 0,
+          "physical_memory_exhaustion_attempted": false,
+          "hardware_tdr_tested": false,
+          "browser_integrated": false
+        }
+      },
+      {
+        "variant": "after",
+        "attempt": 3,
+        "returncode": 0,
+        "passed": true,
+        "observation": {
+          "passed": true,
+          "actual_wire_client_server_executed": true,
+          "hardware_adapter_selected": true,
+          "large_surface_pixels_verified": true,
+          "capture_budget_limit_bytes": 67108864,
+          "capture_bytes_before_fault": 50397184,
+          "per_capture_charge_bytes": 50397184,
+          "retained_captures_before_fault": 1,
+          "device_lost_under_capture_budget_pressure": true,
+          "owned_capture_out_of_memory_observed": true,
+          "map_status": "aborted",
+          "map_callback_count": 1,
+          "device_lost_callback_count": 1,
+          "map_state": "unmapped",
+          "cpu_texture_upload_used": false,
+          "capture_bytes_after_destroy": 0,
+          "physical_memory_exhaustion_attempted": false,
+          "hardware_tdr_tested": false,
+          "browser_integrated": false
+        }
+      }
+    ]
+  },
+  "unchanged_source_postguards_passed": true,
+  "limitations": [
+    "Large comparison uses a GPU-cleared opaque surface; the 54-case matrix supplies small patterned RGBA/BGRA and shader controls.",
+    "Second retained large capture still causes Glint/E_OUTOFMEMORY device loss; no recoverable quota handling.",
+    "No current candidate manifest, installed browser, profile option or build receipt is changed."
+  ]
+}

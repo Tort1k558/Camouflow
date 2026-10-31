@@ -43,6 +43,16 @@ in three runs. This is **not** recoverable quota handling. See the
 [source-bound observations](../native/drafts/webgpu-capture-retention/wire-runtime-observations-20261101.json).
 The sections below retain the earlier candidate's measurements and failures.
 
+### Unselected resource-reuse correction
+
+The [scratch-reuse draft](../native/drafts/webgpu-scratch-reuse/README.md)
+passed the unchanged 54-case standalone matrix and six before/after controls.
+The old backend loses its device on the first 2048-square capture; the prototype
+successfully maps and verifies all 16 MiB in three runs at the same 64 MiB limit.
+Tracked capture/projection allocations are 50,397,184 bytes. Further retained
+captures still cause device loss: this is not recoverable quota handling.
+The draft is not selected in any Chromium candidate or installed runtime.
+
 ## 2026-11-01: measured 001–116 runtime and revision-2 correction
 
 | Gate on the preserved 001–116 browser | Result | Boundary |

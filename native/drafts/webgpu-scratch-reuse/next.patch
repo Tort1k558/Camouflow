@@ -1,0 +1,174 @@
+--- a/src/dawn/native/d3d12/glint/projected_texture.cc
++++ b/src/dawn/native/d3d12/glint/projected_texture.cc
+@@ -154,10 +154,13 @@
+     raw_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+     auto output_desc = raw_desc;
+     output_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
++    const bool tight_rows = footprint.Footprint.RowPitch == original_desc.Width * 4;
+     auto canonical_desc = raw_desc;
+     canonical_desc.Width = original_desc.Width * original_desc.Height * 4;
+     uint64_t charged = kDescriptorCharge;
+-    for (const auto& desc : {raw_desc, output_desc, shadow_desc, canonical_desc}) {
++    for (const auto* resource_desc : {&output_desc, &shadow_desc, tight_rows ? nullptr : &canonical_desc}) {
++        if (!resource_desc) continue;
++        const auto& desc = *resource_desc;
+         const auto info = device->GetResourceAllocationInfo(0, 1, &desc);
+         if (info.SizeInBytes == 0 || info.SizeInBytes == std::numeric_limits<uint64_t>::max() ||
+             info.SizeInBytes > std::numeric_limits<uint64_t>::max() - charged) {
+@@ -187,11 +190,7 @@
+         return device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, state, nullptr,
+                                                IID_PPV_ARGS(target->GetAddressOf()));
+     };
+-    HRESULT status = create(raw_desc, D3D12_RESOURCE_STATE_COPY_DEST, &hold->input);
+-    if (FAILED(status)) {
+-        return status;
+-    }
+-    status = create(output_desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &hold->output);
++    HRESULT status = create(output_desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &hold->output);
+     if (FAILED(status)) {
+         return status;
+     }
+@@ -199,9 +198,11 @@
+     if (FAILED(status)) {
+         return status;
+     }
+-    status = create(canonical_desc, D3D12_RESOURCE_STATE_COPY_DEST, &hold->canonical_pixels);
+-    if (FAILED(status)) {
+-        return status;
++    if (tight_rows) {
++        hold->canonical_pixels = hold->output;
++    } else {
++        status = create(canonical_desc, D3D12_RESOURCE_STATE_COPY_DEST, &hold->canonical_pixels);
++        if (FAILED(status)) return status;
+     }
+     D3D12_DESCRIPTOR_HEAP_DESC descriptor_desc{};
+     descriptor_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+@@ -217,12 +218,11 @@
+     const UINT increment = device->GetDescriptorHandleIncrementSize(descriptor_desc.Type);
+     auto cpu = hold->descriptors->GetCPUDescriptorHandleForHeapStart();
+     D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+-    srv.Format = DXGI_FORMAT_R32_TYPELESS;
+-    srv.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
++    srv.Format = view_format;
++    srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+     srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+-    srv.Buffer.NumElements = static_cast<UINT>(raw_bytes / 4);
+-    srv.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+-    device->CreateShaderResourceView(hold->input.Get(), &srv, cpu);
++    srv.Texture2D.MipLevels = 1;
++    device->CreateShaderResourceView(hold->shadow.Get(), &srv, cpu);
+     cpu.ptr += increment;
+     D3D12_UNORDERED_ACCESS_VIEW_DESC uav{};
+     uav.Format = DXGI_FORMAT_R32_TYPELESS;
+@@ -240,14 +240,14 @@
+     D3D12_TEXTURE_COPY_LOCATION from{}, raw{}, to{};
+     from.pResource = source;
+     from.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+-    raw.pResource = hold->input.Get();
++    raw.pResource = hold->output.Get();
+     raw.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+     raw.PlacedFootprint = footprint;
+     to.pResource = hold->shadow.Get();
+     to.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+     // All fallible allocations/validation precede the first recorded command.
+-    commands->CopyTextureRegion(&raw, 0, 0, 0, &from, nullptr);
+-    Transition(commands, hold->input.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
++    commands->CopyTextureRegion(&to, 0, 0, 0, &from, nullptr);
++    Transition(commands, hold->shadow.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+     commands->SetPipelineState(pipeline);
+     commands->SetComputeRootSignature(root);
+@@ -269,20 +269,28 @@
+                        (original_desc.Height + 3) / 4, 1);
+     Transition(commands, hold->output.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                D3D12_RESOURCE_STATE_COPY_SOURCE);
+-    // Pack only initialized pixel rows: footprint padding is not canonical data.
+-    const uint64_t tight_pitch = original_desc.Width * 4;
+-    for (uint32_t row = 0; row < original_desc.Height; ++row) {
+-        commands->CopyBufferRegion(hold->canonical_pixels.Get(), row * tight_pitch,
+-                                   hold->output.Get(), uint64_t{row} * footprint.Footprint.RowPitch,
+-                                   tight_pitch);
+-    }
+-    Transition(commands, hold->canonical_pixels.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+-               D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
++    if (!tight_rows) {
++        // Footprint padding never enters the canonical byte stream.
++        const uint64_t tight_pitch = original_desc.Width * 4;
++        for (uint32_t row = 0; row < original_desc.Height; ++row) {
++            commands->CopyBufferRegion(hold->canonical_pixels.Get(), row * tight_pitch,
++                                       hold->output.Get(), uint64_t{row} * footprint.Footprint.RowPitch,
++                                       tight_pitch);
++        }
++        Transition(commands, hold->canonical_pixels.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
++                   D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
++    }
++    Transition(commands, hold->shadow.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
++               D3D12_RESOURCE_STATE_COPY_DEST);
+     raw.pResource = hold->output.Get();
+     commands->CopyTextureRegion(&to, 0, 0, 0, &raw, nullptr);
+     Transition(commands, hold->shadow.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+                    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
++    if (tight_rows) {
++        Transition(commands, hold->output.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
++                   D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
++    }
+     *result = std::move(projected);
+     return S_OK;
+ }
+--- a/src/dawn/native/d3d12/GlintEdgeProjectionShader.h
++++ b/src/dawn/native/d3d12/GlintEdgeProjectionShader.h
+@@ -5,7 +5,7 @@
+ inline constexpr char kGlintEdgeProjectionHlsl[] = R"GLINT_EDGE(
+ // Copyright 2026 CamouFlow contributors. SPDX-License-Identifier: MIT
+ // Experimental fixed-32-byte-key HMAC-SHA-256 projection; not browser-integrated.
+-ByteAddressBuffer Input : register(t0);
++Texture2D<float4> InputTexture : register(t0);
+ RWByteAddressBuffer Output : register(u0);
+ cbuffer Parameters : register(b0) {
+     uint4 Key0;
+@@ -103,32 +103,29 @@
+ bool Different(uint center, uint neighbour) {
+     return (neighbour >> 24) == 255 && ((center ^ neighbour) & 0x00fefefe) != 0;
+ }
+-[numthreads(1,1,1)]
+-void hmac_main(uint3 tid : SV_DispatchThreadID) {
+-        if (MessageBytes > 55) return;
+-        uint message[16];
+-        [unroll] for (uint clearMessage = 0; clearMessage < 16; ++clearMessage) message[clearMessage] = 0;
+-        [loop] for (uint inputByte = 0; inputByte < MessageBytes; ++inputByte)
+-            SetByte(message, inputByte, (Input.Load((inputByte / 4) * 4) >> ((inputByte % 4) * 8)) & 255);
+-        uint digest[8];
+-        Hmac(message, MessageBytes, digest);
+-        [unroll] for (uint outputWord = 0; outputWord < 8; ++outputWord) Output.Store(outputWord * 4, Swap(digest[outputWord]));
++uint LoadPacked(uint address) {
++    uint local = address - Offset;
++    uint y = local / Pitch;
++    uint x = (local - y * Pitch) / 4;
++    uint4 pixel = uint4(round(InputTexture.Load(int3(x, y, 0)) * 255.0));
++    uint canonical = pixel.x | (pixel.y << 8) | (pixel.z << 16) | (pixel.w << 24);
++    return Canonical(canonical);
+ }
+ [numthreads(4,4,1)]
+ void edge_main(uint3 tid : SV_DispatchThreadID) {
+     if (tid.x >= Width || tid.y >= Height) return;
+     uint address = Offset + tid.y * Pitch + tid.x * 4;
+-    uint center = Canonical(Input.Load(address));
++    uint center = Canonical(LoadPacked(address));
+     bool edge = false;
+     if ((center >> 24) == 255) {
+         uint left = Offset + tid.y * Pitch + (max(tid.x, 1) - 1) * 4;
+         uint right = Offset + tid.y * Pitch + min(tid.x + 1, Width - 1) * 4;
+         uint up = Offset + (max(tid.y, 1) - 1) * Pitch + tid.x * 4;
+         uint down = Offset + min(tid.y + 1, Height - 1) * Pitch + tid.x * 4;
+-        if (tid.x > 0) edge = edge || Different(center, Canonical(Input.Load(left)));
+-        if (tid.x + 1 < Width) edge = edge || Different(center, Canonical(Input.Load(right)));
+-        if (tid.y > 0) edge = edge || Different(center, Canonical(Input.Load(up)));
+-        if (tid.y + 1 < Height) edge = edge || Different(center, Canonical(Input.Load(down)));
++        if (tid.x > 0) edge = edge || Different(center, Canonical(LoadPacked(left)));
++        if (tid.x + 1 < Width) edge = edge || Different(center, Canonical(LoadPacked(right)));
++        if (tid.y > 0) edge = edge || Different(center, Canonical(LoadPacked(up)));
++        if (tid.y + 1 < Height) edge = edge || Different(center, Canonical(LoadPacked(down)));
+     }
+     if (edge) {
+         uint message[16];
