@@ -1,5 +1,13 @@
 # Glint architecture
 
+The [owned GPU-process recovery control](drafts/environment/gpu-process-recovery/README.md)
+now has three actual runs on preserved 001–076 with policies off. A real
+`Browser.crashGpuProcess` produces one lost-device callback and aborts the old
+mapping; the same document then renders matching direct/shader/PNG reference
+pixels with a new device. All 269 runtime assets and 226 source inputs remain
+unchanged, with no owned resources left. This is baseline document recovery,
+not a physical GPU reset or protected/worker/latest-candidate recovery admission.
+
 The explicit [full WebGPU candidate](drafts/upstream-156-webgpu/README.md)
 registers the baseline plus the complete component batch as 116 repository-scoped
 patches. Forward/reverse replay restores all 268 upstream files; the resulting

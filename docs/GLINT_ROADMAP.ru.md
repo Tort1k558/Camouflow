@@ -30,6 +30,14 @@ run concurrently with the j4 Chromium build. The byte-budget variant investigate
 the current allocation-error/device-loss path, not implemented quota recovery.
 No new runtime result follows yet.
 
+The new [owned GPU-process recovery collector](../native/drafts/environment/gpu-process-recovery/README.md)
+passed three actual runs on the preserved 001–076 browser with protections off:
+one device-lost callback, aborted old mapping, the same document and matching
+direct/shader/PNG pixels after creating a new device. All 269 assets, driver,
+receipt and 226 source inputs stayed unchanged; owned profiles/processes were removed.
+This calibrates the recovery probe only. Protected-policy, worker/iframe and
+001–116 recovery remain separate gates after compilation.
+
 ## Actual direct and bundled native render inputs
 
 The [public Wire fixture](../native/drafts/webgpu-capture-retention/README.md)

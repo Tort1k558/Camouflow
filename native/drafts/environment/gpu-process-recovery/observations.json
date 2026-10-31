@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "scope": "Three actual owned Browser.crashGpuProcess recovery runs on preserved 001-076 with protections off; not latest 001-116 or protected recovery admission",
+  "passed": true,
+  "candidate": "upstream-156",
+  "candidate_manifest_sha256": "f5bb6cbae7084df2f539127aa3b2c5f83c737900185aaca5ae3ada16909dc4ea",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "03b34a8d3786d9c313b89afc1609c032091656678f936ee7087d62fca40e1d00",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "ca69cc734d4829bcb2357012d77fdda0fb72130fe91f5cf48da3f67acb17d7b3",
+  "source_sha256": {
+    "native/drafts/environment/gpu-process-recovery/collect.py": "adaf65818b02444a6c4232f150da5e2d05f6b8f39a893b0a65f3933ae7b9089a",
+    "native/drafts/environment/gpu-process-recovery/watch.js": "822a7652f90c8e9dff658702021983ad2ef27b03114daaeecb19f45a906f501c",
+    "native/drafts/environment/first-script/webgpu_shader_dataflow.js": "5500fc6ec1ef2c9f2bf42b6e73686bd0609189adf7ab881356b405e9a3dcf785",
+    "native/drafts/environment/playwright-driver-stage-binding-close.json": "6d18cf727cfe1b4533b611edbd560f4ac031e4c02aa69aff2e037d110df352c5",
+    "scripts/verify_native_webgpu_consistency.py": "aa6da7d6a7488eb83ca257ace6f9e61e0a9ff60efb3f2725640d820b04616475",
+    "scripts/verify_native_gpu_readback.py": "f7566c8c829496345a6a616e1b13a524e9258fba0fb69b7f1dee00b68c7dbac9",
+    "app/core/native/runtime.py": "7d5919e2c0c89be98eb1a56a689cb4ec72f765b90ca2591194bb5fea07704f9c",
+    "native/drafts/upstream-156/manifest.json": "f5bb6cbae7084df2f539127aa3b2c5f83c737900185aaca5ae3ada16909dc4ea"
+  },
+  "complete_probe_input_count": 226,
+  "complete_probe_input_snapshot_sha256": "645512417ed19621c80dfdd7a4642a18aa39ce4956bc150b90504f7985e08419",
+  "protected_policies_enabled": false,
+  "protected_policy_recovery_verified": false,
+  "complete_candidate_verified": false,
+  "physical_gpu_reset_tested": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "runs": [
+    {
+      "attempt": 1,
+      "seconds": 14.235,
+      "private_report_sha256": "9e6d747ca0748f778fe12cdd0de1ac94c8ecdca38a43dcf06fbe4d360f324b9f",
+      "browser_product": "Chrome/156.0.8078.36",
+      "before": {
+        "reference_matched": true,
+        "rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "shader_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "png_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+      },
+      "after": {
+        "reference_matched": true,
+        "rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "shader_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "png_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+      },
+      "loss": {
+        "initialCopyMatched": true,
+        "deviceLostCallbacks": 1,
+        "reason": "unknown",
+        "oldMapRejectedWith": "AbortError",
+        "oldMapState": "unmapped"
+      },
+      "same_document_preserved": true,
+      "page_crashes": 0,
+      "actual_gpu_crash_command_completed": true,
+      "baseline_recovered": true,
+      "runtime_asset_count": 269,
+      "runtime_assets_unchanged": true,
+      "input_postguards_passed": true,
+      "driver_unchanged": true,
+      "receipt_unchanged": true,
+      "server_closed": true,
+      "runtime_resource_free": true,
+      "owned_profiles_removed": true,
+      "remaining_owned_processes": []
+    },
+    {
+      "attempt": 2,
+      "seconds": 22.844,
+      "private_report_sha256": "a71fce58e4f2317fafc6363896b4ea0ba62f147a26cff13763ff238e9f9ab6e4",
+      "browser_product": "Chrome/156.0.8078.36",
+      "before": {
+        "reference_matched": true,
+        "rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "shader_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "png_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+      },
+      "after": {
+        "reference_matched": true,
+        "rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "shader_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "png_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+      },
+      "loss": {
+        "initialCopyMatched": true,
+        "deviceLostCallbacks": 1,
+        "reason": "unknown",
+        "oldMapRejectedWith": "AbortError",
+        "oldMapState": "unmapped"
+      },
+      "same_document_preserved": true,
+      "page_crashes": 0,
+      "actual_gpu_crash_command_completed": true,
+      "baseline_recovered": true,
+      "runtime_asset_count": 269,
+      "runtime_assets_unchanged": true,
+      "input_postguards_passed": true,
+      "driver_unchanged": true,
+      "receipt_unchanged": true,
+      "server_closed": true,
+      "runtime_resource_free": true,
+      "owned_profiles_removed": true,
+      "remaining_owned_processes": []
+    },
+    {
+      "attempt": 3,
+      "seconds": 13.89,
+      "private_report_sha256": "5b550d19c5af5a104ddbe70b9bf3508346008f4b6b1ab7b33b371eed900d108e",
+      "browser_product": "Chrome/156.0.8078.36",
+      "before": {
+        "reference_matched": true,
+        "rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "shader_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "png_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+      },
+      "after": {
+        "reference_matched": true,
+        "rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "shader_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f",
+        "png_rgba_sha256": "9746b412c857b9a243b8370d47e2b002ece8d0d17c6950f7911daee263249c5f"
+      },
+      "loss": {
+        "initialCopyMatched": true,
+        "deviceLostCallbacks": 1,
+        "reason": "unknown",
+        "oldMapRejectedWith": "AbortError",
+        "oldMapState": "unmapped"
+      },
+      "same_document_preserved": true,
+      "page_crashes": 0,
+      "actual_gpu_crash_command_completed": true,
+      "baseline_recovered": true,
+      "runtime_asset_count": 269,
+      "runtime_assets_unchanged": true,
+      "input_postguards_passed": true,
+      "driver_unchanged": true,
+      "receipt_unchanged": true,
+      "server_closed": true,
+      "runtime_resource_free": true,
+      "owned_profiles_removed": true,
+      "remaining_owned_processes": []
+    }
+  ]
+}

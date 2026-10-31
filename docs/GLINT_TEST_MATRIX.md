@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## 2026-10-31: actual GPU-process recovery on preserved 001–076
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Owned `Browser.crashGpuProcess` | Three runs passed | Preserved 001–076; protected policies off |
+| Existing device/buffer | One `device.lost` callback; `unknown`; old mapping rejects with `AbortError`, remains unmapped | Not a physical GPU reset or quota-recovery result |
+| Document and new GPU work | Same document marker/URL, zero page crashes; new device renders matching direct/shader/PNG reference | Document baseline only, not worker/iframe recovery |
+| Runtime/driver/source cleanup | All 269 runtime assets unchanged; 226 source inputs unchanged; pinned driver/receipt unchanged; no owned processes/profiles remain | Does not admit the 001–116 candidate or new fingerprint policies |
+
+The [public collector and observations](../native/drafts/environment/gpu-process-recovery/README.md)
+reproduce this narrow recovery control. The known protected WebGPU/PNG mismatch
+of the old runtime is unchanged; protected and latest-candidate recovery remain open.
+
 ## 2026-10-31: Windows source-byte reproducibility
 
 | Gate | Measured result | Boundary |
