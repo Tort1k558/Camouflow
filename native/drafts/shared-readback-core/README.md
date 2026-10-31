@@ -13,7 +13,7 @@ can use the same implementation without depending on Blink. The math is unchange
 | Pinned Chromium syntax | Five translation units; no diagnostics |
 | CPU checks, normal and ASan | Layout 525,936; provenance 1,232,777; snapshots 748; callbacks 201; uncertain writes 191,874 assertions each |
 | Public Python baseline | 5,014 passed, 1 skipped at `9539fc2`, before this packet |
-| GN / component link / browser execution | Not verified |
+| GN / Chromium component link / browser execution | Not verified |
 
 [Source hashes and scoped measurements](../environment/shared-gpu-readback-core-preparation.json).
 
@@ -27,8 +27,11 @@ unreliable; disjoint or padding-only writes do not erase it. This is a CPU model
 
 ## Before selection
 
-- Support net source paths in candidate validation: a file added by an earlier
-  patch and removed by this one is absent from the final upstream diff.
+- Complete-chain validation now replays all patches in a private Git index and
+  compares net paths and exact final content. Added-then-removed and restored
+  files are supported; unknown edits still fail. Fifteen real-Git cases and the
+  actual unchanged 001-076 checkout passed. This proves final-tree identity, not
+  the historical order in which a user applied patches.
 - Generate GN and verify actual static/component linkage and dependency checks.
 - Connect policy, trusted copy execution, full-surface capture and mapped shadows.
 - Track shader-derived data and charge GPU memory until fence retirement.
@@ -37,3 +40,22 @@ unreliable; disjoint or padding-only writes do not erase it. This is a CPU model
 
 The active `001-076` chain and preserved runtime are unchanged. Do not apply this
 packet to an active build or bypass the normal build resource reserve.
+
+## Reproduce the isolated DLL boundary check
+
+```powershell
+python native/drafts/shared-readback-core/check_component.py `
+  --chromium-root D:/Glint156Candidate/chromium/src `
+  --sdk-root D:/Glint156Candidate/toolchain/local-msvc-sdk-28000-v1 `
+  --work-dir D:/GlintManagerQA/shared-component-check-fresh
+```
+
+Extracts the hash-bound shared sources into fresh external D: output without
+changing Chromium. Builds an actual DLL with the GPU-common export macro, then
+five importing executables, normally and under ASan. All ten passed with the same
+assertion counts above. Requires the existing compiler/SDK/crypto objects; no
+downloads, software fallback or Chromium build.
+
+[DLL measurements](../environment/shared-gpu-readback-component-observations.json).
+This uses the MSVC standard library for the isolated check. Chromium's GN graph,
+its libc++ component ABI and browser execution **still require separate checks**.

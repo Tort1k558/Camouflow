@@ -8,7 +8,34 @@ import pytest
 
 
 @pytest.fixture
-def native_tooling_before_dawn(tmp_path):
+def native_tooling_before_net_paths(tmp_path):
+    """Recover the exact pre-net-path source for older measured tooling."""
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'net-path-tooling-source-upgrade.json').read_bytes())
+    base = tmp_path / 'before-net-path-tooling'
+    for row in record['sources']:
+        path = base / row['source']
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text((root / row['source']).read_text(encoding='utf-8-sig'),
+                        encoding='utf-8', newline='\n')
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == row['after_sha256']
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    result = {'sources': {}, 'sha256': {}}
+    for row in record['sources']:
+        data = (base / row['source']).read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        assert digest == row['before_sha256']
+        result['sources'][row['source']] = data
+        result['sha256'][row['source']] = digest
+    return result
+
+
+@pytest.fixture
+def native_tooling_before_dawn(tmp_path, native_tooling_before_net_paths):
     """Recover exact tooling/test bytes used by historical runtime records."""
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
@@ -17,8 +44,11 @@ def native_tooling_before_dawn(tmp_path):
     for row in record['sources']:
         target = base / row['source']
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text((root / row['source']).read_text(encoding='utf-8-sig'),
-                          encoding='utf-8', newline='\n')
+        if row['source'] in native_tooling_before_net_paths['sources']:
+            target.write_bytes(native_tooling_before_net_paths['sources'][row['source']])
+        else:
+            target.write_text((root / row['source']).read_text(encoding='utf-8-sig'),
+                              encoding='utf-8', newline='\n')
         assert hashlib.sha256(target.read_bytes()).hexdigest() == row['after_sha256']
     patch = directory / record['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']

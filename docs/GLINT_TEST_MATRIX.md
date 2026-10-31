@@ -7,6 +7,8 @@
 | Source packet | 13 paths round-tripped; math unchanged | Not applied to active checkout |
 | Chromium syntax | Five units, no diagnostics | No GN generation or component link |
 | Isolated CPU / ASan | Five suites each passed | No native queue/map hooks or shader taint |
+| DLL export / import | Five external consumers, normal + ASan, passed | Isolated MSVC-stdlib check, not Chromium GN/libc++ component ABI |
+| Complete-chain source validation | 15 Git cases and actual unchanged 001-076 passed | Final tree, not historical application order |
 | Full Python baseline | 5014 passed, 1 skipped at `9539fc2` | Before shared-core packet |
 
 [Exact packet scope](../native/drafts/shared-readback-core/README.md).

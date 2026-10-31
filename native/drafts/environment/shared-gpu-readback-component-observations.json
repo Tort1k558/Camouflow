@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Isolated Windows MSVC-stdlib DLL producer/importer checks, not Chromium GN/component linkage or browser integration",
+  "standalone_dll_import_export_verified": true,
+  "runs": [
+    {
+      "name": "layout",
+      "sanitizer": "none",
+      "result": {
+        "passed": true,
+        "property_iterations": 1024,
+        "assertions": 525936,
+        "browser_integrated": false
+      },
+      "dll_sha256": "5e905f61450a5a54fcd345f5447c8a8dd23e90fc32504e30a6a704de65234fc3",
+      "executable_sha256": "590af966749904643ee8dcc0158538804fec01d2e81613329249bc83a264023b"
+    },
+    {
+      "name": "provenance",
+      "sanitizer": "none",
+      "result": {
+        "passed": true,
+        "named_cases": 18,
+        "property_iterations": 256,
+        "assertions": 1232777,
+        "browser_integrated": false
+      },
+      "dll_sha256": "5e905f61450a5a54fcd345f5447c8a8dd23e90fc32504e30a6a704de65234fc3",
+      "executable_sha256": "6ecd4bf777037eb4a00e1fb974143bd3d9410eead4c4ef20f6701110539df1e3"
+    },
+    {
+      "name": "snapshot",
+      "sanitizer": "none",
+      "result": {
+        "passed": true,
+        "named_cases": 26,
+        "formats": 2,
+        "property_iterations": 64,
+        "assertions": 748,
+        "browser_integrated": false
+      },
+      "dll_sha256": "5e905f61450a5a54fcd345f5447c8a8dd23e90fc32504e30a6a704de65234fc3",
+      "executable_sha256": "298018f7e1f1e28182f9fe3f38503b2e1463f676308ae4c7f0a3cd6971900f59"
+    },
+    {
+      "name": "callback",
+      "sanitizer": "none",
+      "result": {
+        "passed": true,
+        "named_cases": 10,
+        "completion_orders": 6,
+        "assertions": 201,
+        "browser_integrated": false
+      },
+      "dll_sha256": "5e905f61450a5a54fcd345f5447c8a8dd23e90fc32504e30a6a704de65234fc3",
+      "executable_sha256": "24adc2c476426feff07657618328883ea2e3acb240f1d864c0a228e27d0589d4"
+    },
+    {
+      "name": "uncertain",
+      "sanitizer": "none",
+      "result": {
+        "passed": true,
+        "range_cases": 31974,
+        "assertions": 191874,
+        "browser_integrated": false
+      },
+      "dll_sha256": "5e905f61450a5a54fcd345f5447c8a8dd23e90fc32504e30a6a704de65234fc3",
+      "executable_sha256": "08aaca5a21c584855829e464a86d5c4f80fa1f21f18df7842c85768a87c1642f"
+    },
+    {
+      "name": "layout",
+      "sanitizer": "address",
+      "result": {
+        "passed": true,
+        "property_iterations": 1024,
+        "assertions": 525936,
+        "browser_integrated": false
+      },
+      "dll_sha256": "e3209cca59070d137ecc409ae6b64e585377cfdb2c9c15261b943fbc0f78ed28",
+      "executable_sha256": "ea853a2c95fe0f580dddd6456d4715d45012a267a1cc313a11ae5b0b7cb78e11"
+    },
+    {
+      "name": "provenance",
+      "sanitizer": "address",
+      "result": {
+        "passed": true,
+        "named_cases": 18,
+        "property_iterations": 256,
+        "assertions": 1232777,
+        "browser_integrated": false
+      },
+      "dll_sha256": "e3209cca59070d137ecc409ae6b64e585377cfdb2c9c15261b943fbc0f78ed28",
+      "executable_sha256": "57999b7f689fb662259f521344882e940b0dc1e2e50f60153e02a1b29c6c37af"
+    },
+    {
+      "name": "snapshot",
+      "sanitizer": "address",
+      "result": {
+        "passed": true,
+        "named_cases": 26,
+        "formats": 2,
+        "property_iterations": 64,
+        "assertions": 748,
+        "browser_integrated": false
+      },
+      "dll_sha256": "e3209cca59070d137ecc409ae6b64e585377cfdb2c9c15261b943fbc0f78ed28",
+      "executable_sha256": "e27730611a19ae9e1d61dac23a40fae66e3e1855dbc1d2ba253af7f3eb2e3f0a"
+    },
+    {
+      "name": "callback",
+      "sanitizer": "address",
+      "result": {
+        "passed": true,
+        "named_cases": 10,
+        "completion_orders": 6,
+        "assertions": 201,
+        "browser_integrated": false
+      },
+      "dll_sha256": "e3209cca59070d137ecc409ae6b64e585377cfdb2c9c15261b943fbc0f78ed28",
+      "executable_sha256": "b89f3f8910c0c9813d6f3237bd26151d29e7297f2a8e053599ee1b2f93ce3710"
+    },
+    {
+      "name": "uncertain",
+      "sanitizer": "address",
+      "result": {
+        "passed": true,
+        "range_cases": 31974,
+        "assertions": 191874,
+        "browser_integrated": false
+      },
+      "dll_sha256": "e3209cca59070d137ecc409ae6b64e585377cfdb2c9c15261b943fbc0f78ed28",
+      "executable_sha256": "fd62cfda11067f748386296b7a43beb6847bf3e05e37e7ec421800c51adb2d97"
+    }
+  ],
+  "source_sha256": {
+    "gpu/command_buffer/common/glint/canvas_readback_candidate.cc": "4e095bbe7cb4fabc8f1109921a47feec153aa2eda9a89215510496e84df2bfb5",
+    "gpu/command_buffer/common/glint/canvas_readback_candidate.h": "e0d18ac35699bc32dd8df469b56ddb3e0bdfcbe7d45269bc3b04adeab7f5f0a4",
+    "gpu/command_buffer/common/glint/webgpu_readback_layout.cc": "9e7fc4b7b4da071339e0946655300f755dc3f445f6337f42df006176660ec8c5",
+    "gpu/command_buffer/common/glint/webgpu_readback_layout.h": "4793cf73301c1bd3c27aca15ad1ad68455859f2ba1a3dff89129f3640de7c495",
+    "gpu/command_buffer/common/glint/webgpu_readback_provenance.cc": "895651b283623cb62b3daf0d0d72993c64c00675ffe597d82f5f486b263f1d6f",
+    "gpu/command_buffer/common/glint/webgpu_readback_provenance.h": "2e48c71d04fc5b2a2b70e8e64892086905638602ea7672972c4dd3f61d876eab",
+    "gpu/command_buffer/common/glint/webgpu_readback_snapshot.cc": "b1cd5898e70f76547db09fc65acabb938f641169d4bb492a388c6396615e7176",
+    "gpu/command_buffer/common/glint/webgpu_readback_snapshot.h": "c32c0c8330610f3ebc51ffffbab9858f287eccc1d8640bc66dfce5d908d2a417"
+  },
+  "test_sources_sha256": {
+    "native/drafts/webgpu-readback-layout/layout_test.cc": "869119ac8a7fea99f4293cd7e4bab6e7245b3cfd17135972117b7b86fa5a8409",
+    "native/drafts/webgpu-readback-layout/provenance_test.cc": "05614b3d6b9bba93c6e610aaab56bf274ec459522b91dc1281ef5da09b81e691",
+    "native/drafts/webgpu-readback-layout/snapshot_test.cc": "05ea29931d86cb373da6df8d8ad8a7f2650e07320a5b26a03b14cac107f4e0ec",
+    "native/drafts/webgpu-readback-layout/callback_test.cc": "7c043d9e52cd4fdd20e2415298c55eb0916800c790efaa1a0cfa3e9917c49b88",
+    "native/drafts/shared-readback-core/uncertain_test.cc": "1ee8fb5c59b2164157a5c1a750641a0e28725dcb180dea6eb38c361e1830cbd2"
+  },
+  "checker": "native/drafts/shared-readback-core/check_component.py",
+  "checker_sha256": "cc699c16c51fa988206b0e5df2f772ab15aac812a8435c7c5e160f48ec198c2c",
+  "patch": "shared-gpu-readback-core-next.patch",
+  "patch_sha256": "86ebd83b852f55568cfcc77b3db5e4f9fd3b04c89cc2b2f76e921265e3778cb3",
+  "raw_report_sha256": "c707df14710cca939605f967defa5213dbb86327f8e1e7c105eed18079262467",
+  "gn_generated": false,
+  "chromium_component_link_verified": false,
+  "browser_integrated": false,
+  "native_queue_hooks_installed": false,
+  "runtime_verified": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

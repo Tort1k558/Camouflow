@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "git_head": "8879ed25ba52f8960d1659d257c0e3a9789ffed4",
+  "counts": {
+    "tests": 5019,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 5018
+  },
+  "duration_seconds": 621.235,
+  "log_sha256": "f5c53ed6b31f8b8627acd837a45c2063f0137ca07e586b5f421798b3ed90d5a2",
+  "junit_sha256": "85b1e1c6c39227e3901f3f0dbcba4a8314645ddc41db7fb4b11f1fb7b192c69f",
+  "native_runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "scope": "Full canonical Python regression at 8879ed2 before net-path tooling and public DLL checker",
+  "raw_report_sha256": "9ce04a2341c5365630b077425ea19ffb9477464449af37c81d62759d91d23bb1"
+}

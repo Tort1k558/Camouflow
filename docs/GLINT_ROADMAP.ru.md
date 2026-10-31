@@ -5,7 +5,9 @@
 [Packet and measurements](../native/drafts/shared-readback-core/README.md): one
 unchanged math implementation in GPU common, a Blink forwarding header, five
 syntax checks and ten normal/ASan executables passed. No new browser binary.
-Next: net-path candidate validation, GN/link checks, trusted copy/map hooks,
+Net-path validation now passed 15 Git cases and the actual unchanged 001-076 checkout.
+The public isolated DLL/importer checker also passed normal and ASan runs; this
+is not Chromium GN/libc++ component linkage. Next: GN/link checks, trusted copy/map hooks,
 shader taint and GPU fence-retirement accounting, then combined browser tests.
 The Canvas/WebGPU export mismatch is still open.
 

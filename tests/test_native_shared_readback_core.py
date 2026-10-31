@@ -3,6 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -88,3 +89,36 @@ def test_full_dawn_tooling_baseline_does_not_admit_this_later_shared_core():
     assert record['git_head'].startswith('9539fc2')
     assert record['counts'] == dict(tests=5015, passed=5014, skipped=1, failures=0, errors=0)
     assert record['native_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False
+
+
+def test_shared_component_dll_evidence_binds_the_exact_packet_and_public_checker():
+    record = json.loads((DIRECTORY / 'shared-gpu-readback-component-observations.json').read_bytes())
+    source = preparation()
+    assert record['passed'] and record['measurement_complete'] and record['postguards_passed']
+    assert record['standalone_dll_import_export_verified']
+    assert record['source_sha256'] == {row['source']: row['after_sha256'] for row in source['sources']
+                                     if row['source'].startswith('gpu/command_buffer/common/glint/')}
+    assert record['test_sources_sha256'] == source['measured_test_sources_sha256']
+    assert record['patch_sha256'] == source['patch_sha256']
+    assert hashlib.sha256((ROOT / record['checker']).read_bytes()).hexdigest() == record['checker_sha256']
+    rows = {(row['name'], row['sanitizer']): row for row in record['runs']}
+    assert len(rows) == 10
+    for expected in source['isolated_component_checks']:
+        row = rows[expected['name'], expected['sanitizer']]
+        assert row['result'] == expected['result']
+        assert len(row['dll_sha256']) == len(row['executable_sha256']) == 64
+    for key in ('gn_generated', 'chromium_component_link_verified', 'browser_integrated',
+                'native_queue_hooks_installed', 'runtime_verified', 'canvas_gpu_export_mismatch_resolved',
+                'privacy_admitted', 'production_admitted'):
+        assert record[key] is False
+
+
+def test_public_component_checker_rejects_source_overlap_before_creating_output(tmp_path):
+    output = tmp_path / 'inside-source'
+    script = ROOT / 'native/drafts/shared-readback-core/check_component.py'
+    result = subprocess.run([sys.executable, str(script), '--chromium-root', str(tmp_path),
+                             '--sdk-root', str(tmp_path), '--work-dir', str(output)],
+                            capture_output=True, text=True, timeout=15)
+    assert result.returncode == 2
+    assert 'canonical existing Windows D:' in result.stderr
+    assert not output.exists()

@@ -138,7 +138,8 @@ def test_capture_python_baseline_predates_dawn_tooling_changes():
     assert record['native_runtime_verified'] is record['privacy_admitted'] is record['production_admitted'] is False
 
 
-def test_tooling_history_recovers_measured_tls_sources_and_round_trips(native_tooling_before_dawn, tmp_path):
+def test_tooling_history_recovers_measured_tls_sources_and_round_trips(
+        native_tooling_before_dawn, native_tooling_before_net_paths, tmp_path):
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
     record = json.loads((directory / 'dawn-tooling-source-upgrade.json').read_bytes())
@@ -158,6 +159,9 @@ def test_tooling_history_recovers_measured_tls_sources_and_round_trips(native_to
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--whitespace=error',
                     str(directory / record['patch'])], cwd=base, check=True, capture_output=True, timeout=15)
     for row in record['sources']:
-        current = (root / row['source']).read_text(encoding='utf-8-sig').encode('utf-8')
+        if row['source'] in native_tooling_before_net_paths['sources']:
+            current = native_tooling_before_net_paths['sources'][row['source']]
+        else:
+            current = (root / row['source']).read_text(encoding='utf-8-sig').encode('utf-8')
         assert (base / row['source']).read_bytes() == current
         assert hashlib.sha256(current).hexdigest() == row['after_sha256']

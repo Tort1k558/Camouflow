@@ -1,0 +1,63 @@
+--- a/scripts/native_build.py
++++ b/scripts/native_build.py
+@@ -300,10 +300,12 @@
+ 
+ 
+ def _source_patches(source: Path, env: dict[str, str], names: tuple[str, ...],
+-                    *, index_dir: Path | None = None, patch_directory: Path | None = None) -> list[dict[str, str]]:
++                    *, index_dir: Path | None = None, patch_directory: Path | None = None,
++                    complete_chain: bool = False) -> list[dict[str, str]]:
++    env = {**env, "GIT_OPTIONAL_LOCKS": "0"}
+     changed = set(run(["git", "diff", "HEAD", "--name-only"], source, env, capture=True).splitlines())
+     changed.update(run(["git", "ls-files", "--others", "--exclude-standard"], source, env, capture=True).splitlines())
+-    if not changed:
++    if not changed and not complete_chain:
+         return []
+     patches = []
+     expected = set()
+@@ -311,11 +313,13 @@
+         patch = (ROOT / "native/patches" if patch_directory is None else patch_directory) / name
+         contents = patch.read_text(encoding="utf-8-sig")
+         files = {line.split(" b/", 1)[1] for line in contents.splitlines() if line.startswith("diff --git ")}
+-        if changed.intersection(files):
++        if complete_chain or changed.intersection(files):
+             expected.update(files)
+             patches.append(patch)
+-    if changed != expected:
++    if changed - expected or (not complete_chain and expected - changed):
+         raise ValueError("Unrecognized Chromium source changes; refusing an unrepeatable build")
++    if not patches:
++        return []
+     with tempfile.TemporaryDirectory(prefix="native-patch-index-", dir=source.parent if index_dir is None else index_dir) as owned:
+         index_env = {**env, "GIT_INDEX_FILE": str(Path(owned) / "index")}
+         run(["git", "read-tree", "--empty"], source, index_env)
+@@ -328,6 +332,11 @@
+             run(["git", "update-index", "--add", "--cacheinfo", mode + "," + blob + "," + path], source, index_env)
+         for patch in patches:
+             run(["git", "apply", "--cached", str(patch)], source, index_env)
++        if complete_chain:
++            net_paths = set(run(["git", "diff", "--cached", "HEAD", "--name-only", "--",
++                                 *sorted(expected)], source, index_env, capture=True).splitlines())
++            if changed != net_paths:
++                raise ValueError("Candidate source paths differ from the complete patch chain's final tree")
+         run(["git", "diff", "--exit-code", "--", *sorted(expected)], source, index_env)
+     return [{"name": patch.name, "sha256": hashlib.sha256(patch.read_bytes()).hexdigest()} for patch in patches]
+ 
+@@ -612,7 +621,7 @@
+     for directory in directories:
+         names = tuple(row["file"] for row in manifest["patches"] if row.get("directory", ".") == directory)
+         measured = _source_patches(source / directory, env, names, index_dir=source.parent,
+-                                   patch_directory=candidate["directory"] / "patches")
++                                   patch_directory=candidate["directory"] / "patches", complete_chain=True)
+         if [item["name"] for item in measured] != list(names):
+             raise ValueError("The complete candidate patch chain must already be applied")
+         revision = dawn["revision"] if directory == "third_party/dawn" else dependency["revision"]
+@@ -680,7 +689,7 @@
+         for repository, names, delta in reversed(applied):
+             try:
+                 _source_patches(repository, env, names, index_dir=source.parent,
+-                                patch_directory=candidate["directory"] / "patches")
++                                patch_directory=candidate["directory"] / "patches", complete_chain=True)
+                 run(["git", "apply", "--reverse", "--check", str(delta)], repository, env)
+                 run(["git", "apply", "--reverse", str(delta)], repository, env)
+                 report["rolled_back"].append(repository.relative_to(source).as_posix())

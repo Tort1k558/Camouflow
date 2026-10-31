@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "patch": "net-path-tooling-source-upgrade.patch",
+  "patch_sha256": "3369c13f4d8a14bc3cc3ef43000e952552b9011aabb4a7f04bb4c66ee9fa1fef",
+  "sources": [
+    {
+      "source": "scripts/native_build.py",
+      "before_sha256": "042e253b60601c7326a572ae82d66b9a2abacf47f8cac38cd4e1cc47cfe58b62",
+      "after_sha256": "2e6c7fece02c18764ed9e937b8aa7564a70b6a9592ed3bd3ac418d3220e2c6b1"
+    }
+  ],
+  "scope": "Complete-chain final-tree validation only; not proof of historical application order",
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "exact_roundtrip_verified": true,
+  "real_git_cases_passed": 15,
+  "source_history_roundtrip_verified": true,
+  "selected_chain_patches_verified": 76,
+  "selected_manifest_sha256": "f5bb6cbae7084df2f539127aa3b2c5f83c737900185aaca5ae3ada16909dc4ea",
+  "actual_checkout_report_sha256": "c003c7fcdb7efbaf0df396fc179376624540a79329d533c8c162b58cd1099bee",
+  "actual_checkout_postguards_passed": true,
+  "live_indexes_preserved": true
+}

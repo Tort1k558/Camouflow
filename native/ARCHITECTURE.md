@@ -9,6 +9,12 @@ five CPU suites passed normally and under ASan. The packet also retains uncertai
 pixel-write provenance conservatively. GN/link, native hooks, shader taint and
 browser protection remain unverified; the selected chain is still 001-076.
 
+The isolated shared-core DLL and five external consumers also passed normally and
+under ASan. This checks the exported/imported API with the MSVC standard library,
+not Chromium's GN/libc++ component ABI. Candidate source verification now replays
+the complete chain in a private index and compares net paths and final bytes,
+including files added then removed; live source/index contents remain untouched.
+
 ## Unselected D3D12 full-surface producer
 
 The [hardware capture draft](drafts/webgpu-d3d12-capture/README.md) passed eight

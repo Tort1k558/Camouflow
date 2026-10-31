@@ -129,3 +129,6 @@ scripts/package_native_windows.py text eol=lf
 scripts/verify_native_font_rendering.py text eol=lf
 scripts/verify_native_rebase_draft.py text eol=lf
 scripts/fetch_native_rebase_sources.py text eol=lf
+
+native/drafts/shared-readback-core/*.cc text eol=lf
+native/drafts/shared-readback-core/*.py text eol=lf
