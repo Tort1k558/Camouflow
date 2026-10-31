@@ -141,3 +141,5 @@ native/drafts/webgpu-shader-scope/*.cc text eol=lf
 native/drafts/webgpu-ranged-provenance/*.cc text eol=lf
 native/drafts/webgpu-binding-ranges/*.cc text eol=lf
 native/drafts/webgpu-binding-ranges/*.py text eol=lf
+native/drafts/webgpu-render-ranges/*.cc text eol=lf
+native/drafts/webgpu-render-ranges/*.py text eol=lf

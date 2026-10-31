@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## Unselected per-draw ranges and execution-error barrier
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Native source | Six draw forms and shared bundle encoder; bound vertex/index, storage and indirect/count spans | Not exact fetched elements or instruction-level reflection |
+| Error handling | Recording/submit failures invalidate speculative provenance | Fail-closed source path, not native fault injection or recovery |
+| CPU normal / ASan | 4,969,123 assertions each, including execution-error callback | Synthetic handles; no native draw/queue execution |
+| Extracted stride lambda | 32 assertions in each mode | Synthetic pipeline flags, not real D3D12 signature execution |
+| Chromium-flag syntax | Command buffer, queue and observer; zero diagnostics | No linking or GPU execution |
+| Source replay | Ten ordered packets, 70 paths, extension reversed exactly | Existing checkout unchanged; GN not repeated |
+| Full Python baseline | 5112 passed, 1 skipped at `4420e6f` | Before this extension |
+
+[Source and remaining native gates](../native/drafts/webgpu-render-ranges/README.md).
+The copy/shader/PNG mismatch is not resolved; no privacy or production admission.
+
 ## Unselected compute binding ranges
 
 | Gate | Result | Boundary |

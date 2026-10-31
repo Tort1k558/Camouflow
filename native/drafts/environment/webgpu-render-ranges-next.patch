@@ -1,0 +1,435 @@
+--- a/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp
+@@ -65,62 +65,6 @@
+ 
+ namespace {
+ 
+-void NotifyGlintShaderScope(DeviceBase* device,
+-                            const SyncScopeResourceUsage& scope,
+-                            bool framebufferFetch = false,
+-                            std::span<const GlintShaderBufferUse> boundUses = {},
+-                            bool hasBindingRanges = false) {
+-    auto observer = device->GetGlintReadbackObserver();
+-    if (!observer) {
+-        return;
+-    }
+-    if (scope.buffers.size() != scope.bufferSyncInfos.size() ||
+-        scope.textures.size() != scope.textureSyncInfos.size() ||
+-        scope.buffers.size() > kGlintShaderBufferUseLimit) {
+-        observer->OnShaderScope({});
+-        return;
+-    }
+-    if (boundUses.size() > kGlintShaderBufferUseLimit) {
+-        observer->OnShaderScope({});
+-        return;
+-    }
+-    if (scope.buffers.empty() && boundUses.empty()) {
+-        return;
+-    }
+-    bool textureInputs =
+-        framebufferFetch || scope.resourceTable != nullptr || !scope.externalTextures.empty();
+-    constexpr auto textureReads = wgpu::TextureUsage::TextureBinding |
+-                                  wgpu::TextureUsage::StorageBinding | kReadOnlyStorageTexture;
+-    for (const auto& info : scope.textureSyncInfos) {
+-        if (textureInputs) {
+-            break;
+-        }
+-        info.Iterate([&](const SubresourceRange&, const TextureSyncInfo& usage) {
+-            if (usage.usage & textureReads) {
+-                textureInputs = true;
+-            }
+-        });
+-    }
+-    if (hasBindingRanges) {
+-        observer->OnShaderScope({boundUses, textureInputs, true});
+-        return;
+-    }
+-    std::vector<GlintShaderBufferUse> uses;
+-    uses.reserve(scope.buffers.size());
+-    for (size_t index = 0; index < scope.buffers.size(); ++index) {
+-        auto* buffer = scope.buffers[index];
+-        const auto usage = scope.bufferSyncInfos[index].usage;
+-        const bool writable = !IsSubset(usage, kReadOnlyBufferUsages);
+-        const bool readable =
+-            (usage & (kReadOnlyBufferUsages | kShaderBufferUsages)) != wgpu::BufferUsage::None;
+-        if (readable || writable) {
+-            uses.push_back({{ToAPI(buffer), buffer->GetSize()}, readable, writable,
+-                            0, buffer->GetSize(), true});
+-        }
+-    }
+-    observer->OnShaderScope({uses, textureInputs, true});
+-}
+-
+ DXGI_FORMAT DXGIIndexFormat(wgpu::IndexFormat format) {
+     switch (format) {
+         case wgpu::IndexFormat::Undefined:
+@@ -535,9 +479,9 @@
+     BindGroupStateTracker(Device* device, DescriptorHeapState* heapState)
+         : Base(), mDevice(device), mHeapState(heapState) {}
+ 
+-    void NotifyGlintComputeScope(const SyncScopeResourceUsage& scope,
+-                                 BufferBase* indirectBuffer = nullptr,
+-                                 uint64_t indirectOffset = 0) {
++    void NotifyGlintBindingScope(wgpu::ShaderStage stages,
++                                 std::span<const GlintShaderBufferUse> extraUses = {},
++                                 bool framebufferFetch = false) {
+         auto observer = mDevice->GetGlintReadbackObserver();
+         if (!observer) {
+             return;
+@@ -553,6 +497,7 @@
+                             offset, size, true});
+             return true;
+         };
++        bool textureInputs = framebufferFetch || mPipeline->GetLayout()->UsesResourceTable();
+         const auto mask = mPipeline->GetLayout()->GetBindGroupLayoutsMask();
+         for (BindGroupIndex groupIndex{0u}; groupIndex < kMaxBindGroupsTyped; ++groupIndex) {
+             if (!mask[groupIndex]) {
+@@ -564,6 +509,36 @@
+                 return;
+             }
+             const auto* layout = group->GetLayout();
++            for (BindingIndex index : layout->GetSampledTextureIndices()) {
++                if (layout->GetBindingInfo(index).visibility & stages) {
++                    textureInputs = true;
++                }
++            }
++            for (BindingIndex index : layout->GetStorageTextureIndices()) {
++                const auto& info = layout->GetBindingInfo(index);
++                if (!(info.visibility & stages)) {
++                    continue;
++                }
++                const auto& bindingInfo = std::get<StorageTextureBindingInfo>(info.bindingLayout);
++                switch (bindingInfo.access) {
++                    case wgpu::StorageTextureAccess::ReadOnly:
++                    case wgpu::StorageTextureAccess::ReadWrite:
++                        textureInputs = true;
++                        break;
++                    case wgpu::StorageTextureAccess::WriteOnly:
++                        break;
++                    default:
++                        observer->OnShaderScope({});
++                        return;
++                }
++            }
++            // External textures expand to sampled planes and a metadata buffer.
++            // Include any retained external texture conservatively as well.
++            for (const auto& texture : group->GetBoundExternalTextures()) {
++                if (texture) {
++                    textureInputs = true;
++                }
++            }
+             const auto dynamic = GetDynamicOffsets(groupIndex);
+             if (dynamic.size() != layout->GetDynamicBufferCount()) {
+                 observer->OnShaderScope({});
+@@ -571,7 +546,7 @@
+             }
+             for (BindingIndex index : layout->GetBufferIndices()) {
+                 const auto& info = layout->GetBindingInfo(index);
+-                if (!(info.visibility & wgpu::ShaderStage::Compute)) {
++                if (!(info.visibility & stages)) {
+                     continue;
+                 }
+                 const auto& bindingInfo = std::get<BufferBindingInfo>(info.bindingLayout);
+@@ -608,7 +583,7 @@
+             }
+             for (BindingIndex index : layout->GetTexelBufferIndices()) {
+                 const auto& info = layout->GetBindingInfo(index);
+-                if (!(info.visibility & wgpu::ShaderStage::Compute)) {
++                if (!(info.visibility & stages)) {
+                     continue;
+                 }
+                 const auto& bindingInfo = std::get<TexelBufferBindingInfo>(info.bindingLayout);
+@@ -631,11 +606,27 @@
+                 }
+             }
+         }
+-        if (indirectBuffer && !append(indirectBuffer, indirectOffset, 3 * sizeof(uint32_t), false)) {
+-            observer->OnShaderScope({});
+-            return;
+-        }
+-        NotifyGlintShaderScope(mDevice, scope, false, uses, true);
++        for (const auto& use : extraUses) {
++            if (!use.rangeKnown || !use.buffer.handle || use.offset > use.buffer.size ||
++                use.size > use.buffer.size - use.offset || uses.size() == kGlintShaderBufferUseLimit) {
++                observer->OnShaderScope({});
++                return;
++            }
++            uses.push_back(use);
++        }
++        observer->OnShaderScope({uses, textureInputs, true});
++    }
++
++    void NotifyGlintComputeScope(BufferBase* indirectBuffer = nullptr,
++                                uint64_t indirectOffset = 0) {
++        if (indirectBuffer) {
++            const std::array uses{GlintShaderBufferUse{
++                {ToAPI(indirectBuffer), indirectBuffer->GetSize()}, true, false,
++                indirectOffset, 3 * sizeof(uint32_t), true}};
++            NotifyGlintBindingScope(wgpu::ShaderStage::Compute, uses);
++        } else {
++            NotifyGlintBindingScope(wgpu::ShaderStage::Compute);
++        }
+     }
+ 
+     // A WebGPU pipeline layout can map to multiple D3D12 root signatures (PipelineLayoutHandles)
+@@ -1028,10 +1019,19 @@
+         mStartSlot = std::min(mStartSlot, slot);
+         mEndSlot = std::max(mEndSlot, slot.PlusOne());
+ 
++        mGlintBufferUses[slot] = {{ToAPI(buffer), buffer->GetSize()}, true, false,
++                                 offset, size, true};
+         auto* d3d12BufferView = &mD3D12BufferViews[slot];
+         d3d12BufferView->BufferLocation = buffer->GetVA() + offset;
+         d3d12BufferView->SizeInBytes = static_cast<uint32_t>(size);
+         // The bufferView stride is set based on the vertex state before a draw.
++    }
++
++    void AppendGlintUses(const RenderPipeline* pipeline,
++                         std::vector<GlintShaderBufferUse>* uses) const {
++        for (VertexBufferSlot slot : pipeline->GetVertexBuffersUsed()) {
++            uses->push_back(mGlintBufferUses[slot]);
++        }
+     }
+ 
+     void Apply(ID3D12GraphicsCommandList* commandList, const RenderPipeline* renderPipeline) {
+@@ -1079,6 +1079,7 @@
+     VertexBufferSlot mStartSlot{kMaxVertexBuffers};
+     VertexBufferSlot mEndSlot{};
+     PerVertexBuffer<D3D12_VERTEX_BUFFER_VIEW> mD3D12BufferViews = {};
++    PerVertexBuffer<GlintShaderBufferUse> mGlintBufferUses = {};
+ };
+ 
+ MaybeError EnsureResolveTargetInitialized(CommandRecordingContext* commandContext,
+@@ -1209,8 +1210,6 @@
+                 DAWN_TRY(RecordRenderPass(commandContext,
+                                           descriptorHeapState.GetGraphicsBindingTracker(),
+                                           beginRenderPassCmd, nextRenderPassNumber, passHasUAV));
+-                const auto& scope = GetResourceUsages().renderPasses[nextRenderPassNumber];
+-                NotifyGlintShaderScope(GetDevice(), scope, scope.usesFramebufferFetch);
+ 
+                 nextRenderPassNumber++;
+                 break;
+@@ -1689,7 +1688,7 @@
+                 immediates.Apply(commandContext);
+ 
+                 commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
+-                bindingTracker->NotifyGlintComputeScope(scope);
++                bindingTracker->NotifyGlintComputeScope();
+                 break;
+             }
+ 
+@@ -1710,7 +1709,7 @@
+                     ToBackend(dispatch->indirectBuffer.Get())->GetD3D12Resource(),
+                     dispatch->indirectOffset, nullptr, 0);
+                 bindingTracker->NotifyGlintComputeScope(
+-                    scope, dispatch->indirectBuffer.Get(), dispatch->indirectOffset);
++                    dispatch->indirectBuffer.Get(), dispatch->indirectOffset);
+                 break;
+             }
+ 
+@@ -2041,6 +2040,35 @@
+     VertexBufferTracker vertexBufferTracker = {};
+     ImmediateTracker<RenderImmediatesTracker> immediates = {};
+ 
++    GlintShaderBufferUse glintIndexUse;
++    auto controlUse = [](BufferBase* buffer, uint64_t offset, uint64_t size) {
++        if (!buffer) {
++            return GlintShaderBufferUse{};
++        }
++        return GlintShaderBufferUse{{ToAPI(buffer), buffer->GetSize()}, true, false,
++                                   offset, size, true};
++    };
++    auto notifyDraw = [&](bool indexed, std::span<const GlintShaderBufferUse> controls = {}) {
++        if (!device->GetGlintReadbackObserver()) {
++            return;
++        }
++        std::vector<GlintShaderBufferUse> uses;
++        vertexBufferTracker.AppendGlintUses(lastPipeline, &uses);
++        if (indexed) {
++            uses.push_back(glintIndexUse);
++        }
++        uses.insert(uses.end(), controls.begin(), controls.end());
++        bindingTracker->NotifyGlintBindingScope(
++            wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment,
++            uses, lastPipeline->UsesFramebufferFetch());
++    };
++    auto indirectStride = [&](bool indexed) -> uint64_t {
++        const uint64_t arguments = indexed ? 5 : 4;
++        const uint64_t rootConstants =
++            lastPipeline->UsesVertexIndex() || lastPipeline->UsesInstanceIndex() ? 2 : 0;
++        return (arguments + rootConstants) * sizeof(uint32_t);
++    };
++
+     auto EncodeRenderBundleCommand = [&](CommandIterator* iter, Command type) -> MaybeError {
+         switch (type) {
+             case Command::Draw: {
+@@ -2052,6 +2080,9 @@
+                 immediates.Apply(commandContext);
+                 commandList->DrawInstanced(draw->vertexCount, draw->instanceCount,
+                                            draw->firstVertex, draw->firstInstance);
++                if (draw->vertexCount != 0 && draw->instanceCount != 0) {
++                    notifyDraw(false);
++                }
+                 break;
+             }
+ 
+@@ -2066,6 +2097,9 @@
+                 commandList->DrawIndexedInstanced(draw->indexCount, draw->instanceCount,
+                                                   draw->firstIndex, draw->baseVertex,
+                                                   draw->firstInstance);
++                if (draw->indexCount != 0 && draw->instanceCount != 0) {
++                    notifyDraw(true);
++                }
+                 break;
+             }
+ 
+@@ -2086,6 +2120,9 @@
+                     lastPipeline->GetDrawIndirectCommandSignature();
+                 commandList->ExecuteIndirect(signature.Get(), 1, indirectBuffer->GetD3D12Resource(),
+                                              validatedDraw.indirectOffset, nullptr, 0);
++                const std::array controls{controlUse(indirectBuffer, validatedDraw.indirectOffset,
++                                                     indirectStride(false))};
++                notifyDraw(false, controls);
+                 break;
+             }
+ 
+@@ -2106,6 +2143,9 @@
+                     lastPipeline->GetDrawIndexedIndirectCommandSignature();
+                 commandList->ExecuteIndirect(signature.Get(), 1, indirectBuffer->GetD3D12Resource(),
+                                              validatedDraw.indirectOffset, nullptr, 0);
++                const std::array controls{controlUse(indirectBuffer, validatedDraw.indirectOffset,
++                                                     indirectStride(true))};
++                notifyDraw(true, controls);
+                 break;
+             }
+ 
+@@ -2131,6 +2171,14 @@
+                     draw->indirectOffset,
+                     countBuffer != nullptr ? countBuffer->GetD3D12Resource() : nullptr,
+                     countBuffer != nullptr ? draw->drawCountOffset : 0);
++                if (draw->maxDrawCount != 0) {
++                    std::array controls{
++                        controlUse(indirectBuffer, draw->indirectOffset,
++                                   static_cast<uint64_t>(draw->maxDrawCount) * indirectStride(false)),
++                        controlUse(countBuffer, draw->drawCountOffset, sizeof(uint32_t))};
++                    notifyDraw(false, std::span<const GlintShaderBufferUse>(controls).first(
++                        countBuffer ? 2 : 1));
++                }
+ 
+                 break;
+             }
+@@ -2158,6 +2206,14 @@
+                     draw->indirectOffset,
+                     countBuffer != nullptr ? countBuffer->GetD3D12Resource() : nullptr,
+                     countBuffer != nullptr ? draw->drawCountOffset : 0);
++                if (draw->maxDrawCount != 0) {
++                    std::array controls{
++                        controlUse(indirectBuffer, draw->indirectOffset,
++                                   static_cast<uint64_t>(draw->maxDrawCount) * indirectStride(true)),
++                        controlUse(countBuffer, draw->drawCountOffset, sizeof(uint32_t))};
++                    notifyDraw(true, std::span<const GlintShaderBufferUse>(controls).first(
++                        countBuffer ? 2 : 1));
++                }
+                 break;
+             }
+ 
+@@ -2243,6 +2299,7 @@
+                 bufferView.SizeInBytes = static_cast<uint32_t>(cmd->size);
+ 
+                 commandList->IASetIndexBuffer(&bufferView);
++                glintIndexUse = controlUse(cmd->buffer.Get(), cmd->offset, cmd->size);
+                 break;
+             }
+ 
+--- a/third_party/dawn/src/dawn/native/d3d12/QueueD3D12.cpp
++++ b/third_party/dawn/src/dawn/native/d3d12/QueueD3D12.cpp
+@@ -30,6 +30,7 @@
+ #include <limits>
+ #include <utility>
+ 
++#include "dawn/native/DawnNative.h"
+ #include "dawn/platform/DawnPlatform.h"
+ #include "src/dawn/common/Math.h"
+ #include "src/dawn/native/CommandValidation.h"
+@@ -44,6 +45,13 @@
+ #include "src/utils/compiler.h"
+ 
+ namespace dawn::native::d3d12 {
++namespace {
++void NotifyGlintExecutionError(DeviceBase* device) {
++    if (auto observer = device->GetGlintReadbackObserver()) {
++        observer->OnExecutionError();
++    }
++}
++}  // namespace
+ 
+ // static
+ ResultOrError<Ref<Queue>> Queue::Create(Device* device, const QueueDescriptor* descriptor) {
+@@ -116,7 +124,8 @@
+         TRACE_EVENT(DAWN_TRACE_CATEGORY("recording"), "CommandBufferD3D12::RecordCommands",
+                     "serial", uint64_t{pendingSerial});
+         for (CommandBufferBase* commandBuffer : commands) {
+-            DAWN_TRY(ToBackend(commandBuffer)->RecordCommands(commandContext));
++            DAWN_TRY_WITH_CLEANUP(ToBackend(commandBuffer)->RecordCommands(commandContext),
++                                  { NotifyGlintExecutionError(GetDevice()); });
+         }
+     }
+ 
+@@ -131,13 +140,17 @@
+         return {};
+     }
+ 
+-    DAWN_TRY(mPendingCommands.ExecuteCommandList(device, mCommandQueue.Get()));
++    DAWN_TRY_WITH_CLEANUP(mPendingCommands.ExecuteCommandList(device, mCommandQueue.Get()),
++                          { NotifyGlintExecutionError(device); });
+     RecycleLastCommandListAfter(GetPendingCommandSerial());
+ 
+     // Immediately reopen the command recording context so it is always available.
+-    DAWN_TRY(NextSerial());
+-    DAWN_TRY(RecycleUnusedCommandLists());
+-    return OpenPendingCommands();
++    DAWN_TRY_WITH_CLEANUP(NextSerial(),
++                          { NotifyGlintExecutionError(device); });
++    DAWN_TRY_WITH_CLEANUP(RecycleUnusedCommandLists(),
++                          { NotifyGlintExecutionError(device); });
++    DAWN_TRY_WITH_CLEANUP(OpenPendingCommands(), { NotifyGlintExecutionError(device); });
++    return {};
+ }
+ 
+ MaybeError Queue::NextSerial() {
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -121,7 +121,9 @@
+                                uint64_t size,
+                                GlintBufferWriteKind kind) = 0;
+     virtual void OnBufferDestroyed(WGPUBuffer buffer) = 0;
+-    // Whole-buffer potential dependencies, not proof of exact shader writes.
++    // Recording/submission failure invalidates speculative dependency metadata.
++    virtual void OnExecutionError() = 0;
++    // Validated binding ranges, not proof of exact shader writes.
+     virtual void OnShaderScope(const GlintShaderScope& scope) = 0;
+     virtual GlintReadbackMapStatus ClassifyReadMap(GlintBufferIdentity buffer,
+                                                    uint64_t offset,
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.h
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -41,6 +41,7 @@
+                      uint64_t size,
+                      dawn::native::GlintBufferWriteKind kind) override;
+   void OnBufferDestroyed(WGPUBuffer buffer) override;
++  void OnExecutionError() override;
+   void OnShaderScope(const dawn::native::GlintShaderScope& scope) override;
+   dawn::native::GlintReadbackMapStatus ClassifyReadMap(
+       dawn::native::GlintBufferIdentity buffer,
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -227,6 +227,10 @@
+   }
+   Collect();
+ }
++void GlintWebGPUReadbackObserver::OnExecutionError() {
++  std::lock_guard lock(mutex_);
++  Fail();
++}
+ void GlintWebGPUReadbackObserver::OnShaderScope(
+     const dawn::native::GlintShaderScope& scope) {
+   const auto uses = scope.buffers;

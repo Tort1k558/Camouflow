@@ -1,5 +1,16 @@
 # Glint: план проверки и развития
 
+## Per-draw ranges and queue-error invalidation: prepared
+
+[Source, CPU checker and required native tests](../native/drafts/webgpu-render-ranges/README.md):
+six draw paths and shared bundle encoding now have per-binding range notifications,
+including vertex/index slices, validated indirect stride and draw-count inputs.
+Execution errors invalidate speculative metadata instead of allowing stale raw
+reads; this fails closed and is not transactional rollback or recovery.
+Three syntax units, ten-packet/70-path replay and normal/ASan CPU callback checks
+passed. Native draw/queue-failure injection and compatible shader protection remain
+open. Full Python baseline: 5112 passed, 1 skipped at `4420e6f`.
+
 ## Compute binding ranges: prepared, not runtime-verified
 
 [Source and reproducible CPU checker](../native/drafts/webgpu-binding-ranges/README.md):

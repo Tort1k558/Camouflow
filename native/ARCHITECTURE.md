@@ -1,5 +1,22 @@
 # Glint architecture
 
+## Unselected per-draw ranges and execution-error barrier
+
+The [render range extension](drafts/webgpu-render-ranges/README.md) replaces
+pass-wide notifications with binding ranges for each draw, including bundles,
+vertex/index slices, validated indirect arguments and multi-draw count inputs.
+Texture read flags follow current pipeline bindings instead of unrelated draws
+elsewhere in the pass. Native D3D12 signature root constants are included in the
+indirect argument stride. Bound slices are not exact fetched element ranges.
+
+Recording/submission errors now have an explicit observer invalidation path:
+speculative known-byte overwrites must not grant raw-read permission when GPU work
+was not executed. The controller fails closed; rollback/recovery and actual queue
+fault injection remain unverified. Three syntax units, ten-packet/70-path replay,
+CPU/controller normal/ASan checks and an extracted stride calculation passed.
+These do not prove native draw execution, linking, compatible shader protection
+or runtime/privacy admission.
+
 ## Unselected compute binding ranges
 
 The [compute range extension](drafts/webgpu-binding-ranges/README.md) supplies
