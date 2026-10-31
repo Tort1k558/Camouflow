@@ -1,0 +1,91 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -173,7 +173,8 @@
+     Check(dawn::native::InstallGlintReadbackObserver(nativeDevice, observer));
+     if (byteBudget) {
+         constexpr uint32_t side = 2048;
+-        constexpr uint64_t bufferBytes = uint64_t{side} * side * 4;
++        constexpr uint32_t rowPitch = (side * 4 + 255) & ~255u;
++        constexpr uint64_t bufferBytes = uint64_t{side} * rowPitch;
+         Check(budget->limit_bytes() == 64 * 1024 * 1024);
+         auto queue = device.GetQueue();
+         wgpu::TextureDescriptor descriptor{};
+@@ -192,6 +193,34 @@
+         passDescriptor.colorAttachmentCount = 1;
+         passDescriptor.colorAttachments = &attachment;
+         auto clear = initialize.BeginRenderPass(&passDescriptor);
++        wgpu::ShaderSourceWGSL patternSource{};
++        patternSource.code = R"(
++            @vertex fn vs(@builtin(vertex_index) id: u32) -> @builtin(position) vec4f {
++                let positions = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
++                return vec4f(positions[id], 0.0, 1.0);
++            }
++            @fragment fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
++                if (position.x < 1024.0) { return vec4f(64.0, 128.0, 191.0, 255.0) / 255.0; }
++                return vec4f(191.0, 64.0, 128.0, 255.0) / 255.0;
++            }
++        )";
++        wgpu::ShaderModuleDescriptor patternModuleDescriptor{};
++        patternModuleDescriptor.nextInChain = &patternSource;
++        auto patternModule = device.CreateShaderModule(&patternModuleDescriptor);
++        wgpu::ColorTargetState patternTarget{};
++        patternTarget.format = descriptor.format;
++        wgpu::FragmentState patternFragment{};
++        patternFragment.module = patternModule;
++        patternFragment.entryPoint = "fs";
++        patternFragment.targetCount = 1;
++        patternFragment.targets = &patternTarget;
++        wgpu::RenderPipelineDescriptor patternDescriptor{};
++        patternDescriptor.vertex.module = patternModule;
++        patternDescriptor.vertex.entryPoint = "vs";
++        patternDescriptor.fragment = &patternFragment;
++        auto patternPipeline = device.CreateRenderPipeline(&patternDescriptor);
++        clear.SetPipeline(patternPipeline);
++        clear.Draw(3);
+         clear.End();
+         auto initialized = initialize.Finish();
+         queue.Submit(1, &initialized);
+@@ -220,7 +249,7 @@
+             source.texture = texture;
+             wgpu::TexelCopyBufferInfo destination{};
+             destination.buffer = target;
+-            destination.layout.bytesPerRow = side * 4;
++            destination.layout.bytesPerRow = rowPitch;
+             destination.layout.rowsPerImage = side;
+             auto encoder = device.CreateCommandEncoder();
+             wgpu::Extent3D extent{side, side, 1};
+@@ -246,9 +275,31 @@
+         Check(firstMapCallbacks.load() == 1 && !deviceLostDone.load());
+         const auto* pixels = static_cast<const uint8_t*>(retained.front().GetConstMappedRange(0, bufferBytes));
+         Check(pixels != nullptr);
+-        for (uint64_t offset = 0; offset < bufferBytes; offset += 4) {
+-            Check(pixels[offset] == 64 && pixels[offset + 1] == 128 &&
+-                  pixels[offset + 2] == 191 && pixels[offset + 3] == 255);
++        std::vector<uint8_t> expectedLarge(uint64_t{side} * side * 4);
++        for (uint32_t y = 0; y < side; ++y) {
++            for (uint32_t x = 0; x < side; ++x) {
++                const size_t offset = (uint64_t{y} * side + x) * 4;
++                expectedLarge[offset] = x < side / 2 ? 64 : 191;
++                expectedLarge[offset + 1] = x < side / 2 ? 128 : 64;
++                expectedLarge[offset + 2] = x < side / 2 ? 191 : 128;
++                expectedLarge[offset + 3] = 255;
++            }
++        }
++        auto rawLarge = expectedLarge;
++        Check(glint::candidate::TransformEdgeCoherentCanvas(expectedLarge, side, side, seed));
++        uint64_t protectedChannels = 0;
++        for (size_t offset = 0; offset < expectedLarge.size(); ++offset) {
++            if (expectedLarge[offset] != rawLarge[offset]) ++protectedChannels;
++        }
++        Check(protectedChannels > 0);
++        
++        for (uint32_t y = 0; y < side; ++y) {
++            for (uint32_t byte = 0; byte < side * 4; ++byte) {
++                Check(pixels[uint64_t{y} * rowPitch + byte] == expectedLarge[uint64_t{y} * side * 4 + byte]);
++            }
++            for (uint32_t byte = side * 4; byte < rowPitch; ++byte) {
++                Check(pixels[uint64_t{y} * rowPitch + byte] == 0);
++            }
+         }
+         retained.front().Unmap();
+         pump();

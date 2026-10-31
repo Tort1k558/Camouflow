@@ -63,3 +63,51 @@ def test_large_capture_preserves_original_failure_and_quota_limit():
             assert value['capture_bytes_after_destroy'] == 0
             assert value['device_lost_under_capture_budget_pressure']
             assert value['map_status'] == 'aborted'
+
+
+def test_pattern_variants_reconstruct_the_exact_measured_sources(tmp_path):
+    record = json.loads((PACKET / 'pattern-observations.json').read_bytes())
+    source = tmp_path / 'wire_probe.cc'
+    source.write_bytes((BASE / 'wire_probe.cc').read_bytes())
+    for patch in (BASE / 'wire-byte-budget.patch', BASE / 'wire-byte-budget-loss-diagnostic.patch',
+                  PACKET / 'large-capture-fixture.patch'):
+        subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', str(patch)], cwd=tmp_path, check=True)
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == record['base_fixture_sha256']
+    patch = PACKET / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', str(patch)], cwd=tmp_path, check=True)
+    shared = source.read_text(encoding='utf-8')
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == record['shared_fixture_sha256']
+    for variant in record['variants']:
+        body = shared
+        for replacement in variant['source_replacements']:
+            assert body.count(replacement['before']) == 1
+            body = body.replace(replacement['before'], replacement['after'], 1)
+        assert hashlib.sha256(body.encode('utf-8')).hexdigest() == variant['source_sha256']
+
+
+def test_pattern_results_cover_padding_formats_and_keep_failed_attempts():
+    record = json.loads((PACKET / 'pattern-observations.json').read_bytes())
+    assert record['passed'] and record['input_postguards_passed']
+    for key in ('browser_runtime_verified', 'quota_recovery_verified', 'privacy_admitted', 'production_admitted'):
+        assert record[key] is False
+    assert {(row['side'], row['format']) for row in record['variants']} == {
+        (1921, 'rgba'), (1921, 'bgra'), (2048, 'rgba'), (2048, 'bgra'),
+    }
+    assert len(record['variants']) == 4
+    for variant in record['variants']:
+        side = variant['side']
+        assert variant['row_pitch'] == (side * 4 + 255) & ~255
+        assert variant['full_pixel_bytes_verified'] == side * side * 4
+        assert variant['padding_checked_zero'] == (side == 1921)
+        assert len(variant['runs']) == 6 and all(row['passed'] for row in variant['runs'])
+        after = [row for row in variant['runs'] if row['variant'] == 'after']
+        assert len(after) == 3
+        for row in after:
+            value = row['observation']
+            assert row['returncode'] == 0 and value['large_surface_pixels_verified']
+            assert value['per_capture_charge_bytes'] == (62193664 if side == 1921 else 50397184)
+            assert value['capture_budget_limit_bytes'] == 67108864
+            assert value['capture_bytes_after_destroy'] == 0
+    assert len(record['earlier_attempts']) == 2
+    assert all(row['passed'] is False for row in record['earlier_attempts'])

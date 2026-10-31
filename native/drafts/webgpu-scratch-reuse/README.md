@@ -34,3 +34,19 @@ large-surface check, not large patterned-surface coverage.
 Source hashes, the complete case inventory and comparative observations are in
 [`observations.json`](observations.json). Existing failures and candidate
 manifests remain unchanged. Browser and production admission remain false.
+
+## Large patterned surfaces
+
+The separate [pattern observations](pattern-observations.json) cover 24 actual
+before/after runs: RGBA and BGRA at both 1921-square and 2048-square dimensions.
+The GPU renders two colour regions; every mapped pixel matches the native CPU
+edge/HMAC reference. Padding in 1921-square rows is checked separately for zeros.
+All 12 corrected-backend runs pass; all 12 original-backend runs reproduce the
+expected budget failure. Tracked charges are 62,193,664 bytes for padded rows
+and 50,397,184 bytes for tightly packed rows, below the unchanged 64 MiB limit.
+
+[`pattern-fixture.patch`](pattern-fixture.patch) follows the large-capture
+fixture. Exact dimension/format substitutions reconstruct each measured source.
+Earlier invalid-row-alignment and over-specific control-classification attempts
+remain failed observations. Large GPU shader-consumer routing, recoverable
+quotas and Chromium runtime integration still require separate checks.

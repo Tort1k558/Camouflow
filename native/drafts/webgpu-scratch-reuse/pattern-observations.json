@@ -1,0 +1,507 @@
+{
+  "schema": 1,
+  "scope": "Standalone full mapped patterned RGBA/BGRA references with aligned and padded rows; not large GPU shader-consumer, Chromium runtime or recoverable quota admission",
+  "passed": true,
+  "input_postguards_passed": true,
+  "browser_runtime_verified": false,
+  "quota_recovery_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "base_fixture_sha256": "ae84ca72bbdcacbe65b064ec88b077a9efc9c21beb4933cc08adb1f4e4609fba",
+  "shared_fixture_sha256": "bb3d5626904d0ca11be3513e492901313a9da1e616f87e0753d0deab9d74d619",
+  "patch": "pattern-fixture.patch",
+  "patch_sha256": "64d51677802954c5749696f8b7f8e068aab7095cbf3c502a34950c6cd7f5715d",
+  "variants": [
+    {
+      "side": 1921,
+      "format": "rgba",
+      "row_pitch": 7936,
+      "source_replacements": [
+        {
+          "before": "constexpr uint32_t side = 2048;",
+          "after": "constexpr uint32_t side = 1921;"
+        },
+        {
+          "before": "position.x < 1024.0",
+          "after": "position.x < 960.0"
+        }
+      ],
+      "source_sha256": "547a69fee0d33c7c838fb1f813553133f59eb2e53fe2c2d4bf1b6c855e88bc64",
+      "report_sha256": "d710785973588d4a93259db45f3f23a8d8cc96e5666d20eeb0e0c6cd636e711b",
+      "full_pixel_bytes_verified": 14760964,
+      "padding_checked_zero": true,
+      "runs": [
+        {
+          "variant": "before",
+          "attempt": 1,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "before",
+          "attempt": 2,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "before",
+          "attempt": 3,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "after",
+          "attempt": 1,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 62193664,
+            "per_capture_charge_bytes": 62193664,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        },
+        {
+          "variant": "after",
+          "attempt": 2,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 62193664,
+            "per_capture_charge_bytes": 62193664,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        },
+        {
+          "variant": "after",
+          "attempt": 3,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 62193664,
+            "per_capture_charge_bytes": 62193664,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        }
+      ]
+    },
+    {
+      "side": 1921,
+      "format": "bgra",
+      "row_pitch": 7936,
+      "source_replacements": [
+        {
+          "before": "constexpr uint32_t side = 2048;",
+          "after": "constexpr uint32_t side = 1921;"
+        },
+        {
+          "before": "position.x < 1024.0",
+          "after": "position.x < 960.0"
+        },
+        {
+          "before": "descriptor.format = wgpu::TextureFormat::RGBA8Unorm;",
+          "after": "descriptor.format = wgpu::TextureFormat::BGRA8Unorm;"
+        },
+        {
+          "before": "        Check(protectedChannels > 0);\n        \n",
+          "after": "        Check(protectedChannels > 0);\n        for (size_t offset = 0; offset < expectedLarge.size(); offset += 4) std::swap(expectedLarge[offset], expectedLarge[offset + 2]);\n"
+        }
+      ],
+      "source_sha256": "25aeb3bcce422f685e8cbb7763e9510a287ed12cfba8232817b856bf18c6d9d5",
+      "report_sha256": "60a917e41bf62f42f2afcd3e243e205849312f966dbef32e739dbd4f87933b9d",
+      "full_pixel_bytes_verified": 14760964,
+      "padding_checked_zero": true,
+      "runs": [
+        {
+          "variant": "before",
+          "attempt": 1,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "before",
+          "attempt": 2,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "before",
+          "attempt": 3,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "after",
+          "attempt": 1,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 62193664,
+            "per_capture_charge_bytes": 62193664,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        },
+        {
+          "variant": "after",
+          "attempt": 2,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 62193664,
+            "per_capture_charge_bytes": 62193664,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        },
+        {
+          "variant": "after",
+          "attempt": 3,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 62193664,
+            "per_capture_charge_bytes": 62193664,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        }
+      ]
+    },
+    {
+      "side": 2048,
+      "format": "rgba",
+      "row_pitch": 8192,
+      "source_replacements": [],
+      "source_sha256": "bb3d5626904d0ca11be3513e492901313a9da1e616f87e0753d0deab9d74d619",
+      "report_sha256": "df95a92acdc7beda4187c625a12182dbc705423f9419cd788894f409d1fd49cb",
+      "full_pixel_bytes_verified": 16777216,
+      "padding_checked_zero": false,
+      "runs": [
+        {
+          "variant": "before",
+          "attempt": 1,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "before",
+          "attempt": 2,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "before",
+          "attempt": 3,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "after",
+          "attempt": 1,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 50397184,
+            "per_capture_charge_bytes": 50397184,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        },
+        {
+          "variant": "after",
+          "attempt": 2,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 50397184,
+            "per_capture_charge_bytes": 50397184,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        },
+        {
+          "variant": "after",
+          "attempt": 3,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 50397184,
+            "per_capture_charge_bytes": 50397184,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        }
+      ]
+    },
+    {
+      "side": 2048,
+      "format": "bgra",
+      "row_pitch": 8192,
+      "source_replacements": [
+        {
+          "before": "descriptor.format = wgpu::TextureFormat::RGBA8Unorm;",
+          "after": "descriptor.format = wgpu::TextureFormat::BGRA8Unorm;"
+        },
+        {
+          "before": "        Check(protectedChannels > 0);\n        \n",
+          "after": "        Check(protectedChannels > 0);\n        for (size_t offset = 0; offset < expectedLarge.size(); offset += 4) std::swap(expectedLarge[offset], expectedLarge[offset + 2]);\n"
+        }
+      ],
+      "source_sha256": "4a42a030de552b74aa3584de5db26830687f7c96db224a1279adb732bd771425",
+      "report_sha256": "6f003b8d1bc40e3811285cd8d61f557bd80632d4233c18db7e6878d1f54337dc",
+      "full_pixel_bytes_verified": 16777216,
+      "padding_checked_zero": false,
+      "runs": [
+        {
+          "variant": "before",
+          "attempt": 1,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "before",
+          "attempt": 2,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "before",
+          "attempt": 3,
+          "returncode": 1,
+          "passed": true
+        },
+        {
+          "variant": "after",
+          "attempt": 1,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 50397184,
+            "per_capture_charge_bytes": 50397184,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        },
+        {
+          "variant": "after",
+          "attempt": 2,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 50397184,
+            "per_capture_charge_bytes": 50397184,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        },
+        {
+          "variant": "after",
+          "attempt": 3,
+          "returncode": 0,
+          "passed": true,
+          "observation": {
+            "passed": true,
+            "actual_wire_client_server_executed": true,
+            "hardware_adapter_selected": true,
+            "large_surface_pixels_verified": true,
+            "capture_budget_limit_bytes": 67108864,
+            "capture_bytes_before_fault": 50397184,
+            "per_capture_charge_bytes": 50397184,
+            "retained_captures_before_fault": 1,
+            "device_lost_under_capture_budget_pressure": true,
+            "owned_capture_out_of_memory_observed": true,
+            "map_status": "aborted",
+            "map_callback_count": 1,
+            "device_lost_callback_count": 1,
+            "map_state": "unmapped",
+            "cpu_texture_upload_used": false,
+            "capture_bytes_after_destroy": 0,
+            "physical_memory_exhaustion_attempted": false,
+            "hardware_tdr_tested": false,
+            "browser_integrated": false
+          }
+        }
+      ]
+    }
+  ],
+  "earlier_attempts": [
+    {
+      "report_sha256": "2da1f98e9645833e6dd0d19bc6650a5624062ce07759215cd19bfc3136c25576",
+      "passed": false,
+      "reason": "Invalid fixture bytesPerRow=7684; WebGPU requires 256-byte alignment. No engine compatibility conclusion."
+    },
+    {
+      "report_sha256": "8f831fe3a9f4c1671cbd6f35cfd652188210afd17d31d0366124ef8dd876230e",
+      "passed": false,
+      "reason": "New backend references passed, but before-control classification expected the projection phase instead of the observed full-capture phase. Terminal matrix remains failed."
+    }
+  ]
+}

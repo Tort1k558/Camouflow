@@ -52,6 +52,11 @@ successfully maps and verifies all 16 MiB in three runs at the same 64 MiB limit
 Tracked capture/projection allocations are 50,397,184 bytes. Further retained
 captures still cause device loss: this is not recoverable quota handling.
 The draft is not selected in any Chromium candidate or installed runtime.
+The subsequent [patterned-surface matrix](../native/drafts/webgpu-scratch-reuse/pattern-observations.json)
+passed 24 before/after comparisons across RGBA/BGRA and 1921/2048-square inputs.
+Every corrected read matches the native edge/HMAC reference; padded rows are
+checked for zero padding. This still does not establish large shader-consumer
+routing or Chromium runtime admission.
 
 ## 2026-11-01: measured 001–116 runtime and revision-2 correction
 
