@@ -8,6 +8,9 @@
 | Chromium syntax | Four translation units passed | Not linking or GPU-process execution |
 | Patch reversibility | 24 staged files matched, reverse restored originals | Not selected or applied to runtime |
 | Previous full Python baseline | 4967 passed, 1 skipped at `1255aa7` | Predates this transport draft |
+| Coupled renderer syntax | Six translation units passed; 28-file patch round-tripped | Disabled local feature, no browser execution |
+| Decoder rejection tests | Five prepared and syntax-checked | Not executed; positive delivery/idempotence still open |
+| Transport Python baseline | 4970 passed, 1 skipped at `18e094b` | Predates renderer follow-up |
 
 [Transport source and remaining integration work](../native/drafts/webgpu-private-policy/README.md).
 

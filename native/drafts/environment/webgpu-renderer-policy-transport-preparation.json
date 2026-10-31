@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "scope": "Coupled renderer/GPU policy transport source preparation only",
+  "selected": false,
+  "browser_integrated": false,
+  "runtime_verified": false,
+  "native_webgpu_readback_protection": false,
+  "canvas_gpu_export_mismatch_resolved": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "patch": "webgpu-renderer-policy-transport-next.patch",
+  "patch_sha256": "4c9ffafa14f333dbaf61b82200b1148f00df7cbd8734f53194e8124b66d086f9",
+  "sources": [
+    {
+      "source": "gpu/command_buffer/build_webgpu_cmd_buffer.py",
+      "before_sha256": "cdec742ae94844593693a6fdb14f554d8a9fb67cbc334b123339bd7eb65b52b4",
+      "staged_sha256": "a01ffbe6812e7a574d1c0bee3a2f4f982fd299173566c86b6cef6f9f4d75411b"
+    },
+    {
+      "source": "gpu/command_buffer/client/BUILD.gn",
+      "before_sha256": "ad2dafc9f539284daf9ab5471dc9b2dcbd050c3b93c8dd28a7f52f6f643396de",
+      "staged_sha256": "8c43820fd21767b432130c231a618f14defaeecd31e171639ed4854bc1983747"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_cmd_helper_autogen.h",
+      "before_sha256": "e57a4143f6ee6396c98127e6595c6de4fb5969d39c4fe99826fc3415c5c6ff54",
+      "staged_sha256": "27c539f87ef42fed1a9e69b046d74daba3fc483a54c26036ca5177c5eb40a899"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_implementation.cc",
+      "before_sha256": "2206bbde99883e4ae2f4dbc16f912d2ba04a95cf1848fbf909c60750f68106b9",
+      "staged_sha256": "c8bb8b51d3bfec928c68d34aac706a2f83d77bd95c813fc51ee172594f816599"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_implementation.h",
+      "before_sha256": "45c0c7b516abdc0b35632160a934ac2b72185e50b9cba6b2cefd798d95347605",
+      "staged_sha256": "c5cdcb09defed0b1fc0ac1daa9dfa391db5f0ef8bfb29710b9f937706a253329"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_implementation_autogen.h",
+      "before_sha256": "b2834b67befa9e4f2ba06023d76faf0f012edc76df73c3b8ff91840d056c237d",
+      "staged_sha256": "b2834b67befa9e4f2ba06023d76faf0f012edc76df73c3b8ff91840d056c237d"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_implementation_impl_autogen.h",
+      "before_sha256": "ebb27537f498bbf6c6433dba87e00aa2731b6225f77b7d7c2bc33f8ac9c7a28b",
+      "staged_sha256": "ebb27537f498bbf6c6433dba87e00aa2731b6225f77b7d7c2bc33f8ac9c7a28b"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_implementation_unittest_autogen.h",
+      "before_sha256": "ae31c29ac80878eaa3bea3dd80c969cdce26934c18662c1d2d76c550b06a0c36",
+      "staged_sha256": "ae31c29ac80878eaa3bea3dd80c969cdce26934c18662c1d2d76c550b06a0c36"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface.h",
+      "before_sha256": "fcfa3678cdf610030282732c50576c4bba4797ca55a976944b6e467c303d6df4",
+      "staged_sha256": "b2440efda9629489186867ea5206dfe14daf063ab85d67ef283c725dc1570d9d"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface_autogen.h",
+      "before_sha256": "1fc6e8988754b778dc357073c0374bd4868f62585c1574dac5fb93ac1f8719c7",
+      "staged_sha256": "1fc6e8988754b778dc357073c0374bd4868f62585c1574dac5fb93ac1f8719c7"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface_stub.cc",
+      "before_sha256": "0f90bf993419231cc6b0fa215f173d139d38ee9a06935fbe021cb98d6a71c26e",
+      "staged_sha256": "7d67d31343dfb8087d47724271d49cfc0d20acd4cde3fc4c4b7653cbfa32a62c"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface_stub.h",
+      "before_sha256": "cf0362edb461873f83842c2210bbf3b2ceb212e0cd2359b7e49ecc9dfa11564b",
+      "staged_sha256": "3e056320562cf5aad87f3becf1b544c0c9dd4311ec1f035d9be65169b2b2dcbe"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface_stub_autogen.h",
+      "before_sha256": "0edec5ace60dcafba86cc78aa174fb47cb3ae745ae59900ab983ba41d064271c",
+      "staged_sha256": "0edec5ace60dcafba86cc78aa174fb47cb3ae745ae59900ab983ba41d064271c"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface_stub_impl_autogen.h",
+      "before_sha256": "9fbc9ca90ab3ac6d75d1210315f2dfc54292f6c4e04dcac0aafe17b24764553a",
+      "staged_sha256": "9fbc9ca90ab3ac6d75d1210315f2dfc54292f6c4e04dcac0aafe17b24764553a"
+    },
+    {
+      "source": "gpu/command_buffer/common/BUILD.gn",
+      "before_sha256": "23c9049eeec9a675d12b898a6255c79d7f19d4a1f68a9315f559dc18c3a4aae8",
+      "staged_sha256": "0ca2684cc50342d58313dd732e56a53acd2240feaa00f4505924fa86f09a8cee"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint_webgpu_device_policy.cc",
+      "before_sha256": null,
+      "staged_sha256": "ce01eedaba1c331abda260173edbe2470e8b692579b1bc93d768569c1096eeca"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint_webgpu_device_policy.h",
+      "before_sha256": null,
+      "staged_sha256": "e80e890f6972f3ec8d31735b81e62aab91015824a0fd0472873764047b4ee09a"
+    },
+    {
+      "source": "gpu/command_buffer/common/webgpu_cmd_format_autogen.h",
+      "before_sha256": "4c755796cb635d7317f01b2f2defaf88a7db36be7c191a4d5c95397605b592ab",
+      "staged_sha256": "d9b4614393b9d4405a9178888dec100dfbd52b1e1b80e8c825e75b1c02105beb"
+    },
+    {
+      "source": "gpu/command_buffer/common/webgpu_cmd_format_test_autogen.h",
+      "before_sha256": "43328b1cf9b70e231858adc168306977376d989f2fd1a0b3eac3987a838fb972",
+      "staged_sha256": "89a20b07ec6644b18c47764174e23e99781ba03c57d46514a10cf34462caddd5"
+    },
+    {
+      "source": "gpu/command_buffer/common/webgpu_cmd_ids_autogen.h",
+      "before_sha256": "ab59487628182803ce7d56ea73f5265bcaeb057e85ad6b711fa6e3695231ebfd",
+      "staged_sha256": "1c238a36a8422a03c96a72f2dd3a9ed5c2955034040b876bdb2a89f6672a89ac"
+    },
+    {
+      "source": "gpu/command_buffer/service/webgpu_cmd_validation_autogen.h",
+      "before_sha256": "be838f8e940f7691c2f726315f4be7c6f9d77ef63c2b005ad7346ca67728daa7",
+      "staged_sha256": "be838f8e940f7691c2f726315f4be7c6f9d77ef63c2b005ad7346ca67728daa7"
+    },
+    {
+      "source": "gpu/command_buffer/service/webgpu_cmd_validation_implementation_autogen.h",
+      "before_sha256": "2364949fa772b041b5a30bb0826d672da53d1308e884e7d7abb69ee309f321b0",
+      "staged_sha256": "2364949fa772b041b5a30bb0826d672da53d1308e884e7d7abb69ee309f321b0"
+    },
+    {
+      "source": "gpu/command_buffer/service/webgpu_decoder_impl.cc",
+      "before_sha256": "1d7035dfc3b684fd84c752e4cffd2f926612499940949a9ffc5016561a0ec989",
+      "staged_sha256": "530649dd87a646b535703ce9ef4003929e127ab71b312810bf05f7ae39c74872"
+    },
+    {
+      "source": "gpu/command_buffer/service/webgpu_decoder_unittest.cc",
+      "before_sha256": "77812bbcc643c40dd24fec36aa56ee77e4ccd22c0e5575ac4e59c51f96981f86",
+      "staged_sha256": "6d82d8a7dffc3b55f81335a4e8971a23015700c9fdd4ca532f1b8a6da7695de7"
+    },
+    {
+      "source": "gpu/command_buffer/webgpu_cmd_buffer_functions.txt",
+      "before_sha256": "cc74e1aee2c267edfdc35af510ec67b32b0380e821ee8d90c18d5326a24bfc1e",
+      "staged_sha256": "add4fdbca236725b6b35c6f1be05c62b85518ad741c77b613d70367c6cbb852d"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/BUILD.gn",
+      "before_sha256": "51a938bd2bd9a5d46cccf62775c670d8052d3699b77f28cd0a7f63d8862220a7",
+      "staged_sha256": "aeb156761b96a689ea42ed34aa98688d7bfdeb7d24fd942472098c07da2b536d"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
+      "before_sha256": "a64e5243c95bd44f9f1d95bb983d2e550d33ff29e5b919b0aed0e699bd8007c7",
+      "staged_sha256": "457fdc25389e2084ac53b71ad5009d6f761d688eb7c2eff52cb0b568a1ba25f0"
+    },
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/gpu_adapter.h",
+      "before_sha256": "ce1b70c8402ad5069a85e7e2112e2926d4474b7a31fe32b7dbe58e47ef760ab3",
+      "staged_sha256": "c76cc3c6ca98f332f397278d8553af13bff278aee397fbe09239ddd31e2470a9"
+    }
+  ],
+  "exact_patch_roundtrip_verified": true,
+  "postguards_passed": true,
+  "syntax_checks": [
+    {
+      "source": "third_party/blink/renderer/modules/webgpu/gpu_adapter.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_implementation.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/client/webgpu_interface_stub.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/common/glint_webgpu_device_policy.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/service/webgpu_decoder_impl.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "gpu/command_buffer/service/webgpu_decoder_unittest.cc",
+      "returncode": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "syntax_report_sha256": [
+    "c7870ef6a54df8198ecc26d679041f066fb201e2223bca3015a507054e976efe"
+  ],
+  "experimental_feature": "GlintWebGPUPolicyTransportCandidate",
+  "feature_default_enabled": false,
+  "policy_generation_scope": "Immutable first policy of this device, independent of schema and wire generation",
+  "request_time_owned_snapshot_prepared": true,
+  "pre_exposure_gpu_attachment_prepared": true,
+  "document_worker_runtime_verified": false,
+  "pending_native_tests": [
+    "GlintPolicyRejectsInvalidPacketSizes",
+    "GlintPolicyRejectsMissingSharedMemory",
+    "GlintPolicyRejectsOutOfBoundsPacket",
+    "GlintPolicyRejectsMalformedPacket",
+    "GlintPolicyRejectsUnknownWireDevice"
+  ],
+  "native_tests_executed": false,
+  "syntax_scope": "Six translation units using existing Chromium flags; stub borrows client flags; no link or native test execution",
+  "global_blink_feature_header_changed": false
+}

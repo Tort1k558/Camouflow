@@ -10,6 +10,12 @@ This is not browser integration, pixel protection or resolution of the measured
 Canvas/WebGPU mismatch. The preceding full Python baseline passed **4967 tests,
 1 skipped** at `1255aa7`, before this transport draft.
 
+The coupled follow-up captures an owned policy before asynchronous device creation
+and attaches it before exposing the device, behind a local disabled feature.
+Six translation units passed syntax checks; five decoder rejection tests are
+prepared but not executed. No browser/worker delivery claim is made. The previous
+transport baseline at `18e094b` passed **4970 Python tests, 1 skipped** with guards.
+
 ## Measured Windows 001–076 screenshot transactions
 
 All **506 native cases / 24 groups** passed, including twelve real-session
