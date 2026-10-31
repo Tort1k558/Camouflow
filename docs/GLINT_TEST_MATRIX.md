@@ -1,5 +1,18 @@
 # Glint browser test matrix
 
+## 2026-10-31: pending uniform and device-lifetime Wire variants
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Independent uniform and device-lifetime source replay | Both variants apply and reverse to exact recorded SHA-256; 10 retention tests passed | Source validation only; neither variant compiled or executed yet |
+| Uniform/dynamic binding routes | Prepared: direct/bundle, static/dynamic, offset 256 | No GPU result for these new routes |
+| Device lifetime controls | Prepared: native ForceLoss before map; client destroy before response | Not a hardware TDR or Chromium GPU-process recovery result |
+
+The [public draft manifest](../native/drafts/webgpu-capture-retention/wire-drafts.json)
+binds each independent variant to the existing measured fixture, without replacing
+its historical runtime observations. Compilation and repeated hardware controls
+remain pending; browser/privacy/production admission is unchanged.
+
 ## 2026-10-31: updated tooling, preserved 001–076 browser control
 
 | Actual owned WebGPU observation | Result | Boundary |

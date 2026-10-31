@@ -1,10 +1,40 @@
 import hashlib
 import json
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / 'native/drafts/webgpu-capture-retention'
+
+
+def test_wire_draft_variants_replay_independently_without_claiming_runtime(tmp_path):
+    record = json.loads((MODULE / 'wire-drafts.json').read_bytes())
+    original = (MODULE / record['base_source']).read_bytes()
+    assert hashlib.sha256(original).hexdigest() == record['base_source_sha256']
+    assert record['patches_are_independent'] is True
+    for key in ('hardware_tdr_tested', 'browser_integrated', 'privacy_admitted', 'production_admitted'):
+        assert record[key] is False
+    assert {row['name'] for row in record['variants']} == {'uniform', 'device-lifetime'}
+    for row in record['variants']:
+        assert row['compiled'] is False and row['runtime_verified'] is False
+        patch = MODULE / row['patch']
+        assert hashlib.sha256(patch.read_bytes()).hexdigest() == row['patch_sha256']
+        stage = tmp_path / row['name']
+        stage.mkdir()
+        source = stage / 'wire_probe.cc'
+        source.write_bytes(original)
+        for options in (['--check'], []):
+            subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply',
+                            '--whitespace=error-all', *options, str(patch)],
+                           cwd=stage, check=True, capture_output=True, timeout=20)
+        restored = source.read_bytes()
+        assert hashlib.sha256(restored).hexdigest() == row['source_sha256']
+        assert all(mode.encode() in restored for mode in row['modes'])
+        subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', str(patch)],
+                       cwd=stage, check=True, capture_output=True, timeout=20)
+        assert source.read_bytes() == original
+    assert (MODULE / record['base_source']).read_bytes() == original
 
 
 def observation():

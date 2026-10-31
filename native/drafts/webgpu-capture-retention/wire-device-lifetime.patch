@@ -1,0 +1,110 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -28,6 +28,9 @@
+ }
+ 
+ int main(int argc, char** argv) {
++    const bool nativeLossBeforeMap = argc == 2 && std::strcmp(argv[1], "--native-loss-before-map") == 0;
++    const bool destroyDeviceAfterRequest = argc == 2 && std::strcmp(argv[1], "--device-destroy-before-response") == 0;
++    const bool lifetimeMode = nativeLossBeforeMap || destroyDeviceAfterRequest;
+     const bool withoutFilter = argc == 2 && std::strcmp(argv[1], "--without-filter") == 0;
+     const bool unsupportedFormat = argc == 2 && std::strcmp(argv[1], "--unsupported-format") == 0;
+     const bool cancelMap = argc == 2 && std::strcmp(argv[1], "--cancel-map") == 0;
+@@ -43,8 +46,8 @@
+     const bool writableMode = writableDirect || writableBundle;
+     const bool renderDirect = vertexDirect || indexDirect || writableDirect || (argc == 2 && std::strcmp(argv[1], "--render-direct") == 0);
+     const bool renderBundle = vertexBundle || indexBundle || writableBundle || (argc == 2 && std::strcmp(argv[1], "--render-bundle") == 0);
+-    Check(argc == 1 || withoutFilter || unsupportedFormat || cancelMap || snapshotQuota || renderDirect || renderBundle);
+-    const bool expectDenied = unsupportedFormat || cancelMap || snapshotQuota;
++    Check(argc == 1 || lifetimeMode || withoutFilter || unsupportedFormat || cancelMap || snapshotQuota || renderDirect || renderBundle);
++    const bool expectDenied = lifetimeMode || unsupportedFormat || cancelMap || snapshotQuota;
+     dawnProcSetProcs(&dawn::native::GetProcs());
+     dawn::native::Instance nativeInstance;
+     auto toServer = std::make_unique<dawn::utils::TerribleCommandBuffer>();
+@@ -101,7 +104,16 @@
+     Check(info.adapterType != wgpu::AdapterType::CPU);
+     std::atomic_bool deviceDone = false;
+     wgpu::Device device;
++    std::atomic_bool deviceLostDone = false;
++    std::atomic_uint deviceLostCallbacks = 0;
++    wgpu::DeviceLostReason actualLostReason = wgpu::DeviceLostReason::Unknown;
+     wgpu::DeviceDescriptor deviceDescriptor{};
++    deviceDescriptor.SetDeviceLostCallback(wgpu::CallbackMode::AllowSpontaneous,
++        [&](const wgpu::Device&, wgpu::DeviceLostReason reason, wgpu::StringView) {
++            Check(deviceLostCallbacks.fetch_add(1) == 0);
++            actualLostReason = reason;
++            deviceLostDone = true;
++        });
+     deviceDescriptor.SetUncapturedErrorCallback(
+         [](const wgpu::Device&, wgpu::ErrorType, wgpu::StringView message) {
+             std::fprintf(stderr, "Wire device error: %.*s\n", static_cast<int>(message.length), message.data);
+@@ -195,6 +207,18 @@
+     }
+     auto commands = encoder.Finish();
+     queue.Submit(1, &commands);
++    size_t bytesBeforeFault = 0;
++    if (lifetimeMode) {
++        Check(toServer->Flush());
++        bytesBeforeFault = budget->used_bytes();
++        Check(bytesBeforeFault > 0 && bytesBeforeFault <= budget->limit_bytes());
++        if (nativeLossBeforeMap) {
++            device.ForceLoss(wgpu::DeviceLostReason::Unknown, "Glint owned native loss control");
++            wait(deviceLostDone);
++            Check(dawn::native::IsDeviceLost(nativeDevice));
++        }
++    }
++    std::atomic_uint mapCallbacks = 0;
+     std::atomic_bool mapDone = false;
+     bool mapped = false;
+     wgpu::MapAsyncStatus mapStatus = wgpu::MapAsyncStatus::CallbackCancelled;
+@@ -202,10 +226,15 @@
+         [&](wgpu::MapAsyncStatus status, wgpu::StringView message) {
+             if (!expectDenied && status != wgpu::MapAsyncStatus::Success)
+                 std::fprintf(stderr, "Wire map: %.*s\n", static_cast<int>(message.length), message.data);
++            Check(mapCallbacks.fetch_add(1) == 0);
+             mapStatus = status;
+             mapped = status == wgpu::MapAsyncStatus::Success;
+             mapDone = true;
+         });
++    if (destroyDeviceAfterRequest) {
++        // Client destruction occurs before flushing the queued map request or any response.
++        device.Destroy();
++    }
+     if (cancelMap) {
+         Check(toServer->Flush());
+         readback.Destroy();
+@@ -213,6 +242,34 @@
+     wait(mapDone);
+     Check(budget->used_bytes() <= budget->limit_bytes());
+     const auto bytesAfterFirstMap = budget->used_bytes();
++    if (lifetimeMode) {
++        Check(!mapped && mapStatus == wgpu::MapAsyncStatus::Aborted);
++        Check(mapCallbacks.load() == 1);
++        Check(readback.GetMapState() == wgpu::BufferMapState::Unmapped);
++        wait(deviceLostDone);
++        Check(deviceLostCallbacks.load() == 1);
++        Check(actualLostReason == (nativeLossBeforeMap ? wgpu::DeviceLostReason::Unknown
++                                                      : wgpu::DeviceLostReason::Destroyed));
++        Check(dawn::native::IsDeviceLost(nativeDevice));
++        input.Destroy();
++        originalReadback.Destroy();
++        readback.Destroy();
++        device.Destroy();
++        pump();
++        requireBudgetDrained();
++        Check(mapCallbacks.load() == 1 && deviceLostCallbacks.load() == 1);
++        std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
++                    "\"hardware_adapter_selected\":true,\"native_device_lost\":true,"
++                    "\"fault\":\"%s\",\"native_queue_submitted_before_loss\":true,"
++                    "\"map_status\":\"aborted\",\"map_callback_count\":1,"
++                    "\"device_lost_callback_count\":1,\"map_state\":\"unmapped\","
++                    "\"capture_bytes_before_fault\":%llu,\"capture_bytes_after_destroy\":%llu,"
++                    "\"hardware_tdr_tested\":false,\"browser_integrated\":false}\n",
++                    nativeLossBeforeMap ? "native-force-loss-before-map" : "client-device-destroy-before-response",
++                    static_cast<unsigned long long>(bytesBeforeFault),
++                    static_cast<unsigned long long>(budget->used_bytes()));
++        return 0;
++    }
+     if (expectDenied) {
+         Check(!mapped);
+         Check(mapStatus == (cancelMap ? wgpu::MapAsyncStatus::Aborted : wgpu::MapAsyncStatus::Error));

@@ -103,6 +103,27 @@ and exhaustive dependency attestation remain to be added.
 
 ## Remaining gates
 
+### Uncompiled Wire extensions
+
+[`wire-drafts.json`](wire-drafts.json) binds two **independent** patches against
+the measured `wire_probe.cc`. Apply each patch in its own disposable staging
+directory containing that exact base file; do not apply them consecutively or
+change an active Chromium checkout.
+
+Preserve LF bytes when replaying: `git -c core.autocrlf=false apply <patch>`.
+Verify the base, patch and resulting source SHA-256 against `wire-drafts.json`
+before compiling; this does not change the user's global Git configuration.
+
+| Source variant | Intended checks | Current evidence |
+| --- | --- | --- |
+| [`wire-uniform.patch`](wire-uniform.patch) | Static/dynamic uniform bindings, direct/render-bundle paths; offset 256; protected input copied on GPU, not uploaded as substituted CPU pixels | Exact source replay only; compilation/runtime pending |
+| [`wire-device-lifetime.patch`](wire-device-lifetime.patch) | Real Wire `ForceLoss` before map and client device destruction before map response; one aborted map callback, one device-lost callback, unmapped buffer, capture-budget drain | Exact source replay only; compilation/runtime pending |
+
+Existing render, mapping-denial and no-filter negative controls must be repeated
+for both variants. Native API-injected loss is not a hardware TDR, Chromium GPU
+process crash or proof of browser recovery. These drafts grant no capability or
+release admission. The standalone MSVC STL/no-op `raw_ptr` limitation remains.
+
 Chromium Wire/renderer integration, same-submit CPU/GPU orderings, writable and chained
 dispatch stress, render/bundle paths, cancellation/device loss, native allocation
 quotas and retirement, ASan/full Chromium allocator builds, and browser consistency.

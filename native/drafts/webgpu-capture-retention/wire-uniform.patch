@@ -1,0 +1,130 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -32,6 +32,12 @@
+     const bool unsupportedFormat = argc == 2 && std::strcmp(argv[1], "--unsupported-format") == 0;
+     const bool cancelMap = argc == 2 && std::strcmp(argv[1], "--cancel-map") == 0;
+     const bool snapshotQuota = argc == 2 && std::strcmp(argv[1], "--snapshot-quota") == 0;
++    const bool uniformDirect = argc == 2 && std::strcmp(argv[1], "--uniform-direct") == 0;
++    const bool uniformBundle = argc == 2 && std::strcmp(argv[1], "--uniform-bundle") == 0;
++    const bool dynamicUniformDirect = argc == 2 && std::strcmp(argv[1], "--uniform-dynamic-direct") == 0;
++    const bool dynamicUniformBundle = argc == 2 && std::strcmp(argv[1], "--uniform-dynamic-bundle") == 0;
++    const bool dynamicUniform = dynamicUniformDirect || dynamicUniformBundle;
++    const bool uniformMode = uniformDirect || uniformBundle || dynamicUniform;
+     const bool vertexDirect = argc == 2 && std::strcmp(argv[1], "--vertex-direct") == 0;
+     const bool vertexBundle = argc == 2 && std::strcmp(argv[1], "--vertex-bundle") == 0;
+     const bool vertexMode = vertexDirect || vertexBundle;
+@@ -41,8 +47,8 @@
+     const bool writableDirect = argc == 2 && std::strcmp(argv[1], "--render-writable-direct") == 0;
+     const bool writableBundle = argc == 2 && std::strcmp(argv[1], "--render-writable-bundle") == 0;
+     const bool writableMode = writableDirect || writableBundle;
+-    const bool renderDirect = vertexDirect || indexDirect || writableDirect || (argc == 2 && std::strcmp(argv[1], "--render-direct") == 0);
+-    const bool renderBundle = vertexBundle || indexBundle || writableBundle || (argc == 2 && std::strcmp(argv[1], "--render-bundle") == 0);
++    const bool renderDirect = uniformDirect || dynamicUniformDirect || vertexDirect || indexDirect || writableDirect || (argc == 2 && std::strcmp(argv[1], "--render-direct") == 0);
++    const bool renderBundle = uniformBundle || dynamicUniformBundle || vertexBundle || indexBundle || writableBundle || (argc == 2 && std::strcmp(argv[1], "--render-bundle") == 0);
+     Check(argc == 1 || withoutFilter || unsupportedFormat || cancelMap || snapshotQuota || renderDirect || renderBundle);
+     const bool expectDenied = unsupportedFormat || cancelMap || snapshotQuota;
+     dawnProcSetProcs(&dawn::native::GetProcs());
+@@ -174,6 +180,7 @@
+     inputDescriptor.size = bytes;
+     inputDescriptor.usage = wgpu::BufferUsage::CopySrc | wgpu::BufferUsage::CopyDst |
+                             wgpu::BufferUsage::Storage;
++    if (uniformMode) inputDescriptor.usage |= wgpu::BufferUsage::Uniform;
+     if (vertexMode) inputDescriptor.usage |= wgpu::BufferUsage::Vertex;
+     if (indexMode) inputDescriptor.usage |= wgpu::BufferUsage::Index;
+     auto input = device.CreateBuffer(&inputDescriptor);
+@@ -318,6 +325,22 @@
+                              f32((p >> 16u) & 255u), f32((p >> 24u) & 255u)) / 255.0;
+             }
+         )";
++        if (uniformMode) {
++            renderSource.code = R"(
++                struct PixelUniforms { values: array<vec4u, 128>, }
++                @group(0) @binding(0) var<uniform> pixels: PixelUniforms;
++                @vertex fn vs(@builtin(vertex_index) id: u32) -> @builtin(position) vec4f {
++                    let positions = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
++                    return vec4f(positions[id], 0.0, 1.0);
++                }
++                @fragment fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
++                    let word = u32(position.y) * 64u + u32(position.x);
++                    let p = pixels.values[word / 4u][word % 4u];
++                    return vec4f(f32(p & 255u), f32((p >> 8u) & 255u),
++                                 f32((p >> 16u) & 255u), f32((p >> 24u) & 255u)) / 255.0;
++                }
++            )";
++        }
+         if (writableMode) {
+             renderSource.code = R"(
+                 @group(0) @binding(0) var<storage, read_write> pixels: array<u32>;
+@@ -394,10 +417,35 @@
+             renderPipelineDescriptor.vertex.bufferCount = 1;
+             renderPipelineDescriptor.vertex.buffers = &vertexLayout;
+         }
++        if (uniformMode) {
++            wgpu::BindGroupLayoutEntry layoutEntry{};
++            layoutEntry.binding = 0;
++            layoutEntry.visibility = wgpu::ShaderStage::Fragment;
++            layoutEntry.buffer.type = wgpu::BufferBindingType::Uniform;
++            layoutEntry.buffer.hasDynamicOffset = dynamicUniform;
++            layoutEntry.buffer.minBindingSize = bytes;
++            wgpu::BindGroupLayoutDescriptor layoutDescriptor{};
++            layoutDescriptor.entryCount = 1;
++            layoutDescriptor.entries = &layoutEntry;
++            auto layout = device.CreateBindGroupLayout(&layoutDescriptor);
++            wgpu::PipelineLayoutDescriptor pipelineLayoutDescriptor{};
++            pipelineLayoutDescriptor.bindGroupLayoutCount = 1;
++            pipelineLayoutDescriptor.bindGroupLayouts = &layout;
++            renderPipelineDescriptor.layout = device.CreatePipelineLayout(&pipelineLayoutDescriptor);
++        }
+         auto renderPipeline = device.CreateRenderPipeline(&renderPipelineDescriptor);
++        constexpr uint32_t uniformOffset = 256;
++        wgpu::Buffer shiftedUniform;
++        if (dynamicUniform) {
++            wgpu::BufferDescriptor uniformDescriptor{};
++            uniformDescriptor.size = bytes + uniformOffset;
++            uniformDescriptor.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopySrc |
++                                      wgpu::BufferUsage::CopyDst;
++            shiftedUniform = device.CreateBuffer(&uniformDescriptor);
++        }
+         wgpu::BindGroupEntry renderEntry{};
+         renderEntry.binding = 0;
+-        renderEntry.buffer = input;
++        renderEntry.buffer = dynamicUniform ? shiftedUniform : input;
+         renderEntry.size = bytes;
+         wgpu::BindGroupDescriptor renderGroupDescriptor{};
+         wgpu::BindGroup renderGroup;
+@@ -424,6 +472,7 @@
+         passDescriptor.colorAttachmentCount = 1;
+         passDescriptor.colorAttachments = &color;
+         auto renderEncoder = device.CreateCommandEncoder();
++        if (dynamicUniform) renderEncoder.CopyBufferToBuffer(input, 0, shiftedUniform, uniformOffset, bytes);
+         auto renderPass = renderEncoder.BeginRenderPass(&passDescriptor);
+         if (renderBundle) {
+             wgpu::RenderBundleEncoderDescriptor bundleDescriptor{};
+@@ -432,7 +481,7 @@
+             auto bundleEncoder = device.CreateRenderBundleEncoder(&bundleDescriptor);
+             bundleEncoder.SetPipeline(renderPipeline);
+             if (vertexMode) bundleEncoder.SetVertexBuffer(0, input, 0, bytes);
+-            else if (!indexMode) bundleEncoder.SetBindGroup(0, renderGroup);
++            else if (!indexMode) bundleEncoder.SetBindGroup(0, renderGroup, dynamicUniform ? 1 : 0, &uniformOffset);
+             if (indexMode) {
+                 bundleEncoder.SetIndexBuffer(input, wgpu::IndexFormat::Uint16, 0, bytes);
+                 bundleEncoder.DrawIndexed(1);
+@@ -442,7 +491,7 @@
+         } else {
+             renderPass.SetPipeline(renderPipeline);
+             if (vertexMode) renderPass.SetVertexBuffer(0, input, 0, bytes);
+-            else if (!indexMode) renderPass.SetBindGroup(0, renderGroup);
++            else if (!indexMode) renderPass.SetBindGroup(0, renderGroup, dynamicUniform ? 1 : 0, &uniformOffset);
+             if (indexMode) {
+                 renderPass.SetIndexBuffer(input, wgpu::IndexFormat::Uint16, 0, bytes);
+                 renderPass.DrawIndexed(1);
+@@ -459,7 +508,8 @@
+         queue.Submit(1, &renderCommands);
+         auto rendered = wireRead(renderMap, bytes);
+         std::vector<uint8_t> renderExpected(renderWidth * renderHeight * 4);
+-        for (size_t i = 0; i < renderExpected.size(); ++i) renderExpected[i] = expected[i % 4];
++        for (size_t i = 0; i < renderExpected.size(); ++i)
++            renderExpected[i] = expected[uniformMode ? i : i % 4];
+         if (writableMode) {
+             for (size_t i = 0; i < renderExpected.size(); ++i)
+                 renderExpected[i] = (i % 4 >= 2) ? 255 : 0;

@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "scope": "Independent source variants of the measured standalone Wire fixture; source replay is not compilation or runtime evidence",
+  "base_source": "wire_probe.cc",
+  "base_source_sha256": "f9a9e89091e34f836319c20476c9e172df77a7973f4285c24a3fd768a3692448",
+  "variants": [
+    {
+      "name": "uniform",
+      "patch": "wire-uniform.patch",
+      "patch_sha256": "680bde9927e388d596a54af730e5b6bdd66c4b23d87a075dd626da6a38c807d1",
+      "source_sha256": "8e4d0d496dbd3bfaa819070094f56ecc49884864a0b8229de65cb529e521b2d2",
+      "modes": [
+        "--uniform-direct",
+        "--uniform-bundle",
+        "--uniform-dynamic-direct",
+        "--uniform-dynamic-bundle"
+      ],
+      "compiled": false,
+      "runtime_verified": false
+    },
+    {
+      "name": "device-lifetime",
+      "patch": "wire-device-lifetime.patch",
+      "patch_sha256": "dc15486898b48841fd3b46084b4a1f8956ac5c9a9debc822946d3facd45717b1",
+      "source_sha256": "05463eda04e7fd54fa8ef9280312f1e4c7a44b47d64a6a6e2247aeafb7242180",
+      "modes": [
+        "--native-loss-before-map",
+        "--device-destroy-before-response"
+      ],
+      "compiled": false,
+      "runtime_verified": false
+    }
+  ],
+  "patches_are_independent": true,
+  "hardware_tdr_tested": false,
+  "browser_integrated": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}
