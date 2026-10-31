@@ -1,0 +1,56 @@
+--- a/wire_probe.cc
++++ b/wire_probe.cc
+@@ -119,13 +119,24 @@
+                 Check(message.data != nullptr && message.length < 16384);
+                 deviceLostMessage.assign(message.data, message.length);
+             }
++            std::fprintf(stderr, "NATIVE LOSS: %.*s\n", static_cast<int>(message.length), message.data);
+             deviceLostDone = true;
+         });
++    struct LossValidationState { bool expected; std::atomic_bool* lost; std::atomic_uint errors{0}; };
++    LossValidationState lossValidation{byteBudget, &deviceLostDone};
+     deviceDescriptor.SetUncapturedErrorCallback(
+-        [](const wgpu::Device&, wgpu::ErrorType, wgpu::StringView message) {
+-            std::fprintf(stderr, "Wire device error: %.*s\n", static_cast<int>(message.length), message.data);
+-            Check(false);
+-        });
++        [](const wgpu::Device&, wgpu::ErrorType type, wgpu::StringView message, LossValidationState* state) {
++            std::fprintf(stderr, "Wire device error type=%u: %.*s\n", static_cast<unsigned>(type),
++                         static_cast<int>(message.length), message.data);
++            // This diagnostic retains the validation raised by mapping after
++            // deliberate loss. All other routes/errors remain hard failures.
++            Check(state->expected);
++            Check(type == wgpu::ErrorType::Validation);
++            Check(message.data != nullptr && message.length < 16384);
++            std::string observed(message.data, message.length);
++            Check(observed.find("[Device] is lost.") != std::string::npos);
++            Check(state->errors.fetch_add(1) < 16);
++        }, &lossValidation);
+     adapter.RequestDevice(&deviceDescriptor, wgpu::CallbackMode::AllowSpontaneous,
+         [&](wgpu::RequestDeviceStatus status, wgpu::Device result, wgpu::StringView message) {
+             if (status != wgpu::RequestDeviceStatus::Success)
+@@ -161,7 +172,7 @@
+         gpu::webgpu::GlintReadbackLimits{});
+     Check(dawn::native::InstallGlintReadbackObserver(nativeDevice, observer));
+     if (byteBudget) {
+-        constexpr uint32_t side = 2048;
++        constexpr uint32_t side = 1024;
+         constexpr uint64_t bufferBytes = uint64_t{side} * side * 4;
+         Check(budget->limit_bytes() == 64 * 1024 * 1024);
+         auto queue = device.GetQueue();
+@@ -185,6 +196,7 @@
+         auto initialized = initialize.Finish();
+         queue.Submit(1, &initialized);
+         auto complete = [&] {
++            std::fprintf(stderr, "COMPLETE budget=%llu\n", static_cast<unsigned long long>(budget->used_bytes()));
+             std::atomic_bool done = false;
+             std::atomic_uint callbacks = 0;
+             queue.OnSubmittedWorkDone(wgpu::CallbackMode::AllowSpontaneous,
+@@ -257,6 +269,7 @@
+         pump();
+         requireBudgetDrained();
+         Check(deviceLostCallbacks.load() == 1 && mapCallbacks.load() == 1);
++        Check(lossValidation.errors.load() >= 1 && lossValidation.errors.load() <= 16);
+         std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+                     "\"hardware_adapter_selected\":true,\"capture_budget_limit_bytes\":%llu,"
+                     "\"capture_bytes_before_fault\":%llu,\"per_capture_charge_bytes\":%llu,"

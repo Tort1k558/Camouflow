@@ -1,6 +1,6 @@
 # Glint browser test matrix
 
-## 2026-11-01: revision-2 Windows build completed; browser diagnostics running
+## 2026-11-01: revision-2 browser results; legacy Audio remains failed
 
 | Gate | Measured result | Boundary |
 | --- | --- | --- |
@@ -10,7 +10,14 @@
 | Build command with validation | Exit 0 in 1,278.414 seconds | Sync, hooks and patch stages also exited 0 |
 | Source timestamp preservation | 371 hash-identical source files retain original timestamps; two changed files retain new timestamps | No build-output timestamps changed |
 | Independent runtime | All 269 assets copied and hash-verified | Separate QA runtime, not an installed release |
-| Browser diagnostics | Started on the new runtime | No new WebGPU, Audio, recovery or third-party acceptance result yet |
+| Core runtime and workers | 160 runtime checks and 60 startup checks passed | All gate postguards passed; owned processes removed |
+| Combined surfaces and GPU contexts | Both passed | Existing Canvas/Audio/WebGL surfaces and required GPU availability |
+| WebGPU copy/shader/PNG | Passed in the new browser | Corrected native SRV path, not third-party bot acceptance |
+| Combined math | Passed on eight profiles | Not real-device cohort certification |
+| Audio compatibility | Legacy failed on both profiles; baseline/math/math restart passed | The complete seven-gate browser batch remains failed |
+| GPU-process recovery | Baseline and ready modes passed | Actual process crash; not physical TDR or worker recovery |
+| Additional WebGPU contexts | Document, same-origin iframe and dedicated worker passed | Six baseline/ready rows; direct/shader/PNG agree in each context |
+| Additional long Audio graphs | Both profiles and restarts passed | Selector 1 changed 12 rows; selector 0 remained exact; two output classes, not device cohorts |
 
 Revision-2 identity:
 
@@ -23,7 +30,17 @@ The completed controller report is
 `D:\GlintManagerQA\webgpu-r2-candidate-build-20261101-v2\report.json`;
 new browser evidence is collected separately under
 `D:\GlintManagerQA\full-r2-runtime-qa-20261101-v2`.
-Compilation is confirmed; runtime, privacy and production admission remain false.
+The complete browser batch finished with six passing groups and one failed
+legacy Audio group. No receipt was rewritten to claim full runtime admission;
+privacy and production admission remain false. Additional context and Audio
+reports remain separate from the original seven-gate report.
+
+Standalone Wire checks also completed: uniform routing 51/51, device lifetime
+21/21, byte-budget controls 21/24. The three original byte-budget failures are
+retained. A separate calibrated 1024-square diagnostic observed bounded-budget
+device loss, one aborted map, one lost callback and zero retained allocations
+in three runs. This is **not** recoverable quota handling. See the
+[source-bound observations](../native/drafts/webgpu-capture-retention/wire-runtime-observations-20261101.json).
 The sections below retain the earlier candidate's measurements and failures.
 
 ## 2026-11-01: measured 001–116 runtime and revision-2 correction

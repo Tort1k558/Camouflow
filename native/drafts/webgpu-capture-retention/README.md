@@ -103,7 +103,7 @@ and exhaustive dependency attestation remain to be added.
 
 ## Remaining gates
 
-### Uncompiled Wire extensions
+### Measured independent Wire extensions
 
 [`wire-drafts.json`](wire-drafts.json) binds three **independent** patches against
 the measured `wire_probe.cc`. Apply each patch in its own disposable staging
@@ -116,9 +116,9 @@ before compiling; this does not change the user's global Git configuration.
 
 | Source variant | Intended checks | Current evidence |
 | --- | --- | --- |
-| [`wire-uniform.patch`](wire-uniform.patch) | Static/dynamic uniform bindings, direct/render-bundle paths; offset 256; protected input copied on GPU, not uploaded as substituted CPU pixels | Exact source replay only; compilation/runtime pending |
-| [`wire-device-lifetime.patch`](wire-device-lifetime.patch) | Real Wire `ForceLoss` before map and client device destruction before map response; one aborted map callback, one device-lost callback, unmapped buffer, capture-budget drain | Exact source replay only; compilation/runtime pending |
-| [`wire-byte-budget.patch`](wire-byte-budget.patch) | GPU-cleared 2048x2048 source, fewer than 16 retained slots, measured per-capture byte charges, allocation pressure against the actual 64 MiB budget, failed mapping and drain | Uncompiled diagnostic: expected current device loss is **not** a compatibility or quota-recovery PASS |
+| [`wire-uniform.patch`](wire-uniform.patch) | Static/dynamic uniform bindings, direct/render-bundle paths; offset 256; protected input copied on GPU, not uploaded as substituted CPU pixels | Compiled; 51/51 standalone cases passed |
+| [`wire-device-lifetime.patch`](wire-device-lifetime.patch) | Real Wire `ForceLoss` before map and client device destruction before map response; one aborted map callback, one device-lost callback, unmapped buffer, capture-budget drain | Compiled; 21/21 standalone cases passed |
+| [`wire-byte-budget.patch`](wire-byte-budget.patch) | GPU-cleared 2048x2048 source, fewer than 16 retained slots, measured per-capture byte charges, allocation pressure against the actual 64 MiB budget, failed mapping and drain | Compiled; 21/24 passed, all three original byte-budget cases failed before the expected loop; not quota recovery |
 
 Existing render, mapping-denial and no-filter negative controls must be repeated
 for all variants. Native API-injected loss is not a hardware TDR, Chromium GPU
@@ -139,3 +139,22 @@ Chromium Wire/renderer integration, same-submit CPU/GPU orderings, writable and 
 dispatch stress, render/bundle paths, cancellation/device loss, native allocation
 quotas and retirement, ASan/full Chromium allocator builds, and browser consistency.
 This patch does not change runtime selection, privacy admission or production.
+
+### 2026-11-01 measured byte-budget diagnosis
+
+[Runtime observations](wire-runtime-observations-20261101.json) retain all 96
+original cases, including the three failures. The final queue binds the exact
+per-case report hashes; those report files retain their pre-finalization
+`passed: false` checkpoint. They have not been rewritten as passing reports.
+
+The original 2048-square capture exceeds the 64 MiB native budget during its
+first protected projection. Its lost-device validation callback aborts the
+fixture before the intended pressure loop. The standalone
+[diagnostic-only patch](wire-byte-budget-loss-diagnostic.patch) applies after
+`wire-byte-budget.patch`: it uses 1024-square inputs and records only bounded,
+explicit device-lost validation errors while retaining all other assertions.
+Three actual runs each retained three captures (21,037,056 bytes per capture),
+then observed Glint/E_OUTOFMEMORY, one lost callback, one aborted/unmapped map
+and zero capture bytes after destruction. This calibrates the fault probe;
+it does not fix large-surface compatibility or implement recoverable quotas.
+The source, executable, dependency and original report hashes remain separate.
