@@ -1,5 +1,24 @@
 # Glint browser test matrix
 
+## 2026-11-01: full 001–116 Windows compilation completed
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Chromium build | Siso `Build Succeeded`: 5,703 steps, 3h26m56.42s, jobs 4 | Compilation, not runtime or fingerprint admission |
+| Build command and postguards | Exit 0; 12,937.019 seconds including validation | Explicit `upstream-156-webgpu` candidate; original build preserved |
+| Build receipt | SHA-256 `a02432dcf063f5096f24dd89e08e84e3ea0b793afbe94a0fcfa761c0c3018462` | `native_patch_runtime_verified: false` |
+| New `chrome.dll` | SHA-256 `2e57fab92b40724ed5fb81c16c00df6912f8a8cd3e2af70a9e1b08cd40250765` | Not the preserved 001–076 DLL; no release installed |
+| Independent runtime preservation | All 269 new runtime assets copied and hash-verified; same candidate manifest and build receipt | Browser diagnostics have started; no diagnostic PASS yet |
+| Clean Windows checkout | 112 focused tests passed at `3d4278a` | Includes all 22 original CI failures; not a replacement for full CI |
+
+The immutable candidate manifest remains
+`0f87647f32132ca34694c7d90a454bd6bb554f90f13bfcebc421e46e81c0367b`.
+The preserved runtime is now executing the serial browser/worker/GPU/Audio
+diagnostics; no new PASS is inferred from compilation. The
+[desktop CI run](https://github.com/Tort1k558/Camouflow/actions/runs/41238204412)
+has passed Windows QML smoke, static checks and native C++ policy checks;
+packaging is still pending. The docs workflow passed.
+
 ## 2026-11-01: racy-index checkpoint correction
 
 | Gate | Measured result | Boundary |

@@ -1,6 +1,6 @@
 # Glint: план проверки и развития
 
-## Complete component build candidate prepared
+## Complete component candidate compiled; runtime checks pending
 
 The explicit [upstream-156-webgpu variant](../native/drafts/upstream-156-webgpu/README.md)
 contains 116 repository-scoped patches: baseline 001–076 plus all 30 component
@@ -9,13 +9,17 @@ component paths match the measured standalone source. Official immutable source
 URLs validate. Normal 180 GiB / j4 restrictions remain unchanged.
 
 Completed: exact baseline preservation, clean source transition, real sync/hooks
-and application of all 116 patches. The Windows j4 build is running. Diagnostic
-and supporting CLI commands now accept the variant without weakening receipt or
-resource checks; the Python regression passed 5,336 tests with one skip.
+and application of all 116 patches. The Windows j4 compilation succeeded:
+5,703 steps in 3h26m56.42s; the complete build command and postguards exited 0.
+The receipt records `native_patch_runtime_verified: false`. Diagnostic and
+supporting CLI commands accept the variant without weakening receipt or resource
+checks; the latest complete local regression passed 5,357 tests with one skip.
 
-Next: finish compilation and test the full Chromium runtime. No new browser binary
-or privacy/production admission is claimed yet. Evidence and scope are recorded
-in the [test matrix](GLINT_TEST_MATRIX.md).
+The new runtime's 269 assets have been independently preserved and hash-verified;
+the serial browser, worker, GPU, Audio and recovery checks have started.
+A compiled candidate now exists, but runtime validation,
+privacy/production admission and release installation remain pending. Evidence,
+receipt/DLL hashes and scope are recorded in the [test matrix](GLINT_TEST_MATRIX.md).
 
 Windows checkout reproducibility is now locally verified: 5,340 Python tests passed
 with one skip at `c146e47`; a fresh clean autocrlf checkout passed all 34 original

@@ -11,9 +11,13 @@ not a physical GPU reset or protected/worker/latest-candidate recovery admission
 The explicit [full WebGPU candidate](drafts/upstream-156-webgpu/README.md)
 registers the baseline plus the complete component batch as 116 repository-scoped
 patches. Forward/reverse replay restores all 268 upstream files; the resulting
-88 component paths match the measured standalone source. This is a source/build
-selection only, not a new browser binary. Its stage receipts cannot reuse the
-default candidate's manifest identity, even when the pinned checkout/cache is shared.
+88 component paths match the measured standalone source. The full Windows j4
+candidate has now compiled successfully: 5,703 Siso steps in 3h26m56.42s, followed
+by successful build-command postguards and a fresh receipt. Runtime diagnostics
+and capability admission remain pending; no installed release is promoted.
+Its stage receipts cannot reuse the default candidate's manifest identity, even
+when the pinned checkout/cache is shared. Exact receipt/DLL hashes are recorded
+in the [test matrix](../docs/GLINT_TEST_MATRIX.md).
 
 The current [standalone Wire fixture](drafts/webgpu-capture-retention/README.md)
 also executes direct and bundled storage, instance-vertex, Uint16 point-index and
