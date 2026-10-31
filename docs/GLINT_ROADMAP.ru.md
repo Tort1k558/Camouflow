@@ -2613,3 +2613,24 @@ CLI запускает CPU producer gate пакета 25 и проверяет s
 receipt issuer или Dawn queue. Combined dynamic roots/writable copyback остаются
 следующим расширением; у них пока отдельные проверки. Wire, device loss и
 согласованность браузера не подтверждены. Новый runtime/production не допущены.
+
+## 31 октября — writable UAV и copyback в совместном GPU-прогоне
+
+[Существующий стенд](../native/drafts/webgpu-buffer-chain/README.md) расширен
+без отдельной копии алгоритма: CopyBackGlintComputeBuffers извлекается из native
+CommandBufferD3D12.cpp при запуске проверки. Теперь проверяются readonly SRV и
+storage UAV: shader меняет выбранные слова, а copyback возвращает логический
+диапазон. Байты вне логического буфера, но внутри resource capacity/padding,
+должны сохранить исходные значения.
+
+| Проверка | Результат | Ограничение |
+| --- | --- | --- |
+| Совместный GPU normal / ASan | По 40 случаев / 495 537 проверок | FXC; настоящий D3D12, mock Dawn objects/allocator/buffer/tracker |
+| GPU-данные | Projection → plane → private shadow → SRV/UAV → shader → copyback | Не actual Dawn producer/tracker/queue |
+| Совместимость памяти | Изменения возвращаются в logical range; оставшиеся capacity/padding bytes сохранены | Не allocator/device-loss test |
+| Изменённые входы | 13 отказов до hardware compilation | 10 до любой компиляции, 3 после CPU gate; включая copyback extraction |
+
+Сохранены проверки RGBA/BGRA, typeless storage, source mutation, shared quota и
+dependent retirement. Dynamic uniform roots остаются отдельной проверкой.
+Native receipt issuer, queue/cancellation/device loss, Wire и браузерный runtime
+ещё требуют проверки; privacy/production admission не изменены.

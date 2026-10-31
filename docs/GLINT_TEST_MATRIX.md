@@ -1,5 +1,21 @@
 # Glint browser test matrix
 
+## 2026-10-31: combined writable storage-UAV and extracted copyback
+
+| Gate | Result | Boundary |
+| --- | --- | --- |
+| Hardware normal/ASan | 40 cases / 495,537 assertions each | FXC path; real D3D12, mocked Dawn objects/allocator/buffer/tracker |
+| Chain | Native projection/plane/shadow → extracted SRV/UAV descriptors → GPU shader → extracted copyback | Not actual Dawn producer/tracker/queue |
+| Memory | Logical-range writes returned; remaining resource capacity/padding bytes preserved | Not actual allocator retirement/device loss |
+| Changed inputs | 13 refusals before hardware compilation | 10 before all compilation; 3 after CPU gate, including copyback extraction |
+
+Copyback code is extracted from the native source rather than mirrored. Previous
+format/typeless/source-mutation/shared-quota/dependent-lease checks remain active.
+Dynamic roots, native receipt issuance, Dawn queue/Wire/device loss and browser
+consistency still require their own combined runtime proof. No runtime selection,
+privacy admission or production release is claimed.
+
+
 ## 2026-10-31: standalone GPU projection through native buffer descriptors
 
 | Gate | Result | Boundary |

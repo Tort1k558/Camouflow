@@ -1343,3 +1343,22 @@ RecordBuffers, native tracker/receipt/queue execution and dynamic/writable paths
 are not part of this combined proof. Fence/submission and lease retention are
 fixture-managed. Full native execution, Wire, device loss and browser consistency
 remain open; runtime selection and privacy/production admission are unchanged.
+
+## Standalone writable UAV/copyback extension of the GPU chain
+
+The [same combined fixture](drafts/webgpu-buffer-chain/README.md) now runs both
+readonly SRV and writable storage-UAV consumers. Native projected GPU data passes
+through extracted buffer-descriptor methods; a storage shader modifies selected
+words, then extracted CopyBackGlintComputeBuffers records the return copy. The
+logical range must contain the expected projected/modified data, while resource
+capacity/padding bytes outside that range retain their original upload values.
+Production copyback is extracted at check time, not mirrored in fixture code.
+
+Normal/ASan each passed 40 cases / 495,537 assertions, retaining source mutation,
+typed texture, native format, shared quota and dependent-retirement checks. This
+combined path uses FXC. Thirteen changed-input controls deny hardware compilation:
+ten before any compilation, three after the CPU source gate, including altered
+extracted-copyback hashes. Dawn objects/allocator/buffer/tracker remain mocked;
+dynamic uniform roots, actual native producer/tracker/receipt/queue/retirement,
+Wire and browser consistency are still not proved by this standalone extension.
+Runtime selection and privacy/production admission remain unchanged.

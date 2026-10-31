@@ -84,11 +84,51 @@ ComPtr<ID3DBlob> Compile(const char* file, const char* entry) {
     return code;
 }
 #include "descriptor_fixture.h"
+namespace copyback_fixture {
+struct Failure { bool failed = false; };
+using MaybeError = Failure;
+#define DAWN_INTERNAL_ERROR_IF(c, m) do { if (c) return Failure{true}; } while (false)
+namespace wgpu { enum class BufferUsage { CopySrc, CopyDst }; }
+struct Context { ID3D12GraphicsCommandList* commands; ID3D12GraphicsCommandList* GetCommandList() { return commands; } };
+struct FakeBuffer {
+    ID3D12Resource* resource;
+    uint64_t size;
+    bool access = true, private_backing = true;
+    D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_GENERIC_READ;
+    bool HasAccess() const { return access; }
+    bool HasPrivateGlintReadbackBacking() const { return private_backing; }
+    uint64_t GetSize() const { return size; }
+    ID3D12Resource* GetD3D12Resource() const { return resource; }
+    void TrackUsageAndTransitionNow(Context* context, wgpu::BufferUsage usage) {
+        const auto next = usage == wgpu::BufferUsage::CopySrc ? D3D12_RESOURCE_STATE_COPY_SOURCE : D3D12_RESOURCE_STATE_COPY_DEST;
+        Transition(context->commands, resource, state, next); state = next;
+    }
+};
+template <typename T> T* ToBackend(T* pointer) { return pointer; }
+struct Source { FakeBuffer* pointer; FakeBuffer* Get() const { return pointer; } };
+struct Projection { ID3D12Resource* resource; ID3D12Resource* buffer() const { return resource; } };
+struct Range { uint64_t offset, size; };
+struct Projected { Source source; std::unique_ptr<Projection> projection; std::vector<Range> writableRanges; };
+struct Batch { std::vector<Projected> buffers; };
+struct ComputePipeline {};
+using PipelineType = ComputePipeline;
+using CommandRecordingContext = Context;
+struct Tracker {
+    std::unique_ptr<Batch> mGlintComputeBuffers;
+    bool mGlintComputeCopiedBack = false;
+#include "copyback_method.inc"
+
+};
+
+}
+#undef DAWN_INTERNAL_ERROR_IF
+
 
 struct Fixture {
     ComPtr<ID3D12Device> device;
     ComPtr<ID3D12RootSignature> root;
-    ComPtr<ID3D12PipelineState> projection, consumer, scatter, buffer_consumer;
+    ComPtr<ID3D12PipelineState> projection, consumer, scatter, buffer_consumer, buffer_writer;
+    ComPtr<ID3D12RootSignature> buffer_write_root;
     Fixture(const char* edge_file, const char* consumer_file, const char* scatter_file, const char* buffer_file) {
         const auto edge = Compile(edge_file, "edge_main");
         const auto sample = Compile(consumer_file, "main");
@@ -127,19 +167,30 @@ struct Fixture {
         Ok(device->CreateComputePipelineState(&pipeline, IID_PPV_ARGS(&projection)));
         pipeline.CS = {sample->GetBufferPointer(), sample->GetBufferSize()};
         Ok(device->CreateComputePipelineState(&pipeline, IID_PPV_ARGS(&consumer)));
-        const auto buffer_code = Compile(buffer_file, "main");
+        const auto buffer_code = Compile(buffer_file, "readonly_main");
         pipeline.CS = {buffer_code->GetBufferPointer(), buffer_code->GetBufferSize()};
         Ok(device->CreateComputePipelineState(&pipeline, IID_PPV_ARGS(&buffer_consumer)));
         pipeline.CS = {scatter_code->GetBufferPointer(), scatter_code->GetBufferSize()};
         Ok(device->CreateComputePipelineState(&pipeline, IID_PPV_ARGS(&scatter)));
+        ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+        ranges[1].BaseShaderRegister = 1;
+        serialized.Reset(); errors.Reset();
+        Ok(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &serialized, &errors));
+        Ok(device->CreateRootSignature(0, serialized->GetBufferPointer(), serialized->GetBufferSize(),
+            IID_PPV_ARGS(&buffer_write_root)));
+        const auto write_code = Compile(buffer_file, "writable_main");
+        pipeline.pRootSignature = buffer_write_root.Get();
+        pipeline.CS = {write_code->GetBufferPointer(), write_code->GetBufferSize()};
+        Ok(device->CreateComputePipelineState(&pipeline, IID_PPV_ARGS(&buffer_writer)));
+
     }
 };
 
-void Run(Fixture& fixture,
+void RunCase(Fixture& fixture,
          DXGI_FORMAT storage_format,
          uint32_t width,
          uint32_t height,
-         bool cancel_cpu_owner) {
+         bool cancel_cpu_owner, bool writable_input) {
     auto* device = fixture.device.Get();
     const bool bgra = storage_format == DXGI_FORMAT_B8G8R8A8_UNORM ||
                       storage_format == DXGI_FORMAT_B8G8R8A8_TYPELESS;
@@ -290,9 +341,16 @@ void Run(Fixture& fixture,
                          static_cast<uint32_t>(pixel_bytes),
                          static_cast<uint32_t>(pixel_bytes),
                          0};
+    auto raw_buffer = Buffer(device, bytes, D3D12_HEAP_TYPE_DEFAULT,
+                             D3D12_RESOURCE_STATE_COPY_DEST, writable_input);
+    auto buffer_source_probe = Buffer(device, bytes, D3D12_HEAP_TYPE_READBACK,
+                                     D3D12_RESOURCE_STATE_COPY_DEST);
+    cmd->CopyBufferRegion(raw_buffer.Get(), 0, upload.Get(), 0, bytes);
+    Transition(cmd.Get(), raw_buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+               D3D12_RESOURCE_STATE_COPY_SOURCE);
     std::unique_ptr<glint::candidate::d3d12::ProjectedBuffer> routed;
     Ok(glint::candidate::d3d12::ProjectedBuffer::Record(
-        device, cmd.Get(), upload.Get(), upload.Get(), pixel_bytes, true, std::span(&region, 1),
+        device, cmd.Get(), raw_buffer.Get(), raw_buffer.Get(), pixel_bytes, true, std::span(&region, 1),
         fixture.root.Get(), fixture.scatter.Get(), fence.Get(), 1, budget, &routed));
     const uint64_t combined_charge = budget->used_bytes();
     CHECK(combined_charge == charged + routed->allocation_bytes());
@@ -320,11 +378,11 @@ void Run(Fixture& fixture,
                                   D3D12_RESOURCE_STATE_COPY_DEST);
     namespace f = descriptor_fixture;
     f::Device binding_device{device, {}};
-    f::Buffer binding_source{&binding_device, upload.Get(), pixel_bytes};
+    f::Buffer binding_source{&binding_device, raw_buffer.Get(), pixel_bytes};
     f::Buffer binding_output{&binding_device, buffer_output.Get(), pixel_bytes};
     const UINT binding_increment = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     f::Layout layout(binding_increment);
-    layout.bindings[0].bindingLayout = f::BufferBindingInfo{f::wgpu::BufferBindingType::ReadOnlyStorage};
+    layout.bindings[0].bindingLayout = f::BufferBindingInfo{writable_input ? f::wgpu::BufferBindingType::Storage : f::wgpu::BufferBindingType::ReadOnlyStorage};
     layout.bindings[1].bindingLayout = f::BufferBindingInfo{f::wgpu::BufferBindingType::Storage};
     D3D12_DESCRIPTOR_HEAP_DESC cached_desc{};
     cached_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV; cached_desc.NumDescriptors = 2;
@@ -334,8 +392,8 @@ void Run(Fixture& fixture,
         {{{&binding_source, 0, pixel_bytes}, {&binding_output, 0, pixel_bytes}}},
         {cached->GetCPUDescriptorHandleForHeapStart()}};
     auto cached_slot = cached->GetCPUDescriptorHandleForHeapStart();
-    f::WriteBufferDescriptor(device, upload.Get(), binding_source.GetVA(), group.buffers[0],
-        f::wgpu::BufferBindingType::ReadOnlyStorage, false, cached_slot);
+    f::WriteBufferDescriptor(device, raw_buffer.Get(), binding_source.GetVA(), group.buffers[0],
+        writable_input ? f::wgpu::BufferBindingType::Storage : f::wgpu::BufferBindingType::ReadOnlyStorage, false, cached_slot);
     cached_slot.ptr += binding_increment;
     f::WriteBufferDescriptor(device, buffer_output.Get(), binding_output.GetVA(), group.buffers[1],
         f::wgpu::BufferBindingType::Storage, false, cached_slot);
@@ -344,8 +402,12 @@ void Run(Fixture& fixture,
     f::GlintBufferViewOverride replacement{0, routed_hold, routed->buffer()};
     const auto populated = group.PopulateGlintViews(&binding_allocator, {}, std::span(&replacement, 1), &allocation);
     CHECK(!populated.error && populated.value);
-    cmd->SetPipelineState(fixture.buffer_consumer.Get());
-    cmd->SetComputeRootSignature(fixture.root.Get());
+    if (writable_input) {
+        Transition(cmd.Get(), routed->buffer(), D3D12_RESOURCE_STATE_GENERIC_READ,
+                   D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    }
+    cmd->SetPipelineState(writable_input ? fixture.buffer_writer.Get() : fixture.buffer_consumer.Get());
+    cmd->SetComputeRootSignature(writable_input ? fixture.buffer_write_root.Get() : fixture.root.Get());
     ID3D12DescriptorHeap* binding_heaps[] = {binding_allocator.heaps.back().Get()};
     cmd->SetDescriptorHeaps(1, binding_heaps);
     cmd->SetComputeRootDescriptorTable(0, allocation.base);
@@ -358,6 +420,20 @@ void Run(Fixture& fixture,
     Transition(cmd.Get(), buffer_output.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
                D3D12_RESOURCE_STATE_COPY_SOURCE);
     cmd->CopyBufferRegion(buffer_readback.Get(), 0, buffer_output.Get(), 0, pixel_bytes);
+    copyback_fixture::FakeBuffer copyback_source{raw_buffer.Get(), pixel_bytes};
+    copyback_source.state = D3D12_RESOURCE_STATE_COPY_SOURCE;
+    copyback_fixture::Context copyback_context{cmd.Get()};
+    copyback_fixture::Tracker copyback;
+    copyback.mGlintComputeBuffers = std::make_unique<copyback_fixture::Batch>();
+    std::vector<copyback_fixture::Range> write_ranges;
+    if (writable_input) write_ranges.push_back({0, pixel_bytes});
+    copyback.mGlintComputeBuffers->buffers.push_back({{&copyback_source},
+        std::make_unique<copyback_fixture::Projection>(copyback_fixture::Projection{routed->buffer()}), write_ranges});
+    CHECK(!copyback.CopyBackGlintComputeBuffers(&copyback_context).failed);
+    if (writable_input) copyback_source.TrackUsageAndTransitionNow(
+        &copyback_context, copyback_fixture::wgpu::BufferUsage::CopySrc);
+    cmd->CopyBufferRegion(buffer_source_probe.Get(), 0, raw_buffer.Get(), 0, bytes);
+
     replacement.retirement.Reset(); replacement.resource.Reset();
     routed.reset();
     region.source_retirement.Reset();
@@ -461,6 +537,20 @@ void Run(Fixture& fixture,
         }
         probe->Unmap(0, &no_read);
     }
+    const D3D12_RANGE raw_range{0, bytes};
+    Ok(buffer_source_probe->Map(0, &raw_range, &mapped));
+    const auto* raw_observed = static_cast<const uint8_t*>(mapped);
+    for (size_t i = 0; i < bytes; ++i) {
+        uint8_t wanted = upload_bytes[i];
+        if (writable_input && i < pixel_bytes) {
+            const size_t component = i % 4;
+            const size_t canonical = bgra && component != 1 && component != 3 ? i - component + 2 - component : i;
+            wanted = expected[canonical];
+            if ((i / 4) % 3 == 1) wanted ^= 0xa5;
+        }
+        CHECK(raw_observed[i] == wanted);
+    }
+    buffer_source_probe->Unmap(0, &no_read);
     const D3D12_RANGE source_range{0, bytes};
     Ok(original_readback->Map(0, &source_range, &mapped));
     result = static_cast<const uint8_t*>(mapped);
@@ -471,6 +561,11 @@ void Run(Fixture& fixture,
     }
     original_readback->Unmap(0, &no_read);
     ++cases;
+}
+void Run(Fixture& fixture, DXGI_FORMAT storage_format, uint32_t width, uint32_t height,
+         bool cancel_cpu_owner) {
+    RunCase(fixture, storage_format, width, height, cancel_cpu_owner, false);
+    RunCase(fixture, storage_format, width, height, cancel_cpu_owner, true);
 }
 int main(int argc, char** argv) {
     CHECK(argc == 5);
@@ -486,7 +581,7 @@ int main(int argc, char** argv) {
     std::printf(
         "{\"passed\":true,\"hardware_adapter\":true,\"cases\":%zu,\"assertions\":%zu,"
         "\"shared_quota_cases\":%zu,\"typed_texture_consumer_verified\":true,"
-        "\"canonical_plane_verified\":true,\"native_buffer_descriptor_chain_verified\":true,\"source_mutation_isolated\":true,\"dependent_"
+        "\"canonical_plane_verified\":true,\"native_buffer_descriptor_chain_verified\":true,\"writable_copyback_chain_verified\":true,\"source_mutation_isolated\":true,\"dependent_"
         "retirement_verified\":true,\"browser_integrated\":false}\n",
         cases, assertions, quota_cases);
 }

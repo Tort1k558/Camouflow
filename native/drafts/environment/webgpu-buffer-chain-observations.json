@@ -1,11 +1,11 @@
 {
   "schema": 1,
-  "scope": "Native GPU projection -> immutable plane -> budgeted shadow -> extracted buffer descriptors -> real hardware shader; Dawn objects/allocator mocked, not full native tracker/queue",
+  "scope": "Standalone native projection/plane/shadow -> extracted SRV/UAV descriptors -> readonly/writable hardware shader -> extracted copyback; Dawn objects/allocator mocked, not actual Dawn queue",
   "sources_sha256": {
-    "compute_test.cc": "d0d8de2bb74932df8d2717f012f4ff78659c19109d0d07e49d848501b9e0bb9d",
-    "buffer_consumer.hlsl": "c51028985211389270f67ce4284501ca7da78be52bd02541a5ece6224be11655"
+    "compute_test.cc": "9c1056b9d5744b3d1fe06862ef96dadb48b1e2879052d4742dcad0dba3a89b71",
+    "buffer_consumer.hlsl": "25699bea939920c3bde6155e2b37691a8a57b62543ad9539eefd952685ead781"
   },
-  "checker_sha256": "00760e0a92c26b84b9bd601a1fedf8278ed9426a2a69ddc01d54b5e03189ccfa",
+  "checker_sha256": "db6fa00611ee5019f9d0c5e4ac130f37f5f15d6eae361f4d604ca96205d0ada7",
   "shared_checker_sha256": "05d1b1f3554e853e3b17497f42aa4e3d59b99f8ec06240f2eec9d39f42094912",
   "source_gate_checker_sha256": "d4b3f0540225e919a7bc026807f89b820f81fc540ace9022f1bfe14a21087e69",
   "source_gate_record_sha256": "2023c45eb17ea8f58584d884567218e43fba442ed4078e325794a06c25110f89",
@@ -48,21 +48,22 @@
       }
     ]
   },
-  "composed_fixture_sha256": "d0d8de2bb74932df8d2717f012f4ff78659c19109d0d07e49d848501b9e0bb9d",
+  "composed_fixture_sha256": "9c1056b9d5744b3d1fe06862ef96dadb48b1e2879052d4742dcad0dba3a89b71",
   "generated_sources_sha256": {
     "native_method.inc": "0a3b827468c1da6b1a52ce49fe3323b763dfa2bd74d24fdc796caaba521d2d9f",
-    "descriptor_fixture.h": "90d8c5bb4c4feda725082c621c5e879a87a504f16005f1acf432389ee96b9324"
+    "descriptor_fixture.h": "90d8c5bb4c4feda725082c621c5e879a87a504f16005f1acf432389ee96b9324",
+    "copyback_method.inc": "c5fd30c22c2bda9a79663d551d6fc83b711d20e84a111b18df485e2ed76cd227"
   },
   "full_python_baseline": {
     "passed": true,
     "postguards_passed": true,
-    "git_head": "7ad1930961a47c3cb85d1ab639c224a5de89d45a",
+    "git_head": "97a4b5e73bf8f27a3fb3c6786b7012804c7585ed",
     "counts": {
-      "tests": 5243,
+      "tests": 5249,
       "failures": 0,
       "errors": 0,
       "skipped": 1,
-      "passed": 5242
+      "passed": 5248
     }
   },
   "actual_native_projection_and_budgeted_shadow_helpers_executed": true,
@@ -71,7 +72,7 @@
   "actual_glint_texture_projector_record_buffers_executed": false,
   "actual_native_binding_tracker_apply_executed": false,
   "dynamic_uniform_root_combined_chain_executed": false,
-  "writable_copyback_combined_chain_executed": false,
+  "writable_copyback_combined_chain_executed": true,
   "native_receipt_issuer_executed": false,
   "actual_native_device_queue_executed": false,
   "actual_wire_server_roundtrip_executed": false,
@@ -80,6 +81,10 @@
   "selected": false,
   "privacy_admitted": false,
   "production_admitted": false,
+  "extracted_native_copyback_method_executed": true,
+  "readonly_and_writable_uav_modes_checked": true,
+  "resource_bytes_outside_logical_buffer_preserved": true,
+  "combined_shader_compiler": "FXC",
   "public_checker_observation": {
     "passed": true,
     "measurement_complete": true,
@@ -91,12 +96,13 @@
         "result": {
           "passed": true,
           "hardware_adapter": true,
-          "cases": 20,
-          "assertions": 193424,
-          "shared_quota_cases": 20,
+          "cases": 40,
+          "assertions": 495537,
+          "shared_quota_cases": 40,
           "typed_texture_consumer_verified": true,
           "canonical_plane_verified": true,
           "native_buffer_descriptor_chain_verified": true,
+          "writable_copyback_chain_verified": true,
           "source_mutation_isolated": true,
           "dependent_retirement_verified": true,
           "browser_integrated": false
@@ -109,12 +115,13 @@
         "result": {
           "passed": true,
           "hardware_adapter": true,
-          "cases": 20,
-          "assertions": 193424,
-          "shared_quota_cases": 20,
+          "cases": 40,
+          "assertions": 495537,
+          "shared_quota_cases": 40,
           "typed_texture_consumer_verified": true,
           "canonical_plane_verified": true,
           "native_buffer_descriptor_chain_verified": true,
+          "writable_copyback_chain_verified": true,
           "source_mutation_isolated": true,
           "dependent_retirement_verified": true,
           "browser_integrated": false
@@ -256,6 +263,14 @@
       },
       {
         "case": "generated-header-hash",
+        "returncode": 1,
+        "expected_error_observed": true,
+        "refused_before_hardware_compilation": true,
+        "source_gate_compilation_executed": true,
+        "passed": true
+      },
+      {
+        "case": "generated-copyback-hash",
         "returncode": 1,
         "expected_error_observed": true,
         "refused_before_hardware_compilation": true,

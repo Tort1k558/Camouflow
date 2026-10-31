@@ -15,7 +15,12 @@ def prepare_fixture(native, output):
     methods.write_text(checker.extract_methods(native), encoding='utf-8', newline='\n')
     header = output / 'descriptor_fixture.h'
     shutil.copyfile(path.parent / header.name, header)
-    return {methods.name: methods, header.name: header}
+    source = (native / 'third_party/dawn/src/dawn/native/d3d12/CommandBufferD3D12.cpp').read_text(encoding='utf-8-sig')
+    first = source.index('    MaybeError CopyBackGlintComputeBuffers(')
+    copyback = output / 'copyback_method.inc'
+    copyback.write_text(source[first:source.index('    MaybeError CaptureGlintComputeScope(', first)],
+                        encoding='utf-8', newline='\n')
+    return {methods.name: methods, header.name: header, copyback.name: copyback}
 
 
 def main():
@@ -33,9 +38,10 @@ def main():
             'webgpu-edge-compute/edge_compute.hlsl', 'webgpu-shadow-texture/texture_consumer.hlsl',
             'webgpu-buffer-scatter/buffer_scatter.hlsl')) + (MODULE / 'buffer_consumer.hlsl',),
         expected_result={
-            'passed': True, 'hardware_adapter': True, 'cases': 20, 'assertions': 193424,
-            'shared_quota_cases': 20, 'typed_texture_consumer_verified': True,
+            'passed': True, 'hardware_adapter': True, 'cases': 40, 'assertions': 495537,
+            'shared_quota_cases': 40, 'typed_texture_consumer_verified': True,
             'canonical_plane_verified': True, 'native_buffer_descriptor_chain_verified': True,
+            'writable_copyback_chain_verified': True,
             'source_mutation_isolated': True, 'dependent_retirement_verified': True,
             'browser_integrated': False,
         },
