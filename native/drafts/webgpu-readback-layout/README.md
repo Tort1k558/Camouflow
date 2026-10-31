@@ -8,6 +8,7 @@ The browser's PNG/direct-GPU mismatch remains open.
 | Layout | Detached RGBA8/BGRA8 transfer; bounds/overflow/alias checks; preserved alpha and padding |
 | Provenance | Executed-write ordering, buffer copies, crop coordinates, partial reads, write invalidation and device/version tokens |
 | Snapshot cache | Bounded full-surface original/protected copies using the existing native Canvas transform; detached mapping shadows |
+| Pending captures | Issue tickets in execution order, complete in any order; reserve memory before completion; reject cancelled/late results |
 
 Only a trusted native execution hook may register a copy or full-surface capture.
 **Buffer shape or contents are not proof of provenance.** The hook/producer is
@@ -24,8 +25,11 @@ The exact public check passed normally and under AddressSanitizer:
 - Layout: 1024 deterministic variations and boundary checks.
 - Provenance: 18 named cases and 256 independent byte-oracle variations.
 - Snapshot pipeline: 26 named cases, two formats and 64 crop/partial-read variations.
+- Pending lifecycle: 10 named cases and all 6 completion orders of three issued captures.
 
-[Current source-bound evidence](../environment/webgpu-readback-provenance-preparation.json).
+[Current source-bound evidence](../environment/webgpu-capture-lifecycle-observations.json).
+[Historical synchronous component evidence](../environment/webgpu-readback-provenance-preparation.json)
+is reconstructed through the exact source upgrade delta.
 [Historical layout-only evidence](../environment/webgpu-readback-layout-preparation.json)
 retains its exact earlier sources in its patch archive.
 
@@ -51,3 +55,9 @@ mapped-JS detachment or cross-profile isolation.
 Next: trusted GPU execution/capture integration, policy-context transport, native
 mapped-buffer ownership/detachment, matching Canvas export routing and real runtime
 checks. Do not publish a privacy capability from these standalone components.
+
+`BeginCapture` belongs at trusted native execution/issuance, not at a map callback.
+`CompleteCapture` consumes that exact pending ticket; failure cancels its reservation.
+Synchronous `Capture` remains available. Release a capture only when its native
+resource lifetime ends, not merely because one user map was cancelled/unmapped.
+WebGPU does not generally guarantee [promise settlement order](https://www.w3.org/TR/webgpu/#promise-ordering).

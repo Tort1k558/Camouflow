@@ -19,54 +19,102 @@ WebGpuReadbackSnapshots::WebGpuReadbackSnapshots(uint64_t device_epoch,
       shadow_limit_bytes_(shadow_limit_bytes),
       destroyed_(device_epoch == 0 || policy_generation == 0) {}
 
-bool WebGpuReadbackSnapshots::Capture(
+bool WebGpuReadbackSnapshots::BeginCapture(
     const WebGpuSnapshotToken& token,
-    const WebGpuReadbackLayout& full_surface,
-    uint64_t mapping_offset,
-    std::span<const uint8_t> mapped,
-    const std::array<uint8_t, 32>& seed) {
+    const WebGpuReadbackLayout& full_surface) {
   if (destroyed_ || token.device_epoch != device_epoch_ ||
       token.policy_generation != policy_generation_ || token.source_version == 0 ||
       token.snapshot_id <= last_snapshot_id_) {
     return false;
   }
   const auto packed = WebGpuPackedPixelBytes(full_surface);
-  if (!packed || *packed > (snapshot_limit_bytes_ - retained_bytes_) / 2) {
+  if (!packed || !WebGpuReadbackEnd(full_surface, std::numeric_limits<size_t>::max()) ||
+      *packed > (snapshot_limit_bytes_ - reserved_bytes_) / 2) {
     return false;
   }
   auto slot = std::find_if(snapshots_.begin(), snapshots_.end(),
-      [](const Snapshot& value) { return !value.original; });
+      [](const Snapshot& value) { return value.state == Snapshot::State::kFree; });
   if (slot == snapshots_.end()) {
     return false;
   }
-  auto original = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[*packed]);
-  auto protected_pixels = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[*packed]);
-  if (!original || !protected_pixels ||
-      !ExtractWebGpuRgba8(mapped, mapping_offset, full_surface,
-                         {original.get(), *packed})) {
-    return false;
-  }
-  std::copy_n(original.get(), *packed, protected_pixels.get());
-  if (!TransformEdgeCoherentCanvas({protected_pixels.get(), *packed},
-                                   full_surface.width, full_surface.height, seed)) {
-    return false;
-  }
+  slot->state = Snapshot::State::kPending;
   slot->token = token;
+  slot->capture_layout = full_surface;
   slot->width = full_surface.width;
   slot->height = full_surface.height;
   slot->format = full_surface.format;
   slot->size = *packed;
-  slot->original = std::move(original);
-  slot->protected_pixels = std::move(protected_pixels);
-  retained_bytes_ += *packed * 2;
+  reserved_bytes_ += *packed * 2;
   last_snapshot_id_ = token.snapshot_id;
   return true;
+}
+
+bool WebGpuReadbackSnapshots::CompleteCapture(
+    const WebGpuSnapshotToken& token,
+    const WebGpuReadbackLayout& full_surface,
+    uint64_t mapping_offset,
+    std::span<const uint8_t> mapped,
+    const std::array<uint8_t, 32>& seed) {
+  if (destroyed_ || token.snapshot_id == 0) {
+    return false;
+  }
+  auto slot = std::find_if(snapshots_.begin(), snapshots_.end(),
+      [&token](const Snapshot& value) {
+        return value.state == Snapshot::State::kPending && value.token == token;
+      });
+  if (slot == snapshots_.end()) {
+    return false;
+  }
+  const auto cancel = [&]() {
+    const auto abandoned = slot->token;
+    Release(abandoned);
+    return false;
+  };
+  const auto& expected = slot->capture_layout;
+  if (full_surface.offset != expected.offset || full_surface.row_pitch != expected.row_pitch ||
+      full_surface.width != expected.width || full_surface.height != expected.height ||
+      full_surface.format != expected.format) {
+    return cancel();
+  }
+  const size_t packed = slot->size;
+  auto original = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[packed]);
+  auto protected_pixels = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[packed]);
+  if (!original || !protected_pixels ||
+      !ExtractWebGpuRgba8(mapped, mapping_offset, full_surface,
+                         {original.get(), packed})) {
+    return cancel();
+  }
+  std::copy_n(original.get(), packed, protected_pixels.get());
+  if (!TransformEdgeCoherentCanvas({protected_pixels.get(), packed},
+                                   full_surface.width, full_surface.height, seed)) {
+    return cancel();
+  }
+  slot->original = std::move(original);
+  slot->protected_pixels = std::move(protected_pixels);
+  slot->state = Snapshot::State::kReady;
+  retained_bytes_ += packed * 2;
+  return true;
+}
+
+bool WebGpuReadbackSnapshots::Capture(
+    const WebGpuSnapshotToken& token,
+    const WebGpuReadbackLayout& full_surface,
+    uint64_t mapping_offset,
+    std::span<const uint8_t> mapped,
+    const std::array<uint8_t, 32>& seed) {
+  return BeginCapture(token, full_surface) &&
+         CompleteCapture(token, full_surface, mapping_offset, mapped, seed);
+}
+
+size_t WebGpuReadbackSnapshots::pending_count() const {
+  return static_cast<size_t>(std::count_if(snapshots_.begin(), snapshots_.end(),
+      [](const Snapshot& value) { return value.state == Snapshot::State::kPending; }));
 }
 
 const WebGpuReadbackSnapshots::Snapshot* WebGpuReadbackSnapshots::Find(
     const WebGpuSnapshotToken& token) const {
   for (const auto& snapshot : snapshots_) {
-    if (snapshot.original && snapshot.token == token) {
+    if (snapshot.state == Snapshot::State::kReady && snapshot.token == token) {
       return &snapshot;
     }
   }
@@ -156,8 +204,11 @@ std::optional<WebGpuMappedShadow> WebGpuReadbackSnapshots::BuildProtectedShadow(
 
 bool WebGpuReadbackSnapshots::Release(const WebGpuSnapshotToken& token) {
   for (auto& snapshot : snapshots_) {
-    if (snapshot.original && snapshot.token == token) {
-      retained_bytes_ -= snapshot.size * 2;
+    if (snapshot.state != Snapshot::State::kFree && snapshot.token == token) {
+      reserved_bytes_ -= snapshot.size * 2;
+      if (snapshot.state == Snapshot::State::kReady) {
+        retained_bytes_ -= snapshot.size * 2;
+      }
       snapshot = Snapshot{};
       return true;
     }
@@ -171,5 +222,6 @@ void WebGpuReadbackSnapshots::Destroy() {
     snapshot = Snapshot{};
   }
   retained_bytes_ = 0;
+  reserved_bytes_ = 0;
 }
 }  // namespace glint::candidate

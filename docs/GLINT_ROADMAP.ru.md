@@ -28,9 +28,9 @@ restart — дополнительным `--verify-retained-gpu-service-restart`
 
 **Далее:** WebGPU readback и согласованные device cohorts. Полный профиль,
 совместимость, ресурсы/восстановление и production-допуск остаются открытыми.
-Последний полный Python: **4956 passed, 1 skipped** на `8e46cb2`, включая WebGPU lifecycle;
+Последний полный Python: **4962 passed, 1 skipped** на `0731fc7`, до pending capture upgrade;
 новый полный повтор ещё требуется.
-[Полный результат](../native/drafts/environment/canonical-python76-webgpu-lifecycle-observations.json).
+[Полный результат](../native/drafts/environment/canonical-python76-native-provenance-observations.json).
 
 WebGPU-прототип: **14/14** — документ и classic/module dedicated, shared и service
 workers в базовом и защищённом режимах. Проверены compute, RGBA8 readback,
@@ -65,6 +65,16 @@ aliasing и сохранение padding. **1024 варианта** и гран�
 [Текущий результат](../native/drafts/environment/webgpu-readback-provenance-preparation.json).
 Пока нет реального GPU execution/capture hook, доставки контекста и mapped-JS
 lifetime. Пакет не включён в браузер; проблема PNG/GPU остаётся открытой.
+
+Выдача capture-ticket и завершение снимка разделены: pending-память резервируется
+заранее, результаты принимаются в любом порядке. **10 случаев и все 6 порядков**
+трёх capture-запросов прошли обычный прогон и ASan.
+[Модель](../native/drafts/environment/webgpu-capture-lifecycle-observations.json).
+Отдельно настоящий 076 прошёл обратное чтение двух texture-copy буферов, detach,
+отмену и потерю device. Ожидание `OperationError` после device loss в ранней пробе
+было ошибкой теста: проверен корректный `AbortError`.
+[API-эталон](../native/drafts/environment/webgpu-map-lifecycle76-observations.json).
+Это ещё не установка новых callbacks/hooks в браузер.
 Успех этих проверок не означает гарантированного обхода CAPTCHA или детекторов.
 
 ## История: выбор пакета 001–076

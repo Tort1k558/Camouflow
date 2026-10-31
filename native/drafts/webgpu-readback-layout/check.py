@@ -58,11 +58,11 @@ def main():
     save()
     try:
         for sanitizer in ('none', 'address'):
-            for name in ('layout', 'provenance', 'snapshot'):
+            for name in ('layout', 'provenance', 'snapshot', 'callback'):
                 directory = output / (name + '-' + sanitizer)
                 directory.mkdir()
                 sources = [ROOT / 'webgpu_readback_layout.cc', ROOT / (name + '_test.cc')]
-                if name in ('provenance', 'snapshot'):
+                if name in ('provenance', 'snapshot', 'callback'):
                     sources.insert(1, ROOT / 'webgpu_readback_provenance.cc')
                 command = [str(compiler), '/nologo', '/std:c++20', '/W4', '/WX', '/EHsc', '/MT',
                     '/Zc:__cplusplus', '/Od', '/Z7', '/winsysroot:' + str(sdk),
@@ -72,7 +72,7 @@ def main():
                     '/imsvc' + str(sdk / 'Windows Kits/10/Include/10.0.28000.0/um')]
                 if sanitizer == 'address':
                     command.append('/fsanitize=address')
-                if name == 'snapshot':
+                if name in ('snapshot', 'callback'):
                     sources.extend([ROOT / 'webgpu_readback_snapshot.cc', candidate])
                     command.extend(['/I' + str(chromium), '/I' + str(chromium / 'third_party/boringssl/src/include')])
                 command.extend(str(path) for path in sources)
@@ -80,7 +80,7 @@ def main():
                     '/link', '/LIBPATH:' + str(sdk / 'VC/Tools/MSVC/14.51.36231/lib/x64'),
                     '/LIBPATH:' + str(sdk / 'Windows Kits/10/Lib/10.0.28000.0/ucrt/x64'),
                     '/LIBPATH:' + str(sdk / 'Windows Kits/10/Lib/10.0.28000.0/um/x64')])
-                if name == 'snapshot':
+                if name in ('snapshot', 'callback'):
                     command.extend([*(str(path) for path in libraries), 'bcrypt.lib', 'advapi32.lib'])
                 environment = {**os.environ, 'TMP': str(output / 'temp'), 'TEMP': str(output / 'temp')}
                 started = time.monotonic()

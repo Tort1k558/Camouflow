@@ -15,7 +15,7 @@ def record():
     return json.loads((DIRECTORY / 'webgpu-readback-provenance-preparation.json').read_bytes())
 
 
-def test_complete_native_component_archive_has_exact_current_sources_and_round_trips(tmp_path):
+def test_complete_native_component_archive_has_exact_current_sources_and_round_trips(tmp_path, native_components_before_capture_lifecycle):
     evidence = record()
     patch = DIRECTORY / evidence['patch']
     assert hashlib.sha256(patch.read_bytes()).hexdigest() == evidence['patch_sha256']
@@ -24,7 +24,8 @@ def test_complete_native_component_archive_has_exact_current_sources_and_round_t
     assert len(evidence['sources']) == 6
     for row in evidence['sources']:
         source, applied = ROOT / row['staged_source'], tmp_path / row['source']
-        assert row['before_sha256'] is None and source.read_bytes() == applied.read_bytes()
+        historical = native_components_before_capture_lifecycle['sources'].get(row['staged_source'], source.read_bytes())
+        assert row['before_sha256'] is None and historical == applied.read_bytes()
         assert hashlib.sha256(applied.read_bytes()).hexdigest() == row['staged_sha256']
         assert not source.read_bytes().startswith(bytes.fromhex('efbbbf')) and b'\r' not in source.read_bytes()
     subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
@@ -32,10 +33,12 @@ def test_complete_native_component_archive_has_exact_current_sources_and_round_t
     assert all(not (tmp_path / row['source']).exists() for row in evidence['sources'])
 
 
-def test_exact_public_native_checks_cover_layout_provenance_and_snapshot_with_asan():
+def test_exact_public_native_checks_cover_layout_provenance_and_snapshot_with_asan(native_components_before_capture_lifecycle):
     evidence = record()
     for relative, expected in evidence['measured_inputs_sha256'].items():
-        assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected, relative
+        actual = native_components_before_capture_lifecycle['sha256'].get(relative,
+            hashlib.sha256((ROOT / relative).read_bytes()).hexdigest())
+        assert actual == expected, relative
     rows = evidence['isolated_component_checks']
     assert len(rows) == 6 and {(row['name'], row['sanitizer']) for row in rows} == {
         (name, sanitizer) for name in ('layout', 'provenance', 'snapshot') for sanitizer in ('none', 'address')}

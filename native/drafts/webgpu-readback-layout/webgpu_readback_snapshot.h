@@ -28,6 +28,14 @@ class WebGpuReadbackSnapshots {
                           uint64_t policy_generation,
                           size_t snapshot_limit_bytes,
                           size_t shadow_limit_bytes);
+  // Issue in native execution order; completion may arrive in any order.
+  bool BeginCapture(const WebGpuSnapshotToken& token,
+                     const WebGpuReadbackLayout& full_surface);
+  bool CompleteCapture(const WebGpuSnapshotToken& token,
+                        const WebGpuReadbackLayout& full_surface,
+                        uint64_t mapping_offset,
+                        std::span<const uint8_t> mapped,
+                        const std::array<uint8_t, 32>& seed);
   bool Capture(const WebGpuSnapshotToken& token,
                 const WebGpuReadbackLayout& full_surface,
                 uint64_t mapping_offset,
@@ -40,10 +48,15 @@ class WebGpuReadbackSnapshots {
   bool Release(const WebGpuSnapshotToken& token);
   void Destroy();
   size_t retained_bytes() const { return retained_bytes_; }
+  size_t reserved_bytes() const { return reserved_bytes_; }
+  size_t pending_count() const;
 
  private:
   struct Snapshot {
+    enum class State { kFree, kPending, kReady };
+    State state = State::kFree;
     WebGpuSnapshotToken token;
+    WebGpuReadbackLayout capture_layout;
     uint32_t width = 0;
     uint32_t height = 0;
     WebGpuPixelFormat format = WebGpuPixelFormat::kRgba8Unorm;
@@ -59,6 +72,7 @@ class WebGpuReadbackSnapshots {
   size_t snapshot_limit_bytes_;
   size_t shadow_limit_bytes_;
   size_t retained_bytes_ = 0;
+  size_t reserved_bytes_ = 0;
   bool destroyed_ = false;
   std::array<Snapshot, kWebGpuReadbackRegionLimit> snapshots_{};
 };

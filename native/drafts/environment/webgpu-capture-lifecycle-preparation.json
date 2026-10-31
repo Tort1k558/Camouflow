@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "selected": false,
+  "patch": "webgpu-capture-lifecycle-integration.patch",
+  "patch_sha256": "797f87203cc3c43193d06da95459adaa24e85ce36bfca3c9a372c8553645749a",
+  "sources": [
+    {
+      "source": "native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.h",
+      "before_sha256": "585c5e0968a8855f5b96af8c59fd21b4480b65bd332b056fdb655bdd49cad770",
+      "staged_sha256": "6cc53a126abc350c68f2db2fe8bda8c68251c3de1d8324ab308db58517ba2209"
+    },
+    {
+      "source": "native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.cc",
+      "before_sha256": "e6d7b59c3afaed61e81c2f181e0273ba12adcb964fd66e3f45b4e3777965d2fa",
+      "staged_sha256": "40441a6dab3ee0940f9c77d563c8d74e79f4083762ce03783bedc7dc7f2d94c8"
+    },
+    {
+      "source": "native/drafts/webgpu-readback-layout/check.py",
+      "before_sha256": "1897db0eb66585aa4a4323a731840ce3adcc5249569d90ea8f20ae4af762b964",
+      "staged_sha256": "20a78ed6800f65444f6a590169bd3873b40f8783706bb76580fcaaeae4d6174c"
+    },
+    {
+      "source": "native/drafts/webgpu-readback-layout/callback_test.cc",
+      "before_sha256": null,
+      "staged_sha256": "7c043d9e52cd4fdd20e2415298c55eb0916800c790efaa1a0cfa3e9917c49b88"
+    }
+  ],
+  "scope": "Reversible public prototype source delta: issue captures in native execution order, complete in arbitrary order, cancel stale/failed pending captures and reserve bounded pending memory; no installed queue/callback hooks",
+  "browser_integrated": false,
+  "native_queue_hooks_installed": false,
+  "runtime_verified": false,
+  "native_webgpu_readback_protection": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

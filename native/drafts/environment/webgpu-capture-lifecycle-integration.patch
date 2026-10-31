@@ -1,0 +1,362 @@
+diff --git a/native/drafts/webgpu-readback-layout/callback_test.cc b/native/drafts/webgpu-readback-layout/callback_test.cc
+new file mode 100644
+index 0000000..f18ff9b
+--- /dev/null
++++ b/native/drafts/webgpu-readback-layout/callback_test.cc
+@@ -0,0 +1,127 @@
++#include "webgpu_readback_snapshot.h"
++
++#include <algorithm>
++#include <array>
++#include <cstdio>
++#include <cstdlib>
++#include <vector>
++
++using namespace glint::candidate;
++size_t assertions = 0, named_cases = 0, completion_orders = 0;
++void Check(bool condition, int line) {
++  ++assertions;
++  if (!condition) {
++    std::fprintf(stderr, "Callback assertion failed at line %d\n", line);
++    std::exit(1);
++  }
++}
++#define CHECK(value) Check((value), __LINE__)
++#define CASE() ++named_cases
++
++WebGpuSnapshotToken Token(uint64_t id) { return {7, id, 1, 1}; }
++
++int main() {
++  constexpr auto rgba = WebGpuPixelFormat::kRgba8Unorm;
++  const WebGpuReadbackLayout full{0, 256, 8, 8, rgba};
++  constexpr size_t pixels = 8 * 8 * 4;
++  std::array<uint8_t, 32> seed{};
++  seed[0] = 91;
++  std::array<std::vector<uint8_t>, 3> raw;
++  for (size_t index = 0; index < raw.size(); ++index) {
++    raw[index].resize(2048, 0xa5);
++    std::vector<uint8_t> packed(pixels);
++    for (size_t byte = 0; byte < packed.size(); ++byte) {
++      packed[byte] = byte % 4 == 3 ? 255 : static_cast<uint8_t>((byte * 17 + index * 31) % 256);
++    }
++    CHECK(StoreWebGpuRgba8(packed, full, 0, raw[index]));
++  }
++  std::array<size_t, 3> order = {0, 1, 2};
++  do {
++    ++completion_orders;
++    WebGpuReadbackSnapshots cache(7, 1, pixels * 6, 65536);
++    for (size_t index = 0; index < order.size(); ++index) {
++      CHECK(cache.BeginCapture(Token(index + 1), full));
++    }
++    CHECK(cache.pending_count() == 3 && cache.retained_bytes() == 0);
++    CHECK(cache.reserved_bytes() == pixels * 6);
++    for (size_t position = 0; position < order.size(); ++position) {
++      const size_t index = order[position];
++      CHECK(cache.CompleteCapture(Token(index + 1), full, 0, raw[index], seed));
++      CHECK(cache.pending_count() == order.size() - position - 1);
++      CHECK(cache.retained_bytes() == (position + 1) * pixels * 2);
++      CHECK(!cache.CompleteCapture(Token(index + 1), full, 0, raw[index], seed));
++      WebGpuReadbackProvenance tracker(raw[index].size(), 7);
++      CHECK(tracker.RecordFullTextureCopy(1, full, Token(index + 1)));
++      CHECK(cache.BuildProtectedShadow(tracker.PlanMap(0, raw[index].size()), 0, raw[index]).has_value());
++    }
++  } while (std::next_permutation(order.begin(), order.end()));
++  CASE();
++  WebGpuReadbackSnapshots pending(7, 1, pixels * 4, 65536);
++  CHECK(pending.BeginCapture(Token(1), full));
++  WebGpuReadbackProvenance tracker(raw[0].size(), 7);
++  CHECK(tracker.RecordFullTextureCopy(1, full, Token(1)));
++  CHECK(!pending.BuildProtectedShadow(tracker.PlanMap(0, raw[0].size()), 0, raw[0]));
++  CASE();
++  CHECK(pending.Release(Token(1)));
++  CHECK(pending.pending_count() == 0 && pending.reserved_bytes() == 0);
++  CHECK(!pending.CompleteCapture(Token(1), full, 0, raw[0], seed));
++  CHECK(!pending.BeginCapture(Token(1), full));
++  CASE();
++  CHECK(pending.BeginCapture(Token(2), full));
++  CHECK(!pending.CompleteCapture(Token(1), full, 0, raw[0], seed));
++  CHECK(pending.pending_count() == 1 && pending.reserved_bytes() == pixels * 2);
++  CHECK(pending.CompleteCapture(Token(2), full, 0, raw[1], seed));
++  CASE();
++  CHECK(pending.BeginCapture(Token(3), full));
++  auto wrong_layout = full;
++  wrong_layout.offset = 4;
++  CHECK(!pending.CompleteCapture(Token(3), wrong_layout, 0, raw[0], seed));
++  CHECK(pending.pending_count() == 0 && pending.reserved_bytes() == pixels * 2);
++  CHECK(!pending.CompleteCapture(Token(3), full, 0, raw[0], seed));
++  CASE();
++  CHECK(pending.BeginCapture(Token(4), full));
++  CHECK(!pending.CompleteCapture(Token(4), full, 0, std::span<const uint8_t>(raw[0]).first(16), seed));
++  CHECK(pending.pending_count() == 0 && pending.reserved_bytes() == pixels * 2);
++  CASE();
++  WebGpuReadbackSnapshots budget(7, 1, pixels * 2, 65536);
++  CHECK(budget.BeginCapture(Token(1), full));
++  CHECK(!budget.BeginCapture(Token(2), full));
++  CHECK(budget.retained_bytes() == 0 && budget.reserved_bytes() == pixels * 2);
++  CHECK(budget.Release(Token(1)));
++  CHECK(budget.BeginCapture(Token(2), full));
++  CASE();
++  WebGpuReadbackSnapshots foreign(7, 1, pixels * 2, 65536);
++  CHECK(foreign.BeginCapture(Token(1), full));
++  CHECK(!foreign.CompleteCapture({8, 1, 1, 1}, full, 0, raw[0], seed));
++  CHECK(!foreign.CompleteCapture({7, 1, 2, 1}, full, 0, raw[0], seed));
++  CHECK(!foreign.CompleteCapture({7, 1, 1, 2}, full, 0, raw[0], seed));
++  CHECK(foreign.pending_count() == 1);
++  CHECK(foreign.CompleteCapture(Token(1), full, 0, raw[0], seed));
++  CASE();
++  WebGpuReadbackSnapshots dead(7, 1, pixels * 4, 65536);
++  CHECK(dead.BeginCapture(Token(1), full));
++  CHECK(dead.Capture(Token(2), full, 0, raw[1], seed));
++  CHECK(dead.pending_count() == 1 && dead.retained_bytes() == pixels * 2);
++  dead.Destroy();
++  CHECK(dead.pending_count() == 0 && dead.retained_bytes() == 0 && dead.reserved_bytes() == 0);
++  CHECK(!dead.CompleteCapture(Token(1), full, 0, raw[0], seed));
++  CHECK(!dead.BeginCapture(Token(3), full));
++  CASE();
++  WebGpuReadbackSnapshots retry(7, 1, pixels * 2, 65536);
++  CHECK(retry.BeginCapture(Token(1), full));
++  CHECK(!retry.CompleteCapture(Token(1), full, 0, {}, seed));
++  CHECK(!retry.BeginCapture(Token(1), full));
++  CHECK(retry.BeginCapture(Token(2), full));
++  CASE();
++  WebGpuReadbackSnapshots capacity(7, 1, pixels * 2 * kWebGpuReadbackRegionLimit, 65536);
++  for (size_t index = 0; index < kWebGpuReadbackRegionLimit; ++index) {
++    CHECK(capacity.BeginCapture(Token(index + 1), full));
++  }
++  CHECK(!capacity.BeginCapture(Token(17), full));
++  CHECK(capacity.Release(Token(8)));
++  CHECK(capacity.BeginCapture(Token(17), full));
++  CHECK(!capacity.CompleteCapture(Token(8), full, 0, raw[0], seed));
++  CHECK(capacity.CompleteCapture(Token(17), full, 0, raw[2], seed));
++  std::printf("{\"passed\":true,\"named_cases\":%zu,\"completion_orders\":%zu,\"assertions\":%zu,\"browser_integrated\":false}\n",
++      named_cases, completion_orders, assertions);
++}
+diff --git a/native/drafts/webgpu-readback-layout/check.py b/native/drafts/webgpu-readback-layout/check.py
+index f51ac2b..f01f1d0 100644
+--- a/native/drafts/webgpu-readback-layout/check.py
++++ b/native/drafts/webgpu-readback-layout/check.py
+@@ -58,11 +58,11 @@ def main():
+     save()
+     try:
+         for sanitizer in ('none', 'address'):
+-            for name in ('layout', 'provenance', 'snapshot'):
++            for name in ('layout', 'provenance', 'snapshot', 'callback'):
+                 directory = output / (name + '-' + sanitizer)
+                 directory.mkdir()
+                 sources = [ROOT / 'webgpu_readback_layout.cc', ROOT / (name + '_test.cc')]
+-                if name in ('provenance', 'snapshot'):
++                if name in ('provenance', 'snapshot', 'callback'):
+                     sources.insert(1, ROOT / 'webgpu_readback_provenance.cc')
+                 command = [str(compiler), '/nologo', '/std:c++20', '/W4', '/WX', '/EHsc', '/MT',
+                     '/Zc:__cplusplus', '/Od', '/Z7', '/winsysroot:' + str(sdk),
+@@ -72,7 +72,7 @@ def main():
+                     '/imsvc' + str(sdk / 'Windows Kits/10/Include/10.0.28000.0/um')]
+                 if sanitizer == 'address':
+                     command.append('/fsanitize=address')
+-                if name == 'snapshot':
++                if name in ('snapshot', 'callback'):
+                     sources.extend([ROOT / 'webgpu_readback_snapshot.cc', candidate])
+                     command.extend(['/I' + str(chromium), '/I' + str(chromium / 'third_party/boringssl/src/include')])
+                 command.extend(str(path) for path in sources)
+@@ -80,7 +80,7 @@ def main():
+                     '/link', '/LIBPATH:' + str(sdk / 'VC/Tools/MSVC/14.51.36231/lib/x64'),
+                     '/LIBPATH:' + str(sdk / 'Windows Kits/10/Lib/10.0.28000.0/ucrt/x64'),
+                     '/LIBPATH:' + str(sdk / 'Windows Kits/10/Lib/10.0.28000.0/um/x64')])
+-                if name == 'snapshot':
++                if name in ('snapshot', 'callback'):
+                     command.extend([*(str(path) for path in libraries), 'bcrypt.lib', 'advapi32.lib'])
+                 environment = {**os.environ, 'TMP': str(output / 'temp'), 'TEMP': str(output / 'temp')}
+                 started = time.monotonic()
+diff --git a/native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.cc b/native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.cc
+index 4486a40..ae20acf 100644
+--- a/native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.cc
++++ b/native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.cc
+@@ -19,54 +19,102 @@ WebGpuReadbackSnapshots::WebGpuReadbackSnapshots(uint64_t device_epoch,
+       shadow_limit_bytes_(shadow_limit_bytes),
+       destroyed_(device_epoch == 0 || policy_generation == 0) {}
+ 
+-bool WebGpuReadbackSnapshots::Capture(
++bool WebGpuReadbackSnapshots::BeginCapture(
+     const WebGpuSnapshotToken& token,
+-    const WebGpuReadbackLayout& full_surface,
+-    uint64_t mapping_offset,
+-    std::span<const uint8_t> mapped,
+-    const std::array<uint8_t, 32>& seed) {
++    const WebGpuReadbackLayout& full_surface) {
+   if (destroyed_ || token.device_epoch != device_epoch_ ||
+       token.policy_generation != policy_generation_ || token.source_version == 0 ||
+       token.snapshot_id <= last_snapshot_id_) {
+     return false;
+   }
+   const auto packed = WebGpuPackedPixelBytes(full_surface);
+-  if (!packed || *packed > (snapshot_limit_bytes_ - retained_bytes_) / 2) {
++  if (!packed || !WebGpuReadbackEnd(full_surface, std::numeric_limits<size_t>::max()) ||
++      *packed > (snapshot_limit_bytes_ - reserved_bytes_) / 2) {
+     return false;
+   }
+   auto slot = std::find_if(snapshots_.begin(), snapshots_.end(),
+-      [](const Snapshot& value) { return !value.original; });
++      [](const Snapshot& value) { return value.state == Snapshot::State::kFree; });
+   if (slot == snapshots_.end()) {
+     return false;
+   }
+-  auto original = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[*packed]);
+-  auto protected_pixels = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[*packed]);
+-  if (!original || !protected_pixels ||
+-      !ExtractWebGpuRgba8(mapped, mapping_offset, full_surface,
+-                         {original.get(), *packed})) {
+-    return false;
+-  }
+-  std::copy_n(original.get(), *packed, protected_pixels.get());
+-  if (!TransformEdgeCoherentCanvas({protected_pixels.get(), *packed},
+-                                   full_surface.width, full_surface.height, seed)) {
+-    return false;
+-  }
++  slot->state = Snapshot::State::kPending;
+   slot->token = token;
++  slot->capture_layout = full_surface;
+   slot->width = full_surface.width;
+   slot->height = full_surface.height;
+   slot->format = full_surface.format;
+   slot->size = *packed;
++  reserved_bytes_ += *packed * 2;
++  last_snapshot_id_ = token.snapshot_id;
++  return true;
++}
++
++bool WebGpuReadbackSnapshots::CompleteCapture(
++    const WebGpuSnapshotToken& token,
++    const WebGpuReadbackLayout& full_surface,
++    uint64_t mapping_offset,
++    std::span<const uint8_t> mapped,
++    const std::array<uint8_t, 32>& seed) {
++  if (destroyed_ || token.snapshot_id == 0) {
++    return false;
++  }
++  auto slot = std::find_if(snapshots_.begin(), snapshots_.end(),
++      [&token](const Snapshot& value) {
++        return value.state == Snapshot::State::kPending && value.token == token;
++      });
++  if (slot == snapshots_.end()) {
++    return false;
++  }
++  const auto cancel = [&]() {
++    const auto abandoned = slot->token;
++    Release(abandoned);
++    return false;
++  };
++  const auto& expected = slot->capture_layout;
++  if (full_surface.offset != expected.offset || full_surface.row_pitch != expected.row_pitch ||
++      full_surface.width != expected.width || full_surface.height != expected.height ||
++      full_surface.format != expected.format) {
++    return cancel();
++  }
++  const size_t packed = slot->size;
++  auto original = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[packed]);
++  auto protected_pixels = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[packed]);
++  if (!original || !protected_pixels ||
++      !ExtractWebGpuRgba8(mapped, mapping_offset, full_surface,
++                         {original.get(), packed})) {
++    return cancel();
++  }
++  std::copy_n(original.get(), packed, protected_pixels.get());
++  if (!TransformEdgeCoherentCanvas({protected_pixels.get(), packed},
++                                   full_surface.width, full_surface.height, seed)) {
++    return cancel();
++  }
+   slot->original = std::move(original);
+   slot->protected_pixels = std::move(protected_pixels);
+-  retained_bytes_ += *packed * 2;
+-  last_snapshot_id_ = token.snapshot_id;
++  slot->state = Snapshot::State::kReady;
++  retained_bytes_ += packed * 2;
+   return true;
+ }
+ 
++bool WebGpuReadbackSnapshots::Capture(
++    const WebGpuSnapshotToken& token,
++    const WebGpuReadbackLayout& full_surface,
++    uint64_t mapping_offset,
++    std::span<const uint8_t> mapped,
++    const std::array<uint8_t, 32>& seed) {
++  return BeginCapture(token, full_surface) &&
++         CompleteCapture(token, full_surface, mapping_offset, mapped, seed);
++}
++
++size_t WebGpuReadbackSnapshots::pending_count() const {
++  return static_cast<size_t>(std::count_if(snapshots_.begin(), snapshots_.end(),
++      [](const Snapshot& value) { return value.state == Snapshot::State::kPending; }));
++}
++
+ const WebGpuReadbackSnapshots::Snapshot* WebGpuReadbackSnapshots::Find(
+     const WebGpuSnapshotToken& token) const {
+   for (const auto& snapshot : snapshots_) {
+-    if (snapshot.original && snapshot.token == token) {
++    if (snapshot.state == Snapshot::State::kReady && snapshot.token == token) {
+       return &snapshot;
+     }
+   }
+@@ -156,8 +204,11 @@ std::optional<WebGpuMappedShadow> WebGpuReadbackSnapshots::BuildProtectedShadow(
+ 
+ bool WebGpuReadbackSnapshots::Release(const WebGpuSnapshotToken& token) {
+   for (auto& snapshot : snapshots_) {
+-    if (snapshot.original && snapshot.token == token) {
+-      retained_bytes_ -= snapshot.size * 2;
++    if (snapshot.state != Snapshot::State::kFree && snapshot.token == token) {
++      reserved_bytes_ -= snapshot.size * 2;
++      if (snapshot.state == Snapshot::State::kReady) {
++        retained_bytes_ -= snapshot.size * 2;
++      }
+       snapshot = Snapshot{};
+       return true;
+     }
+@@ -171,5 +222,6 @@ void WebGpuReadbackSnapshots::Destroy() {
+     snapshot = Snapshot{};
+   }
+   retained_bytes_ = 0;
++  reserved_bytes_ = 0;
+ }
+ }  // namespace glint::candidate
+diff --git a/native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.h b/native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.h
+index 68f977e..43ae854 100644
+--- a/native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.h
++++ b/native/drafts/webgpu-readback-layout/webgpu_readback_snapshot.h
+@@ -28,6 +28,14 @@ class WebGpuReadbackSnapshots {
+                           uint64_t policy_generation,
+                           size_t snapshot_limit_bytes,
+                           size_t shadow_limit_bytes);
++  // Issue in native execution order; completion may arrive in any order.
++  bool BeginCapture(const WebGpuSnapshotToken& token,
++                     const WebGpuReadbackLayout& full_surface);
++  bool CompleteCapture(const WebGpuSnapshotToken& token,
++                        const WebGpuReadbackLayout& full_surface,
++                        uint64_t mapping_offset,
++                        std::span<const uint8_t> mapped,
++                        const std::array<uint8_t, 32>& seed);
+   bool Capture(const WebGpuSnapshotToken& token,
+                 const WebGpuReadbackLayout& full_surface,
+                 uint64_t mapping_offset,
+@@ -40,10 +48,15 @@ class WebGpuReadbackSnapshots {
+   bool Release(const WebGpuSnapshotToken& token);
+   void Destroy();
+   size_t retained_bytes() const { return retained_bytes_; }
++  size_t reserved_bytes() const { return reserved_bytes_; }
++  size_t pending_count() const;
+ 
+  private:
+   struct Snapshot {
++    enum class State { kFree, kPending, kReady };
++    State state = State::kFree;
+     WebGpuSnapshotToken token;
++    WebGpuReadbackLayout capture_layout;
+     uint32_t width = 0;
+     uint32_t height = 0;
+     WebGpuPixelFormat format = WebGpuPixelFormat::kRgba8Unorm;
+@@ -59,6 +72,7 @@ class WebGpuReadbackSnapshots {
+   size_t snapshot_limit_bytes_;
+   size_t shadow_limit_bytes_;
+   size_t retained_bytes_ = 0;
++  size_t reserved_bytes_ = 0;
+   bool destroyed_ = false;
+   std::array<Snapshot, kWebGpuReadbackRegionLimit> snapshots_{};
+ };

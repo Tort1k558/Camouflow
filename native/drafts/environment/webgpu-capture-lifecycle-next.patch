@@ -1,0 +1,878 @@
+diff --git a/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_layout.cc b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_layout.cc
+new file mode 100644
+index 0000000..a5cc94a
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_layout.cc
+@@ -0,0 +1,117 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "webgpu_readback_layout.h"
++
++#include <limits>
++
++namespace glint::candidate {
++namespace {
++bool Overlaps(std::span<const uint8_t> first,
++              std::span<const uint8_t> second) {
++  if (first.empty() || second.empty()) {
++    return false;
++  }
++  const auto a = reinterpret_cast<uintptr_t>(first.data());
++  const auto b = reinterpret_cast<uintptr_t>(second.data());
++  return a <= b ? b - a < first.size() : a - b < second.size();
++}
++
++std::optional<size_t> MappingStart(const WebGpuReadbackLayout& layout,
++                                   uint64_t mapping_offset,
++                                   size_t mapped_bytes,
++                                   size_t packed_bytes) {
++  const auto required = WebGpuPackedPixelBytes(layout);
++  if (!required || *required != packed_bytes || layout.offset % 4 != 0 ||
++      mapped_bytes > std::numeric_limits<uint64_t>::max() - mapping_offset ||
++      mapping_offset > layout.offset) {
++    return std::nullopt;
++  }
++  const uint64_t row_bytes = static_cast<uint64_t>(layout.width) * 4;
++  if ((layout.row_pitch == 0 && layout.height != 1) ||
++      (layout.row_pitch != 0 &&
++       (layout.row_pitch % 256 != 0 || layout.row_pitch < row_bytes))) {
++    return std::nullopt;
++  }
++  const uint64_t start = layout.offset - mapping_offset;
++  const uint64_t previous_rows =
++      static_cast<uint64_t>(layout.height - 1) * layout.row_pitch;
++  if (start > mapped_bytes || previous_rows > mapped_bytes - start ||
++      row_bytes > mapped_bytes - start - previous_rows) {
++    return std::nullopt;
++  }
++  return static_cast<size_t>(start);
++}
++}  // namespace
++
++std::optional<size_t> WebGpuPackedPixelBytes(
++    const WebGpuReadbackLayout& layout) {
++  if (layout.width == 0 || layout.height == 0 ||
++      (layout.format != WebGpuPixelFormat::kRgba8Unorm &&
++       layout.format != WebGpuPixelFormat::kBgra8Unorm)) {
++    return std::nullopt;
++  }
++  const uint64_t row_bytes = static_cast<uint64_t>(layout.width) * 4;
++  if (row_bytes > std::numeric_limits<size_t>::max() / layout.height) {
++    return std::nullopt;
++  }
++  return static_cast<size_t>(row_bytes * layout.height);
++}
++
++std::optional<uint64_t> WebGpuReadbackEnd(
++    const WebGpuReadbackLayout& layout,
++    size_t buffer_bytes) {
++  const auto packed = WebGpuPackedPixelBytes(layout);
++  if (!packed || !MappingStart(layout, 0, buffer_bytes, *packed)) {
++    return std::nullopt;
++  }
++  return layout.offset + static_cast<uint64_t>(layout.height - 1) *
++                             layout.row_pitch +
++         static_cast<uint64_t>(layout.width) * 4;
++}
++
++bool ExtractWebGpuRgba8(std::span<const uint8_t> mapped,
++                       uint64_t mapping_offset,
++                       const WebGpuReadbackLayout& layout,
++                       std::span<uint8_t> rgba) {
++  const auto start = MappingStart(layout, mapping_offset, mapped.size(), rgba.size());
++  if (!start || Overlaps(mapped, rgba)) {
++    return false;
++  }
++  const size_t row_bytes = static_cast<size_t>(layout.width) * 4;
++  const size_t red = layout.format == WebGpuPixelFormat::kBgra8Unorm ? 2 : 0;
++  for (uint32_t y = 0; y < layout.height; ++y) {
++    const auto source = mapped.subspan(*start + static_cast<size_t>(y) * layout.row_pitch, row_bytes);
++    auto destination = rgba.subspan(static_cast<size_t>(y) * row_bytes, row_bytes);
++    for (size_t x = 0; x < row_bytes; x += 4) {
++      destination[x] = source[x + red];
++      destination[x + 1] = source[x + 1];
++      destination[x + 2] = source[x + 2 - red];
++      destination[x + 3] = source[x + 3];
++    }
++  }
++  return true;
++}
++
++bool StoreWebGpuRgba8(std::span<const uint8_t> rgba,
++                     const WebGpuReadbackLayout& layout,
++                     uint64_t mapping_offset,
++                     std::span<uint8_t> mapped) {
++  const auto start = MappingStart(layout, mapping_offset, mapped.size(), rgba.size());
++  if (!start || Overlaps(mapped, rgba)) {
++    return false;
++  }
++  const size_t row_bytes = static_cast<size_t>(layout.width) * 4;
++  const size_t red = layout.format == WebGpuPixelFormat::kBgra8Unorm ? 2 : 0;
++  for (uint32_t y = 0; y < layout.height; ++y) {
++    const auto source = rgba.subspan(static_cast<size_t>(y) * row_bytes, row_bytes);
++    auto destination = mapped.subspan(*start + static_cast<size_t>(y) * layout.row_pitch, row_bytes);
++    for (size_t x = 0; x < row_bytes; x += 4) {
++      destination[x + red] = source[x];
++      destination[x + 1] = source[x + 1];
++      destination[x + 2 - red] = source[x + 2];
++      destination[x + 3] = source[x + 3];
++    }
++  }
++  return true;
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_layout.h b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_layout.h
+new file mode 100644
+index 0000000..1eb179d
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_layout.h
+@@ -0,0 +1,41 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_WEBGPU_READBACK_LAYOUT_H_
++#define GLINT_WEBGPU_READBACK_LAYOUT_H_
++
++#include <cstddef>
++#include <cstdint>
++#include <optional>
++#include <span>
++
++namespace glint::candidate {
++enum class WebGpuPixelFormat { kRgba8Unorm, kBgra8Unorm };
++
++// One already validated 2D copy, one layer; offsets are buffer-relative.
++// A zero row pitch represents the omitted bytesPerRow of a single-row copy.
++struct WebGpuReadbackLayout {
++  uint64_t offset = 0;
++  uint32_t row_pitch = 0;
++  uint32_t width = 0;
++  uint32_t height = 0;
++  WebGpuPixelFormat format = WebGpuPixelFormat::kRgba8Unorm;
++};
++
++std::optional<size_t> WebGpuPackedPixelBytes(const WebGpuReadbackLayout& layout);
++
++// Exclusive end of a complete, one-layer native copy in a buffer of this size.
++std::optional<uint64_t> WebGpuReadbackEnd(const WebGpuReadbackLayout& layout,
++                                       size_t buffer_bytes);
++
++// Detached non-overlapping storage only. Partial mappings and invalid layouts
++// fail before writing any output. These helpers do not select or protect data.
++bool ExtractWebGpuRgba8(std::span<const uint8_t> mapped,
++                       uint64_t mapping_offset,
++                       const WebGpuReadbackLayout& layout,
++                       std::span<uint8_t> rgba);
++bool StoreWebGpuRgba8(std::span<const uint8_t> rgba,
++                     const WebGpuReadbackLayout& layout,
++                     uint64_t mapping_offset,
++                     std::span<uint8_t> mapped);
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_provenance.cc b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_provenance.cc
+new file mode 100644
+index 0000000..c40f7f3
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_provenance.cc
+@@ -0,0 +1,283 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "webgpu_readback_provenance.h"
++
++#include <algorithm>
++#include <limits>
++
++namespace glint::candidate {
++namespace {
++WebGpuReadbackRegion Clip(const WebGpuReadbackRegion& region,
++                          uint64_t begin,
++                          uint64_t end) {
++  auto result = region;
++  result.buffer_offset = begin;
++  result.size = end - begin;
++  result.snapshot_offset += begin - region.buffer_offset;
++  return result;
++}
++
++bool ContainsPixels(const WebGpuReadbackRegion& region) {
++  const auto end = WebGpuReadbackEnd(region.snapshot_layout,
++                                    std::numeric_limits<size_t>::max());
++  if (!end || region.size == 0 ||
++      region.snapshot_offset > std::numeric_limits<uint64_t>::max() - region.size) {
++    return false;
++  }
++  const auto& layout = region.snapshot_layout;
++  const uint64_t begin = std::max(layout.offset, region.snapshot_offset);
++  const uint64_t finish = std::min(*end, region.snapshot_offset + region.size);
++  if (begin >= finish) {
++    return false;
++  }
++  const uint64_t row_bytes = static_cast<uint64_t>(layout.width) * 4;
++  const uint64_t pitch = layout.row_pitch == 0 ? row_bytes : layout.row_pitch;
++  const uint64_t position = begin - layout.offset;
++  const uint64_t row = position / pitch;
++  if (position % pitch < row_bytes) {
++    return true;
++  }
++  return row + 1 < layout.height &&
++         layout.offset + (row + 1) * pitch < finish;
++}
++}  // namespace
++
++WebGpuReadbackProvenance::WebGpuReadbackProvenance(size_t buffer_bytes,
++                                                 uint64_t device_epoch)
++    : buffer_bytes_(buffer_bytes),
++      device_epoch_(device_epoch),
++      reliable_(device_epoch != 0) {}
++
++bool WebGpuReadbackProvenance::Poison() {
++  reliable_ = false;
++  count_ = 0;
++  return false;
++}
++
++bool WebGpuReadbackProvenance::Fits(uint64_t offset, uint64_t size) const {
++  return offset <= buffer_bytes_ && size <= buffer_bytes_ - offset;
++}
++
++bool WebGpuReadbackProvenance::Advance(uint64_t sequence) {
++  if (destroyed_ || !reliable_) {
++    return false;
++  }
++  if (sequence == 0 || sequence <= sequence_) {
++    return Poison();
++  }
++  sequence_ = sequence;
++  return true;
++}
++
++bool WebGpuReadbackProvenance::Append(const WebGpuReadbackRegion& region) {
++  if (!ContainsPixels(region)) {
++    return true;
++  }
++  if (count_ == regions_.size()) {
++    return Poison();
++  }
++  regions_[count_++] = region;
++  return true;
++}
++
++bool WebGpuReadbackProvenance::Erase(uint64_t offset, uint64_t size) {
++  if (size == 0) {
++    return true;
++  }
++  const auto old = regions_;
++  const size_t previous_count = count_;
++  count_ = 0;
++  const uint64_t end = offset + size;
++  for (size_t i = 0; i < previous_count; ++i) {
++    const auto& region = old[i];
++    const uint64_t region_end = region.buffer_offset + region.size;
++    if (offset >= region_end || end <= region.buffer_offset) {
++      if (!Append(region)) {
++        return false;
++      }
++    } else {
++      if (region.buffer_offset < offset &&
++          !Append(Clip(region, region.buffer_offset, offset))) {
++        return false;
++      }
++      if (end < region_end && !Append(Clip(region, end, region_end))) {
++        return false;
++      }
++    }
++  }
++  return true;
++}
++
++bool WebGpuReadbackProvenance::RecordTextureCopy(
++    uint64_t sequence,
++    const WebGpuReadbackLayout& layout,
++    const WebGpuSnapshotToken& snapshot,
++    const WebGpuSourceRect& source_rect) {
++  if (!Advance(sequence)) {
++    return false;
++  }
++  if (layout.width == 0 || layout.height == 0) {
++    return Fits(layout.offset, 0) || Poison();
++  }
++  const auto end = WebGpuReadbackEnd(layout, buffer_bytes_);
++  if (!end || snapshot.device_epoch != device_epoch_ ||
++      snapshot.snapshot_id == 0 || snapshot.source_version == 0 ||
++      snapshot.policy_generation == 0 ||
++      source_rect.x > source_rect.full_width ||
++      source_rect.y > source_rect.full_height ||
++      layout.width > source_rect.full_width - source_rect.x ||
++      layout.height > source_rect.full_height - source_rect.y ||
++      !WebGpuPackedPixelBytes({0, 0, source_rect.full_width,
++                               source_rect.full_height, layout.format})) {
++    return Poison();
++  }
++  const uint64_t row_bytes = static_cast<uint64_t>(layout.width) * 4;
++  for (uint32_t row = 0; row < layout.height && count_ != 0; ++row) {
++    if (!Erase(layout.offset + static_cast<uint64_t>(row) * layout.row_pitch,
++               row_bytes)) {
++      return false;
++    }
++  }
++  return Append({layout.offset, *end - layout.offset, layout.offset,
++                 layout, snapshot, source_rect});
++}
++
++bool WebGpuReadbackProvenance::RecordFullTextureCopy(
++    uint64_t sequence,
++    const WebGpuReadbackLayout& layout,
++    const WebGpuSnapshotToken& snapshot) {
++  return RecordTextureCopy(sequence, layout, snapshot,
++      {0, 0, layout.width, layout.height});
++}
++
++bool WebGpuReadbackProvenance::RecordBufferCopy(
++    uint64_t sequence,
++    uint64_t destination_offset,
++    const WebGpuReadbackProvenance& source,
++    uint64_t source_offset,
++    uint64_t size) {
++  const auto previous = source;
++  if (!Advance(sequence)) {
++    return false;
++  }
++  if (!previous.reliable_ || previous.destroyed_ ||
++      previous.device_epoch_ != device_epoch_ || previous.sequence_ >= sequence ||
++      !Fits(destination_offset, size) || !previous.Fits(source_offset, size) ||
++      destination_offset % 4 != 0 || source_offset % 4 != 0 || size % 4 != 0) {
++    return Poison();
++  }
++  if (size == 0) {
++    return true;
++  }
++  if (this == &source && destination_offset < source_offset + size &&
++      source_offset < destination_offset + size) {
++    return Poison();
++  }
++  if (!Erase(destination_offset, size)) {
++    return false;
++  }
++  for (size_t i = 0; i < previous.count_; ++i) {
++    const auto& region = previous.regions_[i];
++    const uint64_t begin = std::max(source_offset, region.buffer_offset);
++    const uint64_t end = std::min(source_offset + size,
++                                  region.buffer_offset + region.size);
++    if (begin < end) {
++      auto copied = Clip(region, begin, end);
++      copied.buffer_offset = destination_offset + begin - source_offset;
++      if (!Append(copied)) {
++        return false;
++      }
++    }
++  }
++  return true;
++}
++
++bool WebGpuReadbackProvenance::InvalidateWrite(uint64_t sequence,
++                                             uint64_t offset,
++                                             uint64_t size) {
++  if (!Advance(sequence)) {
++    return false;
++  }
++  if (!Fits(offset, size)) {
++    return Poison();
++  }
++  return Erase(offset, size);
++}
++
++WebGpuReadbackPlan WebGpuReadbackProvenance::PlanMap(uint64_t offset,
++                                                   uint64_t size) const {
++  WebGpuReadbackPlan plan;
++  plan.mapping_offset = offset;
++  plan.mapping_size = size;
++  if (destroyed_) {
++    plan.status = WebGpuMapProvenance::kDestroyed;
++  } else if (!reliable_ || !Fits(offset, size)) {
++    plan.status = WebGpuMapProvenance::kUnreliable;
++  } else if (size != 0) {
++    for (size_t i = 0; i < count_; ++i) {
++      const auto& region = regions_[i];
++      const uint64_t begin = std::max(offset, region.buffer_offset);
++      const uint64_t end = std::min(offset + size,
++                                    region.buffer_offset + region.size);
++      if (begin < end) {
++        auto clipped = Clip(region, begin, end);
++        if (ContainsPixels(clipped)) {
++          plan.regions[plan.count++] = clipped;
++        }
++      }
++    }
++    if (plan.count != 0) {
++      plan.status = WebGpuMapProvenance::kReadback;
++    }
++  }
++  return plan;
++}
++
++void WebGpuReadbackProvenance::Destroy() {
++  destroyed_ = true;
++  reliable_ = false;
++  count_ = 0;
++}
++
++std::optional<size_t> WebGpuCanonicalByte(
++    const WebGpuReadbackRegion& region,
++    uint64_t buffer_offset) {
++  if (buffer_offset < region.buffer_offset ||
++      buffer_offset - region.buffer_offset >= region.size ||
++      region.snapshot_offset > std::numeric_limits<uint64_t>::max() -
++                                   (buffer_offset - region.buffer_offset)) {
++    return std::nullopt;
++  }
++  const auto& layout = region.snapshot_layout;
++  const auto& rectangle = region.source_rect;
++  if (rectangle.x > rectangle.full_width || rectangle.y > rectangle.full_height ||
++      layout.width > rectangle.full_width - rectangle.x ||
++      layout.height > rectangle.full_height - rectangle.y ||
++      !WebGpuPackedPixelBytes({0, 0, rectangle.full_width,
++                               rectangle.full_height, layout.format})) {
++    return std::nullopt;
++  }
++  const auto end = WebGpuReadbackEnd(layout,
++                                    std::numeric_limits<size_t>::max());
++  const uint64_t original = region.snapshot_offset +
++                            (buffer_offset - region.buffer_offset);
++  if (!end || original < layout.offset || original >= *end) {
++    return std::nullopt;
++  }
++  const uint64_t row_bytes = static_cast<uint64_t>(layout.width) * 4;
++  const uint64_t pitch = layout.row_pitch == 0 ? row_bytes : layout.row_pitch;
++  const uint64_t relative = original - layout.offset;
++  const uint64_t row = relative / pitch;
++  const uint64_t column = relative % pitch;
++  if (row >= layout.height || column >= row_bytes) {
++    return std::nullopt;
++  }
++  uint64_t channel = column % 4;
++  if (layout.format == WebGpuPixelFormat::kBgra8Unorm && channel % 2 == 0) {
++    channel = 2 - channel;
++  }
++  return static_cast<size_t>(
++      ((row + rectangle.y) * rectangle.full_width + column / 4 + rectangle.x) * 4 +
++      channel);
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_provenance.h b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_provenance.h
+new file mode 100644
+index 0000000..8a82fc5
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_provenance.h
+@@ -0,0 +1,94 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_WEBGPU_READBACK_PROVENANCE_H_
++#define GLINT_WEBGPU_READBACK_PROVENANCE_H_
++
++#include <array>
++#include <cstddef>
++#include <cstdint>
++#include <optional>
++
++#include "webgpu_readback_layout.h"
++
++namespace glint::candidate {
++struct WebGpuSnapshotToken {
++  uint64_t device_epoch = 0;
++  uint64_t snapshot_id = 0;
++  uint64_t source_version = 0;
++  uint64_t policy_generation = 0;
++  bool operator==(const WebGpuSnapshotToken&) const = default;
++};
++
++struct WebGpuSourceRect {
++  uint32_t x = 0;
++  uint32_t y = 0;
++  uint32_t full_width = 0;
++  uint32_t full_height = 0;
++};
++
++struct WebGpuReadbackRegion {
++  uint64_t buffer_offset = 0;
++  uint64_t size = 0;
++  uint64_t snapshot_offset = 0;
++  WebGpuReadbackLayout snapshot_layout;
++  WebGpuSnapshotToken snapshot;
++  WebGpuSourceRect source_rect;
++};
++
++enum class WebGpuMapProvenance { kUnrelated, kReadback, kUnreliable, kDestroyed };
++constexpr size_t kWebGpuReadbackRegionLimit = 16;
++
++struct WebGpuReadbackPlan {
++  WebGpuMapProvenance status = WebGpuMapProvenance::kUnrelated;
++  uint64_t mapping_offset = 0;
++  uint64_t mapping_size = 0;
++  size_t count = 0;
++  std::array<WebGpuReadbackRegion, kWebGpuReadbackRegionLimit> regions{};
++};
++
++// Native validated/executed writes only, under the device's queue lock. A sequence
++// is a strictly increasing device execution order, not a renderer encoding ID.
++// Tokens refer to retained full-surface snapshots owned by the future native hook.
++// No pixels, keys, GPU resources or JavaScript state are owned by this tracker.
++class WebGpuReadbackProvenance {
++ public:
++  WebGpuReadbackProvenance(size_t buffer_bytes, uint64_t device_epoch);
++  bool RecordTextureCopy(uint64_t sequence,
++                         const WebGpuReadbackLayout& layout,
++                         const WebGpuSnapshotToken& snapshot,
++                         const WebGpuSourceRect& source_rect);
++  bool RecordFullTextureCopy(uint64_t sequence,
++                             const WebGpuReadbackLayout& layout,
++                             const WebGpuSnapshotToken& snapshot);
++  bool RecordBufferCopy(uint64_t sequence,
++                        uint64_t destination_offset,
++                        const WebGpuReadbackProvenance& source,
++                        uint64_t source_offset,
++                        uint64_t size);
++  bool InvalidateWrite(uint64_t sequence, uint64_t offset, uint64_t size);
++  WebGpuReadbackPlan PlanMap(uint64_t offset, uint64_t size) const;
++  void Destroy();
++
++ private:
++  bool Advance(uint64_t sequence);
++  bool Poison();
++  bool Erase(uint64_t offset, uint64_t size);
++  bool Append(const WebGpuReadbackRegion& region);
++  bool Fits(uint64_t offset, uint64_t size) const;
++
++  size_t buffer_bytes_;
++  uint64_t device_epoch_;
++  uint64_t sequence_ = 0;
++  bool reliable_;
++  bool destroyed_ = false;
++  size_t count_ = 0;
++  std::array<WebGpuReadbackRegion, kWebGpuReadbackRegionLimit> regions_{};
++};
++
++// Maps one copied byte to a full snapshot's packed RGBA8 coordinate; padding and
++// out-of-range bytes have no coordinate. BGRA channels map without changing alpha.
++std::optional<size_t> WebGpuCanonicalByte(
++    const WebGpuReadbackRegion& region,
++    uint64_t buffer_offset);
++}  // namespace glint::candidate
++#endif
+diff --git a/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_snapshot.cc b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_snapshot.cc
+new file mode 100644
+index 0000000..ae20acf
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_snapshot.cc
+@@ -0,0 +1,227 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#include "webgpu_readback_snapshot.h"
++
++#include <algorithm>
++#include <limits>
++#include <new>
++
++#include "third_party/blink/renderer/core/html/canvas/glint/canvas_readback_candidate.h"
++
++namespace glint::candidate {
++WebGpuReadbackSnapshots::WebGpuReadbackSnapshots(uint64_t device_epoch,
++                                                 uint64_t policy_generation,
++                                                 size_t snapshot_limit_bytes,
++                                                 size_t shadow_limit_bytes)
++    : device_epoch_(device_epoch),
++      policy_generation_(policy_generation),
++      snapshot_limit_bytes_(snapshot_limit_bytes),
++      shadow_limit_bytes_(shadow_limit_bytes),
++      destroyed_(device_epoch == 0 || policy_generation == 0) {}
++
++bool WebGpuReadbackSnapshots::BeginCapture(
++    const WebGpuSnapshotToken& token,
++    const WebGpuReadbackLayout& full_surface) {
++  if (destroyed_ || token.device_epoch != device_epoch_ ||
++      token.policy_generation != policy_generation_ || token.source_version == 0 ||
++      token.snapshot_id <= last_snapshot_id_) {
++    return false;
++  }
++  const auto packed = WebGpuPackedPixelBytes(full_surface);
++  if (!packed || !WebGpuReadbackEnd(full_surface, std::numeric_limits<size_t>::max()) ||
++      *packed > (snapshot_limit_bytes_ - reserved_bytes_) / 2) {
++    return false;
++  }
++  auto slot = std::find_if(snapshots_.begin(), snapshots_.end(),
++      [](const Snapshot& value) { return value.state == Snapshot::State::kFree; });
++  if (slot == snapshots_.end()) {
++    return false;
++  }
++  slot->state = Snapshot::State::kPending;
++  slot->token = token;
++  slot->capture_layout = full_surface;
++  slot->width = full_surface.width;
++  slot->height = full_surface.height;
++  slot->format = full_surface.format;
++  slot->size = *packed;
++  reserved_bytes_ += *packed * 2;
++  last_snapshot_id_ = token.snapshot_id;
++  return true;
++}
++
++bool WebGpuReadbackSnapshots::CompleteCapture(
++    const WebGpuSnapshotToken& token,
++    const WebGpuReadbackLayout& full_surface,
++    uint64_t mapping_offset,
++    std::span<const uint8_t> mapped,
++    const std::array<uint8_t, 32>& seed) {
++  if (destroyed_ || token.snapshot_id == 0) {
++    return false;
++  }
++  auto slot = std::find_if(snapshots_.begin(), snapshots_.end(),
++      [&token](const Snapshot& value) {
++        return value.state == Snapshot::State::kPending && value.token == token;
++      });
++  if (slot == snapshots_.end()) {
++    return false;
++  }
++  const auto cancel = [&]() {
++    const auto abandoned = slot->token;
++    Release(abandoned);
++    return false;
++  };
++  const auto& expected = slot->capture_layout;
++  if (full_surface.offset != expected.offset || full_surface.row_pitch != expected.row_pitch ||
++      full_surface.width != expected.width || full_surface.height != expected.height ||
++      full_surface.format != expected.format) {
++    return cancel();
++  }
++  const size_t packed = slot->size;
++  auto original = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[packed]);
++  auto protected_pixels = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[packed]);
++  if (!original || !protected_pixels ||
++      !ExtractWebGpuRgba8(mapped, mapping_offset, full_surface,
++                         {original.get(), packed})) {
++    return cancel();
++  }
++  std::copy_n(original.get(), packed, protected_pixels.get());
++  if (!TransformEdgeCoherentCanvas({protected_pixels.get(), packed},
++                                   full_surface.width, full_surface.height, seed)) {
++    return cancel();
++  }
++  slot->original = std::move(original);
++  slot->protected_pixels = std::move(protected_pixels);
++  slot->state = Snapshot::State::kReady;
++  retained_bytes_ += packed * 2;
++  return true;
++}
++
++bool WebGpuReadbackSnapshots::Capture(
++    const WebGpuSnapshotToken& token,
++    const WebGpuReadbackLayout& full_surface,
++    uint64_t mapping_offset,
++    std::span<const uint8_t> mapped,
++    const std::array<uint8_t, 32>& seed) {
++  return BeginCapture(token, full_surface) &&
++         CompleteCapture(token, full_surface, mapping_offset, mapped, seed);
++}
++
++size_t WebGpuReadbackSnapshots::pending_count() const {
++  return static_cast<size_t>(std::count_if(snapshots_.begin(), snapshots_.end(),
++      [](const Snapshot& value) { return value.state == Snapshot::State::kPending; }));
++}
++
++const WebGpuReadbackSnapshots::Snapshot* WebGpuReadbackSnapshots::Find(
++    const WebGpuSnapshotToken& token) const {
++  for (const auto& snapshot : snapshots_) {
++    if (snapshot.state == Snapshot::State::kReady && snapshot.token == token) {
++      return &snapshot;
++    }
++  }
++  return nullptr;
++}
++
++std::optional<WebGpuMappedShadow> WebGpuReadbackSnapshots::BuildProtectedShadow(
++    const WebGpuReadbackPlan& plan,
++    uint64_t mapping_offset,
++    std::span<const uint8_t> mapped) const {
++  if (destroyed_ || plan.status != WebGpuMapProvenance::kReadback ||
++      plan.count == 0 || plan.count > plan.regions.size() ||
++      plan.mapping_offset != mapping_offset || plan.mapping_size != mapped.size() ||
++      mapped.empty() || mapped.size() > shadow_limit_bytes_ ||
++      mapped.size() > std::numeric_limits<uint64_t>::max() - mapping_offset) {
++    return std::nullopt;
++  }
++  const size_t marker_bytes = mapped.size() / 8 + (mapped.size() % 8 != 0);
++  if (marker_bytes > shadow_limit_bytes_ - mapped.size()) {
++    return std::nullopt;
++  }
++  WebGpuMappedShadow shadow;
++  shadow.bytes.reset(new (std::nothrow) uint8_t[mapped.size()]);
++  auto written = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[marker_bytes]());
++  if (!shadow.bytes || !written) {
++    return std::nullopt;
++  }
++  shadow.size = mapped.size();
++  std::copy(mapped.begin(), mapped.end(), shadow.bytes.get());
++  bool observed_pixel = false;
++  for (size_t index = 0; index < plan.count; ++index) {
++    const auto& region = plan.regions[index];
++    const auto* snapshot = Find(region.snapshot);
++    const auto source_end = WebGpuReadbackEnd(region.snapshot_layout,
++        std::numeric_limits<size_t>::max());
++    if (!snapshot || !source_end || region.size == 0 ||
++        region.buffer_offset < mapping_offset ||
++        region.buffer_offset - mapping_offset > mapped.size() ||
++        region.size > mapped.size() - (region.buffer_offset - mapping_offset) ||
++        region.snapshot_offset < region.snapshot_layout.offset ||
++        region.snapshot_offset > *source_end || region.size > *source_end - region.snapshot_offset ||
++        region.source_rect.full_width != snapshot->width ||
++        region.source_rect.full_height != snapshot->height ||
++        region.source_rect.x > snapshot->width || region.source_rect.y > snapshot->height ||
++        region.snapshot_layout.width > snapshot->width - region.source_rect.x ||
++        region.snapshot_layout.height > snapshot->height - region.source_rect.y ||
++        region.snapshot_layout.format != snapshot->format) {
++      return std::nullopt;
++    }
++    const auto& layout = region.snapshot_layout;
++    const uint64_t row_bytes = static_cast<uint64_t>(layout.width) * 4;
++    const uint64_t pitch = layout.row_pitch == 0 ? row_bytes : layout.row_pitch;
++    const uint64_t begin = region.snapshot_offset;
++    const uint64_t end = begin + region.size;
++    const uint64_t first_row = (begin - layout.offset) / pitch;
++    const uint64_t last_row = (end - 1 - layout.offset) / pitch;
++    for (uint64_t row = first_row; row <= last_row; ++row) {
++      const uint64_t row_start = layout.offset + row * pitch;
++      const uint64_t pixel_begin = std::max(begin, row_start);
++      const uint64_t pixel_end = std::min(end, row_start + row_bytes);
++      const uint64_t canonical_row =
++          ((row + region.source_rect.y) * snapshot->width + region.source_rect.x) * 4;
++      for (uint64_t byte = pixel_begin; byte < pixel_end; ++byte) {
++        const uint64_t column = byte - row_start;
++        uint64_t channel = column % 4;
++        if (layout.format == WebGpuPixelFormat::kBgra8Unorm && channel % 2 == 0) {
++          channel = 2 - channel;
++        }
++        const size_t canonical = static_cast<size_t>(canonical_row + (column / 4) * 4 + channel);
++        const size_t local = static_cast<size_t>(region.buffer_offset - mapping_offset + byte - begin);
++        const uint8_t bit = static_cast<uint8_t>(1u << (local % 8));
++        if (canonical >= snapshot->size || (written[local / 8] & bit) != 0 ||
++            mapped[local] != snapshot->original[canonical]) {
++          return std::nullopt;
++        }
++        written[local / 8] |= bit;
++        observed_pixel = true;
++        shadow.bytes[local] = snapshot->protected_pixels[canonical];
++      }
++    }
++  }
++  if (!observed_pixel) {
++    return std::nullopt;
++  }
++  return shadow;
++}
++
++bool WebGpuReadbackSnapshots::Release(const WebGpuSnapshotToken& token) {
++  for (auto& snapshot : snapshots_) {
++    if (snapshot.state != Snapshot::State::kFree && snapshot.token == token) {
++      reserved_bytes_ -= snapshot.size * 2;
++      if (snapshot.state == Snapshot::State::kReady) {
++        retained_bytes_ -= snapshot.size * 2;
++      }
++      snapshot = Snapshot{};
++      return true;
++    }
++  }
++  return false;
++}
++
++void WebGpuReadbackSnapshots::Destroy() {
++  destroyed_ = true;
++  for (auto& snapshot : snapshots_) {
++    snapshot = Snapshot{};
++  }
++  retained_bytes_ = 0;
++  reserved_bytes_ = 0;
++}
++}  // namespace glint::candidate
+diff --git a/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_snapshot.h b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_snapshot.h
+new file mode 100644
+index 0000000..43ae854
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgpu/glint/webgpu_readback_snapshot.h
+@@ -0,0 +1,80 @@
++// Copyright 2026 CamouFlow contributors.
++// SPDX-License-Identifier: MIT
++#ifndef GLINT_WEBGPU_READBACK_SNAPSHOT_H_
++#define GLINT_WEBGPU_READBACK_SNAPSHOT_H_
++
++#include <array>
++#include <cstddef>
++#include <cstdint>
++#include <memory>
++#include <optional>
++#include <span>
++
++#include "webgpu_readback_provenance.h"
++
++namespace glint::candidate {
++struct WebGpuMappedShadow {
++  std::unique_ptr<uint8_t[]> bytes;
++  size_t size = 0;
++};
++
++// Whole-surface snapshots from a trusted native execution boundary only. Seeds
++// are supplied by that context's policy and are not retained. Call under the
++// owning device lock. Returned shadows still need native mapped-buffer lifetime
++// integration; this class never installs JavaScript hooks or owns GPU resources.
++class WebGpuReadbackSnapshots {
++ public:
++  WebGpuReadbackSnapshots(uint64_t device_epoch,
++                          uint64_t policy_generation,
++                          size_t snapshot_limit_bytes,
++                          size_t shadow_limit_bytes);
++  // Issue in native execution order; completion may arrive in any order.
++  bool BeginCapture(const WebGpuSnapshotToken& token,
++                     const WebGpuReadbackLayout& full_surface);
++  bool CompleteCapture(const WebGpuSnapshotToken& token,
++                        const WebGpuReadbackLayout& full_surface,
++                        uint64_t mapping_offset,
++                        std::span<const uint8_t> mapped,
++                        const std::array<uint8_t, 32>& seed);
++  bool Capture(const WebGpuSnapshotToken& token,
++                const WebGpuReadbackLayout& full_surface,
++                uint64_t mapping_offset,
++                std::span<const uint8_t> mapped,
++                const std::array<uint8_t, 32>& seed);
++  std::optional<WebGpuMappedShadow> BuildProtectedShadow(
++      const WebGpuReadbackPlan& plan,
++      uint64_t mapping_offset,
++      std::span<const uint8_t> mapped) const;
++  bool Release(const WebGpuSnapshotToken& token);
++  void Destroy();
++  size_t retained_bytes() const { return retained_bytes_; }
++  size_t reserved_bytes() const { return reserved_bytes_; }
++  size_t pending_count() const;
++
++ private:
++  struct Snapshot {
++    enum class State { kFree, kPending, kReady };
++    State state = State::kFree;
++    WebGpuSnapshotToken token;
++    WebGpuReadbackLayout capture_layout;
++    uint32_t width = 0;
++    uint32_t height = 0;
++    WebGpuPixelFormat format = WebGpuPixelFormat::kRgba8Unorm;
++    size_t size = 0;
++    std::unique_ptr<uint8_t[]> original;
++    std::unique_ptr<uint8_t[]> protected_pixels;
++  };
++  const Snapshot* Find(const WebGpuSnapshotToken& token) const;
++
++  uint64_t device_epoch_;
++  uint64_t policy_generation_;
++  uint64_t last_snapshot_id_ = 0;
++  size_t snapshot_limit_bytes_;
++  size_t shadow_limit_bytes_;
++  size_t retained_bytes_ = 0;
++  size_t reserved_bytes_ = 0;
++  bool destroyed_ = false;
++  std::array<Snapshot, kWebGpuReadbackRegionLimit> snapshots_{};
++};
++}  // namespace glint::candidate
++#endif

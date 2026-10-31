@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "passed": true,
+  "measurement_complete": true,
+  "postguards_passed": true,
+  "scope": "Preserved 076 API reference: two GPU texture copies read in reverse order, unmap detachment, cancellation and destroyed-device rejection; not new native component integration",
+  "source": "native/drafts/environment/first-script/webgpu_map_lifecycle.js",
+  "source_sha256": "fd2c6af5ed7649159673034349f78b0cf5058378975b56270e548daf96cbd070",
+  "raw_report_sha256": "10946bc202122af116d5308523034f11530490ac00a6d1c7c63dc4ebd2fbbf9d",
+  "runtime_core_sha256_measured": {
+    "chrome.exe": "bccb6a748eadbbc119f26654298594225b816bf9323a81965fd048a3bc55d091",
+    "chrome.dll": "03b34a8d3786d9c313b89afc1609c032091656678f936ee7087d62fca40e1d00",
+    "chrome_elf.dll": "0200974a35825603345a38c0de76648ad09654f8d40d8f3cbc0249c45975fffa"
+  },
+  "receipt_sha256": "ca69cc734d4829bcb2357012d77fdda0fb72130fe91f5cf48da3f67acb17d7b3",
+  "rows": [
+    {
+      "mode": "baseline",
+      "context": "document",
+      "value": {
+        "measured": true,
+        "compatibilityPassed": true,
+        "mapStateAfterDestroy": "unmapped",
+        "copyOrder": [
+          1,
+          2
+        ],
+        "readOrder": [
+          2,
+          1
+        ],
+        "reads": [
+          {
+            "source": 2,
+            "referenceMatched": true,
+            "detached": true
+          },
+          {
+            "source": 1,
+            "referenceMatched": true,
+            "detached": true
+          }
+        ],
+        "cancellation": "AbortError",
+        "afterDestroy": "AbortError",
+        "deviceLossReason": "destroyed"
+      }
+    },
+    {
+      "mode": "ready",
+      "context": "document",
+      "value": {
+        "measured": true,
+        "compatibilityPassed": true,
+        "mapStateAfterDestroy": "unmapped",
+        "copyOrder": [
+          1,
+          2
+        ],
+        "readOrder": [
+          2,
+          1
+        ],
+        "reads": [
+          {
+            "source": 2,
+            "referenceMatched": true,
+            "detached": true
+          },
+          {
+            "source": 1,
+            "referenceMatched": true,
+            "detached": true
+          }
+        ],
+        "cancellation": "AbortError",
+        "afterDestroy": "AbortError",
+        "deviceLossReason": "destroyed"
+      }
+    }
+  ],
+  "prior_harness_negative": {
+    "raw_report_sha256": "9a56450c5b03143f8d96370626b4290cf489cc99bb6592cfac3e2b9233ec7443",
+    "reason": "Incorrect OperationError expectation after device loss; corrected to strict AbortError per WebGPU and pinned Dawn, not an engine bug"
+  },
+  "public_cli_integrated": false,
+  "native_callback_integration_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false
+}

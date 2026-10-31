@@ -72,6 +72,22 @@ under AddressSanitizer: 18 provenance cases + 256 oracle variations, and 26 snap
 cases + 64 crop/partial-read variations. [Current evidence](drafts/environment/webgpu-readback-provenance-preparation.json).
 No trusted GPU execution/capture hook, context transport or mapped-JS lifetime
 integration is installed. These component checks do not resolve the runtime mismatch.
+Pending capture issuance and completion are now separate. Tickets and memory are
+reserved in native execution order; completions may arrive in any order. The
+isolated normal/ASan checks passed ten lifecycle cases and all six completion
+orders of three captures, retaining the earlier component checks.
+[Pending model evidence](drafts/environment/webgpu-capture-lifecycle-observations.json).
+The preserved 076 browser independently passed reverse-order reads of two texture
+copies, unmap detachment, cancellation and device-loss AbortError behavior in both
+probe modes. A prior OperationError expectation was a harness error, not a browser
+failure. [API reference](drafts/environment/webgpu-map-lifecycle76-observations.json).
+This reference does not prove the new native components are installed.
+
+Integration constraints: use existing wire device ID/generation lookup and an
+opaque, non-logging private policy transfer, not secret-bearing printed device
+descriptors. Capture only after native command validation/execution. Shadow work
+must complete before Dawn's mapped-completion notification, preserving the
+[WebGPU promise-ordering rules](https://www.w3.org/TR/webgpu/#promise-ordering).
 Full lifecycle Python at `8e46cb2`: **4956 passed, 1 skipped**, source/status guards
 passed, before this unselected foundation publication.
 [Full result](drafts/environment/canonical-python76-webgpu-lifecycle-observations.json).

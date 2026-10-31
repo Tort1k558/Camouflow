@@ -8,6 +8,34 @@ import pytest
 
 
 @pytest.fixture
+def native_components_before_capture_lifecycle(tmp_path):
+    """Recover exact measured synchronous component sources from the upgrade delta."""
+    root = Path(__file__).resolve().parents[1]
+    directory = root / 'native/drafts/environment'
+    record = json.loads((directory / 'webgpu-capture-lifecycle-preparation.json').read_bytes())
+    base = tmp_path / 'before-native-capture-lifecycle'
+    for row in record['sources']:
+        target = base / row['source']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text((root / row['source']).read_text(encoding='utf-8-sig'), encoding='utf-8', newline='\n')
+    patch = directory / record['patch']
+    assert hashlib.sha256(patch.read_bytes()).hexdigest() == record['patch_sha256']
+    subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--reverse', '--whitespace=error', str(patch)],
+                   cwd=base, check=True, capture_output=True, timeout=15)
+    result = {'sources': {}, 'sha256': {}}
+    for row in record['sources']:
+        target = base / row['source']
+        if row['before_sha256'] is None:
+            assert not target.exists()
+        else:
+            value = hashlib.sha256(target.read_bytes()).hexdigest()
+            assert value == row['before_sha256'], row['source']
+            result['sources'][row['source']] = target.read_bytes()
+            result['sha256'][row['source']] = value
+    return result
+
+
+@pytest.fixture
 def native_units_before_screenshot(tmp_path, monkeypatch):
     root = Path(__file__).resolve().parents[1]
     relative = 'scripts/verify_native_privacy_units.py'
