@@ -1203,3 +1203,24 @@ and 34,817 assertions per normal/ASan mode, including device-address reuse and
 ownership after CPU ticket destruction. Fake resources were used: no native queue,
 policy/epoch input-plan commit, actual bindings/Wire/DXC or browser consistency
 admission follows from this result. The selected runtime is unchanged.
+
+## Token-bound GPU input metadata plan (unselected)
+
+The [input-plan extension](drafts/webgpu-input-plan/README.md) exports precise
+buffer/copy regions with retained GPU leases from the existing CPU observer.
+Token epoch/generation and snapshot dimensions/layout are checked under its mutex
+without CPU pixel reads or calls into Dawn. Overlapping uses are merged; fragments
+remain exact and are bounded per buffer. Trusted shader-byte results preserve
+their existing eligibility instead of being reinterpreted as pixel planes.
+
+Commit compares the same immutable plan object, current sequence and policy,
+then consumes it once. Writes/copies, destruction, errors, shader scopes and new
+plans invalidate old plans. This is metadata validation only: ByteEligible and
+output readiness are unchanged, and native binding/lease-owner resolution is not
+installed. The experimental observer interface adds explicit plan/commit methods.
+
+Twenty-one packets replay/reverse across 84 paths; fourteen native syntax units
+passed. Actual CPU controller/policy/provenance passed 256 iterations / 12,802
+assertions per normal/ASan, plus 2,000 prior controller cycles / 10,154 assertions.
+GPU payloads were mocked, not executed in Dawn. Queue/Wire/DXC, actual routing and
+combined browser consistency remain unverified; selected runtime unchanged.

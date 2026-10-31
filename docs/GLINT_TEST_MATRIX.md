@@ -1,5 +1,20 @@
 # Glint browser test matrix
 
+## GPU input metadata plan/commit — CPU controller, not native binding execution
+
+| Gate | Measured result | Boundary |
+| --- | --- | --- |
+| Replay / reverse | 21 packets, 84 paths | Unselected external staging |
+| Native target-flag syntax | 14 units passed | No component link |
+| CPU controller normal / ASan | 256 iterations, 12,802 assertions each | Actual policy/provenance; fake GPU capabilities |
+| Existing controller compatibility | 2,000 cycles / 10,154 assertions each on new sources | CPU regression, not Dawn queue |
+| Plan identity/revision | Foreign, stale, replaced and consumed plans rejected; exact aliases/fragments, lease retention checked | Metadata commit is not routing or output permission |
+| Changed inputs | 7 refusals before compilation | Includes altered legacy fixture logic |
+
+[Implementation and reproduction](../native/drafts/webgpu-input-plan/README.md).
+Real native lease-owner resolution at bindings, shadows/writeback, queue/Wire,
+DXC and combined browser consistency remain unfinished or unverified. Runtime unchanged.
+
 ## Logical-owner GPU snapshot leases — extracted logic, not native queue execution
 
 | Gate | Measured result | Boundary |

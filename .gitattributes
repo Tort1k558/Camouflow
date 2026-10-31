@@ -182,3 +182,5 @@ native/drafts/webgpu-copy-pixel-snapshot/*.py text eol=lf
 native/drafts/webgpu-copy-pixel-snapshot/*.cc text eol=lf
 native/drafts/webgpu-snapshot-lease/*.py text eol=lf
 native/drafts/webgpu-snapshot-lease/*.cc text eol=lf
+native/drafts/webgpu-input-plan/*.py text eol=lf
+native/drafts/webgpu-input-plan/*.cc text eol=lf

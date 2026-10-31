@@ -1,0 +1,203 @@
+--- a/third_party/dawn/include/dawn/native/DawnNative.h
++++ b/third_party/dawn/include/dawn/native/DawnNative.h
+@@ -118,6 +118,27 @@
+     std::span<const GlintShaderBufferUse> buffers;
+     bool hasTextureInputs = false;
+     bool complete = false;
++};
++
++struct GlintGpuInputRegion {
++    GlintBufferIdentity buffer;
++    uint64_t bufferOffset = 0;
++    uint64_t size = 0;
++    uint64_t snapshotOffset = 0;
++    uint64_t layoutOffset = 0;
++    uint32_t rowPitch = 0;
++    uint32_t width = 0;
++    uint32_t height = 0;
++    uint32_t sourceX = 0;
++    uint32_t sourceY = 0;
++    GlintReadbackFormat format = GlintReadbackFormat::Unsupported;
++    std::shared_ptr<const GlintGpuReadbackSnapshot> snapshot;
++};
++struct GlintGpuInputPlan {
++    uint64_t deviceEpoch = 0;
++    uint64_t policyGeneration = 0;
++    uint64_t sequence = 0;
++    std::vector<GlintGpuInputRegion> regions;
+ };
+ 
+ class DAWN_NATIVE_EXPORT GlintByteReadbackSnapshot {
+@@ -183,6 +204,12 @@
+     virtual bool CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) = 0;
+     // Validated binding ranges, not proof of exact shader writes.
+     virtual void OnShaderScope(const GlintShaderScope& scope) = 0;
++    // Native-only immutable metadata/lease plan. Null means denied, never raw readiness.
++    virtual std::shared_ptr<const GlintGpuInputPlan> PrepareGpuInputPlan(
++        const GlintShaderScope& scope) = 0;
++    // Attests unchanged metadata only. Does not authorize output or prove GPU routing.
++    virtual bool CommitGpuInputPlan(std::shared_ptr<const GlintGpuInputPlan> plan) = 0;
++
+     // Trusted native calls only. Empty plan means use the existing opaque scope path.
+     // An outstanding plan must be committed or invalidated with OnExecutionError.
+     // Projection readiness is backend-owned, never supplied by renderer commands.
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.h
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.h
+@@ -44,6 +44,10 @@
+   void OnExecutionError() override;
+   bool CopyShaderProjectionSeed(std::span<uint8_t, 32> seed) override;
+   void OnShaderScope(const dawn::native::GlintShaderScope& scope) override;
++  std::shared_ptr<const dawn::native::GlintGpuInputPlan> PrepareGpuInputPlan(
++      const dawn::native::GlintShaderScope& scope) override;
++  bool CommitGpuInputPlan(std::shared_ptr<const dawn::native::GlintGpuInputPlan> plan) override;
++
+   dawn::native::GlintShaderBytePlan BeginShaderByteScope(
+       const dawn::native::GlintShaderScope& scope,
+       bool sampled_inputs_projected) override;
+@@ -83,6 +87,7 @@
+   bool ByteEligible(const BufferState& buffer,
+                     uint64_t offset,
+                     uint64_t size) const;
++  std::weak_ptr<const dawn::native::GlintGpuInputPlan> gpu_input_plan_;
+   uint64_t scope_id_ = 0;
+   uint64_t active_scope_ = 0;
+   std::vector<ScopedOutput> scoped_outputs_;
+--- a/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
++++ b/gpu/command_buffer/service/glint_webgpu_readback_observer.cc
+@@ -76,6 +76,7 @@
+   capture.complete = false;
+ }
+ void GlintWebGPUReadbackObserver::Fail() {
++  gpu_input_plan_.reset();
+   failed_ = true;
+   active_scope_ = 0;
+   scoped_outputs_.clear();
+@@ -90,6 +91,7 @@
+     Fail();
+     return 0;
+   }
++  gpu_input_plan_.reset();
+   return ++sequence_;
+ }
+ GlintWebGPUReadbackObserver::BufferState*
+@@ -294,6 +296,96 @@
+   return true;
+ }
+ 
++std::shared_ptr<const dawn::native::GlintGpuInputPlan>
++GlintWebGPUReadbackObserver::PrepareGpuInputPlan(
++    const dawn::native::GlintShaderScope& scope) {
++  std::lock_guard lock(mutex_);
++  gpu_input_plan_.reset();
++  if (failed_ || active_scope_ || !ValidateShaderScope(scope)) return nullptr;
++  std::vector<dawn::native::GlintShaderBufferUse> ranges;
++  for (const auto& use : scope.buffers) {
++    if (use.size && (use.readable || use.writable)) ranges.push_back(use);
++  }
++  std::sort(ranges.begin(), ranges.end(), [](const auto& a, const auto& b) {
++    if (a.buffer.handle != b.buffer.handle)
++      return std::less<WGPUBuffer>{}(a.buffer.handle, b.buffer.handle);
++    return a.offset < b.offset;
++  });
++  std::vector<dawn::native::GlintShaderBufferUse> merged;
++  for (const auto& use : ranges) {
++    if (!merged.empty() && merged.back().buffer.handle == use.buffer.handle &&
++        use.offset <= merged.back().offset + merged.back().size) {
++      auto& last = merged.back();
++      last.size = std::max(last.offset + last.size, use.offset + use.size) - last.offset;
++      last.readable |= use.readable;
++      last.writable |= use.writable;
++    } else {
++      merged.push_back(use);
++    }
++  }
++  auto result = std::make_shared<dawn::native::GlintGpuInputPlan>();
++  result->deviceEpoch = epoch_;
++  result->policyGeneration = policy_->generation();
++  result->sequence = sequence_;
++  WGPUBuffer currentBuffer = nullptr;
++  size_t bufferRegions = 0;
++  for (const auto& use : merged) {
++    if (currentBuffer != use.buffer.handle) {
++      currentBuffer = use.buffer.handle;
++      bufferRegions = 0;
++    }
++    const auto found = buffers_.find(use.buffer.handle);
++    if (found == buffers_.end()) continue;
++    if (found->second.unsafe) return nullptr;
++    const auto plan = found->second.provenance.PlanMap(use.offset, use.size);
++    if (plan.status == WebGpuMapProvenance::kUnrelated) continue;
++    if (plan.status != WebGpuMapProvenance::kReadback) return nullptr;
++    for (size_t index = 0; index < plan.count; ++index) {
++      const auto& region = plan.regions[index];
++      if (++bufferRegions > kWebGpuReadbackRegionLimit) return nullptr;
++      if (region.snapshot.device_epoch != epoch_ ||
++          region.snapshot.policy_generation != policy_->generation()) return nullptr;
++      const auto capture = std::find_if(pending_.begin(), pending_.end(),
++          [&](const auto& value) { return value.token == region.snapshot; });
++      if (capture == pending_.end()) return nullptr;
++      // Existing trusted shader-byte results already have protected GPU contents.
++      // Preserve the established eligibility contract without a pixel-plane rewrite.
++      if (region.kind == WebGpuReadbackRegionKind::kCapturedBytes) {
++        if (!capture->byte_native ||
++            region.snapshot_offset > capture->byte_native->GetByteSize() ||
++            region.size > capture->byte_native->GetByteSize() - region.snapshot_offset) return nullptr;
++        continue;
++      }
++      if (region.kind != WebGpuReadbackRegionKind::kPixels || !capture->native) return nullptr;
++      auto gpu = capture->native->GetGpuSnapshot();
++      if (!gpu || gpu->GetWidth() != capture->layout.width ||
++          gpu->GetHeight() != capture->layout.height ||
++          gpu->GetWidth() != region.source_rect.full_width ||
++          gpu->GetHeight() != region.source_rect.full_height ||
++          PixelFormat(gpu->GetFormat()) != std::optional{capture->layout.format} ||
++          PixelFormat(gpu->GetFormat()) != std::optional{region.snapshot_layout.format}) return nullptr;
++      if (result->regions.size() >= dawn::native::kGlintShaderBufferUseLimit * kWebGpuReadbackRegionLimit)
++        return nullptr;
++      result->regions.push_back({use.buffer, region.buffer_offset, region.size,
++          region.snapshot_offset, region.snapshot_layout.offset, region.snapshot_layout.row_pitch,
++          region.snapshot_layout.width, region.snapshot_layout.height,
++          region.source_rect.x, region.source_rect.y, gpu->GetFormat(), std::move(gpu)});
++    }
++  }
++  gpu_input_plan_ = result;
++  return result;
++}
++
++bool GlintWebGPUReadbackObserver::CommitGpuInputPlan(
++    std::shared_ptr<const dawn::native::GlintGpuInputPlan> plan) {
++  std::lock_guard lock(mutex_);
++  const auto active = gpu_input_plan_.lock();
++  gpu_input_plan_.reset();
++  return !failed_ && !active_scope_ && plan && active == plan &&
++      plan->deviceEpoch == epoch_ && plan->policyGeneration == policy_->generation() &&
++      plan->sequence == sequence_;
++}
++
+ bool GlintWebGPUReadbackObserver::ByteEligible(const BufferState& buffer,
+                                                uint64_t offset,
+                                                uint64_t size) const {
+@@ -323,6 +415,7 @@
+     const dawn::native::GlintShaderScope& scope,
+     bool sampled_inputs_projected) {
+   std::lock_guard lock(mutex_);
++  gpu_input_plan_.reset();
+   if (failed_) {
+     return {0, {}, true};
+   }
+@@ -473,6 +566,7 @@
+     const dawn::native::GlintShaderScope& scope) {
+   const auto uses = scope.buffers;
+   std::lock_guard lock(mutex_);
++  gpu_input_plan_.reset();
+   if (failed_) {
+     return;
+   }
+@@ -525,6 +619,7 @@
+     Fail();
+     return;
+   }
++  gpu_input_plan_.reset();
+   buffers_.erase(buffer);
+   Collect();
+ }

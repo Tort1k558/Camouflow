@@ -2473,3 +2473,24 @@ API/payload/factory/resolver: 512 синтетических итераций / 
 по policy/epoch/source-copy token существующего observer, реальные bindings/aliases
 и writeback. Отсутствующий capability не разрешает raw shader input. Dawn/Wire,
 DXC и browser consistency не подтверждены; выбранный runtime остаётся 001–076.
+
+## GPU input metadata plan/commit — пакет 21
+
+Существующий CPU observer выдаёт точные диапазоны, copy layout, crop и retained
+GPU leases. Проверяются epoch/generation token и размеры/формат snapshot без Read
+пикселей и без вызовов Dawn под mutex. Пересечения объединяются, раздельные части
+не склеиваются через промежутки; на buffer действует ограничение регионов.
+
+Commit принимает только тот же объект плана с текущей sequence/policy и однократно
+погашает его. Записи, копии, destruction, ошибки, shader scopes и новый план
+делают прежний неактуальным. Уже доверенные shader-byte captures сохраняют eligibility.
+Это проверка metadata, не доказательство GPU routing: ByteEligible и readiness не ослаблены.
+
+21 пакет / 84 файла replay/reverse; 14 native syntax units прошли. Actual CPU
+controller normal/ASan: 256 итераций / 12 802 проверки; старый fixture на новых
+исходниках: 2 000 циклов / 10 154 проверки совместимости в каждом режиме.
+GPU capabilities в fixture подменены. [Код и воспроизведение](../native/drafts/webgpu-input-plan/README.md).
+
+Далее — native consumer с проверкой logical owner каждого lease, реальные
+buffer shadows/bindings/aliases и writable copyback. Native queue/Wire, DXC и
+browser consistency ещё не проверены; выбранный runtime 001–076 не менялся.
