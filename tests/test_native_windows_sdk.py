@@ -329,12 +329,13 @@ def test_toolchain_preparation_enforces_materialization_bounds(toolchain_prepara
 
 
 def test_toolchain_preparation_cli_works_from_an_external_directory(tmp_path):
+    from scripts.native_build import CANDIDATES
     from scripts import native_windows_toolchain as prep
 
     result = subprocess.run([sys.executable, "-I", str(prep.ROOT / "scripts/native_windows_toolchain.py"), "--help"],
                             cwd=tmp_path, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stderr
-    assert "--candidate {upstream-156,upstream-156-webgpu}" in result.stdout
+    assert "--candidate {" + ",".join(CANDIDATES) + "}" in result.stdout
     assert not list(tmp_path.iterdir())
 
 
