@@ -1,5 +1,17 @@
 # Glint: план проверки и развития
 
+## Complete component build candidate prepared
+
+The explicit [upstream-156-webgpu variant](../native/drafts/upstream-156-webgpu/README.md)
+contains 116 repository-scoped patches: baseline 001–076 plus all 30 component
+draft packets. All 116 apply/reverse, 268 upstream files restore, and all 88 final
+component paths match the measured standalone source. Official immutable source
+URLs validate. Normal 180 GiB / j4 restrictions remain unchanged.
+
+Next: preserve the exact baseline source/stage state, perform a clean verified
+transition with real dependency stages, then build and test the full Chromium
+runtime. No new browser binary or privacy/production admission is claimed yet.
+
 ## Actual direct and bundled native render inputs
 
 The [public Wire fixture](../native/drafts/webgpu-capture-retention/README.md)

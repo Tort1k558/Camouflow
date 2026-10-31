@@ -89,7 +89,7 @@ def test_empty_complete_chain_requires_a_clean_checkout(tmp_path):
 
 
 def test_net_path_tooling_reconstructs_prior_sources_without_rewriting_runtime_evidence(
-        native_tooling_before_net_paths, tmp_path):
+        native_tooling_before_net_paths, native_tooling_before_webgpu_candidate, tmp_path):
     root = Path(__file__).resolve().parents[1]
     directory = root / 'native/drafts/environment'
     record = json.loads((directory / 'net-path-tooling-source-upgrade.json').read_bytes())
@@ -107,4 +107,4 @@ def test_net_path_tooling_reconstructs_prior_sources_without_rewriting_runtime_e
                     str(directory / record['patch'])], cwd=tmp_path, check=True,
                    capture_output=True, timeout=15)
     for row in record['sources']:
-        assert (tmp_path / row['source']).read_bytes() == (root / row['source']).read_bytes()
+        assert (tmp_path / row['source']).read_bytes() == native_tooling_before_webgpu_candidate['sources'][row['source']]

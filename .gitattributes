@@ -204,3 +204,5 @@ native/drafts/webgpu-render-buffer-routing/*.cc text eol=lf
 native/drafts/webgpu-command-iterator/*.py text eol=lf
 native/drafts/webgpu-command-iterator/*.cc text eol=lf
 native/drafts/webgpu-capture-retention/* text eol=lf
+native/drafts/upstream-156-webgpu/*.json text eol=lf
+native/drafts/environment/webgpu-candidate-tooling-source-upgrade.json text eol=lf

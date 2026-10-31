@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 LOCK = json.loads((ROOT / "native/build-lock.json").read_text(encoding="utf-8-sig"))
+CANDIDATES = ("upstream-156", "upstream-156-webgpu")
 WINDOWS_DIA_FILES = ("include/dia2.h", "include/cvconst.h", "include/diacreate.h", "lib/diaguids.lib",
                      "lib/amd64/diaguids.lib", "bin/msdia140.dll", "bin/amd64/msdia140.dll")
 
@@ -505,7 +506,7 @@ def require_stage(chromium: Path, stage: str, candidate: dict | None = None) -> 
 
 
 def load_candidate(name: str) -> dict:
-    if name != "upstream-156":
+    if name not in CANDIDATES:
         raise ValueError("Unknown Native build candidate")
     directory = ROOT / "native/drafts" / name
     manifest_path = directory / "manifest.json"
@@ -548,16 +549,16 @@ def load_candidate(name: str) -> dict:
     for number, row in enumerate(patches, 1):
         if not isinstance(row, dict):
             raise ValueError("Candidate patch entries must be objects")
-        name = row.get("file", "")
-        if (not isinstance(name, str) or not re.fullmatch(rf"{number:04d}-[a-z0-9-]+\.patch", name)
+        patch_name = row.get("file", "")
+        if (not isinstance(patch_name, str) or not re.fullmatch(rf"{number:04d}-[a-z0-9-]+\.patch", patch_name)
                 or row.get("directory", ".") not in allowed_repositories):
             raise ValueError("Candidate patch sequence or repository is invalid")
-        path = directory / "patches" / name
+        path = directory / "patches" / patch_name
         if path != path.resolve() or hashlib.sha256(path.read_bytes()).hexdigest() != row.get("sha256"):
-            raise ValueError("Candidate patch hash differs: " + name)
+            raise ValueError("Candidate patch hash differs: " + patch_name)
     lock = {**LOCK, **settings, "native_version": "0.2.0-dev",
             "chromium_revision": manifest["target_revision"], "chromium_version": manifest["target_version"]}
-    return {"name": "upstream-156", "directory": directory, "manifest": manifest,
+    return {"name": name, "directory": directory, "manifest": manifest,
             "manifest_sha256": hashlib.sha256(raw).hexdigest(), "lock": lock}
 
 
@@ -587,7 +588,9 @@ def candidate_workspace(workspace: Path, candidate: dict | None, *, claim: bool 
         if marker.exists():
             raise ValueError("Candidate workspace requires its explicit --candidate selection")
         return
-    identity = {"schema": 1, "candidate": candidate["name"],
+    # Variants share the pinned checkout/cache, never manifest-bound stage receipts.
+    family = "upstream-156" if candidate["name"] == "upstream-156-webgpu" else candidate["name"]
+    identity = {"schema": 1, "candidate": family,
                 "chromium_revision": candidate["lock"]["chromium_revision"]}
     if marker.exists():
         if json.loads(marker.read_bytes()) != identity:
@@ -830,7 +833,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("preflight", "bootstrap", "sync", "hooks", "patch", "build"))
     parser.add_argument("--workspace", type=Path, required=True)
-    parser.add_argument("--candidate", choices=("upstream-156",), help="Explicit research build in a separate owned workspace; not runtime admission")
+    parser.add_argument("--candidate", choices=CANDIDATES, help="Explicit research build in a separate owned workspace; not runtime admission")
     parser.add_argument("--backing-volume", type=Path, help="Also require free space on this backing volume (WSL: /mnt/d)")
     parser.add_argument("--jobs", type=int, choices=range(1, LOCK["build_jobs"] + 1), help="Parallel jobs for sync/build; defaults to the build lock")
     parser.add_argument("--git-ssl-backend", choices=("openssl", "schannel"), default="openssl",

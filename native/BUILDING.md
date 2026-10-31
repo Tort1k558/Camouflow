@@ -23,6 +23,14 @@ preserved runtime. No full-policy/privacy/release admission or default-engine sw
 
 ## Pinned Dawn dependency
 
+The explicit [`upstream-156-webgpu`](drafts/upstream-156-webgpu/README.md)
+variant prepares the complete 116-patch Chromium/V8/Dawn source chain. Source
+replay/reverse passed; this is not a built browser. It shares only the exact
+Chromium 156 checkout family with `upstream-156`, not its manifest-bound sync/hooks
+receipts or runtime results. Default 156 selection, 180 GiB reserve and j4 cap are
+unchanged. Existing patched source must be preserved before a clean transition;
+the builder does not reset foreign or partially applied changes.
+
 Build tooling supports an optional `dependencies.dawn` pin using the official
 `https://dawn.googlesource.com/dawn` repository and an exact 40-character revision.
 Sparse replay checks that revision against Chromium's `dawn_revision` in `DEPS`;

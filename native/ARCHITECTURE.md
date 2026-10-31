@@ -1,5 +1,12 @@
 # Glint architecture
 
+The explicit [full WebGPU candidate](drafts/upstream-156-webgpu/README.md)
+registers the baseline plus the complete component batch as 116 repository-scoped
+patches. Forward/reverse replay restores all 268 upstream files; the resulting
+88 component paths match the measured standalone source. This is a source/build
+selection only, not a new browser binary. Its stage receipts cannot reuse the
+default candidate's manifest identity, even when the pinned checkout/cache is shared.
+
 The current [standalone Wire fixture](drafts/webgpu-capture-retention/README.md)
 also executes direct and bundled storage, instance-vertex, Uint16 point-index and
 writable-fragment input paths: 24 hardware runs passed. Writable cases verify full

@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "forward_patches": 116,
+  "reverse_patches": 116,
+  "upstream_files_restored": 268,
+  "composed_webgpu_paths_matched": 88,
+  "manifest_sha256": "0f87647f32132ca34694c7d90a454bd6bb554f90f13bfcebc421e46e81c0367b",
+  "compiled": false,
+  "runtime_verified": false,
+  "privacy_admitted": false,
+  "production_admitted": false,
+  "draft_packets": 30,
+  "baseline_patches": 76,
+  "candidate": "upstream-156-webgpu",
+  "scope": "Full candidate source replay/reverse only; not Chromium compilation or runtime admission",
+  "official_source_urls_validated": true
+}
