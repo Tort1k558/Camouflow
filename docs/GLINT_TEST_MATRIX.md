@@ -10,6 +10,10 @@
 | CPU-first delivery → projected native compute → client MapAsync | 64 output values matched | Real shader input projection and output serialization |
 | Unrelated buffer copy/map | 16 values unchanged | Same observer-enabled device |
 | Missing filter factory, negative control | Explicit pixel mismatch; actual bytes equal raw pixels | Not an arbitrary crash treated as success |
+| Unsupported sRGB capture | Mapping denied; no raw delivery, 3 runs | This format is not enabled by the experimental capture module |
+| Buffer destruction after sending MapAsync to server | Mapping aborted; client remains unmapped, 3 runs | One cancellation ordering, not complete race coverage |
+| Capture-slot exhaustion and reuse | Overflow mapping denied; fresh protected capture succeeds after destruction, 3 runs | Fixed 16-slot retention/collection, not full native byte-budget accounting |
+| Actual device capture-budget counter | Sampled usage within 64 MiB; zero after device destruction in 12 successful runs | Tracked capture/projection allocations only; no forced byte-budget exhaustion or total VRAM profiling |
 
 The public [Wire probe](../native/drafts/webgpu-capture-retention/README.md) uses
 actual native queue submissions, Wire callbacks and the real filter implementation.

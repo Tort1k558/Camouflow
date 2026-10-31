@@ -4,22 +4,25 @@
   "corrected_runs": [
     {
       "args": [],
+      "attempt": 1,
       "returncode": 0,
-      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
       "stderr": "",
       "browser_integrated": false
     },
     {
       "args": [],
+      "attempt": 2,
       "returncode": 0,
-      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
       "stderr": "",
       "browser_integrated": false
     },
     {
       "args": [],
+      "attempt": 3,
       "returncode": 0,
-      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
+      "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"native_d3d12_queue_executed\":true,\"protected_channels\":100,\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\r\n",
       "stderr": "",
       "browser_integrated": false
     }
@@ -28,9 +31,10 @@
     "args": [
       "--without-filter"
     ],
+    "attempt": 1,
     "returncode": 1,
     "stdout": "",
-    "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 174\r\n",
+    "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 266\r\n",
     "browser_integrated": false
   },
   "native_d3d12_queue_executed": true,
@@ -43,9 +47,142 @@
   "production_admitted": false,
   "clean_reproduction_automated": false,
   "public_inputs_sha256": {
-    "CMakeLists.txt": "b2980cd822fa3da7ddbc198e80fbacdf23a2e9b48baf3b9e92a2b5389a7a7645",
-    "wire_probe.cc": "3cacf81e36029c401201358a80d391233ea2cfebecbcfb117bfe14baab105662"
+    "CMakeLists.txt": "2cc3e3bc2488b01866a6824fad30e0e3909ff7f81f410ceb76ed086181da9ddd",
+    "wire_probe.cc": "732d2aae7bde6db606d03f683f141c194d8f34b4b0e84401307c9c52de55364e"
   },
-  "executable_sha256": "8160b27e543990281b5a130821ee0b3fc20073d622c10234a5c0fb175dde7f33",
-  "public_inputs_match_compiled_inputs": true
+  "executable_sha256": "cfc0c41f44f32415904d783366932ad318c4f946ec65a481f8f5f40876cc79b4",
+  "public_inputs_match_compiled_inputs": true,
+  "without_filter_negative_controls": [
+    {
+      "args": [
+        "--without-filter"
+      ],
+      "attempt": 1,
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 266\r\n",
+      "browser_integrated": false
+    },
+    {
+      "args": [
+        "--without-filter"
+      ],
+      "attempt": 2,
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 266\r\n",
+      "browser_integrated": false
+    },
+    {
+      "args": [
+        "--without-filter"
+      ],
+      "attempt": 3,
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "WIRE_FILTER_MISMATCH row=0 byte=0 actual=0 expected=1 raw=0\r\nWire hardware probe failed at line 266\r\n",
+      "browser_integrated": false
+    }
+  ],
+  "fail_closed_cases": {
+    "--unsupported-format": [
+      {
+        "args": [
+          "--unsupported-format"
+        ],
+        "attempt": 1,
+        "returncode": 0,
+        "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"denied_mapping\":true,\"raw_pixels_exposed\":false,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":0,\"capture_bytes_after_destroy\":0,\"snapshot_slots_reused\":false,\"browser_integrated\":false}\r\n",
+        "stderr": "",
+        "browser_integrated": false
+      },
+      {
+        "args": [
+          "--unsupported-format"
+        ],
+        "attempt": 2,
+        "returncode": 0,
+        "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"denied_mapping\":true,\"raw_pixels_exposed\":false,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":0,\"capture_bytes_after_destroy\":0,\"snapshot_slots_reused\":false,\"browser_integrated\":false}\r\n",
+        "stderr": "",
+        "browser_integrated": false
+      },
+      {
+        "args": [
+          "--unsupported-format"
+        ],
+        "attempt": 3,
+        "returncode": 0,
+        "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"denied_mapping\":true,\"raw_pixels_exposed\":false,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":0,\"capture_bytes_after_destroy\":0,\"snapshot_slots_reused\":false,\"browser_integrated\":false}\r\n",
+        "stderr": "",
+        "browser_integrated": false
+      }
+    ],
+    "--cancel-map": [
+      {
+        "args": [
+          "--cancel-map"
+        ],
+        "attempt": 1,
+        "returncode": 0,
+        "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"denied_mapping\":true,\"raw_pixels_exposed\":false,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"snapshot_slots_reused\":false,\"browser_integrated\":false}\r\n",
+        "stderr": "",
+        "browser_integrated": false
+      },
+      {
+        "args": [
+          "--cancel-map"
+        ],
+        "attempt": 2,
+        "returncode": 0,
+        "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"denied_mapping\":true,\"raw_pixels_exposed\":false,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"snapshot_slots_reused\":false,\"browser_integrated\":false}\r\n",
+        "stderr": "",
+        "browser_integrated": false
+      },
+      {
+        "args": [
+          "--cancel-map"
+        ],
+        "attempt": 3,
+        "returncode": 0,
+        "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"denied_mapping\":true,\"raw_pixels_exposed\":false,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":331776,\"capture_bytes_after_destroy\":0,\"snapshot_slots_reused\":false,\"browser_integrated\":false}\r\n",
+        "stderr": "",
+        "browser_integrated": false
+      }
+    ],
+    "--snapshot-quota": [
+      {
+        "args": [
+          "--snapshot-quota"
+        ],
+        "attempt": 1,
+        "returncode": 0,
+        "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"denied_mapping\":true,\"raw_pixels_exposed\":false,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":5308416,\"capture_bytes_after_destroy\":0,\"snapshot_slots_reused\":true,\"browser_integrated\":false}\r\n",
+        "stderr": "",
+        "browser_integrated": false
+      },
+      {
+        "args": [
+          "--snapshot-quota"
+        ],
+        "attempt": 2,
+        "returncode": 0,
+        "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"denied_mapping\":true,\"raw_pixels_exposed\":false,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":5308416,\"capture_bytes_after_destroy\":0,\"snapshot_slots_reused\":true,\"browser_integrated\":false}\r\n",
+        "stderr": "",
+        "browser_integrated": false
+      },
+      {
+        "args": [
+          "--snapshot-quota"
+        ],
+        "attempt": 3,
+        "returncode": 0,
+        "stdout": "{\"passed\":true,\"actual_wire_client_server_executed\":true,\"denied_mapping\":true,\"raw_pixels_exposed\":false,\"capture_budget_limit_bytes\":67108864,\"capture_bytes_after_first_map\":5308416,\"capture_bytes_after_destroy\":0,\"snapshot_slots_reused\":true,\"browser_integrated\":false}\r\n",
+        "stderr": "",
+        "browser_integrated": false
+      }
+    ]
+  },
+  "tracked_capture_budget_accounting_executed": true,
+  "native_capture_byte_budget_exhaustion_tested": false,
+  "total_gpu_memory_profiled": false
 }

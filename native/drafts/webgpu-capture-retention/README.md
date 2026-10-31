@@ -10,9 +10,22 @@ unrelated values. No observer delivery method is called manually. Disabling only
 the filter factory makes the pixel comparison fail with actual bytes equal to raw
 pixels; an arbitrary crash is not accepted as this negative control.
 
+Three runs per failure mode also passed: unsupported sRGB capture returns a mapping
+error; destroying a buffer after sending its map request to the server aborts
+delivery; exhausting the 16 capture slots denies the overflowing mapping. After
+explicit buffer destruction, a fresh capture maps with the expected protected
+pixels, demonstrating slot reuse. These checks do not measure all native allocation
+bytes or replace cancellation/device-loss stress.
+
+White-box checks additionally use the actual device's 64 MiB capture-budget counter,
+with the native objects' compile configuration. Sampled usage stays within that
+limit and returns to zero after device destruction in all 12 successful runs.
+This is tracked capture/projection accounting, not total VRAM profiling, a peak
+measurement or forced exhaustion of the native byte budget.
+
 This checks the standalone Wire implementation, not Chromium GPU-process embedding,
 renderer/worker APIs or Chromium shared-memory transfer services. Hostile transport,
-shared backing, races, cancellation and device-loss integration remain open.
+shared backing, broader races, cancellation stress and device-loss integration remain open.
 
 CPU delivery must not retire a snapshot still referenced by buffer provenance.
 The next GPU dispatch needs that same native capability to project the logical

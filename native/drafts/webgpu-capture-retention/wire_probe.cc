@@ -16,6 +16,8 @@
 #include "gpu/command_buffer/service/glint_webgpu_readback_observer.h"
 #include "gpu/command_buffer/service/glint_webgpu_wire_filter.h"
 #include "src/dawn/utils/TerribleCommandBuffer.h"
+#include "src/dawn/native/d3d12/DeviceD3D12.h"
+#include "src/dawn/native/d3d12/glint/texture_capture.h"
 #include "webgpu/webgpu_cpp.h"
 
 void Check(bool value, std::source_location location = std::source_location::current()) {
@@ -26,7 +28,12 @@ void Check(bool value, std::source_location location = std::source_location::cur
 }
 
 int main(int argc, char** argv) {
-    Check(argc == 1 || (argc == 2 && std::strcmp(argv[1], "--without-filter") == 0));
+    const bool withoutFilter = argc == 2 && std::strcmp(argv[1], "--without-filter") == 0;
+    const bool unsupportedFormat = argc == 2 && std::strcmp(argv[1], "--unsupported-format") == 0;
+    const bool cancelMap = argc == 2 && std::strcmp(argv[1], "--cancel-map") == 0;
+    const bool snapshotQuota = argc == 2 && std::strcmp(argv[1], "--snapshot-quota") == 0;
+    Check(argc == 1 || withoutFilter || unsupportedFormat || cancelMap || snapshotQuota);
+    const bool expectDenied = unsupportedFormat || cancelMap || snapshotQuota;
     dawnProcSetProcs(&dawn::native::GetProcs());
     dawn::native::Instance nativeInstance;
     auto toServer = std::make_unique<dawn::utils::TerribleCommandBuffer>();
@@ -34,7 +41,7 @@ int main(int argc, char** argv) {
     dawn::wire::WireServerDescriptor serverDescriptor{};
     serverDescriptor.procs = &dawn::native::GetProcs();
     serverDescriptor.serializer = toClient.get();
-    if (argc == 1) {
+    if (!withoutFilter) {
         serverDescriptor.bufferReadbackFilterFactory =
             gpu::webgpu::CreateGlintWebGPUReadbackFilterFactory();
     }
@@ -101,6 +108,20 @@ int main(int argc, char** argv) {
     auto handle = client->GetWireHandle(device.Get());
     auto nativeDevice = server->GetDevice(handle.id, handle.generation);
     Check(nativeDevice != nullptr);
+    auto budget = dawn::native::d3d12::ToBackend(dawn::native::FromAPI(nativeDevice))->GetGlintReadbackBudget();
+    Check(budget != nullptr && budget->used_bytes() == 0);
+    auto requireBudgetDrained = [&] {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (budget->used_bytes() != 0 && std::chrono::steady_clock::now() < deadline) {
+            dawn::native::DeviceTick(nativeDevice);
+            pump();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        if (budget->used_bytes())
+            std::fprintf(stderr, "Unretired native capture bytes: %llu\n",
+                         static_cast<unsigned long long>(budget->used_bytes()));
+        Check(budget->used_bytes() == 0);
+    };
     std::array<uint8_t, 32> seed{};
     seed.fill(37);
     auto policy = gpu::webgpu::GlintWebGPUDevicePolicy::Create(1, seed);
@@ -122,6 +143,7 @@ int main(int argc, char** argv) {
     wgpu::TextureDescriptor textureDescriptor{};
     textureDescriptor.size = {width, height, 1};
     textureDescriptor.format = wgpu::TextureFormat::RGBA8Unorm;
+    if (unsupportedFormat) textureDescriptor.format = wgpu::TextureFormat::RGBA8UnormSrgb;
     textureDescriptor.usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst;
     auto texture = device.CreateTexture(&textureDescriptor);
     wgpu::TexelCopyTextureInfo textureCopy{};
@@ -136,6 +158,7 @@ int main(int argc, char** argv) {
     mapDescriptor.size = bytes;
     mapDescriptor.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::MapRead;
     auto readback = device.CreateBuffer(&mapDescriptor);
+    auto originalReadback = readback;
     wgpu::BufferDescriptor inputDescriptor{};
     inputDescriptor.size = bytes;
     inputDescriptor.usage = wgpu::BufferUsage::CopySrc | wgpu::BufferUsage::CopyDst |
@@ -148,19 +171,88 @@ int main(int argc, char** argv) {
     auto encoder = device.CreateCommandEncoder();
     encoder.CopyTextureToBuffer(&textureCopy, &bufferCopy, &extent);
     encoder.CopyBufferToBuffer(input, 0, readback, 0, bytes);
+    std::vector<wgpu::Buffer> quotaBuffers;
+    if (snapshotQuota) {
+        for (size_t i = 0; i < 16; ++i) {
+            quotaBuffers.push_back(device.CreateBuffer(&mapDescriptor));
+            bufferCopy.buffer = quotaBuffers.back();
+            encoder.CopyTextureToBuffer(&textureCopy, &bufferCopy, &extent);
+        }
+        readback = quotaBuffers.back();
+    }
     auto commands = encoder.Finish();
     queue.Submit(1, &commands);
     std::atomic_bool mapDone = false;
     bool mapped = false;
+    wgpu::MapAsyncStatus mapStatus = wgpu::MapAsyncStatus::CallbackCancelled;
     readback.MapAsync(wgpu::MapMode::Read, 0, bytes, wgpu::CallbackMode::AllowSpontaneous,
         [&](wgpu::MapAsyncStatus status, wgpu::StringView message) {
-            if (status != wgpu::MapAsyncStatus::Success)
+            if (!expectDenied && status != wgpu::MapAsyncStatus::Success)
                 std::fprintf(stderr, "Wire map: %.*s\n", static_cast<int>(message.length), message.data);
+            mapStatus = status;
             mapped = status == wgpu::MapAsyncStatus::Success;
             mapDone = true;
         });
+    if (cancelMap) {
+        Check(toServer->Flush());
+        readback.Destroy();
+    }
     wait(mapDone);
+    Check(budget->used_bytes() <= budget->limit_bytes());
+    const auto bytesAfterFirstMap = budget->used_bytes();
+    if (expectDenied) {
+        Check(!mapped);
+        Check(mapStatus == (cancelMap ? wgpu::MapAsyncStatus::Aborted : wgpu::MapAsyncStatus::Error));
+        Check(readback.GetMapState() == wgpu::BufferMapState::Unmapped);
+        Check(observer->IsHealthy());
+        for (auto& buffer : quotaBuffers) buffer.Destroy();
+        input.Destroy();
+        originalReadback.Destroy();
+        readback.Destroy();
+        pump();
+        bool slotsReused = false;
+        if (snapshotQuota) {
+            auto fresh = device.CreateBuffer(&mapDescriptor);
+            bufferCopy.buffer = fresh;
+            auto freshEncoder = device.CreateCommandEncoder();
+            freshEncoder.CopyTextureToBuffer(&textureCopy, &bufferCopy, &extent);
+            auto freshCommands = freshEncoder.Finish();
+            queue.Submit(1, &freshCommands);
+            std::atomic_bool freshDone = false;
+            bool freshMapped = false;
+            fresh.MapAsync(wgpu::MapMode::Read, 0, bytes, wgpu::CallbackMode::AllowSpontaneous,
+                [&](wgpu::MapAsyncStatus status, wgpu::StringView) {
+                    freshMapped = status == wgpu::MapAsyncStatus::Success;
+                    freshDone = true;
+                });
+            wait(freshDone);
+            Check(freshMapped);
+            auto* data = static_cast<const uint8_t*>(fresh.GetConstMappedRange());
+            Check(data != nullptr);
+            for (uint32_t y = 0; y < height; ++y)
+                for (uint32_t x = 0; x < width * 4; ++x)
+                    Check(data[y * pitch + x] == expected[y * width * 4 + x]);
+            fresh.Unmap();
+            fresh.Destroy();
+            slotsReused = true;
+        }
+        Check(observer->IsHealthy());
+        device.Destroy();
+        pump();
+        requireBudgetDrained();
+        std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
+                    "\"denied_mapping\":true,\"raw_pixels_exposed\":false,"
+                    "\"capture_budget_limit_bytes\":%llu,\"capture_bytes_after_first_map\":%llu,"
+                    "\"capture_bytes_after_destroy\":%llu,"
+                    "\"snapshot_slots_reused\":%s,\"browser_integrated\":false}\n",
+                    static_cast<unsigned long long>(budget->limit_bytes()),
+                    static_cast<unsigned long long>(bytesAfterFirstMap),
+                    static_cast<unsigned long long>(budget->used_bytes()),
+                    slotsReused ? "true" : "false");
+        return 0;
+    }
     Check(mapped);
+    Check(budget->used_bytes() != 0);
     const auto* actual = static_cast<const uint8_t*>(readback.GetConstMappedRange());
     Check(actual != nullptr);
     size_t changed = 0;
@@ -270,8 +362,14 @@ int main(int argc, char** argv) {
     readback.Destroy();
     device.Destroy();
     pump();
+    requireBudgetDrained();
     std::printf("{\"passed\":true,\"actual_wire_client_server_executed\":true,"
                 "\"native_d3d12_queue_executed\":true,\"protected_channels\":%zu,"
                 "\"projected_compute_values\":64,\"unrelated_values\":16,\"repeated_map\":true,"
-                "\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\n", changed);
+                "\"capture_budget_limit_bytes\":%llu,\"capture_bytes_after_first_map\":%llu,"
+                "\"capture_bytes_after_destroy\":%llu,"
+                "\"observer_delivery_called_manually\":false,\"browser_integrated\":false}\n", changed,
+                static_cast<unsigned long long>(budget->limit_bytes()),
+                static_cast<unsigned long long>(bytesAfterFirstMap),
+                static_cast<unsigned long long>(budget->used_bytes()));
 }

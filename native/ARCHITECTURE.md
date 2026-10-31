@@ -13,6 +13,17 @@ This closes a standalone Wire/GPU ordering gate only. Chromium GPU-process embed
 its shared-memory services, renderer/worker APIs, hostile transport, races and
 failure cleanup remain separate requirements; runtime selection is unchanged.
 
+Actual Wire failure checks now cover unsupported-format mapping denial, buffer
+destruction after sending a map request, and capture-slot exhaustion. Each passed
+three hardware runs without raw delivery. Destroying the retained buffers permits
+a fresh protected capture, exercising the real observer's slot collection. Broader
+race coverage, device loss and full native allocation-byte accounting remain open.
+
+The hardware probe also reads the real device's 64 MiB capture-budget counter;
+sampled usage is bounded and drains to zero after device destruction across all
+12 successful runs. This white-box check uses native object compile definitions.
+It does not measure total GPU memory, peak usage or forced byte-budget exhaustion.
+
 ## Native CPU delivery must preserve dependent GPU capabilities
 
 The unselected [capture-retention correction](drafts/webgpu-capture-retention/README.md)

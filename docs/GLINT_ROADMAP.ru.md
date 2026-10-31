@@ -12,6 +12,16 @@ Next: Chromium GPU-process/shared-memory embedding, hostile transport and races,
 same-submit/chained/render cases, native lifetime/quota stress and browser APIs.
 Standalone inline Wire is not proof of Chromium renderer/worker integration.
 
+Actual failure cases also passed three times each: unsupported-format denial,
+buffer destruction after sending MapAsync, and capture-slot exhaustion followed
+by successful protected slot reuse. No raw-data fallback was accepted. Next native
+gates remain byte-budget accounting, broader races, device loss and render paths.
+
+Tracked native capture-budget accounting is now exercised: sampled usage remains
+within the real 64 MiB device budget and drains to zero after destruction in all
+12 successful runs. Forced byte-budget exhaustion, total GPU memory and peak
+profiling are still open; the slot-exhaustion result does not prove those gates.
+
 ## CPU-first capture lifetime: real standalone GPU regression
 
 The [retention correction](../native/drafts/webgpu-capture-retention/README.md)

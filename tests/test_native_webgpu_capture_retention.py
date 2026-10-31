@@ -91,3 +91,44 @@ def test_wire_missing_filter_control_observes_raw_pixels_not_an_arbitrary_crash(
     for key in ('chromium_miracle_ptr_executed', 'chromium_gpu_process_executed',
                 'browser_integrated', 'privacy_admitted', 'production_admitted'):
         assert record[key] is False
+
+
+def test_wire_fail_closed_cases_deny_mapping_without_exposing_raw_pixels():
+    record = json.loads((MODULE / 'wire-observations.json').read_bytes())
+    assert set(record['fail_closed_cases']) == {
+        '--unsupported-format', '--cancel-map', '--snapshot-quota',
+    }
+    for name, rows in record['fail_closed_cases'].items():
+        assert len(rows) == 3
+        for row in rows:
+            assert row['args'] == [name] and row['returncode'] == 0 and row['stderr'] == ''
+            result = json.loads(row['stdout'])
+            assert result['passed'] and result['actual_wire_client_server_executed']
+            assert result['denied_mapping'] and result['raw_pixels_exposed'] is False
+            assert result['snapshot_slots_reused'] == (name == '--snapshot-quota')
+            assert result['browser_integrated'] is False
+    source = (MODULE / 'wire_probe.cc').read_text(encoding='utf-8-sig')
+    assert 'wgpu::TextureFormat::RGBA8UnormSrgb' in source
+    assert 'wgpu::MapAsyncStatus::Aborted' in source
+    assert 'for (auto& buffer : quotaBuffers) buffer.Destroy();' in source
+    assert 'Check(freshMapped);' in source
+
+
+def test_wire_native_capture_accounting_drains_without_claiming_total_vram_coverage():
+    record = json.loads((MODULE / 'wire-observations.json').read_bytes())
+    assert record['tracked_capture_budget_accounting_executed']
+    assert record['native_capture_byte_budget_exhaustion_tested'] is False
+    assert record['total_gpu_memory_profiled'] is False
+    rows = list(record['corrected_runs'])
+    for cases in record['fail_closed_cases'].values():
+        rows.extend(cases)
+    assert len(rows) == 12
+    for row in rows:
+        result = json.loads(row['stdout'])
+        assert result['capture_budget_limit_bytes'] == 64 * 1024**2
+        assert 0 <= result['capture_bytes_after_first_map'] <= result['capture_budget_limit_bytes']
+        assert result['capture_bytes_after_destroy'] == 0
+    source = (MODULE / 'wire_probe.cc').read_text(encoding='utf-8-sig')
+    assert 'GetGlintReadbackBudget()' in source and 'requireBudgetDrained();' in source
+    project = (MODULE / 'CMakeLists.txt').read_text(encoding='utf-8-sig')
+    assert 'TARGET_PROPERTY:dawn_native_objects,COMPILE_DEFINITIONS' in project
